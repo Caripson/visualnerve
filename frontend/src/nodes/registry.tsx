@@ -34,6 +34,7 @@ import type { NodeKind } from '../model/types';
 import { useEditor } from '../state/editor';
 import { MindmapNode } from '../mindmap/Topic';
 import { AreaIcon } from '../ui/icons';
+import { MetricSummary } from '../components/MetricSummary';
 
 export const nodeRegistry: Record<NodeKind, { label: string; icon: LucideIcon; shape: string }> = {
   generic: { label: 'Generic', icon: Box, shape: 'box' },
@@ -98,6 +99,7 @@ function renderer(kind: NodeKind) {
           </div>
         )}
         <div className="node-title">{node.title}</div>
+        {!overview && <MetricSummary node={node} />}
         {!overview && (
           <div className="node-bottomline">
             {owners.length > 0 && (

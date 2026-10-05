@@ -106,6 +106,28 @@ func main() {
 		schemas[name+"Patch"] = patch
 	}
 	schemas["Graph"] = object{"type": "object", "required": []string{"format", "formatVersion", "diagram", "nodes", "edges", "owners"}, "properties": object{"format": object{"type": "string", "enum": []string{"visual-nerve"}}, "formatVersion": object{"type": "integer", "enum": []int{1}}, "diagram": ref("Diagram"), "nodes": object{"type": "array", "items": ref("Node")}, "edges": object{"type": "array", "items": ref("Edge")}, "owners": object{"type": "array", "items": ref("Owner")}}, "additionalProperties": false}
+	// CSV source records are validated in the browser and forwarded losslessly by the bridge.
+	schemas["CsvDataset"] = object{
+		"type":                 "object",
+		"additionalProperties": false,
+		"required":             []string{"id", "version", "createdAt", "updatedAt", "formatVersion", "diagramId", "name", "fileName", "columns", "rows"},
+		"properties": object{
+			"id":            object{"type": "string", "format": "uuid"},
+			"version":       object{"type": "integer", "minimum": 1},
+			"createdAt":     object{"type": "string", "format": "date-time"},
+			"updatedAt":     object{"type": "string", "format": "date-time"},
+			"formatVersion": object{"type": "integer", "enum": []int{1}},
+			"diagramId":     object{"type": "string", "format": "uuid"},
+			"name":          object{"type": "string"},
+			"fileName":      object{"type": "string"},
+			"columns": object{"type": "array", "items": object{
+				"type": "object", "required": []string{"id", "label"},
+				"properties": object{"id": object{"type": "string"}, "label": object{"type": "string"}},
+			}},
+			"rows": object{"type": "array", "items": object{"type": "array", "items": object{"type": "string"}}},
+		},
+	}
+	schemas["Graph"].(object)["properties"].(object)["dataset"] = ref("CsvDataset")
 	for _, name := range []string{"Node", "Edge", "Owner"} {
 		s := clone(schemas[name+"Input"].(object))
 		delete(s, "required")
@@ -130,7 +152,8 @@ func main() {
 	schemas["Export"] = object{"type": "object", "required": []string{"diagramId", "format"}, "properties": object{"diagramId": object{"type": "string", "format": "uuid"}, "format": object{"type": "string", "enum": []string{"json", "markdown"}}}, "additionalProperties": false}
 	schemas["Error"] = object{"type": "object", "properties": object{"error": object{"type": "string"}}}
 	schemas["Health"] = object{"type": "object", "properties": object{"status": object{"type": "string"}, "storage": object{"type": "string", "enum": []string{"indexeddb"}}, "bridge": object{"type": "boolean"}, "connected": object{"type": "integer"}, "version": object{"type": "string"}}}
-	schemas["WorkspaceBackup"] = object{"type": "object", "required": []string{"format", "formatVersion", "diagrams", "nodes", "edges", "owners", "settings", "templates"}, "properties": object{"format": object{"type": "string", "enum": []string{"visual-nerve-workspace"}}, "formatVersion": object{"type": "integer", "enum": []int{1}}, "schemaVersion": object{"type": "integer", "description": "IndexedDB schema version at export; currently 4. Older backups may omit this."}, "exportedAt": object{"type": "string", "format": "date-time"}, "diagrams": object{"type": "array", "items": ref("Diagram")}, "nodes": object{"type": "array", "items": ref("Node")}, "edges": object{"type": "array", "items": ref("Edge")}, "owners": object{"type": "array", "items": ref("Owner")}, "settings": object{"type": "array", "items": object{"type": "object", "required": []string{"key", "value"}, "properties": object{"key": object{"type": "string"}, "value": object{}}}}, "templates": object{"type": "array", "items": object{"type": "object", "properties": object{"id": object{"type": "string"}, "name": object{"type": "string"}, "builtin": object{"type": "boolean"}, "graph": ref("Graph")}}}}}
+	schemas["WorkspaceBackup"] = object{"type": "object", "required": []string{"format", "formatVersion", "diagrams", "nodes", "edges", "owners", "settings", "templates"}, "properties": object{"format": object{"type": "string", "enum": []string{"visual-nerve-workspace"}}, "formatVersion": object{"type": "integer", "enum": []int{1}}, "schemaVersion": object{"type": "integer", "description": "IndexedDB schema version at export; currently 5. Older backups may omit this."}, "exportedAt": object{"type": "string", "format": "date-time"}, "diagrams": object{"type": "array", "items": ref("Diagram")}, "nodes": object{"type": "array", "items": ref("Node")}, "edges": object{"type": "array", "items": ref("Edge")}, "owners": object{"type": "array", "items": ref("Owner")}, "settings": object{"type": "array", "items": object{"type": "object", "required": []string{"key", "value"}, "properties": object{"key": object{"type": "string"}, "value": object{}}}}, "templates": object{"type": "array", "items": object{"type": "object", "properties": object{"id": object{"type": "string"}, "name": object{"type": "string"}, "builtin": object{"type": "boolean"}, "graph": ref("Graph")}}}}}
+	schemas["WorkspaceBackup"].(object)["properties"].(object)["datasets"] = object{"type": "array", "items": ref("CsvDataset"), "description": "Original CSV source records. Older backups may omit this."}
 	schemas["SearchResult"] = object{"type": "object", "properties": object{"kind": object{"type": "string", "enum": []string{"diagram", "node"}}, "diagramId": object{"type": "string", "format": "uuid"}, "nodeId": object{"type": "string", "format": "uuid"}, "title": object{"type": "string"}}}
 	paths := object{}
 	add := func(method, path, summary, input, output, status string) {

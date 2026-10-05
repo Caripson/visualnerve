@@ -23,6 +23,13 @@ function acknowledged(local: Graph, saved: Graph): Graph {
       : (stored ?? value);
   return {
     ...saved,
+    ...(local.dataset &&
+    saved.dataset &&
+    local.dataset.id === saved.dataset.id &&
+    local.dataset.version === saved.dataset.version &&
+    local.dataset.updatedAt === saved.dataset.updatedAt
+      ? { dataset: local.dataset }
+      : {}),
     nodes: local.nodes.map((node) => share(node, nodes.get(node.id))),
     edges: local.edges.map((edge) => share(edge, edges.get(edge.id))),
   };
@@ -123,8 +130,10 @@ export class Workspace {
     if (useEditor.getState().status === 'conflict') return;
     try {
       await this.requireStorageConsent();
+      // Editor commands change the drawing/configuration, not the original CSV cells.
+      const { dataset: _dataset, ...drawing } = graph;
       const stored = await this.repo.saveGraph(
-        graph,
+        drawing,
         this.versions.get(id) ?? graph.diagram.version,
       );
       this.versions.set(id, stored.diagram.version);

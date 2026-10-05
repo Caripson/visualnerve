@@ -11,7 +11,18 @@ import {
 import { nodeRegistry } from '../nodes/registry';
 import { mindmapTopics } from '../mindmap/tree';
 import { IconPicker, iconKey, withIcon } from '../ui/icons';
-export function Properties() {
+import { CsvProperties } from './CsvProperties';
+import type { CsvPathEntry } from '../data/types';
+import { getCsvNode } from '../data/csv';
+export function Properties({
+  editCsv,
+  focusCsv,
+  pageCsv,
+}: {
+  editCsv?: () => void;
+  focusCsv?: (path: CsvPathEntry[]) => void;
+  pageCsv?: (direction: 'next' | 'previous') => void;
+}) {
   const graph = useEditor((s) => s.graph);
   const selected = useEditor((s) => s.selectedNodes);
   const edges = useEditor((s) => s.selectedEdges);
@@ -72,6 +83,13 @@ export function Properties() {
               onChange={(e) => update({ title: e.target.value })}
             />
           </Field>
+          <CsvProperties
+            graph={graph}
+            node={node}
+            onEditCsv={editCsv}
+            onFocusCsv={focusCsv}
+            onPageCsv={pageCsv}
+          />
           <div className="field">
             <span>Area icon</span>
             <IconPicker
@@ -164,7 +182,9 @@ export function Properties() {
                 value={
                   node.color ||
                   (graph.diagram.type === 'mindmap'
-                    ? mindmapTopics(graph.nodes).get(node.id)?.color
+                    ? mindmapTopics(
+                        graph.nodes.filter((item) => getCsvNode(item)?.visible !== false),
+                      ).get(node.id)?.color
                     : owners.find((o) => o.id === node.ownerId)?.color) ||
                   '#31766c'
                 }
@@ -424,6 +444,12 @@ export function Properties() {
             {graph.nodes.length} nodes · {graph.edges.length} connections
           </p>
         </div>
+        <CsvProperties
+          graph={graph}
+          onEditCsv={editCsv}
+          onFocusCsv={focusCsv}
+          onPageCsv={pageCsv}
+        />
         <Field title="Name">
           <input
             aria-label="Diagram name"

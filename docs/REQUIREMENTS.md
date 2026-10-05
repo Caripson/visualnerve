@@ -7,7 +7,7 @@ Source paths below are relative to frontend/src or frontend/tests where appropri
 | Requirement | Implemented behavior | Evidence |
 | --- | --- | --- |
 | 1. Public app, private content | Static public/ bundle, private S3/OAC GET-only distribution; browser IndexedDB contains all user content. Deployment allowlist excludes exports and state. | deployment/template.mjs; deployment.test.ts; audit-static.mjs |
-| 2. Sole persistent store | Six canonical IndexedDB tables include diagrams, nodes, edges, owners, preferences, user templates, viewport and metadata; React is working state. | storage/database.ts; storage.test.ts; STORAGE.md |
+| 2. Sole persistent store | Seven canonical IndexedDB tables include diagrams, nodes, edges, owners, preferences, user templates, viewport and metadata; React is working state. | storage/database.ts; storage.test.ts; STORAGE.md |
 | 3. No server database | No database driver, server repository, SQL schema or JSON content store remains. Running legacy service was replaced with the current browser bridge after confirming it had no diagrams/owners. | backend/go.mod; server.go; source/runtime audit below |
 | 4. Static public hosting | public/ works on a read-only named HTTPS static fixture without any Go API; S3/CloudFront template and upload script deliver only app code. | privacy.spec.ts; DEPLOYMENT.md; deployment tests |
 | 5. Profile separation | Same HTTPS URL in contexts A/B has independent Private A/Private B records; app explains browser/profile/device/origin scope. | privacy.spec.ts: same HTTPS static URL; PRIVACY.md |
@@ -17,8 +17,8 @@ Source paths below are relative to frontend/src or frontend/tests where appropri
 | 9. Data & Privacy | Settings shows browser location, cloud not used, no automatic sync and optional MCP. IndexedDB, schema, origin and workspace ID are in advanced details. | DataPrivacy; privacy.spec.ts |
 | 10. Plain language | Product text explains browser-local saving and manual moving/backups; technical details stay in expandable sections. | PrivacyIntro; Settings; /privacy/ |
 | 11. Browser clearing | Settings, both export targets and docs explain clearing/profile reset/uninstall; portable exports keep an independent copy. | StorageNotice; privacy/help pages; PRIVACY.md |
-| 12. Export all data | Dated portable JSON contains all six tables, appropriate settings, schemaVersion and exportedAt; credentials/grants/consent/local identity excluded. | storage/backup.ts; database.backup; unit/browser tests |
-| 13. Restore modes | Preview defaults to Merge; Replace has a separate confirmation. All six stores restore atomically; invalid data rolls back replacement. | RestoreBackup; Repository.restore; tests |
+| 12. Export all data | Dated portable JSON contains all seven tables, appropriate settings, schemaVersion and exportedAt; credentials/grants/consent/local identity excluded. | storage/backup.ts; database.backup; unit/browser tests |
+| 13. Restore modes | Preview defaults to Merge; Replace has a separate confirmation. All seven stores restore atomically; invalid data rolls back replacement. | RestoreBackup; Repository.restore; tests |
 | 14. Subtle reminder | At ten diagrams with no export, a small dismissible reminder appears; dismissal persists and export records suppress it. | BackupNudge; privacy.spec.ts |
 | 15. MCP path | Codex → loopback MCP → local WebSocket → active browser → shared repository → IndexedDB. No second copy or S3 content access. | mcp.go; bridge.ts; architecture; tests |
 | 16. MCP explanation/states | Settings explains tool access, active-browser requirement and local-only data, showing Disabled/Waiting/Connected/Error. | McpSettings; bridge.ts; privacy browser tests |

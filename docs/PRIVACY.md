@@ -2,7 +2,7 @@
 
 The application can be publicly hosted. Everything you create stays in the browser profile where you created it. No account is required and no cloud database receives diagrams. Other visitors to the same URL cannot see your work.
 
-The website delivers app files. The browser saves diagrams, nodes, relationships, owners, metadata, preferences, viewport and user templates in IndexedDB. React holds active working state. **Saved** means a local transaction completed.
+The website delivers app files. The browser saves diagrams, nodes, relationships, owners, metadata, preferences, viewport, user templates, original CSV cells and analysis choices in IndexedDB. React holds active working state. **Saved** means a local transaction completed.
 
 ```text
 Visual Nerve website → your browser → IndexedDB
@@ -20,7 +20,7 @@ Another browser, profile, device or private window has independent storage even 
 
 ## Backups and moving work
 
-**Settings → Data & Privacy → Export all data** downloads `visual-nerve-backup-YYYY-MM-DD.json`: diagrams, nodes, connections, all owners, portable settings, templates, schema version and export date. It excludes credentials, grants, storage acceptance and local identity. You control where the downloaded file is kept. Visual Nerve never uploads it. Share a backup only when you intend to share its content.
+**Settings → Data & Privacy → Export all data** downloads `visual-nerve-backup-YYYY-MM-DD.json`: diagrams, nodes, connections, all owners, portable settings, templates, CSV datasets, schema version and export date. It excludes credentials, grants, storage acceptance and local identity. You control where the downloaded file is kept. Visual Nerve never uploads it. Share a backup only when you intend to share its content.
 
 **Restore backup** previews Merge (keep current projects and add imported work) or Replace (remove current data first, with explicit confirmation). Identity collisions are remapped; invalid data rolls back all tables. Replace disables MCP. Import cannot grant tools access or accept storage for you. Export diagram is separate: one diagram as PNG/PDF/Markdown/JSON.
 

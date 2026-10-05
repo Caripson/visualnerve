@@ -9,6 +9,7 @@ import {
 } from '../model/types';
 import { timelineGeometry, type Geometry } from '../layouts/layout';
 import { mindmapTopics, type MindmapTopic } from '../mindmap/tree';
+import { getCsvNode } from '../data/csv';
 export type NodeData = {
   node: GraphNode;
   owners: Owner[];
@@ -48,14 +49,19 @@ export function projectGraph(
   renderCache?: RenderCache,
   topicContext?: GraphNode[],
 ): { nodes: CanvasNode[]; edges: Edge[] } {
-  const byId = new Map(graph.nodes.map((n) => [n.id, n]));
+  const visibleNodes = graph.nodes.filter((node) => getCsvNode(node)?.visible !== false);
+  const byId = new Map(visibleNodes.map((n) => [n.id, n]));
   const mindmap = graph.diagram.type === 'mindmap';
-  const topics = mindmap ? mindmapTopics(topicContext ?? graph.nodes) : undefined;
+  const topics = mindmap
+    ? mindmapTopics(
+        (topicContext ?? visibleNodes).filter((node) => getCsvNode(node)?.visible !== false),
+      )
+    : undefined;
   const ownerById = new Map(owners.map((o) => [o.id, o]));
   const selected = new Set(selectedNodes);
   const edgeSelected = new Set(selectedEdges);
   const counts = new Map<string, number>();
-  for (const n of graph.nodes)
+  for (const n of visibleNodes)
     if (n.parentId) counts.set(n.parentId, (counts.get(n.parentId) ?? 0) + 1);
   const hidden = new Map<string, boolean>();
   const collapsed = (n: GraphNode): boolean => {
@@ -68,7 +74,7 @@ export function projectGraph(
   };
   const timeline =
     graph.diagram.type === 'timeline'
-      ? timelineGeometry(graph.nodes, graph.diagram.settings.timelineScale ?? 'month')
+      ? timelineGeometry(visibleNodes, graph.diagram.settings.timelineScale ?? 'month')
       : null;
   const matches = (n: GraphNode) =>
     (!filters.owner || n.ownerIds.includes(filters.owner)) &&
@@ -85,7 +91,7 @@ export function projectGraph(
     depths.set(n.id, value);
     return value;
   };
-  const nodes: CanvasNode[] = [...graph.nodes]
+  const nodes: CanvasNode[] = [...visibleNodes]
     .sort((a, b) => depth(a) - depth(b))
     .map((n) => {
       const geom = timeline?.positions.get(n.id) ?? n;
@@ -158,16 +164,24 @@ export function projectGraph(
   if (renderCache)
     for (const id of renderCache.nodes.keys()) if (!byId.has(id)) renderCache.nodes.delete(id);
   const hiddenIds = new Set(nodes.filter((n) => n.hidden).map((n) => n.id));
+  const visibleEdges = graph.edges.filter(
+    (edge) => byId.has(edge.sourceNodeId) && byId.has(edge.targetNodeId),
+  );
   const represented = new Set(
-    graph.edges.flatMap((e) => [
+    visibleEdges.flatMap((e) => [
       `${e.sourceNodeId}:${e.targetNodeId}`,
       `${e.targetNodeId}:${e.sourceNodeId}`,
     ]),
   );
   const derived: GraphEdge[] = mindmap
-    ? graph.nodes.flatMap((n) => {
+    ? visibleNodes.flatMap((n) => {
         const parent = n.parentId ? byId.get(n.parentId) : undefined;
-        if (!parent || parent.nodeType === 'group' || represented.has(`${parent.id}:${n.id}`))
+        if (
+          !parent ||
+          getCsvNode(n) ||
+          parent.nodeType === 'group' ||
+          represented.has(`${parent.id}:${n.id}`)
+        )
           return [];
         return [
           {
@@ -186,13 +200,16 @@ export function projectGraph(
         ];
       })
     : [];
-  const edges = [...graph.edges, ...derived].map((e) => {
+  const edges = [...visibleEdges, ...derived].map((e) => {
     const selected = edgeSelected.has(e.id);
     const hidden = hiddenIds.has(e.sourceNodeId) || hiddenIds.has(e.targetNodeId);
     const source = byId.get(e.sourceNodeId);
     const target = byId.get(e.targetNodeId);
+    const csvRelation =
+      (e.edgeType !== 'hierarchy' || e.direction !== 'none') &&
+      ((source && !!getCsvNode(source)) || (target && !!getCsvNode(target)));
     const branch =
-      mindmap && source?.nodeType !== 'group' && target?.nodeType !== 'group'
+      mindmap && !csvRelation && source?.nodeType !== 'group' && target?.nodeType !== 'group'
         ? target?.parentId === source?.id
           ? target
           : source?.parentId === target?.id

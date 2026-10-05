@@ -1,3 +1,5 @@
+import type { CsvAnalysis, CsvDataset } from '../data/types';
+
 export const diagramTypes = [
   'blank',
   'mindmap',
@@ -50,6 +52,7 @@ export interface Diagram extends Base {
     grid?: boolean;
     snap?: boolean;
     timelineScale?: TimelineScale;
+    csvAnalysis?: CsvAnalysis;
     [key: string]: unknown;
   };
 }
@@ -106,6 +109,7 @@ export interface Graph {
   nodes: GraphNode[];
   edges: GraphEdge[];
   owners: Owner[];
+  dataset?: CsvDataset;
 }
 export interface Filters {
   owner: string;

@@ -7,7 +7,7 @@ Verified on 2026-10-05 in the provided Linux/WSL workspace with Go 1.27.1, Node 
 | Area | Result |
 | --- | --- |
 | Architecture | Public static application files served by any static host; private content remains in the browser. S3/CloudFront deployment artifacts are supplied, without provisioning AWS resources. |
-| Storage | IndexedDB is authoritative, with six stores and explicit Dexie v1–v4 upgrades. React holds working state; complete exports and atomic Merge/Replace restore provide manual portability. |
+| Storage | IndexedDB is authoritative, with seven stores and explicit Dexie v1–v5 upgrades. React holds working state; complete exports and atomic Merge/Replace restore provide manual portability. |
 | Privacy | Normal editing uploads no content. Another browser, profile, device or origin has independent data. Optional MCP returns content only through the explicitly enabled local bridge. |
 | UI | Required remembered storage/cache acceptance, Local only badge, Data & Privacy settings, separate diagram/full-backup exports, confirmed restore/deletion, storage details and dismissible backup reminder. |
 | MCP | Active browser required; loopback-only bridge; Off, Read only and Read + write permissions; shared graph validation; clear failure when disconnected. An authenticated user-requested example was created successfully. |
@@ -117,3 +117,19 @@ The offline browser test disables networking, edits, waits for Saved, reloads th
 Raster export rejects a bitmap above 16,384 pixels in either dimension or 80 million pixels. Tiled PDF rejects more than 200 pages. Use a lower resolution or a selection for very large raster exports; canonical JSON and Markdown remain available. Layout and export cost depends on graph shape and hardware. Overview zoom reduces unselected node detail; selection or zoom restores it, and complete exports retain full details.
 
 The implemented concurrency model is optimistic version checking with explicit conflict resolution. Selection and filters are transient; diagram viewport/settings and edits persist. macOS runtime execution was not available in this environment. Browser storage is scoped to the browser profile and origin; exported backups move data between them. The portable Go/Hugo/Node setup is documented.
+
+## CSV exploration as connected diagrams
+
+[CSV exploration](CSV_EXPLORER.md) describes the import, cleanup, grouping, filtering and display controls. The browser acceptance uses a fictional 100,000-row ledger with 2,000 customers, mixed decimal dot/comma cells and numeric customer prefixes. It verifies all-row count, sum, average, median, minimum, maximum and distinct count while only a page of groups is visible. Cleaning prefixes before grouping, Company starts with AAA, group focus, original source previews, per-object measure/column choices and reload all preserve the expected values.
+
+The result contains canonical diagram objects and connections. Browser checks draw and select real strokes, add labels and arrows in both directions, change their style, move objects, filter out endpoints and bring their connections back, and regroup without losing manual relationships. Unit checks also cover deleted/reconnected generated links, undo, copies within a data diagram and source-free measure snapshots copied into another diagram. Snapshot DELETE/PATCH/bulk API regressions preserve the copied metadata without creating a source binding.
+
+IndexedDB schema 5 stores original source strings separately from drawing objects. Tests cover older schema/backup upgrades, dataset identity remapping on diagram import, Merge/Replace, rollback, source replacement in another connection, lossless JSON/backup round trips and deletion of a source with its diagram. Ordinary diagram edits retain the immutable source without rewriting all rows.
+
+The full 128-case frontend unit/component run passed. The final API guard then passed all 51 storage cases, including three additional snapshot regressions. Go race tests and vet, TypeScript/Vite/Hugo/OpenAPI/Go production build, formatting and the 240-file static bundle audit passed. The offline application shell contains 18 local assets, including the CSV worker.
+
+All 27 browser scenarios were verified: 22 unchanged scenarios passed in the complete run, followed by five passing final scenarios covering both CSV flows, 1,000/5,000-node editing, schema-5 backup controls and the phone workspace. The original scale timing limits and strict phone viewport check remain in place. The final five-scenario run passed in two minutes; no CSV browser runtime errors occurred.
+
+On this macOS test machine, the final isolated Chrome CSV flow measured 445 ms to open the import configuration, 2,010 ms to configure the selected measures and 1,125 ms to create/persist the diagram. The import interval produced 27 animation frames with a maximum gap of 33.3 ms. These are measurements of this fixture and environment, not guarantees for other files, devices or a comparison against Excel. The test uses a file path; injecting the same file as an in-memory Playwright buffer also stalled a blank file-input page and therefore did not measure application responsiveness accurately.
+
+Retained fixture evidence: [CSV groups, source rows and editable connections](acceptance/csv-explorer.png). No actual user data is included. GitHub review and CI are separate from the existing manual S3/CloudFront deployment workflow.

@@ -1,4 +1,5 @@
-import Dexie, { type EntityTable } from 'dexie';
+import Dexie, { type EntityTable, type ObservabilitySet } from 'dexie';
+import type { CsvDataset } from '../data/types';
 import {
   base,
   type Diagram,
@@ -29,15 +30,23 @@ export interface WorkspaceBackup {
   owners: Owner[];
   settings: Setting[];
   templates: TemplateRecord[];
+  datasets?: CsvDataset[];
 }
 
 export class WorkspaceDatabase extends Dexie {
+  private datasetCache = new Map<string, { diagramVersion: number; dataset?: CsvDataset }>();
+  private immutableDatasets = new WeakSet<CsvDataset>();
+  private datasetMutation = (parts: ObservabilitySet) => {
+    if (Object.keys(parts).some((part) => part.startsWith(`idb://${this.name}/datasets/`)))
+      this.forgetDatasets();
+  };
   diagrams!: EntityTable<Diagram, 'id'>;
   nodes!: EntityTable<GraphNode, 'id'>;
   edges!: EntityTable<GraphEdge, 'id'>;
   owners!: EntityTable<Owner, 'id'>;
   settings!: EntityTable<Setting, 'key'>;
   templates!: EntityTable<TemplateRecord, 'id'>;
+  datasets!: EntityTable<CsvDataset, 'id'>;
   constructor(name = 'visual-nerve-cache') {
     // Retain the historical database name to upgrade existing browser data in place.
     super(name);
@@ -87,7 +96,50 @@ export class WorkspaceDatabase extends Dexie {
       .upgrade(async (tx) => {
         await tx.table('settings').delete('integration-enabled');
       });
+    this.version(5).stores({ datasets: 'id,&diagramId,updatedAt' });
+    this.on(
+      'ready',
+      () => {
+        Dexie.on.storagemutated.unsubscribe(this.datasetMutation);
+        Dexie.on.storagemutated.subscribe(this.datasetMutation);
+      },
+      true,
+    );
+    this.on('close', () => {
+      Dexie.on.storagemutated.unsubscribe(this.datasetMutation);
+      this.forgetDatasets();
+    });
     this.on('versionchange', () => this.close());
+  }
+  forgetDatasets() {
+    this.datasetCache.clear();
+  }
+  rememberDataset(diagram: Diagram, dataset?: CsvDataset) {
+    // Raw cells are immutable. Normal edits share this object without copying
+    // or fetching a large dataset again. The committed diagram version changes
+    // on every repository write, including source replacement in another tab.
+    if (dataset && !this.immutableDatasets.has(dataset)) {
+      dataset.rows.forEach(Object.freeze);
+      dataset.columns.forEach(Object.freeze);
+      Object.freeze(dataset.rows);
+      Object.freeze(dataset.columns);
+      Object.freeze(dataset);
+      this.immutableDatasets.add(dataset);
+    }
+    const remember = () => {
+      this.datasetCache.delete(diagram.id);
+      this.datasetCache.set(diagram.id, { diagramVersion: diagram.version, dataset });
+      // Keep the active source and a few recent projects without retaining
+      // every large dataset ever opened during this browser session.
+      while (this.datasetCache.size > 3)
+        this.datasetCache.delete(this.datasetCache.keys().next().value!);
+    };
+    let transaction = Dexie.currentTransaction;
+    // import/restore/bulk call graph/saveGraph in nested transactions. A nested
+    // scope can finish while the outer write later rolls back.
+    while (transaction?.parent) transaction = transaction.parent;
+    if (transaction) transaction.on('complete', remember);
+    else remember();
   }
   async initialize() {
     await this.open();
@@ -108,34 +160,56 @@ export class WorkspaceDatabase extends Dexie {
     });
   }
   async graph(id: string): Promise<Graph | undefined> {
-    return this.transaction('r', this.diagrams, this.nodes, this.edges, this.owners, async () => {
-      const diagram = await this.diagrams.get(id);
-      if (!diagram) return;
-      const nodes = await this.nodes.where('diagramId').equals(id).toArray();
-      const edges = await this.edges.where('diagramId').equals(id).toArray();
-      // Entity order is part of the saved graph, including branch order and owner aliases.
-      const order = (diagram.settings.entityOrder ?? {}) as { nodes?: string[]; edges?: string[] };
-      const sort = <T extends { id: string }>(items: T[], ids?: string[]) => {
-        const index = new Map(ids?.map((id, position) => [id, position]) ?? []);
-        return items.sort(
-          (a, b) =>
-            (index.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
-            (index.get(b.id) ?? Number.MAX_SAFE_INTEGER),
+    const graph = await this.transaction(
+      'r',
+      this.diagrams,
+      this.nodes,
+      this.edges,
+      this.owners,
+      this.datasets,
+      async () => {
+        const diagram = await this.diagrams.get(id);
+        if (!diagram) return;
+        const nodes = await this.nodes.where('diagramId').equals(id).toArray();
+        const edges = await this.edges.where('diagramId').equals(id).toArray();
+        // Entity order is part of the saved graph, including branch order and owner aliases.
+        const order = (diagram.settings.entityOrder ?? {}) as {
+          nodes?: string[];
+          edges?: string[];
+        };
+        const sort = <T extends { id: string }>(items: T[], ids?: string[]) => {
+          const index = new Map(ids?.map((id, position) => [id, position]) ?? []);
+          return items.sort(
+            (a, b) =>
+              (index.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+              (index.get(b.id) ?? Number.MAX_SAFE_INTEGER),
+          );
+        };
+        const ownerIds = [...new Set(nodes.flatMap((node) => node.ownerIds))];
+        const owners = (await this.owners.bulkGet(ownerIds)).filter(
+          (owner): owner is Owner => !!owner,
         );
-      };
-      const ownerIds = [...new Set(nodes.flatMap((node) => node.ownerIds))];
-      const owners = (await this.owners.bulkGet(ownerIds)).filter(
-        (owner): owner is Owner => !!owner,
-      );
-      return {
-        format: 'visual-nerve',
-        formatVersion: 1,
-        diagram,
-        nodes: sort(nodes, order.nodes),
-        edges: sort(edges, order.edges),
-        owners,
-      };
-    });
+        const cached = this.datasetCache.get(id);
+        const dataset =
+          cached?.diagramVersion === diagram.version
+            ? cached.dataset
+            : await this.datasets.where('diagramId').equals(id).first();
+        const graph: Graph = {
+          format: 'visual-nerve',
+          formatVersion: 1,
+          diagram,
+          nodes: sort(nodes, order.nodes),
+          edges: sort(edges, order.edges),
+          owners,
+          ...(dataset ? { dataset } : {}),
+        };
+        return graph;
+      },
+    );
+    // Outside a top-level transaction its mutation event has already fired.
+    // Nested graph reads register against the outer commit instead.
+    if (graph) this.rememberDataset(graph.diagram, graph.dataset);
+    return graph;
   }
   async backup(): Promise<WorkspaceBackup> {
     return this.transaction('r', this.tables, async () => ({
@@ -162,6 +236,7 @@ export class WorkspaceDatabase extends Dexie {
           ].includes(setting.key),
       ),
       templates: await this.templates.toArray(),
+      datasets: await this.datasets.toArray(),
     }));
   }
 }

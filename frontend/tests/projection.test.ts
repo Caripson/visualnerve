@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
 import { blankGraph, emptyFilters, newNode, newEdge } from '../src/model/types';
 import { projectGraph, projectedBounds, type RenderCache } from '../src/canvas/projection';
+import { csvGraph, defaultAnalysis, getCsvNode, parseCsv } from '../src/data/csv';
 it('declares frame dimensions so virtualized offscreen nodes can participate in fitting', () => {
   const graph = blankGraph('Offscreen fit');
   graph.nodes = [
@@ -123,4 +124,103 @@ it('hides or dims unrelated nodes and hides incident edges', () => {
   expect(
     projectGraph(g, [], [], [], { ...emptyFilters, status: 'done' }).nodes[1].style?.opacity,
   ).toBe(0.2);
+});
+
+it('honors deleted CSV branches and arrow directions on edited hierarchy connections', () => {
+  const dataset = parseCsv('Region,Amount\nNorth,10', 'sales.csv');
+  const graph = csvGraph(dataset, defaultAnalysis(dataset));
+  const edge = graph.edges[0];
+  edge.direction = 'both';
+  const directed = projectGraph(graph, []).edges.find((item) => item.id === edge.id)!;
+  expect(directed.markerStart).toBeDefined();
+  expect(directed.markerEnd).toBeDefined();
+  expect(directed.reconnectable).toBe(true);
+  graph.edges = [];
+  expect(projectGraph(graph, []).edges).toEqual([]);
+});
+
+it('projects only the current CSV view, preserves manual objects and restores their retained links', () => {
+  const dataset = parseCsv('Region,Amount\nNorth,10\nSouth,20', 'sales.csv');
+  const graph = csvGraph(dataset, defaultAnalysis(dataset));
+  const north = graph.nodes.find((node) => getCsvNode(node)?.path[0]?.value === 'North')!;
+  const south = graph.nodes.find((node) => getCsvNode(node)?.path[0]?.value === 'South')!;
+  const root = graph.nodes.find((node) => getCsvNode(node)?.path.length === 0)!;
+  const note = newNode(graph.diagram.id, { title: 'My note', x: 500, y: 300 });
+  const retainedLink = newEdge(graph.diagram.id, north.id, south.id, { label: 'My relation' });
+  const currentLink = newEdge(graph.diagram.id, north.id, note.id, { label: 'Visible relation' });
+  const parentRelation = newEdge(graph.diagram.id, root.id, north.id, {
+    label: 'Own parent relation',
+  });
+  graph.nodes.push(note);
+  graph.edges.push(retainedLink, currentLink, parentRelation);
+  const data = new Map();
+  const cache: RenderCache = { nodes: new Map(), edges: new Map() };
+  const initial = projectGraph(graph, [], [], [], emptyFilters, false, undefined, data, cache);
+  const ownRelation = initial.edges.find((edge) => edge.id === parentRelation.id)!;
+  expect(ownRelation.type).toBe('default');
+  expect(ownRelation.markerEnd).toBeDefined();
+  expect(ownRelation.reconnectable).toBe(true);
+  expect(
+    initial.edges.find(
+      (edge) =>
+        edge.id !== parentRelation.id && edge.source === root.id && edge.target === north.id,
+    )?.type,
+  ).toBe('mindmap-branch');
+  graph.nodes = graph.nodes.map((node) =>
+    node.id === root.id || node.id === south.id
+      ? {
+          ...node,
+          x: 10000,
+          metadata: { ...node.metadata, csv: { ...getCsvNode(node)!, visible: false } },
+        }
+      : node,
+  );
+  const canonicalNodes = graph.nodes;
+  const canonicalEdges = graph.edges;
+  const view = projectGraph(
+    graph,
+    [],
+    [],
+    [],
+    emptyFilters,
+    false,
+    undefined,
+    data,
+    cache,
+    graph.nodes,
+  );
+  expect(view.nodes.map((node) => node.id)).toEqual([north.id, note.id]);
+  expect(view.nodes[0].data.mindmap?.depth).toBe(0);
+  expect(view.edges.map((edge) => edge.id)).toEqual([currentLink.id]);
+  expect(view.edges[0].type).toBe('default');
+  expect(data.has(south.id)).toBe(false);
+  expect(cache.nodes.has(root.id)).toBe(false);
+  expect(cache.edges.has(retainedLink.id)).toBe(false);
+  const exported = projectGraph(
+    graph,
+    [],
+    [],
+    [],
+    emptyFilters,
+    true,
+    undefined,
+    undefined,
+    undefined,
+    graph.nodes,
+  );
+  expect(exported.nodes.map((node) => node.id)).toEqual([north.id, note.id]);
+  expect(exported.edges.map((edge) => edge.id)).toEqual([currentLink.id]);
+  expect(projectedBounds(exported.nodes).width).toBeLessThan(10000);
+  expect(graph.nodes).toBe(canonicalNodes);
+  expect(graph.edges).toBe(canonicalEdges);
+  expect(graph.edges).toContain(retainedLink);
+
+  graph.nodes = graph.nodes.map((node) =>
+    getCsvNode(node)?.visible === false
+      ? { ...node, metadata: { ...node.metadata, csv: { ...getCsvNode(node)!, visible: true } } }
+      : node,
+  );
+  const restored = projectGraph(graph, []);
+  expect(restored.nodes.find((node) => node.id === north.id)?.data.mindmap?.depth).toBe(1);
+  expect(restored.edges.find((edge) => edge.id === retainedLink.id)?.label).toBe('My relation');
 });

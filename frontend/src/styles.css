@@ -2181,7 +2181,7 @@ kbd {
 @media (max-width: 360px) {
   .editor-toolbar {
     gap: 2px;
-    padding-inline: 4px;
+    padding-inline: 3px;
   }
   .editor-toolbar .toolbar-group {
     gap: 0;

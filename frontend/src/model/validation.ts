@@ -1,4 +1,6 @@
 import { diagramTypes, nodeKinds, type Graph, type Owner } from './types';
+import type { CsvDataset } from '../data/types';
+import { getCsvNode, validateAnalysis, validateCsvNode, validateDataset } from '../data/csv';
 
 export class StorageError extends Error {
   constructor(
@@ -34,7 +36,7 @@ export function validateOwner(owner: Owner) {
     'Unsupported owner kind.',
   );
 }
-export function validateGraph(graph: Graph) {
+export function validateGraph(graph: Graph, trustedDataset?: CsvDataset) {
   requireValue(
     graph && graph.diagram && [graph.nodes, graph.edges, graph.owners].every(Array.isArray),
     'Invalid graph structure.',
@@ -52,6 +54,32 @@ export function validateGraph(graph: Graph) {
     'Diagram name is required and limited to 500 characters.',
   );
   requireValue(diagramTypes.includes(graph.diagram.type), 'Unsupported diagram mode.');
+  requireValue(
+    graph.diagram.settings &&
+      typeof graph.diagram.settings === 'object' &&
+      !Array.isArray(graph.diagram.settings),
+    'Invalid diagram settings.',
+  );
+  const dataset = graph.dataset;
+  const analysis = graph.diagram.settings.csvAnalysis;
+  try {
+    if (dataset !== undefined) {
+      // Repository reads return immutable, previously validated source data.
+      // Drawing/configuration saves need only validate their references.
+      if (dataset !== trustedDataset) validateDataset(dataset);
+      requireValue(
+        dataset.diagramId === graph.diagram.id,
+        'CSV dataset belongs to another diagram.',
+      );
+    }
+    if (analysis !== undefined) {
+      requireValue(dataset, 'CSV analysis requires its source dataset.');
+      validateAnalysis(dataset!, analysis);
+    }
+  } catch (error) {
+    if (error instanceof StorageError) throw error;
+    throw new StorageError(422, (error as Error).message);
+  }
   const owners = new Set<string>();
   for (const owner of graph.owners) {
     validateOwner(owner);
@@ -111,6 +139,48 @@ export function validateGraph(graph: Graph) {
     if (node.externalId) {
       requireValue(!externalNodes.has(node.externalId), 'Duplicate external node id.');
       externalNodes.add(node.externalId);
+    }
+    const csv = node.metadata?.csv !== undefined ? getCsvNode(node) : undefined;
+    if (
+      node.metadata?.csv !== undefined &&
+      (dataset !== undefined || analysis !== undefined || csv)
+    ) {
+      requireValue(csv && dataset && analysis, 'CSV node requires a valid source and analysis.');
+      try {
+        validateCsvNode(csv!);
+      } catch (error) {
+        throw new StorageError(422, (error as Error).message);
+      }
+      requireValue(csv!.datasetId === dataset!.id, 'CSV node refers to another dataset.');
+      requireValue(csv!.groupKey === JSON.stringify(csv!.path), 'Invalid CSV group key.');
+      requireValue(
+        csv!.path.length <= 8 &&
+          new Set(csv!.path.map((entry) => entry.columnId)).size === csv!.path.length &&
+          csv!.path.every((entry) =>
+            dataset!.columns.some((column) => column.id === entry.columnId),
+          ) &&
+          (node.externalId !== csv!.groupKey ||
+            csv!.visible === false ||
+            (csv!.path.length <= analysis!.levels.length &&
+              csv!.path.every((entry, index) => entry.columnId === analysis!.levels[index]))) &&
+          Number.isSafeInteger(csv!.rowCount) &&
+          csv!.rowCount >= 0 &&
+          csv!.rowCount <= dataset!.rows.length,
+        'Invalid CSV group path or row count.',
+      );
+      requireValue(
+        (!csv!.displayColumns ||
+          csv!.displayColumns.every((id) => dataset!.columns.some((column) => column.id === id))) &&
+          csv!.measures.every(
+            (measure) =>
+              (measure.columnId === undefined
+                ? measure.operation === 'count'
+                : dataset!.columns.some((column) => column.id === measure.columnId)) &&
+              measure.numericCount + measure.missingCount + measure.invalidCount <= csv!.rowCount &&
+              (measure.operation !== 'count' || measure.value === csv!.rowCount),
+          ),
+        'CSV measure counts do not match their group.',
+      );
     }
   }
   const visited = new Set<string>();

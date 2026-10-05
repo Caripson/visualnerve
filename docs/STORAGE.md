@@ -14,8 +14,11 @@ The historical database name `visual-nerve-cache` remains so existing data upgra
 | owners | Global and unassigned owners, unique externalId and name/kind/team indexes |
 | settings | Appearance, local identity/last diagram, required consent, MCP grant/address, export/reminder bookkeeping |
 | templates | Built-in seeds and user templates with complete graphs |
+| datasets | Original CSV strings and stable column IDs, one source per diagram; unique diagramId index |
 
-Selection, dialogs, filters, pending commands and bounded undo/redo remain in memory. Bridge tokens are ephemeral session storage, excluded from backups. The historical localStorage theme is migrated once and removed. No entity is stored in localStorage, filesystem JSON, another database or a remote service.
+CSV analysis filters, cleanup, grouping and measures persist in diagram settings. Raw CSV strings live once in the datasets store; ordinary node/edge edits do not rewrite them. A bounded source cache is invalidated by IndexedDB mutations across connections.
+
+Selection, dialogs, canvas filters, pending commands and bounded undo/redo remain in memory. Bridge tokens are ephemeral session storage, excluded from backups. The historical localStorage theme is migrated once and removed. No entity is stored in localStorage, filesystem JSON, another database or a remote service.
 
 ## Explicit upgrades
 
@@ -23,6 +26,7 @@ Selection, dialogs, filters, pending commands and bounded undo/redo remain in me
 2. Normalize legacy graphs, including pending edits, into six canonical stores; retain versions, ordering and preferences.
 3. Remove obsolete graph/state containers after migration.
 4. Preserve canonical records; remove the obsolete boolean integration grant and require new explicit permission.
+5. Add the datasets store without rewriting or removing existing records.
 
 Acceptance is separate from an integration grant or informational acknowledgement. Existing data remains intact before acceptance. Updates never reset the database. Version changes close older connections so upgrades can complete. Each upgrade needs transactional migration tests; keep the database name stable.
 
@@ -34,7 +38,7 @@ Startup checks consent before loading graphs, seeding templates, subscribing to 
 
 ## Export, restore, clear
 
-Backups use one read transaction across all stores and include format/schema versions and export date. They exclude credentials, grants, consent, local identity/selection and reminder bookkeeping. See [EXPORT_FORMAT.md](../EXPORT_FORMAT.md).
+Backups use one read transaction across all seven stores and include format/schema versions, CSV sources and export date. Diagram JSON also includes its source dataset. Import, Merge and Replace remap dataset/diagram/node references together. Deleting a diagram deletes its source in the same transaction. They exclude credentials, grants, consent, local identity/selection and reminder bookkeeping. See [EXPORT_FORMAT.md](../EXPORT_FORMAT.md).
 
 Merge and Replace use one transaction across all stores. Invalid records roll back everything, including destructive replacement. Collision remapping preserves shared owners and internal references. Merge keeps destination connection choices; Replace creates a new local identity with MCP Off. Both preserve the destination's own consent without importing another profile's consent. Confirmed deletion clears every user record/preference and seeds only built-in templates and a fresh identity.
 

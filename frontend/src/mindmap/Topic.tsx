@@ -5,6 +5,7 @@ import type { CanvasNode } from '../canvas/projection';
 import { useEditor } from '../state/editor';
 import { AreaIcon, iconKey } from '../ui/icons';
 import { topicInk } from '../ui/colors';
+import { MetricSummary } from '../components/MetricSummary';
 
 export const MindmapNode = memo(({ id, data, selected }: NodeProps<CanvasNode>) => {
   const { node, mindmap: topic, exporting, owners } = data;
@@ -111,6 +112,7 @@ export const MindmapNode = memo(({ id, data, selected }: NodeProps<CanvasNode>) 
           <span>{node.title}</span>
         </div>
       )}
+      {!overview && <MetricSummary node={node} />}
       {!overview && (owners.length > 0 || node.status || node.startDate) && (
         <div className="topic-details">
           {owners.length > 0 && <span>{owners.map((owner) => owner.name).join(', ')}</span>}

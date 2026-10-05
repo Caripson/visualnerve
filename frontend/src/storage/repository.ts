@@ -12,6 +12,7 @@ import {
   type Owner,
 } from '../model/types';
 import { StorageError, validateGraph, validateOwner } from '../model/validation';
+import { getCsvNode } from '../data/csv';
 import { markdown, parseImport } from '../export/semantic';
 import { database, type WorkspaceBackup, type WorkspaceDatabase } from './database';
 
@@ -23,6 +24,7 @@ export interface SearchResult {
   kind: 'diagram' | 'node';
 }
 const sameContent = (a: Base, b: Base) => {
+  if (a === b) return true;
   const content = ({
     version: _version,
     updatedAt: _updatedAt,
@@ -65,6 +67,30 @@ function requireVersion(actual: number, expected: unknown) {
       'Another tab changed this project. Your local changes are preserved.',
     );
 }
+function suppressCsvParentConnection(graph: Graph, edge: GraphEdge) {
+  if (edge.metadata?.csvGenerated !== true) return;
+  graph.nodes = graph.nodes.map((node) => {
+    const csv =
+      node.id === edge.targetNodeId && node.metadata?.csv !== undefined
+        ? getCsvNode(node)
+        : undefined;
+    return csv
+      ? {
+          ...node,
+          metadata: { ...node.metadata, csv: { ...csv, suppressParentConnection: true } },
+        }
+      : node;
+  });
+}
+function reconnectedEdge(graph: Graph, previous: GraphEdge, next: GraphEdge): GraphEdge {
+  if (
+    previous.metadata?.csvGenerated !== true ||
+    (previous.sourceNodeId === next.sourceNodeId && previous.targetNodeId === next.targetNodeId)
+  )
+    return next;
+  suppressCsvParentConnection(graph, previous);
+  return { ...next, metadata: { ...next.metadata, csvGenerated: false } };
+}
 function object(data: unknown): Patch {
   if (!data || typeof data !== 'object' || Array.isArray(data))
     throw new StorageError(400, 'Expected an object.');
@@ -79,12 +105,13 @@ export class Repository {
     return graph;
   }
   async saveGraph(input: Graph, expectedVersion?: number): Promise<Graph> {
-    return this.db.transaction(
+    const saved = await this.db.transaction(
       'rw',
       this.db.diagrams,
       this.db.nodes,
       this.db.edges,
       this.db.owners,
+      this.db.datasets,
       async () => {
         const old = await this.db.graph(input.diagram.id);
         if (old) requireVersion(old.diagram.version, expectedVersion);
@@ -99,10 +126,24 @@ export class Repository {
         const referenced = new Set(input.nodes.flatMap((node) => node.ownerIds));
         const graph: Graph = {
           ...input,
+          ...((input.dataset === undefined ? old?.dataset : input.dataset)
+            ? { dataset: input.dataset === undefined ? old?.dataset : input.dataset }
+            : {}),
           nodes: input.nodes.map((node) => ({ ...node, ownerId: node.ownerIds[0] })),
           owners: [...registry.values()].filter((owner) => referenced.has(owner.id)),
         };
-        validateGraph(graph);
+        validateGraph(graph, old?.dataset);
+        if (graph.dataset) {
+          if (graph.dataset.id !== old?.dataset?.id) {
+            const record = await this.db.datasets.get(graph.dataset.id);
+            if (record && record.diagramId !== graph.diagram.id)
+              throw new StorageError(409, 'Dataset id belongs to another project.');
+          }
+          graph.dataset = stamp(
+            graph.dataset,
+            old?.dataset?.id === graph.dataset.id ? old.dataset : undefined,
+          );
+        }
         const otherNodes = await this.db.nodes.bulkGet(graph.nodes.map((node) => node.id));
         const otherEdges = await this.db.edges.bulkGet(graph.edges.map((edge) => edge.id));
         if (
@@ -146,24 +187,41 @@ export class Repository {
           [...registry.values()].filter((owner) => !owners.some((old) => old.id === owner.id)),
         );
         await this.db.diagrams.put(graph.diagram);
+        if (graph.dataset && graph.dataset !== old?.dataset) {
+          if (old?.dataset && old.dataset.id !== graph.dataset.id)
+            await this.db.datasets.delete(old.dataset.id);
+          await this.db.datasets.put(graph.dataset);
+        }
         return graph;
       },
     );
+    this.db.rememberDataset(saved.diagram, saved.dataset);
+    return saved;
   }
   async removeDiagram(id: string) {
-    await this.db.transaction('rw', this.db.diagrams, this.db.nodes, this.db.edges, async () => {
-      await this.db.nodes.where('diagramId').equals(id).delete();
-      await this.db.edges.where('diagramId').equals(id).delete();
-      await this.db.diagrams.delete(id);
-    });
+    await this.db.transaction(
+      'rw',
+      this.db.diagrams,
+      this.db.nodes,
+      this.db.edges,
+      this.db.datasets,
+      async () => {
+        this.db.forgetDatasets();
+        await this.db.nodes.where('diagramId').equals(id).delete();
+        await this.db.edges.where('diagramId').equals(id).delete();
+        await this.db.diagrams.delete(id);
+        await this.db.datasets.where('diagramId').equals(id).delete();
+      },
+    );
   }
   async importGraph(source: Graph): Promise<Graph> {
-    return this.db.transaction(
+    const imported = await this.db.transaction(
       'rw',
       this.db.diagrams,
       this.db.nodes,
       this.db.edges,
       this.db.owners,
+      this.db.datasets,
       async () => {
         const graph = structuredClone(source);
         validateGraph(graph);
@@ -195,6 +253,28 @@ export class Repository {
           graph.nodes.map((node) => [node.id, collision ? crypto.randomUUID() : node.id]),
         );
         if (collision) graph.diagram.id = crypto.randomUUID();
+        if (graph.dataset) {
+          const oldDatasetId = graph.dataset.id;
+          const datasetCollision = !!(await this.db.datasets.get(oldDatasetId));
+          graph.dataset = {
+            ...graph.dataset,
+            id: collision || datasetCollision ? crypto.randomUUID() : oldDatasetId,
+            diagramId: graph.diagram.id,
+          };
+          graph.nodes = graph.nodes.map((node) => {
+            if (!node.metadata?.csv) return node;
+            return {
+              ...node,
+              metadata: {
+                ...node.metadata,
+                csv: {
+                  ...(node.metadata.csv as Record<string, unknown>),
+                  datasetId: graph.dataset!.id,
+                },
+              },
+            };
+          });
+        }
         graph.nodes = graph.nodes.map((node) => ({
           ...node,
           id: nodeIds.get(node.id)!,
@@ -213,6 +293,8 @@ export class Repository {
         return this.saveGraph(graph, 0);
       },
     );
+    this.db.rememberDataset(imported.diagram, imported.dataset);
+    return imported;
   }
   async restore(backup: WorkspaceBackup, mode: 'merge' | 'replace' = 'merge'): Promise<Graph[]> {
     if (
@@ -229,20 +311,30 @@ export class Repository {
         backup.owners,
         backup.settings,
         backup.templates,
-      ].every(Array.isArray)
+      ].every(Array.isArray) ||
+      (backup.datasets !== undefined && !Array.isArray(backup.datasets))
     )
       throw new StorageError(422, 'Invalid workspace backup.');
-    return this.db.transaction('rw', this.db.tables, async () => {
+    const restored = await this.db.transaction('rw', this.db.tables, async () => {
       const acknowledgement = await this.db.settings.get('storage-consent');
-      if (mode === 'replace') for (const table of this.db.tables) await table.clear();
+      if (mode === 'replace') {
+        this.db.forgetDatasets();
+        for (const table of this.db.tables) await table.clear();
+      }
       const diagrams = new Set(backup.diagrams.map((diagram) => diagram.id));
+      const datasets = backup.datasets ?? [];
       if (
         diagrams.size !== backup.diagrams.length ||
         backup.nodes.some((node) => !diagrams.has(node.diagramId)) ||
         backup.edges.some((edge) => !diagrams.has(edge.diagramId)) ||
         new Set(backup.nodes.map((node) => node.id)).size !== backup.nodes.length ||
         new Set(backup.edges.map((edge) => edge.id)).size !== backup.edges.length ||
-        new Set(backup.owners.map((owner) => owner.id)).size !== backup.owners.length
+        new Set(backup.owners.map((owner) => owner.id)).size !== backup.owners.length ||
+        datasets.some(
+          (dataset) => !dataset || typeof dataset !== 'object' || !diagrams.has(dataset.diagramId),
+        ) ||
+        new Set(datasets.map((dataset) => dataset.id)).size !== datasets.length ||
+        new Set(datasets.map((dataset) => dataset.diagramId)).size !== datasets.length
       )
         throw new StorageError(422, 'Invalid or duplicate workspace references.');
       const ownerIds = new Map<string, string>();
@@ -267,6 +359,7 @@ export class Repository {
       await this.db.owners.bulkPut(owners);
       const graphs: Graph[] = [];
       for (const diagram of backup.diagrams) {
+        const dataset = datasets.find((dataset) => dataset.diagramId === diagram.id);
         const nodes = backup.nodes
           .filter((node) => node.diagramId === diagram.id)
           .map((node) => ({
@@ -292,6 +385,7 @@ export class Repository {
               order?.edges,
             ),
             owners,
+            ...(dataset ? { dataset } : {}),
           }),
         );
       }
@@ -324,9 +418,12 @@ export class Repository {
       await this.db.initialize();
       return graphs;
     });
+    for (const graph of restored) this.db.rememberDataset(graph.diagram, graph.dataset);
+    return restored;
   }
   async clearAll() {
     await this.db.transaction('rw', this.db.tables, async () => {
+      this.db.forgetDatasets();
       for (const table of this.db.tables) await table.clear();
       await this.db.initialize();
     });
@@ -512,6 +609,7 @@ export class Repository {
         this.db.nodes,
         this.db.edges,
         this.db.owners,
+        this.db.datasets,
         async () => {
           const graph = await this.getGraph(id),
             data = object(payload),
@@ -556,6 +654,7 @@ export class Repository {
         this.db.nodes,
         this.db.edges,
         this.db.owners,
+        this.db.datasets,
         async () => {
           const graph = await this.getGraph(entity.diagramId),
             version = graph.diagram.version;
@@ -611,10 +710,16 @@ export class Repository {
                     : value,
               );
             }
-          } else
-            graph.edges = remove
-              ? graph.edges.filter((edge) => edge.id !== id)
-              : graph.edges.map((edge) => (edge.id === id ? patch(edge, data) : edge));
+          } else {
+            const edge = currentEntity as GraphEdge;
+            if (remove) {
+              suppressCsvParentConnection(graph, edge);
+              graph.edges = graph.edges.filter((edge) => edge.id !== id);
+            } else {
+              const next = reconnectedEdge(graph, edge, patch(edge, data));
+              graph.edges = graph.edges.map((edge) => (edge.id === id ? next : edge));
+            }
+          }
           const stored = await this.saveGraph(graph, version);
           return (
             remove
@@ -629,12 +734,13 @@ export class Repository {
     throw new StorageError(404, 'Unknown browser command.');
   }
   async bulk(id: string, data: Patch): Promise<Graph> {
-    return this.db.transaction(
+    const saved = await this.db.transaction(
       'rw',
       this.db.diagrams,
       this.db.nodes,
       this.db.edges,
       this.db.owners,
+      this.db.datasets,
       async () => {
         const graph = await this.getGraph(id),
           version = graph.diagram.version;
@@ -734,11 +840,12 @@ export class Repository {
           const fields = { ...values };
           delete fields.sourceExternalId;
           delete fields.targetExternalId;
-          const edge = previous
+          let edge = previous
             ? patch(previous, fields)
             : newEdge(id, source as string, target as string, fields as Partial<GraphEdge>);
           if (source) edge.sourceNodeId = source as string;
           if (target) edge.targetNodeId = target as string;
+          if (previous) edge = reconnectedEdge(graph, previous, edge);
           if (previous)
             graph.edges = graph.edges.map((value) => (value.id === previous.id ? edge : value));
           else graph.edges.push(edge);
@@ -749,6 +856,8 @@ export class Repository {
         return this.saveGraph(graph, current.version);
       },
     );
+    this.db.rememberDataset(saved.diagram, saved.dataset);
+    return saved;
   }
 }
 export const repository = new Repository();
