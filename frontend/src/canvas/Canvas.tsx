@@ -5,18 +5,20 @@ import {
   Background,
   BackgroundVariant,
   Controls,
+  ControlButton,
   ConnectionMode,
   MiniMap,
   Panel,
   ReactFlow,
   SelectionMode,
   useReactFlow,
+  useStoreApi,
   useViewport,
   type NodeChange,
   type EdgeChange,
   type Edge,
 } from '@xyflow/react';
-import { Crosshair, Grid3X3, Magnet, Map as MapIcon } from 'lucide-react';
+import { Crosshair, Grid3X3, Magnet, Map as MapIcon, Maximize, Pencil } from 'lucide-react';
 import { useEditor } from '../state/editor';
 import { descendantIds, type Graph, type GraphNode } from '../model/types';
 import { dayMS, timelineGeometry, type Geometry } from '../layouts/layout';
@@ -24,16 +26,21 @@ import { nodeTypes } from '../nodes/registry';
 import { edgeTypes } from '../mindmap/Branch';
 import { SelectionTools } from '../ui/SelectionTools';
 import { projectGraph, type CanvasNode, type NodeData, type RenderCache } from './projection';
+import { DrawingOverlay } from '../drawing/DrawingOverlay';
+import { getDrawingLayer } from '../drawing/types';
+import { fitDiagram } from '../drawing/navigation';
 
 export function Canvas() {
   const graph = useEditor((s) => s.graph);
   const owners = useEditor((s) => s.owners);
   const selectedNodes = useEditor((s) => s.selectedNodes);
   const selectedEdges = useEditor((s) => s.selectedEdges);
+  const drawingTool = useEditor((s) => s.drawingTool);
   const filters = useEditor((s) => s.filters);
   const dataCache = useRef(new Map<string, NodeData>());
   const renderCache = useRef<RenderCache>({ nodes: new Map(), edges: new Map() });
   const flow = useReactFlow<CanvasNode>();
+  const flowStore = useStoreApi<CanvasNode>();
   const [minimap, setMinimap] = useState(true);
   const [touch, setTouch] = useState(
     () => matchMedia('(pointer: coarse), (max-width: 720px)').matches,
@@ -147,6 +154,18 @@ export function Canvas() {
       const viewport = graph.diagram.settings.viewport;
       const touchView = graph.diagram.settings.viewportDevice === 'touch';
       if (viewport && touchView === touch) void flow.setViewport(viewport);
+      else if (
+        getDrawingLayer(graph.diagram.settings.drawing)?.visible &&
+        getDrawingLayer(graph.diagram.settings.drawing)?.strokes.length
+      )
+        void fitDiagram(
+          flow,
+          graph,
+          graph.diagram.type === 'mindmap' ? 0.14 : 0.3,
+          0,
+          1,
+          flowStore.getState(),
+        );
       else if (touch && graph.diagram.type === 'mindmap') {
         const root = graph.nodes.find((node) => !node.parentId && node.nodeType !== 'group');
         void flow.fitView({
@@ -211,6 +230,7 @@ export function Canvas() {
         return;
       const s = useEditor.getState();
       if (!s.graph) return;
+      if (s.drawingTool !== 'none') return;
       if (e.key.startsWith('Arrow') && s.selectedNodes.length && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         e.stopPropagation();
@@ -232,7 +252,7 @@ export function Canvas() {
       }
       if (e.key.toLowerCase() === 'f' && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
-        void flow.fitView({ padding: 0.2 });
+        void fitDiagram(flow, s.graph, 0.2);
       }
     };
     window.addEventListener('keydown', listener, true);
@@ -323,7 +343,25 @@ export function Canvas() {
             </div>
           </Panel>
         )}
-        <Controls showInteractive={false} />
+        <Controls
+          showInteractive={false}
+          showFitView={
+            !getDrawingLayer(graph.diagram.settings.drawing)?.visible ||
+            !getDrawingLayer(graph.diagram.settings.drawing)?.strokes.length
+          }
+        >
+          {getDrawingLayer(graph.diagram.settings.drawing)?.visible &&
+            !!getDrawingLayer(graph.diagram.settings.drawing)?.strokes.length && (
+              <ControlButton
+                aria-label="Fit view"
+                title="Fit view"
+                onClick={() => void fitDiagram(flow, graph)}
+              >
+                <Maximize size={16} />
+              </ControlButton>
+            )}
+        </Controls>
+        <DrawingOverlay />
         {minimap && (
           <MiniMap
             pannable
@@ -336,6 +374,25 @@ export function Canvas() {
         )}
         <Panel position="bottom-center">
           <div className="canvas-toggles">
+            <button
+              className={drawingTool !== 'none' ? 'active' : ''}
+              title="Draw on diagram"
+              aria-label="Draw on diagram"
+              aria-pressed={drawingTool !== 'none'}
+              onClick={() => {
+                const state = useEditor.getState();
+                if (state.drawingTool !== 'none') state.setDrawingTool('none');
+                else {
+                  if (getDrawingLayer(state.graph?.diagram.settings.drawing)?.visible === false)
+                    state.toggleDrawingVisibility();
+                  state.select([]);
+                  useEditor.setState({ mobilePanel: null });
+                  state.setDrawingTool('pen');
+                }
+              }}
+            >
+              <Pencil size={15} />
+            </button>
             <button
               className={graph.diagram.settings.grid !== false ? 'active' : ''}
               title="Toggle grid"
@@ -379,20 +436,22 @@ export function Canvas() {
         </Panel>
       </ReactFlow>
       {graph.diagram.type === 'timeline' && <TimelineRuler graph={graph} />}
-      {graph.nodes.length === 0 && (
-        <div className="canvas-empty">
-          <BoxIcon />
-          <h2>A little space for your next idea.</h2>
-          <p>
-            {graph.diagram.type === 'mindmap'
-              ? 'Start with a central idea, then branch out.'
-              : 'Add a node, then connect the dots.'}
-          </p>
-          <button className="primary" onClick={() => useEditor.getState().addNode()}>
-            {graph.diagram.type === 'mindmap' ? 'Add your central idea' : 'Add your first node'}
-          </button>
-        </div>
-      )}
+      {graph.nodes.length === 0 &&
+        drawingTool === 'none' &&
+        !getDrawingLayer(graph.diagram.settings.drawing)?.strokes.length && (
+          <div className="canvas-empty">
+            <BoxIcon />
+            <h2>A little space for your next idea.</h2>
+            <p>
+              {graph.diagram.type === 'mindmap'
+                ? 'Start with a central idea, then branch out.'
+                : 'Add a node, then connect the dots.'}
+            </p>
+            <button className="primary" onClick={() => useEditor.getState().addNode()}>
+              {graph.diagram.type === 'mindmap' ? 'Add your central idea' : 'Add your first node'}
+            </button>
+          </div>
+        )}
     </div>
   );
 }

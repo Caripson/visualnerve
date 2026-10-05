@@ -12,6 +12,8 @@ Mind maps emit semantic heading hierarchy, including descriptions, notes and own
 
 The client uses React Flow rendering plus `html-to-image` with graph bounds and viewport transforms. Choose current viewport, selected nodes (with internal connections), or the complete graph, and 1×/2×/4× resolution. Complete export includes off-screen nodes and expands collapsed branches in an isolated export canvas. Canvas search filters do not remove objects from complete exports. CSV image/PDF exports show the current analysis view, including its measures and visible relationships; historical groups hidden by CSV analysis remain in lossless JSON and backups.
 
+Visible drawing strokes render above nodes and connections. Complete export includes their bounds, even on a diagram with no nodes; viewport export uses the current view, and selected-node export crops annotations to that selection's image bounds. Hidden strokes and an unfinished pen gesture are excluded from PNG/PDF. Diagram JSON and workspace backups retain every saved stroke and layer visibility as diagram settings.
+
 PDF embeds the graph PNG using jsPDF. Choose A4/A3, portrait/landscape, fit to one page or tiled pages. Tiling slices the image into page-sized areas at a readable scale; each tile includes a page coordinate caption. Large exports are bounded by browser canvas limits and display an actionable error when a requested bitmap would exceed them. JSON and Markdown have no raster size limit.
 
 ## Complete workspace backup

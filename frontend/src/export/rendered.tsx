@@ -1,12 +1,22 @@
 import { useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { ReactFlow, ReactFlowProvider, useNodesInitialized, type Viewport } from '@xyflow/react';
-import { toPng } from 'html-to-image';
+import {
+  ReactFlow,
+  ReactFlowProvider,
+  ViewportPortal,
+  useNodesInitialized,
+  useReactFlow,
+  type Viewport,
+} from '@xyflow/react';
+import { toSvg } from 'html-to-image';
 import { nodeTypes } from '../nodes/registry';
 import { edgeTypes } from '../mindmap/Branch';
 import { projectGraph, projectedBounds } from '../canvas/projection';
 import { emptyFilters, type Graph } from '../model/types';
 import { download, safeName } from './semantic';
+import { DrawingSvg } from '../drawing/DrawingSvg';
+import { drawingBounds, unionBounds } from '../drawing/geometry';
+import { getDrawingLayer } from '../drawing/types';
 export interface RenderOptions {
   scope: 'complete' | 'viewport' | 'selected';
   multiplier: 1 | 2 | 4;
@@ -14,13 +24,34 @@ export interface RenderOptions {
   orientation: 'landscape' | 'portrait';
   tiled: boolean;
 }
-function Ready({ done }: { done: () => void }) {
+function Ready({
+  done,
+  hasNodes,
+  viewport,
+}: {
+  done: () => void;
+  hasNodes: boolean;
+  viewport: Viewport;
+}) {
   const ready = useNodesInitialized({ includeHiddenNodes: true });
+  const flow = useReactFlow();
   useEffect(() => {
-    if (ready) {
-      requestAnimationFrame(() => requestAnimationFrame(done));
-    }
-  }, [ready, done]);
+    if ((!ready && hasNodes) || !flow.viewportInitialized) return;
+    let cancelled = false;
+    let first: number | undefined;
+    let second: number | undefined;
+    void flow.setViewport(viewport).then(() => {
+      if (cancelled) return;
+      first = requestAnimationFrame(() => {
+        second = requestAnimationFrame(done);
+      });
+    });
+    return () => {
+      cancelled = true;
+      if (first !== undefined) cancelAnimationFrame(first);
+      if (second !== undefined) cancelAnimationFrame(second);
+    };
+  }, [ready, hasNodes, done, flow, viewport]);
   return null;
 }
 const filter = (node: HTMLElement) =>
@@ -28,29 +59,46 @@ const filter = (node: HTMLElement) =>
   !node.classList?.contains('react-flow__minimap') &&
   !node.classList?.contains('react-flow__panel') &&
   !node.classList?.contains('react-flow__resize-control') &&
-  !node.classList?.contains('topic-branch-controls');
+  !node.classList?.contains('topic-branch-controls') &&
+  !node.classList?.contains('drawing-surface') &&
+  !node.classList?.contains('drawing-draft');
 function canvasColor(graph: Graph) {
   return getComputedStyle(document.documentElement)
     .getPropertyValue(graph.diagram.type === 'mindmap' ? '--node-bg' : '--canvas')
     .trim();
 }
-export async function graphPNG(
-  graph: Graph,
-  options: RenderOptions,
-  selection: string[],
-): Promise<string> {
-  if (options.scope === 'viewport') {
-    const flow = document.querySelector<HTMLElement>('.canvas-shell .react-flow');
-    if (!flow) throw new Error('Open a diagram first.');
-    return toPng(flow, {
-      pixelRatio: options.multiplier,
-      backgroundColor: canvasColor(graph),
-      filter,
-    });
+async function capturePNG(
+  element: HTMLElement,
+  options: Parameters<typeof toSvg>[1] & { pixelRatio: number; backgroundColor: string },
+) {
+  const svg = await toSvg(element, options);
+  // html-to-image resolves its SVG image on load without waiting for native
+  // decoding. A complex foreignObject can then paint an entirely blank canvas.
+  const image = new Image();
+  image.src = svg;
+  await image.decode();
+  const width = image.width * options.pixelRatio;
+  const height = image.height * options.pixelRatio;
+  // Preserve the former rasterizer's automatic browser dimension cap.
+  const scale = Math.min(1, 16384 / width, 16384 / height);
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.floor(width * scale);
+  canvas.height = Math.floor(height * scale);
+  // Software readback avoids accelerated SVG rasterization losing the whole image.
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context) throw new Error('Could not create an image canvas.');
+  if (options.backgroundColor) {
+    context.fillStyle = options.backgroundColor;
+    context.fillRect(0, 0, canvas.width, canvas.height);
   }
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/png');
+}
+/** Selection keeps its node crop; complete export includes all visible world-coordinate ink. */
+export function renderedScene(graph: Graph, scope: 'complete' | 'selected', selection: string[]) {
   const selected = new Set(selection);
   const source =
-    options.scope === 'selected'
+    scope === 'selected'
       ? {
           ...graph,
           nodes: graph.nodes.filter((n) => selected.has(n.id)),
@@ -59,12 +107,6 @@ export async function graphPNG(
           ),
         }
       : graph;
-  if (!source.nodes.length)
-    throw new Error(
-      options.scope === 'selected'
-        ? 'Select one or more nodes to export.'
-        : 'Add a node before exporting an image.',
-    );
   const { nodes, edges } = projectGraph(
     source,
     source.owners,
@@ -77,7 +119,35 @@ export async function graphPNG(
     undefined,
     graph.nodes,
   );
-  const bounds = projectedBounds(nodes);
+  const drawing = getDrawingLayer(graph.diagram.settings.drawing);
+  const strokes = drawing?.visible ? drawing.strokes : [];
+  const nodeBounds = nodes.length ? projectedBounds(nodes) : undefined;
+  const bounds =
+    scope === 'selected' ? nodeBounds : unionBounds(nodeBounds, drawingBounds(strokes));
+  if (!bounds)
+    throw new Error(
+      scope === 'selected'
+        ? 'Select one or more nodes to export.'
+        : 'Add a node or draw a stroke before exporting an image.',
+    );
+  return { nodes, edges, strokes, bounds };
+}
+
+export async function graphPNG(
+  graph: Graph,
+  options: RenderOptions,
+  selection: string[],
+): Promise<string> {
+  if (options.scope === 'viewport') {
+    const flow = document.querySelector<HTMLElement>('.canvas-shell .react-flow');
+    if (!flow) throw new Error('Open a diagram first.');
+    return capturePNG(flow, {
+      pixelRatio: options.multiplier,
+      backgroundColor: canvasColor(graph),
+      filter,
+    });
+  }
+  const { nodes, edges, strokes, bounds } = renderedScene(graph, options.scope, selection);
   const width = Math.ceil(bounds.width + 80),
     height = Math.ceil(bounds.height + 80);
   if (
@@ -126,7 +196,10 @@ export async function graphPNG(
             nodesConnectable={false}
             onlyRenderVisibleElements={false}
           >
-            <Ready done={done} />
+            <ViewportPortal>
+              <DrawingSvg strokes={strokes} />
+              <Ready done={done} hasNodes={nodes.length > 0} viewport={viewport} />
+            </ViewportPortal>
           </ReactFlow>
         </ReactFlowProvider>,
       );
@@ -135,7 +208,7 @@ export async function graphPNG(
     // Capture the inner flow: the offscreen wrapper's computed logical insets
     // otherwise override physical left/top when html-to-image clones its styles.
     const flow = container.querySelector<HTMLElement>('.react-flow')!;
-    return await toPng(flow, {
+    return await capturePNG(flow, {
       width,
       height,
       pixelRatio: options.multiplier,

@@ -34,6 +34,12 @@ Arrow keys nudge selected nodes; Shift increases the distance. Ctrl/Cmd+C, V and
 
 Mind maps default to **Balanced branches**, which places main topics on both sides of the central idea and reserves space for their subtopics. For an existing map, choose **Auto layout** to apply it. Four directional layouts and radial placement are also available. Layout is an explicit, undoable operation, and topics remain freely draggable; spatial groups retain their manually arranged contents in balanced mode. Changing diagram mode changes the presentation while preserving node types, parent relationships and positions. Timeline mode uses start/end dates for horizontal placement; its zoom selector offers day, week, month, quarter and year. Dragging changes dates and vertical lanes. Timeline objects retain graph connections.
 
+## Draw over a diagram
+
+Choose the pencil in the bottom canvas controls to draw with a mouse, finger or pen. Pick a color and thickness; **Eraser** removes whole strokes, **Clear drawing** clears the layer, and Undo restores these changes. **Done drawing** or Escape returns to moving objects and editing connections. The eye button hides or shows saved drawings.
+
+Strokes follow the diagram's pan and zoom and save locally as a separate layer. They do not change nodes, connections or CSV calculations. PNG/PDF include the visible layer; JSON and full backups retain it even when hidden. Fit diagram also includes visible strokes, and a drawing-only diagram can be exported.
+
 ## Explore a CSV
 
 Drop a CSV onto the workspace or use **Import**. Choose column cleanup, row filters, ordered grouping columns and measures in the preview. A cleanup pattern such as `^\d+\s*-\s*` removes a numeric prefix from company names while preserving original cells. Numeric measures recognize decimal dots and commas; select a column's number format when values such as `1,234` are ambiguous.

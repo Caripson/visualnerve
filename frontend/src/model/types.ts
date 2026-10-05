@@ -1,4 +1,6 @@
 import type { CsvAnalysis, CsvDataset } from '../data/types';
+import type { DrawingLayer } from '../drawing/types';
+export type { DrawingLayer, DrawingStroke } from '../drawing/types';
 
 export const diagramTypes = [
   'blank',
@@ -53,6 +55,7 @@ export interface Diagram extends Base {
     snap?: boolean;
     timelineScale?: TimelineScale;
     csvAnalysis?: CsvAnalysis;
+    drawing?: DrawingLayer;
     [key: string]: unknown;
   };
 }

@@ -11,6 +11,8 @@ All entity IDs are UUIDs, with positive versions and creation/update timestamps.
 
 Icons use metadata.visualNerve.icon and preserve other custom keys. Diagram settings hold viewport, viewportDevice, grid, snap, timeline scale and entityOrder. Device-specific initial framing keeps phone maps readable. Entity order preserves branch and exchange order across indexed retrieval.
 
+Optional `diagram.settings.drawing` holds `{ version: 1, visible, strokes }`. Each stroke has a UUID, hex color, width and `[x, y]` points in diagram coordinates. This is an independent annotation layer, not nodes or edges; changing it preserves graph relationships and CSV source identity. Tool/brush selection is transient. Stroke creation, erasing, visibility and clearing use the same undoable diagram commands and IndexedDB transactions. No schema upgrade or additional table is needed. See [DRAWING.md](docs/DRAWING.md) for limits.
+
 ## IndexedDB schema
 
 | Table | Key and indexes | Contents |
