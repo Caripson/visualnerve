@@ -1,6 +1,13 @@
 baseURL = '/'
 defaultContentLanguage = 'en'
 title = 'Visual Nerve'
-disableKinds = ['taxonomy', 'term', 'RSS']
+disableKinds = ['taxonomy', 'term', 'RSS', '404']
+[outputs]
+home = ['HTML', 'Error']
+[outputFormats.Error]
+mediaType = 'text/html'
+baseName = 'error'
+isHTML = true
+notAlternative = true
 [markup.goldmark.renderer]
 unsafe = false

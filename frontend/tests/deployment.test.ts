@@ -31,11 +31,27 @@ describe('static delivery and canonical storage origin', () => {
     expect(route('/help').uri).toBe('/help/index.html');
     expect(route('/privacy/').uri).toBe('/privacy/index.html');
     expect(route('/editor/app.js').uri).toBe('/editor/app.js');
+    expect(route('/error.html').uri).toBe('/error.html');
     expect(route('/api/docs').uri).toBe('/api/docs/index.html');
     expect(route('/diagrams', undefined, {}, 'POST').statusCode).toBe(405);
   });
   it('provisions only a private static bucket and GET/HEAD distribution, with no content write permission', () => {
     const config = template.Resources.Distribution.Properties.DistributionConfig;
+    expect(config.DefaultRootObject).toBe('index.html');
+    expect(config.CustomErrorResponses).toEqual([
+      {
+        ErrorCode: 403,
+        ResponseCode: 404,
+        ResponsePagePath: '/error.html',
+        ErrorCachingMinTTL: 10,
+      },
+      {
+        ErrorCode: 404,
+        ResponseCode: 404,
+        ResponsePagePath: '/error.html',
+        ErrorCachingMinTTL: 10,
+      },
+    ]);
     expect(config.DefaultCacheBehavior.AllowedMethods).toEqual(['GET', 'HEAD']);
     expect(config.Origins).toHaveLength(1);
     const allow = template.Resources.BucketPolicy.Properties.PolicyDocument.Statement.filter(
@@ -49,9 +65,21 @@ describe('static delivery and canonical storage origin', () => {
     try {
       mkdirSync(join(directory, 'editor'));
       mkdirSync(join(directory, 'privacy'));
-      for (const path of ['index.html', 'sw.js', 'privacy/index.html', 'editor/app.js'])
+      for (const path of [
+        'index.html',
+        'error.html',
+        'sw.js',
+        'privacy/index.html',
+        'editor/app.js',
+      ])
         writeFileSync(join(directory, path), 'static code');
-      expect(auditStatic(directory)).toHaveLength(4);
+      expect(auditStatic(directory)).toHaveLength(5);
+      rmSync(join(directory, 'error.html'));
+      expect(() => auditStatic(directory)).toThrow('Static bundle is missing error.html');
+      writeFileSync(join(directory, 'error.html'), 'static error page');
+      writeFileSync(join(directory, '404.html'), 'unconfigured error page');
+      expect(() => auditStatic(directory)).toThrow('Unexpected file in static bundle: 404.html');
+      rmSync(join(directory, '404.html'));
       writeFileSync(
         join(directory, 'visual-nerve-backup-2026-10-05.json'),
         '{"format":"visual-nerve-workspace"}',

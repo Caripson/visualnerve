@@ -4,7 +4,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const publicDir = resolve(dirname(fileURLToPath(import.meta.url)), '../public');
 function files(directory, prefix) { return readdirSync(directory, { withFileTypes: true }).flatMap(file => file.isDirectory() ? files(resolve(directory, file.name), `${prefix}/${file.name}`) : [`${prefix}/${file.name}`]); }
-const assets = ['/', '/help/', '/privacy/', '/license/', ...files(resolve(publicDir, 'editor'), '/editor')];
+const assets = ['/', '/error.html', '/help/', '/privacy/', '/license/', ...files(resolve(publicDir, 'editor'), '/editor')];
 const hash = createHash('sha256'); for (const path of assets) hash.update(readFileSync(resolve(publicDir, path.endsWith('/') ? `${path.slice(1)}index.html` : path.slice(1))));
 const cacheName = `visual-nerve-shell-${hash.digest('hex').slice(0, 12)}`;
 writeFileSync(resolve(publicDir, 'sw.js'), `// Static assets only. Application data lives exclusively in browser IndexedDB.

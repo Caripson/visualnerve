@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Page not found · {{ .Site.Title }}</title>
+  <script>document.documentElement.dataset.theme=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'</script>
+  <link rel="stylesheet" href="/editor/app.css">
+</head>
+<body>
+  {{ partial "navigation.html" . }}
+  <main class="help-page">
+    <p class="eyebrow">404 · PAGE NOT FOUND</p>
+    <h1>This page took a different path.</h1>
+    <p>The address may be incomplete, or the page may have moved.</p>
+    <p><a href="/">← Return to your workspace</a></p>
+    <p>Need a hand? Visit the <a href="/help/">Visual Nerve guide</a>.</p>
+  </main>
+</body>
+</html>

@@ -31,6 +31,8 @@ export const template = {
     AppCache: { Type: 'AWS::CloudFront::CachePolicy', Properties: { CachePolicyConfig: { Name: sub('${AWS::StackName}-static-cache'), MinTTL: 0, DefaultTTL: 0, MaxTTL: 31536000, ParametersInCacheKeyAndForwardedToOrigin: { EnableAcceptEncodingGzip: true, EnableAcceptEncodingBrotli: true, CookiesConfig: { CookieBehavior: 'none' }, HeadersConfig: { HeaderBehavior: 'none' }, QueryStringsConfig: { QueryStringBehavior: 'none' } } } } },
     Distribution: { Type: 'AWS::CloudFront::Distribution', Properties: { DistributionConfig: {
       Enabled: true, HttpVersion: 'http2and3', IPV6Enabled: true, DefaultRootObject: 'index.html',
+      // A private S3 origin can return 403 for a missing object. Preserve HTTP 404 in both cases.
+      CustomErrorResponses: [403, 404].map(ErrorCode => ({ ErrorCode, ResponseCode: 404, ResponsePagePath: '/error.html', ErrorCachingMinTTL: 10 })),
       Aliases: choose('CustomDomain', choose('Alias', [ref('CanonicalDomain'), ref('AlternateDomain')], [ref('CanonicalDomain')]), ref('AWS::NoValue')),
       ViewerCertificate: choose('CustomDomain', { AcmCertificateArn: ref('CertificateArn'), SslSupportMethod: 'sni-only', MinimumProtocolVersion: 'TLSv1.2_2021' }, { CloudFrontDefaultCertificate: true }),
       Origins: [{ Id: 'StaticFiles', DomainName: attr('AppBucket', 'RegionalDomainName'), OriginAccessControlId: attr('OriginAccess', 'Id'), S3OriginConfig: { OriginAccessIdentity: '' } }],

@@ -18,7 +18,56 @@ node deployment/template.mjs > /tmp/visual-nerve-cloudformation.json
 
 The build regenerates `public/` from source. An explicit file allowlist rejects unexpected files and exports; the deployment script checks it again. Never upload the repository, browser profiles, downloaded diagram exports, workspace backups or test artifacts. Built-in example templates are app code, without user content.
 
-## S3 and CloudFront
+## Production CI deployment
+
+The existing production site is configured in [.github/workflows/ci-deploy.yml](../.github/workflows/ci-deploy.yml):
+
+| Setting | Value |
+| --- | --- |
+| URL | `https://visualnerve.caripson.com` |
+| AWS region | `us-east-1` |
+| S3 bucket | `visualnerve.caripson.com` |
+| CloudFront distribution | `E3PXPDRARNVUFD` |
+| AWS account | `094904000140` |
+| S3 website index | `index.html` |
+| S3 website error document | `error.html` (HTTP 404) |
+
+Pull requests to `main` run Go race tests/vet, frontend unit tests, formatting, the production build and Playwright browser tests. The audited `public/` directory becomes the build artifact. A push to `main`, or a manual **Actions → CI and deploy → Run workflow** on `main`, then deploys that exact artifact. AWS credentials are available only to the deployment job. Other branches and pull requests cannot deploy. Main workflows run serially; an active production upload is never canceled by a newer run.
+
+Set these repository **Actions secrets** in [GitHub Settings](https://github.com/Caripson/visualnerve/settings/secrets/actions):
+
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+
+Replace any `REPLACE_IN_GITHUB` placeholder values with the deployment user's keys before merging or running a deployment. The workflow rejects missing credentials and these placeholders without attempting an upload. Use secrets, not repository variables.
+
+The deployment script uploads immutable hashed assets first, other resources next, HTML after its dependencies, and `sw.js` last. It keeps older hashed assets available for open tabs. After every upload succeeds it invalidates `/*` on CloudFront and waits for completion. The workflow then checks the public pages and confirms that a missing URL returns the custom error page with HTTP 404. An invalidation refreshes CDN assets; it does not clear the user's browser database or an already active offline shell.
+
+This existing distribution uses the S3 **website endpoint**, whose index/error document settings are already configured. Hugo builds `error.html` in the bucket root. No new bucket, distribution, certificate or CloudFront function is created by CI. The managed CloudFront `CachingOptimized` policy has a minimum TTL of one second, so mutable assets can still be cached briefly despite `no-cache`; deployment waits for the final invalidation. See [AWS cache policy documentation](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-cache-policies.html) and [S3 error documents](https://docs.aws.amazon.com/AmazonS3/latest/userguide/CustomErrorDocSupport.html).
+
+The deployment user's IAM policy only needs object uploads and this distribution's invalidations:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:AbortMultipartUpload"],
+      "Resource": "arn:aws:s3:::visualnerve.caripson.com/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["cloudfront:CreateInvalidation", "cloudfront:GetInvalidation"],
+      "Resource": "arn:aws:cloudfront::094904000140:distribution/E3PXPDRARNVUFD"
+    }
+  ]
+}
+```
+
+The script uses `aws s3 cp`, never deletes existing objects and does not set object ACLs. It does not need IAM administration or permission to change the bucket/distribution configuration. See [S3 policy actions](https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-with-s3-policy-actions.html) and [CloudFront policy actions](https://docs.aws.amazon.com/service-authorization/latest/reference/list_cloudfront.html).
+
+## Optional new S3 and CloudFront infrastructure
 
 The template defines a private S3 bucket, CloudFront Origin Access Control with `GetObject` permission, HTTPS delivery, GET/HEAD-only behavior and a viewer-request function for directory indexes and canonical-domain redirects. It creates no content API, database, account service or browser upload permission. See AWS's [Origin Access Control](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html) and [directory-index rewriting](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/example_cloudfront_functions_url_rewrite_single_page_apps_section.html) documentation.
 
