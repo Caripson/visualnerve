@@ -145,3 +145,15 @@ Raster capture waits for mounted content and native SVG decoding, then requests 
 The full frontend suite passed 169 cases. Final export tests, Go race tests and vet, formatting, the production TypeScript/Vite/Hugo/OpenAPI/Go build and the 240-file static bundle audit passed. The four new drawing browser scenarios and existing image-export scenario passed against the final production build; both CSV workflows, groups/connections and phone editing also passed during this change. Four further desktop repetitions passed with unchanged pixel, history, storage and connection assertions, without diagnostic wrappers.
 
 Retained fictional fixture evidence: [Drawing tools over objects and connections](acceptance/drawing-layer.png), [320 px phone drawing](acceptance/drawing-mobile.png) and [Ink above nested selected groups](acceptance/drawing-nested-groups.png). No actual user data is included. S3/CloudFront deployment remains manual.
+
+## Object status and visible completion
+
+Selected objects expose a Status picker with None, Planned, In progress, Blocked and Done. Mixed selections are identified before applying a shared status. The separate Done action completes the selection; Reopen returns completed objects to In progress. Done uses a check, readable label and green outline in diagrams and mind maps, including the overview view and rendered exports.
+
+[status.spec.ts](../frontend/tests/e2e/status.spec.ts) verifies both renderers, mixed selection, keyboard undo after a native status choice, a single undo/redo step for each batch, clearing status and IndexedDB reload. It compares creation times, IDs, geometry, colors, metadata, parent links and every connection endpoint, label, arrow direction and style; only status and normal update/version fields may change. A 60 px mind map leaf with a long title retains its complete badge inside the object. The PNG regression compares an object without status against its completed export, requiring visible check/text and outline pixels with a fully opaque image.
+
+The phone scenario starts at 320 × 640, opens its project through the real drawer and uses the status picker, Done, Reopen and undo. It checks viewport containment and the topmost click target of Draw, Fit View and Zoom In while the selection toolbar wraps, then taps the controls and enters/exits drawing before setting status. The collapsed child's hidden relationship survives the workflow. The mobile project drawer scrolls as a complete panel so its diagram list cannot collapse behind the filters or footer.
+
+The full frontend suite passed 179 unit/component cases. Go race tests and vet, formatting, the production TypeScript/Vite/Hugo/OpenAPI/Go build and the 240-file static bundle audit passed. All three status browser scenarios passed against the final production build in 20.081 seconds: diagram 7.188 seconds, mind map 6.529 seconds and phone 3.566 seconds. The existing acceptance images were preserved.
+
+Retained fictional fixture evidence: [Status for selected diagram objects](acceptance/object-status.png) and [Done on a 320 px phone](acceptance/object-status-mobile.png). No actual user data is included.

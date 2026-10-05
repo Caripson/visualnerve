@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { csvGraph, defaultAnalysis, getCsvAnalysis, getCsvNode, parseCsv } from '../src/data/csv';
 import type { CsvAnalysis } from '../src/data/types';
 import type { Graph } from '../src/model/types';
-import { newEdge } from '../src/model/types';
+import { newEdge, newNode } from '../src/model/types';
 import { useEditor } from '../src/state/editor';
 
 afterEach(() => useEditor.getState().setGraph(null));
@@ -27,6 +27,76 @@ function canonical(graph: Graph) {
 }
 
 describe('editable CSV relationships', () => {
+  it('keeps preset and custom object statuses through node edits, history and CSV navigation', () => {
+    const { dataset, analysis, graph, north, product } = fixture();
+    const values = ['done', 'planned', 'in-progress', 'blocked', 'Väntar på granskning'];
+    graph.nodes = graph.nodes.map((node, index) => ({ ...node, status: values[index] }));
+    const annotation = newNode(graph.diagram.id, {
+      title: 'Manual annotation',
+      status: 'Review with customer',
+    });
+    graph.nodes.push(annotation);
+    const editor = useEditor.getState();
+    editor.setGraph(graph);
+    const before = graph.nodes.find((node) => node.id === north.id)!;
+    editor.updateNode(north.id, { status: 'done' });
+    const changed = useEditor.getState().graph!;
+    expect(changed.nodes.find((node) => node.id === north.id)).toEqual({
+      ...before,
+      status: 'done',
+    });
+    expect(changed.dataset).toBe(dataset);
+    expect(useEditor.getState().history.at(-1)!.nodes).toHaveLength(1);
+    editor.undo();
+    expect(useEditor.getState().graph!.nodes.find((node) => node.id === north.id)).toEqual(before);
+    editor.redo();
+    expect(useEditor.getState().graph!.nodes.find((node) => node.id === north.id)!.status).toBe(
+      'done',
+    );
+    const statuses = new Map(changed.nodes.map((node) => [node.id, node.status]));
+    editor.updateNode(product.id, { title: 'Renamed product', x: product.x + 40 });
+    expect(useEditor.getState().graph!.nodes.find((node) => node.id === product.id)!.status).toBe(
+      statuses.get(product.id),
+    );
+    const configurations: CsvAnalysis[] = [
+      {
+        ...analysis,
+        filters: [{ id: 'south', columnId: 'c0', operation: 'equals', value: 'Syd' }],
+      },
+      { ...analysis, focusPath: [{ columnId: 'c0', value: 'Nord' }] },
+      { ...analysis, offset: 1, limit: 1 },
+      { ...analysis, levels: ['c1'] },
+      analysis,
+    ];
+    for (const config of configurations) {
+      editor.command('Configure CSV', (current) => csvGraph(dataset, config, current));
+      const current = useEditor.getState().graph!;
+      for (const [id, status] of statuses) {
+        expect(current.nodes.find((node) => node.id === id)).toMatchObject({ id, status });
+      }
+      expect(current.dataset).toBe(dataset);
+    }
+    expect(
+      getCsvNode(useEditor.getState().graph!.nodes.find((node) => node.id === north.id)!)!.visible,
+    ).toBe(true);
+    for (let index = 0; index < configurations.length; index++) {
+      editor.undo();
+      for (const [id, status] of statuses) {
+        expect(useEditor.getState().graph!.nodes.find((node) => node.id === id)!.status).toBe(
+          status,
+        );
+      }
+    }
+    editor.undo();
+    expect(useEditor.getState().graph!.nodes.find((node) => node.id === product.id)!.title).toBe(
+      product.title,
+    );
+    editor.undo();
+    expect(useEditor.getState().graph!.nodes.find((node) => node.id === north.id)!.status).toBe(
+      before.status,
+    );
+  });
+
   it('keeps an explicit hierarchy deletion through regroup/filter/focus and restores both node preference and edge with undo', () => {
     const { dataset, analysis, graph, north, edge } = fixture();
     const editor = useEditor.getState();

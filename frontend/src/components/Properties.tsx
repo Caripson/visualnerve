@@ -14,6 +14,7 @@ import { IconPicker, iconKey, withIcon } from '../ui/icons';
 import { CsvProperties } from './CsvProperties';
 import type { CsvPathEntry } from '../data/types';
 import { getCsvNode } from '../data/csv';
+import { nodeStatuses, statusLabel } from '../ui/status';
 export function Properties({
   editCsv,
   focusCsv,
@@ -167,12 +168,25 @@ export function Properties({
               <select
                 aria-label="Node status"
                 value={node.status ?? ''}
-                onChange={(e) => update({ status: e.target.value })}
+                onChange={(e) => {
+                  const status = e.target.value;
+                  command('Set object status', (current) => ({
+                    ...current,
+                    nodes: current.nodes.map((item) =>
+                      item.id === node.id ? { ...item, status } : item,
+                    ),
+                  }));
+                }}
               >
                 <option value="">None</option>
-                {['planned', 'in-progress', 'blocked', 'done'].map((v) => (
-                  <option key={v}>{v}</option>
+                {nodeStatuses.map((choice) => (
+                  <option key={choice.value} value={choice.value}>
+                    {choice.label}
+                  </option>
                 ))}
+                {node.status && !nodeStatuses.some((choice) => choice.value === node.status) && (
+                  <option value={node.status}>{statusLabel(node.status)}</option>
+                )}
               </select>
             </Field>
             <Field title="Color">

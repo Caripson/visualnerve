@@ -10,6 +10,8 @@ Mind maps use a central topic, colored curved branches and rounded topic backgro
 
 Click the project name to rename it. Selection actions give quick access to editing, colors, domain icons, duplication and deletion; deleting a whole branch is a separate undoable action. The green theme uses darker text and eight contrasting colors. Sixteen open source Lucide icons cover work, learning, people, health, technology and other areas. On phones, the canvas fills the screen, project navigation opens in a drawer, properties open in a bottom panel, and touch gestures pan and zoom.
 
+Select one or more objects and choose **Status**: None, Planned, In progress, Blocked or Done. **Done** marks the whole selection complete in one click; **Reopen** returns completed objects to In progress. Completed objects show a checkmark and a distinct outline in diagrams and mind maps, including overview zoom and PNG/PDF exports. Status supports undo/redo, local saving and CSV regrouping; existing custom statuses are preserved. Use **Filters → Status** to inspect a particular state.
+
 ## Explore CSV data
 
 Drop a CSV anywhere in the accepted workspace or use **Import**. Choose cleanup rules, filters, ordered grouping columns and measures, then create a data diagram. For example, remove a customer prefix with `^\d+\s*-\s*`, filter a column with **Starts with → AAA**, and group customers by region. Numeric measures support decimal dots and commas; choose a column's explicit number format when a value such as `1,234` is ambiguous. Original cells remain available.

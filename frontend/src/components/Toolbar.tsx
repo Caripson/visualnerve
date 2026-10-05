@@ -28,6 +28,7 @@ import { layoutGraph, type Direction } from '../layouts/layout';
 import type { NodeKind, TimelineScale } from '../model/types';
 import type { DialogName } from '../App';
 import { DocumentTitle } from '../ui/DocumentTitle';
+import { statusLabel } from '../ui/status';
 export function Toolbar({
   open,
   showFilters,
@@ -400,7 +401,9 @@ export function FilterBar() {
       >
         <option value="">All statuses</option>
         {[...new Set(graph?.nodes.map((n) => n.status).filter(Boolean))].map((v) => (
-          <option key={v}>{v}</option>
+          <option key={v} value={v}>
+            {statusLabel(v)}
+          </option>
         ))}
       </select>
       <select

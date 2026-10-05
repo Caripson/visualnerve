@@ -2,6 +2,7 @@ import Dexie from 'dexie';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as csv from '../src/data/csv';
 import { csvGraph, defaultAnalysis, getCsvNode, parseCsv } from '../src/data/csv';
+import { markdown, parseImport } from '../src/export/semantic';
 import { blankGraph, newNode, type Graph, type GraphEdge } from '../src/model/types';
 import { copySelection, pasteSelection } from '../src/state/clipboard';
 import { useEditor } from '../src/state/editor';
@@ -47,6 +48,91 @@ async function snapshot() {
 }
 
 describe('diagram-owned CSV source storage', () => {
+  it('autosaves object statuses and preserves them through reload, JSON import and backup restore', async () => {
+    const graph = source();
+    const statuses = ['done', 'planned', 'in-progress'];
+    graph.nodes = graph.nodes.map((node, index) => ({ ...node, status: statuses[index] }));
+    graph.nodes.push(
+      newNode(graph.diagram.id, { title: 'Manual blocker', status: 'blocked' }),
+      newNode(graph.diagram.id, { title: 'Manual review', status: 'Väntar på kundens svar' }),
+      newNode(graph.diagram.id, { title: 'Without status' }),
+    );
+    const original = await repo.importGraph(graph);
+    const workspace = new Workspace(repo);
+    controllers.push(workspace);
+    await workspace.acceptStorage();
+    await workspace.open(original.diagram.id);
+    const editor = useEditor.getState();
+    const target = original.nodes[1];
+    const rawWrite = vi.spyOn(db.datasets, 'put');
+    editor.updateNode(target.id, { status: 'blocked' });
+    await workspace.settled();
+    expect(
+      (await repo.getGraph(original.diagram.id)).nodes.find((node) => node.id === target.id)!
+        .status,
+    ).toBe('blocked');
+    editor.undo();
+    await workspace.settled();
+    expect(
+      (await repo.getGraph(original.diagram.id)).nodes.find((node) => node.id === target.id)!
+        .status,
+    ).toBe('planned');
+    editor.redo();
+    await workspace.settled();
+    editor.updateNode(target.id, { title: 'Renamed North', x: target.x + 80 });
+    await workspace.settled();
+    editor.command('Filter CSV groups', (current) =>
+      csvGraph(
+        current.dataset!,
+        {
+          ...current.diagram.settings.csvAnalysis!,
+          filters: [{ id: 'south', columnId: 'c0', operation: 'equals', value: 'South' }],
+        },
+        current,
+      ),
+    );
+    await workspace.settled();
+    expect(rawWrite).not.toHaveBeenCalled();
+    workspace.stop();
+    const saved = await repo.getGraph(original.diagram.id);
+    const expected = saved.nodes.map(({ title, status }) => ({ title, status }));
+    expect(saved.nodes.find((node) => node.id === target.id)!.status).toBe('blocked');
+    expect(getCsvNode(saved.nodes.find((node) => node.id === target.id)!)!.visible).toBe(false);
+    const renamed = await repo.request<Graph['nodes'][number]>(`/nodes/${target.id}`, 'PATCH', {
+      version: saved.nodes.find((node) => node.id === target.id)!.version,
+      description: 'Ordinary API edit',
+    });
+    expect(renamed.status).toBe('blocked');
+    db.close();
+    await db.open();
+    const reopened = await repo.getGraph(original.diagram.id);
+    expect(reopened.nodes.map(({ title, status }) => ({ title, status }))).toEqual(expected);
+    const exported = await repo.request<Graph>('/export', 'POST', {
+      diagramId: reopened.diagram.id,
+      format: 'json',
+    });
+    const imported = await repo.importGraph(parseImport('json', JSON.stringify(exported)));
+    expect(imported.nodes.map(({ title, status }) => ({ title, status }))).toEqual(expected);
+    expect(imported.nodes.map((node) => node.id)).not.toEqual(
+      reopened.nodes.map((node) => node.id),
+    );
+    expect(imported.dataset!.id).not.toBe(reopened.dataset!.id);
+    const restored = await repo.restore(await db.backup(), 'replace');
+    for (const current of restored) {
+      expect(current.nodes.map(({ title, status }) => ({ title, status }))).toEqual(expected);
+      expect(current.dataset!.rows).toEqual(original.dataset!.rows);
+      expect(markdown(current)).toContain('Status: Väntar på kundens svar');
+      const unfiltered = csvGraph(
+        current.dataset!,
+        { ...current.diagram.settings.csvAnalysis!, filters: [] },
+        current,
+      );
+      const north = unfiltered.nodes.find((node) => node.title === 'Renamed North')!;
+      expect(north.status).toBe('blocked');
+      expect(getCsvNode(north)!.visible).toBe(true);
+    }
+  });
+
   it.each(['DELETE', 'PATCH', 'bulk'] as const)(
     'keeps source-free CSV snapshots unchanged when a generically marked edge is changed through %s',
     async (method) => {

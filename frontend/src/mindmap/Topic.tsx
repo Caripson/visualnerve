@@ -6,6 +6,7 @@ import { useEditor } from '../state/editor';
 import { AreaIcon, iconKey } from '../ui/icons';
 import { topicInk } from '../ui/colors';
 import { MetricSummary } from '../components/MetricSummary';
+import { NodeStatus } from '../ui/NodeStatus';
 
 export const MindmapNode = memo(({ id, data, selected }: NodeProps<CanvasNode>) => {
   const { node, mindmap: topic, exporting, owners } = data;
@@ -42,6 +43,7 @@ export const MindmapNode = memo(({ id, data, selected }: NodeProps<CanvasNode>) 
       style={{ '--branch-color': color, '--topic-ink': ink } as CSSProperties}
       data-testid="graph-node"
       data-node-id={id}
+      data-node-status={node.status || undefined}
       data-topic-depth={topic?.depth ?? 0}
       onDoubleClick={() => {
         if (!exporting) useEditor.getState().beginEditing(id);
@@ -112,11 +114,12 @@ export const MindmapNode = memo(({ id, data, selected }: NodeProps<CanvasNode>) 
           <span>{node.title}</span>
         </div>
       )}
+      {overview && <NodeStatus status={node.status} overview />}
       {!overview && <MetricSummary node={node} />}
       {!overview && (owners.length > 0 || node.status || node.startDate) && (
         <div className="topic-details">
+          <NodeStatus status={node.status} />
           {owners.length > 0 && <span>{owners.map((owner) => owner.name).join(', ')}</span>}
-          {node.status && <span>{node.status}</span>}
           {node.startDate && (
             <span>
               {node.startDate.slice(5)}
