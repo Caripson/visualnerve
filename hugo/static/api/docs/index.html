@@ -1,0 +1,7 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Visual Nerve local integration</title><link rel="stylesheet" href="/swagger/swagger-ui.css"></head><body><p style="padding:16px;font-family:system-ui">This reference describes an optional bridge on your computer. The public website stores no diagrams and provides no content API. <a href="/help/#codex-and-mcp">Setup guide</a></p><div id="swagger-ui"></div><script src="/swagger/swagger-ui-bundle.js"></script><script>
+const local = ['localhost','127.0.0.1','[::1]'].includes(location.hostname);
+fetch('/openapi.yaml').then(response => response.json()).then(spec => {
+  if (local) spec.servers = [{url:location.origin+'/api/v1',description:'Local bridge'}];
+  SwaggerUIBundle({spec,dom_id:'#swagger-ui',validatorUrl:null,persistAuthorization:false,queryConfigEnabled:false,supportedSubmitMethods:local?['get','post','put','patch','delete']:[]});
+});
+</script></body></html>

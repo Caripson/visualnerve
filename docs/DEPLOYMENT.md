@@ -1,0 +1,69 @@
+# Public application, private browser data
+
+`public/` is the complete static application. No backend is needed to create, edit, save, search, export or restore diagrams. The S3 bucket contains application files only. User content is never written to S3. CloudFront delivers code; it is not a synchronization layer.
+
+```text
+Internet → CloudFront → S3: static application files
+                            ↓ downloaded app
+                        your browser → IndexedDB: private content
+```
+
+## Build and inspect
+
+```sh
+./build.sh
+node scripts/audit-static.mjs public
+node deployment/template.mjs > /tmp/visual-nerve-cloudformation.json
+```
+
+The build regenerates `public/` from source. An explicit file allowlist rejects unexpected files and exports; the deployment script checks it again. Never upload the repository, browser profiles, downloaded diagram exports, workspace backups or test artifacts. Built-in example templates are app code, without user content.
+
+## S3 and CloudFront
+
+The template defines a private S3 bucket, CloudFront Origin Access Control with `GetObject` permission, HTTPS delivery, GET/HEAD-only behavior and a viewer-request function for directory indexes and canonical-domain redirects. It creates no content API, database, account service or browser upload permission. See AWS's [Origin Access Control](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html) and [directory-index rewriting](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/example_cloudfront_functions_url_rewrite_single_page_apps_section.html) documentation.
+
+Choose **one canonical HTTPS origin before publishing**. Obtain an ACM certificate in `us-east-1` covering the canonical hostname and any alias. `AlternateDomain` optionally redirects a `www` address before the app runs. The distribution hostname also redirects when a canonical hostname is configured. Point all configured aliases at the distribution through DNS. With no custom hostname, use only the distribution's HTTPS hostname.
+
+After reviewing the generated template, run these commands in your AWS account with your own domain and certificate:
+
+```sh
+aws cloudformation deploy \
+  --template-file /tmp/visual-nerve-cloudformation.json \
+  --stack-name visual-nerve \
+  --parameter-overrides \
+    CanonicalDomain=visualnerve.example.com \
+    AlternateDomain=www.visualnerve.example.com \
+    CertificateArn=YOUR_US_EAST_1_ACM_CERTIFICATE_ARN
+aws cloudformation describe-stacks --stack-name visual-nerve \
+  --query 'Stacks[0].Outputs'
+# Substitute BucketName and DistributionId from the outputs:
+./scripts/deploy-static.sh APP_BUCKET DISTRIBUTION_ID --dry-run
+./scripts/deploy-static.sh APP_BUCKET DISTRIBUTION_ID
+```
+
+Builds and tests create no AWS resources. Deployment requires the operator's AWS credentials and domain configuration. The stack retains its bucket on deletion. The upload script sends only audited app files. Mutable HTML, entrypoints and the service worker require revalidation; hashed chunks are immutable and older chunks remain available to open tabs. Invalidation refreshes app delivery without touching browser content.
+
+## Origin identity and updates
+
+IndexedDB belongs to a browser profile **and** an origin: scheme, hostname and port. `https://visualnerve.example.com`, its `www` alias, HTTP and development ports have separate storage if the app runs there. Redirect aliases before serving the app. Changing origins requires users to export from the old one and import at the new one; redirects cannot move browser databases. Keep the original address stable. Dexie upgrades preserve records; do not reset databases on deployment.
+
+The service worker caches only application assets after required acceptance. Existing tabs finish their current version; the new shell activates after they close. Users can save offline after completing a first visit.
+
+## Equivalent static hosts
+
+Serve `public/` as HTTPS files, map `/help/`, `/privacy/`, `/license/` and `/api/docs/` to their directory indexes, preserve asset MIME types and redirect aliases to one origin. Do not add a save endpoint or grant browser write access. The API reference is documentation; its optional local endpoints are not part of the public host. Browser tests verify a named HTTPS origin on a read-only Python static host separately from the Go bridge.
+
+## Optional local MCP
+
+The public site has no MCP server. Users may start the bridge on their own computer:
+
+```sh
+./bin/visual-nerve --bridge --addr 127.0.0.1:4317 \
+  --allowed-origin https://visualnerve.example.com \
+  --tls-cert /path/to/trusted-local-cert.pem \
+  --tls-key /path/to/local-key.pem
+```
+
+Use a certificate trusted by that browser for the chosen loopback host. Set `wss://127.0.0.1:4317/bridge` in **Settings → Local connection details**. Codex connects to the matching local HTTPS `/mcp`. The service stays loopback-only, validates the exact app origin and never stores graphs. Plain loopback WebSockets can work in some browsers, but secure-connection and local-network rules vary. Use trusted local TLS when required and grant local-network permission if prompted. See [Chrome Local Network Access](https://developer.chrome.com/blog/local-network-access) for browser policy changes.
+
+Access is Off until the user chooses Read only or Read + write; the browser must stay open. See [PRIVACY.md](PRIVACY.md), [STORAGE.md](STORAGE.md) and [API.md](../API.md).

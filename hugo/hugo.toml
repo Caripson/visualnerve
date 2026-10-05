@@ -1,0 +1,6 @@
+baseURL = '/'
+defaultContentLanguage = 'en'
+title = 'Visual Nerve'
+disableKinds = ['taxonomy', 'term', 'RSS']
+[markup.goldmark.renderer]
+unsafe = false

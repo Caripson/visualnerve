@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+VN_DEPLOY_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+if [[ $# -lt 2 || $# -gt 3 || "${3:-}" != '' && "${3:-}" != '--dry-run' ]]; then
+  echo 'Usage: scripts/deploy-static.sh APP_BUCKET DISTRIBUTION_ID [--dry-run]' >&2
+  exit 2
+fi
+node "$VN_DEPLOY_ROOT/scripts/audit-static.mjs" "$VN_DEPLOY_ROOT/public"
+VN_DEPLOY_ARGS=()
+if [[ "${3:-}" == '--dry-run' ]]; then VN_DEPLOY_ARGS+=(--dryrun); fi
+# Copy only the audited build, never the repository, backups or browser profile.
+# Retain previous hashed chunks so existing open tabs can finish using them.
+aws s3 cp "$VN_DEPLOY_ROOT/public/" "s3://$1/" --recursive --exclude 'editor/assets/*' --cache-control 'no-cache' "${VN_DEPLOY_ARGS[@]}"
+aws s3 cp "$VN_DEPLOY_ROOT/public/editor/assets/" "s3://$1/editor/assets/" --recursive --cache-control 'public,max-age=31536000,immutable' "${VN_DEPLOY_ARGS[@]}"
+if [[ "${3:-}" != '--dry-run' ]]; then aws cloudfront create-invalidation --distribution-id "$2" --paths '/*'; fi

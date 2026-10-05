@@ -1,0 +1,15 @@
+# Local storage and integration security
+
+IndexedDB in the current browser profile and origin contains all application data. The app has no accounts, analytics, telemetry, remote fonts, CDNs or runtime external APIs. Libraries, icons, documentation and Swagger assets are bundled locally. The service worker caches static assets only. Downloaded backups are explicit exports, not a second persistence system.
+
+The Go server binds to 127.0.0.1:4317 by default and serves static files without application writes. Local integration is disabled unless started with --bridge and enabled in browser Settings. It requires an open browser. Integration tokens use VISUAL_NERVE_BRIDGE_TOKEN and protect all integration reads/writes, MCP and WebSocket registration. The browser keeps its token only for the session and excludes it from backups. Tokens and request payloads are not logged.
+
+Host and Origin checks protect against untrusted hosts and cross-origin integration requests. Development permits the explicit loopback Vite port 5173. There is no wildcard CORS. Requests and WebSocket messages are limited to 32 MiB; forwarded commands time out. JSON is parsed before forwarding, then the browser validates IDs, references, versions, dates, dimensions and URL schemes transactionally. Metadata is rendered as text; user URLs permit only absolute HTTP(S), with noopener noreferrer. Swagger's remote validator is disabled.
+
+A static-only server can use an explicitly configured remote address. The integration bridge must bind to loopback, even with a token; remote client peers are rejected. The server does not provide multi-user authorization. Browser profiles and origins own separate workspaces; multiple connected workspaces require a target identifier for integration commands.
+
+Use Settings → Data & Privacy → Export all data, then Restore backup. Merge retains current projects; Replace and global deletion each require explicit confirmation. Every restore is atomic. Grants, tokens and storage consent are excluded from backup imports. Keep backups before clearing browser data or changing browser/profile/origin. Unsaved conflict copies remain in the editing tab until resolved. IndexedDB access failures appear as errors, never as successful server saves.
+
+The app can be publicly hosted on S3/CloudFront; those services contain static code only, never diagrams. Deployment verifies an application-file allowlist. No browser AWS credentials, PutObject permission or cloud content endpoints are present. Exact canonical-origin redirects prevent accidental separate workspaces.
+
+Required storage consent precedes opening the workspace and registering offline caches. MCP defaults Off; read-only access rejects all mutation commands before repository dispatch, including attempts to enable write access. URLs are restricted to literal loopback WebSocket hosts; a public app cannot connect its bridge to a cloud URL. The local service checks explicit HTTPS app origins, supports trusted local TLS and has no wildcard CORS. See [privacy](docs/PRIVACY.md), [storage](docs/STORAGE.md) and [deployment](docs/DEPLOYMENT.md).

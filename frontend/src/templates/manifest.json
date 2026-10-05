@@ -1,0 +1,56 @@
+[
+  {
+    "key": "blank",
+    "name": "Blank",
+    "type": "blank",
+    "nodes": 0
+  },
+  {
+    "key": "mind-map",
+    "name": "Mind Map",
+    "type": "mindmap",
+    "nodes": 13
+  },
+  {
+    "key": "basic-flowchart",
+    "name": "Basic Flowchart",
+    "type": "flowchart",
+    "nodes": 5
+  },
+  {
+    "key": "project-timeline",
+    "name": "Project Timeline",
+    "type": "timeline",
+    "nodes": 4
+  },
+  {
+    "key": "customer-journey",
+    "name": "Customer Journey",
+    "type": "process",
+    "nodes": 5
+  },
+  {
+    "key": "decision-tree",
+    "name": "Decision Tree",
+    "type": "flowchart",
+    "nodes": 5
+  },
+  {
+    "key": "process-map",
+    "name": "Process Map",
+    "type": "process",
+    "nodes": 5
+  },
+  {
+    "key": "responsibility-flow",
+    "name": "Responsibility Flow",
+    "type": "responsibility",
+    "nodes": 5
+  },
+  {
+    "key": "system-architecture",
+    "name": "System Architecture",
+    "type": "dependency",
+    "nodes": 4
+  }
+]

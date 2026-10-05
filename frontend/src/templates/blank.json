@@ -1,0 +1,22 @@
+{
+  "format": "visual-nerve",
+  "formatVersion": 1,
+  "diagram": {
+    "id": "23bf3725-a573-4a17-83d4-f2a2b4637141",
+    "version": 1,
+    "createdAt": "2026-10-01T00:00:00Z",
+    "updatedAt": "2026-10-01T00:00:00Z",
+    "name": "Blank",
+    "type": "blank",
+    "favorite": false,
+    "tags": [],
+    "metadata": {},
+    "settings": {
+      "grid": true,
+      "snap": false
+    }
+  },
+  "nodes": [],
+  "edges": [],
+  "owners": []
+}
