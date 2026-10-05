@@ -33,7 +33,7 @@ Open http://localhost:4317. This command installs missing frontend dependencies,
 
 `public/` is the deployable static application: serve it on S3/CloudFront or any HTTPS static host. The binary is optional, for convenient local serving and opt-in MCP. See [static deployment](docs/DEPLOYMENT.md). No Node, Hugo or Go toolchain is needed at runtime. The default listen address is `127.0.0.1:4317`.
 
-GitHub Actions validates pull requests and deploys successful `main` builds to [visualnerve.caripson.com](https://visualnerve.caripson.com), uploads the static app to S3 and waits for CloudFront cache invalidation. See [CI setup and required AWS secrets](docs/DEPLOYMENT.md#production-ci-deployment).
+GitHub Actions runs CI on pull requests and pushes to `main`. Publishing is manual: **Actions → Deploy S3 → Run workflow** on `main` builds the static app, uploads it to S3 and waits for CloudFront cache invalidation. The deploy workflow runs no tests. See [deployment setup and required AWS secrets](docs/DEPLOYMENT.md#manual-production-deployment).
 
 ## Test
 
