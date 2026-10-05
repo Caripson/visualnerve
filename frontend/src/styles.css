@@ -2143,6 +2143,8 @@ kbd {
   .mobile-tool-menu {
     display: grid;
     gap: 7px;
+    max-height: calc(100dvh - 180px);
+    overflow-y: auto;
   }
   .mobile-tool-menu button {
     justify-content: flex-start;

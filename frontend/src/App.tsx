@@ -22,10 +22,19 @@ import { parseImport } from './export/semantic';
 import type { Clip } from './state/clipboard';
 import type { Graph } from './model/types';
 import { CsvImportDialog } from './components/CsvImportDialog';
+import { LovableDialog } from './components/LovableDialog';
 import { analyzeCsv, openCsvFile } from './data/client';
 import { getCsvAnalysis, getCsvNode } from './data/csv';
 import type { CsvAnalysis, CsvDataset, CsvPathEntry } from './data/types';
-export type DialogName = 'new' | 'export' | 'owners' | 'search' | 'settings' | 'delete' | 'connect';
+export type DialogName =
+  | 'new'
+  | 'export'
+  | 'lovable'
+  | 'owners'
+  | 'search'
+  | 'settings'
+  | 'delete'
+  | 'connect';
 export function App() {
   const [dialog, setDialog] = useState<DialogName | null>(null);
   const [ready, setReady] = useState(false);
@@ -545,6 +554,7 @@ export function App() {
       />
       {dialog === 'new' && <NewDiagram close={close} />}
       {dialog === 'export' && <ExportDialog close={close} />}
+      {dialog === 'lovable' && <LovableDialog close={close} />}
       {dialog === 'owners' && <OwnersDialog close={close} />}
       {dialog === 'search' && <SearchDialog close={close} />}
       {dialog === 'settings' && (

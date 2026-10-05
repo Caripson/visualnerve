@@ -40,6 +40,12 @@ Codex → local MCP bridge → your open browser → IndexedDB
 
 Enabling this access lets the tools you connect read diagram content; read and write access also lets them edit it. Choose tools you want to give this access to. Visual Nerve sends responses only through that local connection, and does not upload a cloud copy. Turn access **Off** to disconnect. [The guide explains setup](/help/#codex-and-mcp).
 
+## Optional Lovable handoff
+
+**Build with Lovable** generates an app brief locally and shows its complete text. Opening the dialog sends nothing. **Open in Lovable** opens a new tab at `lovable.dev` with the reviewed prompt; you press **Send** there to start building. This explicitly shares that text with Lovable.
+
+The brief includes your instructions and chosen objects, written descriptions, notes, responsibilities and relationships. CSV schema, analysis choices and calculated summaries may be included. Source rows, arbitrary metadata, owner email addresses and bridge credentials are excluded. Written text and grouping values are included as shown, so review the preview before sharing. Draft instructions stay in IndexedDB with the diagram. [How to use the handoff](/help/#build-an-app-with-lovable).
+
 ## Remove local data
 
 **Delete diagram** removes one project. **Settings → Data & Privacy → Delete all local data** removes all your diagrams, owners, custom templates and settings in this browser after explicit confirmation. It cannot be undone unless you restore an exported backup. Built-in templates and the app itself remain available. This action does not delete backup files you downloaded.

@@ -157,3 +157,15 @@ The phone scenario starts at 320 × 640, opens its project through the real draw
 The full frontend suite passed 179 unit/component cases. Go race tests and vet, formatting, the production TypeScript/Vite/Hugo/OpenAPI/Go build and the 240-file static bundle audit passed. All three status browser scenarios passed against the final production build in 20.081 seconds: diagram 7.188 seconds, mind map 6.529 seconds and phone 3.566 seconds. The existing acceptance images were preserved.
 
 Retained fictional fixture evidence: [Status for selected diagram objects](acceptance/object-status.png) and [Done on a 320 px phone](acceptance/object-status-mobile.png). No actual user data is included.
+
+## Build with Lovable
+
+[Build with Lovable](LOVABLE.md) turns a diagram into an application brief with the user's own instructions. Every included object has a distinct reference, including duplicate titles. Relationships retain their labels, types and directions; loops and crossing connections remain explicit. Planning status does not remove a feature, and parent hierarchy is described without inventing workflow order. The user reviews the complete prompt before opening Lovable with an unsent prefilled prompt.
+
+[lovable.test.ts](../frontend/tests/lovable.test.ts) covers 11 exporter cases, and [lovable-dialog.test.tsx](../frontend/tests/lovable-dialog.test.tsx) covers 10 component cases. These 21 new cases bring the frontend suite to 200. All 200 cases passed across the full suite and final focused component run. Go race tests and vet, formatting, the production TypeScript/Vite/Hugo/OpenAPI/Go build and the 240-file static bundle audit passed. The offline shell contains 18 local assets.
+
+All three new [Lovable browser scenarios](../frontend/tests/e2e/lovable.spec.ts) passed against the production build in 14.1 seconds. They verify duplicate titles, a collapsed branch, reverse directions, loops, Done features, responsibilities, exact selection boundaries, persisted instructions and the saved scope after IndexedDB reload. The downloaded brief matches the preview exactly. The new-tab URL matches the complete encoded prompt fragment; its navigation is fulfilled by the isolated test browser, so no live upload or Lovable build occurs.
+
+The CSV scenario includes schema and group summaries, retains a manual relationship to a group outside the current view and compares original source rows in IndexedDB. Raw source cells and arbitrary metadata are absent from the brief. The 320 px phone scenario opens the entry through More tools, keeps the dialog within the viewport and verifies that instructions above 50,000 characters remain complete in the preview and download while the oversized link is disabled. The complete 37-scenario browser suite is part of GitHub CI; this section records the three focused cases that ran locally.
+
+Retained fictional fixture evidence: [Lovable application brief and instructions](acceptance/lovable-handoff.png). No actual user data is included.

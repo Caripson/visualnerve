@@ -54,6 +54,16 @@ Copying a CSV object into another diagram keeps its measures as a snapshot; the 
 
 CSV sources and analysis choices stay in this browser and are included in diagram JSON and full backups. PNG/PDF exports show the current CSV view. Files support at most 50 MiB, 200,000 rows, 200 columns and 10 million cells. CSVs using the older `title`-column diagram format can still use **Import as existing diagram rows instead** in the preview.
 
+## Build an app with Lovable
+
+Choose **Build with Lovable** beside Export, or **… → Build with Lovable** on a phone. Describe the app in **App instructions**, choose the entire diagram, current CSV groups or selected objects, and review the complete build prompt. Your draft is saved locally with the diagram.
+
+Objects become app features and workflow steps. Connections preserve their directions, labels, conditions and relationships; hierarchy is distinguished from execution order. Duplicate titles remain separate. Done objects still describe features to build. Connections to objects outside your selected scope appear as external context.
+
+**Open in Lovable** opens a new, unsent prompt. Review it there and press **Send** to start building. This explicitly shares the previewed text with Lovable. Raw CSV rows, arbitrary metadata and owner email addresses are excluded; grouping values, calculated summaries and written descriptions may be included. Freehand notes are not translated into requirements, so explain their meaning in your instructions.
+
+Use **Copy build prompt** or **Download build brief** if the prompt is too large for a link. The brief stays complete. No API key or local MCP bridge is needed. [Lovable's handoff documentation](https://docs.lovable.dev/integrations/build-with-url).
+
 ## Save and work offline
 
 The editor saves changes immediately in this browser's IndexedDB. **Saved** means the local database transaction committed. The server and internet can be unavailable while you edit, create projects, search and export. After the first visit the production app can reload offline. Use the same browser profile and address to return to the same workspace.

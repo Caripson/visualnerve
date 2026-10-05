@@ -20,6 +20,7 @@ import {
   PanelRight,
   MoreHorizontal,
   Settings,
+  Sparkles,
 } from 'lucide-react';
 import { useEditor } from '../state/editor';
 import { fitDiagram } from '../drawing/navigation';
@@ -126,6 +127,14 @@ export function Toolbar({
           <button aria-label="Export" onClick={() => open('export')}>
             <Download size={14} />
             <span>Export</span>
+          </button>
+          <button
+            className="desktop-tools"
+            aria-label="Build with Lovable"
+            onClick={() => open('lovable')}
+          >
+            <Sparkles size={14} />
+            <span>Build with Lovable</span>
           </button>
           <button
             className="mobile-only"
@@ -301,6 +310,10 @@ export function Toolbar({
             <MoreHorizontal size={20} />
           </summary>
           <div className="picker-panel mobile-tool-menu">
+            <button className="full" onClick={() => open('lovable')}>
+              <Sparkles size={17} />
+              Build with Lovable
+            </button>
             <select
               aria-label="Mobile layout direction"
               value={direction}

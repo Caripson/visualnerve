@@ -49,10 +49,13 @@ export function PrivacyIntro() {
         Visual Nerve can be a public website. Your diagrams stay private in this browser profile.
       </p>
       <p className="muted">
-        Nothing you create is uploaded to Visual Nerve or cloud storage. No account is required, and
+        Your work is saved locally and is never uploaded automatically. No account is required, and
         another browser or device has its own separate workspace.
       </p>
-      <p className="muted">Use Export to keep a backup or move your work.</p>
+      <p className="muted">
+        Use Export to keep a backup or move your work. Build with Lovable lets you review and share
+        an app brief explicitly.
+      </p>
       <p>
         To use the workspace, you must accept local browser storage. Diagrams and preferences are
         saved using IndexedDB; app files are cached so you can work offline. The service cannot work

@@ -1,0 +1,116 @@
+.lovable-dialog {
+  min-width: 0;
+}
+.modal:has(.lovable-dialog) {
+  min-width: 0;
+  max-width: 100%;
+}
+.lovable-intro,
+.lovable-scope-note,
+.lovable-disclosure,
+.lovable-drawing-note,
+.lovable-link-note,
+.lovable-copy-notice {
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.lovable-intro {
+  margin: 0 0 18px;
+}
+.lovable-scope-note,
+.lovable-disclosure {
+  color: var(--muted);
+}
+.lovable-instructions textarea {
+  min-height: 96px;
+}
+.lovable-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  margin: 18px 0;
+}
+.lovable-counts > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.lovable-counts dt {
+  color: var(--muted);
+  font-size: 11px;
+}
+.lovable-counts dd {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 650;
+}
+.lovable-drawing-note,
+.lovable-link-note {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-alt);
+}
+.lovable-preview textarea {
+  min-height: 210px;
+  max-height: 45dvh;
+  font:
+    11px/1.6 ui-monospace,
+    monospace;
+  resize: vertical;
+}
+.lovable-actions {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+.lovable-actions > button,
+.lovable-open,
+.lovable-manual-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 9px 12px;
+  font-size: 12px;
+}
+.lovable-actions > .lovable-open {
+  margin: 0;
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  background: var(--accent);
+  color: var(--surface);
+  text-decoration: none;
+}
+.lovable-actions > .lovable-open:hover {
+  background: var(--accent-hover);
+}
+[data-theme='dark'] .lovable-actions > .lovable-open {
+  color: #15271b;
+}
+.lovable-manual-link {
+  margin-top: 10px;
+  padding-inline: 0;
+  justify-content: flex-start;
+  white-space: normal;
+}
+.lovable-open:focus-visible,
+.lovable-manual-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (max-width: 720px) {
+  .lovable-dialog select,
+  .lovable-dialog textarea {
+    min-height: 44px;
+  }
+  .lovable-actions > button,
+  .lovable-actions > .lovable-open {
+    flex: 1 1 190px;
+    white-space: normal;
+  }
+  .lovable-preview textarea {
+    font-size: 12px;
+  }
+}

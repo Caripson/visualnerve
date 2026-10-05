@@ -1,6 +1,6 @@
 # How Visual Nerve stores your data
 
-The application can be publicly hosted. Everything you create stays in the browser profile where you created it. No account is required and no cloud database receives diagrams. Other visitors to the same URL cannot see your work.
+The application can be publicly hosted. Your workspace is stored in the browser profile where you created it. No account is required and no cloud database automatically receives diagrams. Other visitors to the same URL cannot see your work. Exports and the optional Lovable handoff let you explicitly share a copy.
 
 The website delivers app files. The browser saves diagrams, nodes, relationships, owners, metadata, preferences, viewport, user templates, original CSV cells and analysis choices in IndexedDB. React holds active working state. **Saved** means a local transaction completed.
 
@@ -44,7 +44,9 @@ The bridge binds to localhost, checks exact trusted app origins and forwards com
 
 ## Network requests and deletion
 
-Normal traffic downloads same-origin static app/documentation files. There is no analytics, telemetry, remote font/CDN script or error reporting. No graph title, owners, metadata or export content is uploaded. The optional bridge is restricted to literal loopback hosts and explicit grants. Hosts may log ordinary file requests and client IPs; diagram data is not included.
+Normal traffic downloads same-origin static app/documentation files. There is no analytics, telemetry, remote font/CDN script or error reporting. Normal editing uploads no graph title, owners, metadata or export content. The optional bridge is restricted to literal loopback hosts and explicit grants. Hosts may log ordinary file requests and client IPs; diagram data is not included.
+
+**Build with Lovable** creates an app brief locally and shows its complete text before you share it. Opening the dialog sends nothing. **Open in Lovable** opens `lovable.dev` with that text in a URL fragment; Lovable reads the prompt and you press **Send** there to start building. The brief includes your instructions and chosen objects, written descriptions, notes, responsibilities and relationships. CSV column schema, analysis choices and calculated summaries may be included, but source rows, arbitrary metadata, owner emails, bridge tokens and workspace credentials are excluded. User-written text is included as shown; review it before sharing. Your draft instructions stay in IndexedDB with the diagram. [Handoff details](LOVABLE.md).
 
 **Delete diagram** removes one project. **Settings → Delete all local data** requires confirmation and removes all projects, owners, custom templates, settings and acceptance. It cannot be undone without an exported backup. Built-in templates are reseeded. App code caches and downloaded files are separate; deletion does not erase backups outside the browser.
 

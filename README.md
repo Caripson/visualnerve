@@ -24,6 +24,12 @@ Parsing, cleanup and aggregation run in a Web Worker. A view renders at most 600
 
 Choose the pencil in the canvas controls to draw over any diagram with a mouse, finger or pen. Choose a color and thickness, erase whole strokes or hide the drawing layer. **Done drawing** or Escape returns to normal diagram editing. Drawing uses a separate layer that follows pan and zoom, supports undo/redo, persists in IndexedDB and appears in PNG/PDF exports. Diagram JSON and full backups preserve it, including hidden strokes. See [drawing on diagrams](docs/DRAWING.md).
 
+## Build an app with Lovable
+
+Choose **Build with Lovable** (on phones: **… → Build with Lovable**), describe the app you want and review the generated build prompt. Include the entire diagram, the current CSV groups or selected objects. The brief preserves objects, responsibilities, hierarchy and relationships with their directions and branch conditions. Your instructions are saved locally with the diagram. **Open in Lovable** opens a new, unsent prompt; review it and press **Send** there to start building. No API key is needed.
+
+This explicit handoff shares the previewed text with Lovable. Source CSV rows, arbitrary metadata and owner email addresses are excluded; group summaries and written descriptions are included. Copy or download the complete brief when it exceeds the link limits. See [Lovable handoff](docs/LOVABLE.md).
+
 ## Requirements
 
 - Go 1.26 or newer, Node.js 22.12 or newer, npm, and Hugo 0.140 or newer (standard or extended).
