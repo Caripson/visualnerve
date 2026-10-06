@@ -10,6 +10,17 @@
   position: absolute;
   inset: 0 0 28px;
 }
+.spatial-load-failure {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  padding: 24px;
+  max-width: 560px;
+}
+.spatial-load-failure p {
+  margin: 0;
+  line-height: 1.5;
+}
 .spatial-canvas .canvas-statusbar {
   position: absolute;
   left: 0;
@@ -37,7 +48,13 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 12px;
+  max-height: calc(100% - 42px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   pointer-events: none;
+}
+.spatial-hud > * {
+  flex-shrink: 0;
 }
 .spatial-hud > .overview-controls {
   margin-left: 4px;
@@ -149,16 +166,14 @@
   line-height: 1.5;
 }
 .spatial-object-list {
-  position: absolute;
-  bottom: 40px;
-  left: 14px;
-  z-index: 3;
+  margin-left: 6px;
   width: 310px;
-  max-width: calc(100% - 28px);
+  max-width: calc(100% - 12px);
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface);
   box-shadow: 0 3px 15px #16261a13;
+  pointer-events: auto;
 }
 .spatial-object-list > summary {
   padding: 11px 12px;
@@ -288,9 +303,8 @@
     display: none;
   }
   .spatial-object-list {
-    bottom: 38px;
-    left: 10px;
-    max-width: calc(100% - 20px);
+    margin-left: 0;
+    max-width: 100%;
   }
   .spatial-canvas .canvas-statusbar span:last-child {
     display: none;

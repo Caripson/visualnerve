@@ -942,7 +942,6 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     canvas.addEventListener('webglcontextlost', contextLost);
     canvas.addEventListener('webglcontextrestored', contextRestored);
     const keyDown = (event: KeyboardEvent) => {
-      current.cancelPresentation('Camera movement interrupted.', true);
       if (event.key === 'Escape' && movement) {
         event.preventDefault();
         event.stopPropagation();
@@ -956,6 +955,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
         )
       )
         return;
+      current.cancelPresentation('Camera movement interrupted.', true);
       event.preventDefault();
       event.stopPropagation();
       if (event.key === 'Home') {
@@ -1529,6 +1529,128 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
           {faceCaptureBusy && <small role="status">Preparing the original node appearance…</small>}
         </div>
         {props.overview && <OverviewControls projection={props.overview} />}
+        <details className="spatial-object-list">
+          <summary>
+            Objects and relationships <span>{visibleNodes.length.toLocaleString()} objects</span>
+          </summary>
+          <div className="spatial-list-content">
+            <label>
+              Find a 3D object
+              <input
+                value={listQuery}
+                onChange={(event) => {
+                  setListQuery(event.target.value);
+                  setListPage(0);
+                }}
+                type="search"
+              />
+            </label>
+            <div role="list" aria-label="3D objects">
+              {listed.map((view) => (
+                <div key={view.id} role="listitem">
+                  <button
+                    aria-label={`Select object ${view.data.node.title}`}
+                    aria-pressed={selectedNodes.includes(view.id)}
+                    data-node-id={view.id}
+                    data-node-status={view.data.node.status ?? ''}
+                    onClick={() =>
+                      isOverviewGroupId(view.id)
+                        ? expandOverviewGroup(view.id)
+                        : useEditor.getState().select([view.id])
+                    }
+                  >
+                    <span>{view.data.node.title}</span>
+                    {view.className === 'analysis-outside-data-view' && (
+                      <small>Outside data view</small>
+                    )}
+                    {view.data.node.status && (
+                      <small
+                        className={
+                          isCompletedStatus(view.data.node.status) ? 'spatial-complete' : ''
+                        }
+                      >
+                        {isCompletedStatus(view.data.node.status) ? '✓ ' : ''}
+                        {view.data.node.status}
+                      </small>
+                    )}
+                  </button>
+                </div>
+              ))}
+            </div>
+            {matches.length > 50 && (
+              <nav aria-label="3D object pages">
+                <button disabled={!listPage} onClick={() => setListPage(Math.max(0, listPage - 1))}>
+                  Previous
+                </button>
+                <span>
+                  {listPage + 1} / {Math.ceil(matches.length / 50)}
+                </span>
+                <button
+                  disabled={(listPage + 1) * 50 >= matches.length}
+                  onClick={() => setListPage(listPage + 1)}
+                >
+                  Next
+                </button>
+              </nav>
+            )}
+            <details>
+              <summary>Relationships ({visibleEdges.length.toLocaleString()})</summary>
+              <label>
+                Find a 3D relationship
+                <input
+                  type="search"
+                  value={relationshipQuery}
+                  onChange={(event) => {
+                    setRelationshipQuery(event.target.value);
+                    setRelationshipPage(0);
+                  }}
+                />
+              </label>
+              <div role="list" aria-label="3D relationships">
+                {listedRelationships.map((edge) => (
+                  <div role="listitem" key={edge.id}>
+                    <button
+                      disabled={edge.id.startsWith('hierarchy:') || isOverviewEdgeId(edge.id)}
+                      aria-label={`Select relationship ${edge.label || 'connection'} from ${nodeNames.get(edge.source)} to ${nodeNames.get(edge.target)}`}
+                      aria-pressed={selectedEdges.includes(edge.id)}
+                      onClick={() => useEditor.getState().select([], [edge.id])}
+                    >
+                      {nodeNames.get(edge.source)}
+                      {edge.markerStart && edge.markerEnd
+                        ? ' ↔ '
+                        : edge.markerStart
+                          ? ' ← '
+                          : edge.markerEnd
+                            ? ' → '
+                            : ' — '}
+                      {nodeNames.get(edge.target)}
+                      {edge.label ? ` · ${String(edge.label)}` : ''}
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {relationshipMatches.length > 50 && (
+                <nav aria-label="3D relationship pages">
+                  <button
+                    disabled={!relationshipPage}
+                    onClick={() => setRelationshipPage(Math.max(0, relationshipPage - 1))}
+                  >
+                    Previous
+                  </button>
+                  <span>
+                    {relationshipPage + 1} / {Math.ceil(relationshipMatches.length / 50)}
+                  </span>
+                  <button
+                    disabled={(relationshipPage + 1) * 50 >= relationshipMatches.length}
+                    onClick={() => setRelationshipPage(relationshipPage + 1)}
+                  >
+                    Next
+                  </button>
+                </nav>
+              )}
+            </details>
+          </div>
+        </details>
       </div>
       {(rendererState === 'unavailable' || rendererState === 'lost') && (
         <div className="spatial-fallback" role="status">
@@ -1553,126 +1675,6 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
           priority.
         </p>
       )}
-      <details className="spatial-object-list">
-        <summary>
-          Objects and relationships <span>{visibleNodes.length.toLocaleString()} objects</span>
-        </summary>
-        <div className="spatial-list-content">
-          <label>
-            Find a 3D object
-            <input
-              value={listQuery}
-              onChange={(event) => {
-                setListQuery(event.target.value);
-                setListPage(0);
-              }}
-              type="search"
-            />
-          </label>
-          <div role="list" aria-label="3D objects">
-            {listed.map((view) => (
-              <div key={view.id} role="listitem">
-                <button
-                  aria-label={`Select object ${view.data.node.title}`}
-                  aria-pressed={selectedNodes.includes(view.id)}
-                  data-node-id={view.id}
-                  data-node-status={view.data.node.status ?? ''}
-                  onClick={() =>
-                    isOverviewGroupId(view.id)
-                      ? expandOverviewGroup(view.id)
-                      : useEditor.getState().select([view.id])
-                  }
-                >
-                  <span>{view.data.node.title}</span>
-                  {view.className === 'analysis-outside-data-view' && (
-                    <small>Outside data view</small>
-                  )}
-                  {view.data.node.status && (
-                    <small
-                      className={isCompletedStatus(view.data.node.status) ? 'spatial-complete' : ''}
-                    >
-                      {isCompletedStatus(view.data.node.status) ? '✓ ' : ''}
-                      {view.data.node.status}
-                    </small>
-                  )}
-                </button>
-              </div>
-            ))}
-          </div>
-          {matches.length > 50 && (
-            <nav aria-label="3D object pages">
-              <button disabled={!listPage} onClick={() => setListPage(Math.max(0, listPage - 1))}>
-                Previous
-              </button>
-              <span>
-                {listPage + 1} / {Math.ceil(matches.length / 50)}
-              </span>
-              <button
-                disabled={(listPage + 1) * 50 >= matches.length}
-                onClick={() => setListPage(listPage + 1)}
-              >
-                Next
-              </button>
-            </nav>
-          )}
-          <details>
-            <summary>Relationships ({visibleEdges.length.toLocaleString()})</summary>
-            <label>
-              Find a 3D relationship
-              <input
-                type="search"
-                value={relationshipQuery}
-                onChange={(event) => {
-                  setRelationshipQuery(event.target.value);
-                  setRelationshipPage(0);
-                }}
-              />
-            </label>
-            <div role="list" aria-label="3D relationships">
-              {listedRelationships.map((edge) => (
-                <div role="listitem" key={edge.id}>
-                  <button
-                    disabled={edge.id.startsWith('hierarchy:') || isOverviewEdgeId(edge.id)}
-                    aria-label={`Select relationship ${edge.label || 'connection'} from ${nodeNames.get(edge.source)} to ${nodeNames.get(edge.target)}`}
-                    aria-pressed={selectedEdges.includes(edge.id)}
-                    onClick={() => useEditor.getState().select([], [edge.id])}
-                  >
-                    {nodeNames.get(edge.source)}
-                    {edge.markerStart && edge.markerEnd
-                      ? ' ↔ '
-                      : edge.markerStart
-                        ? ' ← '
-                        : edge.markerEnd
-                          ? ' → '
-                          : ' — '}
-                    {nodeNames.get(edge.target)}
-                    {edge.label ? ` · ${String(edge.label)}` : ''}
-                  </button>
-                </div>
-              ))}
-            </div>
-            {relationshipMatches.length > 50 && (
-              <nav aria-label="3D relationship pages">
-                <button
-                  disabled={!relationshipPage}
-                  onClick={() => setRelationshipPage(Math.max(0, relationshipPage - 1))}
-                >
-                  Previous
-                </button>
-                <span>
-                  {relationshipPage + 1} / {Math.ceil(relationshipMatches.length / 50)}
-                </span>
-                <button
-                  disabled={(relationshipPage + 1) * 50 >= relationshipMatches.length}
-                  onClick={() => setRelationshipPage(relationshipPage + 1)}
-                >
-                  Next
-                </button>
-              </nav>
-            )}
-          </details>
-        </div>
-      </details>
       <div className="canvas-statusbar">
         <span>
           {projected.nodes.length.toLocaleString()} objects ·{' '}

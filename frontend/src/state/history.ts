@@ -6,15 +6,27 @@ export interface Change<T> {
   before?: T;
   after?: T;
 }
+interface OrderChange {
+  before: string[];
+  after: string[];
+}
 export interface Delta {
   label: string;
   timestamp: number;
   nodes: Change<GraphNode>[];
   edges: Change<GraphEdge>[];
+  /** Branch colors and diagram stacking depend on canonical entity order. */
+  nodeOrder?: OrderChange;
+  edgeOrder?: OrderChange;
   diagram?: { before: Diagram; after: Diagram };
   /** Immutable source references; ordinary commands never clone or stringify raw cells. */
   sources?: Change<CsvDataset>[];
-  sourceOrder?: { before: string[]; after: string[] };
+  sourceOrder?: OrderChange;
+}
+function changedOrder(before: { id: string }[], after: { id: string }[]): OrderChange | undefined {
+  if (before.length === after.length && before.every((item, index) => item.id === after[index].id))
+    return;
+  return { before: before.map((item) => item.id), after: after.map((item) => item.id) };
 }
 function changes<T extends { id: string }>(before: T[], after: T[]): Change<T>[] {
   const old = new Map(before.map((v) => [v.id, v]));
@@ -49,6 +61,8 @@ export function diffGraph(before: Graph, after: Graph, label: string): Delta {
     timestamp: Date.now(),
     nodes: changes(before.nodes, after.nodes),
     edges: changes(before.edges, after.edges),
+    nodeOrder: changedOrder(before.nodes, after.nodes),
+    edgeOrder: changedOrder(before.edges, after.edges),
     ...(sourceChanges.length
       ? { sources: sourceChanges, sourceOrder: { before: oldOrder, after: newOrder } }
       : {}),
@@ -58,7 +72,12 @@ export function diffGraph(before: Graph, after: Graph, label: string): Delta {
       : {}),
   };
 }
-function apply<T extends { id: string }>(items: T[], delta: Change<T>[], forward: boolean): T[] {
+function apply<T extends { id: string }>(
+  items: T[],
+  delta: Change<T>[],
+  forward: boolean,
+  order?: OrderChange,
+): T[] {
   const pending = new Map(delta.map((c) => [c.id, forward ? c.after : c.before]));
   const result: T[] = [];
   for (const item of items) {
@@ -71,23 +90,26 @@ function apply<T extends { id: string }>(items: T[], delta: Change<T>[], forward
     pending.delete(item.id);
   }
   for (const value of pending.values()) if (value) result.push(value);
+  if (order) {
+    const positions = new Map(
+      (forward ? order.after : order.before).map((id, index) => [id, index]),
+    );
+    result.sort(
+      (a, b) =>
+        (positions.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+        (positions.get(b.id) ?? Number.MAX_SAFE_INTEGER),
+    );
+  }
   return result;
 }
 export function applyDelta(graph: Graph, delta: Delta, forward: boolean): Graph {
-  const sources = delta.sources ? apply(graphDatasets(graph), delta.sources, forward) : undefined;
-  if (sources && delta.sourceOrder) {
-    const order = new Map(
-      (forward ? delta.sourceOrder.after : delta.sourceOrder.before).map((id, index) => [
-        id,
-        index,
-      ]),
-    );
-    sources.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
-  }
+  const sources = delta.sources
+    ? apply(graphDatasets(graph), delta.sources, forward, delta.sourceOrder)
+    : undefined;
   return {
     ...graph,
-    nodes: apply(graph.nodes, delta.nodes, forward),
-    edges: apply(graph.edges, delta.edges, forward),
+    nodes: apply(graph.nodes, delta.nodes, forward, delta.nodeOrder),
+    edges: apply(graph.edges, delta.edges, forward, delta.edgeOrder),
     diagram: delta.diagram ? (forward ? delta.diagram.after : delta.diagram.before) : graph.diagram,
     ...(sources ? { dataset: sources[0], datasets: sources.slice(1) } : {}),
   };
@@ -98,16 +120,18 @@ export function mergeDelta(a: Delta, b: Delta): Delta {
     for (const c of y) map.set(c.id, map.has(c.id) ? { ...c, before: map.get(c.id)!.before } : c);
     return [...map.values()];
   };
+  const order = (first?: OrderChange, last?: OrderChange) =>
+    last ? { before: first?.before ?? last.before, after: last.after } : first;
   return {
     ...b,
     nodes: merge(a.nodes, b.nodes),
     edges: merge(a.edges, b.edges),
+    nodeOrder: order(a.nodeOrder, b.nodeOrder),
+    edgeOrder: order(a.edgeOrder, b.edgeOrder),
     diagram: b.diagram
       ? { before: a.diagram?.before ?? b.diagram.before, after: b.diagram.after }
       : a.diagram,
     sources: a.sources || b.sources ? merge(a.sources ?? [], b.sources ?? []) : undefined,
-    sourceOrder: b.sourceOrder
-      ? { before: a.sourceOrder?.before ?? b.sourceOrder.before, after: b.sourceOrder.after }
-      : a.sourceOrder,
+    sourceOrder: order(a.sourceOrder, b.sourceOrder),
   };
 }

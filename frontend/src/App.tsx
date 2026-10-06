@@ -385,9 +385,24 @@ export function App() {
         if (clip) void navigator.clipboard?.writeText(JSON.stringify(clip)).catch(() => {});
       } else if (modifier && key === 'v') {
         e.preventDefault();
+        const diagramId = s.graph?.diagram.id;
+        const canPaste = () => {
+          const current = useEditor.getState();
+          return (
+            !!diagramId &&
+            current.graph?.diagram.id === diagramId &&
+            current.privacyAcknowledged &&
+            !importInFlight.current &&
+            !document.querySelector('[role="dialog"][aria-modal="true"]') &&
+            !(document.activeElement as HTMLElement | null)?.closest(
+              'input,textarea,select,[contenteditable="true"]',
+            )
+          );
+        };
         const paste = async () => {
           try {
             const text = await navigator.clipboard.readText();
+            if (!canPaste()) return;
             const clip = JSON.parse(text) as Clip;
             if (
               clip.format === 'visual-nerve-clipboard' &&
@@ -398,7 +413,7 @@ export function App() {
               return;
             }
           } catch {}
-          s.paste();
+          if (canPaste()) s.paste();
         };
         void paste();
       } else if (modifier && key === 'd') {

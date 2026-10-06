@@ -326,6 +326,18 @@ kbd {
   background: var(--surface-alt);
   overflow: hidden;
 }
+@media (min-width: 721px) and (max-height: 650px) {
+  .sidebar {
+    overflow-y: auto;
+  }
+  .sidebar > * {
+    flex-shrink: 0;
+  }
+  .sidebar .diagram-list {
+    flex: none;
+    overflow-y: visible;
+  }
+}
 .workspace-label {
   display: flex;
   gap: 10px;

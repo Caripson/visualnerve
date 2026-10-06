@@ -12,7 +12,12 @@ import {
   type GraphNode,
   type Owner,
 } from '../model/types';
-import { StorageError, validateGraph, validateOwner } from '../model/validation';
+import {
+  StorageError,
+  validateGraph,
+  validateGraphFields,
+  validateOwner,
+} from '../model/validation';
 import { getCsvNode } from '../data/csv';
 import { remapAnalysisReferences } from '../analysis/views';
 import {
@@ -90,6 +95,8 @@ function patch<T extends Base>(value: T, data: Patch): T {
   } = data;
   const result = { ...value, ...fields } as T;
   if ('metadata' in data) {
+    if (!data.metadata || typeof data.metadata !== 'object' || Array.isArray(data.metadata))
+      throw new StorageError(422, 'Metadata must be an object.');
     const current = (value as T & { metadata?: Patch }).metadata ?? {};
     (result as T & { metadata: Patch }).metadata = { ...current, ...(data.metadata as Patch) };
   }
@@ -158,6 +165,7 @@ export class Repository {
     expectedVersion?: number,
     canonicalPositions = false,
   ): Promise<Graph> {
+    validateGraphFields(input);
     const saved = await this.db.transaction(
       'rw',
       this.db.diagrams,
@@ -814,6 +822,7 @@ export class Repository {
       if (action === 'graph') {
         const data = object(payload);
         const graph = data.graph as Graph;
+        validateGraphFields(graph);
         if (graph.diagram.id !== id) throw new StorageError(422, 'Diagram id mismatch.');
         return (await this.saveGraph(graph, data.baseVersion as number)) as T;
       }

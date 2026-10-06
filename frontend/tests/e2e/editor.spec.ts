@@ -13,6 +13,86 @@ async function deselect(page: Page) {
   await page.locator('.react-flow__pane').click({ position: { x: 18, y: 40 } });
 }
 
+test('undoing a middle mindmap branch deletion preserves order and colors through redo and reload', async ({
+  page,
+  request,
+}) => {
+  const diagram = await (
+    await request.post('/api/v1/diagrams', {
+      data: {
+        name: 'Ordered branch history',
+        type: 'mindmap',
+        settings: { viewport: { x: 20, y: 20, zoom: 0.8 } },
+      },
+    })
+  ).json();
+  const original = (await (
+    await request.post(`/api/v1/diagrams/${diagram.id}/bulk`, {
+      data: {
+        nodes: [
+          { title: 'Root', externalId: 'root', x: 100, y: 260 },
+          { title: 'First', externalId: 'first', parentExternalId: 'root', x: 450, y: 100 },
+          { title: 'Middle', externalId: 'middle', parentExternalId: 'root', x: 450, y: 260 },
+          { title: 'Last', externalId: 'last', parentExternalId: 'root', x: 450, y: 420 },
+        ],
+        edges: ['first', 'middle', 'last'].map((targetExternalId) => ({
+          sourceExternalId: 'root',
+          targetExternalId,
+          edgeType: 'hierarchy',
+          direction: 'none',
+        })),
+      },
+    })
+  ).json()) as Graph;
+  await open(page, 'Ordered branch history');
+  await expect(page.locator('.canvas-shell .mindmap-topic')).toHaveCount(4);
+  const middle = original.nodes.find((node) => node.externalId === 'middle')!;
+  const branchColors = () =>
+    page
+      .locator('.canvas-shell .mindmap-topic')
+      .evaluateAll((elements) =>
+        Object.fromEntries(
+          elements.map((element) => [
+            element.getAttribute('data-node-id'),
+            (element as HTMLElement).style.getPropertyValue('--branch-color'),
+          ]),
+        ),
+      );
+  const colors = await branchColors();
+  const current = async () =>
+    (await (await request.get(`/api/v1/diagrams/${diagram.id}`)).json()) as Graph;
+  const restored = async () => {
+    const graph = await current();
+    expect(graph.nodes.map((node) => node.id)).toEqual(original.nodes.map((node) => node.id));
+    expect(graph.edges.map((edge) => edge.id)).toEqual(original.edges.map((edge) => edge.id));
+    await expect.poll(branchColors).toEqual(colors);
+  };
+  await page.locator(`[data-node-id="${middle.id}"]`).click();
+  await page.keyboard.press('Delete');
+  await expect(page.locator(`[data-node-id="${middle.id}"]`)).toHaveCount(0);
+  await saved(page);
+  const deleted = await current();
+  expect(deleted.nodes.map((node) => node.id)).toEqual(
+    original.nodes.filter((node) => node.id !== middle.id).map((node) => node.id),
+  );
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await saved(page);
+  await restored();
+  await page.getByRole('button', { name: 'Redo', exact: true }).click();
+  await saved(page);
+  expect((await current()).nodes.map((node) => node.id)).toEqual(
+    deleted.nodes.map((node) => node.id),
+  );
+  expect((await current()).edges.map((edge) => edge.id)).toEqual(
+    deleted.edges.map((edge) => edge.id),
+  );
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await saved(page);
+  await restored();
+  await open(page, 'Ordered branch history');
+  await restored();
+});
+
 test('mind map keyboard editing, semantic metadata, copy/paste, collapse and history', async ({
   page,
   request,

@@ -183,7 +183,14 @@ export const useEditor = create<Editor>((set, get) => ({
         }
       : s.graph;
     const delta = diffGraph(before, next, label);
-    if (!delta.nodes.length && !delta.edges.length && !delta.diagram && !delta.sources?.length)
+    if (
+      !delta.nodes.length &&
+      !delta.edges.length &&
+      !delta.nodeOrder &&
+      !delta.edgeOrder &&
+      !delta.diagram &&
+      !delta.sources?.length
+    )
       return;
     const h = s.history;
     const prev = h.at(-1);

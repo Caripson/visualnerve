@@ -130,7 +130,78 @@ it('traverses entity chains and preserves empty connected scopes', () => {
   graph.diagram.settings.csvEntityFocus.path[0].value = 'not present';
   expect(modelRowIndices(graph, orders.id)).toEqual([]);
   expect(modelRowIndices(graph, payments.id)).toEqual([]);
+  const empty = reanalyzeDataModel(graph);
+  validateGraph(empty);
+  expect(rootOf(empty, customers.id)!.rowCount).toBe(0);
+  expect(rootOf(empty, orders.id)!.rowCount).toBe(0);
+  expect(rootOf(empty, payments.id)!.rowCount).toBe(0);
 });
+it.each(['unmatched entity', 'filtered matches'])(
+  'rebuilds an empty linked source for %s and restores its data and annotations after clearing focus',
+  (scenario) => {
+    let { graph, customers, orders } = fixture();
+    graph = reanalyzeDataModel(graph);
+    const orderGroup = graph.nodes.find(
+      (node) =>
+        getCsvNode(node)?.datasetId === orders.id && getCsvNode(node)?.path[0]?.value === 'A',
+    )!;
+    graph = {
+      ...graph,
+      nodes: graph.nodes.map((node) =>
+        node.id === orderGroup.id ? { ...node, status: 'done', notes: 'Review completed' } : node,
+      ),
+    };
+    if (scenario === 'filtered matches')
+      graph = setAnalysisForDataset(graph, orders.id, {
+        ...analysisForDataset(graph, orders.id)!,
+        filters: [{ id: 'large', columnId: 'c2', operation: 'gt', value: '50' }],
+      });
+    graph.diagram.settings.csvEntityFocus = {
+      datasetId: customers.id,
+      path: [{ columnId: 'c0', value: scenario === 'unmatched entity' ? 'X' : 'A' }],
+    };
+    const original = structuredClone(graph);
+    const focused = reanalyzeDataModel(graph);
+    validateGraph(focused);
+    expect(rootOf(focused, orders.id)).toMatchObject({ rowCount: 0, totalChildren: 0 });
+    expect(
+      rootOf(focused, orders.id)!.measures.find((metric) => metric.operation === 'count')!.value,
+    ).toBe(0);
+    expect(
+      rootOf(focused, orders.id)!.measures.find((metric) => metric.id === 'amount')!.value,
+    ).toBeNull();
+    expect(focused.nodes.find((node) => node.id === orderGroup.id)).toMatchObject({
+      status: 'done',
+      notes: 'Review completed',
+      metadata: { csv: { visible: false } },
+    });
+    expect(
+      focused.edges.filter(
+        (edge) =>
+          edge.metadata.csvModelGenerated === true && edge.metadata.csvModelVisible !== false,
+      ),
+    ).toHaveLength(0);
+    expect(focused.dataset).toBe(customers);
+    expect(focused.datasets![0]).toBe(orders);
+    expect(graph).toEqual(original);
+    const restored = reanalyzeDataModel(
+      setAnalysisForDataset(clearDataModelFocus(focused), orders.id, {
+        ...analysisForDataset(focused, orders.id)!,
+        filters: [],
+      }),
+    );
+    validateGraph(restored);
+    expect(rootOf(restored, orders.id)!.rowCount).toBe(orders.rows.length);
+    expect(
+      rootOf(restored, orders.id)!.measures.find((metric) => metric.id === 'amount')!.value,
+    ).toBe(310);
+    expect(restored.nodes.find((node) => node.id === orderGroup.id)).toMatchObject({
+      status: 'done',
+      notes: 'Review completed',
+      metadata: { csv: { visible: true } },
+    });
+  },
+);
 it('uses exact cleanup and explicit text matching without guessing numeric IDs', () => {
   const { graph, customers, orders, relationship } = fixture();
   let next = {

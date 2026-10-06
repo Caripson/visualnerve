@@ -235,6 +235,96 @@ test('plays a saved 3D scene and exports a playable storyboard movie without cha
   await page.getByRole('button', { name: '2D view', exact: true }).click();
   await expect(page.locator('.canvas-shell .react-flow')).toBeVisible();
 });
+
+test('prepares every resident face in a multi-object 3D scene before recording its first frame', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(120000);
+  const graph = await create(request, 'Delayed storyboard card appearance');
+  const storyboard = await save(request, graph);
+  await page.getByRole('button', { name: graph.diagram.name, exact: true }).click();
+  await expect(page.getByRole('button', { name: '3D view', exact: true })).toBeVisible();
+  await page.evaluate((title) => {
+    const runtime = window as unknown as {
+      releaseStoryboardTexture(): void;
+      storyboardTextureBlocked: boolean;
+      storyboardPreparedIds: string[];
+      storyboardRecordedFrames: number;
+    };
+    let release!: () => void;
+    const ready = new Promise<void>((resolve) => (release = resolve));
+    runtime.releaseStoryboardTexture = release;
+    runtime.storyboardTextureBlocked = false;
+    runtime.storyboardPreparedIds = [];
+    runtime.storyboardRecordedFrames = 0;
+    const decode = HTMLImageElement.prototype.decode;
+    HTMLImageElement.prototype.decode = async function () {
+      if (
+        this.src.startsWith('data:image/svg+xml') &&
+        decodeURIComponent(this.src).includes(title)
+      ) {
+        runtime.storyboardTextureBlocked = true;
+        await ready;
+      }
+      return decode.call(this);
+    };
+    window.addEventListener('visualnerve:video-spatial-prepare', (event) => {
+      runtime.storyboardPreparedIds = (event as CustomEvent).detail.nodeIds ?? [];
+    });
+    window.addEventListener('visualnerve:video-spatial-frame', () => {
+      runtime.storyboardRecordedFrames++;
+    });
+  }, graph.nodes[1].title);
+  try {
+    await page.getByRole('button', { name: '3D view', exact: true }).click();
+    await expect(page.getByTestId('spatial-view')).toHaveAttribute('data-renderer', 'ready', {
+      timeout: 30000,
+    });
+    await expect
+      .poll(() => page.evaluate(() => (window as any).storyboardTextureBlocked))
+      .toBe(true);
+    await expect(page.locator('.document-actions .save-status')).toHaveText('Saved');
+    const before = (await (
+      await request.get(`/api/v1/diagrams/${graph.diagram.id}`)
+    ).json()) as Graph;
+    expect(
+      (
+        await request.post('/api/v1/presentation/video', {
+          data: { source: 'storyboard', audio: false, subtitles: false },
+        })
+      ).ok(),
+    ).toBe(true);
+    await expect
+      .poll(() => page.evaluate(() => (window as any).storyboardPreparedIds))
+      .toEqual(storyboard.scenes[0].nodeIds);
+    await page.evaluate(async () => {
+      for (let frame = 0; frame < 8; frame++)
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    });
+    expect(await page.evaluate(() => (window as any).storyboardRecordedFrames)).toBe(0);
+    expect((await (await request.get('/api/v1/presentation/video')).json()).status).toBe(
+      'preparing',
+    );
+    await page.evaluate(() => (window as any).releaseStoryboardTexture());
+    await expect
+      .poll(() => page.evaluate(() => (window as any).storyboardRecordedFrames), {
+        timeout: 30000,
+      })
+      .toBeGreaterThan(0);
+    await request.delete('/api/v1/presentation/video', { data: {} });
+    await request.post('/api/v1/presentation/close', { data: {} });
+    const after = (await (
+      await request.get(`/api/v1/diagrams/${graph.diagram.id}`)
+    ).json()) as Graph;
+    expect(after.diagram.settings).toEqual(before.diagram.settings);
+    expect(after.nodes).toEqual(before.nodes);
+    expect(after.edges).toEqual(before.edges);
+  } finally {
+    await page.evaluate(() => (window as any).releaseStoryboardTexture());
+    await request.delete('/api/v1/presentation/video', { data: {} });
+  }
+});
 test('explains saved-view incompatibility in Overview and reveals canonical objects with Auto-fit', async ({
   page,
   request,

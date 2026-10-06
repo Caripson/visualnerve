@@ -69,6 +69,71 @@ async function exportImage(page: Page, format: 'png' | 'pdf') {
   return readFile((await (await downloading).path())!);
 }
 
+test('imports boolean SELECT operands and their complete column lineage through preview, rendering and reload', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  const expressions = [
+    'NOT is_deleted',
+    'active AND verified',
+    'amount BETWEEN minimum AND maximum',
+    'name LIKE pattern',
+    'active OR verified valid_flag',
+  ];
+  await page.goto('/');
+  await acknowledge(page);
+  await page.getByLabel('Import file', { exact: true }).setInputFiles({
+    name: 'Boolean query.sql',
+    mimeType: 'application/sql',
+    buffer: Buffer.from(`SELECT ${expressions.join(', ')} FROM records`),
+  });
+  const dialog = page.getByRole('dialog', { name: 'Import SQL', exact: true });
+  await dialog.getByRole('button', { name: 'Preview query', exact: true }).click();
+  await expect(dialog.getByRole('region', { name: 'SQL query preview' })).toContainText('records');
+  await dialog.getByRole('button', { name: 'Create diagram', exact: true }).click();
+  await expect(dialog).toBeHidden();
+  await saved(page);
+  const check = async () => {
+    const graph = await stored(page, 'Boolean query');
+    const block = graph.nodes.map(getSqlQueryResult).find(Boolean)!;
+    expect(block.columns.map((column) => column.expression)).toEqual([
+      ...expressions.slice(0, 4),
+      'active OR verified',
+    ]);
+    expect(block.columns.map((column) => column.alias)).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'valid_flag',
+    ]);
+    expect(
+      block.columns.map((column) => column.references.map((reference) => reference.column)),
+    ).toEqual([
+      ['is_deleted'],
+      ['active', 'verified'],
+      ['amount', 'minimum', 'maximum'],
+      ['name', 'pattern'],
+      ['active', 'verified'],
+    ]);
+    expect(
+      graph.edges.map(getSqlQueryRelationship).find((edge) => edge?.kind === 'lineage')
+        ?.outputOrdinals,
+    ).toEqual([1, 2, 3, 4, 5]);
+    await selectObject(page, 'SELECT q1');
+    const table = page.getByRole('table', { name: 'All SQL query output', exact: true });
+    await expect(table).toContainText('NOT is_deleted');
+    await expect(table).toContainText('records.maximum');
+    await expect(table).toContainText('records.pattern');
+  };
+  await check();
+  await page.reload();
+  await saved(page);
+  await check();
+  expect(errors).toEqual([]);
+});
+
 test('previews and saves a complex SELECT with separate aliases, nested results, full clauses and portable query metadata', async ({
   page,
 }, testInfo) => {

@@ -46,7 +46,12 @@ test('imports a chosen draw.io page through the file picker and keeps native lin
   await dialog(page).screenshot({ path: testInfo.outputPath('drawio-preview.png') });
   expect(await (await request.get('/api/v1/diagrams')).json()).toEqual(before);
   await page.getByLabel('Diagram page', { exact: true }).selectOption('detail');
-  await page.getByLabel('Imported diagram name', { exact: true }).fill('Imported native process');
+  const nameInput = page.getByLabel('Imported diagram name', { exact: true });
+  await nameInput.fill('');
+  await nameInput.click();
+  await nameInput.pressSequentially('Imported native process', { delay: 20 });
+  await expect(nameInput).toHaveValue('Imported native process');
+  await expect(nameInput).toBeFocused();
   await dialog(page).getByRole('button', { name: 'Create diagram', exact: true }).click();
   await expect(dialog(page)).toBeHidden();
   await saved(page);

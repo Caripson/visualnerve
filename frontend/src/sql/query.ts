@@ -59,6 +59,20 @@ const joinWords = new Set([
   'NATURAL',
   'DIRECTED',
 ]);
+const wordOperators = new Set([
+  'AND',
+  'OR',
+  'NOT',
+  'IS',
+  'LIKE',
+  'ILIKE',
+  'RLIKE',
+  'REGEXP',
+  'BETWEEN',
+  'IN',
+  'COLLATE',
+  'ZONE',
+]);
 const sourceStop = new Set([
   ...joinWords,
   'ON',
@@ -147,7 +161,11 @@ function output(
     (last.kind === 'identifier' || !keywords.has(last.text.toUpperCase())) &&
     previous &&
     !['.', '+', '-', '*', '/', '%', '=', '<', '>', '|', '&', '^', ':'].includes(previous.text) &&
-    !isWord(previous, 'COLLATE')
+    !(
+      previous.kind === 'word' &&
+      wordOperators.has(previous.text.toUpperCase()) &&
+      tokens.at(-3)?.text !== '.'
+    )
   ) {
     alias = last;
     expression = tokens.slice(0, -1);

@@ -278,6 +278,7 @@ export class Workspace {
   }
   async open(id: string, nodeId?: string, beforeOpen?: () => Promise<void>) {
     await this.requireStorageConsent();
+    useEditor.getState().finishEditing();
     flushSpatialCamera();
     await this.settled();
     const navigation = ++this.navigation;
@@ -460,6 +461,7 @@ export class Workspace {
   }
   async backup() {
     await this.requireStorageConsent();
+    useEditor.getState().finishEditing();
     flushSpatialCamera();
     await this.settled();
     return this.repo.db.backup();

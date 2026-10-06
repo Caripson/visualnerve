@@ -347,3 +347,25 @@ it('cancels background preparation immediately when preload is switched off and 
   expect(player.getState()).toBe(state);
   player.close();
 });
+
+it('retries the enabled preload window after a failed attempt when playback resumes', async () => {
+  const { player, deps } = fixture();
+  vi.mocked(deps.preloadVoice)
+    .mockRejectedValueOnce(new Error('Voice download interrupted.'))
+    .mockResolvedValue(undefined);
+  player.options({ audio: true });
+  await player.preload();
+  await settle();
+  expect(player.getState().message).toContain('Preload failed: Voice download interrupted.');
+  expect(deps.preloadVoice).toHaveBeenCalledOnce();
+  await player.play();
+  await settle();
+  expect(player.getState().status).toBe('playing');
+  expect(deps.preloadVoice).toHaveBeenCalledTimes(2);
+  expect(player.getState()).toMatchObject({
+    progress: 1,
+    message: 'Preload 100% · Voice and next steps ready.',
+    buffered: 3,
+  });
+  player.close();
+});

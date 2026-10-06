@@ -574,9 +574,21 @@ export function rowPredicate(dataset: CsvDataset, path: CsvPathEntry[], analysis
   };
 }
 
-export function groupCsv(dataset: CsvDataset, analysis: CsvAnalysis): CsvGroup {
+export function groupCsv(
+  dataset: CsvDataset,
+  analysis: CsvAnalysis,
+  rowIndices?: readonly number[],
+): CsvGroup {
   if (!validatedSources.has(dataset)) validateDataset(dataset);
   validateAnalysis(dataset, analysis);
+  requireValue(
+    rowIndices === undefined ||
+      (new Set(rowIndices).size === rowIndices.length &&
+        rowIndices.every(
+          (index) => Number.isSafeInteger(index) && index >= 0 && index < dataset.rows.length,
+        )),
+    'Selected CSV source rows must contain unique existing row indices.',
+  );
   let count = 0;
   const build = (
     rows: string[][],
@@ -644,8 +656,11 @@ export function groupCsv(dataset: CsvDataset, analysis: CsvAnalysis): CsvGroup {
     return group;
   };
   const source = effectiveDataset(dataset, analysis);
+  // A linked source may have no matching rows. Validate and clean its original
+  // dataset, then analyze the bounded selection without inventing an empty source.
+  const rows = rowIndices ? rowIndices.map((index) => source.rows[index]) : source.rows;
   return build(
-    source.rows.filter(rowPredicate(source, analysis.focusPath, analysis)),
+    rows.filter(rowPredicate(source, analysis.focusPath, analysis)),
     analysis.focusPath,
     analysis.focusPath.length,
   );
@@ -789,8 +804,13 @@ export function getCsvAnalysis(graph: Graph): CsvAnalysis | undefined {
   }
 }
 
-export function csvGraph(dataset: CsvDataset, analysis: CsvAnalysis, previous?: Graph): Graph {
-  const tree = groupCsv(dataset, analysis);
+export function csvGraph(
+  dataset: CsvDataset,
+  analysis: CsvAnalysis,
+  previous?: Graph,
+  rowIndices?: readonly number[],
+): Graph {
+  const tree = groupCsv(dataset, analysis, rowIndices);
   const prior = previous?.diagram.id === dataset.diagramId ? previous : undefined;
   const graph = prior ?? blankGraph(dataset.name, 'mindmap');
   const nodes: GraphNode[] = [];

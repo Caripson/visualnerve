@@ -188,6 +188,14 @@ test('MCP player uses the same 3D diagram and transient camera with documented r
   expect(response.result.structuredContent.status).toBe(200);
   const player = page.getByRole('region', { name: 'Diagram player' });
   await expect(player).toHaveAttribute('data-status', 'playing', { timeout: 15000 });
+  const spatialCanvas = page.getByTestId('spatial-canvas');
+  const playbackCamera = await spatialCanvas.getAttribute('data-camera-position');
+  for (const key of ['Tab', 'Shift', 'a']) {
+    await spatialCanvas.focus();
+    await spatialCanvas.press(key);
+    await expect(player).toHaveAttribute('data-status', 'playing');
+    expect(await spatialCanvas.getAttribute('data-camera-position')).toBe(playbackCamera);
+  }
   await request.post('/api/v1/presentation/pause', { data: {} });
   await expect(player).toHaveAttribute('data-status', 'paused');
   const after = (await (await request.get(`/api/v1/diagrams/${graph.diagram.id}`)).json()) as Graph;

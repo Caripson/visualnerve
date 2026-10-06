@@ -27,6 +27,8 @@ export function parseImport(
   if (format === 'json') {
     const graph = JSON.parse(text) as Graph;
     if (
+      !graph ||
+      typeof graph !== 'object' ||
       graph.format !== 'visual-nerve' ||
       graph.formatVersion !== 1 ||
       !Array.isArray(graph.nodes) ||

@@ -1,4 +1,7 @@
 import { expect, test, type APIRequestContext, type Page } from './fixtures';
+import { csvGraph, defaultAnalysis, getCsvNode, parseCsv } from '../../src/data/csv';
+import { reanalyzeDataModel, setAnalysisForDataset } from '../../src/data/model';
+import type { Graph } from '../../src/model/types';
 
 async function saved(page: Page) {
   await expect(page.getByRole('status').filter({ hasText: /^Saved$/ })).toBeVisible();
@@ -47,6 +50,7 @@ async function dataTool(page: Page, name: string) {
 async function relatedScope(
   request: APIRequestContext,
   path: { columnId: string; value: string }[] | null,
+  name = 'Connected orders',
 ) {
   // Saved can still describe the previous view while the analysis worker runs.
   // Wait for the requested committed scope before search reopens its graph.
@@ -54,12 +58,101 @@ async function relatedScope(
     .poll(async () => {
       const diagrams = await (await request.get('/api/v1/diagrams')).json();
       return (
-        diagrams.find((diagram: { name: string }) => diagram.name === 'Connected orders')?.settings
+        diagrams.find((diagram: { name: string }) => diagram.name === name)?.settings
           ?.csvEntityFocus?.path ?? null
       );
     })
     .toEqual(path);
 }
+
+test('explores a customer with no related rows, persists zero totals and restores original orders and annotations', async ({
+  page,
+  request,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  const customers = parseCsv('Id,Company\nA,AAA customer\nB,BBB customer', 'customers.csv');
+  const orders = parseCsv('Customer,Amount\nA,10.50\nA,20.50', 'orders.csv');
+  orders.diagramId = customers.diagramId;
+  const customerAnalysis = { ...defaultAnalysis(customers), levels: ['c1'] };
+  let graph: Graph = { ...csvGraph(customers, customerAnalysis), datasets: [orders] };
+  graph.diagram.name = 'Empty linked orders';
+  graph = setAnalysisForDataset(graph, orders.id, {
+    ...defaultAnalysis(orders),
+    metrics: [
+      { id: 'count', operation: 'count' },
+      { id: 'amount', operation: 'sum', columnId: 'c1' },
+    ],
+  });
+  graph.diagram.settings.csvRelationships = [
+    {
+      id: crypto.randomUUID(),
+      sourceDatasetId: customers.id,
+      sourceColumnId: 'c0',
+      targetDatasetId: orders.id,
+      targetColumnId: 'c0',
+    },
+  ];
+  graph = reanalyzeDataModel(graph);
+  const orderGroup = graph.nodes.find(
+    (node) => getCsvNode(node)?.datasetId === orders.id && getCsvNode(node)?.path[0]?.value === 'A',
+  )!;
+  graph.nodes = graph.nodes.map((node) =>
+    node.id === orderGroup.id ? { ...node, status: 'done', notes: 'Keep order review' } : node,
+  );
+  await page.getByLabel('Import file', { exact: true }).setInputFiles({
+    name: 'linked-orders.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(graph)),
+  });
+  await expect(page.locator('.project-title-button')).toHaveText(graph.diagram.name);
+  await saved(page);
+  await select(page, 'BBB customer', request);
+  await page.getByRole('button', { name: 'Explore this group', exact: true }).click();
+  await relatedScope(request, [{ columnId: 'c1', value: 'BBB customer' }], graph.diagram.name);
+  await saved(page);
+  const current = async () => {
+    const response = await request.get(`/api/v1/diagrams/${graph.diagram.id}`);
+    expect(response.ok()).toBe(true);
+    return (await response.json()) as Graph;
+  };
+  const orderRoot = (value: Graph) =>
+    getCsvNode(
+      value.nodes.find(
+        (node) => getCsvNode(node)?.datasetId === orders.id && getCsvNode(node)?.path.length === 0,
+      )!,
+    );
+  let focused = await current();
+  expect(orderRoot(focused)).toMatchObject({ rowCount: 0, totalChildren: 0 });
+  expect(orderRoot(focused)!.measures.map((metric) => metric.value)).toEqual([0, null]);
+  expect(focused.dataset?.rows).toEqual(customers.rows);
+  expect(focused.datasets?.[0].rows).toEqual(orders.rows);
+  expect(focused.nodes.find((node) => node.id === orderGroup.id)).toMatchObject({
+    status: 'done',
+    notes: 'Keep order review',
+    metadata: { csv: { visible: false } },
+  });
+  await select(page, 'orders', request);
+  await page.getByText('Source rows (0)', { exact: true }).click();
+  await expect(page.getByText('Showing 0 of 0 rows.', { exact: false })).toBeVisible();
+  await page.reload();
+  await saved(page);
+  await select(page, 'orders', request);
+  focused = await current();
+  expect(orderRoot(focused)!.measures.map((metric) => metric.value)).toEqual([0, null]);
+  await page.getByRole('button', { name: 'All data', exact: true }).click();
+  await relatedScope(request, null, graph.diagram.name);
+  await saved(page);
+  const restored = await current();
+  expect(orderRoot(restored)!.measures.map((metric) => metric.value)).toEqual([2, 31]);
+  expect(restored.nodes.find((node) => node.id === orderGroup.id)).toMatchObject({
+    status: 'done',
+    notes: 'Keep order review',
+    metadata: { csv: { visible: true } },
+  });
+  expect(restored.datasets?.[0].rows).toEqual(orders.rows);
+  expect(errors).toEqual([]);
+});
 
 test('connects 100,000 orders, explores related entities and explains native totals without duplicate inflation', async ({
   page,

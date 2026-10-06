@@ -492,6 +492,35 @@ describe('browser workspace controller', () => {
     expect(useEditor.getState().graph!.nodes[0].title).toBe('Offline saved');
     await reopened.settled();
   });
+  it('commits an active inline topic draft before opening another diagram', async () => {
+    const workspace = await controller();
+    await workspace.create(graph('First map'));
+    const original = useEditor.getState().graph!;
+    const second = await repo.importGraph(graph('Second map'));
+    useEditor.getState().beginEditing(original.nodes[0].id);
+    useEditor.setState({ editingTitle: 'Saved before navigation' });
+    await workspace.open(second.diagram.id);
+    expect((await repo.getGraph(original.diagram.id)).nodes[0].title).toBe(
+      'Saved before navigation',
+    );
+    expect(useEditor.getState().graph!.diagram.id).toBe(second.diagram.id);
+    expect(useEditor.getState().editingNode).toBeNull();
+    expect(useEditor.getState().status).toBe('saved');
+  });
+  it('includes an active inline topic draft in a workspace backup and committed storage', async () => {
+    const workspace = await controller();
+    await workspace.create(graph('Backup map'));
+    const original = useEditor.getState().graph!;
+    useEditor.getState().beginEditing(original.nodes[0].id);
+    useEditor.setState({ editingTitle: 'Included in backup' });
+    const backup = await workspace.backup();
+    expect(backup.nodes.find((node) => node.id === original.nodes[0].id)?.title).toBe(
+      'Included in backup',
+    );
+    expect((await repo.getGraph(original.diagram.id)).nodes[0].title).toBe('Included in backup');
+    expect(useEditor.getState().editingNode).toBeNull();
+    expect(useEditor.getState().status).toBe('saved');
+  });
   it('queues edits during an in-flight transaction and preserves unchanged references', async () => {
     const workspace = await controller();
     await workspace.create(graph());

@@ -980,6 +980,20 @@ test.describe('interrupted 3D module download', () => {
     expect(getSpatialView(after).mode).toBe('2d');
     expect(canonicalRecords(after.nodes)).toEqual(canonicalRecords(before.nodes));
     expect(canonicalRecords(after.edges)).toEqual(canonicalRecords(before.edges));
+    // A failed dynamic import is cached by the browser for this document.
+    // Restore the network and use the save-before-reload recovery path.
+    await page.unroute('**/assets/SpatialCanvas-*.js');
+    await page.getByRole('button', { name: '3D view', exact: true }).click();
+    await expect(page.getByText('The 3D view could not be loaded', { exact: false })).toBeVisible();
+    await page.getByRole('button', { name: 'Reload to retry 3D', exact: true }).click();
+    await ready(page);
+    await saved(page);
+    const recovered = await stored(request, diagram.id);
+    expect(getSpatialView(recovered).mode).toBe('3d');
+    expect(canonicalRecords(recovered.nodes)).toEqual(canonicalRecords(before.nodes));
+    expect(canonicalRecords(recovered.edges)).toEqual(canonicalRecords(before.edges));
+    await page.getByRole('button', { name: 'Return to 2D', exact: true }).click();
+    await saved(page);
     await page.reload();
     await expect(page.locator('.canvas-shell .react-flow')).toBeVisible();
     await expect(page.getByRole('button', { name: '2D view', exact: true })).toHaveAttribute(
@@ -989,6 +1003,45 @@ test.describe('interrupted 3D module download', () => {
     await expect(page.locator('.canvas-statusbar').last()).toContainText('25 nodes');
     await expect(page.locator('.canvas-statusbar').last()).toContainText('24 connections');
   });
+});
+
+test('keeps Help, Overview and the object-list summary reachable on short and narrow 3D surfaces', async ({
+  page,
+  request,
+}) => {
+  const graph = await create(request, 'Compact 3D control stack', 'process');
+  await ready(page);
+  const overview = page.getByTestId('overview-controls');
+  const objectList = page.locator('.spatial-object-list');
+  for (const viewport of [
+    { width: 320, height: 480 },
+    { width: 780, height: 400 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await overview.locator('summary').click();
+    await expect(overview).toHaveAttribute('open', '');
+    await overview.getByRole('checkbox', { name: 'Semantic overview' }).check();
+    await overview.getByRole('button', { name: 'Collapse to overview', exact: true }).click();
+    await overview.getByRole('checkbox', { name: 'Semantic overview' }).uncheck();
+    await objectList.locator(':scope > summary').click();
+    await expect(objectList).toHaveAttribute('open', '');
+    await objectList.locator(':scope > summary').click();
+    await expect(objectList).not.toHaveAttribute('open', '');
+    await overview.locator('summary').click();
+    await page.getByRole('button', { name: 'Hide 3D help', exact: true }).click();
+    await expect(page.getByRole('button', { name: '3D help', exact: true })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    await page.getByRole('button', { name: '3D help', exact: true }).click();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+  }
+  await page.getByRole('button', { name: 'Return to 2D', exact: true }).click();
+  await saved(page);
+  expect((await stored(request, graph.diagram.id)).nodes).toEqual(graph.nodes);
+  expect((await stored(request, graph.diagram.id)).edges).toEqual(graph.edges);
 });
 
 test('keeps the same 2,501 mind map cards and 2,500 links interactive as a complete 3D relief diagram', async ({

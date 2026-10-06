@@ -232,6 +232,61 @@ it('copies a fresh 3D buffer synchronously inside the capture event and letterbo
   });
 });
 
+it('keeps every storyboard object prioritized and waits for all resident 3D faces before recording', async () => {
+  const { graph } = setup(2);
+  graph.diagram.settings.spatialView = { version: 1, mode: '3d' };
+  const canvas = document.createElement('canvas');
+  canvas.dataset.testid = 'spatial-canvas';
+  canvas.dataset.faceSource = 'loading';
+  canvas.dataset.faceProjections = JSON.stringify([
+    { id: 'node0', source: '2d-node' },
+    { id: 'node1', source: 'fallback' },
+  ]);
+  document.body.append(canvas);
+  const frames: FrameRequestCallback[] = [];
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+    frames.push(callback);
+    return frames.length;
+  });
+  const tick = async () => {
+    frames.splice(0).forEach((callback) => callback(0));
+    await Promise.resolve();
+    await Promise.resolve();
+  };
+  let targets: string[] | undefined;
+  const prepare = (event: Event) => {
+    targets = (event as CustomEvent<VideoSpatialPrepareRequest>).detail.nodeIds;
+  };
+  window.addEventListener(VIDEO_SPATIAL_PREPARE, prepare);
+  detach.push(() => window.removeEventListener(VIDEO_SPATIAL_PREPARE, prepare));
+  const signal = new AbortController();
+  const scene = await createVideoScene(signal.signal);
+  let ready = false;
+  const pending = scene.prepare('node0', ['node0', 'node1']).then(() => {
+    ready = true;
+  });
+  void pending.catch(() => undefined);
+  try {
+    await tick();
+    await tick();
+    await tick();
+    expect(targets).toEqual(['node0', 'node1']);
+    expect(ready).toBe(false);
+    canvas.dataset.faceSource = '2d-node';
+    canvas.dataset.faceProjections = JSON.stringify([
+      { id: 'node0', source: '2d-node' },
+      { id: 'node1', source: '2d-node' },
+    ]);
+    await tick();
+    await pending;
+    expect(ready).toBe(true);
+  } finally {
+    signal.abort();
+    scene.dispose();
+    canvas.remove();
+  }
+});
+
 it('reports unavailable 3D frames and aborts without emitting a blank scene', async () => {
   const { graph } = setup();
   graph.diagram.settings.spatialView = { version: 1, mode: '3d' };

@@ -63,6 +63,7 @@ avoiding the upstream package loader's unresolved initialization on failure.
 bytes without resetting between files; synthesis values count completed chunks. Initialization has no
 invented percentage. Player preload reports completed work across the engine
 and up to three narrations and reaches 100% only when that work is ready.
+If a preload attempt fails, the enabled lookahead can retry when Play resumes at the same step.
 `cancel()` / `dispose()` cancel queued and running work, `cachedVoices()` lists downloaded models, and `clearCache()` removes
 the voice cache. The browser setting `presentation-voice` accepts only the
 four catalog IDs and defaults to `en_GB-alan-medium`.

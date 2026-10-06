@@ -152,6 +152,7 @@ export async function createVideoScene(signal: AbortSignal): Promise<VideoScene>
         new CustomEvent<VideoSpatialPrepareRequest>(VIDEO_SPATIAL_PREPARE, {
           detail: {
             nodeId,
+            nodeIds,
             error: (message) => {
               failure = message;
             },
@@ -170,15 +171,9 @@ export async function createVideoScene(signal: AbortSignal): Promise<VideoScene>
         );
         if (!canvas) throw new Error('The 3D diagram renderer is unavailable.');
         if (canvas.dataset.faceSource === 'empty') return;
-        const projections = JSON.parse(canvas.dataset.faceProjections ?? '[]') as {
-          id: string;
-          source?: string;
-        }[];
-        if (
-          (!nodeId && canvas.dataset.faceSource === '2d-node') ||
-          (nodeId && projections.some((face) => face.id === nodeId && face.source === '2d-node'))
-        )
-          return;
+        // The resident texture set is bounded by the 3D renderer. Preparing only
+        // the first scene card can freeze fallback faces into the recorded hold.
+        if (canvas.dataset.faceSource === '2d-node') return;
         if (performance.now() > deadline)
           throw new Error('The native 3D card textures could not be prepared.');
         await nextFrame(abort.signal);

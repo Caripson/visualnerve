@@ -27,6 +27,23 @@ const uuid = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 const requireValue = (condition: unknown, message: string) => {
   if (!condition) throw new StorageError(422, message);
 };
+const object = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === 'object' && !Array.isArray(value);
+function validateFields(entity: object, label: string, textFields: string[], tags = false) {
+  requireValue(object(entity), `Invalid ${label.toLowerCase()}.`);
+  const fields = entity as Record<string, unknown>;
+  requireValue(object(fields.metadata), `${label} metadata must be an object.`);
+  if (tags)
+    requireValue(
+      Array.isArray(fields.tags) && fields.tags.every((tag) => typeof tag === 'string'),
+      `${label} tags must be an array of strings.`,
+    );
+  for (const field of textFields)
+    requireValue(
+      fields[field] === undefined || typeof fields[field] === 'string',
+      `${label} ${field} must be text.`,
+    );
+}
 export function validateDrawingLayer(value: unknown): asserts value is DrawingLayer {
   requireValue(
     value && typeof value === 'object' && !Array.isArray(value),
@@ -83,14 +100,17 @@ function validateBase(entity: { version: number; createdAt: string; updatedAt: s
   requireValue(
     Number.isSafeInteger(entity.version) &&
       entity.version > 0 &&
+      typeof entity.createdAt === 'string' &&
+      typeof entity.updatedAt === 'string' &&
       Number.isFinite(Date.parse(entity.createdAt)) &&
       Number.isFinite(Date.parse(entity.updatedAt)),
     'Invalid entity version or timestamps.',
   );
 }
 export function validateOwner(owner: Owner) {
-  requireValue(owner && typeof owner === 'object', 'Invalid owner.');
+  validateFields(owner, 'Owner', ['externalId', 'email', 'team', 'role']);
   validateBase(owner);
+  requireValue(typeof owner.color === 'string', 'Owner color must be text.');
   requireValue(uuid.test(owner.id), 'Owner id must be a UUID.');
   requireValue(
     typeof owner.name === 'string' && owner.name.trim() && owner.name.length <= 300,
@@ -101,12 +121,55 @@ export function validateOwner(owner: Owner) {
     'Unsupported owner kind.',
   );
 }
-export function validateGraph(graph: Graph, trustedDataset?: CsvDataset | CsvDataset[]) {
+/** Safe field shapes before repository normalization or diagram projections. */
+export function validateGraphFields(graph: Graph) {
   requireValue(
-    graph && graph.diagram && [graph.nodes, graph.edges, graph.owners].every(Array.isArray),
+    object(graph) &&
+      object(graph.diagram) &&
+      [graph.nodes, graph.edges, graph.owners].every(Array.isArray),
     'Invalid graph structure.',
   );
   validateBase(graph.diagram);
+  validateFields(graph.diagram, 'Diagram', ['description', 'folder'], true);
+  requireValue(typeof graph.diagram.favorite === 'boolean', 'Invalid diagram favorite flag.');
+  requireValue(object(graph.diagram.settings), 'Invalid diagram settings.');
+  // Validate native JSON fields before specialized projections inspect metadata
+  // or the UI assumes tags/text are safe to render.
+  for (const node of graph.nodes) {
+    validateFields(
+      node,
+      'Node',
+      [
+        'externalId',
+        'description',
+        'notes',
+        'url',
+        'status',
+        'color',
+        'startDate',
+        'endDate',
+        'dueDate',
+      ],
+      true,
+    );
+    requireValue(typeof node.collapsed === 'boolean', 'Invalid node collapsed flag.');
+    // API null aliases clear ownership or detach a parent before normalization.
+    for (const field of ['ownerId', 'parentId'] as const)
+      requireValue(
+        node[field] == null || typeof node[field] === 'string',
+        `Node ${field} must be text.`,
+      );
+    requireValue(
+      Array.isArray(node.ownerIds) && node.ownerIds.every((id) => typeof id === 'string'),
+      'Invalid owner references.',
+    );
+  }
+  for (const edge of graph.edges)
+    validateFields(edge, 'Connection', ['externalId', 'label', 'description']);
+  for (const owner of graph.owners) validateOwner(owner);
+}
+export function validateGraph(graph: Graph, trustedDataset?: CsvDataset | CsvDataset[]) {
+  validateGraphFields(graph);
   requireValue(
     graph.format === 'visual-nerve' && graph.formatVersion === 1,
     'Unsupported graph format.',
@@ -300,6 +363,7 @@ export function validateGraph(graph: Graph, trustedDataset?: CsvDataset | CsvDat
     externalEdges = new Set<string>();
   for (const edge of graph.edges) {
     validateBase(edge);
+    requireValue(typeof edge.edgeType === 'string', 'Connection type must be text.');
     requireValue(
       uuid.test(edge.id) &&
         edge.diagramId === graph.diagram.id &&

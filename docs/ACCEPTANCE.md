@@ -1,6 +1,6 @@
 # Acceptance evidence
 
-Verified on 2026-10-05 in the provided Linux/WSL workspace with Go 1.27.1, Node 24.2.0, Hugo 0.165.0 and Playwright Chromium. The browser persistence architecture is implemented; [REQUIREMENTS.md](REQUIREMENTS.md) maps each specification section to its implementation and checks.
+Initial acceptance was verified on 2026-10-05 in the provided Linux/WSL workspace with Go 1.27.1, Node 24.2.0, Hugo 0.165.0 and Playwright Chromium. Later verification records follow below; the [2026-10-07 product audit](#2026-10-07-deep-product-audit) is the latest. [REQUIREMENTS.md](REQUIREMENTS.md) maps each specification section to its implementation and checks.
 
 ## Final report
 
@@ -698,3 +698,66 @@ player/storyboard Chrome regressions passed, including narrow-screen controls,
 movie. The static audit contains 304 application files and 49 offline-shell
 assets, without user data. Work remains directly on main and deployment to
 S3/CloudFront remains manual.
+
+## 2026-10-07: Deep product audit
+
+The audit ran on macOS with Node 22 and the installed Google Chrome, using
+isolated test profiles and synthetic diagrams. It covered editing and undo,
+IndexedDB persistence and backup/restore, CSV exploration and relationships,
+SQL/code visualization, native/Draw.io/Visio imports, permissions and privacy,
+REST/MCP, 2D/3D interaction, walkthroughs and rendered exports.
+
+Verified regressions and fixes:
+
+- Dialogs retained keyboard focus while their controlled inputs updated.
+  Previously a changed close callback restarted the focus effect after each
+  character. Tab navigation now skips disabled and explicitly hidden controls.
+- Invalid native field shapes return a validation error before normalization
+  or saving. Malformed imports and REST/MCP mutations leave existing records
+  unchanged; nested custom metadata is preserved.
+- A pending clipboard read cannot paste into a different diagram or into the
+  editor after a modal opens or local-storage consent is revoked.
+- Undo/Redo retains canonical node and connection order, preserving diagram
+  stacking and inherited mind-map colors. Opening another diagram or creating
+  a backup first commits the active inline title draft.
+- Linked CSV exploration accepts a valid source with no matching selected
+  rows: count is zero and numeric measures are empty. Original source rows,
+  notes, status and manual relationships survive clearing the focus.
+- SQL output parsing keeps operands after word operators such as NOT, AND,
+  BETWEEN, IN and COLLATE in the expression rather than treating them as
+  implicit output aliases. Explicit and qualified-column aliases still work.
+- Failed background voice preparation can retry at the same walkthrough step.
+  Keys that neither edit the diagram nor operate the camera do not pause a
+  3D walkthrough.
+- 3D movie preparation waits for the complete bounded set of resident card
+  textures. A held second-card decode prevents recording the first frame
+  until its appearance is ready.
+- A failed 3D module download offers a reload that first settles local edits
+  and saves. Saving failures retain the open changes. Short-screen 3D panels
+  share a scrollable stack without covering each other's summaries; desktop
+  sidebar projects and footer actions remain reachable at 780 × 400.
+
+The final unit/component suite passed **1,228 tests in 124 files**, including
+48 additional regression tests. Go race tests and vet, Prettier, strict
+TypeScript, and the production Vite/Hugo/OpenAPI/Go build passed. The static
+audit contains 304 application files and 49 offline-shell assets.
+
+The final complete Chrome E2E run passed **all 95 tests in 17.0 minutes**.
+Coverage includes the 100,000-row/2,000-customer CSV fixture, 1,000/5,000-node
+2D graphs and the 2,501-card 3D fixture. Two newly added test setup errors were
+corrected and checked independently before rerunning the complete suite.
+These are checks on the development host, not performance guarantees for
+other devices.
+
+An additional real-Piper Chrome acceptance run used the pinned local Alan
+model fixture with the production neural runtime. The warm player exported
+a 467,700-byte AVC/AAC MP4 in 5.16 seconds. It decoded as a 7.317-second movie
+with nonzero audio (RMS 0.081, peak 0.374), no page errors or outbound narration
+text, and an unchanged saved graph. Its decoded frame was visually inspected.
+Normal tests and CI still do not download voice models.
+
+The previously failing CI 3D object-list toggle was reproduced as overlapping
+panels and passes with the corrected layout. API and export documentation,
+the 3D/speech guides and the bundled user guide describe the changed behavior.
+No API routes or exchange-format versions changed. Work remains directly on
+main; deployment to S3/CloudFront remains manual.

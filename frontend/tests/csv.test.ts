@@ -167,6 +167,34 @@ describe('CSV datasets and column profiles', () => {
 });
 
 describe('CSV hierarchy and measures', () => {
+  it('analyzes original row selections after cleanup without accepting empty stored sources or duplicate rows', () => {
+    const dataset = parseCsv('Customer;Amount\n1-A;1,5\n2-B;2,5\n3-A;4,5', 'Selected.csv');
+    const config: CsvAnalysis = {
+      ...defaultAnalysis(dataset),
+      metrics: [
+        { id: 'count', operation: 'count' },
+        { id: 'sum', operation: 'sum', columnId: 'c1' },
+      ],
+      columnRules: [{ columnId: 'c0', pattern: '^\\d+-', replacement: '' }],
+    };
+    const before = structuredClone(dataset);
+    const selected = groupCsv(dataset, config, [0, 2]);
+    expect(selected.rowCount).toBe(2);
+    expect(value(selected, 'sum')).toBe(6);
+    expect(selected.children.map((child) => [child.label, child.rowCount])).toEqual([['A', 2]]);
+    const empty = groupCsv(dataset, config, []);
+    expect(empty).toMatchObject({ rowCount: 0, children: [], totalChildren: 0 });
+    expect(value(empty, 'count')).toBe(0);
+    expect(value(empty, 'sum')).toBeNull();
+    expect(dataset).toEqual(before);
+    expect(() => groupCsv(dataset, config, [0, 0])).toThrow('unique existing row indices');
+    expect(() => groupCsv(dataset, config, [-1])).toThrow('unique existing row indices');
+    expect(() => groupCsv(dataset, config, [dataset.rows.length])).toThrow(
+      'unique existing row indices',
+    );
+    expect(() => groupCsv({ ...dataset, rows: [] }, config, [])).toThrow('data rows');
+  });
+
   it('calculates parent means and medians from raw rows, alongside count/sum/min/max/distinct', () => {
     const dataset = parseCsv(source, 'Revenue.csv');
     const config = analysis(dataset);

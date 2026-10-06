@@ -654,8 +654,7 @@ export function reanalyzeDataModel(graph: Graph): Graph {
       dataset,
       datasets: undefined,
     };
-    const scoped = modelDatasetForAnalysis(graph, dataset.id, scopes)!;
-    const generated = csvGraph(scoped, analysis, previous);
+    const generated = csvGraph(dataset, analysis, previous, scopes.get(dataset.id) ?? []);
     const generatedIds = new Set(generated.nodes.map((node) => node.id));
     const hadSource = sourceNodes.length > 0;
     const updated = generated.nodes.map((node) =>

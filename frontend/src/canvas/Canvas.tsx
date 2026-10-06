@@ -47,11 +47,8 @@ import { exploreRelationshipsAsync } from '../analysis/client';
 import { getExploration } from '../analysis/types';
 import '../components/analysis-tools.css';
 import { getSpatialView, setSpatialView, type SpatialCamera } from '../spatial/types';
-import type { SpatialCanvasProps } from '../spatial/SpatialCanvas';
+import { SpatialLoadFailure } from '../spatial/SpatialLoadFailure';
 import {
-  PRESENTATION_FOCUS,
-  presentationFocus,
-  presentationArrived,
   presentationViewportKey,
   PRESENTATION_RELEASE,
   PRESENTATION_REVEAL,
@@ -60,23 +57,6 @@ import {
 } from '../presentation/camera';
 import { attachCanvasPresentationCamera } from '../presentation/canvas-camera';
 import { VIDEO_CANVAS_INFO, type VideoCanvasInfoRequest } from '../presentation/video-frame-events';
-function SpatialLoadFailure({ onReturnTo2D }: SpatialCanvasProps) {
-  useEffect(() => {
-    const focus = (event: Event) => {
-      const request = presentationFocus(event);
-      if (request)
-        presentationArrived(request, 'The 3D view could not be loaded. Return to 2D to play.');
-    };
-    window.addEventListener(PRESENTATION_FOCUS, focus);
-    return () => window.removeEventListener(PRESENTATION_FOCUS, focus);
-  }, []);
-  return (
-    <div className="canvas-shell spatial-canvas">
-      <p role="status">The 3D view could not be loaded. Continue editing in 2D.</p>
-      <button onClick={onReturnTo2D}>Return to 2D</button>
-    </div>
-  );
-}
 const SpatialCanvas = lazy(() =>
   import('../spatial/SpatialCanvas')
     .then((module) => ({ default: module.SpatialCanvas }))

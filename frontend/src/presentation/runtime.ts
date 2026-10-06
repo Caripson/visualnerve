@@ -471,8 +471,11 @@ export class PresentationPlayer {
         this.update({ progress: 1, message: 'Preload 100% · Voice and next steps ready.' });
     })()
       .catch((error) => {
-        if (active())
+        if (active()) {
+          // A failed window is not prepared. Play may retry it after a transient error.
+          this.backgroundIndex = -1;
           this.update({ message: `Preload failed: ${error.message}`, progress: previous });
+        }
       })
       .finally(() => {
         if (this.background !== abort) return;

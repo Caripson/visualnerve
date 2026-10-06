@@ -20,6 +20,42 @@ const resultNodes = (sql: string) =>
     .filter((entry) => entry !== undefined);
 
 describe('Local SELECT query structure', () => {
+  it('preserves implicit aliases after qualified columns whose names resemble word operators', () => {
+    const block = resultNodes('SELECT r.zone timezone, r.collate label FROM records r')[0];
+    expect(block.columns.map((column) => [column.expression, column.alias])).toEqual([
+      ['r.zone', 'timezone'],
+      ['r.collate', 'label'],
+    ]);
+    expect(block.columns.map((column) => column.references[0].column)).toEqual(['zone', 'collate']);
+  });
+
+  it.each([
+    ['NOT is_deleted', ['is_deleted']],
+    ['active AND verified', ['active', 'verified']],
+    ['active OR verified', ['active', 'verified']],
+    ['name LIKE pattern', ['name', 'pattern']],
+    ['name NOT ILIKE pattern', ['name', 'pattern']],
+    ['amount BETWEEN minimum AND maximum', ['amount', 'minimum', 'maximum']],
+    ['created_at AT TIME ZONE timezone', ['created_at', 'timezone']],
+  ])(
+    'keeps every operand of %s instead of treating the last column as an alias',
+    (expression, columns) => {
+      const block = resultNodes(`SELECT ${expression} FROM records`)[0];
+      expect(block.columns[0]).toMatchObject({ name: 'Expression 1', expression });
+      expect(block.columns[0].alias).toBeUndefined();
+      expect(block.columns[0].references.map((reference) => reference.column)).toEqual(columns);
+      expect(
+        block.columns[0].references.every((reference) => reference.resolution === 'resolved'),
+      ).toBe(true);
+      for (const alias of ['flag', '"Readable flag"']) {
+        const aliased = resultNodes(`SELECT ${expression} ${alias} FROM records`)[0].columns[0];
+        expect(aliased.expression).toBe(expression);
+        expect(aliased.alias).toBe(alias.replaceAll('"', ''));
+        expect(aliased.references.map((reference) => reference.column)).toEqual(columns);
+      }
+    },
+  );
+
   it('visualizes a complete complex fictional report with distinct aliases, both derived SELECTs and unmodified predicates', () => {
     const result = parseSql(fixture, 'Contract report');
     expect(result).toMatchObject({

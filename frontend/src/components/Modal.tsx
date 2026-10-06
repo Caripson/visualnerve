@@ -15,19 +15,25 @@ export function Modal({
   dismissible?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const options = useRef({ close, dismissible });
+  options.current = { close, dismissible };
   useEffect(() => {
     const previous = document.activeElement as HTMLElement;
-    const first = ref.current?.querySelector<HTMLElement>('input,button,select,textarea');
-    first?.focus();
+    const focusable = () =>
+      Array.from(
+        ref.current?.querySelectorAll<HTMLElement>('button,input,select,textarea,a[href]') ?? [],
+      ).filter(
+        (element) =>
+          !element.matches(':disabled') && !element.closest('[hidden], [aria-hidden="true"]'),
+      );
+    (focusable()[0] ?? ref.current)?.focus();
     const listener = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        if (dismissible) close();
+        if (options.current.dismissible) options.current.close();
       }
       if (e.key === 'Tab') {
-        const all = ref.current?.querySelectorAll<HTMLElement>(
-          'button:not(:disabled),input,select,textarea,a[href]',
-        );
+        const all = focusable();
         if (!all?.length) return;
         const first = all[0],
           last = all[all.length - 1];
@@ -45,7 +51,7 @@ export function Modal({
       window.removeEventListener('keydown', listener);
       previous?.focus();
     };
-  }, [close, dismissible]);
+  }, []);
   return (
     <div
       className="modal-shade"
@@ -57,6 +63,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        tabIndex={-1}
       >
         <div className="modal-heading">
           <h2>{title}</h2>
