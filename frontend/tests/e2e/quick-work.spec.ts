@@ -280,13 +280,9 @@ test.describe('phone workspace', () => {
       ratio: 0.999,
     });
     await page.getByLabel('More tools', { exact: true }).tap();
-    await expect(
-      page.locator('.mobile-tool-menu').getByRole('button', { name: 'Auto layout', exact: true }),
-    ).toBeVisible();
-    await page
-      .locator('.mobile-tool-menu')
-      .getByRole('button', { name: 'Settings', exact: true })
-      .tap();
+    const tools = page.getByRole('dialog', { name: 'More tools menu', exact: true });
+    await expect(tools.getByRole('button', { name: 'Auto layout', exact: true })).toBeVisible();
+    await tools.getByRole('button', { name: 'Settings', exact: true }).tap();
     await expect(page.getByRole('dialog')).toContainText('Johan Caripson');
     await expect(page.getByRole('dialog')).toContainText('MIT License');
   });

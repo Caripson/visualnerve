@@ -14,7 +14,7 @@ Card fronts reuse the actual 2D node components and styles as local textures. Fo
 
 Click an object or relationship to select it. The searchable, paged **Objects and relationships** list provides keyboard selection and access when WebGL is unavailable. Properties edits work in both views, and completed objects remain visibly marked. Connect selected objects using Properties or **Connect nodes**, then edit direction, style and label. **3D placement** changes independent world coordinates; Automatic position returns an object to derived placement. The 2D pen layer stays in the overview and exports.
 
-**Data → New 3D truck lifecycle example** (phones: **…**) creates a truck lifecycle diagram with ordinary topics, descriptions and connections. AI/MCP can create diagrams over any subject using the same node and relationship commands. A truck lifecycle can contain thousands of topics about components, operation, repairs and recycling. Its nodes retain the same positions when viewed from different angles, and returning to 2D restores the familiar overview.
+**Examples → New 3D truck lifecycle example** (phones: **…**) creates a truck lifecycle diagram with ordinary topics, descriptions and connections. AI/MCP can create diagrams over any subject using the same node and relationship commands. A truck lifecycle can contain thousands of topics about components, operation, repairs and recycling. Its nodes retain the same positions when viewed from different angles, and returning to 2D restores the familiar overview.
 
 ## Storage and MCP
 

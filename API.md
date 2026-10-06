@@ -13,6 +13,9 @@ Base: `http://localhost:4317/api/v1`. Responses and request bodies are JSON unle
 | POST | /spatial-diagrams | Create and open a 3D diagram; return complete Graph |
 | POST | /sql/preview | Analyze SELECT/WITH or DDL locally; return graph/counts/warnings without saving |
 | POST | /sql/diagrams | Analyze SQL, save transactionally and open the diagram; return complete Graph |
+| GET | /code/languages | List all 50 language IDs, extensions and capabilities |
+| POST | /code/preview | Analyze source files locally; return structural graph/counts/warnings without saving |
+| POST | /code/diagrams | Save and open a code dependency diagram; write access required |
 | GET / PATCH / DELETE | /diagrams/{id} | Complete canonical graph / diagram properties / cascading deletion |
 | GET / POST | /diagrams/{id}/nodes | List / create node |
 | GET / PATCH / DELETE | /nodes/{id} | Read / update / delete and detach children |
@@ -110,3 +113,9 @@ When several distinct workspaces are connected, pass `workspaceId` to MCP or `X-
 The public static site supplies no content API. Commands always target a user’s loopback bridge; public Swagger pages are read-only reference, while local Swagger can execute against its local origin. Read only permits GET, POST /export and exact POST /sql/preview, rejecting all mutations and permission escalation. Off closes the socket. Browser closure or disconnection returns 503 (MCP tools report isError), with no fallback storage. Both REST and MCP use the same browser repository.
 
 Hosted apps require an exact --allowed-origin and may require trusted local TLS and browser local-network permission. The bridge rejects non-loopback listen addresses and remote client peers. See [deployment setup](docs/DEPLOYMENT.md#optional-local-mcp). /workspace/import uses Merge; destructive Replace and global deletion are separately confirmed actions in the browser UI. Backup schema/date and excluded local grants/consent are described in [EXPORT_FORMAT.md](EXPORT_FORMAT.md).
+
+## Code dependency import
+
+`GET /code/languages` discovers the supported IDs. Both `POST /code/preview` and `POST /code/diagrams` accept `{name?,files:[{path,content,language?}],mode?:"files"|"symbols",focus?}`. Paths are unique relative paths; ambiguous extensions need an explicit language ID. Focus is a case-insensitive path/name substring plus immediate related objects. Unknown fields, unknown IDs, duplicate paths and excessive input are rejected. Limits: 500 files, 5 MiB/file, 20 MiB total UTF-8, 10,000 symbols, 5,000 diagram objects and 10,000 connections; 100,000 lines/file, 500,000 lines/project, 20,000 characters/line; worker deadline 30 seconds. JSON transport remains 32 MiB.
+
+Preview is permitted with read-only access and returns the graph plus language/mode/counts/warnings without saving or navigating. Create requires write access, rechecks persisted grants/consent after analysis, commits one transaction, then opens the canonical graph. Revoking access cancels analysis. The local source is never executed. Extracted identifiers, paths, lines and relationship evidence/confidence are saved; full source/comments/nonstructural literals are not. Syntax, heuristic and unresolved confidence must remain distinct. These are structural outlines, not complete compiler semantics or verified runtime call graphs. All language capabilities, caveats, example input and worker details are in [code import](docs/CODE_IMPORT.md).

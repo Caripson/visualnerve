@@ -5,6 +5,7 @@ import { useEditor } from '../state/editor';
 import type { Graph } from '../model/types';
 import { getCsvNode } from '../data/csv';
 import { getDrawingLayer } from '../drawing/types';
+import { getCodeObject } from '../code/schema';
 import { getSqlQuerySource, getSqlQueryResult } from '../sql/query-schema';
 import { buildLovablePrompt, lovableLink, type LovableScope } from '../export/lovable';
 import { download, safeName } from '../export/semantic';
@@ -159,6 +160,12 @@ export function LovableDialog({ close }: { close: () => void }) {
           <p className="lovable-disclosure">
             SQL query expressions and conditions, including literal values, are included in the
             prompt. Review them before sharing.
+          </p>
+        )}
+        {graph.nodes.some((node) => getCodeObject(node)) && (
+          <p className="lovable-disclosure">
+            Code identifiers, file paths, source locations and relationship confidence are included.
+            Original source is excluded. Review the paths and unresolved behavior before sharing.
           </p>
         )}
         {!!getDrawingLayer(graph.diagram.settings.drawing)?.strokes.length && (

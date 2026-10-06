@@ -46,7 +46,7 @@ Codex → local MCP bridge → active browser → IndexedDB
 
 MCP is Off by default; users explicitly choose Read only or Read + write. This grants connected tools access to diagram content, and optionally edits. Choose the tools you grant access to. Tools may handle received content under their own settings; Visual Nerve sends responses only through the local connection.
 
-The bridge binds to localhost, checks exact trusted app origins and forwards commands in memory. The browser uses the same validation and transactions as the UI. Read-only access permits reads, export and exact SQL preview, and rejects mutations and grant escalation. SQL preview analyzes supplied SQL without saving a graph; creating a SQL diagram requires write access. The bridge cannot read IndexedDB independently, read graphs from S3, store a second copy or fall back to another database. Off, disconnection and browser closure produce clear errors. See [setup](DEPLOYMENT.md#optional-local-mcp).
+The bridge binds to localhost, checks exact trusted app origins and forwards commands in memory. The browser uses the same validation and transactions as the UI. Read-only access permits reads, export and exact SQL/code preview, and rejects mutations and grant escalation. SQL preview analyzes supplied SQL without saving a graph; creating a SQL diagram requires write access. The bridge cannot read IndexedDB independently, read graphs from S3, store a second copy or fall back to another database. Off, disconnection and browser closure produce clear errors. See [setup](DEPLOYMENT.md#optional-local-mcp).
 
 ## Network requests and deletion
 
@@ -57,3 +57,9 @@ Normal traffic downloads same-origin static app/documentation files. There is no
 **Delete diagram** removes one project. **Settings → Delete all local data** requires confirmation and removes all projects, owners, custom templates, settings and acceptance. It cannot be undone without an exported backup. Built-in templates are reseeded. App code caches and downloaded files are separate; deletion does not erase backups outside the browser.
 
 Audit evidence: [REQUIREMENTS.md](REQUIREMENTS.md), [ACCEPTANCE.md](ACCEPTANCE.md).
+
+## Source code import
+
+Source files, folders and pasted scripts are analyzed locally in a cancellable worker. Nothing is executed, installed or sent to a remote analysis service. Source is a temporary draft: diagrams save recognized names, paths, line numbers, structural identifiers, bounded summaries, dependency evidence and confidence. Complete source, comments and nonstructural literal values are not saved. Quoted resource/table/import/field names can remain as structural identifiers. Identifiers and paths may still be sensitive. User-added notes/descriptions follow normal storage/export behavior.
+
+JSON and backups preserve this recognized structure, and Markdown/Lovable share allowlisted summaries with confidence. Review the preview before sharing. The optional local API/MCP passes supplied code transiently over the loopback bridge to the browser, without server storage. Read-only access permits exact code preview and language discovery; saving a code diagram requires write access. No source refresh runs in the background.

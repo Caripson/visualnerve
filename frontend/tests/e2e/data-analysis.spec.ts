@@ -14,7 +14,7 @@ async function select(page: Page, title: string) {
   await expect(page.getByLabel('Node title')).toHaveValue(title);
 }
 async function dataTool(page: Page, name: string) {
-  await page.getByLabel('Data tools', { exact: true }).click();
+  await page.getByLabel('Explore data', { exact: true }).click();
   await page.getByRole('button', { name, exact: true }).click();
 }
 async function relatedScope(

@@ -17,15 +17,15 @@ import (
 	"github.com/coder/websocket/wsjson"
 )
 
-func TestSQLCommandsAllowBrowserAnalysisBeforeTransportTimeout(t *testing.T) {
-	for _, path := range []string{"/sql/preview", "/sql/diagrams", "/api/v1/sql/preview", "/api/v1/sql/diagrams"} {
+func TestAnalysisCommandsAllowBrowserAnalysisBeforeTransportTimeout(t *testing.T) {
+	for _, path := range []string{"/sql/preview", "/sql/diagrams", "/api/v1/sql/preview", "/api/v1/sql/diagrams", "/code/preview", "/code/diagrams", "/api/v1/code/preview", "/api/v1/code/diagrams"} {
 		if commandTimeout(path) <= 30*time.Second {
-			t.Fatal("SQL transport must outlive the cancellable 30-second worker", path)
+			t.Fatal("Analysis transport must outlive the cancellable 30-second worker", path)
 		}
 	}
-	for _, path := range []string{"/diagrams", "/sql/preview/extra", "/sql/preview?save=true"} {
+	for _, path := range []string{"/diagrams", "/sql/preview/extra", "/sql/preview?save=true", "/code/preview/extra", "/code/preview?save=true"} {
 		if commandTimeout(path) != 25*time.Second {
-			t.Fatal("only exact SQL paths receive the analysis timeout", path)
+			t.Fatal("only exact analysis paths receive the analysis timeout", path)
 		}
 	}
 }
@@ -238,7 +238,7 @@ func TestMCPToolUsesTheSameBrowserBridge(t *testing.T) {
 	if !strings.Contains(tool["description"].(string), "/spatial-diagrams") || !strings.Contains(tool["description"].(string), "independent readable 2D") {
 		t.Fatal("MCP tool must expose the 3D creation and 2D export contract", tool)
 	}
-	for _, required := range []string{"/sql/preview", "/sql/diagrams", "without saving", "requires write access", "No SQL connection or execution"} {
+	for _, required := range []string{"/sql/preview", "/sql/diagrams", "without saving", "requires write access", "No SQL connection or execution", "/code/languages", "/code/preview", "/code/diagrams", "50 languages", "unresolved"} {
 		if !strings.Contains(tool["description"].(string), required) {
 			t.Fatal("MCP tool must expose the local SQL query contract", required, tool)
 		}

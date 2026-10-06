@@ -10,6 +10,9 @@ describe('local browser MCP capability', () => {
     assertMcpAccess('read', '/export', 'POST');
     assertMcpAccess('read', '/sql/preview', 'POST');
     assertMcpAccess('read', '/api/v1/sql/preview', 'POST');
+    assertMcpAccess('read', '/code/languages', 'GET');
+    assertMcpAccess('read', '/code/preview', 'POST');
+    assertMcpAccess('read', '/api/v1/code/preview', 'POST');
     for (const method of ['POST', 'PUT', 'PATCH', 'DELETE'])
       expect(() => assertMcpAccess('read', '/nodes/test', method)).toThrow(/read-only/);
   });
@@ -24,6 +27,11 @@ describe('local browser MCP capability', () => {
       '/sql/preview?save=true',
       '/sql/preview/extra',
       '/sql/preview#save',
+      '/code/diagrams',
+      '/code/preview/../diagrams',
+      '/code/preview?save=true',
+      '/code/preview/extra',
+      '/code/preview#save',
     ])
       expect(() => assertMcpAccess('read', path, 'POST')).toThrow();
   });

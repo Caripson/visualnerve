@@ -29,3 +29,5 @@ The handoff uses Lovable's documented [Build with URL](https://docs.lovable.dev/
 Lovable allows at most 50,000 prompt characters. Visual Nerve also limits the encoded link to 60,000 characters to avoid oversized browser URLs. These limits never truncate the brief. Use **Copy build prompt** or **Download build brief** for the complete text, then open Lovable and paste it. The downloaded file keeps a separate copy. If clipboard access is unavailable, the preview is selected for manual copying.
 
 Opening the dialog sends no data. Opening Lovable explicitly shares the previewed text with that service. Normal editing and saving continue locally in IndexedDB. See [privacy](PRIVACY.md).
+
+Code diagrams contribute recognized language/path/name/kind/source-location summaries and relationships with their confidence and evidence. Original source and arbitrary metadata are excluded. The brief labels the outline as static and asks the recipient to clarify heuristic/unresolved behavior instead of inventing implementations. File paths and identifiers are included as shown; review them before sharing.

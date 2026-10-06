@@ -18,6 +18,11 @@ import { nodeStatuses, statusLabel } from '../ui/status';
 import { SqlRelationshipDetails, SqlTableDetails } from './SqlTableSummary';
 import { SqlQueryDetails, SqlQueryRelationshipDetails } from './SqlQuerySummary';
 import { AnalysisDialog, AnalysisTools } from './AnalysisTools';
+import {
+  CodeAnalysisProperties,
+  CodeObjectProperties,
+  CodeRelationProperties,
+} from './CodeProperties';
 import { SpatialProperties } from './SpatialProperties';
 interface PropertiesProps {
   editCsv?: (datasetId?: string) => void;
@@ -116,6 +121,7 @@ function PropertyPanel({
           />
           <SqlTableDetails node={node} />
           <SqlQueryDetails node={node} />
+          <CodeObjectProperties node={node} />
           <SpatialProperties graph={graph} node={node} />
           <div className="field">
             <span>Area icon</span>
@@ -397,6 +403,7 @@ function PropertyPanel({
           </Field>
           <SqlRelationshipDetails edge={edge} />
           <SqlQueryRelationshipDetails edge={edge} />
+          <CodeRelationProperties edge={edge} />
           <Field title="Relationship">
             <input
               aria-label="Relationship type"
@@ -482,6 +489,7 @@ function PropertyPanel({
       <div className="property-content">
         <AnalysisTools onOpen={onOpenAnalysis} />
         <SpatialProperties graph={graph} />
+        <CodeAnalysisProperties graph={graph} />
         <div className="diagram-summary">
           <span className="eyebrow">WORKSPACE</span>
           <h2>{d.name}</h2>

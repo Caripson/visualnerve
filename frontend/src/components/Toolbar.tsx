@@ -22,6 +22,8 @@ import {
   Settings,
   Sparkles,
   Database,
+  Code2,
+  LayoutTemplate,
 } from 'lucide-react';
 import { useEditor } from '../state/editor';
 import { fitDiagram } from '../drawing/navigation';
@@ -34,6 +36,8 @@ import { statusLabel } from '../ui/status';
 import { getSpatialView, setSpatialView } from '../spatial/types';
 import { createSpatialExample } from '../spatial/examples';
 import { workspace } from '../storage/workspace';
+import { ToolbarMenu } from './ToolbarMenu';
+import { DataToolActions, ToolbarDataTools } from './ToolbarDataTools';
 export function Toolbar({
   open,
   showFilters,
@@ -342,124 +346,104 @@ export function Toolbar({
           <SlidersHorizontal size={14} />
           Filters
         </button>
-        <details className="quick-picker desktop-tools">
-          <summary aria-label="Data tools">
-            <Database size={15} /> Data
-          </summary>
-          <div className="picker-panel mobile-tool-menu">
-            <button
-              className="full"
-              onClick={(event) => {
-                event.currentTarget.closest('details')?.removeAttribute('open');
-                void newSpatialExample();
-              }}
-            >
-              New 3D truck lifecycle example
-            </button>
-            <button className="full" onClick={() => open('sources')}>
-              Data sources
-            </button>
-            <button className="full" onClick={() => open('refresh')}>
-              Refresh source
-            </button>
-            <button className="full" onClick={() => open('quality')}>
-              Data quality
-            </button>
-          </div>
-        </details>
-        <details className="quick-picker mobile-only mobile-more">
-          <summary aria-label="More tools">
-            <MoreHorizontal size={20} />
-          </summary>
-          <div className="picker-panel mobile-tool-menu">
-            <button
-              className="full"
-              onClick={(event) => {
-                event.currentTarget.closest('details')?.removeAttribute('open');
-                void newSpatialExample();
-              }}
-            >
-              New 3D truck lifecycle example
-            </button>
-            <button className="full" onClick={() => open('sources')}>
-              Data sources
-            </button>
-            <button className="full" onClick={() => open('refresh')}>
-              Refresh source
-            </button>
-            <button className="full" onClick={() => open('quality')}>
-              Data quality
-            </button>
-            <button className="full" onClick={() => open('sql')}>
-              <Database size={17} />
-              Import SQL script
-            </button>
-            <button className="full" onClick={() => open('lovable')}>
-              <Sparkles size={17} />
-              Build with Lovable
-            </button>
-            <select
-              aria-label="Mobile layout direction"
-              value={direction}
-              onChange={(e) => setDirection(e.target.value as Direction)}
-            >
-              {mindmap && <option value="BALANCED">Balanced branches</option>}
-              <option value="RIGHT">Left → Right</option>
-              <option value="LEFT">Right → Left</option>
-              <option value="DOWN">Top → Bottom</option>
-              <option value="UP">Bottom → Top</option>
-              <option value="RADIAL">Radial</option>
-            </select>
-            <button
-              className="full"
-              disabled={spatial || busy || !graph.nodes.length}
-              onClick={(e) => {
-                e.currentTarget.closest('details')?.removeAttribute('open');
-                void runLayout();
-              }}
-            >
-              <GitBranch size={17} />
-              Auto layout
-            </button>
-            <button
-              className="full"
-              disabled={graph.nodes.length < 2}
-              onClick={() => open('connect')}
-            >
-              <ArrowRight size={17} />
-              Connect nodes
-            </button>
-            <button
-              className="full"
-              onClick={(e) => {
-                toggleFilters();
-                e.currentTarget.closest('details')?.removeAttribute('open');
-              }}
-            >
-              <SlidersHorizontal size={17} />
-              Filters
-            </button>
-            <button
-              className="full"
-              onClick={(e) => {
-                useEditor.getState().select([]);
-                useEditor.setState({ mobilePanel: 'details' });
-                e.currentTarget.closest('details')?.removeAttribute('open');
-              }}
-            >
-              <PanelRight size={17} />
-              Project properties
-            </button>
-            <button className="full" onClick={() => open('settings')}>
-              <Settings size={17} />
-              Settings
-            </button>
-            <button className="full danger" onClick={() => open('delete')}>
-              <Trash2 size={17} />
-              Delete diagram
-            </button>
-          </div>
-        </details>
+        <ToolbarDataTools graph={graph} open={open} />
+        <ToolbarMenu label="Examples" icon={<LayoutTemplate size={15} />} className="desktop-tools">
+          <h3>Diagram examples</h3>
+          <p>Start a separate diagram to explore an example.</p>
+          <button className="full" onClick={() => void newSpatialExample()}>
+            New 3D truck lifecycle example
+          </button>
+        </ToolbarMenu>
+        <ToolbarMenu
+          label="More tools"
+          icon={<MoreHorizontal size={20} />}
+          className="mobile-only mobile-more"
+          text={false}
+        >
+          <button
+            className="full"
+            onClick={(event) => {
+              event.currentTarget.closest('details')?.removeAttribute('open');
+              void newSpatialExample();
+            }}
+          >
+            New 3D truck lifecycle example
+          </button>
+          <DataToolActions graph={graph} open={open} />
+          <h3>Import and build</h3>
+          <button className="full" onClick={() => open('code')}>
+            <Code2 size={17} />
+            Visualize code
+          </button>
+          <button className="full" onClick={() => open('sql')}>
+            <Database size={17} />
+            Import SQL script
+          </button>
+          <button className="full" onClick={() => open('lovable')}>
+            <Sparkles size={17} />
+            Build with Lovable
+          </button>
+          <select
+            aria-label="Mobile layout direction"
+            value={direction}
+            onChange={(e) => setDirection(e.target.value as Direction)}
+          >
+            {mindmap && <option value="BALANCED">Balanced branches</option>}
+            <option value="RIGHT">Left → Right</option>
+            <option value="LEFT">Right → Left</option>
+            <option value="DOWN">Top → Bottom</option>
+            <option value="UP">Bottom → Top</option>
+            <option value="RADIAL">Radial</option>
+          </select>
+          <button
+            className="full"
+            disabled={spatial || busy || !graph.nodes.length}
+            onClick={(e) => {
+              e.currentTarget.closest('details')?.removeAttribute('open');
+              void runLayout();
+            }}
+          >
+            <GitBranch size={17} />
+            Auto layout
+          </button>
+          <button
+            className="full"
+            disabled={graph.nodes.length < 2}
+            onClick={() => open('connect')}
+          >
+            <ArrowRight size={17} />
+            Connect nodes
+          </button>
+          <button
+            className="full"
+            onClick={(e) => {
+              toggleFilters();
+              e.currentTarget.closest('details')?.removeAttribute('open');
+            }}
+          >
+            <SlidersHorizontal size={17} />
+            Filters
+          </button>
+          <button
+            className="full"
+            onClick={(e) => {
+              useEditor.getState().select([]);
+              useEditor.setState({ mobilePanel: 'details' });
+              e.currentTarget.closest('details')?.removeAttribute('open');
+            }}
+          >
+            <PanelRight size={17} />
+            Project properties
+          </button>
+          <button className="full" onClick={() => open('settings')}>
+            <Settings size={17} />
+            Settings
+          </button>
+          <button className="full danger" onClick={() => open('delete')}>
+            <Trash2 size={17} />
+            Delete diagram
+          </button>
+        </ToolbarMenu>
         <button
           aria-label="Fit diagram"
           title="Fit diagram (F)"

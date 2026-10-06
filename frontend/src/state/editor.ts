@@ -6,7 +6,7 @@ import { mindmapTopics, newTopicPosition } from '../mindmap/tree';
 import { getCsvNode } from '../data/csv';
 import { getDrawingLayer } from '../drawing/types';
 import { validateDrawingLayer } from '../model/validation';
-import { reconnectedSqlEdge } from '../sql/relationships';
+import { reconnectedAnalysisEdge } from '../model/relationships';
 import { reconnectedDataModelEdge, suppressDataModelEdge } from '../data/model';
 import { applyViewConfiguration, deleteAnalysisView, saveAnalysisView } from '../analysis/views';
 import {
@@ -442,7 +442,7 @@ export const useEditor = create<Editor>((set, get) => ({
             edge.id === id
               ? reconnectedDataModelEdge(
                   edge,
-                  reconnectedSqlEdge(edge, {
+                  reconnectedAnalysisEdge(edge, {
                     ...edge,
                     ...patch,
                     ...(reconnected

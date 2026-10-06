@@ -37,6 +37,7 @@ import { AreaIcon } from '../ui/icons';
 import { MetricSummary } from '../components/MetricSummary';
 import { NodeStatus } from '../ui/NodeStatus';
 import { SqlTableSummary } from '../components/SqlTableSummary';
+import { CodeSummary } from '../components/CodeSummary';
 import { SqlQuerySummary } from '../components/SqlQuerySummary';
 
 export const nodeRegistry: Record<NodeKind, { label: string; icon: LucideIcon; shape: string }> = {
@@ -105,6 +106,7 @@ function renderer(kind: NodeKind) {
         {!overview && <MetricSummary node={node} />}
         {!overview && <SqlTableSummary node={node} />}
         {!overview && <SqlQuerySummary node={node} />}
+        {!overview && <CodeSummary node={node} />}
         {!overview && (
           <div className="node-bottomline">
             {owners.length > 0 && (

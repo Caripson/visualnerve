@@ -24,7 +24,9 @@ function spatialNavigation(graph: Graph | null, path: string, method: string, va
   if (!graph || method === 'GET') return false;
   if (
     method === 'POST' &&
-    ['/spatial-diagrams', '/sql/diagrams'].includes(path.replace(/^\/api\/v1/, ''))
+    ['/spatial-diagrams', '/sql/diagrams', '/code/diagrams'].includes(
+      path.replace(/^\/api\/v1/, ''),
+    )
   )
     return true;
   const [collection, id, action] = new URL(
@@ -88,7 +90,7 @@ export class Workspace {
   private navigation = 0;
   private settingsRevision = 0;
   private stopped = false;
-  private sqlCommands = new Set<AbortController>();
+  private analysisCommands = new Set<AbortController>();
   constructor(public repo: Repository = repository) {}
   async start() {
     this.stopped = false;
@@ -156,8 +158,8 @@ export class Workspace {
   }
   stop() {
     this.stopped = true;
-    for (const controller of this.sqlCommands) controller.abort();
-    this.sqlCommands.clear();
+    for (const controller of this.analysisCommands) controller.abort();
+    this.analysisCommands.clear();
     this.unsubscribe?.();
     this.observer?.unsubscribe();
   }
@@ -355,15 +357,17 @@ export class Workspace {
       assertMcpAccess(mcpAccess(latest?.value), path, method);
     }
     const endpoint = path.replace(/^\/api\/v1/, '');
-    const sql = method === 'POST' && ['/sql/preview', '/sql/diagrams'].includes(endpoint);
-    const controller = sql ? new AbortController() : undefined;
-    if (controller) this.sqlCommands.add(controller);
+    const analysis =
+      method === 'POST' &&
+      ['/sql/preview', '/sql/diagrams', '/code/preview', '/code/diagrams'].includes(endpoint);
+    const controller = analysis ? new AbortController() : undefined;
+    if (controller) this.analysisCommands.add(controller);
     const unsubscribe = controller
       ? useEditor.subscribe((state) => {
           if (
             !state.privacyAcknowledged ||
             state.mcpAccess === 'off' ||
-            (endpoint === '/sql/diagrams' && state.mcpAccess !== 'write')
+            (endpoint.endsWith('/diagrams') && state.mcpAccess !== 'write')
           )
             controller.abort();
         })
@@ -371,7 +375,7 @@ export class Workspace {
     try {
       const result = await this.execute<T>(path, method, data, {
         signal: controller?.signal,
-        beforeSqlSave: sql
+        beforeAnalysisSave: analysis
           ? async () => {
               await this.requireStorageConsent();
               const current = await this.repo.db.settings.get('mcp-access');
@@ -380,12 +384,15 @@ export class Workspace {
             }
           : undefined,
       });
-      if (method === 'POST' && ['/spatial-diagrams', '/sql/diagrams'].includes(endpoint))
+      if (
+        method === 'POST' &&
+        ['/spatial-diagrams', '/sql/diagrams', '/code/diagrams'].includes(endpoint)
+      )
         await this.open((result as Graph).diagram.id);
       return result;
     } finally {
       unsubscribe?.();
-      if (controller) this.sqlCommands.delete(controller);
+      if (controller) this.analysisCommands.delete(controller);
     }
   }
   async backup() {

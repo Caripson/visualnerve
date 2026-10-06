@@ -21,17 +21,13 @@ import {
   suppressDataModelEdge,
   reconnectedDataModelEdge,
 } from '../data/model';
-import { reconnectedSqlEdge } from '../sql/relationships';
+import { reconnectedAnalysisEdge } from '../model/relationships';
 import { markdown, parseImport } from '../export/semantic';
 import { database, type WorkspaceBackup, type WorkspaceDatabase } from './database';
 import { setSpatialView } from '../spatial/types';
-import { parseSqlAsync, SQL_FILE_LIMIT } from '../sql/client';
+import { analysisCommand, type AnalysisCommandOptions } from './analysis-commands';
 
-export interface CommandOptions {
-  signal?: AbortSignal;
-  /** Recheck external grants after asynchronous SQL analysis, before its first write. */
-  beforeSqlSave?: () => Promise<void>;
-}
+export type CommandOptions = AnalysisCommandOptions;
 
 type Patch = Record<string, unknown>;
 export interface SearchResult {
@@ -104,7 +100,7 @@ function reconnectedEdge(graph: Graph, previous: GraphEdge, next: GraphEdge): Gr
   const endpointsChanged =
     previous.sourceNodeId !== next.sourceNodeId || previous.targetNodeId !== next.targetNodeId;
   if (endpointsChanged) Object.assign(graph, suppressDataModelEdge(graph, previous));
-  const reconnected = reconnectedDataModelEdge(previous, reconnectedSqlEdge(previous, next));
+  const reconnected = reconnectedDataModelEdge(previous, reconnectedAnalysisEdge(previous, next));
   if (
     previous.metadata?.csvGenerated !== true ||
     (previous.sourceNodeId === next.sourceNodeId && previous.targetNodeId === next.targetNodeId)
@@ -574,35 +570,14 @@ export class Repository {
       [collection, id, action] = parts;
     const read = method === 'GET',
       remove = method === 'DELETE';
-    if (collection === 'sql') {
-      const endpoint = path.replace(/^\/api\/v1/, '');
-      if (!['/sql/preview', '/sql/diagrams'].includes(endpoint))
-        throw new StorageError(404, 'Unknown SQL endpoint.');
-      if (method !== 'POST') throw new StorageError(405, 'SQL analysis requires POST.');
-      const data = object(payload);
-      if (
-        Object.keys(data).some((key) => !['sql', 'name'].includes(key)) ||
-        typeof data.sql !== 'string' ||
-        !data.sql.trim() ||
-        (data.name !== undefined &&
-          (typeof data.name !== 'string' || !data.name.trim() || data.name.length > 500))
-      )
-        throw new StorageError(422, 'Provide a SQL script and an optional nonempty name.');
-      if (
-        data.sql.length > SQL_FILE_LIMIT ||
-        new TextEncoder().encode(data.sql).byteLength > SQL_FILE_LIMIT
-      )
-        throw new StorageError(422, 'SQL exceeds the 50 MiB file limit.');
-      const result = await parseSqlAsync(data.sql, String(data.name ?? 'Imported SQL'), {
-        signal: options.signal,
-      });
-      validateGraph(result.graph);
-      if (endpoint === '/sql/preview') return result as T;
-      await options.beforeSqlSave?.();
-      if (options.signal?.aborted)
-        throw new DOMException('SQL import was cancelled.', 'AbortError');
-      return (await this.importGraph(result.graph)) as T;
-    }
+    if (collection === 'sql' || collection === 'code')
+      return (await analysisCommand(
+        path.replace(/^\/api\/v1/, ''),
+        method,
+        payload,
+        options,
+        (graph) => this.importGraph(graph),
+      )) as T;
     if (collection === 'spatial-diagrams') {
       if (
         !['/spatial-diagrams', '/api/v1/spatial-diagrams'].includes(path) ||

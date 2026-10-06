@@ -3,6 +3,8 @@ import type { Graph } from '../model/types';
 import { graphDatasets, analysisForDataset } from '../data/model';
 import { QualityClient } from '../data/qualityClient';
 import type { EvidencePage, QualityOptions, QualityReport } from '../data/quality';
+import { getSqlQueryResult } from '../sql/query-schema';
+import { SqlQueryQualityChecks } from './SqlQueryQualityChecks';
 import { getSqlRelationship, getSqlTable } from '../sql/schema';
 import { Modal } from './Modal';
 import { DataEvidence, RelatedDataScope } from './DataEvidence';
@@ -99,6 +101,7 @@ export function DataQualityDialog({ graph, onClose }: { graph: Graph; onClose():
   }, [client, dataset, analysis, options, issueId, offset, report, graph]);
   const issue = report?.issues.find((entry) => entry.id === issueId);
   const sqlNodes = graph.nodes.filter((node) => !!getSqlTable(node));
+  const hasQuery = graph.nodes.some((node) => !!getSqlQueryResult(node));
   const external = sqlNodes.filter((node) => getSqlTable(node)!.external);
   const unresolved = graph.edges.filter((edge) => getSqlRelationship(edge)?.unresolved);
   return (
@@ -235,8 +238,11 @@ export function DataQualityDialog({ graph, onClose }: { graph: Graph; onClose():
             ))}
           </section>
         )}
-        {!dataset && !sqlNodes.length && (
-          <p>Import CSV data or a SQL schema to inspect its quality.</p>
+        <SqlQueryQualityChecks graph={graph} />
+        {!dataset && !sqlNodes.length && !hasQuery && (
+          <p>
+            Import CSV data, a SQL schema or a SELECT query to inspect its structure and quality.
+          </p>
         )}
       </div>
     </Modal>

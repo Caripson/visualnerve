@@ -59,3 +59,9 @@ The brief includes your instructions and chosen objects, written descriptions, n
 Visual Nerve uses no analytics, advertising scripts or remote error reporting. Normal network requests download app files; they contain no diagram content. A static host may keep ordinary website access logs, such as requested file paths and IP addresses. Your graph is never sent in those requests.
 
 Created by **Johan Caripson**. [MIT license](/license/) · [Source code on GitHub](https://github.com/Caripson/visualnerve).
+
+## Source code import
+
+Source files, folders and pasted scripts are analyzed locally in a cancellable worker. Nothing is executed, installed or sent to a remote analysis service. Source is a temporary draft: diagrams save recognized names, paths, line numbers, structural identifiers, bounded summaries, dependency evidence and confidence. Complete source, comments and nonstructural literal values are not saved. Quoted resource/table/import/field names can remain as structural identifiers. Identifiers and paths may still be sensitive. User-added notes/descriptions follow normal storage/export behavior.
+
+JSON and backups preserve this recognized structure, and Markdown/Lovable share allowlisted summaries with confidence. Review the preview before sharing. The optional local API/MCP passes supplied code transiently over the loopback bridge to the browser, without server storage. Read-only access permits exact code preview and language discovery; saving a code diagram requires write access. No source refresh runs in the background.

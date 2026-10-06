@@ -63,7 +63,7 @@ async function stored(
   }, id);
 }
 async function dataTool(page: Page, name: string, mobile = false) {
-  await page.getByLabel(mobile ? 'More tools' : 'Data tools', { exact: true }).click();
+  await page.getByLabel(mobile ? 'More tools' : 'Explore data', { exact: true }).click();
   await page.getByRole('button', { name, exact: true }).click();
   return page.getByRole('dialog', { name, exact: true });
 }

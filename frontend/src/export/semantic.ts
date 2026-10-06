@@ -1,3 +1,5 @@
+import { getCodeAnalysis, getCodeObject, getCodeRelation } from '../code/schema';
+import { codeAnalysisSummary, codeObjectSummary, codeRelationSummary } from './code';
 import Papa from 'papaparse';
 import { getSqlQuerySource, getSqlQueryResult, getSqlQueryRelationship } from '../sql/query-schema';
 import {
@@ -139,6 +141,8 @@ export function markdown(graph: Graph): string {
     `# ${escapeHeading(graph.diagram.name)}\n`,
     graph.diagram.description ? `${graph.diagram.description}\n` : '',
   ];
+  const codeAnalysis = codeAnalysisSummary(getCodeAnalysis(graph));
+  if (codeAnalysis) chunks.push(queryRecord('Code analysis notes', codeAnalysis));
   const owners = new Map(graph.owners.map((o) => [o.id, o.name]));
   const nodes = new Map(graph.nodes.map((n) => [n.id, n]));
   const outgoing = new Map<string, GraphEdge[]>();
@@ -159,6 +163,15 @@ export function markdown(graph: Graph): string {
         `Next:\n${next.map((edge) => `- ${escapeHeading(nodes.get(edge.targetNodeId)?.title ?? edge.targetNodeId)}`).join('\n')}\n`,
       );
     for (const edge of next) {
+      const code = codeRelationSummary(getCodeRelation(edge));
+      if (code)
+        chunks.push(
+          queryRecord('Code connection', {
+            target: nodes.get(edge.targetNodeId)?.title ?? edge.targetNodeId,
+            direction: edge.direction,
+            ...code,
+          }),
+        );
       const query = sqlQueryRelationshipSummary(getSqlQueryRelationship(edge));
       if (query)
         chunks.push(
@@ -178,6 +191,8 @@ export function markdown(graph: Graph): string {
       chunks.push(`Dates: ${n.startDate ?? '—'} → ${n.endDate ?? '—'}\n`);
     if (n.url) chunks.push(`URL: ${n.url}\n`);
     if (n.notes) chunks.push(`${n.notes}\n`);
+    const code = codeObjectSummary(getCodeObject(n));
+    if (code) chunks.push(queryRecord('Code object', code));
     const source = sqlQuerySourceSummary(getSqlQuerySource(n));
     if (source) chunks.push(queryRecord('SQL query source', source));
     const result = sqlQueryResultSummary(getSqlQueryResult(n));

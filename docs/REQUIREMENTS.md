@@ -22,7 +22,7 @@ Source paths below are relative to frontend/src or frontend/tests where appropri
 | 14. Subtle reminder | At ten diagrams with no export, a small dismissible reminder appears; dismissal persists and export records suppress it. | BackupNudge; privacy.spec.ts |
 | 15. MCP path | Codex → loopback MCP → local WebSocket → active browser → shared repository → IndexedDB. No second copy or S3 content access. | mcp.go; bridge.ts; architecture; tests |
 | 16. MCP explanation/states | Settings explains tool access, active-browser requirement and local-only data, showing Disabled/Waiting/Connected/Error. | McpSettings; bridge.ts; privacy browser tests |
-| 17. Permissions | Off default, Read only and Read + write are explicit local choices. Reads, exports and exact SQL preview are permitted with Read only; checks reject mutations and escalation before dispatch. Pending SQL analysis cancels on revocation and rechecks write grants before saving. | integration/access.ts; Workspace.external; sql-query-api.test.ts; tests |
+| 17. Permissions | Off default, Read only and Read + write are explicit local choices. Reads, exports and exact SQL/code previews are permitted with Read only; checks reject mutations and escalation before dispatch. Pending analysis cancels on revocation and rechecks write grants before saving. | integration/access.ts; Workspace.external; sql-query-api.test.ts; code-api.test.ts; code-integration.test.ts |
 | 18. Open browser required | Disconnected/closed browser requests fail with 503 and plain error; MCP returns isError. No database fallback. | server.forward; closed-browser HTTPS test |
 | 19. Local bridge | Loopback binding and peer checks; literal localhost/127.0.0.1/::1 destinations only. Hosted origins require exact allowlisting; trusted TLS supported. | main.go; access.ts; Go origin/peer tests; HTTPS MCP test |
 | 20. Shared business rules | UI and external commands use Workspace/Repository; restore uses the same importGraph/saveGraph validation and transactions. | workspace.ts; repository.ts; storage and MCP tests |
@@ -51,7 +51,7 @@ Source paths below are relative to frontend/src or frontend/tests where appropri
 | 43. No persistence APIs | Static HTTPS create/add/reload/exports/restore asserts zero POST/PUT/PATCH/DELETE, external destinations or content API calls. | privacy.spec.ts: networkAudit; browser-storage.spec.ts |
 | 44. Two browser contexts | Private A and Private B coexist independently at identical named HTTPS URL; native IndexedDB snapshots prove isolation. | privacy.spec.ts: same HTTPS static URL |
 | 45. Manual portability | A downloads backup, B imports through preview/confirmation and retains its own diagrams while adding A. | same-URL privacy test; full backup test |
-| 46. MCP integration tests | Public HTTPS app → local TLS bridge: read-only GET/export/SQL preview allowed, mutations/escalation denied; write commits visibly, reload preserves, Off/closed fail. SELECT preview/create share browser parsing and transactional validation. | privacy.spec.ts; browser-storage.spec.ts; SQL E2E; sql-query-api.test.ts; Go tests |
+| 46. MCP integration tests | Public HTTPS app → local TLS bridge: read-only GET/export/SQL/code previews allowed, mutations/escalation denied; write commits visibly, reload preserves, Off/closed fail. SELECT and code preview/create share browser parsing and transactional validation. | privacy.spec.ts; browser-storage.spec.ts; SQL/code E2E; sql-query-api.test.ts; code-integration.test.ts; Go tests |
 | 47. Consistent wording | Local only/this browser across shell, Settings, intro, exports, guide and privacy; no invented cloud features. | UI/docs audit |
 | 48. Unobtrusive UI | One-time required acceptance, subtle persistent badge, expandable technical/destructive details and dismissible reminder; mobile overflow checks. | privacy.spec.ts; retained screenshots |
 | 49. End-to-end acceptance | My Strategy survives actual Chromium profile closure/relaunch, independent profile sees none, zero uploads; export/clear/restore and local MCP write/reload/Off verified. | privacy.spec.ts; authenticated live user example |
@@ -73,3 +73,23 @@ Source paths below are relative to frontend/src or frontend/tests where appropri
 Deep mind maps retain colored curved branches and backgrounds at every depth. Direct editing, Tab/Enter creation, balanced layout, focus, quick naming/deletion/undo, contrast-aware palette, Lucide icons, mobile drawers/pan/pinch, owners, timeline/groups/search and rendered/semantic exports remain covered by the existing browser suite. Johan Caripson credit, MIT license and upper-right GitHub link remain present.
 
 Executed checks and visual evidence are recorded in [ACCEPTANCE.md](ACCEPTANCE.md).
+
+## 2026-10-06: Code analysis and toolbar follow-up
+
+All 50 requested language IDs have bounded structural analyzers, with their
+actual capabilities and limitations documented in [CODE_IMPORT.md](CODE_IMPORT.md).
+Imports remain ephemeral until a reviewed diagram is created; extracted names,
+paths, lines and confidence save in the existing IndexedDB graph model. Native
+objects retain normal links, status, drawing, 2D/3D and export behavior.
+
+The local REST/MCP contract adds language discovery, exact read-only code preview
+and write-gated transactional creation. Pending analysis cancels when grants or
+storage consent are revoked. Metadata validation and export allowlists cover the
+new code provenance. Modular analyzers, import routing, UI sections and backend
+schema files keep these responsibilities separate from the larger editor files.
+
+Explore data and phone tools now open outside the scrolling toolbar, explain
+their purpose and expose checks only when the current diagram supplies suitable
+CSV/SQL data. Desktop and phone browser checks verify placement and interaction.
+The 3D-to-2D regression verifies unchanged transforms and canonical nodes; the
+reported intermittent skew has not been reproduced and is not marked fixed.

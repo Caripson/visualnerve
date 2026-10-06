@@ -15,6 +15,7 @@ import {
   ChevronRight,
   X,
   Database,
+  Code2,
 } from 'lucide-react';
 import { useEditor } from '../state/editor';
 import { workspace } from '../storage/workspace';
@@ -214,6 +215,10 @@ export function Sidebar({
         <button onClick={() => open('sql')}>
           <Database size={15} />
           Import SQL script
+        </button>
+        <button onClick={() => open('code')}>
+          <Code2 size={15} />
+          Visualize code
         </button>
         <button onClick={() => open('settings')}>
           <Settings size={15} />

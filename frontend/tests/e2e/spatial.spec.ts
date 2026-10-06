@@ -675,7 +675,7 @@ test('rotates and saves a real 3D camera while object edits, statuses and relati
     path: '/tmp/visualnerve-3d-diagram.png',
     contentType: 'image/png',
   });
-  await page.getByLabel('Data tools', { exact: true }).click();
+  await page.getByLabel('Examples', { exact: true }).click();
   await page.getByRole('button', { name: 'New 3D truck lifecycle example', exact: true }).click();
   await ready(page);
   await page.getByRole('button', { name: 'Fit 3D diagram', exact: true }).click();
@@ -943,7 +943,7 @@ test.describe('interrupted 3D module download', () => {
       aborted++;
       await route.abort('failed');
     });
-    await page.getByLabel('Data tools', { exact: true }).click();
+    await page.getByLabel('Examples', { exact: true }).click();
     await page.getByRole('button', { name: 'New 3D truck lifecycle example', exact: true }).click();
     const failure = page.locator('.canvas-shell').getByRole('status');
     await expect(failure).toContainText('The 3D view could not be loaded');

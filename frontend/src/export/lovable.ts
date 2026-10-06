@@ -1,3 +1,5 @@
+import { getCodeAnalysis, getCodeObject, getCodeRelation } from '../code/schema';
+import { codeAnalysisSummary, codeObjectSummary, codeRelationSummary } from './code';
 import { getCsvNode } from '../data/csv';
 import { graphDatasets, analysisForDataset, isGeneratedCsvNode } from '../data/model';
 import type { CsvNodeData } from '../data/types';
@@ -154,6 +156,7 @@ export function buildLovablePrompt(
           ? { start: node.startDate, end: node.endDate, due: node.dueDate }
           : undefined,
       csvGroup: data ? group(data) : undefined,
+      codeObject: codeObjectSummary(getCodeObject(node)),
       sqlTable: sqlTableSchema(getSqlTable(node)),
       sqlQuerySource: sqlQuerySourceSummary(getSqlQuerySource(node)),
       sqlQueryResult: sqlQueryResultSummary(getSqlQueryResult(node)),
@@ -191,6 +194,7 @@ export function buildLovablePrompt(
       direction: edge.direction,
       flow: relationshipFlow(edge, source, target),
       loop: source === target,
+      codeRelation: codeRelationSummary(getCodeRelation(edge)),
       sqlQueryRelationship: sqlQueryRelationshipSummary(getSqlQueryRelationship(edge)),
       sqlForeignKey: foreignKey
         ? {
@@ -265,6 +269,7 @@ export function buildLovablePrompt(
       type: node.nodeType,
       title: node.title,
       description: node.description,
+      codeObject: codeObjectSummary(getCodeObject(node)),
       sqlTable: sqlTableSchema(getSqlTable(node)),
       sqlQuerySource: sqlQuerySourceSummary(getSqlQuerySource(node)),
       sqlQueryResult: sqlQueryResultSummary(getSqlQueryResult(node)),
@@ -377,6 +382,14 @@ export function buildLovablePrompt(
       'Preserve SELECT output order, expressions, DISTINCT, JOIN types and full conditions, query scopes and filter/group/order/limit clauses. Duplicate aliases and ambiguous or unresolved references require clarification; do not silently correct them.',
       'SQL join, input, subquery and column-lineage relationships describe query structure, not workflow execution order. This is a static interpretation of SQL, not database results or an EXPLAIN execution plan.',
       'Query expressions and predicates include literal values and are supplied in this prompt. The original SQL script and comments, database rows and arbitrary metadata are not supplied.',
+    );
+  }
+  if (graph.nodes.some((node) => getCodeObject(node))) {
+    lines.push(
+      `Code analysis notes: ${json(codeAnalysisSummary(getCodeAnalysis(graph)) ?? { warnings: ['Import analysis notes were not supplied.'] })}`,
+      'Code context: these objects and relationships are a bounded static outline, not an executed program or compiler-verified call graph. File paths and source line numbers identify the original input; they may become outdated after edits.',
+      'Preserve the supplied relationship kind and confidence. Syntax means a recognized declaration/import/reference; heuristic means a possible connection; unresolved means external or ambiguous context. Ask about uncertain behavior rather than inventing missing implementations.',
+      'Original source, comments and string literal values are not included. Names, paths and extracted identifiers remain in this prompt. Dependencies describe code structure, not workflow execution order.',
     );
   }
   return {

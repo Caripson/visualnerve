@@ -7,7 +7,8 @@ export function assertMcpAccess(access: McpAccess, path: string, method: string)
   if (access === 'off') throw new StorageError(403, 'MCP access is off in this browser.');
   const reading =
     method === 'GET' ||
-    (method === 'POST' && ['/export', '/sql/preview'].includes(path.replace(/^\/api\/v1/, '')));
+    (method === 'POST' &&
+      ['/export', '/sql/preview', '/code/preview'].includes(path.replace(/^\/api\/v1/, '')));
   if (access === 'read' && !reading)
     throw new StorageError(
       403,

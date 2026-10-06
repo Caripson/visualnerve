@@ -1,0 +1,53 @@
+.toolbar-menu {
+  flex-shrink: 0;
+}
+.toolbar-menu > button {
+  white-space: nowrap;
+}
+.toolbar-menu-panel {
+  position: fixed;
+  z-index: 110;
+  width: min(310px, calc(100vw - 24px));
+  box-sizing: border-box;
+  display: grid;
+  gap: 7px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--surface);
+  color: var(--text);
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+.toolbar-menu-panel h3 {
+  margin: 0;
+  font-size: 13px;
+}
+.toolbar-menu-panel p {
+  margin: 0 0 5px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.toolbar-menu-panel button {
+  min-height: 40px;
+  justify-content: flex-start;
+  font-size: 12px;
+  white-space: normal;
+}
+.toolbar-menu-panel button:disabled {
+  opacity: 0.55;
+}
+.toolbar-menu-panel select {
+  width: 100%;
+}
+.toolbar-menu-panel .toolbar-menu-hint {
+  margin: 4px 0 0;
+}
+@media (max-width: 720px) {
+  .toolbar-menu-panel button,
+  .toolbar-menu-panel select {
+    min-height: 44px;
+  }
+}

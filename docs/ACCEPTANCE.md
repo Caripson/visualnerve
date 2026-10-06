@@ -328,3 +328,59 @@ and [SELECT properties at 320 px](acceptance/sql-query-phone.png). No real user 
 or database records are included. All completed analysis and 3D work is consolidated
 on `main`; [AGENTS.md](../AGENTS.md) records the main-only workflow and manual
 S3/CloudFront deployment preference.
+
+## 2026-10-06: Code dependency diagrams and toolbar menus
+
+The code importer offers structural analysis for all 50 requested language IDs.
+It accepts pasted scripts, multiple files and folders, with explicit language
+selection for ambiguous extensions. File overview and Declarations and
+dependencies produce native editable objects, source locations and typed
+connections with syntax, heuristic or unresolved confidence. Focus keeps a
+matching path/name and its immediate neighbors. Local workers bound input,
+structure, graph size and execution time; they never run imported code.
+Original source, comments and ordinary literal values remain temporary. Saved
+identifiers and paths can still be sensitive.
+
+REST/MCP language discovery and preview/create endpoints share the browser
+analyzers and transactional repository. Read-only preview saves no graph;
+creation requires write access, and revocation cancels pending analysis.
+Strict metadata survives native JSON, backups and clipboard remapping. Text
+and Lovable exports use explicit code metadata allowlists and retain uncertainty
+and analysis notes. Reconnecting an analyzed edge removes stale source evidence.
+API, MCP, OpenAPI, data model, privacy, export and user documentation agree.
+
+Analysis, lexical handling, language families, worker lifecycle, file import
+routing, code UI sections, SQL/code repository commands and backend schemas
+are separate modules. Existing editing, status, pen, relationship exploration,
+2D/3D and exports continue to use the same native diagram model and renderers.
+
+The old Data popup was clipped by the scrolling toolbar. Explore data and the
+phone's More tools now use a viewport-bounded body portal. The menu explains
+CSV/SQL tools and disables unavailable checks; Examples contains the separate
+truck fixture. SELECT quality checks report duplicate output names and uncertain
+references without claiming database validation.
+
+The new 3D-to-2D regression compares card, title and wrapper transforms plus
+stored nodes through three transitions, including cancelled face captures and
+rotated views. The user's intermittent skewed-node case has not been reproduced;
+this is regression coverage, not evidence that that specific bug is fixed.
+Input/output cards retain their intentional slanted 2D shape.
+
+The unit/component corpus passed 729 cases in 73 files: 723 cases in the complete
+run, the two contract cases after correcting their test-environment file path,
+and four additional catalog-capability cases. The full run used one worker and
+a 20-second Vitest timeout on the shared macOS machine; stored test defaults and
+performance assertions were retained. Formatting, Go race tests and vet, and the
+TypeScript/Vite/Hugo/OpenAPI/Go production build passed. The final static audit
+found 265 application files and a 36-asset offline shell with no user data files.
+
+All 63 distinct browser cases passed. The initial complete run passed 61 cases
+in 19.7 minutes; two test assertions needed corrections for an automatically
+saved fitted viewport and the mobile menu's new accessible selector. After the
+final catalog/documentation correction and fresh production build, all seven
+code-import/API and quick-work cases passed in 33.9 seconds, including both
+corrected cases. Coverage includes 100,000-row data, native edits and links,
+permissions, exports, privacy/offline/backup behavior, constrained desktop and
+phone menus, actual 3D navigation, unchanged 2D transitions and a 2,501-card
+mind map. Historical screenshot fixtures were retained. Work stays on `main`;
+S3/CloudFront deployment remains manual.

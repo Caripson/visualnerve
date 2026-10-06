@@ -19,7 +19,7 @@ marks their aggregates as outside the current data view.
 
 ## Connect CSV files
 
-Open **Data → Data sources**, add files, and choose the source and target columns
+Open **Explore data → Data sources**, add files, and choose the source and target columns
 for each relationship. Preview the match counts, missing keys, and duplicate-key
 cardinality before applying. Multiple CSV files can also be dropped on an open
 diagram. When starting a new diagram, configure the first file before reviewing
@@ -49,7 +49,7 @@ than silently producing a different calculation.
 
 ## Refresh sources
 
-Open **Data → Refresh source** and choose a source. For CSV, load the replacement
+Open **Explore data → Refresh source** and choose a source. For CSV, load the replacement
 file, explicitly map its columns, and select one or more row identity columns.
 Empty or duplicate identities prevent applying an ambiguous replacement. For SQL,
 load a file or paste a schema script; qualified table names and foreign-key
@@ -74,7 +74,7 @@ and related-source scope. It shows contributing, excluded, or repeated rows in
 pages, with source data-row numbers and original or cleaned cells. Paging does
 not limit the calculation.
 
-**Data → Data quality** checks empty cells, excluded numeric values, ambiguous
+**Explore data → Data quality** checks empty cells, excluded numeric values, ambiguous
 number formats, cleanup collisions, explicitly selected duplicate identity keys,
 and missing referenced keys. Click a check to inspect the affected rows. Numeric
 checks apply to numeric measures or explicitly formatted columns, rather than
