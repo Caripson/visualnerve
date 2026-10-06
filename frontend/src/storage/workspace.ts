@@ -3,7 +3,7 @@ import { useEditor } from '../state/editor';
 import { ownersFor, type Graph } from '../model/types';
 import { graphDatasets } from '../data/model';
 import { StorageError } from '../model/validation';
-import { Repository, repository } from './repository';
+import { Repository, repository, type CommandOptions } from './repository';
 import {
   mcpAccess,
   assertMcpAccess,
@@ -22,7 +22,10 @@ export function flushSpatialCamera() {
 
 function spatialNavigation(graph: Graph | null, path: string, method: string, value: unknown) {
   if (!graph || method === 'GET') return false;
-  if (method === 'POST' && ['/spatial-diagrams', '/api/v1/spatial-diagrams'].includes(path))
+  if (
+    method === 'POST' &&
+    ['/spatial-diagrams', '/sql/diagrams'].includes(path.replace(/^\/api\/v1/, ''))
+  )
     return true;
   const [collection, id, action] = new URL(
     path.replace(/^\/api\/v1/, ''),
@@ -85,6 +88,7 @@ export class Workspace {
   private navigation = 0;
   private settingsRevision = 0;
   private stopped = false;
+  private sqlCommands = new Set<AbortController>();
   constructor(public repo: Repository = repository) {}
   async start() {
     this.stopped = false;
@@ -152,6 +156,8 @@ export class Workspace {
   }
   stop() {
     this.stopped = true;
+    for (const controller of this.sqlCommands) controller.abort();
+    this.sqlCommands.clear();
     this.unsubscribe?.();
     this.observer?.unsubscribe();
   }
@@ -300,10 +306,15 @@ export class Workspace {
     await this.refresh();
     await this.open(stored.diagram.id);
   }
-  async execute<T>(path: string, method = 'GET', data?: unknown): Promise<T> {
+  async execute<T>(
+    path: string,
+    method = 'GET',
+    data?: unknown,
+    options: CommandOptions = {},
+  ): Promise<T> {
     await this.requireStorageConsent();
     await this.settled();
-    const result = await this.repo.request<T>(path, method, data);
+    const result = await this.repo.request<T>(path, method, data, options);
     await this.refresh();
     return result;
   }
@@ -343,10 +354,39 @@ export class Workspace {
       assertMcpAccess(useEditor.getState().mcpAccess, path, method);
       assertMcpAccess(mcpAccess(latest?.value), path, method);
     }
-    const result = await this.execute<T>(path, method, data);
-    if (method === 'POST' && ['/spatial-diagrams', '/api/v1/spatial-diagrams'].includes(path))
-      await this.open((result as Graph).diagram.id);
-    return result;
+    const endpoint = path.replace(/^\/api\/v1/, '');
+    const sql = method === 'POST' && ['/sql/preview', '/sql/diagrams'].includes(endpoint);
+    const controller = sql ? new AbortController() : undefined;
+    if (controller) this.sqlCommands.add(controller);
+    const unsubscribe = controller
+      ? useEditor.subscribe((state) => {
+          if (
+            !state.privacyAcknowledged ||
+            state.mcpAccess === 'off' ||
+            (endpoint === '/sql/diagrams' && state.mcpAccess !== 'write')
+          )
+            controller.abort();
+        })
+      : undefined;
+    try {
+      const result = await this.execute<T>(path, method, data, {
+        signal: controller?.signal,
+        beforeSqlSave: sql
+          ? async () => {
+              await this.requireStorageConsent();
+              const current = await this.repo.db.settings.get('mcp-access');
+              assertMcpAccess(useEditor.getState().mcpAccess, path, method);
+              assertMcpAccess(mcpAccess(current?.value), path, method);
+            }
+          : undefined,
+      });
+      if (method === 'POST' && ['/spatial-diagrams', '/sql/diagrams'].includes(endpoint))
+        await this.open((result as Graph).diagram.id);
+      return result;
+    } finally {
+      unsubscribe?.();
+      if (controller) this.sqlCommands.delete(controller);
+    }
   }
   async backup() {
     await this.requireStorageConsent();

@@ -2,6 +2,7 @@ import { base, type Graph, type GraphNode, type GraphEdge } from '../model/types
 import { getCsvNode } from '../data/csv';
 import { graphDatasets } from '../data/model';
 import { offsetSpatialNode } from '../spatial/types';
+import { remapCopiedSqlQuery } from '../sql/copy';
 export interface Clip {
   format: 'visual-nerve-clipboard';
   nodes: GraphNode[];
@@ -25,8 +26,8 @@ export function pasteSelection(
     typeof target === 'string' ? [] : graphDatasets(target).map((source) => source.id),
   );
   const remap = new Map(clip.nodes.map((n) => [n.id, crypto.randomUUID()]));
-  return {
-    nodes: clip.nodes.map((n) => {
+  return remapCopiedSqlQuery(
+    clip.nodes.map((n) => {
       const copy = offsetSpatialNode(structuredClone(n), offset / 120);
       const csv = getCsvNode(copy);
       if (csv && copy.metadata.csv !== undefined) {
@@ -48,7 +49,7 @@ export function pasteSelection(
         y: n.y + offset,
       };
     }),
-    edges: clip.edges.map((e) => ({
+    clip.edges.map((e) => ({
       ...structuredClone(e),
       ...base(),
       diagramId,
@@ -65,5 +66,5 @@ export function pasteSelection(
           }
         : {}),
     })),
-  };
+  );
 }

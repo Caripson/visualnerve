@@ -15,6 +15,12 @@ Icons use metadata.visualNerve.icon and preserve other custom keys. Diagram sett
 
 Optional `diagram.settings.drawing` holds `{ version: 1, visible, strokes }`. Each stroke has a UUID, hex color, width and `[x, y]` points in diagram coordinates. This is an independent annotation layer, not nodes or edges; changing it preserves graph relationships and CSV source identity. Tool/brush selection is transient. Stroke creation, erasing, visibility and clearing use the same undoable diagram commands and IndexedDB transactions. No schema upgrade or additional table is needed. See [DRAWING.md](docs/DRAWING.md) for limits.
 
+SQL SELECT/WITH graphs use ordinary nodes and edges with reserved, bounded version-1 metadata. `node.metadata.sqlQuerySource` holds logical `scope`, `alias`, `kind` (`table`, `derived`, `cte`), `qualifiedName`, observed `columns` and optional `queryScope`. Repeated table aliases remain separate nodes. `node.metadata.sqlQueryResult` holds `scope`, optional `parentScope`, `name`, `distinct`, ordered output columns (`ordinal`, `name`, optional `alias`, `expression`, references and optional duplicate-alias warning), and clauses (`from`, `where`, `groupBy`, `having`, `orderBy`, `limit`). `edge.metadata.sqlQueryRelationship` holds scope, kind (`join`, `input`, `lineage`, `subquery`), optional join type/condition, references and output ordinals. References use scope/source-alias identities plus column and resolved/unresolved/ambiguous status; they deliberately contain no editor UUIDs, so ID remapping preserves them.
+
+Source columns are names observed in the query, not inferred database types, nullability or keys. Expressions and predicates retain literal values; raw source scripts and comments remain temporary. Reserved metadata and structural limits are validated before API/import writes. No new IndexedDB table or schema migration is needed. See [SQL query and schema import](docs/SQL_IMPORT.md).
+
+Copying/pasting query objects within a diagram gives the pasted logical query instance independent scopes and remaps its internal scope/alias references together. Referenced sources outside a selected copy remain explicit unresolved context. Importing a complete JSON graph into a new diagram can retain its logical scopes because query identities are diagram-local.
+
 ## IndexedDB schema
 
 | Table | Key and indexes | Contents |

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-	"time"
 )
 
 // Stateless Streamable HTTP endpoint. Tool execution always passes through the browser bridge.
@@ -49,7 +48,7 @@ func (s *Server) mcp(w http.ResponseWriter, r *http.Request) {
 	case "ping":
 		response["result"] = map[string]any{}
 	case "tools/list":
-		response["result"] = map[string]any{"tools": []any{map[string]any{"name": "visual_nerve_request", "description": "Read or edit the open browser workspace using the Visual Nerve command contract. Paths omit /api/v1; see /api/docs. POST /spatial-diagrams with {name,type?} creates and opens a 3D graph, returning canonical objects and relationships. Nodes use metadata.spatial={version:1,position?:{x,y,z}}; diagram.settings.spatialView={version:1,mode:2d|3d,camera?}. Keep node x/y/width/height as an independent readable 2D layout for PNG/PDF. Create any subject as diagram nodes and relationships, such as a truck lifecycle mind map. Use versioned PATCH or bulk upsert for edits. Writes are committed in IndexedDB before responding.", "inputSchema": map[string]any{"type": "object", "required": []string{"path"}, "properties": map[string]any{"path": map[string]string{"type": "string"}, "method": map[string]any{"type": "string", "enum": []string{"GET", "POST", "PUT", "PATCH", "DELETE"}}, "data": map[string]any{}, "workspaceId": map[string]string{"type": "string"}}, "additionalProperties": false}}}}
+		response["result"] = map[string]any{"tools": []any{map[string]any{"name": "visual_nerve_request", "description": "Read or edit the open browser workspace using the Visual Nerve command contract. Paths omit /api/v1; see /api/docs. POST /sql/preview with {sql,name?} analyzes a SELECT/WITH query or DDL locally, returning graph/counts/warnings without saving; read-only access permits this exact endpoint. POST /sql/diagrams with the same payload saves and opens the resulting graph and requires write access. Query objects show scoped aliases, JOIN conditions, output expressions/lineage and clauses; they are logical structure, not an executed database query or physical query plan. No SQL connection or execution occurs. Query expressions can retain literal values. POST /spatial-diagrams with {name,type?} creates and opens a 3D graph, returning canonical objects and relationships. Nodes use metadata.spatial={version:1,position?:{x,y,z}}; diagram.settings.spatialView={version:1,mode:2d|3d,camera?}. Keep node x/y/width/height as an independent readable 2D layout for PNG/PDF. Create any subject as diagram nodes and relationships, such as a truck lifecycle mind map. Use versioned PATCH or bulk upsert for edits. Writes are committed in IndexedDB before responding.", "inputSchema": map[string]any{"type": "object", "required": []string{"path"}, "properties": map[string]any{"path": map[string]string{"type": "string"}, "method": map[string]any{"type": "string", "enum": []string{"GET", "POST", "PUT", "PATCH", "DELETE"}}, "data": map[string]any{}, "workspaceId": map[string]string{"type": "string"}}, "additionalProperties": false}}}}
 	case "tools/call":
 		var params struct {
 			Name      string `json:"name"`
@@ -67,7 +66,7 @@ func (s *Server) mcp(w http.ResponseWriter, r *http.Request) {
 		if params.Arguments.Method == "" {
 			params.Arguments.Method = "GET"
 		}
-		ctx, cancel := context.WithTimeout(r.Context(), 25*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), commandTimeout(params.Arguments.Path))
 		result, err := s.forward(ctx, params.Arguments.WorkspaceID, params.Arguments.Path, params.Arguments.Method, params.Arguments.Data)
 		cancel()
 		if err != nil {

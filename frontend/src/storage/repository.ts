@@ -25,6 +25,13 @@ import { reconnectedSqlEdge } from '../sql/relationships';
 import { markdown, parseImport } from '../export/semantic';
 import { database, type WorkspaceBackup, type WorkspaceDatabase } from './database';
 import { setSpatialView } from '../spatial/types';
+import { parseSqlAsync, SQL_FILE_LIMIT } from '../sql/client';
+
+export interface CommandOptions {
+  signal?: AbortSignal;
+  /** Recheck external grants after asynchronous SQL analysis, before its first write. */
+  beforeSqlSave?: () => Promise<void>;
+}
 
 type Patch = Record<string, unknown>;
 export interface SearchResult {
@@ -556,12 +563,46 @@ export class Repository {
       return owner;
     });
   }
-  async request<T>(path: string, method = 'GET', payload?: unknown): Promise<T> {
+  async request<T>(
+    path: string,
+    method = 'GET',
+    payload?: unknown,
+    options: CommandOptions = {},
+  ): Promise<T> {
     const url = new URL(path.replace(/^\/api\/v1/, ''), 'http://browser.local');
     const parts = url.pathname.split('/').filter(Boolean),
       [collection, id, action] = parts;
     const read = method === 'GET',
       remove = method === 'DELETE';
+    if (collection === 'sql') {
+      const endpoint = path.replace(/^\/api\/v1/, '');
+      if (!['/sql/preview', '/sql/diagrams'].includes(endpoint))
+        throw new StorageError(404, 'Unknown SQL endpoint.');
+      if (method !== 'POST') throw new StorageError(405, 'SQL analysis requires POST.');
+      const data = object(payload);
+      if (
+        Object.keys(data).some((key) => !['sql', 'name'].includes(key)) ||
+        typeof data.sql !== 'string' ||
+        !data.sql.trim() ||
+        (data.name !== undefined &&
+          (typeof data.name !== 'string' || !data.name.trim() || data.name.length > 500))
+      )
+        throw new StorageError(422, 'Provide a SQL script and an optional nonempty name.');
+      if (
+        data.sql.length > SQL_FILE_LIMIT ||
+        new TextEncoder().encode(data.sql).byteLength > SQL_FILE_LIMIT
+      )
+        throw new StorageError(422, 'SQL exceeds the 50 MiB file limit.');
+      const result = await parseSqlAsync(data.sql, String(data.name ?? 'Imported SQL'), {
+        signal: options.signal,
+      });
+      validateGraph(result.graph);
+      if (endpoint === '/sql/preview') return result as T;
+      await options.beforeSqlSave?.();
+      if (options.signal?.aborted)
+        throw new DOMException('SQL import was cancelled.', 'AbortError');
+      return (await this.importGraph(result.graph)) as T;
+    }
     if (collection === 'spatial-diagrams') {
       if (
         !['/spatial-diagrams', '/api/v1/spatial-diagrams'].includes(path) ||

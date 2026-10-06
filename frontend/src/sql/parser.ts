@@ -1,5 +1,6 @@
 import { blankGraph, newEdge, newNode, type Graph } from '../model/types';
 import type { SqlColumn, SqlRelationship, SqlTable } from './schema';
+import { parseSqlQueries } from './query';
 
 export const sqlLimits = {
   bytes: 50 * 1024 * 1024,
@@ -16,13 +17,19 @@ export interface SqlImportResult {
   columnCount: number;
   relationshipCount: number;
   ignoredStatementCount: number;
+  kind?: 'schema' | 'query';
+  queryCount?: number;
+  sourceCount?: number;
+  outputColumnCount?: number;
 }
 
-type Token = {
+export type Token = {
   kind: 'word' | 'identifier' | 'literal' | 'symbol';
   text: string;
   key?: string;
   raw?: string;
+  start?: number;
+  end?: number;
 };
 type Name = { parts: string[]; keys: string[] };
 type ForeignKey = {
@@ -275,6 +282,8 @@ function tokenize(sql: string): Token[] {
       i++;
       continue;
     }
+    const start = i;
+    const before = tokens.length;
     const quoted = atom(sql, i);
     if (quoted) {
       if (quoted.token) tokens.push(quoted.token);
@@ -287,9 +296,25 @@ function tokenize(sql: string): Token[] {
     } else if (/[0-9]/.test(sql[i])) {
       const start = i++;
       while (i < sql.length && /[0-9]/.test(sql[i])) i++;
+      if (sql[i] === '.' && /[0-9]/.test(sql[i + 1] ?? '')) {
+        i++;
+        while (i < sql.length && /[0-9]/.test(sql[i])) i++;
+      }
+      if (sql[i] === 'e' || sql[i] === 'E') {
+        let exponent = i + 1;
+        if (sql[exponent] === '+' || sql[exponent] === '-') exponent++;
+        if (/[0-9]/.test(sql[exponent] ?? '')) {
+          i = exponent + 1;
+          while (i < sql.length && /[0-9]/.test(sql[i])) i++;
+        }
+      }
       tokens.push({ kind: 'symbol', text: sql.slice(start, i) });
     } else tokens.push({ kind: 'symbol', text: sql[i++] });
-    if (tokens.length > 1_000_000) fail('One DDL statement is too large to parse safely.');
+    if (tokens.length > before) {
+      tokens[tokens.length - 1].start = start;
+      tokens[tokens.length - 1].end = i;
+    }
+    if (tokens.length > 1_000_000) fail('One SQL statement is too large to parse safely.');
   }
   return tokens;
 }
@@ -580,7 +605,7 @@ function tableDefinition(tokens: Token[], table: Table, warn: (message: string) 
   } else parseColumn(tokens, table);
 }
 
-/** Pure DDL import. No statement is sent to a database or saved as source SQL. */
+/** Local structural import. SQL is never executed or retained as a complete source script. */
 export function parseSql(sql: string, name = 'Imported SQL'): SqlImportResult {
   if (sql.length > sqlLimits.bytes) fail('SQL files are limited to 50 MiB.');
   let bytes = 0;
@@ -615,6 +640,7 @@ export function parseSql(sql: string, name = 'Imported SQL'): SqlImportResult {
     if (parsedColumnCount > sqlLimits.columns) fail('SQL import is limited to 100,000 columns.');
   };
   let ignoredStatementCount = 0;
+  const queries: { sql: string; tokens: Token[] }[] = [];
   let namespace: Name | undefined;
   const qualify = (value: Name) =>
     value.parts.length === 1 && namespace
@@ -625,6 +651,11 @@ export function parseSql(sql: string, name = 'Imported SQL'): SqlImportResult {
     if (!prefix.length) continue;
     const isCreate = prefix[0] === 'CREATE' && prefix.slice(1, 5).includes('TABLE');
     const isAlter = prefix[0] === 'ALTER' && prefix[1] === 'TABLE';
+    if (prefix[0] === 'SELECT' || prefix[0] === 'WITH') {
+      if (queries.length >= 100) fail('SQL query import is limited to 100 query blocks.');
+      queries.push({ sql: statement, tokens: tokenize(statement) });
+      continue;
+    }
     if (!isCreate && !isAlter) {
       ignoredStatementCount++;
       if (prefix[0] === 'USE') {
@@ -754,6 +785,13 @@ export function parseSql(sql: string, name = 'Imported SQL'): SqlImportResult {
       definition(action.slice(i), table);
     }
     if (skipped) ignoredStatementCount++;
+  }
+  if (!tables.size && queries.length) return parseSqlQueries(queries, name, ignoredStatementCount);
+  if (queries.length) {
+    ignoredStatementCount += queries.length;
+    warn(
+      'This mixed script contains table definitions and SELECT queries. The schema was imported; import SELECT queries separately to visualize their structure.',
+    );
   }
   if (!tables.size)
     fail(
@@ -932,6 +970,7 @@ export function parseSql(sql: string, name = 'Imported SQL'): SqlImportResult {
     );
   if (droppedWarnings) warnings.push(`${droppedWarnings} additional warning(s) omitted.`);
   return {
+    kind: 'schema',
     graph,
     warnings,
     tableCount: graph.nodes.length,

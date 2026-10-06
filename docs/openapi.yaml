@@ -64,6 +64,11 @@
           },
           "metadata": {
             "additionalProperties": true,
+            "properties": {
+              "sqlQueryRelationship": {
+                "$ref": "#/components/schemas/SqlQueryRelationship"
+              }
+            },
             "type": "object"
           },
           "sourceExternalId": {
@@ -132,6 +137,12 @@
             "properties": {
               "spatial": {
                 "$ref": "#/components/schemas/SpatialNode"
+              },
+              "sqlQueryResult": {
+                "$ref": "#/components/schemas/SqlQueryResult"
+              },
+              "sqlQuerySource": {
+                "$ref": "#/components/schemas/SqlQuerySource"
               }
             },
             "type": "object"
@@ -566,6 +577,11 @@
           },
           "metadata": {
             "additionalProperties": true,
+            "properties": {
+              "sqlQueryRelationship": {
+                "$ref": "#/components/schemas/SqlQueryRelationship"
+              }
+            },
             "type": "object"
           },
           "sourceNodeId": {
@@ -630,6 +646,11 @@
           },
           "metadata": {
             "additionalProperties": true,
+            "properties": {
+              "sqlQueryRelationship": {
+                "$ref": "#/components/schemas/SqlQueryRelationship"
+              }
+            },
             "type": "object"
           },
           "sourceNodeId": {
@@ -682,6 +703,11 @@
           },
           "metadata": {
             "additionalProperties": true,
+            "properties": {
+              "sqlQueryRelationship": {
+                "$ref": "#/components/schemas/SqlQueryRelationship"
+              }
+            },
             "type": "object"
           },
           "sourceNodeId": {
@@ -891,6 +917,12 @@
             "properties": {
               "spatial": {
                 "$ref": "#/components/schemas/SpatialNode"
+              },
+              "sqlQueryResult": {
+                "$ref": "#/components/schemas/SqlQueryResult"
+              },
+              "sqlQuerySource": {
+                "$ref": "#/components/schemas/SqlQuerySource"
               }
             },
             "type": "object"
@@ -1012,6 +1044,12 @@
             "properties": {
               "spatial": {
                 "$ref": "#/components/schemas/SpatialNode"
+              },
+              "sqlQueryResult": {
+                "$ref": "#/components/schemas/SqlQueryResult"
+              },
+              "sqlQuerySource": {
+                "$ref": "#/components/schemas/SqlQuerySource"
               }
             },
             "type": "object"
@@ -1121,6 +1159,12 @@
             "properties": {
               "spatial": {
                 "$ref": "#/components/schemas/SpatialNode"
+              },
+              "sqlQueryResult": {
+                "$ref": "#/components/schemas/SqlQueryResult"
+              },
+              "sqlQuerySource": {
+                "$ref": "#/components/schemas/SqlQuerySource"
               }
             },
             "type": "object"
@@ -1563,6 +1607,362 @@
         ],
         "type": "object"
       },
+      "SqlImportResult": {
+        "additionalProperties": false,
+        "properties": {
+          "columnCount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "graph": {
+            "$ref": "#/components/schemas/Graph"
+          },
+          "ignoredStatementCount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "schema",
+              "query"
+            ],
+            "type": "string"
+          },
+          "outputColumnCount": {
+            "maximum": 10000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "queryCount": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "relationshipCount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "sourceCount": {
+            "maximum": 2000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "tableCount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "type": "array"
+          }
+        },
+        "required": [
+          "graph",
+          "warnings",
+          "tableCount",
+          "columnCount",
+          "relationshipCount",
+          "ignoredStatementCount"
+        ],
+        "type": "object"
+      },
+      "SqlInput": {
+        "additionalProperties": false,
+        "description": "Analyzed locally in a cancellable browser worker, never executed or sent to a database. Decoded UTF-8 script limit is 50 MiB; the bridge JSON request envelope is limited to 32 MiB.",
+        "properties": {
+          "name": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          "sql": {
+            "maxLength": 52428800,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "sql"
+        ],
+        "type": "object"
+      },
+      "SqlQueryClauses": {
+        "additionalProperties": false,
+        "properties": {
+          "from": {
+            "maxLength": 100000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "groupBy": {
+            "maxLength": 100000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "having": {
+            "maxLength": 100000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "limit": {
+            "maxLength": 100000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "orderBy": {
+            "maxLength": 100000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "where": {
+            "maxLength": 100000,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "SqlQueryOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "alias": {
+            "maxLength": 1000,
+            "type": "string"
+          },
+          "duplicateAlias": {
+            "type": "boolean"
+          },
+          "expression": {
+            "maxLength": 100000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "ordinal": {
+            "maximum": 10000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "references": {
+            "items": {
+              "$ref": "#/components/schemas/SqlQueryReference"
+            },
+            "maxItems": 100000,
+            "type": "array"
+          }
+        },
+        "required": [
+          "ordinal",
+          "name",
+          "expression",
+          "references"
+        ],
+        "type": "object"
+      },
+      "SqlQueryReference": {
+        "additionalProperties": false,
+        "properties": {
+          "column": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "correlated": {
+            "type": "boolean"
+          },
+          "resolution": {
+            "enum": [
+              "resolved",
+              "unresolved",
+              "ambiguous"
+            ],
+            "type": "string"
+          },
+          "scope": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "sourceAlias": {
+            "maxLength": 1000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "column",
+          "resolution"
+        ],
+        "type": "object"
+      },
+      "SqlQueryRelationship": {
+        "additionalProperties": false,
+        "properties": {
+          "condition": {
+            "maxLength": 100000,
+            "type": "string"
+          },
+          "joinType": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "join",
+              "input",
+              "lineage",
+              "subquery"
+            ],
+            "type": "string"
+          },
+          "outputOrdinals": {
+            "items": {
+              "maximum": 10000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "maxItems": 10000,
+            "type": "array"
+          },
+          "references": {
+            "items": {
+              "$ref": "#/components/schemas/SqlQueryReference"
+            },
+            "maxItems": 100000,
+            "type": "array"
+          },
+          "scope": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "version": {
+            "enum": [
+              1
+            ],
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "scope",
+          "kind"
+        ],
+        "type": "object"
+      },
+      "SqlQueryResult": {
+        "additionalProperties": false,
+        "description": "Ordered output expressions and logical query clauses, including their literal values. No database execution plan or returned rows.",
+        "properties": {
+          "clauses": {
+            "$ref": "#/components/schemas/SqlQueryClauses"
+          },
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/SqlQueryOutput"
+            },
+            "maxItems": 10000,
+            "minItems": 1,
+            "type": "array"
+          },
+          "distinct": {
+            "type": "boolean"
+          },
+          "name": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "parentScope": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "scope": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "version": {
+            "enum": [
+              1
+            ],
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "scope",
+          "name",
+          "distinct",
+          "columns",
+          "clauses"
+        ],
+        "type": "object"
+      },
+      "SqlQuerySource": {
+        "additionalProperties": false,
+        "description": "A scoped table alias, derived table or CTE instance. Columns are observed query references, not an inferred database schema. Non-table sources require queryScope. References use logical scope/alias identities, not node UUIDs.",
+        "properties": {
+          "alias": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "columns": {
+            "items": {
+              "maxLength": 1000,
+              "type": "string"
+            },
+            "maxItems": 100000,
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "table",
+              "derived",
+              "cte"
+            ],
+            "type": "string"
+          },
+          "qualifiedName": {
+            "items": {
+              "maxLength": 1000,
+              "type": "string"
+            },
+            "maxItems": 32,
+            "type": "array"
+          },
+          "queryScope": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "scope": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "version": {
+            "enum": [
+              1
+            ],
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "scope",
+          "alias",
+          "kind",
+          "qualifiedName",
+          "columns"
+        ],
+        "type": "object"
+      },
       "WorkspaceBackup": {
         "properties": {
           "datasets": {
@@ -1675,7 +2075,7 @@
     }
   },
   "info": {
-    "description": "IndexedDB in the browser is authoritative and is the only database. This optional API forwards commands through a WebSocket bridge to an open browser with explicit storage acceptance and MCP access set to Read only or Read + write (default Off). Read-only access permits GET and POST /export, rejecting mutations with 403. The public static host provides no content API; endpoints target a loopback bridge only. Start the static server with --bridge. No application records are stored in the server. PATCH requires version; graph replacement requires baseVersion. Optional VISUAL_NERVE_BRIDGE_TOKEN protects all integration requests. PNG/PDF render in the browser. MCP is available at /mcp.",
+    "description": "IndexedDB in the browser is authoritative and is the only database. This optional API forwards commands through a WebSocket bridge to an open browser with explicit storage acceptance and MCP access set to Read only or Read + write (default Off). Read-only access permits GET, POST /export and exact POST /sql/preview, rejecting mutations with 403. SQL SELECT/WITH visualization retains scoped aliases, expressions, joins and clauses locally; it never executes SQL or connects to a database. POST /sql/diagrams saves and opens a validated graph and requires write access. The public static host provides no content API; endpoints target a loopback bridge only. Start the static server with --bridge. No application records are stored in the server. PATCH requires version; graph replacement requires baseVersion. Optional VISUAL_NERVE_BRIDGE_TOKEN protects all integration requests. PNG/PDF render in the browser. MCP is available at /mcp.",
     "title": "Visual Nerve local API",
     "version": "0.2.0"
   },
@@ -5208,6 +5608,274 @@
           {}
         ],
         "summary": "Create and open a 3D diagram with independent 2D layout"
+      }
+    },
+    "/sql/diagrams": {
+      "post": {
+        "operationId": "post_sql_diagrams",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SqlInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Graph"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin or host"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Analyze SQL locally, then save and open its diagram transactionally; write access required"
+      }
+    },
+    "/sql/preview": {
+      "post": {
+        "operationId": "post_sql_preview",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SqlInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SqlImportResult"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin or host"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Preview a SELECT/WITH query or DDL without saving; allowed with read-only access"
       }
     },
     "/workspace/export": {

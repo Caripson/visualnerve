@@ -255,7 +255,7 @@ test('pastes SQL on a 320 px phone, shows missing-definition warnings and reject
   await page.getByRole('button', { name: 'Import SQL script', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Import SQL', exact: true });
   await dialog.getByLabel('SQL diagram name').fill('Phone schema');
-  await dialog.getByLabel('SQL script', { exact: true }).fill('SELECT * FROM customers;');
+  await dialog.getByLabel('SQL script', { exact: true }).fill('UPDATE customers SET active = 1;');
   await dialog.getByRole('button', { name: 'Preview schema', exact: true }).click();
   await expect(dialog.getByRole('alert')).toContainText('CREATE TABLE');
   await expect(dialog.getByRole('button', { name: 'Create diagram', exact: true })).toBeDisabled();

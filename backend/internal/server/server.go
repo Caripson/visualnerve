@@ -251,6 +251,15 @@ func readJSON(w http.ResponseWriter, r *http.Request) (json.RawMessage, error) {
 	}
 	return bytes, nil
 }
+func commandTimeout(path string) time.Duration {
+	// Browser SQL analysis is cancellable after 30 seconds. Leave time for layout,
+	// validation and the final IndexedDB transaction before the transport expires.
+	path = strings.TrimPrefix(path, "/api/v1")
+	if path == "/sql/preview" || path == "/sql/diagrams" {
+		return 45 * time.Second
+	}
+	return 25 * time.Second
+}
 func (s *Server) forwardHTTP(w http.ResponseWriter, r *http.Request) {
 	var data json.RawMessage
 	if r.Method != "GET" && r.Method != "DELETE" {
@@ -261,12 +270,12 @@ func (s *Server) forwardHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), 25*time.Second)
-	defer cancel()
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1")
 	if r.URL.RawQuery != "" {
 		path += "?" + r.URL.RawQuery
 	}
+	ctx, cancel := context.WithTimeout(r.Context(), commandTimeout(path))
+	defer cancel()
 	response, err := s.forward(ctx, r.Header.Get("X-Visual-Nerve-Workspace"), path, r.Method, data)
 	if err != nil {
 		failure(w, response.Status, err.Error())

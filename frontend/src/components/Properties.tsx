@@ -16,6 +16,7 @@ import type { CsvPathEntry } from '../data/types';
 import { getCsvNode } from '../data/csv';
 import { nodeStatuses, statusLabel } from '../ui/status';
 import { SqlRelationshipDetails, SqlTableDetails } from './SqlTableSummary';
+import { SqlQueryDetails, SqlQueryRelationshipDetails } from './SqlQuerySummary';
 import { AnalysisDialog, AnalysisTools } from './AnalysisTools';
 import { SpatialProperties } from './SpatialProperties';
 interface PropertiesProps {
@@ -114,6 +115,7 @@ function PropertyPanel({
             onPageCsv={pageCsv}
           />
           <SqlTableDetails node={node} />
+          <SqlQueryDetails node={node} />
           <SpatialProperties graph={graph} node={node} />
           <div className="field">
             <span>Area icon</span>
@@ -394,6 +396,7 @@ function PropertyPanel({
             />
           </Field>
           <SqlRelationshipDetails edge={edge} />
+          <SqlQueryRelationshipDetails edge={edge} />
           <Field title="Relationship">
             <input
               aria-label="Relationship type"

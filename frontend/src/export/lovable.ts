@@ -3,6 +3,12 @@ import { graphDatasets, analysisForDataset, isGeneratedCsvNode } from '../data/m
 import type { CsvNodeData } from '../data/types';
 import type { Graph, GraphEdge } from '../model/types';
 import { getSqlRelationship, getSqlTable, type SqlTable } from '../sql/schema';
+import { getSqlQuerySource, getSqlQueryResult, getSqlQueryRelationship } from '../sql/query-schema';
+import {
+  sqlQuerySourceSummary,
+  sqlQueryResultSummary,
+  sqlQueryRelationshipSummary,
+} from './sql-query';
 
 export const LOVABLE_MAX_PROMPT_LENGTH = 50_000;
 /** A local limit on the encoded URL, separate from Lovable's prompt limit. */
@@ -149,6 +155,8 @@ export function buildLovablePrompt(
           : undefined,
       csvGroup: data ? group(data) : undefined,
       sqlTable: sqlTableSchema(getSqlTable(node)),
+      sqlQuerySource: sqlQuerySourceSummary(getSqlQuerySource(node)),
+      sqlQueryResult: sqlQueryResultSummary(getSqlQueryResult(node)),
     };
   });
 
@@ -183,6 +191,7 @@ export function buildLovablePrompt(
       direction: edge.direction,
       flow: relationshipFlow(edge, source, target),
       loop: source === target,
+      sqlQueryRelationship: sqlQueryRelationshipSummary(getSqlQueryRelationship(edge)),
       sqlForeignKey: foreignKey
         ? {
             columns: foreignKey.columns,
@@ -257,6 +266,8 @@ export function buildLovablePrompt(
       title: node.title,
       description: node.description,
       sqlTable: sqlTableSchema(getSqlTable(node)),
+      sqlQuerySource: sqlQuerySourceSummary(getSqlQuerySource(node)),
+      sqlQueryResult: sqlQueryResultSummary(getSqlQueryResult(node)),
     };
   });
   const csvPresent = sources.length > 0 || [...csv.values()].some(Boolean);
@@ -358,6 +369,14 @@ export function buildLovablePrompt(
       'External SQL tables with a missing definition are integration context. Their columns and keys are unknown unless explicitly supplied. Do not invent definitions or infer them from a placeholder.',
       'When sqlForeignKey.unresolved is true, referencedColumns is unknown (null). Do not treat placeholder question marks as column names or invent a referenced primary key.',
       'Only the recognized schema fields are included. Raw SQL scripts, inserted rows, default literals and arbitrary metadata are not supplied.',
+    );
+  }
+  if (graph.nodes.some((node) => getSqlQuerySource(node) || getSqlQueryResult(node))) {
+    lines.push(
+      'SQL query context: source aliases are distinct within each logical scope. Sources list observed column references only; data types, keys and nullability are unknown. Do not invent a database schema.',
+      'Preserve SELECT output order, expressions, DISTINCT, JOIN types and full conditions, query scopes and filter/group/order/limit clauses. Duplicate aliases and ambiguous or unresolved references require clarification; do not silently correct them.',
+      'SQL join, input, subquery and column-lineage relationships describe query structure, not workflow execution order. This is a static interpretation of SQL, not database results or an EXPLAIN execution plan.',
+      'Query expressions and predicates include literal values and are supplied in this prompt. The original SQL script and comments, database rows and arbitrary metadata are not supplied.',
     );
   }
   return {

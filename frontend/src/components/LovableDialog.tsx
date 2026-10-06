@@ -5,6 +5,7 @@ import { useEditor } from '../state/editor';
 import type { Graph } from '../model/types';
 import { getCsvNode } from '../data/csv';
 import { getDrawingLayer } from '../drawing/types';
+import { getSqlQuerySource, getSqlQueryResult } from '../sql/query-schema';
 import { buildLovablePrompt, lovableLink, type LovableScope } from '../export/lovable';
 import { download, safeName } from '../export/semantic';
 import './lovable.css';
@@ -154,6 +155,12 @@ export function LovableDialog({ close }: { close: () => void }) {
           SQL data rows and arbitrary metadata are excluded. Review the exact text below before
           sharing it with Lovable.
         </p>
+        {graph.nodes.some((node) => getSqlQuerySource(node) || getSqlQueryResult(node)) && (
+          <p className="lovable-disclosure">
+            SQL query expressions and conditions, including literal values, are included in the
+            prompt. Review them before sharing.
+          </p>
+        )}
         {!!getDrawingLayer(graph.diagram.settings.drawing)?.strokes.length && (
           <p className="lovable-drawing-note">
             Drawing marks are visual notes. Describe anything important in your instructions.

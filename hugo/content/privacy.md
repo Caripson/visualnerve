@@ -32,9 +32,9 @@ Clearing this site's browser data, resetting your browser profile or uninstallin
 
 ## SQL schema import
 
-When you load or paste SQL/DDL, the script is analyzed locally in a Web Worker. SQL is never executed or sent to a database. The script is a temporary draft; **Create diagram** saves recognized tables, columns, types, nullability, keys and foreign-key relationships.
+When you load or paste SQL/DDL, the script is analyzed locally in a Web Worker. SQL is never executed or sent to a database. The script is a temporary draft. DDL diagrams save recognized tables, columns, types, nullability, keys and foreign keys. SELECT/WITH diagrams save source aliases/scopes, output expressions, JOIN conditions, clauses and column lineage.
 
-Raw source SQL, INSERT/COPY rows, defaults, CHECK expressions, comments and procedure bodies are not saved in the diagram or included in its exports. ENUM labels in column data types may remain as schema structure. JSON and backups retain the extracted schema, while the original file stays on your device. Table/column names, types and keys can still contain sensitive information, so review them before sharing. [Importing SQL schemas](/help/#import-a-sql-schema).
+**Query expressions and filter clauses retain their literal values**, including potentially sensitive strings, through local storage, JSON, backups and recognized text exports. The complete raw source script and comments are not saved. DDL INSERT/COPY rows, defaults, CHECK expressions and procedure bodies are excluded; ENUM labels in column types may remain as schema structure. The original file stays on your device. Review names, expressions, filters, types and keys before sharing. Optional API/MCP SQL analysis sends supplied SQL transiently through your loopback bridge to the browser; the bridge does not retain it. [Importing SQL queries and schemas](/help/#import-a-sql-schema).
 
 ## Optional Codex / MCP access
 
@@ -44,13 +44,13 @@ MCP is **Off** by default. In Settings you can explicitly grant **Read only** or
 Codex → local MCP bridge → your open browser → IndexedDB
 ```
 
-Enabling this access lets the tools you connect read diagram content; read and write access also lets them edit it. Choose tools you want to give this access to. Visual Nerve sends responses only through that local connection, and does not upload a cloud copy. Turn access **Off** to disconnect. [The guide explains setup](/help/#codex-and-mcp).
+Enabling this access lets the tools you connect read diagram content; read and write access also lets them edit it. Read only also allows supplied SQL to be previewed without saving; creating its diagram requires write access. Choose tools you want to give this access to. Visual Nerve sends responses only through that local connection, and does not upload a cloud copy. Turn access **Off** to disconnect. [The guide explains setup](/help/#codex-and-mcp).
 
 ## Optional Lovable handoff
 
 **Build with Lovable** generates an app brief locally and shows its complete text. Opening the dialog sends nothing. **Open in Lovable** opens a new tab at `lovable.dev` with the reviewed prompt; you press **Send** there to start building. This explicitly shares that text with Lovable.
 
-The brief includes your instructions and chosen objects, written descriptions, notes, responsibilities and relationships. CSV schema, analysis choices and calculated summaries may be included. SQL tables contribute recognized columns/types, nullability, primary/unique keys and foreign-key pairs/actions through a typed allowlist; missing definitions and unresolved references stay explicit. Source rows, raw SQL scripts, arbitrary metadata, owner email addresses and bridge credentials are excluded. Written text, grouping values and schema names/type labels are included as shown, so review the preview before sharing. Draft instructions stay in IndexedDB with the diagram. [How to use the handoff](/help/#build-an-app-with-lovable).
+The brief includes your instructions and chosen objects, written descriptions, notes, responsibilities and relationships. CSV schema, analysis choices and calculated summaries may be included. SQL tables contribute recognized columns/types, nullability, primary/unique keys and foreign-key pairs/actions through a typed allowlist; query diagrams contribute aliases, outputs, expressions, joins and clauses, including literal values. Missing definitions and unresolved references stay explicit. Source rows, complete raw SQL scripts, arbitrary metadata, owner email addresses and bridge credentials are excluded. Written text, grouping values and schema names/type labels are included as shown, so review the preview before sharing. Draft instructions stay in IndexedDB with the diagram. [How to use the handoff](/help/#build-an-app-with-lovable).
 
 ## Remove local data
 

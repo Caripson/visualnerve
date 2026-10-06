@@ -14,6 +14,7 @@ import {
 import { getCsvNode, validateAnalysis, validateCsvNode, validateDataset } from '../data/csv';
 import { drawingLimits, type DrawingLayer } from '../drawing/types';
 import { validateSpatialGraph } from '../spatial/types';
+import { validateSqlQueryGraph } from '../sql/query-schema';
 
 export class StorageError extends Error {
   constructor(
@@ -142,6 +143,7 @@ export function validateGraph(graph: Graph, trustedDataset?: CsvDataset | CsvDat
   );
   try {
     validateSpatialGraph(graph);
+    validateSqlQueryGraph(graph);
     validateDataModel(graph);
     for (const dataset of sources) {
       if (!trusted.has(dataset)) validateDataset(dataset);

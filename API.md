@@ -11,6 +11,8 @@ Base: `http://localhost:4317/api/v1`. Responses and request bodies are JSON unle
 | GET | /health | Static server, indexeddb storage, bridge enabled/connected and version |
 | GET / POST | /diagrams | List / create diagram |
 | POST | /spatial-diagrams | Create and open a 3D diagram; return complete Graph |
+| POST | /sql/preview | Analyze SELECT/WITH or DDL locally; return graph/counts/warnings without saving |
+| POST | /sql/diagrams | Analyze SQL, save transactionally and open the diagram; return complete Graph |
 | GET / PATCH / DELETE | /diagrams/{id} | Complete canonical graph / diagram properties / cascading deletion |
 | GET / POST | /diagrams/{id}/nodes | List / create node |
 | GET / PATCH / DELETE | /nodes/{id} | Read / update / delete and detach children |
@@ -69,6 +71,18 @@ Send to `POST /diagrams/DIAGRAM_UUID/bulk`. `parentExternalId` resolves a node h
 
 ## MCP
 
+Visualize a SELECT or WITH query through the same browser worker as the SQL dialog:
+
+```json
+{"path":"/sql/preview","method":"POST","data":{"name":"Invoice flow","sql":"SELECT b.bu_id, invoice_org.bu_name AS invoice_name FROM business b LEFT JOIN business invoice_org ON b.bu_send_bills_to = invoice_org.bu_id WHERE b.active = 1"}}
+```
+
+The exact `POST /sql/preview` endpoint is available with Read only. It returns `SqlImportResult` (`graph`, warnings, schema counts and, for queries, `kind: "query"`, `queryCount`, `sourceCount`, `outputColumnCount`). It does not save or open a project. Review warnings and unresolved references before creating the diagram. Use `POST /sql/diagrams` with the same payload to save and open the graph; this requires Read + write. Both endpoints accept only `sql` and optional `name` (nonempty, at most 500 characters). They reject extra fields, unsupported paths, malformed queries and unsupported constructs without partial writes.
+
+Query graphs retain scoped table aliases, derived tables/CTEs, joins with their conditions, ordered output aliases/expressions, column lineage and filters/grouping/order clauses. The same table under two aliases creates two source objects. They describe logical query structure; no SQL is executed, no database connection is made, and no returned rows or physical execution plan is available. Query expressions include literal values, so review JSON, Markdown and sharing previews for sensitive filters. Reserved version-1 metadata uses `sqlQuerySource`/`sqlQueryResult` on nodes and `sqlQueryRelationship` on edges; see [SQL import](docs/SQL_IMPORT.md) and [data model](DATA_MODEL.md).
+
+Worker analysis is cancellable and times out after 30 seconds; SQL REST/MCP commands allow 45 seconds for analysis, validation and persistence. The decoded script limit is 50 MiB, but the existing local bridge's JSON request/response envelope is limited to 32 MiB. Keep integration scripts smaller when escaping or extracted expressions expand the payload. Revoking access or closing the workspace cancels pending SQL analysis; write grants and storage acceptance are rechecked before saving.
+
 Create an empty 3D mind map through `visual_nerve_request`:
 
 ```json
@@ -93,6 +107,6 @@ When several distinct workspaces are connected, pass `workspaceId` to MCP or `X-
 
 ## Public app and permissions
 
-The public static site supplies no content API. Commands always target a user’s loopback bridge; public Swagger pages are read-only reference, while local Swagger can execute against its local origin. Read only permits GET and POST /export, rejecting all mutations and permission escalation. Off closes the socket. Browser closure or disconnection returns 503 (MCP tools report isError), with no fallback storage. Both REST and MCP use the same browser repository.
+The public static site supplies no content API. Commands always target a user’s loopback bridge; public Swagger pages are read-only reference, while local Swagger can execute against its local origin. Read only permits GET, POST /export and exact POST /sql/preview, rejecting all mutations and permission escalation. Off closes the socket. Browser closure or disconnection returns 503 (MCP tools report isError), with no fallback storage. Both REST and MCP use the same browser repository.
 
 Hosted apps require an exact --allowed-origin and may require trusted local TLS and browser local-network permission. The bridge rejects non-loopback listen addresses and remote client peers. See [deployment setup](docs/DEPLOYMENT.md#optional-local-mcp). /workspace/import uses Merge; destructive Replace and global deletion are separately confirmed actions in the browser UI. Backup schema/date and excluded local grants/consent are described in [EXPORT_FORMAT.md](EXPORT_FORMAT.md).

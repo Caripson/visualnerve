@@ -72,15 +72,17 @@ Beside a CSV measure, **Why this value?** explains the calculation and shows con
 
 ## Import a SQL schema
 
-Drop a `.sql` or `.ddl` file, use **Import**, or choose **Import SQL script**. On phones, use **… → Import SQL script**. Enter a diagram name and paste the SQL script, or use **Load SQL file**. **Preview schema** analyzes it locally in a worker and shows table, column, relationship and unresolved-table counts with import notes. Review the preview, then choose **Create diagram**. Changing the input clears the preview; Cancel aborts pending analysis.
+Drop a `.sql` or `.ddl` file, use **Import**, or choose **Import SQL script**. On phones, use **… → Import SQL script**. Enter a diagram name and paste the SQL script, or use **Load SQL file**. Preview analyzes it locally in a worker and shows query/source/output counts or table/column counts, relationships and import notes. Review the preview, then choose **Create diagram**. Changing the input clears the preview; Cancel aborts pending analysis.
+
+SELECT/WITH queries become a graph of scoped sources, joins and results. The same table under different aliases stays separate, including invoice and parent organization aliases. JOIN connections show their type and condition. Each result keeps its ordered output names/aliases, CASE/function/cast expressions and column lineage. Derived tables and CTEs have their own query blocks. Select source/result objects or connections to inspect full expressions, filters, grouping, order and resolved/unresolved/ambiguous column references. Wildcards stay explicit; duplicate output aliases are retained with a warning.
 
 The importer supports common PostgreSQL, MySQL and SQL Server `CREATE TABLE` definitions and `ALTER TABLE ... ADD` columns or primary/unique/foreign keys. Composite keys, quoted/schema-qualified names and references to tables defined later are retained. Foreign-key arrows run from the referencing child table to the referenced parent table. Missing definitions remain **External table · definition missing**; unresolved referenced columns are not invented.
 
 Cards show up to 12 columns and PK/FK/UQ/nullability badges. Select a table to inspect its complete schema and keys in Properties, with 100 columns per page. Select a foreign-key connection for its column pairs and delete/update actions. Move, rename and connect imported objects, assign status or draw over them. Schema objects save locally and survive JSON export, backups and reload.
 
-SQL is never executed. SELECT/JOIN queries are not transformed into query plans. Row data and unsupported statements are ignored; DROP/RENAME/MODIFY changes are not applied and produce notes. Review the result because it represents imported CREATE/ADD definitions, not the final state of every migration. Limits are 50 MiB, 2,000 table objects including external references, 100,000 columns and 10,000 foreign-key relationships.
+SQL is never executed or sent to a database. Query diagrams show logical structure; they do not show returned rows or a physical optimizer plan. Unsupported query constructs are rejected with a clear error. For DDL, row data and unsupported statements are ignored; DROP/RENAME/MODIFY changes are not applied and produce notes. Review schemas because they represent imported CREATE/ADD definitions, not the final state of every migration. Scripts are limited to 50 MiB. Schema limits are 2,000 table objects, 100,000 columns and 10,000 foreign keys; query limits are 100 blocks, nesting depth 16, 2,000 sources, 10,000 outputs and 10,000 relationships.
 
-The raw script is a temporary draft. INSERT/COPY rows, default and CHECK expressions, comments and procedure bodies are not saved. ENUM labels within data types may remain as schema structure. SQL schema can still contain sensitive names or type labels; review it before sharing. [How your data is stored](/privacy/#sql-schema-import).
+The raw script is a temporary draft. **Query output expressions, JOIN conditions and clauses retain their literal values** in local storage, JSON, backups and recognized text exports. DDL INSERT/COPY rows, default and CHECK expressions and procedure bodies are excluded; ENUM labels within data types may remain as schema structure. Comments and the complete source script are not saved. Review names, expressions and filters before sharing. [How your data is stored](/privacy/#sql-schema-import).
 
 ## Build an app with Lovable
 
@@ -88,7 +90,7 @@ Choose **Build with Lovable** beside Export, or **… → Build with Lovable** o
 
 Objects become app features and workflow steps. Connections preserve their directions, labels, conditions and relationships; hierarchy is distinguished from execution order. Duplicate titles remain separate. Done objects still describe features to build. Connections to objects outside your selected scope appear as external context.
 
-**Open in Lovable** opens a new, unsent prompt. Review it there and press **Send** to start building. This explicitly shares the previewed text with Lovable. Raw CSV rows, source SQL scripts, arbitrary metadata and owner email addresses are excluded; grouping values, calculated summaries and written descriptions may be included. SQL tables contribute recognized column types, nullability, primary/unique keys and foreign-key column pairs/actions; missing definitions remain external context and unknown referenced columns remain unresolved. Freehand notes are not translated into requirements, so explain their meaning in your instructions.
+**Open in Lovable** opens a new, unsent prompt. Review it there and press **Send** to start building. This explicitly shares the previewed text with Lovable. Raw CSV rows, complete source SQL scripts, arbitrary metadata and owner email addresses are excluded; grouping values, calculated summaries and written descriptions may be included. SQL tables contribute recognized column types, nullability, primary/unique keys and foreign-key column pairs/actions; query diagrams contribute aliases, outputs, expressions, joins and clauses, including literal filter values. Missing definitions and unresolved references remain explicit. Freehand notes are not translated into requirements, so explain their meaning in your instructions.
 
 Use **Copy build prompt** or **Download build brief** if the prompt is too large for a link. The brief stays complete. No API key or local MCP bridge is needed. [Lovable's handoff documentation](https://docs.lovable.dev/integrations/build-with-url).
 
@@ -107,7 +109,7 @@ Clearing site data, resetting a browser profile or uninstalling the browser may 
 
 ## Codex and MCP
 
-MCP access is **Off** by default. Start a bridge on your own computer with `--bridge`, then choose **Read only** or **Read + write** in Settings. Visual Nerve must remain open. Tools can read content you grant access to and, with write access, change it. Read-only commands cannot mutate or elevate access. Turning it Off or closing the browser stops access; the bridge keeps no database or cloud copy.
+MCP access is **Off** by default. Start a bridge on your own computer with `--bridge`, then choose **Read only** or **Read + write** in Settings. Visual Nerve must remain open. Tools can read content you grant access to and, with write access, change it. `POST /sql/preview` with `{sql,name?}` analyzes a supplied query/schema without saving and is permitted in Read only. `POST /sql/diagrams` saves and opens its graph and requires write access. Read-only commands cannot mutate or elevate access. Turning it Off or closing the browser stops access; the bridge keeps no database or cloud copy.
 
 ```text
 Codex → local MCP bridge → your active browser → IndexedDB

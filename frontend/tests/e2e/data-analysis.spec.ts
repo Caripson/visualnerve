@@ -1,4 +1,4 @@
-import { expect, test, type Page } from './fixtures';
+import { expect, test, type APIRequestContext, type Page } from './fixtures';
 
 async function saved(page: Page) {
   await expect(page.getByRole('status').filter({ hasText: /^Saved$/ })).toBeVisible();
@@ -17,12 +17,27 @@ async function dataTool(page: Page, name: string) {
   await page.getByLabel('Data tools', { exact: true }).click();
   await page.getByRole('button', { name, exact: true }).click();
 }
+async function relatedScope(
+  request: APIRequestContext,
+  path: { columnId: string; value: string }[] | null,
+) {
+  // Saved can still describe the previous view while the analysis worker runs.
+  // Wait for the requested committed scope before search reopens its graph.
+  await expect
+    .poll(async () => {
+      const diagrams = await (await request.get('/api/v1/diagrams')).json();
+      return (
+        diagrams.find((diagram: { name: string }) => diagram.name === 'Connected orders')?.settings
+          ?.csvEntityFocus?.path ?? null
+      );
+    })
+    .toEqual(path);
+}
 
 test('connects 100,000 orders, explores related entities and explains native totals without duplicate inflation', async ({
   page,
   request,
 }) => {
-  void request;
   const customers = `Id,Company\n${Array.from({ length: 2000 }, (_, index) => `K${index},AAA customer ${String(index).padStart(4, '0')}`).join('\n')}\nK0,AAA customer 0000`;
   const orders = `Customer,Amount\n${Array.from({ length: 100000 }, (_, index) => `${index === 99999 ? 'UNKNOWN' : `K${index % 2000}`},10.50`).join('\n')}`;
   await page.evaluate(
@@ -82,6 +97,7 @@ test('connects 100,000 orders, explores related entities and explains native tot
 
   await select(page, 'AAA customer 0000');
   await page.getByRole('button', { name: 'Explore this group', exact: true }).click();
+  await relatedScope(request, [{ columnId: 'c1', value: 'AAA customer 0000' }]);
   await saved(page);
   await select(page, 'orders');
   await page.getByRole('button', { name: 'Explain Sum · Amount', exact: true }).click();
@@ -100,6 +116,7 @@ test('connects 100,000 orders, explores related entities and explains native tot
   await expect(explanation.getByRole('heading', { name: /Sum · Amount: 525/ })).toBeVisible();
   await explanation.getByRole('button', { name: 'Close dialog', exact: true }).click();
   await page.getByRole('button', { name: 'All data', exact: true }).click();
+  await relatedScope(request, null);
   await saved(page);
   await select(page, 'orders');
   await page.getByRole('button', { name: 'Explain Sum · Amount', exact: true }).click();

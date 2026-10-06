@@ -1,0 +1,204 @@
+.sql-query-summary,
+.sql-query-details {
+  min-width: 0;
+  max-width: 100%;
+}
+.sql-query-summary {
+  width: 100%;
+  flex-shrink: 0;
+  color: var(--text);
+}
+.sql-query-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 3px 0 7px;
+  font-size: 9px;
+  line-height: 14px;
+  overflow-wrap: anywhere;
+}
+.sql-query-badges > span,
+.sql-query-badges > code {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+.sql-query-badges > code {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sql-query-table-name {
+  margin: 3px 0 7px;
+  font:
+    10px/15px ui-monospace,
+    monospace;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.sql-query-observed-columns {
+  margin: 0;
+  padding-left: 14px;
+  columns: 2;
+  font:
+    10px/16px ui-monospace,
+    monospace;
+}
+.sql-query-observed-columns li {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sql-query-overflow,
+.sql-query-notice {
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--muted);
+  margin: 5px 0;
+  overflow-wrap: anywhere;
+}
+.sql-query-outputs {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  text-align: left;
+  font-size: 10px;
+  line-height: 14px;
+}
+.sql-query-outputs th,
+.sql-query-outputs td {
+  padding: 3px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.sql-query-outputs th:first-child {
+  width: 36%;
+}
+.sql-query-outputs thead {
+  color: var(--muted);
+}
+.sql-query-summary .sql-query-outputs th,
+.sql-query-summary .sql-query-outputs td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sql-query-outputs code,
+.sql-query-fields code,
+.sql-query-source-columns code {
+  font-size: inherit;
+}
+.sql-query-warning {
+  color: var(--danger, #a84236);
+  font-size: 10px;
+}
+.sql-query-clauses {
+  margin: 12px 0;
+  font-size: 11px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.sql-query-clauses dt {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 650;
+  margin-top: 7px;
+}
+.sql-query-clauses dd {
+  margin: 0;
+  font-family: ui-monospace, monospace;
+  white-space: pre-wrap;
+}
+.sql-query-details .sql-query-clauses dd {
+  max-height: 320px;
+  overflow: auto;
+}
+.sql-query-clauses-compact {
+  margin: 7px 0 0;
+  font-size: 9px;
+  line-height: 13px;
+}
+.sql-query-clauses-compact dt {
+  font-size: 8px;
+}
+.sql-query-clauses-compact dd {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.sql-query-fields {
+  margin: 12px 0;
+  font-size: 11px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.sql-query-fields dt {
+  color: var(--muted);
+  margin-top: 8px;
+}
+.sql-query-fields dd {
+  margin: 0;
+}
+.sql-query-condition {
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+.sql-query-output-scroll,
+.sql-query-source-columns {
+  max-height: 420px;
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.sql-query-source-columns {
+  padding: 10px 10px 10px 28px;
+  font-size: 11px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.sql-query-details .sql-query-outputs {
+  table-layout: auto;
+  font-size: 11px;
+  line-height: 16px;
+}
+.sql-query-details .sql-query-outputs th,
+.sql-query-details .sql-query-outputs td {
+  min-width: 90px;
+  max-width: 220px;
+  padding: 6px;
+}
+.sql-query-details .sql-query-outputs thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-alt);
+}
+.sql-query-reference-list {
+  padding-left: 14px;
+  margin: 0;
+  font-size: 10px;
+}
+.sql-query-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.sql-query-pagination button {
+  min-height: 44px;
+  padding: 8px;
+  font-size: 11px;
+}
+.sql-query-pagination > span {
+  font-size: 10px;
+  color: var(--muted);
+}

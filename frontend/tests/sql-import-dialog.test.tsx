@@ -4,6 +4,7 @@ import { SqlImportDialog } from '../src/components/SqlImportDialog';
 import { parseSqlAsync } from '../src/sql/client';
 import type { SqlImportResult } from '../src/sql/parser';
 import type { SqlTable } from '../src/sql/schema';
+import type { SqlQueryResult, SqlQuerySource } from '../src/sql/query-schema';
 import { blankGraph, newEdge, newNode } from '../src/model/types';
 
 vi.mock('../src/sql/client', () => ({
@@ -278,4 +279,130 @@ it('loads a bounded SQL file and prevents a late file read from replacing edited
   await act(async () => reading.resolve('STALE FILE CONTENT'));
   expect(screen.getByLabelText('SQL script')).toHaveValue(source);
   expect(screen.getByLabelText('SQL diagram name')).toHaveValue('Orders');
+});
+
+it('previews SELECT aliases, nested queries, DISTINCT and output counts before explicitly creating a query diagram', async () => {
+  const graph = blankGraph('Sales query');
+  const main: SqlQueryResult = {
+    version: 1,
+    scope: 'query_1',
+    name: 'Query result',
+    distinct: true,
+    columns: [
+      {
+        ordinal: 1,
+        name: 'customer',
+        expression: 'b.name',
+        references: [
+          { scope: 'query_1', sourceAlias: 'b', column: 'name', resolution: 'resolved' },
+        ],
+      },
+    ],
+    clauses: { where: "b.country = 'NO'" },
+  };
+  const nested: SqlQueryResult = {
+    ...main,
+    scope: 'query_1/subquery',
+    parentScope: 'query_1',
+    name: 'inv_tmp',
+    distinct: false,
+  };
+  const source: SqlQuerySource = {
+    version: 1,
+    scope: 'query_1',
+    alias: 'b',
+    kind: 'table',
+    qualifiedName: ['app', 'business'],
+    columns: ['name', 'country'],
+  };
+  graph.nodes = [
+    newNode(graph.diagram.id, { metadata: { sqlQuerySource: source } }),
+    newNode(graph.diagram.id, { metadata: { sqlQueryResult: main } }),
+    newNode(graph.diagram.id, { metadata: { sqlQueryResult: nested } }),
+  ];
+  const preview: SqlImportResult = {
+    graph,
+    kind: 'query',
+    queryCount: 2,
+    sourceCount: 1,
+    outputColumnCount: 2,
+    tableCount: 1,
+    columnCount: 4,
+    relationshipCount: 2,
+    ignoredStatementCount: 0,
+    warnings: ['Duplicate output alias was retained.'],
+  };
+  parse.mockResolvedValue(preview);
+  const create = vi.fn().mockResolvedValue(undefined);
+  const close = vi.fn();
+  render(
+    <SqlImportDialog
+      initial={{
+        text: "/* SELECT draft */ -- sample\n SELECT DISTINCT b.name AS customer FROM app.business b WHERE b.country = 'NO';",
+        name: 'Sales query',
+      }}
+      close={close}
+      create={create}
+    />,
+  );
+  expect(screen.getByText(/including literal values/)).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Create diagram' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Preview query' }));
+  const section = await screen.findByLabelText('SQL query preview');
+  expect(within(section).getByText('Source aliases').nextElementSibling).toHaveTextContent('1');
+  expect(within(section).getByText('Query blocks').nextElementSibling).toHaveTextContent('2');
+  expect(within(section).getByText('Result columns').nextElementSibling).toHaveTextContent('1');
+  expect(within(section).getByText('Nested output columns').nextElementSibling).toHaveTextContent(
+    '1',
+  );
+  expect(within(section).getByText('app.business')).toBeVisible();
+  expect(within(section).getByText('SELECT DISTINCT · 1 outputs · query_1')).toBeVisible();
+  expect(within(section).getAllByText("WHERE b.country = 'NO'")).toHaveLength(2);
+  expect(within(section).getByText('Duplicate output alias was retained.')).toBeVisible();
+  expect(screen.queryByText('Unresolved tables')).toBeNull();
+  expect(create).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Create diagram' }));
+  await waitFor(() => expect(close).toHaveBeenCalledOnce());
+  expect(create).toHaveBeenCalledWith(graph);
+});
+
+it('accepts a SELECT without table sources and detects WITH after nested comments', async () => {
+  const graph = blankGraph('Literal query');
+  graph.nodes = [
+    newNode(graph.diagram.id, {
+      metadata: {
+        sqlQueryResult: {
+          version: 1,
+          scope: 'query_1',
+          name: 'Query result',
+          distinct: false,
+          columns: [{ ordinal: 1, name: 'answer', expression: '42', references: [] }],
+          clauses: {},
+        } satisfies SqlQueryResult,
+      },
+    }),
+  ];
+  parse.mockResolvedValue({
+    graph,
+    kind: 'query',
+    tableCount: 0,
+    columnCount: 1,
+    relationshipCount: 0,
+    ignoredStatementCount: 0,
+    warnings: [],
+  });
+  render(
+    <SqlImportDialog
+      initial={{
+        text: '/* outer /* nested */ comment */ WITH value AS (SELECT 42 AS answer) SELECT answer FROM value;',
+        name: 'Literal query',
+      }}
+      close={vi.fn()}
+      create={vi.fn()}
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Preview query' }));
+  expect(await screen.findByLabelText('SQL query preview')).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Create diagram' })).toBeEnabled();
+  expect(screen.queryByRole('alert')).toBeNull();
 });

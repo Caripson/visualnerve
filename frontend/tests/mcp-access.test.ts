@@ -5,9 +5,11 @@ describe('local browser MCP capability', () => {
     for (const value of [undefined, null, true, 'readwrite', 'off'])
       expect(mcpAccess(value)).toBe('off');
   });
-  it('allows reads and diagram export with a read-only grant', () => {
+  it('allows reads, diagram export and SQL preview with a read-only grant', () => {
     assertMcpAccess('read', '/diagrams', 'GET');
     assertMcpAccess('read', '/export', 'POST');
+    assertMcpAccess('read', '/sql/preview', 'POST');
+    assertMcpAccess('read', '/api/v1/sql/preview', 'POST');
     for (const method of ['POST', 'PUT', 'PATCH', 'DELETE'])
       expect(() => assertMcpAccess('read', '/nodes/test', method)).toThrow(/read-only/);
   });
@@ -17,6 +19,11 @@ describe('local browser MCP capability', () => {
       '/workspace/import',
       '/export/../diagrams',
       '/settings/mcp-access',
+      '/sql/diagrams',
+      '/sql/preview/../diagrams',
+      '/sql/preview?save=true',
+      '/sql/preview/extra',
+      '/sql/preview#save',
     ])
       expect(() => assertMcpAccess('read', path, 'POST')).toThrow();
   });

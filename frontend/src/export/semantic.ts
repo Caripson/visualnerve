@@ -1,4 +1,10 @@
 import Papa from 'papaparse';
+import { getSqlQuerySource, getSqlQueryResult, getSqlQueryRelationship } from '../sql/query-schema';
+import {
+  sqlQuerySourceSummary,
+  sqlQueryResultSummary,
+  sqlQueryRelationshipSummary,
+} from './sql-query';
 import {
   base,
   blankGraph,
@@ -122,6 +128,12 @@ function ordered(graph: Graph): GraphNode[] {
 function escapeHeading(text: string) {
   return text.replace(/\n/g, ' ').replace(/([\\`*_\[\]])/g, '\\$1');
 }
+function queryRecord(title: string, value: unknown) {
+  const text = JSON.stringify(value, null, 2);
+  const longest = (text.match(/`+/g) ?? []).reduce((max, run) => Math.max(max, run.length), 0);
+  const fence = '`'.repeat(Math.max(3, longest + 1));
+  return `${title}:\n\n${fence}json\n${text}\n${fence}\n`;
+}
 export function markdown(graph: Graph): string {
   const chunks = [
     `# ${escapeHeading(graph.diagram.name)}\n`,
@@ -146,6 +158,17 @@ export function markdown(graph: Graph): string {
       chunks.push(
         `Next:\n${next.map((edge) => `- ${escapeHeading(nodes.get(edge.targetNodeId)?.title ?? edge.targetNodeId)}`).join('\n')}\n`,
       );
+    for (const edge of next) {
+      const query = sqlQueryRelationshipSummary(getSqlQueryRelationship(edge));
+      if (query)
+        chunks.push(
+          queryRecord('SQL query connection', {
+            target: nodes.get(edge.targetNodeId)?.title ?? edge.targetNodeId,
+            direction: edge.direction,
+            ...query,
+          }),
+        );
+    }
   };
   const details = (n: GraphNode) => {
     if (n.description) chunks.push(`${n.description}\n`);
@@ -155,6 +178,10 @@ export function markdown(graph: Graph): string {
       chunks.push(`Dates: ${n.startDate ?? '—'} → ${n.endDate ?? '—'}\n`);
     if (n.url) chunks.push(`URL: ${n.url}\n`);
     if (n.notes) chunks.push(`${n.notes}\n`);
+    const source = sqlQuerySourceSummary(getSqlQuerySource(n));
+    if (source) chunks.push(queryRecord('SQL query source', source));
+    const result = sqlQueryResultSummary(getSqlQueryResult(n));
+    if (result) chunks.push(queryRecord('SQL query result', result));
   };
   if (graph.diagram.type === 'mindmap') {
     const children = new Map<string, GraphNode[]>();

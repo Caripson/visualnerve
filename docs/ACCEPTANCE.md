@@ -284,3 +284,47 @@ Retained fictional fixture evidence:
 [Canonical 2D export](acceptance/spatial-2d-export.png) and
 [320 px phone 2D overview](acceptance/spatial-phone-2d.png).
 No actual user data is included. S3/CloudFront deployment remains manual.
+
+## SELECT query diagrams and consolidated main
+
+The SQL importer now distinguishes SELECT/WITH queries from table definitions.
+An anonymized service-contract fixture exercises 26 JOIN operations, 29 scoped
+source aliases, two derived SELECTs, DISTINCT, CASE, functions, chained casts,
+complex AND/OR filters and repeated output names. It produces 32 ordinary diagram
+objects and 58 connections, including a second dependency for a JOIN condition
+that refers to two earlier aliases. Source columns are observed references rather
+than invented schema definitions. Duplicate names and uncertain references remain
+explicit warnings.
+
+Query cards keep the normal colors, icons, status and renderer. Properties exposes
+full expressions and clauses with paginated column lists. JSON/backup imports
+preserve query metadata and real endpoints; clipboard copies get fresh logical
+scopes so repeated pastes cannot accidentally share an alias identity. Reconnecting
+a parsed SQL edge removes its old query binding, and undo restores it. Markdown
+and Lovable use typed query summaries, including literal expression/filter values.
+Large query graphs use a non-overlapping grid after 300 objects.
+
+REST/MCP `POST /sql/preview` is permitted in read-only mode and writes no query
+diagram. `POST /sql/diagrams` requires write permission, imports transactionally
+and opens the result. Revocation, cancellation, invalid syntax/metadata and
+unsupported query constructs are tested without partial records. OpenAPI, API,
+data model, import/export, privacy, Lovable and user help are updated.
+
+The complete frontend run passed 543 cases in 60 files (one worker and a 20-second
+Vitest timeout on the shared macOS machine; performance assertions were retained). Final SQL/parser/API/UI
+checks passed 102 cases across six files, followed by all ten integration cases
+after the large-graph layout regression. Go race tests and vet, formatting and the
+production TypeScript/Vite/Hugo/OpenAPI/Go build passed. The static audit found
+262 application files and a 33-asset offline shell. All 56 distinct browser cases
+passed: the five SQL/query and related-data cases, followed by the remaining 51
+editor/export/privacy/status/spatial cases. The final 51-case run took 14.3 minutes.
+The CSV related-scope test now waits for the committed filter before opening its
+measure explanation, avoiding a stale Saved state while its analysis worker runs.
+The final sharing-text correction passed 21 Lovable/integration cases and a fresh
+production build; all three SELECT browser cases then passed again in 15.5 seconds.
+
+Retained fictional fixture evidence: [SELECT result and connections](acceptance/sql-query.png)
+and [SELECT properties at 320 px](acceptance/sql-query-phone.png). No real user SQL
+or database records are included. All completed analysis and 3D work is consolidated
+on `main`; [AGENTS.md](../AGENTS.md) records the main-only workflow and manual
+S3/CloudFront deployment preference.

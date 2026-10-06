@@ -1,15 +1,49 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FileUp } from 'lucide-react';
 import { Modal } from './Modal';
 import type { Graph } from '../model/types';
 import { parseSqlAsync, SQL_FILE_LIMIT } from '../sql/client';
 import type { SqlImportResult } from '../sql/parser';
 import { getSqlTable } from '../sql/schema';
+import { getSqlQueryResult, getSqlQuerySource } from '../sql/query-schema';
 import './sql-import.css';
 
 const number = (value: number) => value.toLocaleString();
 const message = (error: unknown) =>
   error instanceof Error ? error.message : 'Unable to import this SQL script.';
+
+// This hint only names the preview button; the worker performs the actual parsing.
+function queryDraft(text: string): boolean {
+  let offset = 0;
+  const limit = Math.min(text.length, 16_384);
+  while (offset < limit) {
+    if (/\s/.test(text[offset])) {
+      offset++;
+      continue;
+    }
+    if (text.startsWith('--', offset) || text[offset] === '#') {
+      const end = text.indexOf('\n', offset);
+      offset = end < 0 ? text.length : end + 1;
+      continue;
+    }
+    if (text.startsWith('/*', offset)) {
+      let depth = 1;
+      offset += 2;
+      while (offset < limit && depth) {
+        if (text.startsWith('/*', offset)) {
+          depth++;
+          offset += 2;
+        } else if (text.startsWith('*/', offset)) {
+          depth--;
+          offset += 2;
+        } else offset++;
+      }
+      continue;
+    }
+    return /^(SELECT|WITH)\b/i.test(text.slice(offset, offset + 16));
+  }
+  return false;
+}
 
 export function SqlImportDialog({
   initial,
@@ -20,7 +54,7 @@ export function SqlImportDialog({
   close: () => void;
   create: (graph: Graph) => Promise<void>;
 }) {
-  const [name, setName] = useState(initial?.name ?? 'SQL schema');
+  const [name, setName] = useState(initial?.name ?? 'SQL diagram');
   const [text, setText] = useState(initial?.text ?? '');
   const [preview, setPreview] = useState<SqlImportResult | null>(null);
   const [working, setWorking] = useState(false);
@@ -29,6 +63,8 @@ export function SqlImportDialog({
   const controller = useRef<AbortController | null>(null);
   const generation = useRef(0);
   const mounted = useRef(true);
+  const queryHint = useMemo(() => queryDraft(text), [text]);
+  const isQueryDraft = preview?.kind === 'query' || queryHint;
 
   const cancel = useCallback(() => {
     generation.current++;
@@ -55,7 +91,7 @@ export function SqlImportDialog({
   }, [cancel]);
   useEffect(() => {
     cancel();
-    setName(initial?.name ?? 'SQL schema');
+    setName(initial?.name ?? 'SQL diagram');
     setText(initial?.text ?? '');
     setPreview(null);
     setWorking(false);
@@ -78,7 +114,7 @@ export function SqlImportDialog({
         file.name
           .replace(/\.(sql|ddl)$/i, '')
           .trim()
-          .slice(0, 500) || 'SQL schema',
+          .slice(0, 500) || 'SQL diagram',
       );
     } catch (error) {
       if (mounted.current && current === generation.current) setError(message(error));
@@ -97,8 +133,12 @@ export function SqlImportDialog({
     try {
       const result = await parseSqlAsync(text, name.trim(), { signal: pending.signal });
       if (!mounted.current || current !== generation.current || pending.signal.aborted) return;
-      if (!result.tableCount || !result.graph.nodes.length)
-        throw new Error('No supported CREATE TABLE definitions were found in this SQL script.');
+      if (!result.graph.nodes.length || (result.kind !== 'query' && !result.tableCount))
+        throw new Error(
+          isQueryDraft
+            ? 'No supported SELECT query was found in this SQL script.'
+            : 'No supported CREATE TABLE definitions were found in this SQL script.',
+        );
       setPreview(result);
     } catch (error) {
       if (mounted.current && current === generation.current && !pending.signal.aborted)
@@ -130,6 +170,17 @@ export function SqlImportDialog({
       return table ? [{ id: node.id, table }] : [];
     }) ?? [];
   const externalCount = tables.filter(({ table }) => table.external).length;
+  const isQuery = preview?.kind === 'query';
+  const sources =
+    preview?.graph.nodes.flatMap((node) => {
+      const source = getSqlQuerySource(node);
+      return source ? [{ id: node.id, source }] : [];
+    }) ?? [];
+  const queries =
+    preview?.graph.nodes.flatMap((node) => {
+      const query = getSqlQueryResult(node);
+      return query ? [{ id: node.id, query }] : [];
+    }) ?? [];
 
   return (
     <Modal title="Import SQL" close={dismiss} wide dismissible={!creating}>
@@ -142,8 +193,9 @@ export function SqlImportDialog({
         }}
       >
         <p className="sql-import-intro">
-          Parse CREATE TABLE definitions and foreign keys locally to build a schema diagram. SQL is
-          never executed. INSERT values and other data rows are not imported.
+          Visualize SELECT sources, joins, expressions and filters, or CREATE TABLE definitions and
+          foreign keys. Parsing happens locally. SQL is never executed and result rows are not
+          fetched.
         </p>
         <label className="field">
           Diagram name
@@ -182,7 +234,7 @@ export function SqlImportDialog({
             spellCheck={false}
             value={text}
             disabled={creating}
-            placeholder="CREATE TABLE customers (id INTEGER PRIMARY KEY);"
+            placeholder="SELECT c.name, SUM(o.total) AS revenue FROM customers c JOIN orders o ON o.customer_id = c.id GROUP BY c.name;"
             onChange={(event) => {
               invalidate();
               setText(event.target.value);
@@ -190,43 +242,113 @@ export function SqlImportDialog({
           />
         </label>
         <p className="sql-import-note">
-          The script is a temporary draft. Only schema objects are saved.
+          The full script is a temporary draft. Schema imports save definitions only. Query diagrams
+          save expressions and conditions, including literal values, locally with the diagram.
         </p>
-        {working && <p role="status">Preparing schema preview…</p>}
+        {working && <p role="status">Preparing {isQueryDraft ? 'query' : 'schema'} preview…</p>}
         {error && (
           <p role="alert" className="sql-import-error">
             {error}
           </p>
         )}
         {preview && (
-          <section className="sql-schema-preview" aria-label="SQL schema preview">
-            <h3>Schema preview</h3>
+          <section
+            className="sql-schema-preview"
+            aria-label={isQuery ? 'SQL query preview' : 'SQL schema preview'}
+          >
+            <h3>{isQuery ? 'Query preview' : 'Schema preview'}</h3>
             <dl className="sql-preview-counts">
-              {[
-                ['Tables', preview.tableCount],
-                ['Columns', preview.columnCount],
-                ['Relationships', preview.relationshipCount],
-                ['Unresolved tables', externalCount],
-              ].map(([label, value]) => (
+              {(isQuery
+                ? [
+                    ['Source aliases', preview.sourceCount ?? sources.length],
+                    ['Query blocks', preview.queryCount ?? queries.length],
+                    [
+                      'Result columns',
+                      queries
+                        .filter(({ query }) => !query.parentScope)
+                        .reduce((count, { query }) => count + query.columns.length, 0),
+                    ],
+                    [
+                      'Nested output columns',
+                      queries
+                        .filter(({ query }) => query.parentScope)
+                        .reduce((count, { query }) => count + query.columns.length, 0),
+                    ],
+                    ['Connections', preview.relationshipCount],
+                  ]
+                : [
+                    ['Tables', preview.tableCount],
+                    ['Columns', preview.columnCount],
+                    ['Relationships', preview.relationshipCount],
+                    ['Unresolved tables', externalCount],
+                  ]
+              ).map(([label, value]) => (
                 <div key={label}>
                   <dt>{label}</dt>
                   <dd>{number(value as number)}</dd>
                 </div>
               ))}
             </dl>
-            <ul className="sql-preview-tables" aria-label="Preview tables">
-              {tables.slice(0, 30).map(({ id, table }) => (
-                <li key={id}>
-                  <strong>{table.qualifiedName.join('.')}</strong>
-                  <span>
-                    {table.external
-                      ? 'Referenced table not defined in this script'
-                      : `${number(table.columns.length)} columns`}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            {tables.length > 30 && <p>Showing 30 of {number(tables.length)} table objects.</p>}
+            {isQuery ? (
+              <>
+                <p>
+                  Aliases of the same table remain separate objects. Nested SELECT statements have
+                  their own result cards.
+                </p>
+                <ul className="sql-preview-tables" aria-label="Preview query sources">
+                  {sources.slice(0, 30).map(({ id, source }) => (
+                    <li key={id}>
+                      <strong>{source.alias}</strong>
+                      <span>
+                        {source.kind === 'table'
+                          ? source.qualifiedName.join('.')
+                          : `${source.kind === 'cte' ? 'CTE' : 'Derived query'} · ${source.queryScope}`}
+                      </span>
+                      <span>
+                        {source.scope} · {number(source.columns.length)} referenced columns
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {sources.length > 30 && (
+                  <p>Showing 30 of {number(sources.length)} source aliases.</p>
+                )}
+                <ul className="sql-preview-tables" aria-label="Preview query results">
+                  {queries.slice(0, 10).map(({ id, query }) => (
+                    <li key={id}>
+                      <strong>{query.name}</strong>
+                      <span>
+                        SELECT{query.distinct ? ' DISTINCT' : ''} · {number(query.columns.length)}{' '}
+                        outputs · {query.scope}
+                      </span>
+                      {query.clauses.where && (
+                        <span>
+                          WHERE {query.clauses.where.slice(0, 220)}
+                          {query.clauses.where.length > 220 ? '…' : ''}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                {queries.length > 10 && <p>Showing 10 of {number(queries.length)} query blocks.</p>}
+              </>
+            ) : (
+              <>
+                <ul className="sql-preview-tables" aria-label="Preview tables">
+                  {tables.slice(0, 30).map(({ id, table }) => (
+                    <li key={id}>
+                      <strong>{table.qualifiedName.join('.')}</strong>
+                      <span>
+                        {table.external
+                          ? 'Referenced table not defined in this script'
+                          : `${number(table.columns.length)} columns`}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {tables.length > 30 && <p>Showing 30 of {number(tables.length)} table objects.</p>}
+              </>
+            )}
             {preview.ignoredStatementCount > 0 && (
               <p>
                 {number(preview.ignoredStatementCount)} other statements ignored. Data rows are not
@@ -253,7 +375,7 @@ export function SqlImportDialog({
             Cancel
           </button>
           <button type="submit" disabled={!text.trim() || !name.trim() || working || creating}>
-            Preview schema
+            Preview {isQueryDraft ? 'query' : 'schema'}
           </button>
           <button
             type="button"
