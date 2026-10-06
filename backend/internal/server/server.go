@@ -18,6 +18,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"visualnerve/internal/model"
 
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
@@ -200,6 +201,9 @@ func (s *Server) forward(ctx context.Context, workspace, path, method string, da
 		return reply{Status: 405}, errors.New("unsupported command method")
 	}
 	if err := validateDiagramFileCommand(path, method, data); err != nil {
+		return reply{Status: 422}, err
+	}
+	if err := model.ValidatePresentationCommand(path, method, data); err != nil {
 		return reply{Status: 422}, err
 	}
 	var key [16]byte

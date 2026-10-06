@@ -16,34 +16,34 @@ Use `visual_nerve_request` for graph commands. HTTP documentation paths `/api/do
 
 ## CRUD and graph operations
 
-| Method               | Route                  | Behavior                                                                             |
-| -------------------- | ---------------------- | ------------------------------------------------------------------------------------ |
-| GET                  | /health                | Static server, indexeddb storage, bridge enabled/connected and version               |
-| GET / POST           | /diagrams              | List / create diagram                                                                |
-| POST                 | /spatial-diagrams      | Create and open a 3D diagram; return complete Graph                                  |
-| POST                 | /sql/preview           | Analyze SELECT/WITH or DDL locally; return graph/counts/warnings without saving      |
-| POST                 | /sql/diagrams          | Analyze SQL, save transactionally and open the diagram; return complete Graph        |
-| GET                  | /code/languages        | List all 50 language IDs, extensions and capabilities                                |
-| POST                 | /code/preview          | Analyze source files locally; return structural graph/counts/warnings without saving |
-| POST                 | /code/diagrams         | Save and open a code dependency diagram; write access required                       |
-| POST                 | /diagram-files/preview | Preview draw.io XML or base64 Visio ZIP pages without saving; read-only allowed      |
-| GET / PATCH / DELETE | /diagrams/{id}         | Complete canonical graph / diagram properties / cascading deletion                   |
-| GET / POST           | /diagrams/{id}/nodes   | List / create node                                                                   |
-| GET / PATCH / DELETE | /nodes/{id}            | Read / update / delete and detach children                                           |
-| POST                 | /nodes/{id}/children   | Add child plus hierarchy edge and default position                                   |
-| GET / POST           | /diagrams/{id}/edges   | List / create relationship                                                           |
-| PATCH / DELETE       | /edges/{id}            | Update/reconnect / delete                                                            |
-| GET / POST           | /owners                | List / create global owner                                                           |
-| PATCH / DELETE       | /owners/{id}           | Update / remove owner; advance referencing diagram versions                          |
-| POST                 | /diagrams/{id}/bulk    | Transactional population and external-ID upsert                                      |
-| PUT                  | /diagrams/{id}/graph   | Atomic full graph replacement using baseVersion                                      |
-| POST                 | /import                | JSON, Markdown, CSV or one selected draw.io/Visio page, one transaction              |
-| POST                 | /export                | Complete JSON or semantic Markdown                                                   |
-| GET                  | /search?q=...          | Global results with diagramId and optional nodeId                                    |
-| GET                  | /workspace/export      | Complete IndexedDB workspace snapshot                                                |
-| POST                 | /workspace/import      | Restore all workspace tables in one transaction                                      |
-| GET | /settings/import-file-limit-mb | Read the effective local import limit; missing/invalid stored values return 50; read-only allowed |
-| PUT | /settings/import-file-limit-mb | Save this browser’s import limit as an integer from 50 to 1024 MiB; write access required |
+| Method               | Route                          | Behavior                                                                                          |
+| -------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------- |
+| GET                  | /health                        | Static server, indexeddb storage, bridge enabled/connected and version                            |
+| GET / POST           | /diagrams                      | List / create diagram                                                                             |
+| POST                 | /spatial-diagrams              | Create and open a 3D diagram; return complete Graph                                               |
+| POST                 | /sql/preview                   | Analyze SELECT/WITH or DDL locally; return graph/counts/warnings without saving                   |
+| POST                 | /sql/diagrams                  | Analyze SQL, save transactionally and open the diagram; return complete Graph                     |
+| GET                  | /code/languages                | List all 50 language IDs, extensions and capabilities                                             |
+| POST                 | /code/preview                  | Analyze source files locally; return structural graph/counts/warnings without saving              |
+| POST                 | /code/diagrams                 | Save and open a code dependency diagram; write access required                                    |
+| POST                 | /diagram-files/preview         | Preview draw.io XML or base64 Visio ZIP pages without saving; read-only allowed                   |
+| GET / PATCH / DELETE | /diagrams/{id}                 | Complete canonical graph / diagram properties / cascading deletion                                |
+| GET / POST           | /diagrams/{id}/nodes           | List / create node                                                                                |
+| GET / PATCH / DELETE | /nodes/{id}                    | Read / update / delete and detach children                                                        |
+| POST                 | /nodes/{id}/children           | Add child plus hierarchy edge and default position                                                |
+| GET / POST           | /diagrams/{id}/edges           | List / create relationship                                                                        |
+| PATCH / DELETE       | /edges/{id}                    | Update/reconnect / delete                                                                         |
+| GET / POST           | /owners                        | List / create global owner                                                                        |
+| PATCH / DELETE       | /owners/{id}                   | Update / remove owner; advance referencing diagram versions                                       |
+| POST                 | /diagrams/{id}/bulk            | Transactional population and external-ID upsert                                                   |
+| PUT                  | /diagrams/{id}/graph           | Atomic full graph replacement using baseVersion                                                   |
+| POST                 | /import                        | JSON, Markdown, CSV or one selected draw.io/Visio page, one transaction                           |
+| POST                 | /export                        | Complete JSON or semantic Markdown                                                                |
+| GET                  | /search?q=...                  | Global results with diagramId and optional nodeId                                                 |
+| GET                  | /workspace/export              | Complete IndexedDB workspace snapshot                                                             |
+| POST                 | /workspace/import              | Restore all workspace tables in one transaction                                                   |
+| GET                  | /settings/import-file-limit-mb | Read the effective local import limit; missing/invalid stored values return 50; read-only allowed |
+| PUT                  | /settings/import-file-limit-mb | Save this browser’s import limit as an integer from 50 to 1024 MiB; write access required         |
 
 Creates return 201 and an entity (import returns Graph). Bulk/replacement return 200 and Graph. Deletes return 204. Errors are `{ "error": "message" }`: 400 malformed JSON, 401 token missing/wrong, 403 origin/host rejected, storage not accepted or read-only mutation denied, 404 missing entity, 409 stale version or duplicate identity, 422 validation 428 missing update version, 503 no connected browser and 504 browser timeout. No partially committed graph remains after validation fails. Requests are limited to 32 MiB. All integration requests with a configured VISUAL_NERVE_BRIDGE_TOKEN need `Authorization: Bearer TOKEN`.
 
@@ -56,6 +56,43 @@ All local file imports use a default limit of 50 MiB. **Settings → Import file
 The HTTP JSON and WebSocket request/response envelopes remain **32 MiB**. Increasing the local import preference does not raise these transport limits. Escaping, base64 and response graph size can require smaller integration inputs than the selected local file limit.
 
 `GET /settings/import-file-limit-mb` permits **Read only** and returns the effective limit as a JSON integer from 50 through 1024. An absent or invalid saved value returns 50.
+
+## Numbered diagram presentations
+
+The ordered presentation is canonical graph content at `diagram.settings.presentation`:
+
+```json
+{
+  "version": 1,
+  "nodeIds": ["EXISTING_NODE_UUID", "ANOTHER_EXISTING_NODE_UUID"],
+  "secondsPerNode": 8,
+  "transitionMs": 1200
+}
+```
+
+Array position is the contiguous presentation number starting at 1. IDs must be unique UUIDs referencing existing nodes in that diagram; the maximum sequence is 20,000 nodes. `secondsPerNode` is a finite number from 2 through 600; `transitionMs` is from 0 through 10,000. Unknown fields are rejected. Without saved presentation settings, `GET /diagrams/{diagramId}/presentation` returns an empty `nodeIds` array with version 1, 8 seconds per node and 1200 ms transitions.
+
+`PUT /diagrams/{diagramId}/presentation` accepts exactly `{ "baseVersion": 7, "presentation": { ... } }`. It validates the whole definition and commits one graph transaction; success returns the complete Graph, invalid input returns 422, and a stale `baseVersion` returns 409 with no partial changes. Deleting numbered nodes removes their entries and closes gaps. JSON export and workspace backup retain the definition. Diagram import or duplication remaps colliding node IDs together with the presentation order. Clipboard copies begin unnumbered; the original sequence stays intact.
+
+Playback is transient state in the connected browser, using its current 2D or 3D view:
+
+| Method    | Route                          | Body and result                                                                      |
+| --------- | ------------------------------ | ------------------------------------------------------------------------------------ |
+| GET       | `/presentation`                | Current playback state, including while closed                                       |
+| POST      | `/presentation/open`           | Exact `{}` for the current diagram, or `{ "diagramId": "UUID" }`                     |
+| POST      | `/presentation/play`           | Exact `{}`                                                                           |
+| POST      | `/presentation/pause`          | Exact `{}`                                                                           |
+| POST      | `/presentation/rewind`         | Exact `{}`                                                                           |
+| POST      | `/presentation/forward`        | Exact `{}`                                                                           |
+| POST      | `/presentation/close`          | Exact `{}`                                                                           |
+| POST      | `/presentation/preload`        | Exact `{}`; explicitly prepare upcoming speech                                       |
+| PATCH     | `/presentation`                | At least one of boolean `audio`, `subtitles`, `preload`; no other keys               |
+| GET       | `/presentation/voices`         | `{defaultVoiceId,voices:[{id,label,language,sampleRate,modelBytes,license,source}]}` |
+| GET / PUT | `/settings/presentation-voice` | Read selected voice; PUT exact `{ "value": "VOICE_ID" }`                             |
+
+Runtime commands return `{open,diagramId,status,index,total,nodeId,audio,subtitles,preload,buffered,progress,message}`. `diagramId` and `nodeId` may be null. `index` is zero-based, or -1 for an empty sequence; `progress` is from 0 to 1 and `buffered` counts prepared speech clips. Status is `idle`, `loading`, `moving`, `playing`, `paused`, `ended` or `error`. All runtime POST/PATCH commands require accepted local storage and **Read + write**, including navigation and preloading; GET permits **Read only**. They do not rewrite the saved sequence or node geometry.
+
+Audio and preload default to false, subtitles to true. Voice IDs are `en_US-ljspeech-high` (default), `en_GB-cori-high` and `sv_SE-nst-medium`. Voice selection is a browser-local setting. Speech is generated locally; enabling speech or explicit preloading can download model assets. Discover the model sizes, licenses and sources through the voice catalog. Runtime state, generated audio and playback progress are not graph data. See [MCP presentation workflow](docs/MCP.md).
 
 ## Versions and metadata
 

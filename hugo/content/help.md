@@ -32,6 +32,16 @@ Use **Parent / container** to reparent without changing node IDs. The circle bes
 
 Arrow keys nudge selected nodes; Shift increases the distance. Ctrl/Cmd+C, V and D copy, paste and duplicate, preserving metadata and internal edges while assigning fresh UUIDs. **Delete** or the trash button removes selected items, retaining unselected children. **Delete branch** or **Shift+Delete** removes the selected topic and all its descendants. Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z undo and redo complete gestures and edits, including deletion.
 
+## Present a numbered walkthrough
+
+Open **Player** and choose **Number all nodes** or **Number selection**. You can also select an object and set **Presentation number** in Properties: 1 is the first step, 2 the next, and so on. Inserting a number moves other steps automatically so there are no gaps. Clear the number to remove the object from the walkthrough. **Order** shows the sequence and lets you move or remove steps. Numbering is saved with the diagram and supports undo. Export and backups preserve it; duplicated diagrams remap the sequence, while copied and pasted objects start unnumbered.
+
+Choose **Play** to move between the numbered objects in the current 2D or 3D view. **Pause** stops playback. Rewind goes to the previous object, and Forward to the next. Subtitles show each node's description; the audio control reads that description aloud. The default is 8 seconds per node and 1200 ms camera movement. **Order → Seconds per node** accepts 2–600 seconds and **Camera movement (ms)** accepts 0–10,000; narration finishes before advancing. Expand collapsed branches and make filtered objects visible before playing.
+
+Audio and preload start off, while subtitles start on. In **Settings → Presentation voice**, choose English (US), English (UK) or Swedish, save the selection, or preview it. Explicit audio playback, **Preload** or a Settings voice preview may download about 60–109 MiB of fixed neural voice assets. Progress appears while preparing. Models are cached separately in this browser for later use; **Clear downloaded voices** removes them. Descriptions are processed locally, and generated audio is temporary. A description above 12,000 characters shows an explicit error; it is never silently truncated. [Privacy details](/privacy/#presentation-voices).
+
+MCP can save an ordered sequence and control the player through the same local browser. GET reads are allowed with Read only; changing playback, navigation or preloading requires Read + write. The [API reference](/api/docs) describes the presentation endpoints.
+
 ## Owners, search and filters
 
 **Owners** creates people, teams, departments, systems and organizations with colors and contact details. Select a node to assign one or more owners. Ctrl/Cmd+F or K opens global search across diagrams, node details, tags, owners and metadata. A node result opens its diagram, selects the object and centers the view.

@@ -76,6 +76,14 @@ function renderer(kind: NodeKind) {
         data-node-id={id}
         data-node-status={node.status || undefined}
       >
+        {data.presentationNumber && (
+          <span
+            className="presentation-node-number"
+            aria-label={`Presentation step ${data.presentationNumber}`}
+          >
+            {data.presentationNumber}
+          </span>
+        )}
         {selected && !exporting && (
           <NodeResizer
             minWidth={100}

@@ -1,3 +1,4 @@
+import { presentation } from '../presentation/service';
 import { useEffect, useState } from 'react';
 import { useReactFlow, useStoreApi } from '@xyflow/react';
 import {
@@ -24,6 +25,7 @@ import {
   Database,
   Code2,
   LayoutTemplate,
+  Clapperboard,
 } from 'lucide-react';
 import { useEditor } from '../state/editor';
 import { fitDiagram } from '../drawing/navigation';
@@ -148,6 +150,16 @@ export function Toolbar({
               }[status]
             }
           </span>
+          <button
+            aria-label="Diagram player"
+            onClick={() => {
+              useEditor.getState().finishEditing();
+              presentation.open();
+            }}
+          >
+            <Clapperboard size={15} />
+            <span>Player</span>
+          </button>
           <button aria-label="Export" onClick={() => open('export')}>
             <Download size={14} />
             <span>Export</span>

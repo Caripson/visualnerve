@@ -1,0 +1,17 @@
+@mintplex-labs/piper-tts-web 1.0.5
+Author: Mintplex Labs (team@mintplexlabs.com)
+Source: https://github.com/Mintplex-Labs/piper-tts-web
+NPM: https://www.npmjs.com/package/@mintplex-labs/piper-tts-web/v/1.0.5
+Declared package license: MIT
+
+This package is a fork of @diffusionstudio/vits-web, authored by Konstantin
+Paulus (mail@konstantinpaulus.de), also declared MIT. The published packages
+and source repositories do not include a standalone LICENSE file. The
+package declarations and upstream source references are recorded here
+without inventing a copyright notice.
+
+Its bundled Piper phonemizer is based on rhasspy / wide-video piper-phonemize
+(MIT; Copyright (c) 2023 Michael Hansen) and includes eSpeak NG (GPL-3.0).
+The full Piper MIT and eSpeak GPL notices are distributed separately.
+See docs/SPEECH.md and piper-phonemize-NOTICE for corresponding source and
+build references for the WebAssembly runtime.

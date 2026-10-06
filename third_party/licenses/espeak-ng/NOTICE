@@ -1,0 +1,10 @@
+eSpeak NG is distributed as part of the Piper phonemizer runtime.
+License: GNU GPL version 3; see accompanying espeak-ng-COPYING.
+Source: https://github.com/rhasspy/espeak-ng
+Upstream: https://github.com/espeak-ng/espeak-ng
+Build: https://github.com/diffusionstudio/piper-wasm/blob/022edba0455ef024574747e1134ef893f1d71b76/README.md
+Piper runtime package: @diffusionstudio/piper-wasm 1.0.0.
+
+Piper uses eSpeak NG to turn local text into phoneme identifiers, then a
+neural ONNX voice model produces the audio. eSpeak's synthesizer voice is
+not the presentation audio output.

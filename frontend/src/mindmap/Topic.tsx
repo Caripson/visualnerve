@@ -50,6 +50,14 @@ export const MindmapNode = memo(({ id, data, selected }: NodeProps<CanvasNode>) 
       }}
       title={exporting ? undefined : `${node.title} · Double-click or F2 to edit`}
     >
+      {data.presentationNumber && (
+        <span
+          className="presentation-node-number"
+          aria-label={`Presentation step ${data.presentationNumber}`}
+        >
+          {data.presentationNumber}
+        </span>
+      )}
       {selected && !exporting && (
         <NodeResizer
           minWidth={100}

@@ -21,6 +21,14 @@ Start with visual_nerve_api_docs with {} (or omit arguments) for this compact gu
 
 Call visual_nerve_request for workspace commands only. Paths omit /api/v1, for example {"path":"/diagrams","method":"GET"}. /api/docs and /api/openapi.yaml are HTTP documentation routes, not browser graph commands; do not send them to visual_nerve_request.
 
+## Present the diagram in numbered order
+
+GET /diagrams/{diagramId}/presentation reads {version:1,nodeIds,secondsPerNode,transitionMs}; absent sequences return [] with 8 seconds per node and 1200 ms transitions. PUT this endpoint with exact {baseVersion,presentation} to save a sequence of unique existing node UUIDs (maximum 20,000), secondsPerNode 2..600 and transitionMs 0..10000. Success returns Graph; stale baseVersion returns 409. The canonical sequence lives in diagram.settings.presentation and survives export, backup and diagram duplication with remapped node IDs. Clipboard copies begin unnumbered.
+
+GET /presentation reads the connected browser's transient playback state, even when closed. POST /presentation/open takes {} for the current diagram or {diagramId}. POST /presentation/play, /pause, /rewind, /forward, /close and /preload take exact {}. PATCH /presentation accepts only optional boolean audio, subtitles and preload. All runtime mutations, including camera navigation and preloading, require storage acceptance and Read + write. GET operations permit Read only. Playback follows the same native nodes in the current 2D or 3D view.
+
+Audio and preload default false; subtitles default true. GET /presentation/voices lists voice IDs, languages, model sizes, licenses and sources. GET/PUT /settings/presentation-voice reads/selects en_US-ljspeech-high (default), en_GB-cori-high or sv_SE-nst-medium; PUT uses exact {value:string}. Speech is generated locally from the nodes; enabling it can download model assets. Runtime state and audio buffers are not canonical graph content.
+
 ## Local storage and access
 
 The open Visual Nerve browser's IndexedDB is authoritative and is the only database. The server forwards workspace commands and stores no application records. The browser must have accepted local storage and enabled MCP access in Settings. MCP access defaults to Off. Read only permits GET, POST /export and the exact POST /sql/preview, POST /code/preview and POST /diagram-files/preview endpoints. Creating or changing diagrams, including POST /spatial-diagrams or POST /import, requires Read + write. Writes are committed in IndexedDB before the response. If multiple workspaces are connected, provide workspaceId in visual_nerve_request arguments.

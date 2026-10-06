@@ -1,3 +1,4 @@
+import { getPresentation } from '../presentation/definition';
 import { getNodesBounds, MarkerType, type Edge, type Node, type XYPosition } from '@xyflow/react';
 import {
   emptyFilters,
@@ -16,6 +17,7 @@ export type NodeData = {
   node: GraphNode;
   owners: Owner[];
   childCount: number;
+  presentationNumber?: number;
   exporting: boolean;
   mindmap?: MindmapTopic;
   resize?: (id: string, geometry: Geometry) => void;
@@ -52,6 +54,9 @@ export function projectGraph(
   topicContext?: GraphNode[],
   exploration?: ExplorationResult | null,
 ): { nodes: CanvasNode[]; edges: Edge[] } {
+  const presentationNumbers = new Map(
+    getPresentation(graph).nodeIds.map((id, index) => [id, index + 1]),
+  );
   const exploredIds = exploration ? new Set(exploration.nodeIds) : undefined;
   const exploredEdges = exploration ? new Set(exploration.edgeIds) : undefined;
   const visibleNodes = graph.nodes.filter((node) =>
@@ -109,6 +114,7 @@ export function projectGraph(
       const match = exporting || !!exploration || matches(n);
       let data: NodeData = {
         node: n,
+        presentationNumber: presentationNumbers.get(n.id),
         owners: n.ownerIds.map((id) => ownerById.get(id)).filter((o): o is Owner => !!o),
         childCount: counts.get(n.id) ?? 0,
         exporting,
@@ -119,6 +125,7 @@ export function projectGraph(
       if (
         previous &&
         previous.node === n &&
+        previous.presentationNumber === data.presentationNumber &&
         previous.childCount === data.childCount &&
         previous.exporting === exporting &&
         previous.resize === resize &&

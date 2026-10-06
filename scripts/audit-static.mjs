@@ -10,6 +10,7 @@ export function auditStatic(directory) {
       if (stat.isDirectory()) { visit(path); continue; }
       const allowed = ['index.html', 'error.html', 'sw.js', 'sitemap.xml', 'openapi.yaml', 'help/index.html', 'privacy/index.html', 'license/index.html', 'api/docs/index.html'].includes(path)
         || /^editor\/(?:app\.(?:js|css)|assets\/[\w.-]+\.(?:js|css|svg|png|woff2?))$/.test(path)
+        || /^editor\/speech\/(?:ort-wasm(?:-simd)?\.wasm|piper_phonemize\.(?:wasm|data))$/.test(path)
         || /^swagger\/swagger-ui(?:-bundle\.js|\.css)$/.test(path)
         || /^licenses\/[\w.-]+$/.test(path);
       if (!allowed || /\.(?:sqlite3?|db|backup)$/i.test(path)) throw new Error(`Unexpected file in static bundle: ${path}`);

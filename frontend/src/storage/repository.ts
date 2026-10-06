@@ -28,6 +28,17 @@ import { IMPORT_LIMIT_SETTING, importLimitMb, assertImportLimitMb } from '../imp
 import { database, type WorkspaceBackup, type WorkspaceDatabase } from './database';
 import { setSpatialView } from '../spatial/types';
 import { syncSpatialPositions } from '../spatial/movement';
+import {
+  getPresentation,
+  setPresentation,
+  prunePresentation,
+  remapPresentation,
+} from '../presentation/definition';
+import {
+  validatePresentation,
+  defaultPresentationVoiceId,
+  isPresentationVoiceId,
+} from '../presentation/types';
 import { analysisCommand, type AnalysisCommandOptions } from './analysis-commands';
 
 export type CommandOptions = AnalysisCommandOptions;
@@ -325,6 +336,7 @@ export class Repository {
             : {}),
         }));
         Object.assign(graph, remapAnalysisReferences(graph, nodeIds));
+        Object.assign(graph, remapPresentation(graph, nodeIds));
         if (graph.diagram.settings.csvSuppressedRelationshipEdges)
           graph.diagram.settings.csvSuppressedRelationshipEdges =
             graph.diagram.settings.csvSuppressedRelationshipEdges.map((id) =>
@@ -628,6 +640,10 @@ export class Repository {
     if (collection === 'search' && read)
       return (await this.search(url.searchParams.get('q') ?? '')) as T;
     if (collection === 'settings') {
+      if (read && id === 'presentation-voice') {
+        const value = (await this.db.settings.get(id))?.value;
+        return (isPresentationVoiceId(value) ? value : defaultPresentationVoiceId) as T;
+      }
       if (read && id === IMPORT_LIMIT_SETTING)
         return importLimitMb((await this.db.settings.get(id))?.value) as T;
       if (read)
@@ -635,6 +651,14 @@ export class Repository {
           id ? (await this.db.settings.get(id))?.value : await this.db.settings.toArray()
         ) as T;
       if (!id) throw new StorageError(400, 'Setting key is required.');
+      if (id === 'presentation-voice') {
+        const setting = object(payload);
+        if (
+          Object.keys(setting).some((key) => key !== 'value') ||
+          !isPresentationVoiceId(setting.value)
+        )
+          throw new StorageError(422, 'Choose a supported presentation voice.');
+      }
       if (id === IMPORT_LIMIT_SETTING) {
         const setting = object(payload);
         if (Object.keys(setting).some((key) => key !== 'value'))
@@ -708,6 +732,38 @@ export class Repository {
           graph = blankGraph(data.name as string, (data.type ?? 'blank') as Diagram['type']);
         graph.diagram = { ...graph.diagram, ...data } as Diagram;
         return (await this.saveGraph(graph, 0)).diagram as T;
+      }
+      if (action === 'presentation') {
+        if (parts.length !== 3) throw new StorageError(404, 'Unknown presentation endpoint.');
+        if (read) return getPresentation(await this.getGraph(id)) as T;
+        if (method !== 'PUT')
+          throw new StorageError(405, 'Use GET or PUT for a diagram presentation.');
+        const data = object(payload);
+        if (
+          Object.keys(data).some((key) => !['baseVersion', 'presentation'].includes(key)) ||
+          !Number.isSafeInteger(data.baseVersion) ||
+          (data.baseVersion as number) < 1
+        )
+          throw new StorageError(
+            422,
+            'Presentation update requires baseVersion and presentation only.',
+          );
+        return await this.db.transaction(
+          'rw',
+          this.db.diagrams,
+          this.db.nodes,
+          this.db.edges,
+          this.db.owners,
+          this.db.datasets,
+          async () => {
+            const graph = await this.getGraph(id);
+            validatePresentation(data.presentation, graph);
+            return (await this.saveGraph(
+              setPresentation(graph, data.presentation),
+              data.baseVersion as number,
+            )) as T;
+          },
+        );
       }
       if (read) {
         const graph = await this.getGraph(id);
@@ -817,6 +873,7 @@ export class Repository {
               graph.edges = graph.edges.filter(
                 (edge) => !removed.has(edge.sourceNodeId) && !removed.has(edge.targetNodeId),
               );
+              Object.assign(graph, prunePresentation(graph));
             } else {
               const next = patch(node, data);
               if (data.ownerId !== undefined && data.ownerIds === undefined)

@@ -292,6 +292,9 @@ func ValidateGraph(g Graph) error {
 	if err := ValidateDiagram(g.Diagram); err != nil {
 		return err
 	}
+	if err := ValidatePresentationGraph(g); err != nil {
+		return err
+	}
 	nodes := map[string]Node{}
 	owners := map[string]bool{}
 	external := map[string]bool{}

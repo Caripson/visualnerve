@@ -2,6 +2,7 @@ import type { CsvAnalysis, CsvDataset } from '../data/types';
 import type { CsvEntityFocus, CsvSourceRelationship } from '../data/model';
 import type { DrawingLayer } from '../drawing/types';
 import type { SpatialView } from '../spatial/types';
+import type { PresentationDefinition } from '../presentation/types';
 export type { DrawingLayer, DrawingStroke } from '../drawing/types';
 
 export const diagramTypes = [
@@ -64,6 +65,7 @@ export interface Diagram extends Base {
     csvSuppressedRelationshipEdges?: string[];
     drawing?: DrawingLayer;
     spatialView?: SpatialView;
+    presentation?: PresentationDefinition;
     [key: string]: unknown;
   };
 }

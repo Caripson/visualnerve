@@ -1,3 +1,4 @@
+import { VoiceSettings } from './VoiceSettings';
 import { useEffect, useState } from 'react';
 import {
   Download,
@@ -508,6 +509,7 @@ export function SettingsDialog({
       </Field>
       <DataPrivacy restore={restore} deleted={close} />
       <ImportSettings />
+      <VoiceSettings />
       <McpSettings />
       <div className="property-section">Keyboard shortcuts</div>
       <div className="shortcuts">

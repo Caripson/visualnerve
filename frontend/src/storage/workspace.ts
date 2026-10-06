@@ -1,3 +1,4 @@
+import { assertVoiceId, VOICE_SETTING } from '../presentation/speech/voices';
 import { liveQuery, type Subscription } from 'dexie';
 import { useEditor } from '../state/editor';
 import { ownersFor, type Graph } from '../model/types';
@@ -275,12 +276,13 @@ export class Workspace {
     this.versions.set(record.id, graph.diagram.version);
     useEditor.setState({ graph, history: [], future: [], status: 'saved', message: '' });
   }
-  async open(id: string, nodeId?: string) {
+  async open(id: string, nodeId?: string, beforeOpen?: () => Promise<void>) {
     await this.requireStorageConsent();
     flushSpatialCamera();
     await this.settled();
     const navigation = ++this.navigation;
     const graph = await this.repo.getGraph(id);
+    await beforeOpen?.();
     if (navigation !== this.navigation) return;
     this.versions.set(id, graph.diagram.version);
     useEditor.getState().setGraph(graph);
@@ -329,6 +331,7 @@ export class Workspace {
     if (key === 'mcp-access' && !['off', 'read', 'write'].includes(String(value)))
       throw new StorageError(422, 'Invalid MCP access level.');
     if (key === IMPORT_LIMIT_SETTING) assertImportLimitMb(value);
+    if (key === VOICE_SETTING) assertVoiceId(value);
     this.settingsRevision++;
     if (key === 'theme') useEditor.setState({ theme: String(value) });
     if (key === 'mcp-access') useEditor.setState({ mcpAccess: mcpAccess(value) });
@@ -362,6 +365,34 @@ export class Workspace {
       assertMcpAccess(mcpAccess(latest?.value), path, method);
     }
     const endpoint = path.replace(/^\/api\/v1/, '');
+    if (endpoint === '/presentation' || endpoint.startsWith('/presentation/')) {
+      const authorize = async () => {
+        await this.requireStorageConsent();
+        const permission = await this.repo.db.settings.get('mcp-access');
+        if (!useEditor.getState().privacyAcknowledged)
+          throw new StorageError(403, 'Accept local storage before using the player.');
+        assertMcpAccess(useEditor.getState().mcpAccess, path, method);
+        assertMcpAccess(mcpAccess(permission?.value), path, method);
+      };
+      await authorize();
+      let payload = data;
+      if (endpoint === '/presentation/open' && method === 'POST') {
+        if (
+          !payload ||
+          typeof payload !== 'object' ||
+          Array.isArray(payload) ||
+          Object.keys(payload).some((key) => key !== 'diagramId') ||
+          ('diagramId' in payload && typeof payload.diagramId !== 'string')
+        )
+          throw new StorageError(422, 'Open expects an optional diagramId.');
+        if ('diagramId' in payload)
+          await this.open(payload.diagramId as string, undefined, authorize);
+        payload = {};
+      }
+      const { presentationRequest } = await import('../presentation/service');
+      await authorize();
+      return (await presentationRequest(endpoint, method, payload)) as T;
+    }
     const diagramFile =
       method === 'POST' &&
       endpoint === '/import' &&

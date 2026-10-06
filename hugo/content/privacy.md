@@ -40,6 +40,14 @@ When you load or paste SQL/DDL, the script is analyzed locally in a Web Worker. 
 
 **Query expressions and filter clauses retain their literal values**, including potentially sensitive strings, through local storage, JSON, backups and recognized text exports. The complete raw source script and comments are not saved. DDL INSERT/COPY rows, defaults, CHECK expressions and procedure bodies are excluded; ENUM labels in column types may remain as schema structure. The original file stays on your device. Review names, expressions, filters, types and keys before sharing. Optional API/MCP SQL analysis sends supplied SQL transiently through your loopback bridge to the browser; the bridge does not retain it. [Importing SQL queries and schemas](/help/#import-a-sql-schema).
 
+## Presentation voices
+
+Walkthrough descriptions stay on this computer and are passed only to the local speech worker. Narration does not upload node descriptions, titles or diagram content to a speech service. The ordered presentation is saved with the diagram; playback progress, subtitle visibility and generated narration WAVs are transient and are not included in backups.
+
+Audio and preload start disabled. Only explicit audio playback, **Preload**, or **Settings → Presentation voice → Preview voice** can download fixed voice models and configuration files, about 60–109 MiB per voice. These external downloads use fixed, versioned model addresses; their requests contain no narration text or diagram data. The model host can see ordinary download metadata such as the requested model and client IP. Model inference then runs locally, including offline when the required assets are cached.
+
+Downloaded voices use a separate browser CacheStorage cache rather than the IndexedDB diagram database. **Settings → Presentation voice → Clear downloaded voices** removes that model cache. Model binaries and generated audio are not exported with diagram JSON or workspace backups. Descriptions above 12,000 characters are rejected explicitly rather than truncated. Subtitle text shows the node description locally. Browser policies can require pressing Play directly in the app before audio begins.
+
 ## Optional Codex / MCP access
 
 MCP is **Off** by default. In Settings you can explicitly grant **Read only** or **Read + write** access to tools through a local bridge on your computer. Visual Nerve must remain open. The bridge cannot independently read your browser's database and does not keep a second copy.

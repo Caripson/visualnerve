@@ -34,7 +34,23 @@ import { getExploration } from '../analysis/types';
 import '../components/analysis-tools.css';
 import { getSpatialView, setSpatialView, type SpatialCamera } from '../spatial/types';
 import type { SpatialCanvasProps } from '../spatial/SpatialCanvas';
+import {
+  PRESENTATION_FOCUS,
+  presentationFocus,
+  presentationArrived,
+  presentationViewportKey,
+} from '../presentation/camera';
+import { attachCanvasPresentationCamera } from '../presentation/canvas-camera';
 function SpatialLoadFailure({ onReturnTo2D }: SpatialCanvasProps) {
+  useEffect(() => {
+    const focus = (event: Event) => {
+      const request = presentationFocus(event);
+      if (request)
+        presentationArrived(request, 'The 3D view could not be loaded. Return to 2D to play.');
+    };
+    window.addEventListener(PRESENTATION_FOCUS, focus);
+    return () => window.removeEventListener(PRESENTATION_FOCUS, focus);
+  }, []);
   return (
     <div className="canvas-shell spatial-canvas">
       <p role="status">The 3D view could not be loaded. Continue editing in 2D.</p>
@@ -100,6 +116,9 @@ export function Canvas() {
   const renderCache = useRef<RenderCache>({ nodes: new Map(), edges: new Map() });
   const flow = useReactFlow<CanvasNode>();
   const flowStore = useStoreApi<CanvasNode>();
+  const presentationViewport = useRef(false);
+  const presentationViewports = useRef(new Set<string>());
+  const interruptPresentation = useRef(() => {});
   const [minimap, setMinimap] = useState(true);
   const [touch, setTouch] = useState(
     () => matchMedia('(pointer: coarse), (max-width: 720px)').matches,
@@ -210,8 +229,30 @@ export function Canvas() {
   useEffect(() => setEdges(projected.edges), [projected.edges]);
   const diagramId = graph?.diagram.id;
   useEffect(() => {
+    if (!diagramId || spatial) return;
+    const camera = attachCanvasPresentationCamera(flow, {
+      transient: (value) => {
+        presentationViewport.current = value;
+      },
+      select: (id) => useEditor.setState({ selectedNodes: [id], selectedEdges: [] }),
+      ignoreViewport: (viewport) => {
+        const ignored = presentationViewports.current;
+        ignored.add(`${diagramId}:${presentationViewportKey(viewport)}`);
+        while (ignored.size > 8) ignored.delete(ignored.values().next().value!);
+      },
+    });
+    interruptPresentation.current = () => camera.cancel('Camera movement interrupted.', true);
+    return () => {
+      camera.dispose();
+      interruptPresentation.current = () => {};
+    };
+  }, [diagramId, flow, spatial, graph?.nodes, filters, explorationResult, touch]);
+  useEffect(() => {
     const viewport = useEditor.getState().graph?.diagram.settings.viewport;
-    if (!spatial && viewportRequest && viewport) void flow.setViewport(viewport, { duration: 180 });
+    if (!spatial && viewportRequest && viewport) {
+      interruptPresentation.current();
+      void flow.setViewport(viewport, { duration: 180 });
+    }
   }, [viewportRequest, flow, spatial]);
   useEffect(() => {
     if (!graph || spatial) return;
@@ -296,6 +337,7 @@ export function Canvas() {
       const s = useEditor.getState();
       if (!s.graph || getSpatialView(s.graph).mode === '3d') return;
       if (s.drawingTool !== 'none') return;
+      if (e.key.startsWith('Arrow') || e.key.toLowerCase() === 'f') interruptPresentation.current();
       if (e.key.startsWith('Arrow') && s.selectedNodes.length && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         e.stopPropagation();
@@ -372,6 +414,8 @@ export function Canvas() {
     <div
       className={`canvas-shell ${graph.diagram.type === 'mindmap' ? 'mindmap-canvas' : ''}`}
       data-testid="canvas"
+      onPointerDownCapture={() => interruptPresentation.current()}
+      onWheelCapture={() => interruptPresentation.current()}
     >
       <ReactFlow<CanvasNode>
         nodes={nodes}
@@ -395,7 +439,15 @@ export function Canvas() {
           commit(new Map((moved.length ? moved : [node]).map((n) => [n.id, n.position])))
         }
         onSelectionDragStop={(_, moved) => commit(new Map(moved.map((n) => [n.id, n.position])))}
-        onMoveEnd={(_, viewport) => {
+        onMoveEnd={(event, viewport) => {
+          if (
+            presentationViewport.current ||
+            (!event &&
+              presentationViewports.current.has(
+                `${diagramId}:${presentationViewportKey(viewport)}`,
+              ))
+          )
+            return;
           const s = useEditor.getState();
           if (
             s.graph &&

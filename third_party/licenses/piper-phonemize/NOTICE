@@ -1,0 +1,18 @@
+@diffusionstudio/piper-wasm 1.0.0
+Source and build instructions:
+https://github.com/diffusionstudio/piper-wasm/tree/022edba0455ef024574747e1134ef893f1d71b76
+https://github.com/diffusionstudio/piper-wasm/blob/022edba0455ef024574747e1134ef893f1d71b76/README.md
+
+The NPM manifest declares MIT. The distributed phonemizer includes:
+- Piper phonemizer, MIT, Copyright (c) 2023 Michael Hansen:
+  https://github.com/wide-video/piper-phonemize
+  https://github.com/rhasspy/piper-phonemize
+- eSpeak NG, GPL-3.0:
+  https://github.com/rhasspy/espeak-ng
+  https://github.com/espeak-ng/espeak-ng
+
+Full Piper MIT and eSpeak NG GPL-3.0 license texts accompany these notices.
+No binary modifications are made. scripts/speech-assets.mjs copies the
+package's piper_phonemize.wasm and piper_phonemize.data verbatim.
+The upstream build uses Emscripten 3.1.47 and documents CMake flags, runtime
+exports and the included eSpeak data; see the pinned build README above.

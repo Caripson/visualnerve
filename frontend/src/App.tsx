@@ -1,3 +1,4 @@
+import { PresentationFeature } from './presentation/Player';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { ArrowUpRight, GitBranch, Plus, X, Menu, Database, Code2 } from 'lucide-react';
@@ -515,6 +516,7 @@ export function App() {
                 </div>
               )}
               <Canvas />
+              <PresentationFeature />
               <div className="canvas-statusbar">
                 <span>
                   <LocalBadge onClick={() => open('settings')} /> {viewCounts.nodes}{' '}

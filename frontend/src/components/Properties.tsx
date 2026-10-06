@@ -1,3 +1,4 @@
+import { PresentationNumberField } from '../presentation/NumberField';
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowRight, Layers, Link, Plus, Trash2, ChevronRight, Star } from 'lucide-react';
 import { useEditor } from '../state/editor';
@@ -112,6 +113,7 @@ function PropertyPanel({
               onChange={(e) => update({ title: e.target.value })}
             />
           </Field>
+          <PresentationNumberField graph={graph} nodeId={node.id} />
           <CsvProperties
             graph={graph}
             node={node}

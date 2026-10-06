@@ -41,6 +41,12 @@ import {
   type SpatialNavigationAxis,
   type SpatialNavigationMode,
 } from './navigation';
+import { PRESENTATION_FOCUS, presentationFocus, presentationArrived } from '../presentation/camera';
+import { attachSpatialPresentationCamera } from '../presentation/spatial-camera';
+import {
+  spatialPresentationGeometryKey,
+  spatialPresentationObstacles,
+} from '../presentation/spatial-obstacles';
 
 export interface SpatialCanvasProps {
   graph: Graph;
@@ -112,12 +118,14 @@ interface Runtime {
   glyphScale: number;
   lastSavedCamera?: string;
   draw: () => void;
-  setCamera: (camera: SpatialCamera, persist?: boolean) => void;
+  setCamera: (camera: SpatialCamera, persist?: boolean, presentation?: boolean) => void;
   saveCamera: () => void;
   queueCamera: () => void;
   flushCamera: () => void;
   refreshFaces: () => void;
   abortMovement: () => void;
+  presentationActive: boolean;
+  cancelPresentation: (reason?: string, manual?: boolean) => void;
   captureAbort?: AbortController;
 }
 function cameraValue(runtime: Runtime): SpatialCamera {
@@ -188,6 +196,17 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
   const [rendererState, setRendererState] = useState<'starting' | 'ready' | 'unavailable' | 'lost'>(
     'starting',
   );
+  useEffect(() => {
+    if (rendererState === 'ready') return;
+    const focus = (event: Event) => {
+      if (runtime.current) return;
+      const request = presentationFocus(event);
+      if (request)
+        presentationArrived(request, 'The 3D renderer is unavailable. Return to 2D to play.');
+    };
+    window.addEventListener(PRESENTATION_FOCUS, focus);
+    return () => window.removeEventListener(PRESENTATION_FOCUS, focus);
+  }, [rendererState]);
   const [listQuery, setListQuery] = useState('');
   const [listPage, setListPage] = useState(0);
   const [relationshipPage, setRelationshipPage] = useState(0);
@@ -219,6 +238,10 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     [graph.nodes, graph.edges, graph.diagram.type],
   );
   const positions = relief.positions;
+  const presentationGeometryKey = useMemo(
+    () => spatialPresentationGeometryKey(nodes, positions, relief.scale),
+    [nodes, positions, relief.scale],
+  );
   const bounds = useMemo(
     () =>
       spatialBounds(
@@ -241,10 +264,12 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
   );
   // Selection and camera changes do not recreate geometry, materials, labels or GPU buffers.
   const sceneKey = JSON.stringify([
+    relief.scale,
     projected.nodes
       .map((node) => [
         node.id,
         node.data.node.title,
+        node.data.presentationNumber,
         node.data.node.color,
         node.data.mindmap?.color,
         node.data.mindmap?.depth,
@@ -274,6 +299,11 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
   ]);
   const modelRef = useRef({ projected, positions, bounds, showLabels, scale: relief.scale });
   modelRef.current = { projected, positions, bounds, showLabels, scale: relief.scale };
+  useEffect(() => {
+    const current = runtime.current;
+    if (current?.presentationActive)
+      current.cancelPresentation('The diagram geometry changed.', true);
+  }, [presentationGeometryKey]);
 
   useEffect(() => {
     const container = host.current;
@@ -336,6 +366,8 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       selectedEdgeIds: new Set(),
       initialized: false,
       glyphScale: 1,
+      presentationActive: false,
+      cancelPresentation: () => {},
       draw: () => {
         if (disposed || lost || frame) return;
         frame = requestAnimationFrame(() => {
@@ -433,7 +465,8 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
           }
         });
       },
-      setCamera: (value, persist = false) => {
+      setCamera: (value, persist = false, presentation = false) => {
+        if (!presentation) current.cancelPresentation('Camera movement interrupted.', true);
         current.abortMovement();
         const before = cameraValue(current);
         const up = new THREE.Vector3(
@@ -493,7 +526,12 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
         if (persist) current.saveCamera();
       },
       saveCamera: () => {
-        if (disposed || propsRef.current.graph.diagram.id !== diagramId) return;
+        if (
+          disposed ||
+          current.presentationActive ||
+          propsRef.current.graph.diagram.id !== diagramId
+        )
+          return;
         if (
           [...camera.position.toArray(), ...controls.target.toArray()].some(
             (coordinate) => Math.abs(coordinate) > spatialLimits.cameraCoordinate,
@@ -506,6 +544,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
         syncCameraAttributes();
       },
       queueCamera: () => {
+        if (current.presentationActive) return;
         if (saveTimer) clearTimeout(saveTimer);
         saveTimer = setTimeout(() => {
           saveTimer = undefined;
@@ -530,6 +569,21 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       canvas.dataset.cameraTarget = JSON.stringify(value.target);
       canvas.dataset.cameraUp = JSON.stringify({ x: camera.up.x, y: camera.up.y, z: camera.up.z });
     };
+    const detachPresentation = attachSpatialPresentationCamera(current, {
+      unavailable: () => disposed || lost,
+      visible: (id) => propsRef.current.nodes.some((node) => node.id === id && !node.hidden),
+      select: (id) => useEditor.setState({ selectedNodes: [id], selectedEdges: [] }),
+      syncCameraAttributes,
+      obstacles: () => {
+        current.positions = modelRef.current.positions;
+        return spatialPresentationObstacles(
+          propsRef.current.nodes,
+          current.positions,
+          current.glyphScale,
+          current.root.matrixWorld.elements,
+        );
+      },
+    });
     runtime.current = current;
     const resize = () => {
       const width = Math.max(1, container.clientWidth),
@@ -626,6 +680,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       current.draw();
     };
     const pointerDown = (event: PointerEvent) => {
+      current.cancelPresentation('Camera movement interrupted.', true);
       pointers.add(event.pointerId);
       if (pointers.size > 1) current.abortMovement();
       if (event.button === 0 && pointers.size === 1)
@@ -756,6 +811,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     canvas.addEventListener('pointercancel', pointerCancel);
     canvas.addEventListener('lostpointercapture', pointerCancel);
     const blur = () => {
+      current.cancelPresentation('Camera movement interrupted.', true);
       pointers.clear();
       clickStart = undefined;
       current.abortMovement();
@@ -764,6 +820,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     const contextLost = (event: Event) => {
       event.preventDefault();
       lost = true;
+      current.cancelPresentation('The 3D graphics context was lost.', true);
       current.abortMovement();
       controls.enabled = false;
       if (frame) cancelAnimationFrame(frame);
@@ -783,6 +840,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     canvas.addEventListener('webglcontextlost', contextLost);
     canvas.addEventListener('webglcontextrestored', contextRestored);
     const keyDown = (event: KeyboardEvent) => {
+      current.cancelPresentation('Camera movement interrupted.', true);
       if (event.key === 'Escape' && movement) {
         event.preventDefault();
         event.stopPropagation();
@@ -824,6 +882,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     canvas.addEventListener('keydown', keyDown);
     setRendererState('ready');
     return () => {
+      detachPresentation();
       current.abortMovement();
       current.flushCamera();
       current.captureAbort?.abort();
@@ -857,6 +916,8 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     const current = runtime.current;
     if (!current) return;
     const model = modelRef.current;
+    if (current.presentationActive)
+      current.cancelPresentation('The diagram geometry changed.', true);
     current.abortMovement();
     current.captureAbort?.abort();
     current.captureAbort = undefined;
@@ -950,7 +1011,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
         const node = view.data.node;
         const appearance = spatialNodeAppearance(view);
         wanted.set(`node:${node.id}`, {
-          text: `${view.className === 'analysis-outside-data-view' ? '↗ ' : ''}${node.title}`,
+          text: `${view.data.presentationNumber ? `${view.data.presentationNumber}. ` : ''}${view.className === 'analysis-outside-data-view' ? '↗ ' : ''}${node.title}`,
           position: instance.position
             .clone()
             .add(new THREE.Vector3(0, 0, instance.dimensions.z / 2 + 0.002)),
@@ -1217,6 +1278,12 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       data-rendered-nodes={renderedCounts.nodes}
       data-rendered-edges={renderedCounts.edges}
       data-object-mode={moveObjects ? 'move' : 'orbit'}
+      onPointerDownCapture={() =>
+        runtime.current?.cancelPresentation('Camera movement interrupted.', true)
+      }
+      onWheelCapture={() =>
+        runtime.current?.cancelPresentation('Camera movement interrupted.', true)
+      }
     >
       <div ref={host} className="spatial-stage" />
       <NavigationGizmo

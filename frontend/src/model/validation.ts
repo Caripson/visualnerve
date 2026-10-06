@@ -17,6 +17,7 @@ import { validateSpatialGraph } from '../spatial/types';
 import { validateSqlQueryGraph } from '../sql/query-schema';
 import { validateCodeGraph } from '../code/schema';
 import { StorageError } from './errors';
+import { validatePresentation } from '../presentation/types';
 
 export { StorageError } from './errors';
 const uuid = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
@@ -133,6 +134,8 @@ export function validateGraph(graph: Graph, trustedDataset?: CsvDataset | CsvDat
       validateDrawingLayer(drawing);
   }
   const sources = graphDatasets(graph);
+  if (graph.diagram.settings.presentation !== undefined)
+    validatePresentation(graph.diagram.settings.presentation, graph);
   const trusted = new Set(
     Array.isArray(trustedDataset) ? trustedDataset : trustedDataset ? [trustedDataset] : [],
   );

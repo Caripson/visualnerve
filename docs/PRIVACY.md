@@ -42,6 +42,14 @@ SQL/DDL files and pasted scripts are read locally and analyzed in a Web Worker. 
 
 SELECT/WITH diagrams save source aliases/scopes, output expressions, JOIN conditions, clauses and column lineage. **Expression and filter literal values are retained**, including strings or identifiers that may be sensitive. Comments and the complete original source script are not saved. JSON/backups retain extracted schema/query structure, and Markdown or the Lovable prompt includes recognized query expressions through a typed allowlist. Review exports and sharing previews. The original file stays on your device. Optional API/MCP SQL preview and creation pass the source transiently through your loopback bridge to the browser; the server does not store it. See [SQL import](SQL_IMPORT.md).
 
+## Presentation narration and model downloads
+
+Numbered walkthroughs save their sequence and timings in the diagram. Node descriptions remain local and are sent only to the local speech worker for neural synthesis; no narration text, title or diagram data is uploaded to a speech service. Playback progress, subtitle visibility and generated narration WAVs are transient, with no WAV persistence in IndexedDB, JSON exports or workspace backups. Descriptions exceeding 12,000 characters fail explicitly without truncation.
+
+Audio and preloading start disabled. Explicit audio playback, **Preload**, or **Settings → Presentation voice → Preview voice** may download fixed voice models and configuration assets, approximately 60–109 MiB per voice, from versioned external model URLs. The requests contain no diagram content, but the model host can see ordinary request metadata such as model choice and IP address. Inference runs locally after loading the model and can work offline with cached assets.
+
+Voice models use a separate versioned CacheStorage cache; **Settings → Presentation voice → Clear downloaded voices** removes it. These binaries are separate from diagram storage and excluded from backups. Runtime controls and subtitle descriptions use the same current native nodes in 2D and 3D. REST/MCP GETs permit read access; all playback, navigation, audio/subtitle/preload changes require accepted storage and write access.
+
 ## Optional MCP
 
 ```text

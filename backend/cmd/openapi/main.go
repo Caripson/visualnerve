@@ -86,6 +86,7 @@ func main() {
 	addSpatialSchemas(schemas)
 	addSqlSchemas(schemas)
 	addDiagramImportSchemas(schemas)
+	addPresentationSchemas(schemas)
 	schemas["ImportLimitSettingInput"] = importLimitSettingSchema()
 	schemas["ImportLimitSettingValue"] = importLimitSettingValueSchema()
 	schemas["ImportLimitSettingValue"].(object)["description"] = "Effective browser-local import limit in MiB (UI MB). An absent or invalid saved value returns the default 50."
@@ -94,7 +95,7 @@ func main() {
 		p := s["properties"].(object)
 		if name == "Diagram" {
 			p["metadata"].(object)["properties"] = object{"codeAnalysis": ref("CodeAnalysis")}
-			p["settings"].(object)["properties"] = object{"spatialView": ref("SpatialView")}
+			p["settings"].(object)["properties"] = object{"spatialView": ref("SpatialView"), "presentation": ref("PresentationDefinition")}
 			p["type"].(object)["enum"] = model.DiagramTypes
 			s["required"] = []string{"name", "type"}
 		}
@@ -222,6 +223,7 @@ func main() {
 		paths[path].(object)[strings.ToLower(method)] = op
 	}
 	add("GET", "/health", "Check static server and optional bridge; storage is in the browser", "", "Health", "200")
+	addPresentationPaths(add)
 	add("GET", "/diagrams", "List diagrams", "", "Diagram[]", "200")
 	add("POST", "/diagrams", "Create a diagram", "DiagramInput", "Diagram", "201")
 	add("POST", "/spatial-diagrams", "Create and open a 3D diagram with independent 2D layout", "SpatialDiagramInput", "Graph", "201")
