@@ -11,12 +11,15 @@ it('preserves CSV, native JSON and richer SQL routes and detects source files', 
   expect(importKind('business.sql')).toBe('sql');
   expect(importKind('sales.csv')).toBe('csv');
   expect(importKind('backup.json')).toBe('diagram');
+  expect(importKind('Workflow.DRAWIO')).toBe('diagram-file');
+  expect(importKind('Plan.vsdx')).toBe('diagram-file');
   expect(importKind('schema.vega.json')).toBe('code');
   expect(importKind('model.m')).toBe('code');
   expect(importKind('main.ts')).toBe('code');
   expect(importSelection([file('main.py'), file('helper.py')])).toBe('code');
   expect(importSelection([file('main.py'), file('sales.csv')])).toBe('mixed');
   expect(importSelection([file('one.csv'), file('two.tsv')])).toBe('csv');
+  expect(importSelection([file('one.drawio'), file('two.vsdx')])).toBe('mixed');
 });
 it('filters folders while keeping ambiguous files available for explicit language choice', () => {
   const files = [

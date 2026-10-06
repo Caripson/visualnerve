@@ -1623,7 +1623,7 @@
     "name": "entities",
     "version": "8.1.0",
     "license": "BSD-2-Clause",
-    "scope": "transitive development",
+    "scope": "direct runtime",
     "notices": [
       "licenses/entities-LICENSE"
     ]
@@ -1713,7 +1713,7 @@
     "name": "fflate",
     "version": "0.8.3",
     "license": "MIT",
-    "scope": "transitive runtime",
+    "scope": "direct runtime",
     "notices": [
       "licenses/fflate-LICENSE"
     ]
@@ -2243,8 +2243,10 @@
     "name": "saxes",
     "version": "6.0.0",
     "license": "ISC",
-    "scope": "transitive development",
-    "notices": []
+    "scope": "direct runtime",
+    "notices": [
+      "licenses/saxes-LICENSE"
+    ]
   },
   {
     "ecosystem": "npm",
@@ -2610,7 +2612,7 @@
     "name": "xmlchars",
     "version": "2.2.0",
     "license": "MIT",
-    "scope": "transitive development",
+    "scope": "transitive runtime",
     "notices": [
       "licenses/xmlchars-LICENSE"
     ]

@@ -199,6 +199,9 @@ func (s *Server) forward(ctx context.Context, workspace, path, method string, da
 	if method != "GET" && method != "POST" && method != "PUT" && method != "PATCH" && method != "DELETE" {
 		return reply{Status: 405}, errors.New("unsupported command method")
 	}
+	if err := validateDiagramFileCommand(path, method, data); err != nil {
+		return reply{Status: 422}, err
+	}
 	var key [16]byte
 	if _, err := rand.Read(key[:]); err != nil {
 		return reply{Status: 500}, err
@@ -252,10 +255,10 @@ func readJSON(w http.ResponseWriter, r *http.Request) (json.RawMessage, error) {
 	return bytes, nil
 }
 func commandTimeout(path string) time.Duration {
-	// Browser SQL analysis is cancellable after 30 seconds. Leave time for layout,
+	// Browser analysis is cancellable after 30 seconds. Leave time for layout,
 	// validation and the final IndexedDB transaction before the transport expires.
 	path = strings.TrimPrefix(path, "/api/v1")
-	if path == "/sql/preview" || path == "/sql/diagrams" || path == "/code/preview" || path == "/code/diagrams" {
+	if path == "/sql/preview" || path == "/sql/diagrams" || path == "/code/preview" || path == "/code/diagrams" || path == "/diagram-files/preview" || path == "/import" {
 		return 45 * time.Second
 	}
 	return 25 * time.Second

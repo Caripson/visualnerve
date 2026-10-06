@@ -70,6 +70,7 @@ func main() {
 	addCodeSchemas(schemas)
 	addSpatialSchemas(schemas)
 	addSqlSchemas(schemas)
+	addDiagramImportSchemas(schemas)
 	for name, v := range map[string]any{"Diagram": model.Diagram{}, "Node": model.Node{}, "Edge": model.Edge{}, "Owner": model.Owner{}} {
 		s := schema(reflect.TypeOf(v))
 		p := s["properties"].(object)
@@ -156,7 +157,10 @@ func main() {
 	}
 	schemas["Bulk"] = object{"type": "object", "properties": object{"upsert": object{"type": "boolean", "default": false}, "baseVersion": object{"type": "integer"}, "nodes": object{"type": "array", "items": ref("BulkNode")}, "edges": object{"type": "array", "items": ref("BulkEdge")}, "owners": object{"type": "array", "items": ref("BulkOwner")}}, "additionalProperties": false}
 	schemas["Replacement"] = object{"type": "object", "required": []string{"baseVersion", "graph"}, "properties": object{"baseVersion": object{"type": "integer"}, "graph": ref("Graph")}, "additionalProperties": false}
-	schemas["Import"] = object{"type": "object", "required": []string{"format", "data"}, "properties": object{"format": object{"type": "string", "enum": []string{"json", "markdown", "csv"}}, "data": object{"oneOf": []any{ref("Graph"), object{"type": "string"}}}}, "additionalProperties": false}
+	schemas["Import"] = object{"oneOf": []any{
+		object{"type": "object", "required": []string{"format", "data"}, "properties": object{"format": object{"type": "string", "enum": []string{"json", "markdown", "csv"}}, "data": object{"oneOf": []any{ref("Graph"), object{"type": "string"}}}}, "additionalProperties": false},
+		ref("DiagramFileImportInput"),
+	}}
 	schemas["Export"] = object{"type": "object", "required": []string{"diagramId", "format"}, "properties": object{"diagramId": object{"type": "string", "format": "uuid"}, "format": object{"type": "string", "enum": []string{"json", "markdown"}}}, "additionalProperties": false}
 	schemas["Error"] = object{"type": "object", "properties": object{"error": object{"type": "string"}}}
 	schemas["Health"] = object{"type": "object", "properties": object{"status": object{"type": "string"}, "storage": object{"type": "string", "enum": []string{"indexeddb"}}, "bridge": object{"type": "boolean"}, "connected": object{"type": "integer"}, "version": object{"type": "string"}}}
@@ -206,6 +210,7 @@ func main() {
 	add("GET", "/code/languages", "Discover all 50 language identifiers and structural analysis capabilities", "", "CodeLanguageDefinition[]", "200")
 	add("POST", "/code/preview", "Preview a local structural code outline without saving; read-only access allowed", "CodeInput", "CodeImportResult", "200")
 	add("POST", "/code/diagrams", "Save and open a locally analyzed code diagram; write access required", "CodeInput", "Graph", "201")
+	add("POST", "/diagram-files/preview", "Preview draw.io or Visio pages locally without saving; exact endpoint permits read-only access", "DiagramFileInput", "DiagramImportResult", "200")
 	add("GET", "/diagrams/{diagramId}", "Get complete canonical graph", "", "Graph", "200")
 	add("PATCH", "/diagrams/{diagramId}", "Update diagram using its version", "DiagramPatch", "Diagram", "200")
 	add("DELETE", "/diagrams/{diagramId}", "Delete diagram and graph; retain owners", "", "", "204")
@@ -224,7 +229,7 @@ func main() {
 	add("GET", "/owners", "List global owners", "", "Owner[]", "200")
 	add("POST", "/owners", "Create owner", "OwnerInput", "Owner", "201")
 	add("PATCH", "/owners/{ownerId}", "Update owner and invalidate referencing diagrams", "OwnerPatch", "Owner", "200")
-	add("POST", "/import", "Import JSON, Markdown or CSV transactionally", "Import", "Graph", "201")
+	add("POST", "/import", "Import JSON, Markdown, CSV or one selected draw.io/Visio page transactionally; write access required", "Import", "Graph", "201")
 	add("POST", "/export", "Export canonical JSON or semantic Markdown", "Export", "Graph", "200")
 	paths["/export"].(object)["post"].(object)["responses"].(object)["200"].(object)["content"].(object)["application/json"] = object{"schema": object{"oneOf": []any{ref("Graph"), object{"type": "string"}}}}
 	add("GET", "/workspace/export", "Download a complete browser workspace snapshot", "", "WorkspaceBackup", "200")
@@ -232,7 +237,7 @@ func main() {
 	add("DELETE", "/owners/{ownerId}", "Remove owner and assignments atomically", "", "", "204")
 	add("GET", "/search", "Search diagrams, nodes, descriptions, tags, owners and metadata", "", "SearchResult[]", "200")
 	paths["/search"].(object)["get"].(object)["parameters"] = []any{object{"name": "q", "in": "query", "required": true, "schema": object{"type": "string"}}}
-	doc := object{"openapi": "3.0.3", "info": object{"title": "Visual Nerve local API", "version": "0.2.0", "description": "IndexedDB in the browser is authoritative and is the only database. This optional API forwards commands through a WebSocket bridge to an open browser with explicit storage acceptance and MCP access set to Read only or Read + write (default Off). Read-only access permits GET, POST /export and exact POST /sql/preview or /code/preview, rejecting mutations with 403. SQL SELECT/WITH visualization retains scoped aliases, expressions, joins and clauses locally; it never executes SQL or connects to a database. POST /sql/diagrams and POST /code/diagrams save and open validated graphs and require write access. GET /code/languages discovers all 50 supported structural analyzers. Code diagrams retain identifiers, paths, source lines and confidence; original source and nonstructural string values are discarded. The public static host provides no content API; endpoints target a loopback bridge only. Start the static server with --bridge. No application records are stored in the server. PATCH requires version; graph replacement requires baseVersion. Optional VISUAL_NERVE_BRIDGE_TOKEN protects all integration requests. PNG/PDF render in the browser. MCP is available at /mcp. Its initialize instructions advertise native 2D and opt-in 3D. visual_nerve_api_docs provides a compact guide by default and the full bundled OpenAPI with document=openapi; the same documents are MCP resources. Documentation discovery requires no connected browser. The website domain is the allowed app origin; Settings shows a separate local MCP HTTP URL for Codex and WebSocket URL for the browser."}, "servers": []any{object{"url": "http://127.0.0.1:4317/api/v1", "description": "Optional local bridge on this computer"}}, "paths": paths, "components": object{"schemas": schemas, "securitySchemes": object{"bearerAuth": object{"type": "http", "scheme": "bearer", "description": "Optional token for all local integration requests"}}}}
+	doc := object{"openapi": "3.0.3", "info": object{"title": "Visual Nerve local API", "version": "0.2.0", "description": "IndexedDB in the browser is authoritative and is the only database. This optional API forwards commands through a WebSocket bridge to an open browser with explicit storage acceptance and MCP access set to Read only or Read + write (default Off). Read-only access permits GET, POST /export and exact POST /sql/preview, /code/preview or /diagram-files/preview, rejecting mutations with 403. Draw.io XML and base64 Visio .vsdx ZIP files are analyzed locally without executing or fetching embedded content; POST /import saves only a selected native page and requires write access. Multipage imports require pageId from preview. Original XML/ZIP is transient. SQL SELECT/WITH visualization retains scoped aliases, expressions, joins and clauses locally; it never executes SQL or connects to a database. POST /sql/diagrams and POST /code/diagrams save and open validated graphs and require write access. GET /code/languages discovers all 50 supported structural analyzers. Code diagrams retain identifiers, paths, source lines and confidence; original source and nonstructural string values are discarded. The public static host provides no content API; endpoints target a loopback bridge only. Start the static server with --bridge. No application records are stored in the server. PATCH requires version; graph replacement requires baseVersion. Optional VISUAL_NERVE_BRIDGE_TOKEN protects all integration requests. PNG/PDF render in the browser. MCP is available at /mcp. Its initialize instructions advertise native 2D and opt-in 3D. visual_nerve_api_docs provides a compact guide by default and the full bundled OpenAPI with document=openapi; the same documents are MCP resources. Documentation discovery requires no connected browser. The website domain is the allowed app origin; Settings shows a separate local MCP HTTP URL for Codex and WebSocket URL for the browser."}, "servers": []any{object{"url": "http://127.0.0.1:4317/api/v1", "description": "Optional local bridge on this computer"}}, "paths": paths, "components": object{"schemas": schemas, "securitySchemes": object{"bearerAuth": object{"type": "http", "scheme": "bearer", "description": "Optional token for all local integration requests"}}}}
 	raw, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {
 		panic(err)

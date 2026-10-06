@@ -8,7 +8,9 @@ export function assertMcpAccess(access: McpAccess, path: string, method: string)
   const reading =
     method === 'GET' ||
     (method === 'POST' &&
-      ['/export', '/sql/preview', '/code/preview'].includes(path.replace(/^\/api\/v1/, '')));
+      ['/export', '/sql/preview', '/code/preview', '/diagram-files/preview'].includes(
+        path.replace(/^\/api\/v1/, ''),
+      ));
   if (access === 'read' && !reading)
     throw new StorageError(
       403,

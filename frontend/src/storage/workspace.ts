@@ -357,9 +357,24 @@ export class Workspace {
       assertMcpAccess(mcpAccess(latest?.value), path, method);
     }
     const endpoint = path.replace(/^\/api\/v1/, '');
+    const diagramFile =
+      method === 'POST' &&
+      endpoint === '/import' &&
+      !!data &&
+      typeof data === 'object' &&
+      !Array.isArray(data) &&
+      ((data as { format?: unknown }).format === 'drawio' ||
+        (data as { format?: unknown }).format === 'vsdx');
     const analysis =
       method === 'POST' &&
-      ['/sql/preview', '/sql/diagrams', '/code/preview', '/code/diagrams'].includes(endpoint);
+      ([
+        '/sql/preview',
+        '/sql/diagrams',
+        '/code/preview',
+        '/code/diagrams',
+        '/diagram-files/preview',
+      ].includes(endpoint) ||
+        diagramFile);
     const controller = analysis ? new AbortController() : undefined;
     if (controller) this.analysisCommands.add(controller);
     const unsubscribe = controller
@@ -367,7 +382,7 @@ export class Workspace {
           if (
             !state.privacyAcknowledged ||
             state.mcpAccess === 'off' ||
-            (endpoint.endsWith('/diagrams') && state.mcpAccess !== 'write')
+            ((endpoint.endsWith('/diagrams') || diagramFile) && state.mcpAccess !== 'write')
           )
             controller.abort();
         })
@@ -386,7 +401,7 @@ export class Workspace {
       });
       if (
         method === 'POST' &&
-        ['/spatial-diagrams', '/sql/diagrams', '/code/diagrams'].includes(endpoint)
+        (['/spatial-diagrams', '/sql/diagrams', '/code/diagrams'].includes(endpoint) || diagramFile)
       )
         await this.open((result as Graph).diagram.id);
       return result;

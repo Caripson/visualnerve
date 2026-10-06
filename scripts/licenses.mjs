@@ -17,7 +17,11 @@ function copyNotices(directory, name) {
 for (const [path, entry] of Object.entries(lock.packages)) {
   if (!path) continue;
   const name = path.split('node_modules/').at(-1);
-  inventory.push({ ecosystem: 'npm', name, version: entry.version, license: entry.license, scope: path === `node_modules/${name}` && pkg.dependencies[name] ? 'direct runtime' : path === `node_modules/${name}` && pkg.devDependencies[name] ? 'direct development' : entry.dev ? 'transitive development' : 'transitive runtime', notices: copyNotices(resolve(root, 'frontend', path), name) });
+  let notices = copyNotices(resolve(root, 'frontend', path), name);
+  // saxes 6.0.0 omits LICENSE from npm; the pinned upstream copy is kept offline.
+  if (!notices.length && name === 'saxes' && entry.version === '6.0.0')
+    notices = copyNotices(resolve(root, 'third_party/licenses/saxes'), name);
+  inventory.push({ ecosystem: 'npm', name, version: entry.version, license: entry.license, scope: path === `node_modules/${name}` && pkg.dependencies[name] ? 'direct runtime' : path === `node_modules/${name}` && pkg.devDependencies[name] ? 'direct development' : entry.dev ? 'transitive development' : 'transitive runtime', notices });
 }
 const go = process.argv[2] || 'go';
 const modulesRaw = execFileSync(go, ['list', '-m', '-json', 'all'], { cwd: resolve(root, 'backend'), encoding: 'utf8' });

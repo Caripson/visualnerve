@@ -23,6 +23,7 @@ import {
 } from '../data/model';
 import { reconnectedAnalysisEdge } from '../model/relationships';
 import { markdown, parseImport } from '../export/semantic';
+import { diagramFileCommand } from './diagram-file-commands';
 import { database, type WorkspaceBackup, type WorkspaceDatabase } from './database';
 import { setSpatialView } from '../spatial/types';
 import { syncSpatialPositions } from '../spatial/movement';
@@ -574,6 +575,14 @@ export class Repository {
       [collection, id, action] = parts;
     const read = method === 'GET',
       remove = method === 'DELETE';
+    if (collection === 'diagram-files') {
+      if (path.replace(/^\/api\/v1/, '') !== '/diagram-files/preview')
+        throw new StorageError(404, 'Unknown diagram file endpoint.');
+      if (method !== 'POST') throw new StorageError(405, 'Diagram file preview requires POST.');
+      return (await diagramFileCommand(payload, false, options, (graph) =>
+        this.importGraph(graph),
+      )) as T;
+    }
     if (collection === 'sql' || collection === 'code')
       return (await analysisCommand(
         path.replace(/^\/api\/v1/, ''),
@@ -658,6 +667,13 @@ export class Repository {
     }
     if (collection === 'import' && method === 'POST') {
       const data = object(payload);
+      if (data.format === 'drawio' || data.format === 'vsdx') {
+        if (path.replace(/^\/api\/v1/, '') !== '/import')
+          throw new StorageError(404, 'Unknown diagram import endpoint.');
+        return (await diagramFileCommand(data, true, options, (graph) =>
+          this.importGraph(graph),
+        )) as T;
+      }
       return (await this.importGraph(
         typeof data.data === 'string'
           ? parseImport(data.format as 'json' | 'markdown' | 'csv', data.data)

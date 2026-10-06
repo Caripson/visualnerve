@@ -13,6 +13,7 @@ interface ImportFilesOptions {
   setImporting: (value: boolean) => void;
   sql: (draft: { id: string; text: string; name: string }) => void;
   code: (files: File[]) => void;
+  diagramFile: (file: File) => void;
   csv: (dataset: CsvDataset, file: File) => void;
   csvFiles: (files: File[]) => void;
   backup: (backup: WorkspaceBackup) => void;
@@ -31,6 +32,9 @@ export function useImportFiles(options: ImportFilesOptions) {
     handlers.setImporting(true);
     try {
       switch (importKind(picked.name)) {
+        case 'diagram-file':
+          handlers.diagramFile(picked);
+          break;
         case 'sql': {
           if (picked.size > SQL_FILE_LIMIT) throw new Error('SQL exceeds the 50 MiB file limit.');
           const text = await picked.text();

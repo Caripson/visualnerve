@@ -92,6 +92,12 @@ Choose **Visualize code**, paste a script and select its language, or choose sou
 
 These are normal editable objects with status, drawing, links, 2D/3D and export. Analysis is local and bounded; it does not execute code or provide full compiler semantic analysis. Dynamic or ambiguous references can be unresolved. Choose the language explicitly for ambiguous extensions such as `.m`, `.h` and `.cls`. Original source/comments/nonstructural literals are not saved; extracted identifiers, paths, lines and evidence remain. Review names and paths before sharing. API/MCP can discover languages and preview/create diagrams through the local bridge. [Data handling](/privacy/#source-code-import).
 
+## Import draw.io or Visio
+
+Drop a `.drawio` or `.vsdx` file onto the workspace, or use **Import**. Preview the file, review its pages and warnings, select one page and choose **Create diagram**. Preview runs locally without saving; creation stores and opens only that selected page as editable native objects and relationships. Move or rename objects, edit connections, assign owners/status, draw over the diagram or explore it in 3D. JSON/backup and PNG/PDF export use the native result.
+
+The conversion approximates source drawings. Advanced/custom shapes, rich formatting, rotations and connector waypoints may be simplified with warnings. Original XML/ZIP, embedded image bytes and unselected pages are temporary. Images, macros, scripts and external content are never fetched or executed. Retained links require absolute HTTP(S). `.vsd` and `.vsdm` are unsupported; export them to `.vsdx` or draw.io XML first. Limits are 32 MiB/file, 64 MiB expanded, 2,048 ZIP entries, 100 pages, 20,000 total objects, 40,000 total connections, group depth 256 and a 30-second analysis deadline. Cancel stops analysis. Review imported text and links before sharing. [Data handling](/privacy/#drawio-and-visio-import).
+
 ## Build an app with Lovable
 
 Choose **Build with Lovable** beside Export, or **… → Build with Lovable** on a phone. Describe the app in **App instructions**, choose the entire diagram, current CSV groups or selected objects, and review the complete build prompt. Your draft is saved locally with the diagram.
@@ -110,7 +116,7 @@ Changes from other tabs appear through local database updates. A version conflic
 
 ## Exchange and backups
 
-JSON is the complete restorable format, including owners, metadata, hierarchy, layout, viewport and imported SQL schema. Markdown exports semantic outlines and process relationships. Import accepts Visual Nerve JSON, headings/lists in Markdown, CSV data or the older CSV diagram format with a title column, and SQL/DDL schema scripts through their preview. PNG exports viewport, selection or full graph at 1×, 2× or 4×. PDF supports A4/A3, portrait/landscape and tiled pages. Complete rendered exports include collapsed and off-screen objects.
+JSON is the complete restorable format, including owners, metadata, hierarchy, layout, viewport and imported SQL schema. Markdown exports semantic outlines and process relationships. Import accepts Visual Nerve JSON, headings/lists in Markdown, CSV data or the older CSV diagram format with a title column, SQL/DDL scripts through their preview, and a selected page from draw.io `.drawio` or Visio `.vsdx` files. PNG exports viewport, selection or full graph at 1×, 2× or 4×. PDF supports A4/A3, portrait/landscape and tiled pages. Complete rendered exports include collapsed and off-screen objects.
 
 Settings controls theme and **Data & Privacy**. **Export all data** downloads a dated complete backup of projects, owners, portable settings, templates and CSV datasets. **Restore backup** previews Merge (keep current diagrams) or Replace (remove current work, requiring confirmation). Connection grants and storage acceptance are never imported. **Export diagram** remains a separate PNG/PDF/Markdown/JSON choice.
 

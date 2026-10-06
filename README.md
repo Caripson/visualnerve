@@ -36,6 +36,12 @@ The **Explore data** menu contains CSV/SQL tools; its menu opens outside the scr
 
 Choose the pencil in the canvas controls to draw over any diagram with a mouse, finger or pen. Choose a color and thickness, erase whole strokes or hide the drawing layer. **Done drawing** or Escape returns to normal diagram editing. Drawing uses a separate layer that follows pan and zoom, supports undo/redo, persists in IndexedDB and appears in PNG/PDF exports. Diagram JSON and full backups preserve it, including hidden strokes. See [drawing on diagrams](docs/DRAWING.md).
 
+## Import draw.io and Visio files
+
+Drop a `.drawio` or `.vsdx` file or use **Import**, preview the pages and warnings, select one page, then **Create diagram**. The selected page becomes ordinary editable Visual Nerve objects and connections with native 2D/3D, undo and export. Advanced shapes, rotations and waypoints may be simplified. Preview saves nothing; only the selected native graph is stored. Source XML/ZIP is temporary, and images, macros, scripts and external content are never fetched or executed. Legacy `.vsd` and macro-enabled `.vsdm` are unsupported.
+
+Local worker limits are 32 MiB/file, 64 MiB expanded, 2,048 ZIP entries, 100 pages, 20,000 total objects, 40,000 total relationships, depth 256 and 30 seconds. REST/MCP exposes read-only `POST /diagram-files/preview`; `POST /import` creates one selected page with write access and requires `pageId` for multipage input. See [diagram file import](docs/DIAGRAM_IMPORT.md).
+
 ## Visualize SQL queries and schemas
 
 Drop a `.sql` or `.ddl` file, use **Import**, or choose **Import SQL script** (on phones: **… → Import SQL script**). Paste or load the script, preview it, review counts and warnings, then **Create diagram**. SELECT/WITH queries become source/alias cards, derived query/CTE results, JOIN connections and ordered output expressions with column lineage. Repeated table aliases stay separate; SELECT DISTINCT, CASE, functions/casts, filters and grouping retain their logical meaning. Local worker analysis also extracts common PostgreSQL/MySQL/SQL Server `CREATE TABLE` and `ALTER TABLE ... ADD` columns, primary/unique keys and foreign keys, including composite keys, quoted names and forward references. Missing referenced tables remain explicit external objects.

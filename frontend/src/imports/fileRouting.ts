@@ -8,12 +8,15 @@ export const importFileAccept = [
     '.tsv',
     '.sql',
     '.ddl',
+    '.drawio',
+    '.vsdx',
     ...codeLanguages.flatMap((language) => language.extensions),
   ]),
 ].join(',');
 
-export type ImportKind = 'sql' | 'csv' | 'code' | 'diagram';
+export type ImportKind = 'sql' | 'csv' | 'code' | 'diagram' | 'diagram-file';
 export function importKind(name: string): ImportKind {
+  if (/\.(drawio|vsdx)$/i.test(name)) return 'diagram-file';
   if (/\.(sql|ddl)$/i.test(name)) return 'sql';
   if (/\.(csv|tsv)$/i.test(name)) return 'csv';
   if (supportedCodeFile(name)) return 'code';

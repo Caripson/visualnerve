@@ -21,6 +21,8 @@ Source columns are names observed in the query, not inferred database types, nul
 
 Copying/pasting query objects within a diagram gives the pasted logical query instance independent scopes and remaps its internal scope/alias references together. Referenced sources outside a selected copy remain explicit unresolved context. Importing a complete JSON graph into a new diagram can retain its logical scopes because query identities are diagram-local.
 
+Draw.io/Visio file preview returns `DiagramImportResult={format,pages:[{id,name,graph,warnings}],warnings}`. Page IDs are source strings; every page graph uses native UUID nodes and edges. Creating an import stores only the selected native page using ordinary geometry, hierarchy, text, relationship styles and safe absolute HTTP(S) links. `diagram.metadata.diagramImport` records the format, imported filename/name and source page ID/name. Node/edge `metadata.diagramImport` can record source IDs/names and recognized shape/color/stroke or rotation/flip hints. This is ordinary provenance, not a source-file binding or an executable/embedded document. Conversion can simplify advanced shapes, rotations and waypoints with warnings. Source XML/ZIP, archive entries, embedded image bytes and unselected pages remain temporary. There is no new table, attachment store, source binding or schema migration. JSON/backup preserves the resulting editable graph. See [diagram file import](docs/DIAGRAM_IMPORT.md).
+
 ## IndexedDB schema
 
 | Table     | Key and indexes                                                                               | Contents                                                              |

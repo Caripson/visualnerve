@@ -867,6 +867,129 @@
         ],
         "type": "object"
       },
+      "DiagramFileFormat": {
+        "enum": [
+          "drawio",
+          "vsdx"
+        ],
+        "type": "string"
+      },
+      "DiagramFileImportInput": {
+        "additionalProperties": false,
+        "description": "Same source as preview, plus optional source pageId. A one-page file may omit pageId; a multipage file must specify the ID returned by preview. Missing selection for multipage files or unknown IDs return 422 with no saved graph. Saves and opens only the selected page as an editable native graph; write access required. Source XML/ZIP and unselected pages are not retained.",
+        "properties": {
+          "data": {
+            "maxLength": 44739244,
+            "minLength": 1,
+            "type": "string"
+          },
+          "format": {
+            "$ref": "#/components/schemas/DiagramFileFormat"
+          },
+          "name": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          "pageId": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "data"
+        ],
+        "type": "object"
+      },
+      "DiagramFileInput": {
+        "additionalProperties": false,
+        "description": "drawio data is XML text (.drawio/.xml); vsdx data is strict padded standard base64 containing a ZIP archive (.vsdx). No URLs, scripts, images or macros are fetched or executed. Legacy .vsd and macro-enabled .vsdm are unsupported. Decoded file limit 32 MiB; expanded archive 64 MiB; 2,048 ZIP entries, 100 pages, 20,000 total objects, 40,000 total relationships, hierarchy depth 256. Browser worker deadline 30 seconds; transport allows 45 seconds. JSON transport envelope remains 32 MiB, so base64/JSON integration input must be smaller than the file limit.",
+        "properties": {
+          "data": {
+            "maxLength": 44739244,
+            "minLength": 1,
+            "type": "string"
+          },
+          "format": {
+            "$ref": "#/components/schemas/DiagramFileFormat"
+          },
+          "name": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "data"
+        ],
+        "type": "object"
+      },
+      "DiagramImportPage": {
+        "additionalProperties": false,
+        "description": "Source page ID is a string, not a Visual Nerve UUID. The native approximation retains recognized geometry, text, groups, connections and safe HTTP(S) links; advanced shapes, rotations and connector waypoints may be simplified with warnings.",
+        "properties": {
+          "graph": {
+            "$ref": "#/components/schemas/Graph"
+          },
+          "id": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 200,
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "graph",
+          "warnings"
+        ],
+        "type": "object"
+      },
+      "DiagramImportResult": {
+        "additionalProperties": false,
+        "description": "Read-only local preview. Creates no project, changes no open diagram and stores no source. Review per-page and file warnings before importing the selected page.",
+        "properties": {
+          "format": {
+            "$ref": "#/components/schemas/DiagramFileFormat"
+          },
+          "pages": {
+            "items": {
+              "$ref": "#/components/schemas/DiagramImportPage"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "type": "array"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 200,
+            "type": "array"
+          }
+        },
+        "required": [
+          "format",
+          "pages",
+          "warnings"
+        ],
+        "type": "object"
+      },
       "DiagramInput": {
         "additionalProperties": false,
         "properties": {
@@ -1307,32 +1430,39 @@
         "type": "object"
       },
       "Import": {
-        "additionalProperties": false,
-        "properties": {
-          "data": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Graph"
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "data": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Graph"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
               },
-              {
+              "format": {
+                "enum": [
+                  "json",
+                  "markdown",
+                  "csv"
+                ],
                 "type": "string"
               }
-            ]
-          },
-          "format": {
-            "enum": [
-              "json",
-              "markdown",
-              "csv"
+            },
+            "required": [
+              "format",
+              "data"
             ],
-            "type": "string"
+            "type": "object"
+          },
+          {
+            "$ref": "#/components/schemas/DiagramFileImportInput"
           }
-        },
-        "required": [
-          "format",
-          "data"
-        ],
-        "type": "object"
+        ]
       },
       "Node": {
         "additionalProperties": false,
@@ -2547,7 +2677,7 @@
     }
   },
   "info": {
-    "description": "IndexedDB in the browser is authoritative and is the only database. This optional API forwards commands through a WebSocket bridge to an open browser with explicit storage acceptance and MCP access set to Read only or Read + write (default Off). Read-only access permits GET, POST /export and exact POST /sql/preview or /code/preview, rejecting mutations with 403. SQL SELECT/WITH visualization retains scoped aliases, expressions, joins and clauses locally; it never executes SQL or connects to a database. POST /sql/diagrams and POST /code/diagrams save and open validated graphs and require write access. GET /code/languages discovers all 50 supported structural analyzers. Code diagrams retain identifiers, paths, source lines and confidence; original source and nonstructural string values are discarded. The public static host provides no content API; endpoints target a loopback bridge only. Start the static server with --bridge. No application records are stored in the server. PATCH requires version; graph replacement requires baseVersion. Optional VISUAL_NERVE_BRIDGE_TOKEN protects all integration requests. PNG/PDF render in the browser. MCP is available at /mcp. Its initialize instructions advertise native 2D and opt-in 3D. visual_nerve_api_docs provides a compact guide by default and the full bundled OpenAPI with document=openapi; the same documents are MCP resources. Documentation discovery requires no connected browser. The website domain is the allowed app origin; Settings shows a separate local MCP HTTP URL for Codex and WebSocket URL for the browser.",
+    "description": "IndexedDB in the browser is authoritative and is the only database. This optional API forwards commands through a WebSocket bridge to an open browser with explicit storage acceptance and MCP access set to Read only or Read + write (default Off). Read-only access permits GET, POST /export and exact POST /sql/preview, /code/preview or /diagram-files/preview, rejecting mutations with 403. Draw.io XML and base64 Visio .vsdx ZIP files are analyzed locally without executing or fetching embedded content; POST /import saves only a selected native page and requires write access. Multipage imports require pageId from preview. Original XML/ZIP is transient. SQL SELECT/WITH visualization retains scoped aliases, expressions, joins and clauses locally; it never executes SQL or connects to a database. POST /sql/diagrams and POST /code/diagrams save and open validated graphs and require write access. GET /code/languages discovers all 50 supported structural analyzers. Code diagrams retain identifiers, paths, source lines and confidence; original source and nonstructural string values are discarded. The public static host provides no content API; endpoints target a loopback bridge only. Start the static server with --bridge. No application records are stored in the server. PATCH requires version; graph replacement requires baseVersion. Optional VISUAL_NERVE_BRIDGE_TOKEN protects all integration requests. PNG/PDF render in the browser. MCP is available at /mcp. Its initialize instructions advertise native 2D and opt-in 3D. visual_nerve_api_docs provides a compact guide by default and the full bundled OpenAPI with document=openapi; the same documents are MCP resources. Documentation discovery requires no connected browser. The website domain is the allowed app origin; Settings shows a separate local MCP HTTP URL for Codex and WebSocket URL for the browser.",
     "title": "Visual Nerve local API",
     "version": "0.2.0"
   },
@@ -2946,6 +3076,140 @@
           {}
         ],
         "summary": "Preview a local structural code outline without saving; read-only access allowed"
+      }
+    },
+    "/diagram-files/preview": {
+      "post": {
+        "operationId": "post_diagram-files_preview",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiagramFileInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiagramImportResult"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin or host"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Preview draw.io or Visio pages locally without saving; exact endpoint permits read-only access"
       }
     },
     "/diagrams": {
@@ -5124,7 +5388,7 @@
           },
           {}
         ],
-        "summary": "Import JSON, Markdown or CSV transactionally"
+        "summary": "Import JSON, Markdown, CSV or one selected draw.io/Visio page transactionally; write access required"
       }
     },
     "/nodes/{nodeId}": {

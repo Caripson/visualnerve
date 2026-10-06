@@ -422,3 +422,60 @@ both sides, an actual 2D drag followed by 3D and reload, camera gizmos, repeated
 fallbacks and a complete 2,501-node/2,500-link relief diagram with readable back
 faces. Historical screenshot fixtures were retained. Work stays on main and
 S3/CloudFront deployment remains manual.
+
+## 2026-10-06: Visio and draw.io file import
+
+The file picker and one-file drop accept `.vsdx` and `.drawio`. Local worker
+analysis previews all source pages without writes; users choose and name one
+page before creating an ordinary editable native graph. The bounded thumbnail
+does not discard objects from the imported graph. Geometry, groups, text, safe
+links and recognized connection directions/patterns/colors are retained.
+Special stencils, source rotations, rich formatting and connector routing can
+be simplified with notices. Unbound connectors are omitted with notices.
+
+Draw.io supports compressed, escaped and embedded XML pages. Visio resolves OPC
+parts, page/master relationships and cached master/style properties, converts
+page coordinates and keeps recognized declared connections. XML, ZIP expansion,
+hierarchy, page and total object/relationship budgets are checked before saving.
+Source data and unselected pages remain temporary. Scripts, external resources
+and embedded image/object bytes are neither executed nor fetched.
+
+The exact read-only `/diagram-files/preview` command and selected-page `/import`
+contract agree across REST, MCP, browser repository and generated OpenAPI.
+Multipage input requires a known page ID; invalid input and unknown selection
+leave storage untouched. Pending analysis cancels on access revocation and
+write/consent checks run again before creation. Parser, ZIP/XML, worker client,
+storage command and UI responsibilities live in separate modules.
+
+All 887 unit/component cases in 82 files passed in 200.7 seconds. Formatting,
+Go race tests and vet, TypeScript and the TypeScript/Vite/Hugo/OpenAPI/Go
+production build passed. Runtime dependencies are pinned; the saxes npm package
+omits its license, so its exact upstream notice is retained offline and copied
+by the notice generator. After notice regeneration the static audit contains
+269 application files and 39 offline-shell assets, with no user data files.
+
+All 25 relevant browser cases passed: five new import cases plus 20 regressions
+for native edits, group/connection behavior, SQL/code/CSV imports, read/write
+grants, discovery, toolbar menus and rendered exports. The new cases cover real
+ZIP worker parsing, multipage draw.io selection, source preview without writes,
+cancel/error atomicity, persistence, phone layout, MCP preview/create access,
+actual 3D/2D transitions and nonblank PNG/PDF output. The first picker assertion
+was corrected to distinguish the page select from its preview image by exact
+accessible name; no application correction was needed. Preview screenshots
+were visually inspected. Historical screenshot fixtures were retained.
+
+Seven real upstream `.vsdx` samples at
+[dave-howard/vsdx commit 6703e6c](https://github.com/dave-howard/vsdx/tree/6703e6c2c906bea4051f43525ec9af9dcf735c13/tests)
+also parsed and validated: 14 pages, 53 objects, nine groups and all four declared
+connections. Six identify Microsoft Visio as the authoring application.
+The Lucidchart-exported master sample contains three lines with numeric endpoints
+and no declared object connections; these are omitted with notices. This is
+compatibility evidence for those samples, not a claim of exact stencil fidelity.
+No upstream or user source file was added to the repository.
+
+The local bridge was restarted with its existing loopback bind and hosted-app
+origin. Live read-only MCP checks confirm import discovery during initialization,
+the preview/page-selection guide and the complete updated OpenAPI schema
+(192,706 bytes), without modifying browser records.
+
+Work stays on main; deployment to S3/CloudFront remains manual.

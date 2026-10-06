@@ -25,6 +25,7 @@ import { CsvImportDialog } from './components/CsvImportDialog';
 import { LovableDialog } from './components/LovableDialog';
 import { SqlImportDialog } from './components/SqlImportDialog';
 import { CodeImportDialog } from './components/CodeImportDialog';
+import { DiagramFileImportDialog } from './components/DiagramFileImportDialog';
 import { useImportFiles } from './imports/useImportFiles';
 import { importFileAccept } from './imports/fileRouting';
 import { analyzeCsv } from './data/client';
@@ -62,6 +63,7 @@ export function App() {
   const [backup, setBackup] = useState<WorkspaceBackup | null>(null);
   const [sqlDraft, setSqlDraft] = useState<{ id: string; text: string; name: string }>();
   const [codeFiles, setCodeFiles] = useState<File[]>();
+  const [diagramFile, setDiagramFile] = useState<File>();
   const [sourceFiles, setSourceFiles] = useState<File[]>();
   const pendingSourceFiles = useRef<File[]>([]);
   const [csvDraft, setCsvDraft] = useState<{
@@ -76,6 +78,7 @@ export function App() {
     setDialog(null);
     setSqlDraft(undefined);
     setCodeFiles(undefined);
+    setDiagramFile(undefined);
     setCsvDraft(null);
     pendingSourceFiles.current = [];
     setBackup(data);
@@ -126,6 +129,7 @@ export function App() {
     setDialog(null);
     setSqlDraft(undefined);
     setCodeFiles(undefined);
+    setDiagramFile(undefined);
   }, []);
   const open = useCallback((name: DialogName) => {
     window.dispatchEvent(new Event('visualnerve:close-toolbar-menus'));
@@ -135,6 +139,7 @@ export function App() {
     useEditor.setState({ mobilePanel: null });
     setSqlDraft(undefined);
     setCodeFiles(undefined);
+    setDiagramFile(undefined);
     setDialog(name);
   }, []);
   const { importFile, draggingFile } = useImportFiles({
@@ -151,6 +156,12 @@ export function App() {
       setCsvDraft(null);
       open('code');
       setCodeFiles(files);
+    },
+    diagramFile: (picked) => {
+      pendingSourceFiles.current = [];
+      setCsvDraft(null);
+      close();
+      setDiagramFile(picked);
     },
     csv: (dataset, file) => {
       close();
@@ -672,6 +683,9 @@ export function App() {
       )}
       {dialog === 'code' && (
         <CodeImportDialog initialFiles={codeFiles} close={close} create={createImportedDiagram} />
+      )}
+      {diagramFile && (
+        <DiagramFileImportDialog file={diagramFile} close={close} create={createImportedDiagram} />
       )}
       {dialog === 'owners' && <OwnersDialog close={close} />}
       {dialog === 'search' && <SearchDialog close={close} />}

@@ -5,7 +5,7 @@ describe('local browser MCP capability', () => {
     for (const value of [undefined, null, true, 'readwrite', 'off'])
       expect(mcpAccess(value)).toBe('off');
   });
-  it('allows reads, diagram export and SQL preview with a read-only grant', () => {
+  it('allows reads, diagram export and exact analysis previews with a read-only grant', () => {
     assertMcpAccess('read', '/diagrams', 'GET');
     assertMcpAccess('read', '/export', 'POST');
     assertMcpAccess('read', '/sql/preview', 'POST');
@@ -13,6 +13,8 @@ describe('local browser MCP capability', () => {
     assertMcpAccess('read', '/code/languages', 'GET');
     assertMcpAccess('read', '/code/preview', 'POST');
     assertMcpAccess('read', '/api/v1/code/preview', 'POST');
+    assertMcpAccess('read', '/diagram-files/preview', 'POST');
+    assertMcpAccess('read', '/api/v1/diagram-files/preview', 'POST');
     for (const method of ['POST', 'PUT', 'PATCH', 'DELETE'])
       expect(() => assertMcpAccess('read', '/nodes/test', method)).toThrow(/read-only/);
   });
@@ -32,8 +34,15 @@ describe('local browser MCP capability', () => {
       '/code/preview?save=true',
       '/code/preview/extra',
       '/code/preview#save',
+      '/import',
+      '/diagram-files/preview/../import',
+      '/diagram-files/preview?save=true',
+      '/diagram-files/preview/extra',
+      '/diagram-files/preview#save',
     ])
       expect(() => assertMcpAccess('read', path, 'POST')).toThrow();
+    for (const method of ['PUT', 'PATCH', 'DELETE'])
+      expect(() => assertMcpAccess('read', '/diagram-files/preview', method)).toThrow();
   });
   it('accepts only literal loopback bridge destinations', () => {
     for (const url of [

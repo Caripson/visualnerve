@@ -44,7 +44,7 @@ MCP is **Off** by default. In Settings you can explicitly grant **Read only** or
 Codex → local MCP bridge → your open browser → IndexedDB
 ```
 
-Enabling this access lets the tools you connect read diagram content; read and write access also lets them edit it. Read only also allows supplied SQL to be previewed without saving; creating its diagram requires write access. Choose tools you want to give this access to. Visual Nerve sends responses only through that local connection, and does not upload a cloud copy. Turn access **Off** to disconnect. [The guide explains setup](/help/#codex-and-mcp).
+Enabling this access lets the tools you connect read diagram content; read and write access also lets them edit it. Read only also allows supplied SQL, code and diagram files to be previewed through their exact endpoints without saving; creating a diagram requires write access. Choose tools you want to give this access to. Visual Nerve sends responses only through that local connection, and does not upload a cloud copy. Turn access **Off** to disconnect. [The guide explains setup](/help/#codex-and-mcp).
 
 ## Optional Lovable handoff
 
@@ -65,3 +65,9 @@ Created by **Johan Caripson**. [MIT license](/license/) · [Source code on GitHu
 Source files, folders and pasted scripts are analyzed locally in a cancellable worker. Nothing is executed, installed or sent to a remote analysis service. Source is a temporary draft: diagrams save recognized names, paths, line numbers, structural identifiers, bounded summaries, dependency evidence and confidence. Complete source, comments and nonstructural literal values are not saved. Quoted resource/table/import/field names can remain as structural identifiers. Identifiers and paths may still be sensitive. User-added notes/descriptions follow normal storage/export behavior.
 
 JSON and backups preserve this recognized structure, and Markdown/Lovable share allowlisted summaries with confidence. Review the preview before sharing. The optional local API/MCP passes supplied code transiently over the loopback bridge to the browser, without server storage. Read-only access permits exact code preview and language discovery; saving a code diagram requires write access. No source refresh runs in the background.
+
+## Draw.io and Visio import
+
+`.drawio` XML and `.vsdx` ZIP files are analyzed locally in a cancellable worker. Preview retains a temporary draft with page graphs and warnings, without storing or opening a diagram. Creation saves only the selected page as ordinary editable nodes, relationships, text, geometry and safe absolute HTTP(S) links. Complete XML/ZIP source, archive entries, embedded image bytes and unselected pages are not retained. Images, macros, scripts and external relationships are never fetched or executed; legacy `.vsd` and macro-enabled `.vsdm` are unsupported.
+
+Recognized names, text, links and graph provenance can remain in IndexedDB, JSON/backups and normal typed text exports. Review them before sharing. Native shapes and connector routing may be simplified; import warnings describe limitations. Optional REST/MCP preview/import passes source transiently through the loopback bridge and stores nothing on the server. Exact preview permits read-only access; saving requires write access and consent/grants are checked again after analysis. Revocation cancels pending work. [Importing diagram files](/help/#import-drawio-or-visio).

@@ -37,3 +37,14 @@ Restore previews **Merge with existing data** (default, keep current work and ad
 JSON and workspace backups retain the recognized `codeAnalysis`, `codeObject` and `codeRelation` metadata and native UUID endpoints. Original source, comments and ordinary literal values are not saved by the analyzer. Identifiers and file/import paths remain and can be sensitive. Copies and backup collisions remap object IDs while preserving original source locations.
 
 Markdown and Lovable use explicit code metadata allowlists: language, path, kind, name, line/endLine, external state, bounded summary, connection kind/confidence and evidence. Arbitrary metadata is excluded from these summaries. Unresolved and heuristic relationships remain marked; the brief does not assert compiler-verified behavior or workflow execution order. User-written notes and descriptions are shared normally. PNG/PDF use the regular 2D cards and labels; 3D uses those same cards. See [code import](docs/CODE_IMPORT.md).
+
+## Imported draw.io and Visio pages
+
+`.drawio` and `.vsdx` import previews source pages and creates one selected native
+graph. JSON and workspace backups retain its ordinary objects, relationships,
+geometry, text, safe links and bounded source provenance. Original XML/ZIP,
+embedded image bytes and unselected pages are excluded. Markdown and Lovable
+share ordinary node text and relationships; custom provenance is not inserted
+into those summaries. PNG/PDF render the converted 2D layout, including imported
+connection styles. There is no export back to `.drawio` or `.vsdx`.
+See [diagram file import](docs/DIAGRAM_IMPORT.md) for conversion limits.

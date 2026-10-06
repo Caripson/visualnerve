@@ -17,7 +17,9 @@ Versions are locked in frontend/package-lock.json and backend/go.mod/go.sum. The
 | @xyflow/react | 12.12.0 | MIT | direct runtime |
 | dexie | 4.4.6 | Apache-2.0 | direct runtime |
 | elkjs | 0.12.0 | EPL-2.0 OR GPL-3.0-or-later | direct runtime |
+| entities | 8.1.0 | BSD-2-Clause | direct runtime |
 | fake-indexeddb | 6.2.5 | Apache-2.0 | direct development |
+| fflate | 0.8.3 | MIT | direct runtime |
 | html-to-image | 1.11.11 | MIT | direct runtime |
 | jsdom | 27.4.0 | MIT | direct development |
 | jspdf | 4.2.1 | MIT | direct runtime |
@@ -26,6 +28,7 @@ Versions are locked in frontend/package-lock.json and backend/go.mod/go.sum. The
 | prettier | 3.7.4 | MIT | direct development |
 | react | 19.3.0 | MIT | direct runtime |
 | react-dom | 19.3.0 | MIT | direct runtime |
+| saxes | 6.0.0 | ISC | direct runtime |
 | swagger-ui-dist | 5.33.1 | Apache-2.0 | direct runtime |
 | three | 0.186.1 | MIT | direct runtime |
 | typescript | 5.9.3 | Apache-2.0 | direct development |

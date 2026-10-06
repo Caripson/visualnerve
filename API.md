@@ -16,31 +16,32 @@ Use `visual_nerve_request` for graph commands. HTTP documentation paths `/api/do
 
 ## CRUD and graph operations
 
-| Method               | Route                | Behavior                                                                             |
-| -------------------- | -------------------- | ------------------------------------------------------------------------------------ |
-| GET                  | /health              | Static server, indexeddb storage, bridge enabled/connected and version               |
-| GET / POST           | /diagrams            | List / create diagram                                                                |
-| POST                 | /spatial-diagrams    | Create and open a 3D diagram; return complete Graph                                  |
-| POST                 | /sql/preview         | Analyze SELECT/WITH or DDL locally; return graph/counts/warnings without saving      |
-| POST                 | /sql/diagrams        | Analyze SQL, save transactionally and open the diagram; return complete Graph        |
-| GET                  | /code/languages      | List all 50 language IDs, extensions and capabilities                                |
-| POST                 | /code/preview        | Analyze source files locally; return structural graph/counts/warnings without saving |
-| POST                 | /code/diagrams       | Save and open a code dependency diagram; write access required                       |
-| GET / PATCH / DELETE | /diagrams/{id}       | Complete canonical graph / diagram properties / cascading deletion                   |
-| GET / POST           | /diagrams/{id}/nodes | List / create node                                                                   |
-| GET / PATCH / DELETE | /nodes/{id}          | Read / update / delete and detach children                                           |
-| POST                 | /nodes/{id}/children | Add child plus hierarchy edge and default position                                   |
-| GET / POST           | /diagrams/{id}/edges | List / create relationship                                                           |
-| PATCH / DELETE       | /edges/{id}          | Update/reconnect / delete                                                            |
-| GET / POST           | /owners              | List / create global owner                                                           |
-| PATCH / DELETE       | /owners/{id}         | Update / remove owner; advance referencing diagram versions                          |
-| POST                 | /diagrams/{id}/bulk  | Transactional population and external-ID upsert                                      |
-| PUT                  | /diagrams/{id}/graph | Atomic full graph replacement using baseVersion                                      |
-| POST                 | /import              | JSON, Markdown or CSV, one transaction                                               |
-| POST                 | /export              | Complete JSON or semantic Markdown                                                   |
-| GET                  | /search?q=...        | Global results with diagramId and optional nodeId                                    |
-| GET                  | /workspace/export    | Complete IndexedDB workspace snapshot                                                |
-| POST                 | /workspace/import    | Restore all workspace tables in one transaction                                      |
+| Method               | Route                  | Behavior                                                                             |
+| -------------------- | ---------------------- | ------------------------------------------------------------------------------------ |
+| GET                  | /health                | Static server, indexeddb storage, bridge enabled/connected and version               |
+| GET / POST           | /diagrams              | List / create diagram                                                                |
+| POST                 | /spatial-diagrams      | Create and open a 3D diagram; return complete Graph                                  |
+| POST                 | /sql/preview           | Analyze SELECT/WITH or DDL locally; return graph/counts/warnings without saving      |
+| POST                 | /sql/diagrams          | Analyze SQL, save transactionally and open the diagram; return complete Graph        |
+| GET                  | /code/languages        | List all 50 language IDs, extensions and capabilities                                |
+| POST                 | /code/preview          | Analyze source files locally; return structural graph/counts/warnings without saving |
+| POST                 | /code/diagrams         | Save and open a code dependency diagram; write access required                       |
+| POST                 | /diagram-files/preview | Preview draw.io XML or base64 Visio ZIP pages without saving; read-only allowed      |
+| GET / PATCH / DELETE | /diagrams/{id}         | Complete canonical graph / diagram properties / cascading deletion                   |
+| GET / POST           | /diagrams/{id}/nodes   | List / create node                                                                   |
+| GET / PATCH / DELETE | /nodes/{id}            | Read / update / delete and detach children                                           |
+| POST                 | /nodes/{id}/children   | Add child plus hierarchy edge and default position                                   |
+| GET / POST           | /diagrams/{id}/edges   | List / create relationship                                                           |
+| PATCH / DELETE       | /edges/{id}            | Update/reconnect / delete                                                            |
+| GET / POST           | /owners                | List / create global owner                                                           |
+| PATCH / DELETE       | /owners/{id}           | Update / remove owner; advance referencing diagram versions                          |
+| POST                 | /diagrams/{id}/bulk    | Transactional population and external-ID upsert                                      |
+| PUT                  | /diagrams/{id}/graph   | Atomic full graph replacement using baseVersion                                      |
+| POST                 | /import                | JSON, Markdown, CSV or one selected draw.io/Visio page, one transaction              |
+| POST                 | /export                | Complete JSON or semantic Markdown                                                   |
+| GET                  | /search?q=...          | Global results with diagramId and optional nodeId                                    |
+| GET                  | /workspace/export      | Complete IndexedDB workspace snapshot                                                |
+| POST                 | /workspace/import      | Restore all workspace tables in one transaction                                      |
 
 Creates return 201 and an entity (import returns Graph). Bulk/replacement return 200 and Graph. Deletes return 204. Errors are `{ "error": "message" }`: 400 malformed JSON, 401 token missing/wrong, 403 origin/host rejected, storage not accepted or read-only mutation denied, 404 missing entity, 409 stale version or duplicate identity, 422 validation 428 missing update version, 503 no connected browser and 504 browser timeout. No partially committed graph remains after validation fails. Requests are limited to 32 MiB. All integration requests with a configured VISUAL_NERVE_BRIDGE_TOKEN need `Authorization: Bearer TOKEN`.
 
@@ -95,6 +96,12 @@ Send to `POST /diagrams/DIAGRAM_UUID/bulk`. `parentExternalId` resolves a node h
 `POST /export` accepts `{ "diagramId": "UUID", "format": "json" }` or `markdown`. JSON returns the canonical exchange document. Markdown returns a JSON string; browser download uses text/markdown. PNG/PDF render locally in the editor with React Flow, html-to-image and jsPDF; the Go API does not pretend to rasterize the canvas.
 
 `POST /import` accepts `{ "format": "json", "data": GRAPH_OBJECT }`, or `{ "format": "markdown", "data": "# Root\n## Child" }`, or CSV text. JSON remaps colliding IDs and their internal references together, preserving graph information. Owners with unchanged identity/content are reused. See [EXPORT_FORMAT.md](EXPORT_FORMAT.md) for exchange details. Dates must be valid `YYYY-MM-DD`; user URLs are absolute HTTP(S); entity IDs are UUIDs.
+
+`POST /diagram-files/preview` accepts `{ "format": "drawio" | "vsdx", "data": "...", "name": "optional" }`. Draw.io data is XML text; Visio data is strict padded standard base64 ZIP bytes. It returns `DiagramImportResult` with `format`, `pages: [{id,name,graph,warnings}]` and file-level `warnings`, without saving or opening a project. This exact POST is allowed with Read only. IDs are source-page strings. Optional `name` is nonempty, at most 500 characters; unknown input fields are rejected.
+
+For these two formats, `POST /import` accepts the same input plus optional `pageId` and saves/opens only the selected native page, returning Graph. Multipage files require a page ID from preview; omission or an unknown ID returns 422 with no partial writes. A one-page file may omit it. Creation requires Read + write; JSON/Markdown/CSV behavior is unchanged. Limits: 32 MiB decoded file, 64 MiB expanded, 2,048 ZIP entries, 100 pages, 20,000 total nodes, 40,000 total edges and hierarchy depth 256. Worker deadline is 30 seconds and preview/import transport is 45 seconds. JSON transport stays 32 MiB, so base64 `.vsdx` integration files must be below roughly 24 MiB, and escaped XML/preview responses must fit the envelope.
+
+The imported page is an editable native approximation: recognized text, geometry, groups, relationships, basic colors and absolute HTTP(S) links. Advanced shapes, rotations and connector waypoints may be simplified with warnings. Source XML/ZIP is temporary; images, macros, scripts and external content are never fetched or executed. `.vsd` and `.vsdm` are unsupported. Access revocation cancels pending analysis and grants/acceptance are checked again before saving. See [diagram file import](docs/DIAGRAM_IMPORT.md).
 
 ## MCP
 
@@ -151,7 +158,7 @@ When several distinct workspaces are connected, pass `workspaceId` to MCP or `X-
 
 ## Public app and permissions
 
-The public static site supplies no content API. Commands always target a user’s loopback bridge; public Swagger pages are read-only reference, while local Swagger can execute against its local origin. Read only permits GET, POST /export and exact POST /sql/preview, rejecting all mutations and permission escalation. Off closes the socket. Browser closure or disconnection returns 503 (MCP tools report isError), with no fallback storage. Both REST and MCP use the same browser repository.
+The public static site supplies no content API. Commands always target a user’s loopback bridge; public Swagger pages are read-only reference, while local Swagger can execute against its local origin. Read only permits GET, POST /export and exact POST /sql/preview, /code/preview or /diagram-files/preview, rejecting all mutations and permission escalation. Off closes the socket. Browser closure or disconnection returns 503 (MCP tools report isError), with no fallback storage. Both REST and MCP use the same browser repository.
 
 Hosted apps require an exact --allowed-origin and may require trusted local TLS and browser local-network permission. The bridge rejects non-loopback listen addresses and remote client peers. See [deployment setup](docs/DEPLOYMENT.md#optional-local-mcp). /workspace/import uses Merge; destructive Replace and global deletion are separately confirmed actions in the browser UI. Backup schema/date and excluded local grants/consent are described in [EXPORT_FORMAT.md](EXPORT_FORMAT.md).
 

@@ -11,6 +11,7 @@ import { timelineGeometry, type Geometry } from '../layouts/layout';
 import { mindmapTopics, type MindmapTopic } from '../mindmap/tree';
 import { getCsvNode } from '../data/csv';
 import type { ExplorationResult } from '../analysis/types';
+import { importedConnectionStyle } from '../imports/diagram/presentation';
 export type NodeData = {
   node: GraphNode;
   owners: Owner[];
@@ -233,8 +234,13 @@ export function projectGraph(
             ? source
             : undefined
         : undefined;
-    const color = branch ? topics?.get(branch.id)?.color : '#8a9694';
-    const strokeWidth = branch ? (topics?.get(branch.id)?.depth === 1 ? 4 : 2.5) : 1.6;
+    const imported = importedConnectionStyle(e);
+    const color = branch ? topics?.get(branch.id)?.color : (imported.color ?? '#8a9694');
+    const strokeWidth = branch
+      ? topics?.get(branch.id)?.depth === 1
+        ? 4
+        : 2.5
+      : (imported.width ?? 1.6);
     const right = source && target && target.x + target.width / 2 >= source.x + source.width / 2;
     const sourceHandle =
       mindmap && source?.nodeType !== 'group' ? `source-${right ? 'right' : 'left'}` : undefined;

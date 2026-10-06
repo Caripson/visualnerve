@@ -112,3 +112,20 @@ Codex MCP endpoint separately. Copyable connection instructions exclude tokens.
 MCP initialization and read-only documentation tools/resources advertise native
 2D and requested 3D without requiring a separate documentation link or connected
 workspace. Discovery does not grant access to private browser records.
+
+## 2026-10-06: Visio and draw.io imports
+
+Users can choose or drop `.vsdx` and `.drawio` files, preview the source pages,
+review conversion warnings and create one selected page as an editable native
+diagram. Preview and cancellation save nothing. The selected graph uses existing
+IndexedDB tables, ordinary objects and relationships, groups, geometry, safe
+links and basic colors. Native status, undo, 2D/3D and export behavior applies.
+
+Conversion simplifies unsupported stencils, rotations, images and connector
+routes with notices; it does not provide source-format export. XML/ZIP source,
+embedded bytes and unselected pages remain temporary. Parsing does not execute
+code or fetch external resources. Worker, XML/ZIP, total graph and page limits
+bound analysis. Read-only REST/MCP preview and write-gated page creation use the
+same parser and repository, rechecking consent/access before saving. API,
+OpenAPI, MCP discovery and user/privacy documentation describe the contracts.
+See [DIAGRAM_IMPORT.md](DIAGRAM_IMPORT.md) for formats, limits and fidelity.

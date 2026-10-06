@@ -23,7 +23,7 @@ Call visual_nerve_request for workspace commands only. Paths omit /api/v1, for e
 
 ## Local storage and access
 
-The open Visual Nerve browser's IndexedDB is authoritative and is the only database. The server forwards workspace commands and stores no application records. The browser must have accepted local storage and enabled MCP access in Settings. MCP access defaults to Off. Read only permits GET, POST /export and the exact POST /sql/preview and POST /code/preview endpoints. Creating or changing diagrams, including POST /spatial-diagrams, requires Read + write. Writes are committed in IndexedDB before the response. If multiple workspaces are connected, provide workspaceId in visual_nerve_request arguments.
+The open Visual Nerve browser's IndexedDB is authoritative and is the only database. The server forwards workspace commands and stores no application records. The browser must have accepted local storage and enabled MCP access in Settings. MCP access defaults to Off. Read only permits GET, POST /export and the exact POST /sql/preview, POST /code/preview and POST /diagram-files/preview endpoints. Creating or changing diagrams, including POST /spatial-diagrams or POST /import, requires Read + write. Writes are committed in IndexedDB before the response. If multiple workspaces are connected, provide workspaceId in visual_nerve_request arguments.
 
 ## Native 2D and requested 3D
 
@@ -42,6 +42,14 @@ Physical cards show the same native 2D capture on readable fronts and unmirrored
 POST /sql/preview with {sql,name?} analyzes SELECT/WITH or DDL locally and returns graph/counts/warnings without saving. POST /sql/diagrams with the same input saves and opens the graph and requires write access. Query diagrams retain scoped aliases, JOIN conditions, output expressions/lineage, clauses and potentially literal values. They describe logical structure; no SQL connection or execution occurs.
 
 GET /code/languages lists 50 languages and their structural capabilities. POST /code/preview with {name?,files:[{path,content,language?}],mode?:"files"|"symbols",focus?} returns a local static dependency outline without saving. POST /code/diagrams with the same input saves and opens it and requires write access. Use files for larger projects and symbols for declarations and calls. Relations include syntax, heuristic or unresolved confidence and source file/line evidence. Focus matches path/name substrings and includes immediate related objects. Code is never executed; original source, comments and nonstructural string values are discarded after analysis, while identifiers and paths are retained. Dynamic dispatch, overloads, macros and missing dependencies can remain unresolved.
+
+## Draw.io and Visio file import
+
+POST /diagram-files/preview accepts {format:"drawio"|"vsdx",data:string,name?}; name is a nonempty string of at most 500 characters. Draw.io data is XML text. Visio .vsdx data is strict padded standard base64 of ZIP bytes, without whitespace or a data-URL prefix. Preview returns {format,pages:[{id,name,graph,warnings}],warnings} without saving or opening a project. Page IDs are source strings, not graph UUIDs. Review file-level and per-page warnings.
+
+POST /import with the same input plus pageId? saves and opens only the selected native page, returning Graph. Multipage input must specify pageId from preview; missing selection or an unknown ID returns 422 without partial writes. One-page input can omit it. Creation requires Read + write; exact preview permits Read only. Existing JSON/Markdown/CSV imports retain their contract.
+
+Imported pages are editable native approximations of text, geometry, groups, relationships, basic colors and safe HTTP(S) links. Advanced/custom shapes, rotations and connector waypoints may be simplified with warnings. Original XML/ZIP, embedded image bytes and unselected pages remain temporary. Images, macros, scripts and external content are never fetched or executed. Legacy .vsd and macro-enabled .vsdm are unsupported. Limits: 32 MiB file, 64 MiB expanded, 2,048 ZIP entries, 100 pages, 20,000 total nodes, 40,000 total edges, hierarchy depth 256, 30-second worker deadline and 45-second preview/import transport. JSON envelopes remain 32 MiB, so base64 integration files must be below roughly 24 MiB and preview results must also fit. Revocation cancels analysis and grants/acceptance are rechecked before saving.
 
 ## Use the full OpenAPI document
 
