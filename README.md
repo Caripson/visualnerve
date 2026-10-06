@@ -24,11 +24,17 @@ Parsing, cleanup and aggregation run in a Web Worker. A view renders at most 600
 
 Choose the pencil in the canvas controls to draw over any diagram with a mouse, finger or pen. Choose a color and thickness, erase whole strokes or hide the drawing layer. **Done drawing** or Escape returns to normal diagram editing. Drawing uses a separate layer that follows pan and zoom, supports undo/redo, persists in IndexedDB and appears in PNG/PDF exports. Diagram JSON and full backups preserve it, including hidden strokes. See [drawing on diagrams](docs/DRAWING.md).
 
+## Visualize a SQL schema
+
+Drop a `.sql` or `.ddl` file, use **Import**, or choose **Import SQL script** (on phones: **… → Import SQL script**). Paste or load the script, choose **Preview schema**, review counts and warnings, then **Create diagram**. Local worker analysis extracts common PostgreSQL/MySQL/SQL Server `CREATE TABLE` and `ALTER TABLE ... ADD` columns, primary/unique keys and foreign keys, including composite keys, quoted names and forward references. Missing referenced tables remain explicit external objects.
+
+Tables show up to 12 columns; Properties shows all columns in pages of 100 and the full keys/reference pairs. The objects support normal movement, connections, status, drawing, local saving and JSON/backup export. SQL is never executed, and SELECT/JOIN queries are not converted into query plans. DROP/RENAME/MODIFY changes are ignored with warnings. The raw script and row/default/check/procedure values are not saved; ENUM type labels may remain as schema. Limits are 50 MiB, 2,000 table objects, 100,000 columns and 10,000 foreign-key relationships. See [SQL import](docs/SQL_IMPORT.md).
+
 ## Build an app with Lovable
 
 Choose **Build with Lovable** (on phones: **… → Build with Lovable**), describe the app you want and review the generated build prompt. Include the entire diagram, the current CSV groups or selected objects. The brief preserves objects, responsibilities, hierarchy and relationships with their directions and branch conditions. Your instructions are saved locally with the diagram. **Open in Lovable** opens a new, unsent prompt; review it and press **Send** there to start building. No API key is needed.
 
-This explicit handoff shares the previewed text with Lovable. Source CSV rows, arbitrary metadata and owner email addresses are excluded; group summaries and written descriptions are included. Copy or download the complete brief when it exceeds the link limits. See [Lovable handoff](docs/LOVABLE.md).
+This explicit handoff shares the previewed text with Lovable. Source CSV rows, raw SQL scripts, arbitrary metadata and owner email addresses are excluded; group summaries, recognized SQL schema/foreign keys and written descriptions are included. Unresolved SQL references stay explicit. Copy or download the complete brief when it exceeds the link limits. See [Lovable handoff](docs/LOVABLE.md).
 
 ## Requirements
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
-import { ArrowUpRight, GitBranch, Plus, X, Menu } from 'lucide-react';
+import { ArrowUpRight, GitBranch, Plus, X, Menu, Database } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { Toolbar, FilterBar } from './components/Toolbar';
 import { Properties } from './components/Properties';
@@ -23,6 +23,8 @@ import type { Clip } from './state/clipboard';
 import type { Graph } from './model/types';
 import { CsvImportDialog } from './components/CsvImportDialog';
 import { LovableDialog } from './components/LovableDialog';
+import { SqlImportDialog } from './components/SqlImportDialog';
+import { SQL_FILE_LIMIT } from './sql/client';
 import { analyzeCsv, openCsvFile } from './data/client';
 import { getCsvAnalysis, getCsvNode } from './data/csv';
 import type { CsvAnalysis, CsvDataset, CsvPathEntry } from './data/types';
@@ -30,6 +32,7 @@ export type DialogName =
   | 'new'
   | 'export'
   | 'lovable'
+  | 'sql'
   | 'owners'
   | 'search'
   | 'settings'
@@ -39,6 +42,7 @@ export function App() {
   const [dialog, setDialog] = useState<DialogName | null>(null);
   const [ready, setReady] = useState(false);
   const [backup, setBackup] = useState<WorkspaceBackup | null>(null);
+  const [sqlDraft, setSqlDraft] = useState<{ id: string; text: string; name: string }>();
   const [csvDraft, setCsvDraft] = useState<{
     dataset: CsvDataset;
     previous?: Graph;
@@ -51,6 +55,7 @@ export function App() {
   const acknowledged = useEditor((state) => state.privacyAcknowledged);
   const inspectBackup = (data: WorkspaceBackup) => {
     setDialog(null);
+    setSqlDraft(undefined);
     setBackup(data);
   };
   const [filters, setFilters] = useState(false);
@@ -80,38 +85,68 @@ export function App() {
   const status = useEditor((s) => s.status);
   const message = useEditor((s) => s.message);
   const file = useRef<HTMLInputElement>(null);
-  const close = useCallback(() => setDialog(null), []);
+  const close = useCallback(() => {
+    setDialog(null);
+    setSqlDraft(undefined);
+  }, []);
   const open = useCallback((name: DialogName) => {
     document
       .querySelectorAll('details.quick-picker[open]')
       .forEach((picker) => picker.removeAttribute('open'));
     useEditor.setState({ mobilePanel: null });
+    setSqlDraft(undefined);
     setDialog(name);
   }, []);
-  const importFile = useCallback(async (picked: File) => {
-    if (!useEditor.getState().privacyAcknowledged || importInFlight.current) return;
+  const importFile = useCallback(
+    async (picked: File) => {
+      if (!useEditor.getState().privacyAcknowledged || importInFlight.current) return;
+      importInFlight.current = true;
+      setImporting(true);
+      try {
+        if (/\.(sql|ddl)$/i.test(picked.name)) {
+          if (picked.size > SQL_FILE_LIMIT) throw new Error('SQL exceeds the 50 MiB file limit.');
+          const text = await picked.text();
+          setCsvDraft(null);
+          open('sql');
+          setSqlDraft({
+            id: crypto.randomUUID(),
+            text,
+            name: picked.name.replace(/\.(sql|ddl)$/i, '').slice(0, 500) || 'Imported SQL',
+          });
+        } else if (/\.csv$/i.test(picked.name)) {
+          const dataset = await openCsvFile(picked);
+          setDialog(null);
+          setSqlDraft(undefined);
+          setCsvDraft({ dataset, file: picked });
+        } else {
+          const format = /\.json$/i.test(picked.name) ? 'json' : 'markdown';
+          const text = await picked.text();
+          const json = format === 'json' ? JSON.parse(text) : undefined;
+          if (json?.format === 'visual-nerve-workspace') inspectBackup(json as WorkspaceBackup);
+          else {
+            const data = parseImport(format, text);
+            await workspace.create(data);
+          }
+        }
+      } catch (error) {
+        useEditor.setState({
+          status: 'error',
+          message: `Import failed: ${(error as Error).message}`,
+        });
+      } finally {
+        importInFlight.current = false;
+        setImporting(false);
+      }
+    },
+    [open],
+  );
+
+  const createSql = useCallback(async (generated: Graph) => {
+    if (importInFlight.current) throw new Error('Wait for the current import to finish.');
     importInFlight.current = true;
     setImporting(true);
     try {
-      if (/\.csv$/i.test(picked.name)) {
-        const dataset = await openCsvFile(picked);
-        setDialog(null);
-        setCsvDraft({ dataset, file: picked });
-      } else {
-        const format = /\.json$/i.test(picked.name) ? 'json' : 'markdown';
-        const text = await picked.text();
-        const json = format === 'json' ? JSON.parse(text) : undefined;
-        if (json?.format === 'visual-nerve-workspace') inspectBackup(json as WorkspaceBackup);
-        else {
-          const data = parseImport(format, text);
-          await workspace.create(data);
-        }
-      }
-    } catch (error) {
-      useEditor.setState({
-        status: 'error',
-        message: `Import failed: ${(error as Error).message}`,
-      });
+      await workspace.create(generated);
     } finally {
       importInFlight.current = false;
       setImporting(false);
@@ -477,6 +512,10 @@ export function App() {
                   <Plus size={16} />
                   Create a diagram
                 </button>
+                <button onClick={() => open('sql')}>
+                  <Database size={16} />
+                  Import SQL script
+                </button>
                 <a href="/help/">
                   Explore the guide
                   <ArrowUpRight size={14} />
@@ -544,7 +583,7 @@ export function App() {
         aria-label="Import file"
         className="file-input"
         type="file"
-        accept=".json,.md,.markdown,.csv"
+        accept=".json,.md,.markdown,.csv,.sql,.ddl"
         onChange={async (e) => {
           const picked = e.target.files?.[0];
           if (!picked) return;
@@ -555,6 +594,14 @@ export function App() {
       {dialog === 'new' && <NewDiagram close={close} />}
       {dialog === 'export' && <ExportDialog close={close} />}
       {dialog === 'lovable' && <LovableDialog close={close} />}
+      {dialog === 'sql' && (
+        <SqlImportDialog
+          key={sqlDraft?.id ?? 'script'}
+          initial={sqlDraft}
+          close={close}
+          create={createSql}
+        />
+      )}
       {dialog === 'owners' && <OwnersDialog close={close} />}
       {dialog === 'search' && <SearchDialog close={close} />}
       {dialog === 'settings' && (
@@ -587,8 +634,10 @@ export function App() {
       )}
       {draggingFile && (
         <div className="csv-drop-overlay">
-          <strong>Drop a CSV to explore your data</strong>
-          <span>Choose columns, clean values, filter rows and build a connected diagram.</span>
+          <strong>Drop a file to create a diagram</strong>
+          <span>
+            Explore CSV data, visualize SQL tables and relationships, or import a diagram.
+          </span>
         </div>
       )}
       {importing && (

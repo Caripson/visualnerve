@@ -6,6 +6,7 @@ import { mindmapTopics, newTopicPosition } from '../mindmap/tree';
 import { getCsvNode } from '../data/csv';
 import { getDrawingLayer } from '../drawing/types';
 import { validateDrawingLayer } from '../model/validation';
+import { reconnectedSqlEdge } from '../sql/relationships';
 import {
   descendantIds,
   emptyFilters,
@@ -336,7 +337,7 @@ export const useEditor = create<Editor>((set, get) => ({
             : g.nodes,
           edges: g.edges.map((edge) =>
             edge.id === id
-              ? {
+              ? reconnectedSqlEdge(edge, {
                   ...edge,
                   ...patch,
                   ...(reconnected
@@ -348,7 +349,7 @@ export const useEditor = create<Editor>((set, get) => ({
                         },
                       }
                     : {}),
-                }
+                })
               : edge,
           ),
         };

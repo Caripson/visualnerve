@@ -30,6 +30,12 @@ Clearing this site's browser data, resetting your browser profile or uninstallin
 
 **Storage details** shows an estimate of site storage, when your browser supports it. Once you have a diagram, you can ask the browser to keep local data. Browser decisions vary; a grant can reduce automatic eviction under storage pressure, but cannot prevent manual clearing or guarantee retention.
 
+## SQL schema import
+
+When you load or paste SQL/DDL, the script is analyzed locally in a Web Worker. SQL is never executed or sent to a database. The script is a temporary draft; **Create diagram** saves recognized tables, columns, types, nullability, keys and foreign-key relationships.
+
+Raw source SQL, INSERT/COPY rows, defaults, CHECK expressions, comments and procedure bodies are not saved in the diagram or included in its exports. ENUM labels in column data types may remain as schema structure. JSON and backups retain the extracted schema, while the original file stays on your device. Table/column names, types and keys can still contain sensitive information, so review them before sharing. [Importing SQL schemas](/help/#import-a-sql-schema).
+
 ## Optional Codex / MCP access
 
 MCP is **Off** by default. In Settings you can explicitly grant **Read only** or **Read + write** access to tools through a local bridge on your computer. Visual Nerve must remain open. The bridge cannot independently read your browser's database and does not keep a second copy.
@@ -44,7 +50,7 @@ Enabling this access lets the tools you connect read diagram content; read and w
 
 **Build with Lovable** generates an app brief locally and shows its complete text. Opening the dialog sends nothing. **Open in Lovable** opens a new tab at `lovable.dev` with the reviewed prompt; you press **Send** there to start building. This explicitly shares that text with Lovable.
 
-The brief includes your instructions and chosen objects, written descriptions, notes, responsibilities and relationships. CSV schema, analysis choices and calculated summaries may be included. Source rows, arbitrary metadata, owner email addresses and bridge credentials are excluded. Written text and grouping values are included as shown, so review the preview before sharing. Draft instructions stay in IndexedDB with the diagram. [How to use the handoff](/help/#build-an-app-with-lovable).
+The brief includes your instructions and chosen objects, written descriptions, notes, responsibilities and relationships. CSV schema, analysis choices and calculated summaries may be included. SQL tables contribute recognized columns/types, nullability, primary/unique keys and foreign-key pairs/actions through a typed allowlist; missing definitions and unresolved references stay explicit. Source rows, raw SQL scripts, arbitrary metadata, owner email addresses and bridge credentials are excluded. Written text, grouping values and schema names/type labels are included as shown, so review the preview before sharing. Draft instructions stay in IndexedDB with the diagram. [How to use the handoff](/help/#build-an-app-with-lovable).
 
 ## Remove local data
 

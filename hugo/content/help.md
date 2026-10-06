@@ -54,13 +54,25 @@ Copying a CSV object into another diagram keeps its measures as a snapshot; the 
 
 CSV sources and analysis choices stay in this browser and are included in diagram JSON and full backups. PNG/PDF exports show the current CSV view. Files support at most 50 MiB, 200,000 rows, 200 columns and 10 million cells. CSVs using the older `title`-column diagram format can still use **Import as existing diagram rows instead** in the preview.
 
+## Import a SQL schema
+
+Drop a `.sql` or `.ddl` file, use **Import**, or choose **Import SQL script**. On phones, use **… → Import SQL script**. Enter a diagram name and paste the SQL script, or use **Load SQL file**. **Preview schema** analyzes it locally in a worker and shows table, column, relationship and unresolved-table counts with import notes. Review the preview, then choose **Create diagram**. Changing the input clears the preview; Cancel aborts pending analysis.
+
+The importer supports common PostgreSQL, MySQL and SQL Server `CREATE TABLE` definitions and `ALTER TABLE ... ADD` columns or primary/unique/foreign keys. Composite keys, quoted/schema-qualified names and references to tables defined later are retained. Foreign-key arrows run from the referencing child table to the referenced parent table. Missing definitions remain **External table · definition missing**; unresolved referenced columns are not invented.
+
+Cards show up to 12 columns and PK/FK/UQ/nullability badges. Select a table to inspect its complete schema and keys in Properties, with 100 columns per page. Select a foreign-key connection for its column pairs and delete/update actions. Move, rename and connect imported objects, assign status or draw over them. Schema objects save locally and survive JSON export, backups and reload.
+
+SQL is never executed. SELECT/JOIN queries are not transformed into query plans. Row data and unsupported statements are ignored; DROP/RENAME/MODIFY changes are not applied and produce notes. Review the result because it represents imported CREATE/ADD definitions, not the final state of every migration. Limits are 50 MiB, 2,000 table objects including external references, 100,000 columns and 10,000 foreign-key relationships.
+
+The raw script is a temporary draft. INSERT/COPY rows, default and CHECK expressions, comments and procedure bodies are not saved. ENUM labels within data types may remain as schema structure. SQL schema can still contain sensitive names or type labels; review it before sharing. [How your data is stored](/privacy/#sql-schema-import).
+
 ## Build an app with Lovable
 
 Choose **Build with Lovable** beside Export, or **… → Build with Lovable** on a phone. Describe the app in **App instructions**, choose the entire diagram, current CSV groups or selected objects, and review the complete build prompt. Your draft is saved locally with the diagram.
 
 Objects become app features and workflow steps. Connections preserve their directions, labels, conditions and relationships; hierarchy is distinguished from execution order. Duplicate titles remain separate. Done objects still describe features to build. Connections to objects outside your selected scope appear as external context.
 
-**Open in Lovable** opens a new, unsent prompt. Review it there and press **Send** to start building. This explicitly shares the previewed text with Lovable. Raw CSV rows, arbitrary metadata and owner email addresses are excluded; grouping values, calculated summaries and written descriptions may be included. Freehand notes are not translated into requirements, so explain their meaning in your instructions.
+**Open in Lovable** opens a new, unsent prompt. Review it there and press **Send** to start building. This explicitly shares the previewed text with Lovable. Raw CSV rows, source SQL scripts, arbitrary metadata and owner email addresses are excluded; grouping values, calculated summaries and written descriptions may be included. SQL tables contribute recognized column types, nullability, primary/unique keys and foreign-key column pairs/actions; missing definitions remain external context and unknown referenced columns remain unresolved. Freehand notes are not translated into requirements, so explain their meaning in your instructions.
 
 Use **Copy build prompt** or **Download build brief** if the prompt is too large for a link. The brief stays complete. No API key or local MCP bridge is needed. [Lovable's handoff documentation](https://docs.lovable.dev/integrations/build-with-url).
 
@@ -71,7 +83,7 @@ The editor saves changes immediately in this browser's IndexedDB. **Saved** mean
 Changes from other tabs appear through local database updates. A version conflict preserves your unsaved edits in the current tab and offers **Save local copy**, **Use saved version** or **Replace saved version**. Resolve it before closing the tab.
 ## Exchange and backups
 
-JSON is the complete restorable format, including owners, metadata, hierarchy, layout and viewport. Markdown exports semantic outlines and process relationships. Import accepts Visual Nerve JSON, headings/lists in Markdown and CSV data or the older CSV diagram format with a title column. PNG exports viewport, selection or full graph at 1×, 2× or 4×. PDF supports A4/A3, portrait/landscape and tiled pages. Complete rendered exports include collapsed and off-screen objects.
+JSON is the complete restorable format, including owners, metadata, hierarchy, layout, viewport and imported SQL schema. Markdown exports semantic outlines and process relationships. Import accepts Visual Nerve JSON, headings/lists in Markdown, CSV data or the older CSV diagram format with a title column, and SQL/DDL schema scripts through their preview. PNG exports viewport, selection or full graph at 1×, 2× or 4×. PDF supports A4/A3, portrait/landscape and tiled pages. Complete rendered exports include collapsed and off-screen objects.
 
 Settings controls theme and **Data & Privacy**. **Export all data** downloads a dated complete backup of projects, owners, portable settings, templates and CSV datasets. **Restore backup** previews Merge (keep current diagrams) or Replace (remove current work, requiring confirmation). Connection grants and storage acceptance are never imported. **Export diagram** remains a separate PNG/PDF/Markdown/JSON choice.
 

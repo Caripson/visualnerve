@@ -13,6 +13,7 @@ import {
 } from '../model/types';
 import { StorageError, validateGraph, validateOwner } from '../model/validation';
 import { getCsvNode } from '../data/csv';
+import { reconnectedSqlEdge } from '../sql/relationships';
 import { markdown, parseImport } from '../export/semantic';
 import { database, type WorkspaceBackup, type WorkspaceDatabase } from './database';
 
@@ -83,13 +84,14 @@ function suppressCsvParentConnection(graph: Graph, edge: GraphEdge) {
   });
 }
 function reconnectedEdge(graph: Graph, previous: GraphEdge, next: GraphEdge): GraphEdge {
+  const reconnected = reconnectedSqlEdge(previous, next);
   if (
     previous.metadata?.csvGenerated !== true ||
     (previous.sourceNodeId === next.sourceNodeId && previous.targetNodeId === next.targetNodeId)
   )
-    return next;
+    return reconnected;
   suppressCsvParentConnection(graph, previous);
-  return { ...next, metadata: { ...next.metadata, csvGenerated: false } };
+  return { ...reconnected, metadata: { ...reconnected.metadata, csvGenerated: false } };
 }
 function object(data: unknown): Patch {
   if (!data || typeof data !== 'object' || Array.isArray(data))

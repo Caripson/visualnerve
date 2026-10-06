@@ -16,6 +16,8 @@ The diagram describes the app you want Lovable to implement. Each object has a d
 
 For CSV diagrams, the brief includes column schema, grouping, cleanup rules, filters and calculated group summaries. It never reads or includes the raw source rows. Parent and child aggregates can overlap; the brief tells Lovable to avoid double counting. Retained groups may reflect earlier analysis settings. Arbitrary metadata, owner emails and bridge credentials are excluded. Written text and grouping values are included as shown in the preview.
 
+For [imported SQL schemas](SQL_IMPORT.md), a typed allowlist includes table/qualified names, ordered columns and types, nullability, primary/unique keys, and foreign-key column pairs, constraint names and delete/update actions. Composite key order is retained. Foreign keys run from child to parent as data integrity requirements, without inventing workflow execution order. External tables remain integration context; missing definitions and unresolved referenced columns stay explicitly unknown. Raw SQL scripts, INSERT/COPY rows, default/CHECK expressions and procedure bodies are absent. ENUM labels contained in a type can remain as schema structure. Schema names and type labels are included in the exact preview, so review them before sharing.
+
 Freehand strokes remain visual notes. Describe their meaning in your instructions when they affect the requested app. PNG/PDF export can provide a separate visual reference; the handoff does not publish or upload that drawing.
 
 ## Link limits and alternatives

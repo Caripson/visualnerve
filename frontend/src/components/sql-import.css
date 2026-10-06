@@ -1,0 +1,105 @@
+.sql-import,
+.modal:has(.sql-import) {
+  min-width: 0;
+  max-width: 100%;
+}
+.sql-import-intro,
+.sql-import-note,
+.sql-schema-preview p,
+.sql-preview-warnings {
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.sql-import-note {
+  color: var(--muted);
+}
+.sql-file-picker {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 18px;
+  font-size: 12px;
+}
+.sql-file-picker input {
+  max-width: 100%;
+  min-width: 0;
+}
+.sql-script-field textarea {
+  min-height: 210px;
+  max-height: 45dvh;
+  font:
+    12px/1.6 ui-monospace,
+    monospace;
+  resize: vertical;
+}
+.sql-import-error {
+  padding: 12px;
+  border: 1px solid var(--danger, #a84236);
+  border-radius: 6px;
+  color: var(--danger, #a84236);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.sql-schema-preview {
+  padding: 16px;
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-alt);
+}
+.sql-schema-preview h3 {
+  margin: 0 0 15px;
+}
+.sql-preview-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 24px;
+}
+.sql-preview-counts dt {
+  color: var(--muted);
+  font-size: 11px;
+}
+.sql-preview-counts dd {
+  margin: 5px 0 0;
+  font-size: 18px;
+  font-weight: 650;
+}
+.sql-preview-tables {
+  padding-left: 18px;
+  max-height: 240px;
+  overflow: auto;
+}
+.sql-preview-tables li {
+  padding: 4px 0;
+  overflow-wrap: anywhere;
+}
+.sql-preview-tables strong {
+  font-size: 12px;
+}
+.sql-preview-tables span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 3px;
+}
+.sql-preview-warnings ul {
+  padding-left: 18px;
+}
+.sql-import-actions {
+  flex-wrap: wrap;
+}
+.sql-import-actions button {
+  min-height: 44px;
+}
+@media (max-width: 720px) {
+  .sql-import input,
+  .sql-import textarea {
+    min-height: 44px;
+  }
+  .sql-import-actions button {
+    flex: 1 1 150px;
+    white-space: normal;
+  }
+}

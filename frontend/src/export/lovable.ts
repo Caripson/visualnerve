@@ -1,6 +1,7 @@
 import { getCsvAnalysis, getCsvNode } from '../data/csv';
 import type { CsvNodeData } from '../data/types';
 import type { Graph, GraphEdge } from '../model/types';
+import { getSqlRelationship, getSqlTable, type SqlTable } from '../sql/schema';
 
 export const LOVABLE_MAX_PROMPT_LENGTH = 50_000;
 /** A local limit on the encoded URL, separate from Lovable's prompt limit. */
@@ -21,6 +22,25 @@ export interface LovablePrompt {
 }
 
 const json = (value: unknown) => JSON.stringify(value);
+
+function sqlTableSchema(table: SqlTable | undefined) {
+  if (!table) return undefined;
+  return {
+    name: table.name,
+    qualifiedName: table.qualifiedName,
+    columns: table.columns.map((column) => ({
+      name: column.name,
+      dataType: column.dataType,
+      nullable: column.nullable,
+      primaryKey: column.primaryKey,
+      foreignKey: column.foreignKey,
+      unique: column.unique,
+    })),
+    primaryKey: table.primaryKey,
+    uniqueKeys: table.uniqueKeys,
+    external: table.external ?? false,
+  };
+}
 
 export function buildLovablePrompt(
   graph: Graph,
@@ -121,6 +141,7 @@ export function buildLovablePrompt(
           ? { start: node.startDate, end: node.endDate, due: node.dueDate }
           : undefined,
       csvGroup: data ? group(data) : undefined,
+      sqlTable: sqlTableSchema(getSqlTable(node)),
     };
   });
 
@@ -138,6 +159,7 @@ export function buildLovablePrompt(
     if (!source || !target) continue;
     const boundary = sourceIncluded !== targetIncluded;
     const list = boundary ? boundaryEdges : internalEdges;
+    const foreignKey = getSqlRelationship(edge);
     list.push({
       ref: `${boundary ? 'b' : 'e'}${list.length + 1}`,
       source,
@@ -148,6 +170,16 @@ export function buildLovablePrompt(
       direction: edge.direction,
       flow: relationshipFlow(edge, source, target),
       loop: source === target,
+      sqlForeignKey: foreignKey
+        ? {
+            columns: foreignKey.columns,
+            referencedColumns: foreignKey.unresolved ? null : foreignKey.referencedColumns,
+            ...(foreignKey.unresolved ? { unresolved: true } : {}),
+            name: foreignKey.name,
+            onDelete: foreignKey.onDelete,
+            onUpdate: foreignKey.onUpdate,
+          }
+        : undefined,
     });
   }
   const parentRelations: object[] = [];
@@ -211,6 +243,7 @@ export function buildLovablePrompt(
       type: node.nodeType,
       title: node.title,
       description: node.description,
+      sqlTable: sqlTableSchema(getSqlTable(node)),
     };
   });
   const csvPresent = !!graph.dataset || [...csv.values()].some(Boolean);
@@ -252,6 +285,15 @@ export function buildLovablePrompt(
       `CSV schema: ${json([...columns.values()])}`,
       `CSV analysis: ${json(csvSummary ?? { sourceAnalysisUnavailable: true })}`,
       'CSV group totals may overlap along the hierarchy; do not sum parent and child totals together. Cached groups outside the current view may reflect earlier analysis settings.',
+    );
+  }
+  if (graph.nodes.some((node) => getSqlTable(node))) {
+    lines.push(
+      'SQL data schema: use the supplied table names, column types, nullability, primary keys, unique keys and foreign-key column pairs to define the app data model. Composite key columns belong to one key in the stated order.',
+      'SQL foreign keys reference the child table (source) to the parent table (target). They express data integrity, not workflow execution order. Preserve the declared ON DELETE and ON UPDATE actions.',
+      'External SQL tables with a missing definition are integration context. Their columns and keys are unknown unless explicitly supplied. Do not invent definitions or infer them from a placeholder.',
+      'When sqlForeignKey.unresolved is true, referencedColumns is unknown (null). Do not treat placeholder question marks as column names or invent a referenced primary key.',
+      'Only the recognized schema fields are included. Raw SQL scripts, inserted rows, default literals and arbitrary metadata are not supplied.',
     );
   }
   return {

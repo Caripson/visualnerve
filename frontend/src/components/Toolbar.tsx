@@ -21,6 +21,7 @@ import {
   MoreHorizontal,
   Settings,
   Sparkles,
+  Database,
 } from 'lucide-react';
 import { useEditor } from '../state/editor';
 import { fitDiagram } from '../drawing/navigation';
@@ -310,6 +311,10 @@ export function Toolbar({
             <MoreHorizontal size={20} />
           </summary>
           <div className="picker-panel mobile-tool-menu">
+            <button className="full" onClick={() => open('sql')}>
+              <Database size={17} />
+              Import SQL script
+            </button>
             <button className="full" onClick={() => open('lovable')}>
               <Sparkles size={17} />
               Build with Lovable

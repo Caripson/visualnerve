@@ -1371,12 +1371,13 @@ kbd {
 }
 .welcome-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 18px;
   margin: 26px 0;
 }
 .welcome-actions button {
-  min-height: 36px;
+  min-height: 44px;
   padding: 9px 15px;
 }
 .welcome-actions a {

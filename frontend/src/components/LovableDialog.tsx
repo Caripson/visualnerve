@@ -150,8 +150,9 @@ export function LovableDialog({ close }: { close: () => void }) {
           </div>
         </dl>
         <p className="lovable-disclosure">
-          The prompt includes user descriptions and notes. Source CSV rows and arbitrary metadata
-          are excluded. Review the exact text below before sharing it with Lovable.
+          The prompt includes user descriptions, notes and imported SQL schemas. Source CSV rows,
+          SQL data rows and arbitrary metadata are excluded. Review the exact text below before
+          sharing it with Lovable.
         </p>
         {!!getDrawingLayer(graph.diagram.settings.drawing)?.strokes.length && (
           <p className="lovable-drawing-note">

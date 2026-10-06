@@ -482,10 +482,10 @@ async function dropCsv(page: Page, name: string, text: string) {
   );
   try {
     await page.locator('.application').dispatchEvent('dragenter', { dataTransfer: transfer });
-    await expect(page.getByText('Drop a CSV to explore your data', { exact: true })).toBeVisible();
+    await expect(page.getByText('Drop a file to create a diagram', { exact: true })).toBeVisible();
     await page.locator('.application').dispatchEvent('dragover', { dataTransfer: transfer });
     await page.locator('.application').dispatchEvent('drop', { dataTransfer: transfer });
-    await expect(page.getByText('Drop a CSV to explore your data', { exact: true })).toBeHidden();
+    await expect(page.getByText('Drop a file to create a diagram', { exact: true })).toBeHidden();
   } finally {
     await transfer.dispose();
   }

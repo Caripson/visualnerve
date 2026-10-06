@@ -15,6 +15,7 @@ import { CsvProperties } from './CsvProperties';
 import type { CsvPathEntry } from '../data/types';
 import { getCsvNode } from '../data/csv';
 import { nodeStatuses, statusLabel } from '../ui/status';
+import { SqlRelationshipDetails, SqlTableDetails } from './SqlTableSummary';
 export function Properties({
   editCsv,
   focusCsv,
@@ -91,6 +92,7 @@ export function Properties({
             onFocusCsv={focusCsv}
             onPageCsv={pageCsv}
           />
+          <SqlTableDetails node={node} />
           <div className="field">
             <span>Area icon</span>
             <IconPicker
@@ -368,6 +370,7 @@ export function Properties({
               placeholder="Yes, No, depends on…"
             />
           </Field>
+          <SqlRelationshipDetails edge={edge} />
           <Field title="Relationship">
             <input
               aria-label="Relationship type"

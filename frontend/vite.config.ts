@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ command }) => ({
   base: command === 'build' ? '/editor/' : '/',
   plugins: [react()],
+  worker: { format: 'es' },
   build: {
     outDir: '../hugo/static/editor',
     emptyOutDir: true,
