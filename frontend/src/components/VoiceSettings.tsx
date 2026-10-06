@@ -27,6 +27,7 @@ export function VoiceSettings() {
     undefined,
   );
   const mounted = useRef(true);
+  const dirty = useRef(false);
   const voice = voiceInfo(draft);
 
   function stopPreview() {
@@ -46,7 +47,7 @@ export function VoiceSettings() {
       next: (record) => {
         const value = normalizeVoiceId(record?.value);
         setActive(value);
-        setDraft(value);
+        if (!dirty.current) setDraft(value);
       },
       error: () => undefined,
     });
@@ -67,6 +68,7 @@ export function VoiceSettings() {
     try {
       await workspace.setPreference(VOICE_SETTING, draft);
       if (mounted.current) {
+        dirty.current = false;
         setActive(draft);
         setMessage('Presentation voice saved for this browser.');
       }
@@ -135,6 +137,7 @@ export function VoiceSettings() {
           value={draft}
           disabled={saving || previewing}
           onChange={(event) => {
+            dirty.current = event.target.value !== active;
             setDraft(event.target.value as VoiceId);
             setError('');
             setMessage('');

@@ -385,13 +385,20 @@ export class Workspace {
           ('diagramId' in payload && typeof payload.diagramId !== 'string')
         )
           throw new StorageError(422, 'Open expects an optional diagramId.');
+        const { isVideoExporting } = await import('../presentation/video-service');
+        const authorizeOpen = async () => {
+          await authorize();
+          if (isVideoExporting())
+            throw new StorageError(409, 'Cancel or finish video export before opening a diagram.');
+        };
+        await authorizeOpen();
         if ('diagramId' in payload)
-          await this.open(payload.diagramId as string, undefined, authorize);
+          await this.open(payload.diagramId as string, undefined, authorizeOpen);
         payload = {};
       }
       const { presentationRequest } = await import('../presentation/service');
       await authorize();
-      return (await presentationRequest(endpoint, method, payload)) as T;
+      return (await presentationRequest(endpoint, method, payload, authorize)) as T;
     }
     const diagramFile =
       method === 'POST' &&

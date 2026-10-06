@@ -57,13 +57,20 @@ const filter = (element: HTMLElement) =>
   !element.classList?.contains('topic-branch-controls') &&
   !element.classList?.contains('branch-toggle');
 
-async function captureFace(element: HTMLElement, view: CanvasNode, signal?: AbortSignal) {
+async function captureFace(
+  element: HTMLElement,
+  view: CanvasNode,
+  signal?: AbortSignal,
+  pixelRatio = 2,
+) {
   checkAbort(signal);
   const width = view.width ?? view.data.node.width;
   const height = view.height ?? view.data.node.height;
-  const ratio = 2;
+  const ratio = pixelRatio;
   const scale = Math.min(
     1,
+    MAX_TEXTURE_EDGE / width,
+    MAX_TEXTURE_EDGE / height,
     MAX_TEXTURE_EDGE / (width * ratio),
     MAX_TEXTURE_EDGE / (height * ratio),
     Math.sqrt(MAX_TEXTURE_PIXELS / (width * height * ratio * ratio)),
@@ -95,8 +102,8 @@ async function captureFace(element: HTMLElement, view: CanvasNode, signal?: Abor
   await abortable(image.decode(), signal);
   checkAbort(signal);
   const canvas = document.createElement('canvas');
-  canvas.width = captureWidth * ratio;
-  canvas.height = captureHeight * ratio;
+  canvas.width = Math.max(1, Math.floor(captureWidth * ratio));
+  canvas.height = Math.max(1, Math.floor(captureHeight * ratio));
   const context = canvas.getContext('2d', { willReadFrequently: true });
   if (!context) throw new Error('Could not capture the diagram card.');
   context.drawImage(image, 0, 0, canvas.width, canvas.height);
@@ -111,8 +118,12 @@ export async function captureSpatialNodeFaces(
   graph: Graph,
   views: CanvasNode[],
   signal?: AbortSignal,
+  options?: { pixelRatio?: number },
 ): Promise<Map<string, HTMLCanvasElement>> {
   checkAbort(signal);
+  const ratio = options?.pixelRatio ?? 2;
+  if (!Number.isFinite(ratio) || ratio <= 0 || ratio > 4)
+    throw new Error('Card capture resolution must be greater than zero and at most four.');
   const captures = new Map<string, HTMLCanvasElement>();
   if (!views.length) return captures;
   if (views.length > SPATIAL_FACE_CAPTURE_LIMIT)
@@ -190,7 +201,7 @@ export async function captureSpatialNodeFaces(
         const view = views[next++];
         const element = elements.get(view.id);
         if (!element) throw new Error(`Could not render diagram card ${view.id}.`);
-        const canvas = await captureFace(element, view, signal);
+        const canvas = await captureFace(element, view, signal, ratio);
         checkAbort(signal);
         captures.set(view.id, canvas);
         // Rasterizing many detailed cards must yield to pointer and camera events.

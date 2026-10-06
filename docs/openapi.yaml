@@ -2203,6 +2203,77 @@
         ],
         "type": "object"
       },
+      "PresentationVideoInput": {
+        "additionalProperties": false,
+        "description": "Optional audio and subtitles override the current player options for this export; omitted values use those options (initially audio false and subtitles true). Starts the whole numbered sequence from its first node in the current 2D or 3D view.",
+        "properties": {
+          "audio": {
+            "type": "boolean"
+          },
+          "subtitles": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "PresentationVideoState": {
+        "additionalProperties": false,
+        "description": "Transient browser-local fixed 1280x720, 30 fps export state. MP4 is preferred; WebM is used only when the required video and optional audio codecs are supported. Completion downloads the video in the connected browser, with Save video again available; no video bytes are returned through REST or MCP. Long descriptions use subtitle pages and dwell extends to at least 3 seconds per page. Output is capped at 256 MiB and the final timeline at 30 minutes. Native 2D rendering supports at most 5,000 visible cards per frame and a 128 MiB card texture cache. 3D export requires a complete visible projection of at most 8,000 objects and 16,000 relationships; truncated projections and exceeded limits fail explicitly without omitting objects or truncating content. Keep the tab visible; manual camera interaction, diagram edits or closing the player cancel export. Competing player controls and new exports return 409 during export or cancellation cleanup. Canonical graph content is unchanged.",
+        "properties": {
+          "fileName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "mp4",
+              "webm",
+              null
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "nodeIndex": {
+            "description": "Zero-based active node index, -1 before a node is active.",
+            "minimum": -1,
+            "type": "integer"
+          },
+          "progress": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "status": {
+            "enum": [
+              "idle",
+              "preparing",
+              "exporting",
+              "complete",
+              "cancelled",
+              "error"
+            ],
+            "type": "string"
+          },
+          "total": {
+            "maximum": 20000,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "status",
+          "progress",
+          "nodeIndex",
+          "total",
+          "format",
+          "message",
+          "fileName"
+        ],
+        "type": "object"
+      },
       "PresentationVoice": {
         "additionalProperties": false,
         "properties": {
@@ -7423,7 +7494,7 @@
           },
           {}
         ],
-        "summary": "Presentation close; exact empty object body and write access required"
+        "summary": "Presentation close; exact empty object body and write access required; cancels active video export"
       }
     },
     "/presentation/forward": {
@@ -7557,7 +7628,7 @@
           },
           {}
         ],
-        "summary": "Presentation forward; exact empty object body and write access required"
+        "summary": "Presentation forward; exact empty object body and write access required; returns 409 while video export or cancellation cleanup is active"
       }
     },
     "/presentation/open": {
@@ -7825,7 +7896,7 @@
           },
           {}
         ],
-        "summary": "Presentation pause; exact empty object body and write access required"
+        "summary": "Presentation pause; exact empty object body and write access required; returns 409 while video export or cancellation cleanup is active"
       }
     },
     "/presentation/play": {
@@ -7959,7 +8030,7 @@
           },
           {}
         ],
-        "summary": "Presentation play; exact empty object body and write access required"
+        "summary": "Presentation play; exact empty object body and write access required; returns 409 while video export or cancellation cleanup is active"
       }
     },
     "/presentation/preload": {
@@ -8093,7 +8164,7 @@
           },
           {}
         ],
-        "summary": "Presentation preload; exact empty object body and write access required"
+        "summary": "Presentation preload; exact empty object body and write access required; returns 409 while video export or cancellation cleanup is active"
       }
     },
     "/presentation/rewind": {
@@ -8227,7 +8298,395 @@
           },
           {}
         ],
-        "summary": "Presentation rewind; exact empty object body and write access required"
+        "summary": "Presentation rewind; exact empty object body and write access required; returns 409 while video export or cancellation cleanup is active"
+      }
+    },
+    "/presentation/video": {
+      "delete": {
+        "operationId": "delete_presentation_video",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PresentationEmptyInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresentationVideoState"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Cancel video export; exact empty object body, write access and storage acceptance required"
+      },
+      "get": {
+        "operationId": "get_presentation_video",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresentationVideoState"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Read transient browser-local video export state; read-only access allowed"
+      },
+      "post": {
+        "operationId": "post_presentation_video",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PresentationVideoInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresentationVideoState"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Start asynchronous 720p30 export of the complete numbered sequence in the current view; browser downloads MP4 or supported WebM, no video bytes in response; write access and storage acceptance required"
       }
     },
     "/presentation/voices": {

@@ -22,12 +22,16 @@ import {
   setPresentation,
 } from './definition';
 import { presentation, usePresentation } from './service';
+import { VideoControls } from './VideoControls';
+import { useVideoExport, videoExport, isVideoExporting } from './video-service';
 import './presentation.css';
 
 /** Kept outside App: watches graph revisions and renders a compact canvas overlay. */
 export function PresentationFeature() {
   const graph = useEditor((state) => state.graph);
   const player = usePresentation();
+  const video = useVideoExport();
+  const exporting = isVideoExporting();
   const [ordering, setOrdering] = useState(false);
   const [page, setPage] = useState(0);
   const [error, setError] = useState('');
@@ -85,12 +89,15 @@ export function PresentationFeature() {
       window.removeEventListener('visualnerve:presentation-interrupted', interrupt);
       document.removeEventListener('visibilitychange', hidden);
       presentation.close();
+      videoExport.cancel();
     };
   }, []);
   if (!graph || !player.open || graph.diagram.id !== player.diagramId) return null;
   const definition = getPresentation(graph);
   const byId = new Map(graph.nodes.map((node) => [node.id, node]));
-  const node = player.nodeId ? byId.get(player.nodeId) : undefined;
+  const currentId =
+    exporting && video.nodeIndex >= 0 ? definition.nodeIds[video.nodeIndex] : player.nodeId;
+  const node = currentId ? byId.get(currentId) : undefined;
   const running = ['loading', 'moving', 'playing'].includes(player.status);
   const run = async (action: () => unknown) => {
     try {
@@ -127,11 +134,18 @@ export function PresentationFeature() {
       <div className="presentation-heading">
         <ListOrdered size={16} />
         <strong>Diagram walkthrough</strong>
-        <span>{player.total ? `${player.index + 1} / ${player.total}` : 'No numbered nodes'}</span>
+        <span>
+          {player.total
+            ? `${(exporting ? Math.max(0, video.nodeIndex) : player.index) + 1} / ${player.total}`
+            : 'No numbered nodes'}
+        </span>
         <button
           className="icon-button"
           aria-label="Close diagram player"
-          onClick={() => presentation.close()}
+          onClick={() => {
+            videoExport.cancel();
+            presentation.close();
+          }}
         >
           <X size={16} />
         </button>
@@ -144,64 +158,67 @@ export function PresentationFeature() {
           {node.description}
         </div>
       )}
-      <div className="presentation-controls">
-        <button
-          aria-label="Rewind presentation"
-          disabled={!player.total || player.index <= 0}
-          onClick={() => void run(() => presentation.skip(-1))}
-        >
-          <SkipBack size={18} />
-        </button>
-        <button
-          className="primary"
-          aria-label={running ? 'Pause presentation' : 'Play presentation'}
-          disabled={!player.total}
-          onClick={() => void run(() => (running ? presentation.pause() : presentation.play()))}
-        >
-          {running ? <Pause size={18} /> : <Play size={18} />}
-          <span>{running ? 'Pause' : player.status === 'ended' ? 'Replay' : 'Play'}</span>
-        </button>
-        <button
-          aria-label="Forward presentation"
-          disabled={!player.total || player.index + 1 >= player.total}
-          onClick={() => void run(() => presentation.skip(1))}
-        >
-          <SkipForward size={18} />
-        </button>
-        <button
-          aria-label="Presentation audio"
-          title="Read descriptions aloud"
-          aria-pressed={player.audio}
-          onClick={() => presentation.options({ audio: !player.audio })}
-        >
-          {player.audio ? <Volume2 size={18} /> : <VolumeX size={18} />}
-        </button>
-        <button
-          aria-label="Presentation subtitles"
-          title="Show node descriptions"
-          aria-pressed={player.subtitles}
-          onClick={() => presentation.options({ subtitles: !player.subtitles })}
-        >
-          <Captions size={18} />
-        </button>
-        <button
-          aria-label="Preload presentation"
-          title="Prepare the selected voice and next three descriptions"
-          aria-pressed={player.preload}
-          disabled={!player.total}
-          onClick={() =>
-            void run(() =>
-              player.preload ? presentation.options({ preload: false }) : presentation.preload(),
-            )
-          }
-        >
-          <Download size={16} />
-          <span>Preload</span>
-        </button>
-        <button aria-expanded={ordering} onClick={() => setOrdering(!ordering)}>
-          Order
-        </button>
-      </div>
+      <fieldset className="presentation-control-fieldset" disabled={exporting}>
+        <div className="presentation-controls">
+          <button
+            aria-label="Rewind presentation"
+            disabled={!player.total || player.index <= 0}
+            onClick={() => void run(() => presentation.skip(-1))}
+          >
+            <SkipBack size={18} />
+          </button>
+          <button
+            className="primary"
+            aria-label={running ? 'Pause presentation' : 'Play presentation'}
+            disabled={!player.total}
+            onClick={() => void run(() => (running ? presentation.pause() : presentation.play()))}
+          >
+            {running ? <Pause size={18} /> : <Play size={18} />}
+            <span>{running ? 'Pause' : player.status === 'ended' ? 'Replay' : 'Play'}</span>
+          </button>
+          <button
+            aria-label="Forward presentation"
+            disabled={!player.total || player.index + 1 >= player.total}
+            onClick={() => void run(() => presentation.skip(1))}
+          >
+            <SkipForward size={18} />
+          </button>
+          <button
+            aria-label="Presentation audio"
+            title="Read descriptions aloud"
+            aria-pressed={player.audio}
+            onClick={() => presentation.options({ audio: !player.audio })}
+          >
+            {player.audio ? <Volume2 size={18} /> : <VolumeX size={18} />}
+          </button>
+          <button
+            aria-label="Presentation subtitles"
+            title="Show node descriptions"
+            aria-pressed={player.subtitles}
+            onClick={() => presentation.options({ subtitles: !player.subtitles })}
+          >
+            <Captions size={18} />
+          </button>
+          <button
+            aria-label="Preload presentation"
+            title="Prepare the selected voice and next three descriptions"
+            aria-pressed={player.preload}
+            disabled={!player.total}
+            onClick={() =>
+              void run(() =>
+                player.preload ? presentation.options({ preload: false }) : presentation.preload(),
+              )
+            }
+          >
+            <Download size={16} />
+            <span>Preload</span>
+          </button>
+          <button aria-expanded={ordering} onClick={() => setOrdering(!ordering)}>
+            Order
+          </button>
+        </div>
+      </fieldset>
+      <VideoControls disabled={!player.total} />
       {(player.audio || player.preload) && (
         <small className="muted">
           Local neural voice · choose English or Swedish in Settings. First use downloads 60–109
@@ -219,7 +236,7 @@ export function PresentationFeature() {
           {error || player.message}
         </p>
       )}
-      {(ordering || !player.total) && (
+      {!exporting && (ordering || !player.total) && (
         <div className="presentation-order">
           <div className="presentation-order-actions">
             <button onClick={() => number()}>Number all nodes</button>

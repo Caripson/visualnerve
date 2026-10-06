@@ -6,6 +6,10 @@ const mcpImportPolicy = "Local imports use the connected browser's saved import-
 
 const mcpPresentationPolicy = "Presentations use the same native graph in 2D or 3D. GET /diagrams/{diagramId}/presentation returns {version:1,nodeIds:[],secondsPerNode:8,transitionMs:1200} when no sequence is saved. PUT the exact {baseVersion,presentation} to that endpoint to save an ordered unique sequence of up to 20,000 existing node UUIDs, secondsPerNode 2..600 and transitionMs 0..10000; stale versions return 409 and success returns Graph. GET /presentation reads transient playback state. POST /presentation/open accepts {} or {diagramId}; POST /presentation/play, /pause, /rewind, /forward, /close and /preload take exact {}. PATCH /presentation accepts only optional boolean audio, subtitles and preload. Runtime mutations require write access and accepted storage, including camera navigation and preloading. Audio and preload default false; subtitles default true. GET /presentation/voices discovers local neural models, download sizes, licenses and sources. GET/PUT /settings/presentation-voice selects en_US-ljspeech-high (default), en_GB-cori-high or sv_SE-nst-medium with exact {value:string}. Speech generation runs locally; model assets may require a download when enabled. Playback state is transient and does not replace diagram nodes or the saved sequence."
 
+const mcpPresentationVideoPolicy = "GET /presentation/video reads transient video-export state {status,progress,nodeIndex,total,format,message,fileName}. POST /presentation/video accepts exact optional boolean audio and subtitles, including {}; omitted values use current player options. It starts asynchronous 1280x720 at 30 fps export of the whole numbered sequence from its first node in the current 2D or 3D view. MP4 is preferred, with WebM fallback only when the requested video and optional audio codecs are supported; narration is never silently dropped. Completion downloads a file in the browser; REST/MCP returns state, never video bytes. DELETE /presentation/video takes exact {} to cancel. POST and DELETE require accepted storage and write access; GET permits read-only access. Keep the tab visible; manual camera interaction or diagram edits cancel export. Audio is synthesized locally and inserted offline without screen capture, screen selection or audible playback. Final output is limited to 256 MiB and the final timeline to 30 minutes; limits produce explicit errors without truncation. Video generation leaves the graph unchanged."
+
+const mcpPresentationVideoLimits = "Closing the player or POST /presentation/close with exact {} cancels video export. Competing player commands and new exports return 409 while export or cancellation cleanup is active; GET state stays available. Completed files can be saved again through the browser's Save video again control. Long descriptions use subtitle pages with at least 3 seconds per page. Output is fixed at 1280x720. Native 2D video rendering supports at most 5,000 visible cards per frame and a 128 MiB card texture cache. 3D export requires a complete visible projection of at most 8,000 objects and 16,000 relationships; truncated projections and exceeded limits fail explicitly without omitting objects."
+
 var mcpInstructions = strings.Join([]string{
 	"Visual Nerve supports native 2D diagrams and 3D views of the same graph objects and relationships.",
 	"Use visual_nerve_api_docs first for the compact bundled API guide; request document=openapi or document=all when the full OpenAPI contract is needed. Discovery runs directly through MCP with no browser session or external documentation link.",
@@ -17,6 +21,8 @@ var mcpInstructions = strings.Join([]string{
 	"Import draw.io XML or base64 Visio .vsdx ZIP through POST /diagram-files/preview, review pages/warnings, then POST /import with the selected pageId to save a native editable diagram. Multipage imports require a page selection; .vsd and .vsdm are unsupported.",
 	mcpImportPolicy,
 	mcpPresentationPolicy,
+	mcpPresentationVideoPolicy,
+	mcpPresentationVideoLimits,
 	"visual_nerve_request paths are browser commands without /api/v1; do not use it to fetch /api/docs or /api/openapi.yaml.",
 }, " ")
 
@@ -42,4 +48,6 @@ var mcpToolDescription = strings.Join([]string{
 	"Diagram file import approximates native shapes, text, geometry, groups, connections and safe HTTP(S) links; advanced shapes, rotations and connector waypoints may be simplified with warnings. Original XML/ZIP and unselected pages are temporary. Images, macros, scripts and external content are never fetched or executed. Legacy .vsd and macro-enabled .vsdm are unsupported. Input uses the selected local import limit; expanded data is capped at min(1 GiB,max(100 MiB,2*selected file limit)), default 100 MiB. Other limits: 2,048 ZIP entries, 100 pages, 20,000 total objects, 40,000 total relationships, hierarchy depth 256 and 30-second worker deadline. JSON transport remains 32 MiB, so base64 integration files must be below roughly 24 MiB. Access revocation cancels analysis; consent/grants are rechecked before saving.",
 	mcpImportPolicy,
 	mcpPresentationPolicy,
+	mcpPresentationVideoPolicy,
+	mcpPresentationVideoLimits,
 }, " ")

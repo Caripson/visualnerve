@@ -32,4 +32,19 @@ func TestPresentationSchemasAndPaths(t *testing.T) {
 	if _, exists := paths["GET /presentation/voices"]; !exists {
 		t.Fatal("voice discovery missing")
 	}
+	if input, exists := paths["GET /presentation/video"]; !exists || input != "" || paths["POST /presentation/video"] != "PresentationVideoInput" || paths["DELETE /presentation/video"] != "PresentationEmptyInput" {
+		t.Fatal("video state, start or exact cancellation routes missing", paths)
+	}
+	videoInput := schemas["PresentationVideoInput"].(object)
+	if videoInput["additionalProperties"] != false || len(videoInput["properties"].(object)) != 2 {
+		t.Fatal("video options must accept only audio and subtitles", videoInput)
+	}
+	video := schemas["PresentationVideoState"].(object)
+	if video["additionalProperties"] != false || !reflect.DeepEqual(video["required"], []string{"status", "progress", "nodeIndex", "total", "format", "message", "fileName"}) {
+		t.Fatal("exact transient video state required", video)
+	}
+	properties := video["properties"].(object)
+	if properties["progress"].(object)["maximum"] != 1 || properties["nodeIndex"].(object)["minimum"] != -1 || properties["format"].(object)["nullable"] != true || !reflect.DeepEqual(properties["format"].(object)["enum"], []any{"mp4", "webm", nil}) {
+		t.Fatal("video progress, node index or nullable format schema invalid", properties)
+	}
 }

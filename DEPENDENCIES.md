@@ -26,6 +26,7 @@ Versions are locked in frontend/package-lock.json and backend/go.mod/go.sum. The
 | jsdom | 27.4.0 | MIT | direct development |
 | jspdf | 4.2.1 | MIT | direct runtime |
 | lucide-react | 0.468.0 | ISC | direct runtime |
+| mediabunny | 1.61.3 | MPL-2.0 | direct runtime |
 | onnxruntime-web | 1.18.0 | MIT | direct runtime |
 | papaparse | 5.7.0 | MIT | direct runtime |
 | prettier | 3.7.4 | MIT | direct development |

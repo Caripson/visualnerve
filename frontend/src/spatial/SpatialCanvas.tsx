@@ -44,6 +44,13 @@ import {
 import { PRESENTATION_FOCUS, presentationFocus, presentationArrived } from '../presentation/camera';
 import { attachSpatialPresentationCamera } from '../presentation/spatial-camera';
 import {
+  VIDEO_SPATIAL_FRAME,
+  VIDEO_SPATIAL_PREPARE,
+  VIDEO_SPATIAL_LIMIT_ERROR,
+  type VideoSpatialFrameRequest,
+  type VideoSpatialPrepareRequest,
+} from '../presentation/video-frame-events';
+import {
   spatialPresentationGeometryKey,
   spatialPresentationObstacles,
 } from '../presentation/spatial-obstacles';
@@ -625,6 +632,41 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     controls.addEventListener('change', change);
     controls.addEventListener('end', end);
     window.addEventListener('visualnerve:spatial-camera-flush', current.flushCamera);
+    // WebGL's default drawing buffer is cleared after presentation. Copy a freshly
+    // rendered frame in this same task instead of retaining every GPU frame.
+    const captureFrame = (event: Event) => {
+      const detail = (event as CustomEvent<VideoSpatialFrameRequest>).detail;
+      if (typeof detail?.capture !== 'function' || typeof detail.error !== 'function') return;
+      if (modelRef.current.projected.truncated) {
+        detail.error(VIDEO_SPATIAL_LIMIT_ERROR);
+        return;
+      }
+      if (disposed || lost || !current.initialized) {
+        detail.error('The 3D diagram renderer is unavailable.');
+        return;
+      }
+      try {
+        camera.updateMatrixWorld(true);
+        root.updateMatrixWorld(true);
+        renderer.render(scene, camera);
+        detail.capture(canvas);
+      } catch (error) {
+        detail.error(error instanceof Error ? error.message : 'Could not capture the 3D frame.');
+      }
+    };
+    const prepareFrame = (event: Event) => {
+      const detail = (event as CustomEvent<VideoSpatialPrepareRequest>).detail;
+      if (modelRef.current.projected.truncated) {
+        detail?.error?.(VIDEO_SPATIAL_LIMIT_ERROR);
+        return;
+      }
+      const id = detail?.nodeId;
+      if (id && propsRef.current.nodes.some((node) => node.id === id && !node.hidden))
+        useEditor.setState({ selectedNodes: [id], selectedEdges: [] });
+      current.refreshFaces();
+    };
+    window.addEventListener(VIDEO_SPATIAL_FRAME, captureFrame);
+    window.addEventListener(VIDEO_SPATIAL_PREPARE, prepareFrame);
     const raycaster = new THREE.Raycaster();
     raycaster.params.Line = { threshold: 0.07 };
     const pointers = new Set<number>();
@@ -902,6 +944,8 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       controls.removeEventListener('change', change);
       controls.removeEventListener('end', end);
       window.removeEventListener('visualnerve:spatial-camera-flush', current.flushCamera);
+      window.removeEventListener(VIDEO_SPATIAL_FRAME, captureFrame);
+      window.removeEventListener(VIDEO_SPATIAL_PREPARE, prepareFrame);
       controls.dispose();
       disposeSpatialScene(root);
       renderer.renderLists.dispose();

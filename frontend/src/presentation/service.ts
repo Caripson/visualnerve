@@ -9,7 +9,7 @@ import { VOICE_SETTING, normalizeVoiceId, VOICES, DEFAULT_VOICE_ID } from './spe
 import type { SpeechProgress } from './speech/protocol';
 
 let requestId = 0;
-function focus(nodeId: string, transitionMs: number, signal: AbortSignal) {
+export function focusPresentationCamera(nodeId: string, transitionMs: number, signal: AbortSignal) {
   return new Promise<void>((resolve, reject) => {
     const id = ++requestId;
     const finish = (error?: string) => {
@@ -51,7 +51,7 @@ export const presentation = new PresentationPlayer({
     speechService.prepare(text, normalizeVoiceId(voice), signal, progressAdapter(progress)),
   preloadVoice: (voice, signal, progress) =>
     speechService.preload(normalizeVoiceId(voice), signal, progressAdapter(progress)),
-  focus,
+  focus: focusPresentationCamera,
   cancelCamera: () => window.dispatchEvent(new Event('visualnerve:presentation-camera-cancel')),
   narration: new Narrator(),
   release: () => speechService.cancel(),
@@ -73,10 +73,31 @@ export function voiceCatalog() {
     })),
   };
 }
-export async function presentationRequest(path: string, method: string, value?: unknown) {
+export async function presentationRequest(
+  path: string,
+  method: string,
+  value?: unknown,
+  authorize?: () => Promise<void>,
+) {
+  const video = await import('./video-service');
+  await authorize?.();
+  if (path === '/presentation/video') {
+    if (method === 'GET') return video.videoExport.getState();
+    if (method === 'POST') return video.startVideo(value, true);
+    if (method === 'DELETE') {
+      if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length)
+        throw new StorageError(422, 'Cancel video export requires an empty object.');
+      return video.videoExport.cancel();
+    }
+    throw new StorageError(404, 'Unknown video endpoint.');
+  }
   if (path === '/presentation/voices' && method === 'GET') return voiceCatalog();
   if (path === '/presentation' && method === 'GET') return presentation.getState();
-  if (path === '/presentation' && method === 'PATCH') return presentation.options(value);
+  if (path === '/presentation' && method === 'PATCH') {
+    if (video.isVideoExporting())
+      throw new StorageError(409, 'Cancel or finish video export before controlling the player.');
+    return presentation.options(value);
+  }
   const action = path.slice('/presentation/'.length);
   if (
     method !== 'POST' ||
@@ -85,6 +106,11 @@ export async function presentationRequest(path: string, method: string, value?: 
     throw new StorageError(404, 'Unknown presentation endpoint.');
   if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length)
     throw new StorageError(422, 'This player command requires an empty object.');
+  if (video.isVideoExporting()) {
+    if (action === 'close') video.videoExport.cancel();
+    else
+      throw new StorageError(409, 'Cancel or finish video export before controlling the player.');
+  }
   switch (action) {
     case 'open':
       return presentation.open();

@@ -85,6 +85,37 @@ afterEach(() => {
   else Reflect.deleteProperty(document, 'fonts');
 });
 
+it('can capture native cards at a lower video sprite resolution without dropping their content', async () => {
+  const graph = blankGraph('Overview sprite');
+  graph.nodes = [
+    newNode(graph.diagram.id, {
+      title: 'Detailed overview',
+      width: 300,
+      height: 120,
+      color: '#965de1',
+      status: 'done',
+    }),
+  ];
+  const views = projectGraph(graph, []).nodes;
+  let markup = '';
+  mocks.toSvg.mockImplementation(async (element: HTMLElement) => {
+    markup = element.outerHTML;
+    return 'native-card';
+  });
+  const result = await captureSpatialNodeFaces(graph, views, undefined, { pixelRatio: 0.1 });
+  expect(result.get(graph.nodes[0].id)).toMatchObject({ width: 30, height: 12 });
+  expect(markup).toContain('Detailed overview');
+  expect(markup).toContain('Status: Done');
+  expect(mocks.toSvg).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({ width: 300, height: 120 }),
+  );
+  await expect(captureSpatialNodeFaces(graph, views, undefined, { pixelRatio: 0 })).rejects.toThrow(
+    'resolution',
+  );
+  expect(document.querySelector('.spatial-face-capture')).toBeNull();
+});
+
 it('captures the actual 2D node renderer with its icon, owner, status, CSV and SQL content', async () => {
   const graph = blankGraph('Styled card');
   const owner = {

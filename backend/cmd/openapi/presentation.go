@@ -30,6 +30,25 @@ func addPresentationSchemas(schemas object) {
 			"progress": object{"type": "number", "minimum": 0, "maximum": 1}, "message": object{"type": "string"},
 		},
 	}
+	schemas["PresentationVideoInput"] = object{
+		"type": "object", "additionalProperties": false,
+		"description": "Optional audio and subtitles override the current player options for this export; omitted values use those options (initially audio false and subtitles true). Starts the whole numbered sequence from its first node in the current 2D or 3D view.",
+		"properties":  object{"audio": object{"type": "boolean"}, "subtitles": object{"type": "boolean"}},
+	}
+	schemas["PresentationVideoState"] = object{
+		"type": "object", "additionalProperties": false,
+		"required":    []string{"status", "progress", "nodeIndex", "total", "format", "message", "fileName"},
+		"description": "Transient browser-local fixed 1280x720, 30 fps export state. MP4 is preferred; WebM is used only when the required video and optional audio codecs are supported. Completion downloads the video in the connected browser, with Save video again available; no video bytes are returned through REST or MCP. Long descriptions use subtitle pages and dwell extends to at least 3 seconds per page. Output is capped at 256 MiB and the final timeline at 30 minutes. Native 2D rendering supports at most 5,000 visible cards per frame and a 128 MiB card texture cache. 3D export requires a complete visible projection of at most 8,000 objects and 16,000 relationships; truncated projections and exceeded limits fail explicitly without omitting objects or truncating content. Keep the tab visible; manual camera interaction, diagram edits or closing the player cancel export. Competing player controls and new exports return 409 during export or cancellation cleanup. Canonical graph content is unchanged.",
+		"properties": object{
+			"status":    object{"type": "string", "enum": []string{"idle", "preparing", "exporting", "complete", "cancelled", "error"}},
+			"progress":  object{"type": "number", "minimum": 0, "maximum": 1},
+			"nodeIndex": object{"type": "integer", "minimum": -1, "description": "Zero-based active node index, -1 before a node is active."},
+			"total":     object{"type": "integer", "minimum": 0, "maximum": 20000},
+			"format":    object{"type": "string", "enum": []any{"mp4", "webm", nil}, "nullable": true},
+			"message":   object{"type": "string"},
+			"fileName":  object{"type": "string", "nullable": true},
+		},
+	}
 	voice := object{"type": "string", "enum": []string{"en_US-ljspeech-high", "en_GB-cori-high", "sv_SE-nst-medium"}, "default": "en_US-ljspeech-high"}
 	schemas["PresentationVoiceId"] = voice
 	schemas["PresentationVoiceSetting"] = object{"type": "object", "additionalProperties": false, "required": []string{"value"}, "properties": object{"value": ref("PresentationVoiceId")}}
@@ -47,9 +66,18 @@ func addPresentationPaths(add func(string, string, string, string, string, strin
 	add("PATCH", "/presentation", "Change audio/subtitles/preload playback options; write access required", "PresentationOptions", "PresentationRuntime", "200")
 	add("POST", "/presentation/open", "Open presentation for the current or requested diagram; write access required", "PresentationOpenInput", "PresentationRuntime", "200")
 	for _, action := range []string{"play", "pause", "rewind", "forward", "close", "preload"} {
-		add("POST", "/presentation/"+action, "Presentation "+action+"; exact empty object body and write access required", "PresentationEmptyInput", "PresentationRuntime", "200")
+		summary := "Presentation " + action + "; exact empty object body and write access required"
+		if action == "close" {
+			summary += "; cancels active video export"
+		} else {
+			summary += "; returns 409 while video export or cancellation cleanup is active"
+		}
+		add("POST", "/presentation/"+action, summary, "PresentationEmptyInput", "PresentationRuntime", "200")
 	}
 	add("GET", "/presentation/voices", "Discover English and Swedish local neural voice models, sizes, licenses and sources", "", "PresentationVoices", "200")
+	add("GET", "/presentation/video", "Read transient browser-local video export state; read-only access allowed", "", "PresentationVideoState", "200")
+	add("POST", "/presentation/video", "Start asynchronous 720p30 export of the complete numbered sequence in the current view; browser downloads MP4 or supported WebM, no video bytes in response; write access and storage acceptance required", "PresentationVideoInput", "PresentationVideoState", "200")
+	add("DELETE", "/presentation/video", "Cancel video export; exact empty object body, write access and storage acceptance required", "PresentationEmptyInput", "PresentationVideoState", "200")
 	add("GET", "/settings/presentation-voice", "Read selected browser-local presentation voice; missing values use en_US-ljspeech-high", "", "PresentationVoiceId", "200")
 	add("PUT", "/settings/presentation-voice", "Select a catalogued browser-local presentation voice; write access required", "PresentationVoiceSetting", "", "200")
 }

@@ -86,6 +86,23 @@ func ValidatePresentationGraph(graph Graph) error {
 
 // The same strict contract is checked before HTTP and MCP forward to the browser.
 func ValidatePresentationCommand(path, method string, data json.RawMessage) error {
+	if path == "/presentation/video" && (method == "POST" || method == "DELETE") {
+		allowed := []string{}
+		if method == "POST" {
+			allowed = append(allowed, "audio", "subtitles")
+		}
+		fields, err := presentationObject(data, allowed...)
+		if err != nil {
+			return err
+		}
+		for key, raw := range fields {
+			var enabled bool
+			if json.Unmarshal(raw, &enabled) != nil {
+				return fmt.Errorf("%s must be a boolean", key)
+			}
+		}
+		return nil
+	}
 	if path == "/settings/presentation-voice" && method == "PUT" {
 		fields, err := presentationObject(data, "value")
 		if err != nil {

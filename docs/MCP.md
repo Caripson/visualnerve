@@ -26,4 +26,22 @@ All runtime mutations require write access and accepted storage, including camer
 
 Audio and preload start disabled; subtitles start enabled. `GET /presentation/voices` returns `{defaultVoiceId,voices}` with model IDs, labels, languages, sample rates, download sizes, licenses and sources. `GET /settings/presentation-voice` reads the saved selection. PUT that path with exact `{value:"en_US-ljspeech-high"}`, `{value:"en_GB-cori-high"}` or `{value:"sv_SE-nst-medium"}` to choose a voice. The US English voice is the default. Speech generation runs locally, while first use can download model assets; explicit `POST /presentation/preload` with `{}` prepares upcoming clips. Generated speech and playback progress are not canonical graph data.
 
+## Export the walkthrough as video
+
+`POST /presentation/video` starts an asynchronous export of the full saved sequence from its first node, in the current 2D or 3D view, at 1280 × 720 and 30 fps. Its exact body accepts optional boolean `audio` and `subtitles`; `{}` uses the current player options, initially audio off and subtitles on. The player opens to show progress if needed. For example:
+
+```json
+{
+  "path": "/presentation/video",
+  "method": "POST",
+  "data": { "audio": true, "subtitles": true }
+}
+```
+
+Read `GET /presentation/video` for `{status,progress,nodeIndex,total,format,message,fileName}`. Status is `idle`, `preparing`, `exporting`, `complete`, `cancelled` or `error`. Progress is 0..1; nodeIndex is zero-based or -1 before an active node. Format is `mp4`, `webm` or null, and fileName may be null. Cancel with `DELETE /presentation/video` and exact `{}`. POST and DELETE require accepted local storage and Read + write; GET permits Read only. Unknown fields or nonboolean options are rejected.
+
+MP4 is preferred, with WebM fallback when the required video and optional audio codecs are supported. Audio is never dropped to produce a file. Completion downloads the video in the connected browser; its **Save video again** control repeats the download. **MCP returns state, never video bytes**. Keep that tab visible; editing, manual camera interaction or closing the player cancel export. `POST /presentation/close` with exact `{}` also cancels it. Competing playback commands and new exports return 409 while export or cancellation cleanup is active; GET state stays available. The graph and its saved sequence remain unchanged.
+
+Export uses local neural speech and inserts WAVs offline, without a screen picker, audible playback or an audio playback gesture. Explicit export with audio may download the selected model assets. Long subtitle descriptions use pages and extend dwell time to at least 3 seconds per page. The file is capped at 256 MiB and the final timeline at 30 minutes, including transitions and completed narration. Output is fixed at 1280 × 720. Native 2D rendering supports at most 5,000 visible cards per frame and a 128 MiB card texture cache. 3D export requires a complete visible projection of at most 8,000 objects and 16,000 relationships; truncated projections fail. Unsupported codecs and exceeded limits fail explicitly without omitting objects or truncating content. Export buffers are temporary and are excluded from IndexedDB, JSON and backups.
+
 See the [complete API guide](../API.md) and [generated OpenAPI contract](openapi.yaml) for the exact schemas and errors.

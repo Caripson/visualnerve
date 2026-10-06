@@ -10,7 +10,7 @@ interface Command {
   data?: unknown;
 }
 export function bridgeResponseStatus(path: string, method: string): number {
-  return method === 'DELETE'
+  return method === 'DELETE' && path.replace(/^\/api\/v1/, '') !== '/presentation/video'
     ? 204
     : method === 'POST' &&
         /\/(spatial-diagrams|diagrams|nodes|edges|owners|children|import)$/.test(path)

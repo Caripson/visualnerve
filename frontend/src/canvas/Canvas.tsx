@@ -41,6 +41,7 @@ import {
   presentationViewportKey,
 } from '../presentation/camera';
 import { attachCanvasPresentationCamera } from '../presentation/canvas-camera';
+import { VIDEO_CANVAS_INFO, type VideoCanvasInfoRequest } from '../presentation/video-frame-events';
 function SpatialLoadFailure({ onReturnTo2D }: SpatialCanvasProps) {
   useEffect(() => {
     const focus = (event: Event) => {
@@ -228,6 +229,35 @@ export function Canvas() {
   useEffect(() => setNodes(projected.nodes), [projected.nodes]);
   useEffect(() => setEdges(projected.edges), [projected.edges]);
   const diagramId = graph?.diagram.id;
+  useEffect(() => {
+    if (!diagramId || spatial) return;
+    const receive = (event: Event) => {
+      const callback = (event as CustomEvent<VideoCanvasInfoRequest>).detail?.receive;
+      const graph = useEditor.getState().graph;
+      const host = flowStore.getState().domNode;
+      if (typeof callback !== 'function' || !graph || graph.diagram.id !== diagramId || !host)
+        return;
+      let viewport = flow.getViewport();
+      const element = host.querySelector<HTMLElement>('.react-flow__viewport');
+      if (element && typeof DOMMatrixReadOnly !== 'undefined') {
+        const matrix = new DOMMatrixReadOnly(getComputedStyle(element).transform);
+        if (Number.isFinite(matrix.a) && matrix.a > 0)
+          viewport = { x: matrix.e, y: matrix.f, zoom: matrix.a };
+      }
+      callback({
+        graph,
+        host,
+        nodes: flow.getNodes(),
+        edges: flow.getEdges(),
+        viewport,
+        width: host.clientWidth || flowStore.getState().width,
+        height: host.clientHeight || flowStore.getState().height,
+        absolute: (id) => flow.getInternalNode(id)?.internals.positionAbsolute,
+      });
+    };
+    window.addEventListener(VIDEO_CANVAS_INFO, receive);
+    return () => window.removeEventListener(VIDEO_CANVAS_INFO, receive);
+  }, [diagramId, flow, flowStore, spatial]);
   useEffect(() => {
     if (!diagramId || spatial) return;
     const camera = attachCanvasPresentationCamera(flow, {

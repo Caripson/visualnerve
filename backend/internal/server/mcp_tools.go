@@ -25,7 +25,7 @@ func mcpTools() []any {
 		map[string]any{
 			"name":        "visual_nerve_api_docs",
 			"title":       "Visual Nerve API guide and OpenAPI",
-			"description": "Read the bundled public API guide and complete OpenAPI contract directly through MCP before using visual_nerve_request. Explains native 2D diagrams, requested 3D via POST /spatial-diagrams, numbered presentation definitions and playback controls, local English/Swedish speech and voice discovery, independent 2D layout for export, local IndexedDB storage, permissions, SQL/code analysis and versioned edits. No connected browser, external URL, workspace records or graph command is needed. Start with omitted document or guide for the compact guide; request openapi for the complete OpenAPI contract or all for both when needed.",
+			"description": "Read the bundled public API guide and complete OpenAPI contract directly through MCP before using visual_nerve_request. Explains native 2D diagrams, requested 3D via POST /spatial-diagrams, numbered presentation definitions and playback controls, local English/Swedish speech and voice discovery, browser-local 720p30 MP4/WebM walkthrough video export, independent 2D layout for export, local IndexedDB storage, permissions, SQL/code analysis and versioned edits. No connected browser, external URL, workspace records or graph command is needed. Start with omitted document or guide for the compact guide; request openapi for the complete OpenAPI contract or all for both when needed.",
 			"inputSchema": map[string]any{
 				"type": "object",
 				"properties": map[string]any{

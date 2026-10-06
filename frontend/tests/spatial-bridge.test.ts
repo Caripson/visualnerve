@@ -10,5 +10,7 @@ describe('spatial creation bridge response', () => {
     expect(bridgeResponseStatus('/diagrams/id', 'PATCH')).toBe(200);
     expect(bridgeResponseStatus('/export', 'POST')).toBe(200);
     expect(bridgeResponseStatus('/diagrams/id', 'DELETE')).toBe(204);
+    expect(bridgeResponseStatus('/presentation/video', 'DELETE')).toBe(200);
+    expect(bridgeResponseStatus('/api/v1/presentation/video', 'DELETE')).toBe(200);
   });
 });

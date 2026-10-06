@@ -37,6 +37,19 @@
   align-items: center;
   justify-content: center;
 }
+.presentation-control-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.presentation-video {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--border, #ddd);
+  padding-top: 12px;
+}
 .presentation-controls button[aria-pressed='true'] {
   background: #d6eae0;
   color: #184c38;

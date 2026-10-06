@@ -268,8 +268,10 @@ func commandTimeout(path string) time.Duration {
 	return 25 * time.Second
 }
 func (s *Server) forwardHTTP(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1")
 	var data json.RawMessage
-	if r.Method != "GET" && r.Method != "DELETE" {
+	// Existing DELETE commands are bodyless; video cancellation has an exact {} contract.
+	if r.Method != "GET" && (r.Method != "DELETE" || path == "/presentation/video") {
 		var err error
 		data, err = readJSON(w, r)
 		if err != nil {
@@ -277,7 +279,6 @@ func (s *Server) forwardHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	path := strings.TrimPrefix(r.URL.Path, "/api/v1")
 	if r.URL.RawQuery != "" {
 		path += "?" + r.URL.RawQuery
 	}

@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { VoiceSettings } from '../src/components/VoiceSettings';
 import { database } from '../src/storage/database';
 import { workspace } from '../src/storage/workspace';
@@ -37,6 +37,25 @@ it('saves a Swedish voice without downloading its model', async () => {
   );
   expect(await screen.findByRole('status')).toHaveTextContent('saved');
   expect(speechService.prepare).not.toHaveBeenCalled();
+});
+it('retains the users voice choice when the initial database read arrives late', async () => {
+  let finish!: () => void;
+  const pending = new Promise<undefined>((resolve) => {
+    finish = () => resolve(undefined);
+  });
+  vi.mocked(database.settings.get).mockReturnValue(
+    pending as ReturnType<typeof database.settings.get>,
+  );
+  render(<VoiceSettings />);
+  await waitFor(() => expect(database.settings.get).toHaveBeenCalled());
+  fireEvent.change(screen.getByRole('combobox'), { target: { value: 'sv_SE-nst-medium' } });
+  await act(async () => {
+    finish();
+    await pending;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  expect(screen.getByRole('combobox')).toHaveValue('sv_SE-nst-medium');
+  expect(screen.getByRole('button', { name: 'Save voice' })).toBeEnabled();
 });
 it('shows saved preference and cached models without downloading on mount', async () => {
   vi.mocked(database.settings.get).mockResolvedValue({

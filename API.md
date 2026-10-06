@@ -94,6 +94,24 @@ Runtime commands return `{open,diagramId,status,index,total,nodeId,audio,subtitl
 
 Audio and preload default to false, subtitles to true. Voice IDs are `en_US-ljspeech-high` (default), `en_GB-cori-high` and `sv_SE-nst-medium`. Voice selection is a browser-local setting. Speech is generated locally; enabling speech or explicit preloading can download model assets. Discover the model sizes, licenses and sources through the voice catalog. Runtime state, generated audio and playback progress are not graph data. See [MCP presentation workflow](docs/MCP.md).
 
+### Walkthrough video export
+
+Video export renders the entire saved numbered sequence from its first node in the current 2D or 3D view, at fixed 1280 × 720 and 30 fps. It uses the saved transition and dwell timings and lets narration finish before advancing. Long subtitle descriptions use pages; a node's dwell extends to at least 3 seconds per subtitle page. The graph and saved sequence are unchanged. Keep the browser tab visible; manual camera interaction, diagram edits or closing the player cancel the export.
+
+| Method | Route                 | Body and result                                                                                         |
+| ------ | --------------------- | ------------------------------------------------------------------------------------------------------- |
+| GET    | `/presentation/video` | Current transient video export state; **Read only** is sufficient                                       |
+| POST   | `/presentation/video` | Exact optional boolean `audio` and `subtitles`, including `{}`; starts asynchronously and returns state |
+| DELETE | `/presentation/video` | Exact `{}`; cancels the active export and returns state                                                 |
+
+Omitted POST options use the current player options, initially audio off and subtitles on. POST can start while the player is closed; it opens the player for progress. POST and DELETE require accepted local storage and **Read + write**. Unknown fields, nulls and nonboolean options return 422.
+
+Starting another export or using competing player controls returns 409 while export or cancellation cleanup is active. GET state remains available. `POST /presentation/close` with exact `{}` cancels export and closes the player.
+
+All three routes return `{status,progress,nodeIndex,total,format,message,fileName}`. Status is `idle`, `preparing`, `exporting`, `complete`, `cancelled` or `error`; progress is from 0 to 1, `nodeIndex` is zero-based or -1 before a node is active, and `total` is the sequence length. `format` is `mp4`, `webm` or null; `fileName` is null until available. MP4 is preferred. WebM is a fallback only when the browser supports the requested video and optional audio codecs; narration is never silently omitted. Completion downloads the file in the connected browser; **Save video again** can repeat that download. REST and MCP return state only, without video bytes.
+
+Narration WAVs are synthesized locally and inserted into the exported timeline offline. Export does not require a screen picker, screen recording permission, audible playback or an audio playback gesture. Explicit export with audio can download the selected voice assets. The generated file is limited to **256 MiB**, and the final timeline, including camera movement and completed narration, to **30 minutes**. Native 2D rendering supports at most **5,000 visible cards per frame** and a **128 MiB card texture cache**. 3D export requires a complete visible projection, supporting up to **8,000 objects and 16,000 relationships**; a truncated projection fails explicitly. Exceeding limits or lacking the required codec produces an explicit error; objects, video and narration are never silently omitted or truncated. Temporary frame/audio/video buffers are not stored in IndexedDB or workspace backups.
+
 ## Versions and metadata
 
 PATCH always includes the current entity `version`. `id`, `diagramId` and timestamps are immutable. Metadata PATCH merges keys; omitted keys are preserved, supplied keys replace values (including null). Full graph replacement uses `{ "baseVersion": 7, "graph": ... }`; the diagram's aggregate version changes on every graph mutation. Stale replacements return 409. Fetch again and choose how to reconcile; never blindly delete newer nodes. Tags and ownership arrays replace their previous values. `ownerIds` is canonical and permits multiple owners; `ownerId` alone assigns a single owner. If both are supplied, the array takes precedence and its first entry becomes the primary alias.

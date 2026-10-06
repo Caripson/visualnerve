@@ -1131,6 +1131,26 @@
   },
   {
     "ecosystem": "npm",
+    "name": "@types/dom-mediacapture-transform",
+    "version": "0.1.12",
+    "license": "MIT",
+    "scope": "transitive runtime",
+    "notices": [
+      "licenses/_types_dom-mediacapture-transform-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm",
+    "name": "@types/dom-webcodecs",
+    "version": "0.1.13",
+    "license": "MIT",
+    "scope": "transitive runtime",
+    "notices": [
+      "licenses/_types_dom-webcodecs-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm",
     "name": "@types/estree",
     "version": "1.0.9",
     "license": "MIT",
@@ -2085,6 +2105,16 @@
     "scope": "transitive development",
     "notices": [
       "licenses/mdn-data-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm",
+    "name": "mediabunny",
+    "version": "1.61.3",
+    "license": "MPL-2.0",
+    "scope": "direct runtime",
+    "notices": [
+      "licenses/mediabunny-LICENSE"
     ]
   },
   {
