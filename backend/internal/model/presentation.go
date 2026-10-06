@@ -133,7 +133,7 @@ func ValidatePresentationCommand(path, method string, data json.RawMessage) erro
 			return err
 		}
 		var voice string
-		if len(fields) != 1 || json.Unmarshal(fields["value"], &voice) != nil || !Contains([]string{"en_US-ljspeech-high", "en_GB-cori-high", "sv_SE-nst-medium"}, voice) {
+		if len(fields) != 1 || json.Unmarshal(fields["value"], &voice) != nil || !Contains([]string{"en_GB-alan-medium", "en_US-ljspeech-high", "en_GB-cori-high", "sv_SE-nst-medium"}, voice) {
 			return fmt.Errorf("choose a supported presentation voice")
 		}
 		return nil

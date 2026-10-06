@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   videos: [] as any[],
   audios: [] as any[],
   samples: [] as any[],
+  frames: [] as any[],
 }));
 vi.mock('mediabunny', () => ({
   Quality: class {
@@ -47,16 +48,22 @@ vi.mock('mediabunny', () => ({
     addVideoTrack = vi.fn();
     addAudioTrack = vi.fn();
   },
-  CanvasSource: class {
+  VideoSampleSource: class {
     close = vi.fn();
-    constructor(
-      public canvas: unknown,
-      public config: any,
-    ) {
+    constructor(public config: any) {
       mocks.videos.push(this);
     }
-    add(timestamp: number, duration: number) {
-      return mocks.videoAdd(timestamp, duration, this.config);
+    add(frame: any) {
+      return mocks.videoAdd(frame.init.timestamp, frame.init.duration, this.config, frame);
+    }
+  },
+  VideoSample: class {
+    close = vi.fn();
+    constructor(
+      public data: Uint8ClampedArray,
+      public init: any,
+    ) {
+      mocks.frames.push(this);
     }
   },
   AudioSampleSource: class {
@@ -76,11 +83,20 @@ vi.mock('mediabunny', () => ({
   },
 }));
 const options = { width: 1280, height: 720, fps: 30, audio: true };
-const canvas = () => Object.assign(document.createElement('canvas'), { width: 1280, height: 720 });
+const canvas = () => {
+  const canvas = Object.assign(document.createElement('canvas'), { width: 1280, height: 720 });
+  const data = new Uint8ClampedArray(1280 * 720 * 4);
+  data.set([216, 239, 223, 255, 255, 0, 0, 255]);
+  vi.spyOn(canvas, 'getContext').mockReturnValue({
+    getImageData: vi.fn(() => ({ data, width: 1280, height: 720, colorSpace: 'srgb' })),
+  } as unknown as CanvasRenderingContext2D);
+  return canvas;
+};
 const wav = () => new Blob([new Uint8Array(100)], { type: 'audio/x-wav' });
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.outputs.length = mocks.videos.length = mocks.audios.length = mocks.samples.length = 0;
+  mocks.frames.length = 0;
   mocks.videoCapability.mockResolvedValue(true);
   mocks.audioCapability.mockResolvedValue(true);
   mocks.videoAdd.mockResolvedValue(undefined);
@@ -168,6 +184,81 @@ it('respects video encoder backpressure and rejects overlapping/nonfinite frame 
   ])
     await expect(encoder.addFrame(timestamp, duration)).rejects.toThrow();
   await encoder.cancel();
+});
+it('snapshots explicit sRGB RGBA pixels instead of passing a GPU canvas to the encoder', async () => {
+  const source = canvas();
+  const encoder = await createVideoEncoder({ ...options, audio: false }, source);
+  await encoder.addFrame(0.5, 1 / 30);
+  expect(source.getContext).toHaveBeenCalledWith('2d', {
+    alpha: false,
+    colorSpace: 'srgb',
+    willReadFrequently: true,
+  });
+  expect(source.getContext('2d')!.getImageData).toHaveBeenCalledWith(0, 0, 1280, 720, {
+    colorSpace: 'srgb',
+  });
+  expect(Array.from(mocks.frames[0].data.subarray(0, 8))).toEqual([
+    216, 239, 223, 255, 255, 0, 0, 255,
+  ]);
+  expect(mocks.frames[0].init).toEqual({
+    format: 'RGBA',
+    codedWidth: 1280,
+    codedHeight: 720,
+    timestamp: 0.5,
+    duration: 1 / 30,
+    colorSpace: {
+      primaries: 'bt709',
+      transfer: 'iec61966-2-1',
+      matrix: 'rgb',
+      fullRange: true,
+    },
+  });
+  expect(mocks.frames[0].close).toHaveBeenCalledOnce();
+  await encoder.cancel();
+});
+it('closes normalized video samples after failures and aborts during backpressure', async () => {
+  const abort = new AbortController();
+  const encoder = await createVideoEncoder(
+    { ...options, audio: false, signal: abort.signal },
+    canvas(),
+  );
+  mocks.videoAdd.mockRejectedValueOnce(new Error('Video encode failed'));
+  await expect(encoder.addFrame(0, 1 / 30)).rejects.toThrow('Video encode failed');
+  expect(mocks.frames[0].close).toHaveBeenCalledOnce();
+  mocks.videoAdd.mockImplementationOnce(async () => abort.abort());
+  await expect(encoder.addFrame(0, 1 / 30)).rejects.toMatchObject({ name: 'AbortError' });
+  expect(mocks.frames[1].close).toHaveBeenCalledOnce();
+  expect(mocks.outputs[0].cancel).toHaveBeenCalledOnce();
+});
+it('awaits the same unfinished cleanup when AbortSignal and the exporter both cancel', async () => {
+  const abort = new AbortController();
+  const encoder = await createVideoEncoder(
+    { ...options, audio: false, signal: abort.signal },
+    canvas(),
+  );
+  let release!: () => void;
+  mocks.outputs[0].cancel.mockImplementationOnce(
+    () =>
+      new Promise<void>((resolve) => {
+        release = resolve;
+      }),
+  );
+  abort.abort();
+  const first = encoder.cancel();
+  const second = encoder.cancel();
+  expect(second).toBe(first);
+  let finished = false;
+  void second.then(() => {
+    finished = true;
+  });
+  await Promise.resolve();
+  expect(mocks.outputs[0].cancel).toHaveBeenCalledOnce();
+  expect(finished).toBe(false);
+  release();
+  await second;
+  expect(finished).toBe(true);
+  expect(encoder.cancel()).toBe(first);
+  expect(mocks.outputs[0].cancel).toHaveBeenCalledOnce();
 });
 it('cancels native output on AbortSignal and discards late encoder results', async () => {
   const controller = new AbortController();

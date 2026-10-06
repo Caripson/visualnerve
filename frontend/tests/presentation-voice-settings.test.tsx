@@ -20,10 +20,10 @@ beforeEach(() => {
 it('shows English by default with explicit download/privacy information and no automatic inference', async () => {
   render(<VoiceSettings />);
   expect(screen.getByRole('combobox', { name: 'Narration voice' })).toHaveValue(DEFAULT_VOICE_ID);
-  expect(screen.getByText(/English is the default/)).toHaveTextContent(
+  expect(screen.getByText(/Alan, a British male voice, is the default/)).toHaveTextContent(
     'descriptions are never sent',
   );
-  expect(screen.getByText(/First audio playback/)).toHaveTextContent('109 MB');
+  expect(screen.getByText(/First audio playback/)).toHaveTextContent('61 MB');
   await waitFor(() => expect(database.settings.get).toHaveBeenCalledWith('presentation-voice'));
   expect(speechService.prepare).not.toHaveBeenCalled();
 });
@@ -78,6 +78,10 @@ it('previews only on explicit action, exposes progress and aborts download on ca
   fireEvent.click(screen.getByRole('button', { name: 'Preview voice' }));
   await waitFor(() => expect(prepare).toHaveBeenCalledOnce());
   expect(screen.getByRole('status')).toHaveTextContent('50%');
+  expect(screen.getByRole('progressbar', { name: 'Voice preparation' })).toHaveAttribute(
+    'value',
+    '50',
+  );
   const signal = prepare.mock.calls[0][2]!;
   expect(signal.aborted).toBe(false);
   fireEvent.click(screen.getByRole('button', { name: 'Cancel voice preview' }));

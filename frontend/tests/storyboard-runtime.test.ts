@@ -86,6 +86,7 @@ it('plays authored multi-object scene narration, saved camera, and scene duratio
     'en_US-ljspeech-high',
     expect.any(AbortSignal),
     expect.any(Function),
+    { priority: 'foreground' },
   );
   expect(deps.focusStep).toHaveBeenCalledWith(scenes[0], expect.any(AbortSignal));
   expect(deps.focus).not.toHaveBeenCalled();

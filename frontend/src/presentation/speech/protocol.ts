@@ -5,6 +5,9 @@ export type SpeechProgress = {
   loaded: number;
   total: number;
   message: string;
+  /** Elapsed time never counts as completed download or synthesis work. */
+  elapsedMs?: number;
+  operation?: 'session' | 'phonemizer' | 'runtime';
 };
 export type SpeechRequest = {
   id: number;

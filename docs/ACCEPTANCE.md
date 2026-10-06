@@ -625,3 +625,76 @@ time limits. Software-GPU suites were serialized on the development host.
 
 Historical screenshot fixtures were retained. Work is committed directly to
 main; S3/CloudFront deployment remains manual and no deployment was triggered.
+
+## 2026-10-06: Piper voice preparation and Chrome video colors
+
+Alan is the default British male Piper voice for new or unset preferences.
+Settings previews and saves any of the four catalog voices; existing explicit
+English or Swedish selections survive reopening. Alan's pinned model is
+63,201,294 bytes, compared with 114,199,011 bytes for the previous default.
+REST, generated OpenAPI, MCP initialization and the bundled guide expose the
+same catalog and preload contract. An isolated production binary returned the
+exact 390,075-byte OpenAPI resource through MCP without workspace writes.
+
+The local Piper adapter awaits initialization and inference failures, warms
+both engines and retains ONNX across narration chunks. The pinned phonemizer's
+retained stack arguments are bounded by renewing that module at 8 KiB of
+encoded arguments or 32 calls, using already downloaded runtime buffers.
+Descriptions are split into chunks of at most 240 characters without truncation.
+Local runtime downloads report actual byte movement and reject failed HTTP
+loads, while compressed responses use decoded byte limits. Shared queued
+requests, independent cancellation and retained bounded lookahead avoid
+unnecessary restarts on Pause and Forward. Preload shows completed work and
+actual phase progress; opaque initialization does not invent a percentage.
+
+Video export supplies explicit opaque sRGB/RGBA pixels to the encoder and
+awaits the same cleanup promise after every cancellation request. The reported
+pink output could not be reproduced in the baseline on the development host;
+the new path is a compatibility fix, not a proven diagnosis of that device.
+Both production Chrome color scenarios passed for native 2D and 3D movies,
+including RGB/neutral swatches and unchanged canonical diagrams. Independent
+FFmpeg decoding of eight early, middle and final frames measured mean RGB
+error 0.337–0.491 on the 0–255 scale, with no pink neutral pixels. Source and
+decoded frames were visually inspected for readable cards, relationships and
+captions.
+
+Real Chrome synthesis downloaded both pinned Alan and Swedish models from
+Hugging Face. Cold Alan preload prepared the engine and three narrations in
+25.9 seconds; cached Play reached playback in 497 ms. A warm 35-narration sweep
+took 37.2 seconds with one worker, no terminations, one ONNX session and bounded
+phonemizer renewal, without refetching the model. Swedish preview completed in
+10.4 seconds. Both 22,050 Hz WAVs contain nonzero PCM; measured RMS was 0.140
+for Alan and 0.102 for Swedish. These are measurements on the development host,
+not timing or subjective voice-quality guarantees for other devices.
+
+Browser checks passed monotonic preload/model-byte progress, WebAudio
+Play/Pause/resume, unchanged canonical graph, failed local data-file loading
+and retry, explicit download cancellation and retry, and foreground Play joining
+active preload without duplicate synthesis. A local data-file 404 surfaced in
+4.47 seconds instead of waiting for the watchdog. No browser page errors or
+outbound narration text were observed. The canonical comparison waits for the
+ordinary initial viewport save before taking its baseline; playback itself
+retains that exact graph. Preload layout was inspected and its label/bar spacing
+was improved.
+
+A warm Alan player also handed off to a real narrated 2D movie in 5.23 seconds.
+The 475,072-byte MP4 decoded as AVC/AAC with a 7.445-second timeline, audio RMS
+0.087 and peak 0.400, while preserving the saved graph. Chrome measurements
+confirmed the preload label and full-width bar are separated by 6 pixels.
+The opt-in browser acceptance runner is split into server, fixture, probe,
+speech-case and movie modules, and refuses an occupied port. Normal tests and
+CI do not download speech models.
+
+A final portable run from a fresh temporary directory passed all six speech
+acceptance cases without existing model fixtures. Cached Play started in
+556 ms; the exported movie decoded with nonzero AAC audio, and both model and
+config cache files matched the pinned SHA-256 hashes. The local MCP bridge was
+restarted with the updated binary while preserving its existing configuration.
+
+The final frontend suite passed 1,180 tests across 120 files. Formatting,
+TypeScript, Go race tests/vet and the production build passed. Six existing
+player/storyboard Chrome regressions passed, including narrow-screen controls,
+3D playback, MCP permissions, captured scene views and a decoded storyboard
+movie. The static audit contains 304 application files and 49 offline-shell
+assets, without user data. Work remains directly on main and deployment to
+S3/CloudFront remains manual.

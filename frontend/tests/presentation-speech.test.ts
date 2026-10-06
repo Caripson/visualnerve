@@ -155,3 +155,108 @@ describe('local neural presentation speech', () => {
     service.dispose();
   });
 });
+it('retains the warm idle worker across cancel and reuses it for preload/play', async () => {
+  const { service, workers } = setup();
+  const preload = service.preload();
+  await vi.waitFor(() => expect(workers).toHaveLength(1));
+  workers[0].receive({ id: workers[0].request.id, ready: true });
+  await preload;
+  service.cancel();
+  expect(workers[0].terminate).not.toHaveBeenCalled();
+  const clip = service.prepare('Narration');
+  await vi.waitFor(() => expect(workers[0].postMessage).toHaveBeenCalledTimes(2));
+  workers[0].receive({ id: workers[0].request.id, ready: true, audio: wav() });
+  await clip;
+  expect(workers).toHaveLength(1);
+  service.dispose();
+});
+it('does not abort a foreground consumer when its deduplicated background consumer cancels', async () => {
+  const { service, workers } = setup();
+  const background = new AbortController(),
+    foreground = new AbortController();
+  const first = service.prepare(
+    'Shared narration',
+    DEFAULT_VOICE_ID,
+    background.signal,
+    undefined,
+    { priority: 'background' },
+  );
+  const cancelled = expect(first).rejects.toMatchObject({ name: 'AbortError' });
+  const progress = vi.fn();
+  const next = service.prepare('Shared narration', DEFAULT_VOICE_ID, foreground.signal, progress);
+  await vi.waitFor(() => expect(workers).toHaveLength(1));
+  background.abort();
+  await cancelled;
+  expect(workers[0].terminate).not.toHaveBeenCalled();
+  expect(workers[0].postMessage).toHaveBeenCalledOnce();
+  workers[0].receive({
+    id: workers[0].request.id,
+    progress: { stage: 'synthesis', loaded: 0, total: 1, message: 'Working' },
+  });
+  expect(progress).toHaveBeenLastCalledWith(
+    expect.objectContaining({ stage: 'synthesis', loaded: 0, total: 1 }),
+  );
+  workers[0].receive({ id: workers[0].request.id, ready: true, audio: wav() });
+  await next;
+  service.dispose();
+});
+it('removes cancelled queued work immediately and prioritizes foreground over bounded lookahead', async () => {
+  const { service, workers } = setup();
+  const active = service.prepare('Active');
+  const abort = new AbortController();
+  const unwanted = service.prepare('Cancel queued', DEFAULT_VOICE_ID, abort.signal);
+  const rejection = expect(unwanted).rejects.toMatchObject({ name: 'AbortError' });
+  abort.abort();
+  await rejection;
+  const lookahead = service.prepare('Lookahead', DEFAULT_VOICE_ID, undefined, undefined, {
+    priority: 'background',
+  });
+  const foreground = service.prepare('Next click');
+  await vi.waitFor(() => expect(workers).toHaveLength(1));
+  workers[0].receive({ id: workers[0].request.id, ready: true, audio: wav() });
+  await active;
+  await vi.waitFor(() => expect(workers[0].request.text).toBe('Next click'));
+  workers[0].receive({ id: workers[0].request.id, ready: true, audio: wav() });
+  await foreground;
+  await vi.waitFor(() => expect(workers[0].request.text).toBe('Lookahead'));
+  workers[0].receive({ id: workers[0].request.id, ready: true, audio: wav() });
+  await lookahead;
+  service.dispose();
+});
+it('does not let elapsed-only heartbeats conceal a truly stalled initialization', async () => {
+  vi.useFakeTimers();
+  const { service, workers } = setup();
+  const task = service.preload();
+  const failure = expect(task).rejects.toThrow('initialization stopped responding');
+  await vi.advanceTimersByTimeAsync(1);
+  const id = workers[0].request.id;
+  workers[0].receive({
+    id,
+    progress: {
+      stage: 'loading',
+      operation: 'session',
+      loaded: 0,
+      total: 0,
+      message: 'Initializing',
+      elapsedMs: 0,
+    },
+  });
+  for (let step = 1; step <= 11; step++) {
+    await vi.advanceTimersByTimeAsync(10000);
+    workers[0].receive({
+      id,
+      progress: {
+        stage: 'loading',
+        operation: 'session',
+        loaded: 0,
+        total: 0,
+        message: 'Initializing',
+        elapsedMs: step * 10000,
+      },
+    });
+  }
+  await vi.advanceTimersByTimeAsync(10000);
+  await failure;
+  expect(workers[0].terminate).toHaveBeenCalledOnce();
+  service.dispose();
+});

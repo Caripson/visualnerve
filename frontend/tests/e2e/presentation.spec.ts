@@ -150,7 +150,7 @@ test('numbered walkthrough plays, pauses, skips, captions and persists sequence 
   await expect(player.locator('.presentation-heading')).toContainText('1 / 3');
   await page.getByRole('button', { name: 'Local only: storage and privacy', exact: true }).click();
   await expect(page.getByLabel('Narration voice', { exact: true })).toHaveValue(
-    'en_US-ljspeech-high',
+    'en_GB-alan-medium',
   );
   await page.getByLabel('Narration voice', { exact: true }).selectOption('sv_SE-nst-medium');
   await page.getByRole('button', { name: 'Save voice', exact: true }).click();
@@ -195,8 +195,9 @@ test('MCP player uses the same 3D diagram and transient camera with documented r
   expect(after.diagram.settings.spatialView).toEqual(before.diagram.settings.spatialView);
   expect(after.nodes).toEqual(before.nodes);
   const voices = await (await request.get('/api/v1/presentation/voices')).json();
-  expect(voices.defaultVoiceId).toBe('en_US-ljspeech-high');
+  expect(voices.defaultVoiceId).toBe('en_GB-alan-medium');
   expect(voices.voices.map((voice: { language: string }) => voice.language)).toEqual([
+    'en',
     'en',
     'en',
     'sv',

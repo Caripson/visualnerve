@@ -4,6 +4,7 @@ import { Repository } from '../src/storage/repository';
 import { blankGraph, newNode, type Graph } from '../src/model/types';
 import { emptyPresentation } from '../src/presentation/types';
 import { autoNumber, getPresentation } from '../src/presentation/definition';
+import { DEFAULT_VOICE_ID, VOICES } from '../src/presentation/speech/voices';
 
 let db: WorkspaceDatabase, repo: Repository, graph: Graph;
 beforeEach(async () => {
@@ -69,11 +70,20 @@ it('remaps collision imports and prunes a deleted node while retaining contiguou
   expect(getPresentation(await repo.getGraph(imported.diagram.id)).nodeIds).toHaveLength(2);
 });
 it('uses a catalogued voice default and rejects invalid preference values', async () => {
-  expect(await repo.request('/settings/presentation-voice')).toBe('en_US-ljspeech-high');
+  expect(await repo.request('/settings/presentation-voice')).toBe('en_GB-alan-medium');
   await repo.request('/settings/presentation-voice', 'PUT', { value: 'sv_SE-nst-medium' });
   expect(await repo.request('/settings/presentation-voice')).toBe('sv_SE-nst-medium');
   await expect(
     repo.request('/settings/presentation-voice', 'PUT', { value: 'remote', extra: true }),
   ).rejects.toMatchObject({ status: 422 });
   expect(await repo.request('/settings/presentation-voice')).toBe('sv_SE-nst-medium');
+});
+it('keeps every explicit voice choice across reopen rather than replacing it with the new default', async () => {
+  expect(DEFAULT_VOICE_ID).toBe('en_GB-alan-medium');
+  for (const voice of VOICES) {
+    await repo.request('/settings/presentation-voice', 'PUT', { value: voice.id });
+    db.close();
+    await db.open();
+    expect(await repo.request('/settings/presentation-voice')).toBe(voice.id);
+  }
 });

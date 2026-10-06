@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { expect, test, type APIRequestContext } from './fixtures';
 import type { Graph } from '../../src/model/types';
 import { browserLaunchOptions } from '../../playwright.config';
+import { decodedMovieColors, encodedColorSwatches, installVideoColorProbe } from './video-colors';
 
 test.use({
   launchOptions: {
@@ -68,7 +69,7 @@ for (const mode of ['2d', '3d'] as const) {
   test(`exports a playable ${mode} movie with captions, native nodes and an unchanged diagram`, async ({
     page,
     request,
-  }) => {
+  }, testInfo) => {
     test.setTimeout(180000);
     const graph = await create(request, `Truck movie ${mode}`);
     const player = page.getByRole('region', { name: 'Diagram player' });
@@ -108,6 +109,7 @@ for (const mode of ['2d', '3d'] as const) {
       await request.post('/api/v1/presentation/play', { data: {} });
       await expect(player).toHaveAttribute('data-status', 'playing');
     }
+    await installVideoColorProbe(page);
     const download = page.waitForEvent('download', { timeout: 120000 });
     if (mode === '2d')
       await player.getByRole('button', { name: 'Export walkthrough video', exact: true }).click();
@@ -121,70 +123,41 @@ for (const mode of ['2d', '3d'] as const) {
       ).toBe(true);
     const movie = await download;
     expect(movie.suggestedFilename()).toMatch(/walkthrough\.(mp4|webm)$/);
+    await movie.saveAs(testInfo.outputPath(movie.suggestedFilename()));
     const bytes = Array.from(await readFile((await movie.path())!));
-    const decoded = await page.evaluate(async (bytes) => {
-      const video = document.createElement('video');
-      const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)]));
-      video.muted = true;
-      video.src = url;
-      const wait = (event: string) =>
-        new Promise<void>((resolve, reject) => {
-          const timer = setTimeout(() => reject(new Error(`Video ${event} timeout`)), 10000);
-          video.addEventListener(
-            event,
-            () => {
-              clearTimeout(timer);
-              resolve();
-            },
-            { once: true },
-          );
-          video.addEventListener(
-            'error',
-            () => {
-              clearTimeout(timer);
-              reject(new Error('Video decode failed'));
-            },
-            { once: true },
-          );
-        });
-      try {
-        await wait('loadedmetadata');
-        video.currentTime = 1;
-        await wait('seeked');
-        const canvas = document.createElement('canvas');
-        canvas.width = 160;
-        canvas.height = 90;
-        const ctx = canvas.getContext('2d')!;
-        // Sample the diagram itself, excluding the header and subtitle overlays.
-        ctx.drawImage(
-          video,
-          video.videoWidth * 0.15,
-          video.videoHeight * 0.15,
-          video.videoWidth * 0.7,
-          video.videoHeight * 0.55,
-          0,
-          0,
-          160,
-          90,
-        );
-        const pixels = ctx.getImageData(0, 0, 160, 90).data;
-        const colors = new Set<string>();
-        for (let i = 0; i < pixels.length; i += 4)
-          colors.add(`${pixels[i] >> 4},${pixels[i + 1] >> 4},${pixels[i + 2] >> 4}`);
-        return {
-          width: video.videoWidth,
-          height: video.videoHeight,
-          duration: video.duration,
-          colors: colors.size,
-        };
-      } finally {
-        video.src = '';
-        URL.revokeObjectURL(url);
-      }
-    }, bytes);
+    const decoded = await decodedMovieColors(page, bytes);
+    await testInfo.attach(`decoded-${mode}-colors`, {
+      body: JSON.stringify(decoded, null, 2),
+      contentType: 'application/json',
+    });
     expect(decoded).toMatchObject({ width: 1280, height: 720 });
     expect(decoded.duration).toBeGreaterThanOrEqual(6);
-    expect(decoded.colors).toBeGreaterThan(8);
+    expect(decoded.samples).toHaveLength(4);
+    for (const sample of decoded.samples) {
+      expect(sample.format).toBe('RGBA');
+      expect(sample.colors).toBeGreaterThan(8);
+      expect(sample.neutralCount).toBeGreaterThan(1000);
+      expect(sample.meanError).toBeLessThan(8);
+      expect(sample.neutralError).toBeLessThan(5);
+      expect(sample.pinkRatio).toBeLessThan(0.001);
+    }
+    expect(
+      decoded.samples.reduce((sum, sample) => sum + sample.nativeGreenCount, 0),
+    ).toBeGreaterThan(100);
+    for (const sample of decoded.samples.filter((sample) => sample.nativeGreenCount > 20))
+      expect(sample.nativeGreenError).toBeLessThan(8);
+    if (mode === '2d') {
+      const swatches = await encodedColorSwatches(page);
+      await testInfo.attach('decoded-rgb-swatches', {
+        body: JSON.stringify(swatches, null, 2),
+        contentType: 'application/json',
+      });
+      for (const swatch of swatches)
+        for (let channel = 0; channel < 3; channel++)
+          expect(Math.abs(swatch.decoded[channel] - swatch.expected[channel])).toBeLessThanOrEqual(
+            8,
+          );
+    }
     await expect
       .poll(async () => (await (await request.get('/api/v1/presentation/video')).json()).status)
       .toBe('complete');

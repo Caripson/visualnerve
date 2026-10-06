@@ -254,8 +254,27 @@ export function PresentationFeature() {
           MiB.
         </small>
       )}
-      {player.progress > 0 && player.progress < 1 && (
-        <progress aria-label="Presentation preparation" max="1" value={player.progress} />
+      {(player.message.startsWith('Preload ') || (player.status === 'loading' && player.audio)) && (
+        <div className="presentation-preparation">
+          <span>
+            {player.message.startsWith('Preload ')
+              ? `Preload ${Math.floor(player.progress * 100)}%`
+              : 'Voice preparation'}
+          </span>
+          <progress
+            aria-label={
+              player.message.startsWith('Preload ')
+                ? 'Preload progress'
+                : 'Presentation preparation'
+            }
+            max="1"
+            value={
+              player.message.startsWith('Preload ') || player.progress > 0
+                ? player.progress
+                : undefined
+            }
+          />
+        </div>
       )}
       {(error || player.message) && (
         <p

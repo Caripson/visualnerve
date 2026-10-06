@@ -106,6 +106,7 @@ func TestPresentationCommandsRequireExactBodies(t *testing.T) {
 		{"/diagrams/" + id + "/presentation", "PUT", `{"baseVersion":1,"presentation":` + definition + `}`, true},
 		{"/diagrams/" + id + "/presentation", "PUT", `{"baseVersion":1,"presentation":` + definition + `,"extra":1}`, false},
 		{"/settings/presentation-voice", "PUT", `{"value":"en_GB-cori-high"}`, true},
+		{"/settings/presentation-voice", "PUT", `{"value":"en_GB-alan-medium"}`, true},
 		{"/settings/presentation-voice", "PUT", `{"value":"remote"}`, false},
 	} {
 		err := ValidatePresentationCommand(test.path, test.method, json.RawMessage(test.body))

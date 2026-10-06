@@ -147,13 +147,25 @@ export async function focusPresentationStepCamera(step: PresentationStep, signal
   return moveCamera(stepTarget(step), step.transitionMs, signal);
 }
 const progressAdapter =
-  (progress: (value: number, message: string) => void) => (value: SpeechProgress) =>
-    progress(value.total ? value.loaded / value.total : 0, value.message);
+  (progress: (value: number, message: string, stage?: SpeechProgress['stage']) => void) =>
+  (value: SpeechProgress) => {
+    const fraction = value.total ? value.loaded / value.total : 0;
+    const percent = value.total ? ` ${Math.floor(fraction * 100)}%` : '';
+    const elapsed =
+      value.elapsedMs && value.elapsedMs >= 1000 ? ` (${Math.floor(value.elapsedMs / 1000)}s)` : '';
+    progress(fraction, `${value.message}${percent}${elapsed}`, value.stage);
+  };
 export const presentation = new PresentationPlayer({
   graph: () => useEditor.getState().graph,
   voice: async () => normalizeVoiceId((await repository.db.settings.get(VOICE_SETTING))?.value),
-  prepare: (text, voice, signal, progress) =>
-    speechService.prepare(text, normalizeVoiceId(voice), signal, progressAdapter(progress)),
+  prepare: (text, voice, signal, progress, options) =>
+    speechService.prepare(
+      text,
+      normalizeVoiceId(voice),
+      signal,
+      progressAdapter(progress),
+      options,
+    ),
   preloadVoice: (voice, signal, progress) =>
     speechService.preload(normalizeVoiceId(voice), signal, progressAdapter(progress)),
   focus: focusPresentationCamera,

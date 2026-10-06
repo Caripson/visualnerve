@@ -72,6 +72,15 @@
   font-size: 12px;
   overflow-wrap: anywhere;
 }
+.presentation-preparation {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+.presentation-preparation progress {
+  width: 100%;
+}
 .presentation-order {
   display: flex;
   flex-direction: column;

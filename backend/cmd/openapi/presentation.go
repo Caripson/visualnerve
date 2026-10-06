@@ -27,7 +27,7 @@ func addPresentationSchemas(schemas object) {
 			"total":  object{"type": "integer", "minimum": 0, "maximum": 20000}, "nodeId": object{"type": "string", "format": "uuid", "nullable": true},
 			"audio": object{"type": "boolean"}, "subtitles": object{"type": "boolean"}, "preload": object{"type": "boolean"},
 			"buffered": object{"type": "integer", "minimum": 0, "description": "Prepared audio clips in the lookahead buffer."},
-			"progress": object{"type": "number", "minimum": 0, "maximum": 1}, "message": object{"type": "string"},
+			"progress": object{"type": "number", "minimum": 0, "maximum": 1, "description": "Current operation fraction. Active preload reports completed work across the voice engine and up to three narrations, monotonically reaching 1 only when ready. Message also identifies download-byte or synthesis-chunk percentage; engine initialization is indeterminate."}, "message": object{"type": "string"},
 		},
 	}
 	schemas["PresentationVideoInput"] = object{
@@ -49,7 +49,7 @@ func addPresentationSchemas(schemas object) {
 			"fileName":  object{"type": "string", "nullable": true},
 		},
 	}
-	voice := object{"type": "string", "enum": []string{"en_US-ljspeech-high", "en_GB-cori-high", "sv_SE-nst-medium"}, "default": "en_US-ljspeech-high"}
+	voice := object{"type": "string", "enum": []string{"en_GB-alan-medium", "en_US-ljspeech-high", "en_GB-cori-high", "sv_SE-nst-medium"}, "default": "en_GB-alan-medium"}
 	schemas["PresentationVoiceId"] = voice
 	schemas["PresentationVoiceSetting"] = object{"type": "object", "additionalProperties": false, "required": []string{"value"}, "properties": object{"value": ref("PresentationVoiceId")}}
 	schemas["PresentationVoice"] = object{"type": "object", "additionalProperties": false, "required": []string{"id", "label", "language", "sampleRate", "modelBytes", "license", "source"}, "properties": object{
@@ -78,6 +78,6 @@ func addPresentationPaths(add func(string, string, string, string, string, strin
 	add("GET", "/presentation/video", "Read transient browser-local video export state; read-only access allowed", "", "PresentationVideoState", "200")
 	add("POST", "/presentation/video", "Start asynchronous 720p30 export of the complete numbered sequence in the current view; browser downloads MP4 or supported WebM, no video bytes in response; write access and storage acceptance required", "PresentationVideoInput", "PresentationVideoState", "200")
 	add("DELETE", "/presentation/video", "Cancel video export; exact empty object body, write access and storage acceptance required", "PresentationEmptyInput", "PresentationVideoState", "200")
-	add("GET", "/settings/presentation-voice", "Read selected browser-local presentation voice; missing values use en_US-ljspeech-high", "", "PresentationVoiceId", "200")
+	add("GET", "/settings/presentation-voice", "Read selected browser-local presentation voice; missing values use British male Alan (en_GB-alan-medium)", "", "PresentationVoiceId", "200")
 	add("PUT", "/settings/presentation-voice", "Select a catalogued browser-local presentation voice; write access required", "PresentationVoiceSetting", "", "200")
 }

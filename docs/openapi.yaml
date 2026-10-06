@@ -3286,6 +3286,7 @@
             "type": "boolean"
           },
           "progress": {
+            "description": "Current operation fraction. Active preload reports completed work across the voice engine and up to three narrations, monotonically reaching 1 only when ready. Message also identifies download-byte or synthesis-chunk percentage; engine initialization is indeterminate.",
             "maximum": 1,
             "minimum": 0,
             "type": "number"
@@ -3513,8 +3514,9 @@
         "type": "object"
       },
       "PresentationVoiceId": {
-        "default": "en_US-ljspeech-high",
+        "default": "en_GB-alan-medium",
         "enum": [
+          "en_GB-alan-medium",
           "en_US-ljspeech-high",
           "en_GB-cori-high",
           "sv_SE-nst-medium"
@@ -13310,7 +13312,7 @@
           },
           {}
         ],
-        "summary": "Read selected browser-local presentation voice; missing values use en_US-ljspeech-high"
+        "summary": "Read selected browser-local presentation voice; missing values use British male Alan (en_GB-alan-medium)"
       },
       "put": {
         "operationId": "put_settings_presentation-voice",

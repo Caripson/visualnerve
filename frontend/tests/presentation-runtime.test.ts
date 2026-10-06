@@ -260,3 +260,90 @@ describe('diagram walkthrough runtime', () => {
     player.close();
   });
 });
+it('keeps preload work through Pause and Forward and cancels it explicitly on close', async () => {
+  const { player, deps } = fixture();
+  let finish!: () => void;
+  let signal!: AbortSignal;
+  deps.preloadVoice = vi.fn((_voice, value) => {
+    signal = value;
+    return new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+  });
+  await player.preload();
+  await settle();
+  expect(signal.aborted).toBe(false);
+  await player.play();
+  await settle();
+  player.pause();
+  expect(signal.aborted).toBe(false);
+  player.skip(1);
+  await settle();
+  expect(signal.aborted).toBe(false);
+  expect(deps.preloadVoice).toHaveBeenCalledOnce();
+  player.close();
+  expect(signal.aborted).toBe(true);
+  finish();
+  await settle();
+  expect(player.getState()).toMatchObject({ open: false, progress: 0, buffered: 0 });
+});
+it('reports a monotonic overall preload percentage separate from download and completed chunk fractions', async () => {
+  const { player, deps } = fixture(2);
+  let initialized!: () => void;
+  const synths: Array<{
+    finish: (blob: Blob) => void;
+    progress: Parameters<PlayerDependencies['prepare']>[3];
+  }> = [];
+  deps.preloadVoice = vi.fn((_voice, _signal, progress) => {
+    progress(0.8, 'Voice download 80%', 'download');
+    return new Promise<void>((resolve) => {
+      initialized = resolve;
+    });
+  });
+  deps.prepare = vi.fn(
+    (_text, _voice, _signal, progress) =>
+      new Promise<Blob>((finish) => synths.push({ finish, progress })),
+  );
+  await player.preload();
+  await settle();
+  expect(player.getState().progress).toBe(0);
+  expect(player.getState().message).toContain('download 80%');
+  initialized();
+  await settle();
+  expect(player.getState().progress).toBeCloseTo(1 / 3);
+  synths[0].progress(0.5, 'Narration chunks 50%', 'synthesis');
+  expect(player.getState().progress).toBe(0.5);
+  synths[0].progress(0, 'Beginning another phase', 'loading');
+  expect(player.getState().progress).toBe(0.5);
+  synths[0].finish(new Blob(['wav']));
+  await settle();
+  expect(player.getState().progress).toBeCloseTo(2 / 3);
+  synths[1].progress(1, 'Chunks done', 'synthesis');
+  expect(player.getState().progress).toBeLessThan(1);
+  synths[1].finish(new Blob(['wav']));
+  await settle();
+  expect(player.getState()).toMatchObject({
+    progress: 1,
+    message: 'Preload 100% · Voice and next steps ready.',
+    buffered: 2,
+  });
+  player.close();
+});
+it('cancels background preparation immediately when preload is switched off and ignores stale progress', async () => {
+  const { player, deps } = fixture();
+  let signal!: AbortSignal;
+  let progress!: Parameters<PlayerDependencies['preloadVoice']>[2];
+  deps.preloadVoice = vi.fn((_voice, value, notify) => {
+    signal = value;
+    progress = notify;
+    return new Promise<void>(() => undefined);
+  });
+  await player.preload();
+  await settle();
+  player.options({ preload: false });
+  expect(signal.aborted).toBe(true);
+  const state = player.getState();
+  progress(0.75, 'Stale download', 'download');
+  expect(player.getState()).toBe(state);
+  player.close();
+});

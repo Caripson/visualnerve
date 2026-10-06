@@ -151,8 +151,8 @@ export function VoiceSettings() {
         </select>
       </label>
       <p className="muted">
-        English is the default. Neural speech runs locally in your browser; descriptions are never
-        sent to a speech service.
+        Alan, a British male voice, is the default. Neural speech runs locally in your browser;
+        descriptions are never sent to a speech service.
       </p>
       <p className="muted">
         {cached.includes(draft)
@@ -183,10 +183,20 @@ export function VoiceSettings() {
         </button>
       </div>
       {progress && (
-        <p role="status">
-          {progress.message}
-          {progress.total > 0 ? ` ${Math.round((progress.loaded / progress.total) * 100)}%` : ''}
-        </p>
+        <>
+          <progress
+            aria-label="Voice preparation"
+            max={progress.total || undefined}
+            value={progress.total ? progress.loaded : undefined}
+          />
+          <p role="status">
+            {progress.message}
+            {progress.total > 0 ? ` ${Math.round((progress.loaded / progress.total) * 100)}%` : ''}
+            {progress.elapsedMs && progress.elapsedMs >= 1000
+              ? ` (${Math.floor(progress.elapsedMs / 1000)}s)`
+              : ''}
+          </p>
+        </>
       )}
       {error && (
         <p className="form-error" role="alert">

@@ -135,7 +135,11 @@ export class VideoExporter {
     const canvas = document.createElement('canvas');
     canvas.width = VIDEO_WIDTH;
     canvas.height = VIDEO_HEIGHT;
-    const context = canvas.getContext('2d', { alpha: false });
+    const context = canvas.getContext('2d', {
+      alpha: false,
+      colorSpace: 'srgb',
+      willReadFrequently: true,
+    });
     if (!context) throw new Error('Video export needs a canvas renderer.');
     let encoder: VideoEncoder | undefined;
     let scene: VideoScene | undefined;

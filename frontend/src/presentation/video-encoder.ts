@@ -1,7 +1,8 @@
 import {
   AudioSample,
   AudioSampleSource,
-  CanvasSource,
+  VideoSample,
+  VideoSampleSource,
   Mp4OutputFormat,
   Output,
   Quality,
@@ -156,6 +157,12 @@ export async function createVideoEncoder(
   if (options.signal?.aborted) throw abortError();
   if (canvas.width !== options.width || canvas.height !== options.height)
     throw new Error('The export canvas dimensions must match the video dimensions.');
+  const context = canvas.getContext('2d', {
+    alpha: false,
+    colorSpace: 'srgb',
+    willReadFrequently: true,
+  }) as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
+  if (!context) throw new Error('The video export canvas needs a 2D pixel reader.');
   const capabilities = await videoEncoderCapabilities(options);
   if (options.signal?.aborted) throw abortError();
   const format = capabilities.preferred;
@@ -202,7 +209,7 @@ export async function createVideoEncoder(
     format: format === 'mp4' ? new Mp4OutputFormat({ fastStart: false }) : new WebMOutputFormat(),
     target,
   });
-  const video = new CanvasSource(canvas, {
+  const video = new VideoSampleSource({
     codec: format === 'mp4' ? 'avc' : 'vp9',
     quality: videoQuality(),
     latencyMode: 'quality',
@@ -219,16 +226,23 @@ export async function createVideoEncoder(
     : undefined;
   if (audio) output.addAudioTrack(audio);
 
-  const cancel = async () => {
-    if (finished || cancelled) return;
+  let cancellation: Promise<void> | undefined;
+  const cancel = () => {
+    if (cancellation) return cancellation;
+    if (finished) return Promise.resolve();
     cancelled = true;
     options.signal?.removeEventListener('abort', abort);
-    try {
-      await output.cancel();
-    } finally {
-      pages.clear();
-      decode = undefined;
-    }
+    // The abort listener starts cleanup without awaiting it. Every later
+    // caller must await that same work before another export can take over.
+    cancellation = Promise.resolve().then(async () => {
+      try {
+        await output.cancel();
+      } finally {
+        pages.clear();
+        decode = undefined;
+      }
+    });
+    return cancellation;
   };
   const abort = () => {
     void cancel().catch(() => undefined);
@@ -282,8 +296,31 @@ export async function createVideoEncoder(
       time(timestamp + duration, 'Frame end');
       if (timestamp + 0.000001 < videoEnd)
         throw new Error('Video frames must be added in increasing, nonoverlapping timeline order.');
-      await video.add(timestamp, duration);
-      check();
+      // Canvas-backed VideoFrames can take Chromium's accelerated RGB-to-YUV
+      // readback path. Snapshot explicit sRGB bytes instead so opaque diagrams
+      // use the same color input on software and hardware graphics devices.
+      const pixels = context.getImageData(0, 0, options.width, options.height, {
+        colorSpace: 'srgb',
+      });
+      const frame = new VideoSample(pixels.data, {
+        format: 'RGBA',
+        codedWidth: options.width,
+        codedHeight: options.height,
+        timestamp,
+        duration,
+        colorSpace: {
+          primaries: 'bt709',
+          transfer: 'iec61966-2-1',
+          matrix: 'rgb',
+          fullRange: true,
+        },
+      });
+      try {
+        await video.add(frame);
+        check();
+      } finally {
+        frame.close();
+      }
       videoEnd = timestamp + duration;
       frames++;
     },

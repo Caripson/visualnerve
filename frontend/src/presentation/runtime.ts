@@ -3,6 +3,13 @@ import { StorageError } from '../model/errors';
 import { presentationSteps, type PresentationStep } from './sequence';
 import type { PresentationSource } from './storyboard';
 import type { PresentationRuntimeState } from './types';
+import type { SpeechProgress } from './speech/protocol';
+import type { SpeechPriority } from './speech/service';
+type PreparationProgress = (
+  value: number,
+  message: string,
+  stage?: SpeechProgress['stage'],
+) => void;
 
 export interface Narration {
   unlock(): Promise<void>;
@@ -20,13 +27,10 @@ export interface PlayerDependencies {
     text: string,
     voice: string,
     signal: AbortSignal,
-    progress: (value: number, message: string) => void,
+    progress: PreparationProgress,
+    options?: { priority?: SpeechPriority },
   ): Promise<Blob>;
-  preloadVoice(
-    voice: string,
-    signal: AbortSignal,
-    progress: (value: number, message: string) => void,
-  ): Promise<void>;
+  preloadVoice(voice: string, signal: AbortSignal, progress: PreparationProgress): Promise<void>;
   focus(nodeId: string, transitionMs: number, signal: AbortSignal): Promise<void>;
   focusStep?(step: PresentationStep, signal: AbortSignal): Promise<void>;
   releaseHighlight?(): void;
@@ -62,6 +66,7 @@ export class PresentationPlayer {
   private epoch = 0;
   private abort?: AbortController;
   private background?: AbortController;
+  private backgroundIndex = -1;
   private timer?: ReturnType<typeof setTimeout>;
   private deadline = 0;
   private remaining = 0;
@@ -168,11 +173,15 @@ export class PresentationPlayer {
       message: wasActive ? 'Diagram changed. Press Play to continue with the updated diagram.' : '',
     });
   }
-  private cancel() {
+  private cancel(background = true) {
     ++this.epoch;
     this.abort?.abort();
-    this.background?.abort();
-    this.abort = this.background = undefined;
+    if (background) {
+      this.background?.abort();
+      this.background = undefined;
+      this.backgroundIndex = -1;
+    }
+    this.abort = undefined;
     clearTimeout(this.timer);
     this.timer = undefined;
     this.deps.narration.stop();
@@ -195,10 +204,9 @@ export class PresentationPlayer {
       this.deps.narration.pause();
       this.resumable = true;
       this.needsFocus = refocus;
-      this.background?.abort();
       this.deps.cancelCamera();
-    } else this.cancel();
-    this.update({ status: 'paused', message });
+    } else this.cancel(false);
+    this.update({ status: 'paused', ...(message || !this.background ? { message } : {}) });
     return this.state;
   }
   async play() {
@@ -233,7 +241,7 @@ export class PresentationPlayer {
           this.needsFocus = false;
         }
         if (this.state.audio) this.deps.narration.resume();
-        this.update({ status: 'playing', message: '' });
+        this.update({ status: 'playing', ...(this.background ? {} : { message: '' }) });
         this.schedule(this.remaining);
         this.prefetch();
       } catch (error) {
@@ -256,19 +264,28 @@ export class PresentationPlayer {
   }
   private progress(epoch: number) {
     return (progress: number, message: string) => {
-      if (epoch === this.epoch)
+      if (epoch === this.epoch && !this.background)
         this.update({ progress: Math.max(0, Math.min(1, progress)), message });
     };
   }
   private key(voice: string, text: string) {
     return `${voice}\0${text}`;
   }
-  private async clip(text: string, voice: string, signal: AbortSignal, epoch: number) {
+  private async clip(
+    text: string,
+    voice: string,
+    signal: AbortSignal,
+    epoch: number,
+    progress: PreparationProgress = this.progress(epoch),
+    priority: SpeechPriority = 'foreground',
+  ) {
     const key = this.key(voice, text);
     let blob = this.clips.get(key);
     if (!blob) {
-      blob = await this.deps.prepare(text, voice, signal, this.progress(epoch));
+      blob = await this.deps.prepare(text, voice, signal, progress, { priority });
       if (signal.aborted) throw new DOMException('Cancelled', 'AbortError');
+      // Another consumer may have completed this same clip while we awaited inference.
+      if (this.clips.has(key)) return this.clips.get(key)!;
       // Three clips/32 MiB bound narration memory, independent of node count.
       while (
         this.clips.size >= 3 ||
@@ -285,7 +302,7 @@ export class PresentationPlayer {
     return blob;
   }
   private async step(continuePlaying: boolean) {
-    this.cancel();
+    this.cancel(false);
     const epoch = this.epoch;
     const abort = new AbortController();
     this.abort = abort;
@@ -295,12 +312,16 @@ export class PresentationPlayer {
       const existing = new Set(graph.nodes.map((node) => node.id));
       if (!step || step.nodeIds.some((id) => !existing.has(id)))
         throw new StorageError(409, 'This presentation object no longer exists.');
-      this.update({ ...this.fields(step), status: 'loading', progress: 0, message: '' });
+      this.update({
+        ...this.fields(step),
+        status: 'loading',
+        ...(this.background ? {} : { progress: 0, message: '' }),
+      });
       let blob: Blob | undefined;
       if (continuePlaying && this.state.audio && step.narration.trim())
         blob = await this.clip(step.narration, await this.deps.voice(), abort.signal, epoch);
       if (epoch !== this.epoch) return;
-      this.update({ status: 'moving', progress: 0, message: '' });
+      this.update({ status: 'moving', ...(this.background ? {} : { progress: 0, message: '' }) });
       await this.focus(step, abort.signal);
       if (epoch !== this.epoch) return;
       if (!continuePlaying) {
@@ -309,7 +330,7 @@ export class PresentationPlayer {
       }
       const seconds = blob ? await this.deps.narration.play(blob, abort.signal) : 0;
       if (epoch !== this.epoch) return;
-      this.update({ status: 'playing', progress: 1, message: '' });
+      this.update({ status: 'playing', ...(this.background ? {} : { progress: 1, message: '' }) });
       this.schedule(Math.max(step.seconds, seconds) * 1000);
       this.prefetch();
     } catch (error) {
@@ -381,7 +402,12 @@ export class PresentationPlayer {
       this.deps.narration.stop();
       this.resumable = false;
     }
-    if (patch.preload === false) this.background?.abort();
+    if (patch.preload === false) {
+      this.background?.abort();
+      this.background = undefined;
+      this.backgroundIndex = -1;
+      this.update({ progress: 0, message: '' });
+    }
     this.update(patch);
     return this.state;
   }
@@ -395,25 +421,69 @@ export class PresentationPlayer {
   }
   private prefetch(explicit = false) {
     if (!this.state.preload || (!this.state.audio && !explicit)) return;
-    if (this.state.status === 'loading' || this.state.status === 'moving') return;
-    this.background?.abort();
+    // Keep useful bounded work alive across Pause/Next; shared foreground requests can join it.
+    if (this.background || (!explicit && this.backgroundIndex === this.state.index)) return;
     const abort = new AbortController();
     this.background = abort;
-    const epoch = this.epoch;
+    this.backgroundIndex = this.state.index;
+    const startIndex = this.state.index;
+    let completed = 0,
+      total = 1,
+      previous = 0;
+    const active = () => this.background === abort && !abort.signal.aborted && this.state.open;
+    const report = (detail: string, fraction = 0) => {
+      if (!active()) return;
+      previous = Math.max(previous, Math.min(0.99, (completed + fraction) / total));
+      this.update({
+        progress: previous,
+        message: `Preload ${Math.floor(previous * 100)}% · ${completed}/${total} steps ready · ${detail}`,
+      });
+    };
+    report('Preparing voice and upcoming narrations…');
     void (async () => {
       const graph = this.snapshot();
       const voice = await this.deps.voice();
-      await this.deps.preloadVoice(voice, abort.signal, this.progress(epoch));
-      for (const step of this.steps(graph).slice(this.state.index, this.state.index + 3)) {
-        if (abort.signal.aborted) return;
-        const text = step.narration;
-        if (text?.trim()) await this.clip(text, voice, abort.signal, epoch);
+      if (!active()) return;
+      const steps = this.steps(graph)
+        .slice(startIndex, startIndex + 3)
+        .filter((step) => step.narration.trim());
+      total = steps.length + 1;
+      await this.deps.preloadVoice(voice, abort.signal, (_value, message) => report(message));
+      if (!active()) return;
+      completed++;
+      report('Voice engine ready.');
+      for (const step of steps) {
+        if (!active()) return;
+        await this.clip(
+          step.narration,
+          voice,
+          abort.signal,
+          this.epoch,
+          (value, message, stage) =>
+            report(message, stage === 'synthesis' ? Math.min(0.99, value) : 0),
+          'background',
+        );
+        if (!active()) return;
+        completed++;
+        report('Narration ready.');
       }
-      if (epoch === this.epoch && !abort.signal.aborted)
-        this.update({ progress: 1, message: 'Next steps preloaded.' });
-    })().catch((error) => {
-      if (epoch === this.epoch && !abort.signal.aborted)
-        this.update({ message: `Preload failed: ${error.message}`, progress: 0 });
-    });
+      if (active())
+        this.update({ progress: 1, message: 'Preload 100% · Voice and next steps ready.' });
+    })()
+      .catch((error) => {
+        if (active())
+          this.update({ message: `Preload failed: ${error.message}`, progress: previous });
+      })
+      .finally(() => {
+        if (this.background !== abort) return;
+        this.background = undefined;
+        // The cursor can advance while the bounded window is being prepared.
+        if (
+          !abort.signal.aborted &&
+          this.state.status === 'playing' &&
+          startIndex !== this.state.index
+        )
+          this.prefetch();
+      });
   }
 }

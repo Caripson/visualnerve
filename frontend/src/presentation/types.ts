@@ -11,6 +11,7 @@ export interface PresentationDefinition {
 export const presentationDefaults = { secondsPerNode: 8, transitionMs: 1200 } as const;
 export const presentationNodeLimit = 20_000;
 export const presentationVoiceIds = [
+  'en_GB-alan-medium',
   'en_US-ljspeech-high',
   'en_GB-cori-high',
   'sv_SE-nst-medium',

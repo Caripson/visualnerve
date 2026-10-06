@@ -612,16 +612,6 @@
   },
   {
     "ecosystem": "npm",
-    "name": "@mintplex-labs/piper-tts-web",
-    "version": "1.0.5",
-    "license": "MIT",
-    "scope": "direct runtime",
-    "notices": [
-      "licenses/_mintplex-labs_piper-tts-web-NOTICE"
-    ]
-  },
-  {
-    "ecosystem": "npm",
     "name": "@napi-rs/lzma-linux-x64-gnu",
     "version": "1.5.1",
     "license": "MIT",
@@ -2852,6 +2842,16 @@
     "scope": "direct runtime",
     "notices": [
       "licenses/zustand-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "source",
+    "name": "Piper Web adapter",
+    "version": "1.0.5 (adapted)",
+    "license": "MIT",
+    "scope": "adapted speech runtime source",
+    "notices": [
+      "licenses/piper-tts-web-NOTICE"
     ]
   }
 ]

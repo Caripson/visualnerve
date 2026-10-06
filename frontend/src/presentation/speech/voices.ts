@@ -1,13 +1,26 @@
 import { StorageError } from '../../model/errors';
 
 export const VOICE_SETTING = 'presentation-voice';
-export const DEFAULT_VOICE_ID = 'en_US-ljspeech-high';
+export const DEFAULT_VOICE_ID = 'en_GB-alan-medium';
 export const MODEL_REVISION = 'c10ece1aade47bb51c153c893d14e5bf8e5b7117';
 const source = `https://huggingface.co/rhasspy/piper-voices/resolve/${MODEL_REVISION}`;
 
 export const VOICES = [
   {
     id: DEFAULT_VOICE_ID,
+    label: 'English (UK) · Alan · male narrator (default)',
+    language: 'en-GB',
+    sampleRate: 22050,
+    modelBytes: 63201294,
+    modelSha256: '0a309668932205e762801f1efc2736cd4b0120329622adf62be09e56339d3330',
+    configBytes: 4888,
+    configSha256: 'c0f0d124e5895c00e7c03b35dcc8287f319a6998a365b182deb5c8e752ee8c1e',
+    path: 'en/en_GB/alan/medium/en_GB-alan-medium.onnx',
+    license: 'MIT model · Mycroft AI training source (see model card)',
+    source: `${source}/en/en_GB/alan/medium/MODEL_CARD`,
+  },
+  {
+    id: 'en_US-ljspeech-high',
     label: 'English (US) · LJ Speech · high quality',
     language: 'en-US',
     sampleRate: 22050,

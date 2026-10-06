@@ -27,6 +27,9 @@ for (const [path, entry] of Object.entries(lock.packages)) {
     notices.push(...copyNotices(resolve(root, 'third_party/licenses/piper-phonemize'), 'piper-phonemize'), ...copyNotices(resolve(root, 'third_party/licenses/espeak-ng'), 'espeak-ng'));
   inventory.push({ ecosystem: 'npm', name, version: entry.version, license: name === '@diffusionstudio/piper-wasm' ? 'MIT wrapper / GPL-3.0-or-later eSpeak runtime' : entry.license, scope: path === `node_modules/${name}` && pkg.dependencies[name] ? 'direct runtime' : path === `node_modules/${name}` && pkg.devDependencies[name] ? 'direct development' : entry.dev ? 'transitive development' : 'transitive runtime', notices });
 }
+// The local speech adapter retains attribution for the MIT Piper Web reference
+// implementation even though the upstream wrapper is no longer a dependency.
+inventory.push({ ecosystem: 'source', name: 'Piper Web adapter', version: '1.0.5 (adapted)', license: 'MIT', scope: 'adapted speech runtime source', notices: copyNotices(resolve(root, 'third_party/licenses/piper-tts-web'), 'piper-tts-web') });
 const go = process.argv[2] || 'go';
 const modulesRaw = execFileSync(go, ['list', '-m', '-json', 'all'], { cwd: resolve(root, 'backend'), encoding: 'utf8' });
 const modules = JSON.parse(`[${modulesRaw.trim().replace(/}\s*{/g, '},{')}]`);

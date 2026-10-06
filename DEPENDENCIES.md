@@ -6,7 +6,6 @@ Versions are locked in frontend/package-lock.json and backend/go.mod/go.sum. The
 | --- | --- | --- | --- |
 | github.com/coder/websocket | v1.8.15 | ISC | direct runtime |
 | @diffusionstudio/piper-wasm | 1.0.0 | MIT wrapper / GPL-3.0-or-later eSpeak runtime | direct runtime |
-| @mintplex-labs/piper-tts-web | 1.0.5 | MIT | direct runtime |
 | @playwright/test | 1.63.0 | Apache-2.0 | direct development |
 | @testing-library/jest-dom | 6.9.1 | MIT | direct development |
 | @testing-library/react | 16.3.3 | MIT | direct development |

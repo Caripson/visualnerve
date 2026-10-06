@@ -8,7 +8,9 @@ export async function loadVoiceFile(
   voice: PresentationVoice,
   config: boolean,
   progress?: Progress,
+  signal?: AbortSignal,
 ): Promise<Response> {
+  signal?.throwIfAborted();
   const url = modelUrl(voice, config);
   const size = config ? voice.configBytes : voice.modelBytes;
   const digest = config ? voice.configSha256 : voice.modelSha256;
@@ -16,15 +18,29 @@ export async function loadVoiceFile(
   try {
     cache = await caches.open(SPEECH_MODEL_CACHE);
     const stored = await cache.match(url);
-    if (stored && Number(stored.headers.get('Content-Length')) === size) return stored;
+    if (stored && Number(stored.headers.get('Content-Length')) === size) {
+      signal?.throwIfAborted();
+      progress?.({
+        stage: 'download',
+        loaded: size,
+        total: size,
+        message: `Cached ${voice.label}`,
+      });
+      return stored;
+    }
   } catch {
     // Private browsing/quota can disable caching; synthesis still works in memory.
   }
   progress?.({ stage: 'download', loaded: 0, total: size, message: `Downloading ${voice.label}` });
-  const response = await fetch(url, { credentials: 'omit', referrerPolicy: 'no-referrer' });
+  const response = await fetch(url, {
+    credentials: 'omit',
+    referrerPolicy: 'no-referrer',
+    ...(signal ? { signal } : {}),
+  });
   if (!response.ok)
     throw new Error(`The voice download failed (${response.status}). Try again when online.`);
   if (
+    !response.headers.has('Content-Encoding') &&
     response.headers.has('Content-Length') &&
     Number(response.headers.get('Content-Length')) !== size
   )
@@ -35,6 +51,7 @@ export async function loadVoiceFile(
   let loaded = 0;
   try {
     while (true) {
+      signal?.throwIfAborted();
       const { done, value } = await reader.read();
       if (done) break;
       loaded += value.byteLength;
@@ -46,6 +63,7 @@ export async function loadVoiceFile(
     await reader.cancel().catch(() => undefined);
     throw error;
   }
+  signal?.throwIfAborted();
   if (loaded !== size) throw new Error('The voice download was incomplete. Try again.');
   const blob = new Blob(parts, { type: config ? 'application/json' : 'application/octet-stream' });
   const actual = Array.from(
@@ -55,6 +73,7 @@ export async function loadVoiceFile(
     .join('');
   if (actual !== digest)
     throw new Error('Voice integrity verification failed. The download was discarded.');
+  signal?.throwIfAborted();
   const result = new Response(blob, {
     headers: { 'Content-Type': blob.type, 'Content-Length': String(size) },
   });
@@ -83,4 +102,28 @@ export async function cachedVoices(): Promise<string[]> {
 }
 export async function clearVoiceCache() {
   if (typeof caches !== 'undefined') await caches.delete(SPEECH_MODEL_CACHE);
+}
+
+/** Aggregate decoded model and config bytes, including cache hits, without phase resets. */
+export async function loadVoiceFiles(
+  voice: PresentationVoice,
+  progress?: Progress,
+  signal?: AbortSignal,
+) {
+  const loaded = [0, 0];
+  const total = voice.modelBytes + voice.configBytes;
+  const files = await Promise.all(
+    [false, true].map((config, index) =>
+      loadVoiceFile(
+        voice,
+        config,
+        (value) => {
+          loaded[index] = Math.max(loaded[index], value.loaded);
+          progress?.({ ...value, loaded: loaded[0] + loaded[1], total });
+        },
+        signal,
+      ),
+    ),
+  );
+  return { model: await files[0].arrayBuffer(), config: (await files[1].json()) as unknown };
 }

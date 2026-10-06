@@ -19,6 +19,10 @@ func TestPresentationSchemasAndPaths(t *testing.T) {
 	if schemas["PresentationEmptyInput"].(object)["additionalProperties"] != false {
 		t.Fatal("actions must use exact empty body")
 	}
+	voice := schemas["PresentationVoiceId"].(object)
+	if voice["default"] != "en_GB-alan-medium" || !reflect.DeepEqual(voice["enum"], []string{"en_GB-alan-medium", "en_US-ljspeech-high", "en_GB-cori-high", "sv_SE-nst-medium"}) {
+		t.Fatal("British male default and existing selectable voices must agree", voice)
+	}
 	paths := map[string]string{}
 	addPresentationPaths(func(method, path, summary, input, output, status string) { paths[method+" "+path] = input })
 	if paths["PUT /diagrams/{diagramId}/presentation"] != "PresentationUpdate" || paths["PATCH /presentation"] != "PresentationOptions" || paths["POST /presentation/open"] != "PresentationOpenInput" {
