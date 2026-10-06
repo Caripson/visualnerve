@@ -1,13 +1,11 @@
 import { decodeVsdx, diagramFileInput } from './input';
-import {
-  diagramImportLimits,
-  type DiagramFileFormat,
-  type DiagramFileInput,
-  type DiagramImportResult,
-} from './types';
+import { assertImportBytes, checkedImportLimitBytes } from '../limits';
+import { currentImportLimitBytes } from '../preference';
+import { type DiagramFileFormat, type DiagramFileInput, type DiagramImportResult } from './types';
 const aborted = () => new DOMException('Diagram import was cancelled.', 'AbortError');
 interface ImportOptions {
   signal?: AbortSignal;
+  byteLimit?: number;
 }
 
 export async function parseDiagramAsync(
@@ -15,14 +13,17 @@ export async function parseDiagramAsync(
   options: ImportOptions = {},
 ): Promise<DiagramImportResult> {
   if (options.signal?.aborted) throw aborted();
-  diagramFileInput(input);
+  const byteLimit = checkedImportLimitBytes(options.byteLimit ?? currentImportLimitBytes());
+  diagramFileInput(input, false, byteLimit);
   const bytes =
-    input.format === 'vsdx' ? decodeVsdx(input.data) : new TextEncoder().encode(input.data);
+    input.format === 'vsdx'
+      ? decodeVsdx(input.data, byteLimit)
+      : new TextEncoder().encode(input.data);
   return parseBytesAsync(
     input.format,
     bytes,
     input.name ?? `Imported ${input.format === 'vsdx' ? 'Visio' : 'draw.io'}`,
-    options,
+    { ...options, byteLimit },
   );
 }
 
@@ -31,8 +32,8 @@ export async function parseDiagramFile(
   options: ImportOptions = {},
 ): Promise<DiagramImportResult> {
   if (options.signal?.aborted) throw aborted();
-  if (file.size > diagramImportLimits.fileBytes)
-    throw new Error('Diagram file exceeds the 32 MiB limit.');
+  const byteLimit = checkedImportLimitBytes(options.byteLimit ?? currentImportLimitBytes());
+  assertImportBytes(file.size, byteLimit, 'Diagram file');
   const format = /\.vsdx$/i.test(file.name)
     ? 'vsdx'
     : /\.drawio$/i.test(file.name)
@@ -40,20 +41,20 @@ export async function parseDiagramFile(
       : undefined;
   if (!format) throw new Error('Choose a .vsdx or .drawio diagram file.');
   const bytes = new Uint8Array(await file.arrayBuffer());
-  return parseBytesAsync(format, bytes, file.name, options);
+  return parseBytesAsync(format, bytes, file.name, { ...options, byteLimit });
 }
 
 async function parseBytesAsync(
   format: DiagramFileFormat,
   bytes: Uint8Array,
   name: string,
-  { signal }: ImportOptions,
+  { signal, byteLimit }: ImportOptions,
 ): Promise<DiagramImportResult> {
   if (signal?.aborted) throw aborted();
   if (typeof Worker === 'undefined') {
     const { parseDiagramBytes } = await import('./parser');
     if (signal?.aborted) throw aborted();
-    const result = parseDiagramBytes(format, bytes, name);
+    const result = parseDiagramBytes(format, bytes, name, byteLimit);
     if (signal?.aborted) throw aborted();
     return result;
   }
@@ -83,7 +84,7 @@ async function parseBytesAsync(
     worker.onerror = (event) =>
       finish(undefined, new Error(event.message || 'Diagram worker could not run.'));
     try {
-      worker.postMessage({ format, bytes, name }, [bytes.buffer]);
+      worker.postMessage({ format, bytes, name, byteLimit }, [bytes.buffer]);
     } catch (error) {
       finish(undefined, error as Error);
     }

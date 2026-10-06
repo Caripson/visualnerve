@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { X } from 'lucide-react';
+import './modal.css';
 export function Modal({
   title,
   close,
@@ -65,7 +66,7 @@ export function Modal({
             </button>
           )}
         </div>
-        {children}
+        <div className="modal-content">{children}</div>
       </div>
     </div>
   );

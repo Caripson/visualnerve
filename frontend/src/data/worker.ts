@@ -1,6 +1,7 @@
 import { csvGraph, parseCsv, previewCsvRowsSync, profileCsv } from './csv';
 import type { CsvDataset } from './types';
 import type { CsvWorkerRequest } from './client';
+import { assertImportBytes } from '../imports/limits';
 
 let cached: CsvDataset | undefined;
 const context = self as unknown as {
@@ -11,7 +12,8 @@ const context = self as unknown as {
 context.onmessage = async ({ data }) => {
   try {
     if (data.operation === 'parse') {
-      cached = parseCsv(await data.file!.text(), data.file!.name);
+      assertImportBytes(data.file!.size, data.byteLimit, 'CSV');
+      cached = parseCsv(await data.file!.text(), data.file!.name, data.byteLimit);
       context.postMessage({ id: data.id, result: cached });
       return;
     }

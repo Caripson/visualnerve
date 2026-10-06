@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { parseDiagramAsync, parseDiagramFile } from '../src/imports/diagram/client';
 import { diagramImportLimits, type DiagramImportResult } from '../src/imports/diagram/types';
 import { blankGraph } from '../src/model/types';
+import { MAX_IMPORT_LIMIT_BYTES } from '../src/imports/limits';
 
 const xml = '<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/></root></mxGraphModel>';
 const result: DiagramImportResult = {
@@ -153,7 +154,7 @@ describe('diagram import worker client', () => {
       size: diagramImportLimits.fileBytes + 1,
       arrayBuffer: read,
     } as unknown as File;
-    await expect(parseDiagramFile(file)).rejects.toThrow(/32 MiB/);
+    await expect(parseDiagramFile(file)).rejects.toThrow(/configured 50 MB/);
     expect(read).not.toHaveBeenCalled();
     expect(FakeWorker.instances).toHaveLength(0);
   });
@@ -223,5 +224,36 @@ describe('diagram import worker client', () => {
     const parsed = await parseDiagramAsync({ format: 'drawio', data: xml, name: 'Fallback' });
     expect(parsed.pages[0]).toMatchObject({ id: 'page-1', name: 'Fallback' });
     expect(FakeWorker.instances).toHaveLength(0);
+  });
+
+  it('captures a raised file budget before reading and sends the same budget to its worker', async () => {
+    const read = vi.fn().mockResolvedValue(new TextEncoder().encode(xml).buffer);
+    const file = {
+      name: 'large.drawio',
+      size: 60 * 1024 * 1024,
+      arrayBuffer: read,
+    } as unknown as File;
+    await expect(parseDiagramFile(file)).rejects.toThrow(/configured 50 MB/);
+    expect(read).not.toHaveBeenCalled();
+    const pending = parseDiagramFile(file, { byteLimit: MAX_IMPORT_LIMIT_BYTES });
+    await Promise.resolve();
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(FakeWorker.instances[0].postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ byteLimit: MAX_IMPORT_LIMIT_BYTES }),
+      expect.any(Array),
+    );
+    FakeWorker.instances[0].receive({ result });
+    await expect(pending).resolves.toBe(result);
+  });
+
+  it('enforces a decoded byte budget for fallback XML and strict base64 independently', async () => {
+    vi.stubGlobal('Worker', undefined);
+    await expect(
+      parseDiagramAsync({ format: 'drawio', data: xml }, { byteLimit: xml.length - 1 }),
+    ).rejects.toThrow(/exceeds/);
+    const bytes = 'PK\u0003\u0004abcd';
+    await expect(
+      parseDiagramAsync({ format: 'vsdx', data: btoa(bytes) }, { byteLimit: 7 }),
+    ).rejects.toThrow(/exceeds/);
   });
 });

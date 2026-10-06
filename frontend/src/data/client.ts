@@ -2,6 +2,8 @@ import type { Graph } from '../model/types';
 import type { CsvAnalysis, CsvDataset, CsvPathEntry } from './types';
 import { csvGraph, parseCsv, previewCsvRowsSync, profileCsv, type CsvColumnProfile } from './csv';
 import { previewDataModelRowsAsync } from './modelClient';
+import { assertImportBytes, checkedImportLimitBytes } from '../imports/limits';
+import { currentImportLimitBytes } from '../imports/preference';
 
 export interface CsvWorkerRequest {
   id: number;
@@ -9,6 +11,7 @@ export interface CsvWorkerRequest {
   dataset?: CsvDataset;
   key?: string;
   file?: File;
+  byteLimit?: number;
   analysis?: CsvAnalysis;
   previous?: Graph;
   separator?: '.' | ',';
@@ -121,10 +124,14 @@ async function sourceRequest<T>(
   }
 }
 
-export async function openCsvFile(file: File): Promise<CsvDataset> {
-  if (file.size > 50 * 1024 * 1024) throw new Error('CSV exceeds the 50 MiB file limit.');
-  if (typeof Worker === 'undefined') return parseCsv(await file.text(), file.name);
-  const dataset = await request<CsvDataset>({ operation: 'parse', file });
+export async function openCsvFile(
+  file: File,
+  byteLimit = currentImportLimitBytes(),
+): Promise<CsvDataset> {
+  const limit = checkedImportLimitBytes(byteLimit);
+  assertImportBytes(file.size, limit, 'CSV');
+  if (typeof Worker === 'undefined') return parseCsv(await file.text(), file.name, limit);
+  const dataset = await request<CsvDataset>({ operation: 'parse', file, byteLimit: limit });
   cachedKey = datasetKey(dataset);
   return dataset;
 }

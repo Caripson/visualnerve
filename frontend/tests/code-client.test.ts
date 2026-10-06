@@ -30,7 +30,7 @@ describe('Cancellable isolated code workers', () => {
   it('terminates each successful preview worker and ignores later messages', async () => {
     const promise = parseCodeAsync(input);
     const worker = TestWorker.instances[0];
-    expect(worker.postMessage).toHaveBeenCalledWith({ input });
+    expect(worker.postMessage).toHaveBeenCalledWith({ input, byteLimit: 50 * 1024 * 1024 });
     const result = parseCode(input);
     worker.result({ result });
     expect(await promise).toEqual(result);

@@ -11,7 +11,8 @@ import (
 	"unicode/utf8"
 )
 
-const DiagramFileByteLimit = 32 << 20
+// Absolute validation ceiling; the browser applies its selected local import limit.
+const DiagramFileByteLimit = 1 << 30
 
 // Diagram files are transient input; only a selected native graph is persisted.
 type DiagramFileInput struct {
@@ -37,6 +38,10 @@ type DiagramImportResult struct {
 // ValidateDiagramFileInput validates the transport contract before forwarding.
 // Browser workers perform bounded ZIP/XML parsing and choose the requested page.
 func ValidateDiagramFileInput(data json.RawMessage, importing bool) error {
+	return validateDiagramFileInput(data, importing, DiagramFileByteLimit)
+}
+
+func validateDiagramFileInput(data json.RawMessage, importing bool, byteLimit int) error {
 	data = bytes.TrimSpace(data)
 	if len(data) == 0 || data[0] != '{' {
 		return errors.New("diagram file input must be an object")
@@ -76,17 +81,17 @@ func ValidateDiagramFileInput(data json.RawMessage, importing bool) error {
 		}
 	}
 	if input.Format == "drawio" {
-		if len(input.Data) > DiagramFileByteLimit {
-			return errors.New("diagram file exceeds 32 MiB")
+		if len(input.Data) > byteLimit {
+			return fmt.Errorf("diagram file exceeds the %d-byte validation ceiling", byteLimit)
 		}
 		return nil
 	}
-	if len(input.Data) > base64.StdEncoding.EncodedLen(DiagramFileByteLimit) || strings.ContainsAny(input.Data, "\r\n") {
-		return errors.New("vsdx data must be strict base64 within the 32 MiB decoded file limit")
+	if len(input.Data) > base64.StdEncoding.EncodedLen(byteLimit) || strings.ContainsAny(input.Data, "\r\n") {
+		return fmt.Errorf("vsdx data must be strict base64 within the %d-byte decoded validation ceiling", byteLimit)
 	}
 	decoded, err := base64.StdEncoding.Strict().DecodeString(input.Data)
-	if err != nil || len(decoded) > DiagramFileByteLimit {
-		return errors.New("vsdx data must be strict base64 within the 32 MiB decoded file limit")
+	if err != nil || len(decoded) > byteLimit {
+		return fmt.Errorf("vsdx data must be strict base64 within the %d-byte decoded validation ceiling", byteLimit)
 	}
 	if !bytes.HasPrefix(decoded, []byte{'P', 'K', 3, 4}) {
 		return errors.New("vsdx data must contain a ZIP archive")

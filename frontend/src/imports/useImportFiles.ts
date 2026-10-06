@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { importKind, importSelection } from './fileRouting';
-import { SQL_FILE_LIMIT } from '../sql/client';
+import { assertImportBytes } from './limits';
+import { currentImportLimitBytes } from './preference';
 import { openCsvFile } from '../data/client';
 import { parseImport } from '../export/semantic';
 import { workspace } from '../storage/workspace';
@@ -31,12 +32,13 @@ export function useImportFiles(options: ImportFilesOptions) {
     handlers.busy.current = true;
     handlers.setImporting(true);
     try {
+      const byteLimit = currentImportLimitBytes();
+      assertImportBytes(picked.size, byteLimit, 'Import file');
       switch (importKind(picked.name)) {
         case 'diagram-file':
           handlers.diagramFile(picked);
           break;
         case 'sql': {
-          if (picked.size > SQL_FILE_LIMIT) throw new Error('SQL exceeds the 50 MiB file limit.');
           const text = await picked.text();
           handlers.sql({
             id: crypto.randomUUID(),
@@ -49,14 +51,14 @@ export function useImportFiles(options: ImportFilesOptions) {
           handlers.code([picked]);
           break;
         case 'csv':
-          handlers.csv(await openCsvFile(picked), picked);
+          handlers.csv(await openCsvFile(picked, byteLimit), picked);
           break;
         default: {
           const format = /\.json$/i.test(picked.name) ? 'json' : 'markdown';
           const text = await picked.text();
           const json = format === 'json' ? JSON.parse(text) : undefined;
           if (json?.format === 'visual-nerve-workspace') handlers.backup(json as WorkspaceBackup);
-          else await workspace.create(parseImport(format, text));
+          else await workspace.create(parseImport(format, text, byteLimit));
         }
       }
     } catch (error) {

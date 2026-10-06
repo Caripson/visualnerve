@@ -1,15 +1,26 @@
 import { codeLanguages, detectCodeLanguage } from './catalog';
 import { codeLimits, type CodeFile, type CodeInput, type CodeLanguage } from './types';
+import {
+  assertImportBytes,
+  checkedImportLimitBytes,
+  DEFAULT_IMPORT_LIMIT_BYTES,
+  utf8Bytes,
+} from '../imports/limits';
 
 export interface NormalizedFile extends CodeFile {
   language: CodeLanguage;
 }
-export function normalizeCodeInput(input: CodeInput): {
+export function normalizeCodeInput(
+  input: CodeInput,
+  byteLimit = DEFAULT_IMPORT_LIMIT_BYTES,
+): {
   files: NormalizedFile[];
   mode: 'files' | 'symbols';
   name: string;
+  bytes: number;
   focus?: string;
 } {
+  const limit = checkedImportLimitBytes(byteLimit);
   if (
     !input ||
     typeof input !== 'object' ||
@@ -30,7 +41,6 @@ export function normalizeCodeInput(input: CodeInput): {
   const paths = new Set<string>();
   let bytes = 0;
   let totalLines = 0;
-  const encoder = new TextEncoder();
   const files = input.files.map((file) => {
     if (
       !file ||
@@ -53,11 +63,11 @@ export function normalizeCodeInput(input: CodeInput): {
       throw new Error('Use a relative file path without empty segments or traversal.');
     if (paths.has(path)) throw new Error(`Duplicate file path: ${path}`);
     paths.add(path);
-    if (file.content.length > codeLimits.fileBytes)
-      throw new Error(`${path} exceeds the 5 MiB file limit.`);
-    const fileBytes = encoder.encode(file.content).byteLength;
-    if (fileBytes > codeLimits.fileBytes || (bytes += fileBytes) > codeLimits.bytes)
-      throw new Error('Code exceeds the 5 MiB per file or 20 MiB total limit.');
+    assertImportBytes(file.content.length, limit, path);
+    const fileBytes = utf8Bytes(file.content);
+    assertImportBytes(fileBytes, limit, path);
+    bytes += fileBytes;
+    assertImportBytes(bytes, limit, 'Code project');
     let lines = 1;
     let lineLength = 0;
     for (const char of file.content) {
@@ -86,6 +96,7 @@ export function normalizeCodeInput(input: CodeInput): {
   });
   return {
     files,
+    bytes,
     mode: input.mode ?? 'files',
     name: input.name?.trim() || 'Code relationships',
     ...(input.focus?.trim() ? { focus: input.focus.trim() } : {}),

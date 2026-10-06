@@ -378,7 +378,7 @@
         "description": "Relative unique file path. Explicit language is required for ambiguous extensions such as .m; SQL defaults to SQL, use tsql/plsql explicitly for dialects. Source is analyzed locally and never executed.",
         "properties": {
           "content": {
-            "maxLength": 5242880,
+            "maxLength": 1073741824,
             "type": "string"
           },
           "language": {
@@ -474,7 +474,7 @@
       },
       "CodeInput": {
         "additionalProperties": false,
-        "description": "20 MiB total decoded UTF-8, 5 MiB per file, 500 files, 100,000 lines per file, 500,000 project lines, 20,000 characters per line, 10,000 extracted symbols, 5,000 diagram objects and 10,000 diagram connections. Structural outline, not compiler verification. Focus matches path/name substrings case-insensitively and includes immediate neighbors. Bridge JSON envelope limit: 32 MiB. Original source/comments/string literals are not saved; names/paths are retained.",
+        "description": "The connected browser applies its saved local import file size limit: default 50 MiB, configurable from 50 to 1024 MiB (1 GiB) in Settings. UI MB means MiB and UI 1 GB means 1024 MiB. Only imports up to 50 MB are supported and guaranteed; higher limits are experimental and may be slow or fail because of browser memory or format limits. The HTTP/JSON and WebSocket transport envelopes remain 32 MiB and are not increased by this setting. Code applies that selected decoded UTF-8 byte limit to each file and to the total project (50 MiB each by default), with an absolute 1 GiB ceiling. Other limits: 500 files, 100,000 lines per file, 500,000 project lines, 20,000 characters per line, 10,000 extracted symbols, 5,000 diagram objects and 10,000 diagram connections; 30-second worker deadline. Structural outline, not compiler verification. Focus matches path/name substrings case-insensitively and includes immediate neighbors. Original source/comments/string literals are not saved; names/paths are retained.",
         "properties": {
           "files": {
             "items": {
@@ -876,10 +876,10 @@
       },
       "DiagramFileImportInput": {
         "additionalProperties": false,
-        "description": "Same source as preview, plus optional source pageId. A one-page file may omit pageId; a multipage file must specify the ID returned by preview. Missing selection for multipage files or unknown IDs return 422 with no saved graph. Saves and opens only the selected page as an editable native graph; write access required. Source XML/ZIP and unselected pages are not retained.",
+        "description": "Same source and size/structure limits as preview, plus optional source pageId. A one-page file may omit pageId; a multipage file must specify the ID returned by preview. Missing selection for multipage files or unknown IDs return 422 with no saved graph. Saves and opens only the selected page as an editable native graph; write access required. Source XML/ZIP and unselected pages are not retained. The connected browser applies its saved local import file size limit: default 50 MiB, configurable from 50 to 1024 MiB (1 GiB) in Settings. UI MB means MiB and UI 1 GB means 1024 MiB. Only imports up to 50 MB are supported and guaranteed; higher limits are experimental and may be slow or fail because of browser memory or format limits. The HTTP/JSON and WebSocket transport envelopes remain 32 MiB and are not increased by this setting.",
         "properties": {
           "data": {
-            "maxLength": 44739244,
+            "maxLength": 1431655768,
             "minLength": 1,
             "type": "string"
           },
@@ -905,10 +905,10 @@
       },
       "DiagramFileInput": {
         "additionalProperties": false,
-        "description": "drawio data is XML text (.drawio/.xml); vsdx data is strict padded standard base64 containing a ZIP archive (.vsdx). No URLs, scripts, images or macros are fetched or executed. Legacy .vsd and macro-enabled .vsdm are unsupported. Decoded file limit 32 MiB; expanded archive 64 MiB; 2,048 ZIP entries, 100 pages, 20,000 total objects, 40,000 total relationships, hierarchy depth 256. Browser worker deadline 30 seconds; transport allows 45 seconds. JSON transport envelope remains 32 MiB, so base64/JSON integration input must be smaller than the file limit.",
+        "description": "drawio data is XML text (.drawio/.xml); vsdx data is strict padded standard base64 containing a ZIP archive (.vsdx). No URLs, scripts, images or macros are fetched or executed. Legacy .vsd and macro-enabled .vsdm are unsupported. Absolute decoded file ceiling 1 GiB. Expanded data ceiling is min(1 GiB, max(100 MiB, 2 * selected file limit)); default 100 MiB. Other limits: 2,048 ZIP entries, 100 pages, 20,000 total objects, 40,000 total relationships, hierarchy depth 256. Browser worker deadline 30 seconds; transport allows 45 seconds. Base64 integration files must remain below roughly 24 MiB to fit the JSON envelope. The connected browser applies its saved local import file size limit: default 50 MiB, configurable from 50 to 1024 MiB (1 GiB) in Settings. UI MB means MiB and UI 1 GB means 1024 MiB. Only imports up to 50 MB are supported and guaranteed; higher limits are experimental and may be slow or fail because of browser memory or format limits. The HTTP/JSON and WebSocket transport envelopes remain 32 MiB and are not increased by this setting.",
         "properties": {
           "data": {
-            "maxLength": 44739244,
+            "maxLength": 1431655768,
             "minLength": 1,
             "type": "string"
           },
@@ -1430,6 +1430,7 @@
         "type": "object"
       },
       "Import": {
+        "description": "The connected browser applies its saved local import file size limit: default 50 MiB, configurable from 50 to 1024 MiB (1 GiB) in Settings. UI MB means MiB and UI 1 GB means 1024 MiB. Only imports up to 50 MB are supported and guaranteed; higher limits are experimental and may be slow or fail because of browser memory or format limits. The HTTP/JSON and WebSocket transport envelopes remain 32 MiB and are not increased by this setting.",
         "oneOf": [
           {
             "additionalProperties": false,
@@ -1440,6 +1441,7 @@
                     "$ref": "#/components/schemas/Graph"
                   },
                   {
+                    "maxLength": 1073741824,
                     "type": "string"
                   }
                 ]
@@ -1463,6 +1465,29 @@
             "$ref": "#/components/schemas/DiagramFileImportInput"
           }
         ]
+      },
+      "ImportLimitSettingInput": {
+        "additionalProperties": false,
+        "description": "Browser-local setting import-file-limit-mb. Invalid values return 422. Excluded from backups and ignored when restoring; the destination retains its own limit. The connected browser applies its saved local import file size limit: default 50 MiB, configurable from 50 to 1024 MiB (1 GiB) in Settings. UI MB means MiB and UI 1 GB means 1024 MiB. Only imports up to 50 MB are supported and guaranteed; higher limits are experimental and may be slow or fail because of browser memory or format limits. The HTTP/JSON and WebSocket transport envelopes remain 32 MiB and are not increased by this setting.",
+        "properties": {
+          "value": {
+            "default": 50,
+            "maximum": 1024,
+            "minimum": 50,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "type": "object"
+      },
+      "ImportLimitSettingValue": {
+        "default": 50,
+        "description": "Effective browser-local import limit in MiB (UI MB). An absent or invalid saved value returns the default 50.",
+        "maximum": 1024,
+        "minimum": 50,
+        "type": "integer"
       },
       "Node": {
         "additionalProperties": false,
@@ -2273,7 +2298,7 @@
       },
       "SqlInput": {
         "additionalProperties": false,
-        "description": "Analyzed locally in a cancellable browser worker, never executed or sent to a database. Decoded UTF-8 script limit is 50 MiB; the bridge JSON request envelope is limited to 32 MiB.",
+        "description": "Analyzed locally in a cancellable browser worker, never executed or sent to a database. Decoded UTF-8 script has an absolute 1 GiB ceiling; structural limits and the 30-second worker deadline still apply. The connected browser applies its saved local import file size limit: default 50 MiB, configurable from 50 to 1024 MiB (1 GiB) in Settings. UI MB means MiB and UI 1 GB means 1024 MiB. Only imports up to 50 MB are supported and guaranteed; higher limits are experimental and may be slow or fail because of browser memory or format limits. The HTTP/JSON and WebSocket transport envelopes remain 32 MiB and are not increased by this setting.",
         "properties": {
           "name": {
             "maxLength": 500,
@@ -2281,7 +2306,7 @@
             "type": "string"
           },
           "sql": {
-            "maxLength": 52428800,
+            "maxLength": 1073741824,
             "minLength": 1,
             "type": "string"
           }
@@ -2566,6 +2591,7 @@
         "type": "object"
       },
       "WorkspaceBackup": {
+        "description": "Portable local workspace data. The device-specific import-file-limit-mb setting is excluded from export and ignored during Merge/Replace; the destination's selected limit is retained.",
         "properties": {
           "datasets": {
             "description": "Original CSV source records. Older backups may omit this.",
@@ -2715,7 +2741,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -2735,7 +2761,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -2765,7 +2791,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -2842,7 +2868,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -2862,7 +2888,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -2892,7 +2918,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -2976,7 +3002,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -2996,7 +3022,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -3026,7 +3052,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -3110,7 +3136,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -3130,7 +3156,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -3160,7 +3186,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -3237,7 +3263,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -3257,7 +3283,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -3287,7 +3313,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -3369,7 +3395,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -3389,7 +3415,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -3419,7 +3445,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -3497,7 +3523,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -3517,7 +3543,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -3547,7 +3573,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -3630,7 +3656,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -3650,7 +3676,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -3680,7 +3706,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -3773,7 +3799,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -3793,7 +3819,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -3823,7 +3849,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -3918,7 +3944,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -3938,7 +3964,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -3968,7 +3994,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -4056,7 +4082,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -4076,7 +4102,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -4106,7 +4132,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -4199,7 +4225,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -4219,7 +4245,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -4249,7 +4275,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -4344,7 +4370,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -4364,7 +4390,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -4394,7 +4420,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -4482,7 +4508,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -4502,7 +4528,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -4532,7 +4558,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -4625,7 +4651,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -4645,7 +4671,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -4675,7 +4701,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -4753,7 +4779,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -4773,7 +4799,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -4803,7 +4829,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -4896,7 +4922,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -4916,7 +4942,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -4946,7 +4972,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -5037,7 +5063,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -5057,7 +5083,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -5087,7 +5113,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -5161,7 +5187,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -5181,7 +5207,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -5211,7 +5237,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -5289,7 +5315,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -5309,7 +5335,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -5339,7 +5365,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -5417,7 +5443,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -5437,7 +5463,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -5467,7 +5493,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -5550,7 +5576,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -5570,7 +5596,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -5600,7 +5626,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -5693,7 +5719,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -5713,7 +5739,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -5743,7 +5769,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -5838,7 +5864,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -5858,7 +5884,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -5888,7 +5914,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -5965,7 +5991,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -5985,7 +6011,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -6015,7 +6041,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -6097,7 +6123,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -6117,7 +6143,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -6147,7 +6173,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -6225,7 +6251,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -6245,7 +6271,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -6275,7 +6301,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -6368,7 +6394,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -6388,7 +6414,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -6418,7 +6444,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -6505,7 +6531,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -6525,7 +6551,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -6555,7 +6581,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -6607,6 +6633,255 @@
         "summary": "Search diagrams, nodes, descriptions, tags, owners and metadata"
       }
     },
+    "/settings/import-file-limit-mb": {
+      "get": {
+        "operationId": "get_settings_import-file-limit-mb",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportLimitSettingValue"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Read the effective browser-local import limit; absent or invalid saved values return 50; read-only access allowed"
+      },
+      "put": {
+        "operationId": "put_settings_import-file-limit-mb",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportLimitSettingInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Set this browser's local import limit from 50 to 1024 MiB; write access required"
+      }
+    },
     "/spatial-diagrams": {
       "post": {
         "operationId": "post_spatial-diagrams",
@@ -6639,7 +6914,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -6659,7 +6934,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -6689,7 +6964,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -6773,7 +7048,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -6793,7 +7068,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -6823,7 +7098,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -6907,7 +7182,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -6927,7 +7202,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -6957,7 +7232,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -7031,7 +7306,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -7051,7 +7326,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -7081,7 +7356,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {
@@ -7168,7 +7443,7 @@
                 }
               }
             },
-            "description": "Malformed JSON"
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
           },
           "401": {
             "content": {
@@ -7188,7 +7463,7 @@
                 }
               }
             },
-            "description": "Untrusted origin or host"
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
           },
           "404": {
             "content": {
@@ -7218,7 +7493,7 @@
                 }
               }
             },
-            "description": "Graph validation failed; no partial writes"
+            "description": "Input or graph validation failed; no partial writes"
           },
           "428": {
             "content": {

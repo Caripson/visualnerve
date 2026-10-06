@@ -1,4 +1,11 @@
 import Papa from 'papaparse';
+import {
+  assertImportBytes,
+  checkedImportLimitBytes,
+  DEFAULT_IMPORT_LIMIT_BYTES,
+  MAX_IMPORT_LIMIT_BYTES,
+  utf8Bytes,
+} from '../imports/limits';
 import { base, blankGraph, newEdge, newNode, type Graph, type GraphNode } from '../model/types';
 import { balancedMindmap } from '../mindmap/tree';
 import {
@@ -13,7 +20,7 @@ import {
 } from './types';
 
 export const csvLimits = {
-  bytes: 50 * 1024 * 1024,
+  bytes: DEFAULT_IMPORT_LIMIT_BYTES,
   rows: 200000,
   columns: 200,
   cells: 10000000,
@@ -41,23 +48,6 @@ const groupValue = (value: string) => value.trim();
 const pathKey = (path: CsvPathEntry[]) => JSON.stringify(path);
 const finite = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
-
-function utf8ByteLength(value: string): number {
-  let bytes = 0;
-  for (let index = 0; index < value.length; index++) {
-    const code = value.charCodeAt(index);
-    if (code <= 0x7f) bytes++;
-    else if (code <= 0x7ff) bytes += 2;
-    else if (code >= 0xd800 && code <= 0xdbff) {
-      const next = value.charCodeAt(index + 1);
-      if (next >= 0xdc00 && next <= 0xdfff) {
-        bytes += 4;
-        index++;
-      } else bytes += 3;
-    } else bytes += 3;
-  }
-  return bytes;
-}
 
 const numericPatterns = {
   '.': /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/,
@@ -143,11 +133,14 @@ export function numberFor(cell: string, columnId: string, analysis: CsvAnalysis)
   return csvFormattedNumber(cell, format ?? 'auto');
 }
 
-export function parseCsv(text: string, fileName: string): CsvDataset {
-  requireValue(
-    new TextEncoder().encode(text).byteLength <= csvLimits.bytes,
-    'CSV exceeds the 50 MiB file limit.',
-  );
+export function parseCsv(
+  text: string,
+  fileName: string,
+  byteLimit = DEFAULT_IMPORT_LIMIT_BYTES,
+): CsvDataset {
+  const limit = checkedImportLimitBytes(byteLimit);
+  assertImportBytes(text.length, limit, 'CSV');
+  assertImportBytes(utf8Bytes(text), limit, 'CSV');
   const parsed = Papa.parse<string[]>(text.replace(/^\uFEFF/, ''), {
     header: false,
     dynamicTyping: false,
@@ -247,7 +240,7 @@ export function validateDataset(dataset: CsvDataset): void {
     );
     requireValue(!columns.has(column.id), 'Duplicate CSV column id.');
     columns.add(column.id);
-    bytes += utf8ByteLength(column.label);
+    bytes += utf8Bytes(column.label);
   }
   requireValue(
     Array.isArray(dataset.rows) && dataset.rows.length > 0 && dataset.rows.length <= csvLimits.rows,
@@ -263,8 +256,8 @@ export function validateDataset(dataset: CsvDataset): void {
       'Every CSV row must contain one string cell per column.',
     );
     for (const cell of row) {
-      bytes += utf8ByteLength(cell);
-      requireValue(bytes <= csvLimits.bytes, 'CSV exceeds the 50 MiB data limit.');
+      bytes += utf8Bytes(cell);
+      requireValue(bytes <= MAX_IMPORT_LIMIT_BYTES, 'CSV exceeds the 1 GiB data limit.');
     }
   }
   validatedSources.add(dataset);

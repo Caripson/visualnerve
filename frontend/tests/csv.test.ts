@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import * as importLimits from '../src/imports/limits';
 import {
   csvGraph,
   csvLimits,
@@ -115,7 +116,7 @@ describe('CSV datasets and column profiles', () => {
   });
 
   it('caps bytes, rows, columns and cells for parsing and restored datasets', () => {
-    expect(() => parseCsv('A\n' + 'x'.repeat(csvLimits.bytes), 'large.csv')).toThrow('50 MiB');
+    expect(() => parseCsv('A\n' + 'x'.repeat(csvLimits.bytes), 'large.csv')).toThrow('50 MB');
     expect(() =>
       parseCsv(
         Array.from({ length: csvLimits.columns + 1 }, (_, i) => `c${i}`).join(',') +
@@ -152,9 +153,16 @@ describe('CSV datasets and column profiles', () => {
     const chunkBytes = new TextEncoder().encode(chunk).byteLength;
     const belowLimit = chunk.repeat(Math.floor((csvLimits.bytes - 1) / chunkBytes));
     expect(() => validateDataset({ ...dataset, rows: [[belowLimit]] })).not.toThrow();
-    expect(() => validateDataset({ ...dataset, rows: [[belowLimit + chunk]] })).toThrow(
-      '50 MiB data limit',
-    );
+    // Previously this persisted source was rejected at the import preference's old50MiB cap.
+    expect(() => validateDataset({ ...dataset, rows: [[belowLimit + chunk]] })).not.toThrow();
+    const byteCount = vi
+      .spyOn(importLimits, 'utf8Bytes')
+      .mockImplementation((value) => (value === 'x' ? importLimits.MAX_IMPORT_LIMIT_BYTES : 1));
+    try {
+      expect(() => validateDataset({ ...dataset, rows: [['x']] })).toThrow('1 GiB data limit');
+    } finally {
+      byteCount.mockRestore();
+    }
   });
 });
 

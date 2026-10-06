@@ -1,4 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { assertImportBytes, utf8Bytes } from '../imports/limits';
+import { currentImportLimitBytes } from '../imports/preference';
+import { ImportSizeNotice } from './ImportSizeNotice';
 import { Modal } from './Modal';
 import { useEditor } from '../state/editor';
 import { workspace } from '../storage/workspace';
@@ -29,6 +32,11 @@ export function SourceRefreshDialog({ onClose }: { onClose: () => void }) {
   const source = sources.find((dataset) => dataset.id === sourceId);
   const [incoming, setIncoming] = useState<CsvDataset>();
   const [sql, setSql] = useState('');
+  const [sourceBytes, setSourceBytes] = useState(0);
+  const displayedBytes = useMemo(
+    () => (sourceId === 'sql' ? utf8Bytes(sql) : sourceBytes),
+    [sourceId, sql, sourceBytes],
+  );
   const [keys, setKeys] = useState<string[]>(
     () =>
       (graph?.diagram.settings.csvRefreshKeys as Record<string, string[]> | undefined)?.[
@@ -98,14 +106,19 @@ export function SourceRefreshDialog({ onClose }: { onClose: () => void }) {
 
   const load = async (file: File) => {
     invalidate();
+    setSourceBytes(0);
     if (sourceId !== 'sql') {
       setIncoming(undefined);
       setMapping({});
     }
-    if (file.size > 50 * 1024 * 1024) {
-      setError('Source files must be 50 MiB or smaller.');
+    const byteLimit = currentImportLimitBytes();
+    try {
+      assertImportBytes(file.size, byteLimit, 'Source file');
+    } catch (error) {
+      setError(readable(error));
       return;
     }
+    setSourceBytes(file.size);
     const current = generation.current;
     const pending = new AbortController();
     controller.current = pending;
@@ -116,7 +129,7 @@ export function SourceRefreshDialog({ onClose }: { onClose: () => void }) {
         const text = await file.text();
         if (mounted.current && current === generation.current) setSql(text);
       } else {
-        const replacement = await loadRefreshCsv(file, { signal: pending.signal });
+        const replacement = await loadRefreshCsv(file, { signal: pending.signal, byteLimit });
         if (!mounted.current || current !== generation.current) return;
         setIncoming(replacement);
         setMapping(defaultColumnMap(source!, replacement));
@@ -139,6 +152,7 @@ export function SourceRefreshDialog({ onClose }: { onClose: () => void }) {
     const pending = new AbortController();
     controller.current = pending;
     setWorking(true);
+    const byteLimit = currentImportLimitBytes();
     try {
       await workspace.settled();
       if (current !== generation.current || !mounted.current) return;
@@ -153,7 +167,10 @@ export function SourceRefreshDialog({ onClose }: { onClose: () => void }) {
       capture.current = snapshot;
       const changes =
         sourceId === 'sql'
-          ? await previewSqlRefresh(snapshot.graph, sql, policy, { signal: pending.signal })
+          ? await previewSqlRefresh(snapshot.graph, sql, policy, {
+              signal: pending.signal,
+              byteLimit,
+            })
           : await previewCsvRefresh(
               snapshot.graph,
               incoming!,
@@ -238,6 +255,7 @@ export function SourceRefreshDialog({ onClose }: { onClose: () => void }) {
           Review changes before replacing source data. Matching objects retain their IDs, positions,
           notes, status and manual connections. SQL is parsed locally and never executed.
         </p>
+        <ImportSizeNotice bytes={displayedBytes} />
         <label className="field">
           Source to refresh
           <select
@@ -249,6 +267,7 @@ export function SourceRefreshDialog({ onClose }: { onClose: () => void }) {
               const id = event.target.value;
               setSourceId(id);
               setIncoming(undefined);
+              setSourceBytes(0);
               setSql('');
               setMapping({});
               setKeys(

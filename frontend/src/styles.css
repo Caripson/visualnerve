@@ -1452,59 +1452,6 @@ kbd {
   color: #bd6558;
   background: #c66e5510;
 }
-.modal-shade {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  background: #15291d66;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 30px;
-  backdrop-filter: blur(2px);
-}
-.modal {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  box-shadow: var(--shadow);
-  width: 440px;
-  padding: 22px;
-  max-height: 90dvh;
-  overflow-y: auto;
-}
-.modal-wide {
-  width: 680px;
-}
-.modal-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 22px;
-}
-.modal-heading h2 {
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: -0.4px;
-}
-.modal > p {
-  font-size: 12px;
-  line-height: 1.7;
-  margin: 12px 0;
-}
-.modal-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 9px;
-  border-top: 1px solid var(--border);
-  padding-top: 17px;
-  margin-top: 22px;
-  font-size: 11px;
-}
-.modal-actions a {
-  margin-right: auto;
-}
 .template-label {
   display: block;
   margin: 22px 0 12px;
@@ -1833,9 +1780,6 @@ kbd {
   .owner-dialog {
     grid-template-columns: 145px 1fr;
     gap: 12px;
-  }
-  .modal-shade {
-    padding: 12px;
   }
   .site-shell nav a:first-child {
     display: none;
@@ -2278,7 +2222,7 @@ kbd {
   .property-content input,
   .property-content select,
   .property-content textarea,
-  .modal input,
+  .modal input:not([type='checkbox']):not([type='radio']),
   .modal select,
   .modal textarea {
     font-size: 16px;
@@ -2341,15 +2285,6 @@ kbd {
   }
   .welcome h1 {
     font-size: 31px;
-  }
-  .modal-shade {
-    padding: 10px;
-    align-items: flex-end;
-  }
-  .modal {
-    max-height: calc(100dvh - 24px);
-    padding: 20px;
-    border-radius: 16px;
   }
   .owner-dialog {
     grid-template-columns: 1fr;

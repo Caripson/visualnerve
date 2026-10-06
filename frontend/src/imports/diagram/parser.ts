@@ -2,17 +2,26 @@ import { validateGraph } from '../../model/validation';
 import { parseDrawio } from './drawio';
 import { parseVsdx } from './vsdx';
 import { decodeXmlBytes } from './input';
-import { diagramImportLimits, type DiagramFileFormat, type DiagramImportResult } from './types';
+import {
+  diagramImportLimits,
+  diagramByteLimits,
+  type DiagramFileFormat,
+  type DiagramImportResult,
+} from './types';
+import { assertImportBytes, DEFAULT_IMPORT_LIMIT_BYTES, LARGE_IMPORT_WARNING } from '../limits';
 
 export function parseDiagramBytes(
   format: DiagramFileFormat,
   bytes: Uint8Array,
   name: string,
+  byteLimit = DEFAULT_IMPORT_LIMIT_BYTES,
 ): DiagramImportResult {
-  if (bytes.byteLength > diagramImportLimits.fileBytes)
-    throw new Error('Diagram file exceeds the 32 MiB limit.');
+  const limits = diagramByteLimits(byteLimit);
+  assertImportBytes(bytes.byteLength, limits.fileBytes, 'Diagram file');
   const result =
-    format === 'drawio' ? parseDrawio(decodeXmlBytes(bytes), name) : parseVsdx(bytes, name);
+    format === 'drawio'
+      ? parseDrawio(decodeXmlBytes(bytes), name, limits.fileBytes)
+      : parseVsdx(bytes, name, limits.fileBytes);
   if (!result.pages.length || result.pages.length > diagramImportLimits.pages)
     throw new Error('Choose a diagram with between 1 and 100 pages.');
   let nodes = 0,
@@ -36,5 +45,7 @@ export function parseDiagramBytes(
     page.warnings = [...new Set(page.warnings)].slice(0, 200);
   }
   result.warnings = [...new Set(result.warnings)].slice(0, 200);
+  if (bytes.byteLength > DEFAULT_IMPORT_LIMIT_BYTES)
+    result.warnings = [LARGE_IMPORT_WARNING, ...result.warnings].slice(0, 200);
   return result;
 }

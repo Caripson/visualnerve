@@ -37,8 +37,8 @@ it('bounds reads before loading source text and retains relative file paths', as
     { path: 'project/main.py', content: 'def run(): pass', language: 'python' },
   ]);
   const oversized = file('large.py');
-  Object.defineProperty(oversized, 'size', { value: 5 * 1024 * 1024 + 1 });
-  await expect(readCodeFiles([first, oversized])).rejects.toThrow('5 MiB');
+  Object.defineProperty(oversized, 'size', { value: 50 * 1024 * 1024 + 1 });
+  await expect(readCodeFiles([first, oversized])).rejects.toThrow('50 MB');
   expect(oversized.text).not.toHaveBeenCalled();
   await expect(readCodeFiles(Array.from({ length: 501 }, () => first))).rejects.toThrow('500');
 });

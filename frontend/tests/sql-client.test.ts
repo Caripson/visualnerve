@@ -37,10 +37,12 @@ it('isolates each preview and releases its worker after a complete schema result
   expect(a.postMessage).toHaveBeenCalledWith({
     text: 'CREATE TABLE first (id INT);',
     name: 'First',
+    byteLimit: 50 * 1024 * 1024,
   });
   expect(b.postMessage).toHaveBeenCalledWith({
     text: 'CREATE TABLE second (id INT);',
     name: 'Second',
+    byteLimit: 50 * 1024 * 1024,
   });
   const expected = result();
   a.onmessage!({ data: { result: expected } } as MessageEvent);

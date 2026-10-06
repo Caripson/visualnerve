@@ -338,7 +338,7 @@ describe('SQL table schema import', () => {
   it('fails clearly when there are no supported tables and enforces bounded tables/columns/bytes/warnings', () => {
     expect(() => parseSql('INSERT INTO x VALUES (1);')).toThrow('No supported CREATE TABLE');
     expect(() => parseSql('CREATE TABLE x AS SELECT 1;')).toThrow('No supported CREATE TABLE');
-    expect(() => parseSql(' '.repeat(sqlLimits.bytes + 1))).toThrow('50 MiB');
+    expect(() => parseSql(' '.repeat(sqlLimits.bytes + 1))).toThrow('50 MB');
     const manyTables = Array.from(
       { length: sqlLimits.tables + 1 },
       (_, i) => `CREATE TABLE t${i} (id int);`,

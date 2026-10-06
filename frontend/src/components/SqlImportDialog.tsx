@@ -2,7 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FileUp } from 'lucide-react';
 import { Modal } from './Modal';
 import type { Graph } from '../model/types';
-import { parseSqlAsync, SQL_FILE_LIMIT } from '../sql/client';
+import { parseSqlAsync } from '../sql/client';
+import { assertImportBytes, utf8Bytes } from '../imports/limits';
+import { currentImportLimitBytes } from '../imports/preference';
+import { ImportSizeNotice } from './ImportSizeNotice';
 import type { SqlImportResult } from '../sql/parser';
 import { getSqlTable } from '../sql/schema';
 import { getSqlQueryResult, getSqlQuerySource } from '../sql/query-schema';
@@ -64,6 +67,7 @@ export function SqlImportDialog({
   const generation = useRef(0);
   const mounted = useRef(true);
   const queryHint = useMemo(() => queryDraft(text), [text]);
+  const sourceBytes = useMemo(() => utf8Bytes(text), [text]);
   const isQueryDraft = preview?.kind === 'query' || queryHint;
 
   const cancel = useCallback(() => {
@@ -100,8 +104,10 @@ export function SqlImportDialog({
 
   const loadFile = async (file: File) => {
     invalidate();
-    if (file.size > SQL_FILE_LIMIT) {
-      setError('SQL files must be 50 MiB or smaller.');
+    try {
+      assertImportBytes(file.size, currentImportLimitBytes(), 'SQL');
+    } catch (error) {
+      setError(message(error));
       return;
     }
     const current = generation.current;
@@ -197,6 +203,7 @@ export function SqlImportDialog({
           foreign keys. Parsing happens locally. SQL is never executed and result rows are not
           fetched.
         </p>
+        <ImportSizeNotice bytes={sourceBytes} />
         <label className="field">
           Diagram name
           <input

@@ -34,7 +34,7 @@ it('terminates the parsing worker on cancellation and rejects oversized files be
   expect(RefreshWorker.workers[0].terminate).toHaveBeenCalledOnce();
   const oversized = new File(['x'], 'large.csv');
   Object.defineProperty(oversized, 'size', { value: 50 * 1024 * 1024 + 1 });
-  await expect(loadRefreshCsv(oversized)).rejects.toThrow(/50 MiB/);
+  await expect(loadRefreshCsv(oversized)).rejects.toThrow(/50 MB/);
   expect(RefreshWorker.workers).toHaveLength(1);
 });
 

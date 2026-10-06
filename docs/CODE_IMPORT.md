@@ -75,7 +75,9 @@ Extensions such as `.m` (MATLAB, Objective-C or Power Query M), `.h` and `.cls` 
 
 ## Size and responsiveness
 
-Analysis and layout run in a cancellable Web Worker. Limits are 500 files, 5 MiB decoded UTF-8 per file, 20 MiB total, 10,000 extracted symbols, 5,000 diagram objects and 10,000 connections. Source is limited to 100,000 lines per file, 500,000 lines per project and 20,000 characters per line; excess structure fails clearly. A preview has a 30-second deadline. Large diagrams use a predictable layout rather than an unbounded layout calculation. Start with files and use focus or the relationship explorer to avoid showing every symbol at once. Limits apply to the source project too; focus does not authorize an unlimited import.
+Analysis and layout run in a cancellable Web Worker. The default decoded UTF-8 limit is 50 MiB per file and 50 MiB for the whole source project. Both use the selected limit from **Settings → Import file size → Maximum import file size (MB)**: a whole number from 50 to 1024, saved with **Save import limit**. The UI uses MB for MiB; 1024 MB is 1 GB. Imports up to 50 MB are supported and guaranteed; higher limits are experimental and may be slow or fail because of browser memory or format constraints. The preference stays in this browser and is excluded from backups.
+
+Other limits remain 500 files, 10,000 extracted symbols, 5,000 diagram objects and 10,000 connections. Source is limited to 100,000 lines per file, 500,000 lines per project and 20,000 characters per line; excess structure fails clearly. A preview has a 30-second deadline. Large diagrams use a predictable layout rather than an unbounded layout calculation. Start with files and use focus or the relationship explorer to avoid showing every symbol at once. Limits apply to the source project too; focus does not authorize an unlimited import.
 
 ## Local data and exports
 
@@ -99,7 +101,7 @@ Start the optional local bridge and grant access in the open browser. The public
 }
 ```
 
-Preview returns `graph`, `version`, `languages`, `mode`, `fileCount`, `symbolCount`, `dependencyCount`, `unresolvedCount`, `warnings` and optional `focus`. Create returns the canonical `Graph`. Files have unique relative paths; unknown fields and unsupported IDs are rejected. The browser rechecks consent and grants before the first write and cancels pending analysis when access is revoked. Source crosses the loopback bridge transiently; it is not stored by the Go server. The JSON transport envelope is limited to 32 MiB. See [API](../API.md) and [data model](../DATA_MODEL.md).
+Preview returns `graph`, `version`, `languages`, `mode`, `fileCount`, `symbolCount`, `dependencyCount`, `unresolvedCount`, `warnings` and optional `focus`. Create returns the canonical `Graph`. Files have unique relative paths; unknown fields and unsupported IDs are rejected. The browser rechecks consent and grants before the first write and cancels pending analysis when access is revoked. Source crosses the loopback bridge transiently; it is not stored by the Go server. JSON and WebSocket envelopes remain limited to 32 MiB regardless of the import preference; source and responses must fit after JSON escaping. See [API](../API.md) and [data model](../DATA_MODEL.md).
 
 ## Implementation boundaries
 

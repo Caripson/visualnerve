@@ -1,4 +1,5 @@
 import type { Graph } from '../model/types';
+import { DEFAULT_IMPORT_LIMIT_BYTES } from '../imports/limits';
 
 export const codeLanguageIds = [
   'python',
@@ -73,8 +74,8 @@ export interface CodeInput {
   focus?: string;
 }
 export const codeLimits = {
-  bytes: 20 * 1024 * 1024,
-  fileBytes: 5 * 1024 * 1024,
+  bytes: DEFAULT_IMPORT_LIMIT_BYTES,
+  fileBytes: DEFAULT_IMPORT_LIMIT_BYTES,
   files: 500,
   symbols: 10_000,
   nodes: 5_000,

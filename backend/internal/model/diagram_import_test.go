@@ -54,8 +54,25 @@ func TestDiagramFileInputContract(t *testing.T) {
 }
 
 func TestDiagramFileInputUsesUTF8ByteLimit(t *testing.T) {
-	input, _ := json.Marshal(DiagramFileInput{Format: "drawio", Data: strings.Repeat("å", DiagramFileByteLimit/2+1)})
-	if err := ValidateDiagramFileInput(input, false); err == nil {
-		t.Fatal("file above decoded UTF-8 byte limit accepted")
+	if DiagramFileByteLimit != 1<<30 {
+		t.Fatal("absolute diagram file ceiling must be 1 GiB")
+	}
+	for _, size := range []int{8, 9} {
+		input, _ := json.Marshal(DiagramFileInput{Format: "drawio", Data: strings.Repeat("å", size)})
+		err := validateDiagramFileInput(input, false, 16)
+		if (err == nil) != (size == 8) {
+			t.Fatalf("UTF-8 limit must allow 16 bytes and reject 18 bytes: %v", err)
+		}
+	}
+}
+
+func TestDiagramFileInputUsesDecodedZIPByteLimit(t *testing.T) {
+	for _, size := range []int{16, 17, 20} {
+		archive := append([]byte{'P', 'K', 3, 4}, make([]byte, size-4)...)
+		input, _ := json.Marshal(DiagramFileInput{Format: "vsdx", Data: base64.StdEncoding.EncodeToString(archive)})
+		err := validateDiagramFileInput(input, false, 16)
+		if (err == nil) != (size == 16) {
+			t.Fatalf("decoded ZIP limit must allow 16 bytes and reject larger archives: %v", err)
+		}
 	}
 }

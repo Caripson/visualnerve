@@ -1,0 +1,245 @@
+.modal-shade {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #15291d66;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  backdrop-filter: blur(2px);
+}
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  box-shadow: var(--shadow);
+  width: 440px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 24px;
+  max-height: 90dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.modal-wide {
+  width: 680px;
+}
+.modal-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.modal-heading h2 {
+  min-width: 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.modal-heading .icon-button {
+  flex-shrink: 0;
+}
+.modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.modal-content form,
+.modal-content fieldset,
+.modal-content > section,
+.modal-content > :is(.diagram-file-import, .lovable-dialog, .data-inspection, .source-refresh) {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.modal-content > section {
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.modal-content .data-inspection > section {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.modal-content .data-inspection > section > * {
+  margin-block: 0;
+}
+.modal-content > p,
+.modal-content form > *,
+.modal-content fieldset > *,
+.modal-content > section > *,
+.modal-content > :is(.diagram-file-import, .lovable-dialog, .data-inspection, .source-refresh) > * {
+  margin-block: 0;
+}
+.modal-content p {
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.modal-content > .author-credit {
+  padding: 0;
+  font-size: 10px;
+  line-height: 1.6;
+}
+.modal-content .field {
+  min-width: 0;
+  gap: 8px;
+  margin: 0 0 16px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.modal-content > .field,
+.modal-content
+  :is(
+    form,
+    fieldset,
+    section,
+    details,
+    .field-row,
+    .csv-control-row,
+    .code-view-settings,
+    .diagram-file-import,
+    .lovable-dialog,
+    .source-refresh
+  )
+  > .field {
+  margin: 0;
+}
+.modal-content .field-row {
+  align-items: start;
+  gap: 16px 12px;
+}
+.modal-content input:not([type='checkbox']):not([type='radio']),
+.modal-content select,
+.modal-content textarea {
+  min-width: 0;
+  min-height: 38px;
+}
+.modal-content :is(.check-field, .csv-check) {
+  min-height: 38px;
+  gap: 10px;
+  margin: 0;
+  line-height: 1.5;
+}
+.modal-content :is(input[type='checkbox'], input[type='radio']) {
+  width: 16px;
+  height: 16px;
+  min-height: 16px;
+  margin: 0;
+  flex-shrink: 0;
+}
+.modal-content .property-section {
+  margin: 0;
+  padding: 0;
+  border-top: 0;
+  font-size: 10px;
+}
+.modal-content > .property-section {
+  margin-top: 4px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.modal-content section[aria-label='MCP connection addresses'] {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-alt);
+}
+.modal-content details {
+  min-width: 0;
+  margin: 0;
+}
+.modal-content details[open] > summary {
+  margin-bottom: 12px;
+}
+.modal-content details[open] > :not(summary) + :not(summary) {
+  margin-top: 12px;
+}
+.modal-content :is(.storage-details, .storage-danger) {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.modal-content .storage-facts {
+  gap: 10px 16px;
+  line-height: 1.5;
+}
+.modal-content .storage-actions {
+  gap: 10px;
+}
+.modal-content .shortcuts > div {
+  align-items: start;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  line-height: 1.6;
+}
+.modal-content .shortcuts kbd {
+  flex-shrink: 0;
+}
+.modal-actions,
+.modal-content .dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  margin-top: 0;
+  font-size: 11px;
+}
+.modal-actions a {
+  margin-right: auto;
+}
+.modal-content :is(.modal-actions, .dialog-actions) > button {
+  min-height: 38px;
+  white-space: normal;
+}
+.modal-content .import-limit-warning {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-alt);
+}
+@media (max-width: 720px) {
+  .modal-shade {
+    padding: 12px;
+  }
+  .modal-content :is(input:not([type='checkbox']):not([type='radio']), select, textarea),
+  .modal-content :is(.check-field, .csv-check),
+  .modal-content :is(.modal-actions, .dialog-actions) > button {
+    min-height: 44px;
+  }
+  .modal-heading .icon-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+@media (max-width: 600px) {
+  .modal-shade {
+    padding: 10px;
+    align-items: flex-end;
+  }
+  .modal {
+    max-height: calc(100dvh - 24px);
+    padding: 20px;
+    border-radius: 16px;
+  }
+  .modal-content .storage-facts {
+    grid-template-columns: minmax(80px, 0.75fr) minmax(0, 1.6fr);
+    gap: 10px 12px;
+  }
+  .modal-content .storage-actions > button {
+    flex: 1 1 150px;
+    min-height: 44px;
+    white-space: normal;
+  }
+}

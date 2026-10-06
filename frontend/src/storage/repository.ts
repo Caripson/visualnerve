@@ -24,6 +24,7 @@ import {
 import { reconnectedAnalysisEdge } from '../model/relationships';
 import { markdown, parseImport } from '../export/semantic';
 import { diagramFileCommand } from './diagram-file-commands';
+import { IMPORT_LIMIT_SETTING, importLimitMb, assertImportLimitMb } from '../imports/limits';
 import { database, type WorkspaceBackup, type WorkspaceDatabase } from './database';
 import { setSpatialView } from '../spatial/types';
 import { syncSpatialPositions } from '../spatial/movement';
@@ -360,6 +361,7 @@ export class Repository {
       throw new StorageError(422, 'Invalid workspace backup.');
     const restored = await this.db.transaction('rw', this.db.tables, async () => {
       const acknowledgement = await this.db.settings.get('storage-consent');
+      const importLimitPreference = await this.db.settings.get(IMPORT_LIMIT_SETTING);
       if (mode === 'replace') {
         this.db.forgetDatasets();
         for (const table of this.db.tables) await table.clear();
@@ -462,11 +464,13 @@ export class Repository {
               'storage-consent',
               'last-export',
               'backup-nudge-dismissed',
+              IMPORT_LIMIT_SETTING,
             ].includes(setting.key),
         ),
       );
       await this.db.templates.bulkPut(backup.templates);
       if (acknowledgement) await this.db.settings.put(acknowledgement);
+      if (importLimitPreference) await this.db.settings.put(importLimitPreference);
       await this.db.initialize();
       return graphs;
     });
@@ -575,6 +579,10 @@ export class Repository {
       [collection, id, action] = parts;
     const read = method === 'GET',
       remove = method === 'DELETE';
+    if (method === 'POST' && ['diagram-files', 'sql', 'code', 'import'].includes(collection)) {
+      const setting = await this.db.settings.get(IMPORT_LIMIT_SETTING);
+      options = { ...options, byteLimit: importLimitMb(setting?.value) * 1024 * 1024 };
+    }
     if (collection === 'diagram-files') {
       if (path.replace(/^\/api\/v1/, '') !== '/diagram-files/preview')
         throw new StorageError(404, 'Unknown diagram file endpoint.');
@@ -620,11 +628,19 @@ export class Repository {
     if (collection === 'search' && read)
       return (await this.search(url.searchParams.get('q') ?? '')) as T;
     if (collection === 'settings') {
+      if (read && id === IMPORT_LIMIT_SETTING)
+        return importLimitMb((await this.db.settings.get(id))?.value) as T;
       if (read)
         return (
           id ? (await this.db.settings.get(id))?.value : await this.db.settings.toArray()
         ) as T;
       if (!id) throw new StorageError(400, 'Setting key is required.');
+      if (id === IMPORT_LIMIT_SETTING) {
+        const setting = object(payload);
+        if (Object.keys(setting).some((key) => key !== 'value'))
+          throw new StorageError(422, 'Import limit setting accepts only value.');
+        assertImportLimitMb(setting.value);
+      }
       await this.db.settings.put({ key: id, value: object(payload).value });
       return undefined as T;
     }
@@ -676,7 +692,7 @@ export class Repository {
       }
       return (await this.importGraph(
         typeof data.data === 'string'
-          ? parseImport(data.format as 'json' | 'markdown' | 'csv', data.data)
+          ? parseImport(data.format as 'json' | 'markdown' | 'csv', data.data, options.byteLimit)
           : (data.data as Graph),
       )) as T;
     }

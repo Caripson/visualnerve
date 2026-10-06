@@ -9,13 +9,13 @@ export async function diagramFileCommand(
   options: AnalysisCommandOptions,
   save: (graph: Graph) => Promise<Graph>,
 ): Promise<unknown> {
-  const input = diagramFileInput(payload, importing);
+  const input = diagramFileInput(payload, importing, options.byteLimit);
   const { parseDiagramAsync } = await import('../imports/diagram/client');
   let result;
   try {
     result = await parseDiagramAsync(
       { format: input.format, data: input.data, name: input.name },
-      { signal: options.signal },
+      { signal: options.signal, byteLimit: options.byteLimit },
     );
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error;

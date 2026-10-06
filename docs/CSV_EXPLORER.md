@@ -22,7 +22,9 @@ PNG/PDF export renders the current data view and its connections. Diagram JSON a
 
 ## Scale and storage
 
-Import supports at most 50 MiB, 200,000 data rows, 200 columns and 10 million cells. One view shows at most 600 generated objects, with up to 200 groups per level and a bounded history of 12,000 retained data objects. Reduce depth or explore a group when a view is dense. Files beyond these limits produce an actionable error rather than partial aggregates.
+The default file limit is 50 MiB. In **Settings → Import file size**, set **Maximum import file size (MB)** to a whole number from 50 to 1024 and choose **Save import limit**. The UI uses MB for MiB; 1024 MB is 1 GB. Imports up to 50 MB are supported and guaranteed; higher limits are experimental and may be slow or fail because of browser memory or format constraints. The preference stays in this browser and is excluded from backups.
+
+Other limits remain 200,000 data rows, 200 columns and 10 million cells. One view shows at most 600 generated objects, with up to 200 groups per level and a bounded history of 12,000 retained data objects. Reduce depth or explore a group when a view is dense. Files beyond the selected size or structural limits produce an actionable error rather than partial aggregates.
 
 Parsing, cleanup, filtering, profiling and aggregation run in a reusable Web Worker. Its source cache avoids resending all rows for every control change; stale results are discarded. A ten-second watchdog terminates expensive work, including pathological regex patterns, and the next request starts a fresh worker. Rendering and interaction remain on the main thread. Worker use requires a browser with Web Worker support.
 

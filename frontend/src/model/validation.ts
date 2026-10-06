@@ -16,15 +16,9 @@ import { drawingLimits, type DrawingLayer } from '../drawing/types';
 import { validateSpatialGraph } from '../spatial/types';
 import { validateSqlQueryGraph } from '../sql/query-schema';
 import { validateCodeGraph } from '../code/schema';
+import { StorageError } from './errors';
 
-export class StorageError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-  ) {
-    super(message);
-  }
-}
+export { StorageError } from './errors';
 const uuid = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 const requireValue = (condition: unknown, message: string) => {
   if (!condition) throw new StorageError(422, message);

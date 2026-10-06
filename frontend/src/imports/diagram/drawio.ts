@@ -1,6 +1,12 @@
 import { Inflate } from 'fflate';
 import { blankGraph, newEdge, newNode, type Graph, type NodeKind } from '../../model/types';
-import { diagramImportLimits, type DiagramImportPage, type DiagramImportResult } from './types';
+import {
+  diagramImportLimits,
+  diagramByteLimits,
+  type DiagramImportPage,
+  type DiagramImportResult,
+} from './types';
+import { assertImportBytes, DEFAULT_IMPORT_LIMIT_BYTES, utf8Bytes } from '../limits';
 import {
   attr,
   children,
@@ -36,7 +42,6 @@ interface Geometry {
 
 const sourceId = (page: string, cell: string) =>
   `drawio:${encodeURIComponent(page)}:${encodeURIComponent(cell)}`;
-const utf8 = new TextEncoder();
 
 function styles(value: string | undefined): Record<string, string> {
   const result: Record<string, string> = Object.create(null);
@@ -373,15 +378,19 @@ function compressedModel(value: string, maxBytes: number): { model: XmlNode; byt
   } catch {
     throw new Error('The compressed draw.io page contains invalid encoded XML.');
   }
-  return { model: parseXml(xml), bytes: size };
+  return { model: parseXml(xml, Math.max(1, maxBytes)), bytes: size };
 }
 
 /** Convert draw.io pages to editable native diagrams without a DOM or network access. */
-export function parseDrawio(text: string, filename: string): DiagramImportResult {
-  const fileSize = utf8.encode(text).length;
-  if (fileSize > diagramImportLimits.fileBytes)
-    throw new Error('The draw.io file exceeds the 32 MiB import limit.');
-  const document = parseXml(text);
+export function parseDrawio(
+  text: string,
+  filename: string,
+  byteLimit = DEFAULT_IMPORT_LIMIT_BYTES,
+): DiagramImportResult {
+  const limits = diagramByteLimits(byteLimit);
+  const fileSize = utf8Bytes(text);
+  assertImportBytes(fileSize, limits.fileBytes, 'draw.io file');
+  const document = parseXml(text, limits.expandedBytes);
   const fallback =
     plainText(filename.replace(/\.(?:drawio|xml)$/i, ''))
       .trim()
@@ -426,8 +435,8 @@ export function parseDrawio(text: string, filename: string): DiagramImportResult
     const inline = first(page, 'mxGraphModel');
     if (inline) return convert(inline);
     const payload = textContent(page).trim();
-    if (payload.startsWith('<')) return convert(parseXml(payload));
-    const inflated = compressedModel(payload, diagramImportLimits.expandedBytes - expandedSize);
+    if (payload.startsWith('<')) return convert(parseXml(payload, limits.expandedBytes));
+    const inflated = compressedModel(payload, limits.expandedBytes - expandedSize);
     expandedSize += inflated.bytes;
     return convert(inflated.model);
   });

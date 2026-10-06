@@ -1,5 +1,6 @@
 import { blankGraph } from '../../model/types';
-import { diagramImportLimits, type DiagramImportResult } from './types';
+import { diagramImportLimits, diagramByteLimits, type DiagramImportResult } from './types';
+import { DEFAULT_IMPORT_LIMIT_BYTES } from '../limits';
 import { attr, children, descendants, first, parseXml, safeColor, type XmlNode } from './xml';
 import { VisioPackage, relationshipPart, resolveVisioPart } from './vsdx-zip';
 import {
@@ -17,8 +18,14 @@ interface Relationship {
 }
 
 /** Import structural Visio content, without evaluating ShapeSheet formulas or loading media. */
-export function parseVsdx(bytes: Uint8Array, name: string): DiagramImportResult {
-  const archive = new VisioPackage(bytes);
+export function parseVsdx(
+  bytes: Uint8Array,
+  name: string,
+  byteLimit = DEFAULT_IMPORT_LIMIT_BYTES,
+): DiagramImportResult {
+  const limits = diagramByteLimits(byteLimit);
+  const archive = new VisioPackage(bytes, limits.fileBytes);
+  const readXml = (part: string) => parseXml(archive.text(part), limits.expandedBytes);
   const warnings = new Set<string>();
   const warn = (message: string) => {
     if (warnings.size < 100) warnings.add(message);
@@ -26,7 +33,7 @@ export function parseVsdx(bytes: Uint8Array, name: string): DiagramImportResult 
   const relations = (part: string): Map<string, Relationship> => {
     const path = relationshipPart(part);
     if (!archive.has(path)) return new Map();
-    const root = parseXml(archive.text(path));
+    const root = readXml(path);
     if (root.name !== 'Relationships') throw new Error('Invalid Visio package relationships.');
     const result = new Map<string, Relationship>();
     for (const relation of children(root, 'Relationship')) {
@@ -48,12 +55,12 @@ export function parseVsdx(bytes: Uint8Array, name: string): DiagramImportResult 
   const packageRelations = relations('');
   const documentPath = typedPart(packageRelations, 'document') ?? 'visio/document.xml';
   if (!archive.has(documentPath)) throw new Error('This ZIP package is not a Visio .vsdx drawing.');
-  const document = parseXml(archive.text(documentPath));
+  const document = readXml(documentPath);
   if (document.name !== 'VisioDocument')
     throw new Error('This package does not contain a Visio document.');
   const documentRelations = relations(documentPath);
   const pagesPath = typedPart(documentRelations, 'pages') ?? 'visio/pages/pages.xml';
-  const pagesXml = parseXml(archive.text(pagesPath));
+  const pagesXml = readXml(pagesPath);
   if (pagesXml.name !== 'Pages') throw new Error('Invalid Visio pages part.');
   const pageRelations = relations(pagesPath);
   const pageElements = children(pagesXml, 'Page');
@@ -94,7 +101,7 @@ export function parseVsdx(bytes: Uint8Array, name: string): DiagramImportResult 
   const mastersPath = typedPart(documentRelations, 'masters') ?? 'visio/masters/masters.xml';
   const masterSources = new Map<string, { name: string; target: string }>();
   if (archive.has(mastersPath)) {
-    const mastersRoot = parseXml(archive.text(mastersPath));
+    const mastersRoot = readXml(mastersPath);
     if (mastersRoot.name !== 'Masters') throw new Error('Invalid Visio masters part.');
     const masterRelations = relations(mastersPath);
     for (const master of children(mastersRoot, 'Master')) {
@@ -121,7 +128,7 @@ export function parseVsdx(bytes: Uint8Array, name: string): DiagramImportResult 
     if (cached) return cached;
     const source = masterSources.get(id);
     if (!source || !archive.has(source.target)) return undefined;
-    const masterXml = parseXml(archive.text(source.target));
+    const masterXml = readXml(source.target);
     if (masterXml.name !== 'MasterContents') throw new Error('Invalid Visio master contents.');
     const shapes = descendants(masterXml, 'Shape');
     const roots = first(masterXml, 'Shapes');
@@ -162,7 +169,7 @@ export function parseVsdx(bytes: Uint8Array, name: string): DiagramImportResult 
     const relationship = relationId && pageRelations.get(relationId);
     if (!relationship || !relationship.type.endsWith('/page'))
       throw new Error(`Visio page ${pageName} has no valid page relationship.`);
-    const page = parseXml(archive.text(relationship.target));
+    const page = readXml(relationship.target);
     if (page.name !== 'PageContents') throw new Error('Invalid Visio page contents.');
     const localWarnings = new Set<string>();
     const pageWarn = (message: string) => {

@@ -13,6 +13,21 @@ import (
 
 type object = map[string]any
 
+const absoluteImportByteLimit = 1 << 30
+const importLimitPolicyDescription = "The connected browser applies its saved local import file size limit: default 50 MiB, configurable from 50 to 1024 MiB (1 GiB) in Settings. UI MB means MiB and UI 1 GB means 1024 MiB. Only imports up to 50 MB are supported and guaranteed; higher limits are experimental and may be slow or fail because of browser memory or format limits. The HTTP/JSON and WebSocket transport envelopes remain 32 MiB and are not increased by this setting."
+
+func importLimitSettingValueSchema() object {
+	return object{"type": "integer", "minimum": 50, "maximum": 1024, "default": 50}
+}
+
+func importLimitSettingSchema() object {
+	return object{
+		"type": "object", "additionalProperties": false, "required": []string{"value"},
+		"properties":  object{"value": importLimitSettingValueSchema()},
+		"description": "Browser-local setting import-file-limit-mb. Invalid values return 422. Excluded from backups and ignored when restoring; the destination retains its own limit. " + importLimitPolicyDescription,
+	}
+}
+
 func ref(name string) object { return object{"$ref": "#/components/schemas/" + name} }
 func schema(t reflect.Type) object {
 	switch t.Kind() {
@@ -71,6 +86,9 @@ func main() {
 	addSpatialSchemas(schemas)
 	addSqlSchemas(schemas)
 	addDiagramImportSchemas(schemas)
+	schemas["ImportLimitSettingInput"] = importLimitSettingSchema()
+	schemas["ImportLimitSettingValue"] = importLimitSettingValueSchema()
+	schemas["ImportLimitSettingValue"].(object)["description"] = "Effective browser-local import limit in MiB (UI MB). An absent or invalid saved value returns the default 50."
 	for name, v := range map[string]any{"Diagram": model.Diagram{}, "Node": model.Node{}, "Edge": model.Edge{}, "Owner": model.Owner{}} {
 		s := schema(reflect.TypeOf(v))
 		p := s["properties"].(object)
@@ -158,14 +176,16 @@ func main() {
 	schemas["Bulk"] = object{"type": "object", "properties": object{"upsert": object{"type": "boolean", "default": false}, "baseVersion": object{"type": "integer"}, "nodes": object{"type": "array", "items": ref("BulkNode")}, "edges": object{"type": "array", "items": ref("BulkEdge")}, "owners": object{"type": "array", "items": ref("BulkOwner")}}, "additionalProperties": false}
 	schemas["Replacement"] = object{"type": "object", "required": []string{"baseVersion", "graph"}, "properties": object{"baseVersion": object{"type": "integer"}, "graph": ref("Graph")}, "additionalProperties": false}
 	schemas["Import"] = object{"oneOf": []any{
-		object{"type": "object", "required": []string{"format", "data"}, "properties": object{"format": object{"type": "string", "enum": []string{"json", "markdown", "csv"}}, "data": object{"oneOf": []any{ref("Graph"), object{"type": "string"}}}}, "additionalProperties": false},
+		object{"type": "object", "required": []string{"format", "data"}, "properties": object{"format": object{"type": "string", "enum": []string{"json", "markdown", "csv"}}, "data": object{"oneOf": []any{ref("Graph"), object{"type": "string", "maxLength": absoluteImportByteLimit}}}}, "additionalProperties": false},
 		ref("DiagramFileImportInput"),
 	}}
+	schemas["Import"].(object)["description"] = importLimitPolicyDescription
 	schemas["Export"] = object{"type": "object", "required": []string{"diagramId", "format"}, "properties": object{"diagramId": object{"type": "string", "format": "uuid"}, "format": object{"type": "string", "enum": []string{"json", "markdown"}}}, "additionalProperties": false}
 	schemas["Error"] = object{"type": "object", "properties": object{"error": object{"type": "string"}}}
 	schemas["Health"] = object{"type": "object", "properties": object{"status": object{"type": "string"}, "storage": object{"type": "string", "enum": []string{"indexeddb"}}, "bridge": object{"type": "boolean"}, "connected": object{"type": "integer"}, "version": object{"type": "string"}}}
 	schemas["WorkspaceBackup"] = object{"type": "object", "required": []string{"format", "formatVersion", "diagrams", "nodes", "edges", "owners", "settings", "templates"}, "properties": object{"format": object{"type": "string", "enum": []string{"visual-nerve-workspace"}}, "formatVersion": object{"type": "integer", "enum": []int{1}}, "schemaVersion": object{"type": "integer", "description": "IndexedDB schema version at export; currently 6. Older backups may omit this."}, "exportedAt": object{"type": "string", "format": "date-time"}, "diagrams": object{"type": "array", "items": ref("Diagram")}, "nodes": object{"type": "array", "items": ref("Node")}, "edges": object{"type": "array", "items": ref("Edge")}, "owners": object{"type": "array", "items": ref("Owner")}, "settings": object{"type": "array", "items": object{"type": "object", "required": []string{"key", "value"}, "properties": object{"key": object{"type": "string"}, "value": object{}}}}, "templates": object{"type": "array", "items": object{"type": "object", "properties": object{"id": object{"type": "string"}, "name": object{"type": "string"}, "builtin": object{"type": "boolean"}, "graph": ref("Graph")}}}}}
 	schemas["WorkspaceBackup"].(object)["properties"].(object)["datasets"] = object{"type": "array", "items": ref("CsvDataset"), "description": "Original CSV source records. Older backups may omit this."}
+	schemas["WorkspaceBackup"].(object)["description"] = "Portable local workspace data. The device-specific import-file-limit-mb setting is excluded from export and ignored during Merge/Replace; the destination's selected limit is retained."
 	schemas["SearchResult"] = object{"type": "object", "properties": object{"kind": object{"type": "string", "enum": []string{"diagram", "node"}}, "diagramId": object{"type": "string", "format": "uuid"}, "nodeId": object{"type": "string", "format": "uuid"}, "title": object{"type": "string"}}}
 	paths := object{}
 	add := func(method, path, summary, input, output, status string) {
@@ -177,7 +197,7 @@ func main() {
 			}
 			responses[status].(object)["content"] = object{"application/json": object{"schema": out}}
 		}
-		for code, description := range map[string]string{"400": "Malformed JSON", "401": "Bearer token required if configured", "403": "Untrusted origin or host", "404": "Unknown entity", "409": "Version or identity conflict", "422": "Graph validation failed; no partial writes", "428": "Version required", "500": "Browser storage failure", "503": "No connected browser or integration disabled", "504": "Browser did not respond"} {
+		for code, description := range map[string]string{"400": "Malformed JSON or 32 MiB transport envelope exceeded", "401": "Bearer token required if configured", "403": "Untrusted origin/host, storage not accepted or read-only mutation denied", "404": "Unknown entity", "409": "Version or identity conflict", "422": "Input or graph validation failed; no partial writes", "428": "Version required", "500": "Browser storage failure", "503": "No connected browser or integration disabled", "504": "Browser did not respond"} {
 			responses[code] = object{"description": description, "content": object{"application/json": object{"schema": ref("Error")}}}
 		}
 		op := object{"summary": summary, "operationId": strings.ToLower(method) + strings.NewReplacer("/", "_", "{", "", "}", "").Replace(path), "responses": responses}
@@ -211,6 +231,8 @@ func main() {
 	add("POST", "/code/preview", "Preview a local structural code outline without saving; read-only access allowed", "CodeInput", "CodeImportResult", "200")
 	add("POST", "/code/diagrams", "Save and open a locally analyzed code diagram; write access required", "CodeInput", "Graph", "201")
 	add("POST", "/diagram-files/preview", "Preview draw.io or Visio pages locally without saving; exact endpoint permits read-only access", "DiagramFileInput", "DiagramImportResult", "200")
+	add("GET", "/settings/import-file-limit-mb", "Read the effective browser-local import limit; absent or invalid saved values return 50; read-only access allowed", "", "ImportLimitSettingValue", "200")
+	add("PUT", "/settings/import-file-limit-mb", "Set this browser's local import limit from 50 to 1024 MiB; write access required", "ImportLimitSettingInput", "", "200")
 	add("GET", "/diagrams/{diagramId}", "Get complete canonical graph", "", "Graph", "200")
 	add("PATCH", "/diagrams/{diagramId}", "Update diagram using its version", "DiagramPatch", "Diagram", "200")
 	add("DELETE", "/diagrams/{diagramId}", "Delete diagram and graph; retain owners", "", "", "204")

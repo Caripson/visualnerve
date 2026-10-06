@@ -20,11 +20,15 @@ Another browser, profile, device or private window has independent storage even 
 
 ## Backups and moving work
 
-**Settings → Data & Privacy → Export all data** downloads `visual-nerve-backup-YYYY-MM-DD.json`: diagrams, nodes, connections, all owners, portable settings, templates, CSV datasets, schema version and export date. It excludes credentials, grants, storage acceptance and local identity. You control where the downloaded file is kept. Visual Nerve never uploads it. Share a backup only when you intend to share its content.
+**Settings → Data & Privacy → Export all data** downloads `visual-nerve-backup-YYYY-MM-DD.json`: diagrams, nodes, connections, all owners, portable settings, templates, CSV datasets, schema version and export date. It excludes credentials, grants, storage acceptance, local identity and the local import-size preference. You control where the downloaded file is kept. Visual Nerve never uploads it. Share a backup only when you intend to share its content.
 
-**Restore backup** previews Merge (keep current projects and add imported work) or Replace (remove current data first, with explicit confirmation). Identity collisions are remapped; invalid data rolls back all tables. Replace disables MCP. Import cannot grant tools access or accept storage for you. Export diagram is separate: one diagram as PNG/PDF/Markdown/JSON.
+**Restore backup** previews Merge (keep current projects and add imported work) or Replace (remove current data first, with explicit confirmation). Identity collisions are remapped; invalid data rolls back all tables. Replace disables MCP. Both modes ignore any imported file-size preference and retain the destination browser's own limit. Import cannot grant tools access or accept storage for you. Export diagram is separate: one diagram as PNG/PDF/Markdown/JSON.
 
 After ten diagrams, a subtle reminder appears if no complete export has been recorded. It can be dismissed permanently in that local workspace; it sends no notifications.
+
+## Import size preference
+
+Local imports default to 50 MiB. **Settings → Import file size → Maximum import file size (MB)** accepts whole numbers from 50 to 1024; **Save import limit** keeps the preference only in this browser. MB in the UI means MiB, and 1024 MB is 1 GB. Imports up to 50 MB are supported and guaranteed; higher limits are experimental and may be slow or fail because of browser memory or format constraints. Changing this limit does not upload source, retain temporary SQL/code/XML drafts or change the bridge's 32 MiB JSON/WebSocket envelope.
 
 ## Browser storage lifetime
 

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { codeLanguageIds, codeLimits } from '../src/code/types';
+import { MAX_IMPORT_LIMIT_BYTES } from '../src/imports/limits';
 
 describe('generated code OpenAPI contract', () => {
   const document = JSON.parse(readFileSync(resolve(process.cwd(), '../docs/openapi.yaml'), 'utf8'));
@@ -9,7 +10,7 @@ describe('generated code OpenAPI contract', () => {
   it('keeps all language ids and bounded input aligned with the browser', () => {
     expect(schemas.CodeLanguage.enum).toEqual([...codeLanguageIds]);
     expect(schemas.CodeInput.properties.files.maxItems).toBe(codeLimits.files);
-    expect(schemas.CodeFile.properties.content.maxLength).toBe(codeLimits.fileBytes);
+    expect(schemas.CodeFile.properties.content.maxLength).toBe(MAX_IMPORT_LIMIT_BYTES);
     expect(schemas.CodeInput.additionalProperties).toBe(false);
     expect(schemas.CodeFile.additionalProperties).toBe(false);
   });

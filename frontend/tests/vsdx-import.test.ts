@@ -339,7 +339,7 @@ describe('Visio .vsdx structural import', () => {
       view.setUint32(offset + (central ? 16 : 14), 0, true),
     );
     expect(() => parseVsdx(bytes, 'bad.vsdx')).toThrow(/checksum/);
-    expect(() => parseVsdx(new Uint8Array(32 * 1024 * 1024 + 1), 'huge.vsdx')).toThrow(/32 MiB/);
+    expect(() => parseVsdx(new Uint8Array(1001), 'huge.vsdx', 1000)).toThrow(/exceeds/);
   });
 
   it('rejects too many ZIP entries, pages, or native nodes with explicit limits', () => {

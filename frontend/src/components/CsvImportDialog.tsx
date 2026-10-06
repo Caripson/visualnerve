@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { utf8Bytes } from '../imports/limits';
+import { ImportSizeNotice } from './ImportSizeNotice';
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
 import { Modal } from './Modal';
 import { Field } from './Properties';
@@ -56,6 +58,11 @@ export function CsvImportDialog({
   legacyImport?: () => Promise<void>;
 }) {
   const [name, setName] = useState(previous?.diagram.name ?? dataset.name);
+  const sourceBytes = useMemo(() => {
+    let bytes = dataset.columns.reduce((sum, column) => sum + utf8Bytes(column.label), 0);
+    for (const row of dataset.rows) for (const cell of row) bytes += utf8Bytes(cell);
+    return bytes;
+  }, [dataset]);
   const [analysis, setAnalysis] = useState<CsvAnalysis>(
     () => initialAnalysis || (previous && getCsvAnalysis(previous)) || defaultAnalysis(dataset),
   );
@@ -179,6 +186,7 @@ export function CsvImportDialog({
           {dataset.fileName} · {number(dataset.rows.length)} rows · {dataset.columns.length}{' '}
           columns. Saved in this browser when you apply.
         </p>
+        <ImportSizeNotice bytes={sourceBytes} />
         <Field title="Diagram name">
           <input
             aria-label="CSV diagram name"

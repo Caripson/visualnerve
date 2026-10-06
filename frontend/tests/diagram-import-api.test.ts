@@ -9,6 +9,7 @@ import { parseDrawio } from '../src/imports/diagram/drawio';
 import type { DiagramImportResult } from '../src/imports/diagram/types';
 import type { Graph } from '../src/model/types';
 import { vsdxFixture } from './fixtures/vsdx';
+import { IMPORT_LIMIT_SETTING } from '../src/imports/limits';
 
 const model = `<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/><mxCell id="a" value="Before" vertex="1" parent="1"><mxGeometry x="40" y="30" width="160" height="80" as="geometry"/></mxCell><mxCell id="b" value="After" vertex="1" parent="1"><mxGeometry x="300" y="30" width="160" height="80" as="geometry"/></mxCell><mxCell id="e" value="Next" edge="1" source="a" target="b" parent="1" style="strokeColor=#ff0000;strokeWidth=3;dashed=1;endArrow=classic;"><mxGeometry relative="1" as="geometry"/></mxCell></root></mxGraphModel>`;
 const input = {
@@ -128,6 +129,61 @@ describe('native diagram file commands', () => {
   ])('rejects an inexact preview route %s', async (path) => {
     await expect(repo.request(path, 'POST', input)).rejects.toMatchObject({ status: 404 });
   });
+  it('captures the stored browser import ceiling for readonly and selected-page commands', async () => {
+    const result = parseDrawio(input.data, 'Source');
+    const parse = vi.spyOn(client, 'parseDiagramAsync').mockResolvedValue(result);
+    await db.settings.put({ key: IMPORT_LIMIT_SETTING, value: 100 });
+    await repo.request('/diagram-files/preview', 'POST', input);
+    expect(parse).toHaveBeenLastCalledWith(
+      expect.any(Object),
+      expect.objectContaining({ byteLimit: 100 * 1024 * 1024 }),
+    );
+    await repo.request('/import', 'POST', { ...input, pageId: 'one' });
+    expect(parse).toHaveBeenLastCalledWith(
+      expect.any(Object),
+      expect.objectContaining({ byteLimit: 100 * 1024 * 1024 }),
+    );
+    await db.settings.put({ key: IMPORT_LIMIT_SETTING, value: 5000 });
+    await repo.request('/diagram-files/preview', 'POST', input);
+    expect(parse).toHaveBeenLastCalledWith(
+      expect.any(Object),
+      expect.objectContaining({ byteLimit: 50 * 1024 * 1024 }),
+    );
+  });
+
+  it.each([49, 1025, 50.5, '100', null, true])(
+    'rejects an invalid import ceiling %s without replacing the previous preference',
+    async (value) => {
+      await repo.request(`/settings/${IMPORT_LIMIT_SETTING}`, 'PUT', { value: 100 });
+      await expect(
+        repo.request(`/settings/${IMPORT_LIMIT_SETTING}`, 'PUT', { value }),
+      ).rejects.toMatchObject({ status: 422 });
+      expect((await db.settings.get(IMPORT_LIMIT_SETTING))?.value).toBe(100);
+    },
+  );
+
+  it('reads the effective default for an absent or invalid browser preference', async () => {
+    expect(await repo.request(`/settings/${IMPORT_LIMIT_SETTING}`, 'GET')).toBe(50);
+    await db.settings.put({ key: IMPORT_LIMIT_SETTING, value: 5000 });
+    expect(await repo.request(`/settings/${IMPORT_LIMIT_SETTING}`, 'GET')).toBe(50);
+    await repo.request(`/settings/${IMPORT_LIMIT_SETTING}`, 'PUT', { value: 1024 });
+    expect(await repo.request(`/settings/${IMPORT_LIMIT_SETTING}`, 'GET')).toBe(1024);
+  });
+
+  it('keeps the import ceiling local during backup and ignores source preference escalation on restore', async () => {
+    await repo.request(`/settings/${IMPORT_LIMIT_SETTING}`, 'PUT', { value: 75 });
+    const backup = await db.backup();
+    expect(backup.settings.some((setting) => setting.key === IMPORT_LIMIT_SETTING)).toBe(false);
+    backup.settings.push({ key: IMPORT_LIMIT_SETTING, value: 1024 });
+    await repo.restore(backup, 'merge');
+    expect((await db.settings.get(IMPORT_LIMIT_SETTING))?.value).toBe(75);
+    await repo.restore(backup, 'replace');
+    expect((await db.settings.get(IMPORT_LIMIT_SETTING))?.value).toBe(75);
+    await expect(
+      repo.request(`/settings/${IMPORT_LIMIT_SETTING}`, 'PUT', { value: 100, extra: true }),
+    ).rejects.toMatchObject({ status: 422 });
+  });
+
   it('rejects an unknown selected page and unsafe imported styling without external CSS', async () => {
     await expect(
       repo.request('/import', 'POST', { ...input, pageId: 'missing' }),

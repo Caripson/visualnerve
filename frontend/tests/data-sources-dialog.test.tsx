@@ -10,7 +10,7 @@ import type { Graph } from '../src/model/types';
 vi.mock('../src/data/client', () => ({ openCsvFile: vi.fn() }));
 beforeEach(() => {
   useEditor.getState().setGraph(null);
-  useEditor.setState({ owners: [], status: 'saved' });
+  useEditor.setState({ owners: [], status: 'saved', importFileLimitMb: 50 });
   vi.clearAllMocks();
 });
 afterEach(() => vi.restoreAllMocks());
@@ -139,6 +139,32 @@ it('accepts repeated CSV drops into the staged model without triggering a global
   } finally {
     window.removeEventListener('drop', globalDrop);
   }
+});
+it('keeps the captured import limit for every file in a batch when settings change during loading', async () => {
+  fixture();
+  const payments = parseCsv('Order,Paid\na,12\n', 'Payments.csv'),
+    states = parseCsv('Order,State\na,Open\n', 'States.csv');
+  const files = [new File([''], 'Payments.csv'), new File([''], 'States.csv')];
+  let complete!: (dataset: typeof payments) => void;
+  vi.mocked(openCsvFile)
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        }),
+    )
+    .mockResolvedValueOnce(states);
+  useEditor.setState({ importFileLimitMb: 100 });
+  render(<DataSourcesDialog onClose={vi.fn()} initialFiles={files} />);
+  expect(openCsvFile).toHaveBeenNthCalledWith(1, files[0], 100 * 1024 * 1024);
+  await act(async () => {
+    useEditor.setState({ importFileLimitMb: 50 });
+    complete(payments);
+  });
+  await screen.findByText('States');
+  expect(openCsvFile).toHaveBeenNthCalledWith(2, files[1], 100 * 1024 * 1024);
+  expect(screen.getByText('Payments')).toBeInTheDocument();
+  expect(graphDatasets(useEditor.getState().graph!)).toHaveLength(2);
 });
 it('allows initial auto-fit and a committed save while dropped files load without rolling back viewport or copying existing sources', async () => {
   const primary = parseCsv('Id,Name\nA,Alice\nB,Bob\n', 'Customers.csv');

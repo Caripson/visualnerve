@@ -1,6 +1,13 @@
 import type { SqlImportResult } from './parser';
+import {
+  assertImportBytes,
+  checkedImportLimitBytes,
+  DEFAULT_IMPORT_LIMIT_BYTES,
+  utf8Bytes,
+} from '../imports/limits';
+import { currentImportLimitBytes } from '../imports/preference';
 
-export const SQL_FILE_LIMIT = 50 * 1024 * 1024;
+export const SQL_FILE_LIMIT = DEFAULT_IMPORT_LIMIT_BYTES;
 const timeoutMs = 30_000;
 
 function aborted() {
@@ -11,16 +18,20 @@ function aborted() {
 export async function parseSqlAsync(
   text: string,
   name: string,
-  { signal }: { signal?: AbortSignal } = {},
+  {
+    signal,
+    byteLimit = currentImportLimitBytes(),
+  }: { signal?: AbortSignal; byteLimit?: number } = {},
 ): Promise<SqlImportResult> {
   if (signal?.aborted) throw aborted();
-  if (text.length > SQL_FILE_LIMIT || new TextEncoder().encode(text).byteLength > SQL_FILE_LIMIT)
-    throw new Error('SQL exceeds the 50 MiB file limit.');
+  const limit = checkedImportLimitBytes(byteLimit);
+  assertImportBytes(text.length, limit, 'SQL');
+  assertImportBytes(utf8Bytes(text), limit, 'SQL');
   if (typeof Worker === 'undefined') {
     const { parseSql } = await import('./parser');
     const { arrangeSql } = await import('./layout');
     if (signal?.aborted) throw aborted();
-    const result = await arrangeSql(parseSql(text, name));
+    const result = await arrangeSql(parseSql(text, name, limit));
     if (signal?.aborted) throw aborted();
     return result;
   }
@@ -55,7 +66,7 @@ export async function parseSqlAsync(
     worker.onerror = (event) =>
       finish(undefined, new Error(event.message || 'SQL worker could not run.'));
     try {
-      worker.postMessage({ text, name });
+      worker.postMessage({ text, name, byteLimit: limit });
     } catch (error) {
       finish(undefined, error as Error);
     }

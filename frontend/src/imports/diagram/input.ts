@@ -1,9 +1,16 @@
 import { StorageError } from '../../model/validation';
-import { diagramImportLimits, type DiagramFileInput } from './types';
+import type { DiagramFileInput } from './types';
+import {
+  assertImportBytes,
+  checkedImportLimitBytes,
+  DEFAULT_IMPORT_LIMIT_BYTES,
+  utf8Bytes,
+} from '../limits';
 
 export function diagramFileInput(
   value: unknown,
   importing = false,
+  byteLimit = DEFAULT_IMPORT_LIMIT_BYTES,
 ): DiagramFileInput & { pageId?: string } {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new StorageError(422, 'Provide a diagram file input object.');
@@ -23,39 +30,37 @@ export function diagramFileInput(
       422,
       'Provide drawio XML or base64 vsdx data and an optional name/pageId.',
     );
-  if (
-    input.format === 'drawio' &&
-    new TextEncoder().encode(input.data).byteLength > diagramImportLimits.fileBytes
-  )
-    throw new StorageError(422, 'Diagram file exceeds the 32 MiB limit.');
-  if (input.format === 'vsdx') validateVsdxData(input.data);
+  if (input.format === 'drawio')
+    assertImportBytes(utf8Bytes(input.data), byteLimit, 'Diagram file');
+  if (input.format === 'vsdx') validateVsdxData(input.data, byteLimit);
   return input as unknown as DiagramFileInput & { pageId?: string };
 }
 
-export function decodeVsdx(data: string): Uint8Array {
-  validateVsdxData(data);
+export function decodeVsdx(data: string, byteLimit = DEFAULT_IMPORT_LIMIT_BYTES): Uint8Array {
+  validateVsdxData(data, byteLimit);
   let decoded: string;
   try {
     decoded = atob(data);
   } catch {
     throw new StorageError(422, 'Visio data is not valid base64.');
   }
-  if (
-    decoded.length > diagramImportLimits.fileBytes ||
-    btoa(decoded) !== data ||
-    !decoded.startsWith('PK\u0003\u0004')
-  )
+  assertImportBytes(decoded.length, byteLimit, 'Visio file');
+  if (btoa(decoded) !== data || !decoded.startsWith('PK\u0003\u0004'))
     throw new StorageError(422, 'Visio data must encode a .vsdx ZIP package.');
   return Uint8Array.from(decoded, (character) => character.charCodeAt(0));
 }
-function validateVsdxData(data: string) {
+function validateVsdxData(data: string, byteLimit: number) {
+  const limit = checkedImportLimitBytes(byteLimit);
   if (
     data.length < 8 ||
     data.length % 4 ||
-    data.length > Math.ceil(diagramImportLimits.fileBytes / 3) * 4 ||
+    data.length > Math.ceil(limit / 3) * 4 ||
     !/^[A-Za-z0-9+/]*={0,2}$/.test(data)
   )
-    throw new StorageError(422, 'Visio data must be standard base64 ZIP bytes within 32 MiB.');
+    throw new StorageError(
+      422,
+      'Visio data must be standard base64 ZIP bytes within the configured import size limit.',
+    );
   try {
     if (
       !atob(data.slice(0, 8)).startsWith('PK\u0003\u0004') ||
@@ -65,6 +70,8 @@ function validateVsdxData(data: string) {
   } catch {
     throw new StorageError(422, 'Visio data must encode a .vsdx ZIP package.');
   }
+  const padding = data.endsWith('==') ? 2 : data.endsWith('=') ? 1 : 0;
+  assertImportBytes((data.length / 4) * 3 - padding, limit, 'Visio file');
 }
 
 export function decodeXmlBytes(bytes: Uint8Array): string {

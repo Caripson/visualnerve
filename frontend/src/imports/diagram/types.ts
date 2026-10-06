@@ -1,4 +1,9 @@
 import type { Graph } from '../../model/types';
+import {
+  checkedImportLimitBytes,
+  DEFAULT_IMPORT_LIMIT_BYTES,
+  MAX_IMPORT_LIMIT_BYTES,
+} from '../limits';
 
 export type DiagramFileFormat = 'drawio' | 'vsdx';
 export interface DiagramImportPage {
@@ -18,8 +23,8 @@ export interface DiagramFileInput {
   name?: string;
 }
 export const diagramImportLimits = {
-  fileBytes: 32 * 1024 * 1024,
-  expandedBytes: 64 * 1024 * 1024,
+  fileBytes: DEFAULT_IMPORT_LIMIT_BYTES,
+  expandedBytes: 2 * DEFAULT_IMPORT_LIMIT_BYTES,
   entries: 2048,
   pages: 100,
   nodes: 20_000,
@@ -27,3 +32,11 @@ export const diagramImportLimits = {
   xmlDepth: 256,
   xmlElements: 250_000,
 } as const;
+
+export function diagramByteLimits(byteLimit = DEFAULT_IMPORT_LIMIT_BYTES) {
+  const fileBytes = checkedImportLimitBytes(byteLimit);
+  return {
+    fileBytes,
+    expandedBytes: Math.min(MAX_IMPORT_LIMIT_BYTES, fileBytes * 2),
+  };
+}

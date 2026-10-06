@@ -381,32 +381,21 @@ describe('draw.io diagram import', () => {
   });
 
   it('stops a compressed page before exceeding the expanded output budget', () => {
-    const original = diagramImportLimits.expandedBytes;
-    Object.assign(diagramImportLimits, { expandedBytes: 4096 });
-    try {
-      const xml = model(vertex('a', 'x'.repeat(20_000)));
-      expect(() => parseDrawio(mxfile(compress(xml)), 'bomb.drawio')).toThrow(
-        /expanded draw.io file exceeds/,
-      );
-    } finally {
-      Object.assign(diagramImportLimits, { expandedBytes: original });
-    }
+    const xml = model(vertex('a', 'x'.repeat(20_000)));
+    expect(() => parseDrawio(mxfile(compress(xml)), 'bomb.drawio', 2048)).toThrow(
+      /expanded draw.io file exceeds/,
+    );
   });
 
   it('applies the expanded budget cumulatively across compressed pages', () => {
     const xml = model(vertex('a', 'x'.repeat(800)));
     const compressed = compress(xml);
     const input = `<mxfile><diagram id="first">${compressed}</diagram><diagram id="second">${compressed}</diagram></mxfile>`;
-    const original = diagramImportLimits.expandedBytes;
-    Object.assign(diagramImportLimits, {
-      expandedBytes: new TextEncoder().encode(input).length + encodeURIComponent(xml).length + 100,
-    });
-    try {
-      expect(() => parseDrawio(input, 'cumulative.drawio')).toThrow(
-        /expanded draw.io file exceeds/,
-      );
-    } finally {
-      Object.assign(diagramImportLimits, { expandedBytes: original });
-    }
+    const budget = Math.ceil(
+      (new TextEncoder().encode(input).length + encodeURIComponent(xml).length + 100) / 2,
+    );
+    expect(() => parseDrawio(input, 'cumulative.drawio', budget)).toThrow(
+      /expanded draw.io file exceeds/,
+    );
   });
 });

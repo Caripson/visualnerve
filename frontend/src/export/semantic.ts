@@ -1,6 +1,7 @@
 import { getCodeAnalysis, getCodeObject, getCodeRelation } from '../code/schema';
 import { codeAnalysisSummary, codeObjectSummary, codeRelationSummary } from './code';
 import Papa from 'papaparse';
+import { assertImportBytes, DEFAULT_IMPORT_LIMIT_BYTES, utf8Bytes } from '../imports/limits';
 import { getSqlQuerySource, getSqlQueryResult, getSqlQueryRelationship } from '../sql/query-schema';
 import {
   sqlQuerySourceSummary,
@@ -17,7 +18,12 @@ import {
   type GraphNode,
   type Owner,
 } from '../model/types';
-export function parseImport(format: 'json' | 'markdown' | 'csv', text: string): Graph {
+export function parseImport(
+  format: 'json' | 'markdown' | 'csv',
+  text: string,
+  byteLimit = DEFAULT_IMPORT_LIMIT_BYTES,
+): Graph {
+  assertImportBytes(utf8Bytes(text), byteLimit, 'Import file');
   if (format === 'json') {
     const graph = JSON.parse(text) as Graph;
     if (

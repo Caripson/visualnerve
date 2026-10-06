@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Modal } from './Modal';
 import { DiagramFilePreview } from './DiagramFilePreview';
+import { ImportSizeNotice } from './ImportSizeNotice';
 import type { Graph } from '../model/types';
 import type { DiagramImportResult } from '../imports/diagram/types';
 import { parseDiagramFile } from '../imports/diagram/client';
@@ -67,6 +68,7 @@ export function DiagramFileImportDialog({
           Choose a page to import as editable objects and connections. Your file stays in this
           browser.
         </p>
+        <ImportSizeNotice bytes={file.size} />
         {!result && !error && <p role="status">Reading diagram pages…</p>}
         {error && (
           <p role="alert" className="diagram-file-error">

@@ -3,7 +3,7 @@ import { expect, test, type APIRequestContext, type Page } from './fixtures';
 async function saved(page: Page) {
   await expect(page.getByRole('status').filter({ hasText: /^Saved$/ })).toBeVisible();
 }
-async function select(page: Page, title: string) {
+async function select(page: Page, title: string, request: APIRequestContext) {
   await expect(page.locator('.csv-import-progress')).toBeHidden();
   await page.keyboard.press('Control+f');
   await page.getByLabel('Global search').fill(title);
@@ -12,6 +12,33 @@ async function select(page: Page, title: string) {
     .filter({ has: page.getByText(title, { exact: true }) })
     .click();
   await expect(page.getByLabel('Node title')).toHaveValue(title);
+  // Search animates the camera and saves its final viewport. Wait for that
+  // navigation before starting analysis against a captured graph revision.
+  await expect
+    .poll(async () => {
+      const name = await page.locator('.project-title-button').textContent();
+      const diagrams = await (await request.get('/api/v1/diagrams')).json();
+      const viewport = diagrams.find((diagram: { name: string }) => diagram.name === name)?.settings
+        ?.viewport;
+      if (!viewport) return false;
+      return page.evaluate((viewport: { x: number; y: number; zoom: number }) => {
+        const flow = document.querySelector('.canvas-shell .react-flow');
+        const selected = flow?.querySelector('.react-flow__node.selected');
+        const surface = flow?.querySelector('.react-flow__viewport');
+        if (!flow || !selected || !surface) return false;
+        const canvas = flow.getBoundingClientRect(),
+          node = selected.getBoundingClientRect();
+        const transform = new DOMMatrixReadOnly(getComputedStyle(surface).transform);
+        return (
+          Math.abs((node.left + node.right - canvas.left - canvas.right) / 2) < 1 &&
+          Math.abs((node.top + node.bottom - canvas.top - canvas.bottom) / 2) < 1 &&
+          Math.abs(transform.e - viewport.x) < 0.0001 &&
+          Math.abs(transform.f - viewport.y) < 0.0001 &&
+          Math.abs(transform.a - viewport.zoom) < 0.0001
+        );
+      }, viewport);
+    })
+    .toBe(true);
 }
 async function dataTool(page: Page, name: string) {
   await page.getByLabel('Explore data', { exact: true }).click();
@@ -73,14 +100,14 @@ test('connects 100,000 orders, explores related entities and explains native tot
   await expect(sources).toBeHidden();
   await saved(page);
 
-  await select(page, 'orders');
+  await select(page, 'orders', request);
   await page.getByRole('button', { name: 'Change grouping and measures', exact: true }).click();
   await csv.getByLabel('Measure 1', { exact: true }).selectOption('sum');
   await csv.getByLabel('Measure column 1', { exact: true }).selectOption('c1');
   await csv.getByRole('button', { name: 'Apply data view', exact: true }).click();
   await expect(csv).toBeHidden();
   await saved(page);
-  await select(page, 'orders');
+  await select(page, 'orders', request);
   await page.getByRole('button', { name: 'Explain Sum · Amount', exact: true }).click();
   const explanation = page.getByRole('dialog', { name: 'Explain measure' });
   await expect(explanation.getByRole('heading', { name: /Sum · Amount: 1,050,000/ })).toBeVisible();
@@ -95,11 +122,11 @@ test('connects 100,000 orders, explores related entities and explains native tot
   await expect(quality.getByRole('table', { name: 'Evidence rows' })).toContainText('100000');
   await quality.getByRole('button', { name: 'Close dialog', exact: true }).click();
 
-  await select(page, 'AAA customer 0000');
+  await select(page, 'AAA customer 0000', request);
   await page.getByRole('button', { name: 'Explore this group', exact: true }).click();
   await relatedScope(request, [{ columnId: 'c1', value: 'AAA customer 0000' }]);
   await saved(page);
-  await select(page, 'orders');
+  await select(page, 'orders', request);
   await page.getByRole('button', { name: 'Explain Sum · Amount', exact: true }).click();
   await expect(explanation.getByRole('heading', { name: /Sum · Amount: 525/ })).toBeVisible();
   await expect(explanation).toContainText('50 matching rows');
@@ -111,14 +138,14 @@ test('connects 100,000 orders, explores related entities and explains native tot
 
   await page.reload();
   await saved(page);
-  await select(page, 'orders');
+  await select(page, 'orders', request);
   await page.getByRole('button', { name: 'Explain Sum · Amount', exact: true }).click();
   await expect(explanation.getByRole('heading', { name: /Sum · Amount: 525/ })).toBeVisible();
   await explanation.getByRole('button', { name: 'Close dialog', exact: true }).click();
   await page.getByRole('button', { name: 'All data', exact: true }).click();
   await relatedScope(request, null);
   await saved(page);
-  await select(page, 'orders');
+  await select(page, 'orders', request);
   await page.getByRole('button', { name: 'Explain Sum · Amount', exact: true }).click();
   await expect(explanation.getByRole('heading', { name: /Sum · Amount: 1,050,000/ })).toBeVisible();
 });
@@ -127,7 +154,6 @@ test('quality checks expose original collisions and excluded numbers in the brow
   page,
   request,
 }) => {
-  void request;
   await page.getByLabel('Import file').setInputFiles({
     name: 'quality.csv',
     mimeType: 'text/csv',
@@ -152,7 +178,7 @@ test('quality checks expose original collisions and excluded numbers in the brow
   await quality.getByRole('button', { name: /ambiguous decimal/ }).click();
   await expect(quality.getByRole('table', { name: 'Evidence rows' })).toContainText('1,234');
   await quality.getByRole('button', { name: 'Close dialog', exact: true }).click();
-  await select(page, 'AAA');
+  await select(page, 'AAA', request);
   await page.getByRole('button', { name: 'Explain Sum · Amount', exact: true }).click();
   const explanation = page.getByRole('dialog', { name: 'Explain measure' });
   await expect(explanation.getByRole('heading', { name: /Sum · Amount: 10.5/ })).toBeVisible();

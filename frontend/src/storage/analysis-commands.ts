@@ -1,11 +1,14 @@
 import type { Graph } from '../model/types';
 import { StorageError, validateGraph } from '../model/validation';
-import { parseSqlAsync, SQL_FILE_LIMIT } from '../sql/client';
+import { parseSqlAsync } from '../sql/client';
+import { assertImportBytes, utf8Bytes } from '../imports/limits';
 import type { CodeInput } from '../code/types';
 import { codeLanguageIds, codeLimits } from '../code/types';
 
 export interface AnalysisCommandOptions {
   signal?: AbortSignal;
+  /** Captured browser preference; never accepted from the source payload. */
+  byteLimit?: number;
   /** Recheck external grants after analysis and before its first write. */
   beforeAnalysisSave?: () => Promise<void>;
 }
@@ -73,19 +76,16 @@ export async function analysisCommand(
           (data.name !== undefined && !nonempty(data.name, 500))
         )
           throw new StorageError(422, 'Provide a SQL script and an optional nonempty name.');
-        if (
-          data.sql.length > SQL_FILE_LIMIT ||
-          new TextEncoder().encode(data.sql).byteLength > SQL_FILE_LIMIT
-        )
-          throw new StorageError(422, 'SQL exceeds the 50 MiB file limit.');
+        assertImportBytes(utf8Bytes(data.sql), options.byteLimit, 'SQL file');
         return parseSqlAsync(data.sql, String(data.name ?? 'Imported SQL'), {
           signal: options.signal,
+          byteLimit: options.byteLimit,
         });
       })()
     : await (async () => {
         const input = codeInput(payload);
         const { parseCodeAsync } = await import('../code/client');
-        return parseCodeAsync(input, { signal: options.signal });
+        return parseCodeAsync(input, { signal: options.signal, byteLimit: options.byteLimit });
       })();
   validateGraph(result.graph);
   if (endpoint.endsWith('/preview')) return result;

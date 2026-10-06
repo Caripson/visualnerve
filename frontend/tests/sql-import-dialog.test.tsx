@@ -255,7 +255,7 @@ it('loads a bounded SQL file and prevents a late file read from replacing edited
   const oversized = new File([], 'large.sql');
   Object.defineProperty(oversized, 'size', { value: 50 * 1024 * 1024 + 1 });
   fireEvent.change(screen.getByLabelText('Load SQL file'), { target: { files: [oversized] } });
-  expect(screen.getByRole('alert')).toHaveTextContent('50 MiB or smaller');
+  expect(screen.getByRole('alert')).toHaveTextContent('50 MB import limit');
   expect(screen.getByLabelText('SQL script')).toHaveValue(source);
   expect(screen.getByLabelText('Load SQL file')).toHaveAttribute(
     'accept',

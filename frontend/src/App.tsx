@@ -28,6 +28,7 @@ import { CodeImportDialog } from './components/CodeImportDialog';
 import { DiagramFileImportDialog } from './components/DiagramFileImportDialog';
 import { useImportFiles } from './imports/useImportFiles';
 import { importFileAccept } from './imports/fileRouting';
+import { currentImportLimitBytes } from './imports/preference';
 import { analyzeCsv } from './data/client';
 import { getCsvNode } from './data/csv';
 import type { CsvAnalysis, CsvDataset, CsvPathEntry } from './data/types';
@@ -718,7 +719,11 @@ export function App() {
           legacyImport={
             csvDraft.file
               ? async () => {
-                  const graph = parseImport('csv', await csvDraft.file!.text());
+                  const graph = parseImport(
+                    'csv',
+                    await csvDraft.file!.text(),
+                    currentImportLimitBytes(),
+                  );
                   await workspace.create(graph);
                 }
               : undefined

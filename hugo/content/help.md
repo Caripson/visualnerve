@@ -48,6 +48,12 @@ Choose the pencil in the bottom canvas controls to draw with a mouse, finger or 
 
 Strokes follow the diagram's pan and zoom and save locally as a separate layer. They do not change nodes, connections or CSV calculations. PNG/PDF include the visible layer; JSON and full backups retain it even when hidden. Fit diagram also includes visible strokes, and a drawing-only diagram can be exported.
 
+## Import file size
+
+Local imports default to **50 MB**. In **Settings → Import file size**, enter a whole number from **50 to 1024** in **Maximum import file size (MB)** and choose **Save import limit**. MB here means MiB; 1024 MB is 1 GB. **Only imports up to 50 MB are supported and guaranteed.** Higher limits are experimental and may be slow or fail because of browser memory or format constraints. Row, object and analysis-time limits still apply.
+
+This preference stays in this browser. Backups exclude it, and both Merge and Replace keep the destination browser's own limit. API/MCP JSON and WebSocket envelopes still have a 32 MiB limit regardless of this setting.
+
 ## Explore a CSV
 
 Drop a CSV onto the workspace or use **Import**. Choose column cleanup, row filters, ordered grouping columns and measures in the preview. A cleanup pattern such as `^\d+\s*-\s*` removes a numeric prefix from company names while preserving original cells. Numeric measures recognize decimal dots and commas; select a column's number format when values such as `1,234` are ambiguous.
@@ -58,7 +64,7 @@ CSV groups are real diagram objects. Move them and add connections with labels, 
 
 Copying a CSV object into another diagram keeps its measures as a snapshot; the source rows remain with the original data diagram.
 
-CSV sources and analysis choices stay in this browser and are included in diagram JSON and full backups. PNG/PDF exports show the current CSV view. Files support at most 50 MiB, 200,000 rows, 200 columns and 10 million cells. CSVs using the older `title`-column diagram format can still use **Import as existing diagram rows instead** in the preview.
+CSV sources and analysis choices stay in this browser and are included in diagram JSON and full backups. PNG/PDF exports show the current CSV view. The default file limit is 50 MB; [Import file size](#import-file-size) controls the selected limit. CSV still supports at most 200,000 rows, 200 columns and 10 million cells. CSVs using the older `title`-column diagram format can still use **Import as existing diagram rows instead** in the preview.
 
 ## Connect sources and repeat an analysis
 
@@ -82,7 +88,7 @@ The importer supports common PostgreSQL, MySQL and SQL Server `CREATE TABLE` def
 
 Cards show up to 12 columns and PK/FK/UQ/nullability badges. Select a table to inspect its complete schema and keys in Properties, with 100 columns per page. Select a foreign-key connection for its column pairs and delete/update actions. Move, rename and connect imported objects, assign status or draw over them. Schema objects save locally and survive JSON export, backups and reload.
 
-SQL is never executed or sent to a database. Query diagrams show logical structure; they do not show returned rows or a physical optimizer plan. Unsupported query constructs are rejected with a clear error. For DDL, row data and unsupported statements are ignored; DROP/RENAME/MODIFY changes are not applied and produce notes. Review schemas because they represent imported CREATE/ADD definitions, not the final state of every migration. Scripts are limited to 50 MiB. Schema limits are 2,000 table objects, 100,000 columns and 10,000 foreign keys; query limits are 100 blocks, nesting depth 16, 2,000 sources, 10,000 outputs and 10,000 relationships.
+SQL is never executed or sent to a database. Query diagrams show logical structure; they do not show returned rows or a physical optimizer plan. Unsupported query constructs are rejected with a clear error. For DDL, row data and unsupported statements are ignored; DROP/RENAME/MODIFY changes are not applied and produce notes. Review schemas because they represent imported CREATE/ADD definitions, not the final state of every migration. Files and pasted scripts default to a 50 MB limit; [Import file size](#import-file-size) controls the selected limit. Schema limits are 2,000 table objects, 100,000 columns and 10,000 foreign keys; query limits are 100 blocks, nesting depth 16, 2,000 sources, 10,000 outputs and 10,000 relationships.
 
 The raw script is a temporary draft. **Query output expressions, JOIN conditions and clauses retain their literal values** in local storage, JSON, backups and recognized text exports. DDL INSERT/COPY rows, default and CHECK expressions and procedure bodies are excluded; ENUM labels within data types may remain as schema structure. Comments and the complete source script are not saved. Review names, expressions and filters before sharing. [How your data is stored](/privacy/#sql-schema-import).
 
@@ -92,11 +98,15 @@ Choose **Visualize code**, paste a script and select its language, or choose sou
 
 These are normal editable objects with status, drawing, links, 2D/3D and export. Analysis is local and bounded; it does not execute code or provide full compiler semantic analysis. Dynamic or ambiguous references can be unresolved. Choose the language explicitly for ambiguous extensions such as `.m`, `.h` and `.cls`. Original source/comments/nonstructural literals are not saved; extracted identifiers, paths, lines and evidence remain. Review names and paths before sharing. API/MCP can discover languages and preview/create diagrams through the local bridge. [Data handling](/privacy/#source-code-import).
 
+The default source limit is 50 MB per file and 50 MB for the whole project; both use the selected [import file size](#import-file-size). Limits remain 500 files, 10,000 extracted symbols, 5,000 diagram objects, 10,000 connections and a 30-second analysis deadline.
+
 ## Import draw.io or Visio
 
-Drop a `.drawio` or `.vsdx` file onto the workspace, or use **Import**. Preview the file, review its pages and warnings, select one page and choose **Create diagram**. Preview runs locally without saving; creation stores and opens only that selected page as editable native objects and relationships. Move or rename objects, edit connections, assign owners/status, draw over the diagram or explore it in 3D. JSON/backup and PNG/PDF export use the native result.
+Drop a `.drawio` or `.vsdx` file onto the workspace, or use **Import**. Review its pages and warnings, select **Diagram page**, optionally edit **Diagram name** and choose **Create diagram**. Preview runs locally without saving; creation stores and opens only that selected page as editable native objects and relationships. Move or rename objects, edit connections, assign owners/status, draw over the diagram or explore it in 3D. JSON/backup and PNG/PDF export use the native result.
 
-The conversion approximates source drawings. Advanced/custom shapes, rich formatting, rotations and connector waypoints may be simplified with warnings. Original XML/ZIP, embedded image bytes and unselected pages are temporary. Images, macros, scripts and external content are never fetched or executed. Retained links require absolute HTTP(S). `.vsd` and `.vsdm` are unsupported; export them to `.vsdx` or draw.io XML first. Limits are 32 MiB/file, 64 MiB expanded, 2,048 ZIP entries, 100 pages, 20,000 total objects, 40,000 total connections, group depth 256 and a 30-second analysis deadline. Cancel stops analysis. Review imported text and links before sharing. [Data handling](/privacy/#drawio-and-visio-import).
+The conversion approximates source drawings. Advanced/custom shapes, rich formatting, rotations and connector waypoints may be simplified with warnings. Original XML/ZIP, embedded image bytes and unselected pages are temporary. Images, macros, scripts and external content are never fetched or executed. Retained links require absolute HTTP(S). `.vsd` and `.vsdm` are unsupported; export them to `.vsdx` or draw.io XML first.
+
+The default file limit is 50 MB and expanded-data limit is 100 MB. [Import file size](#import-file-size) controls the file limit; expanded data is bounded at twice the selected limit, with a minimum of 100 MB and a maximum of 1 GB. Other limits remain 2,048 ZIP entries, 100 pages, 20,000 total objects, 40,000 total connections, group depth 256 and a 30-second analysis deadline. API/MCP `.vsdx` files must remain below roughly 24 MiB because base64 must fit the unchanged 32 MiB transport envelope. Cancel stops analysis. Review imported text and links before sharing. [Data handling](/privacy/#drawio-and-visio-import).
 
 ## Build an app with Lovable
 
@@ -118,7 +128,7 @@ Changes from other tabs appear through local database updates. A version conflic
 
 JSON is the complete restorable format, including owners, metadata, hierarchy, layout, viewport and imported SQL schema. Markdown exports semantic outlines and process relationships. Import accepts Visual Nerve JSON, headings/lists in Markdown, CSV data or the older CSV diagram format with a title column, SQL/DDL scripts through their preview, and a selected page from draw.io `.drawio` or Visio `.vsdx` files. PNG exports viewport, selection or full graph at 1×, 2× or 4×. PDF supports A4/A3, portrait/landscape and tiled pages. Complete rendered exports include collapsed and off-screen objects.
 
-Settings controls theme and **Data & Privacy**. **Export all data** downloads a dated complete backup of projects, owners, portable settings, templates and CSV datasets. **Restore backup** previews Merge (keep current diagrams) or Replace (remove current work, requiring confirmation). Connection grants and storage acceptance are never imported. **Export diagram** remains a separate PNG/PDF/Markdown/JSON choice.
+Settings controls theme, **Import file size** and **Data & Privacy**. **Export all data** downloads a dated complete backup of projects, owners, portable settings, templates and CSV datasets. **Restore backup** previews Merge (keep current diagrams) or Replace (remove current work, requiring confirmation). Connection grants and storage acceptance are never imported; both modes keep this browser's own import-file limit. **Export diagram** remains a separate PNG/PDF/Markdown/JSON choice.
 
 Clearing site data, resetting a browser profile or uninstalling the browser may remove work. Private/incognito sessions may discard it on closing. Another browser/profile/device, or a different website address, opens an independent workspace; nothing synchronizes automatically. Export a backup to move or keep a copy. Storage details shows estimated usage and, after you create a diagram, an optional browser retention request. A grant cannot prevent manual clearing or guarantee retention. Global deletion is separately confirmed under Data & Privacy. [How your data is stored](/privacy/).
 

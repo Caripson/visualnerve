@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { utf8Bytes } from '../imports/limits';
+import { ImportSizeNotice } from './ImportSizeNotice';
 import { Modal } from './Modal';
 import { CodeSourceFields } from './CodeSourceFields';
 import { CodeImportPreview } from './CodeImportPreview';
@@ -24,6 +26,13 @@ export function CodeImportDialog({
   const [language, setLanguage] = useState<CodeLanguage>('typescript');
   const [text, setText] = useState('');
   const [files, setFiles] = useState<CodeFile[]>([]);
+  const sourceBytes = useMemo(
+    () =>
+      files.length
+        ? files.reduce((sum, file) => sum + utf8Bytes(file.content), 0)
+        : utf8Bytes(text),
+    [files, text],
+  );
   const [mode, setMode] = useState<'files' | 'symbols'>('files');
   const [focus, setFocus] = useState('');
   const [preview, setPreview] = useState<CodeImportResult | null>(null);
@@ -164,6 +173,7 @@ export function CodeImportDialog({
           Understand files, declarations and dependencies across 50 languages. Analysis runs
           locally; source code is never executed.
         </p>
+        <ImportSizeNotice bytes={sourceBytes} />
         <label className="field">
           Diagram name
           <input

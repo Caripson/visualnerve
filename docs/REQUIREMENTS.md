@@ -129,3 +129,24 @@ bound analysis. Read-only REST/MCP preview and write-gated page creation use the
 same parser and repository, rechecking consent/access before saving. API,
 OpenAPI, MCP discovery and user/privacy documentation describe the contracts.
 See [DIAGRAM_IMPORT.md](DIAGRAM_IMPORT.md) for formats, limits and fidelity.
+
+## 2026-10-06: Import size preference and dialog spacing
+
+Settings lets users save a browser-local import file size limit from 50 through
+1024 MB (UI MB means MiB; 1024 MB is 1 GiB). The default remains 50 MB. Only
+imports up to 50 MB are supported and guaranteed. Raising the limit shows an
+experimental warning; actual large source imports also show a notice. Browser
+memory, format, object/count and analysis deadline limits still apply.
+
+The captured preference governs local CSV, SQL, code, draw.io/Visio,
+JSON/Markdown imports and backup file reads. Code uses the same ceiling per file
+and for the project total. The setting persists in IndexedDB, remains local to
+the device and cannot be changed by restoring a backup. API/MCP analysis uses
+the saved browser preference; HTTP/JSON and WebSocket envelopes remain 32 MiB.
+The exact GET/PUT setting contract is documented in API, OpenAPI and MCP.
+
+Common dialog styles provide separate blocks, readable paragraph line spacing,
+label/control gaps, wrapped action rows and reachable controls on narrow
+screens. Settings, source refresh and nested SQL quality diagnostics must stay
+within a 320-pixel viewport without horizontal overflow. Shared modal styles
+live in their own CSS module.

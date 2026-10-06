@@ -20,15 +20,19 @@ After the first visit, the app keeps its files for offline use. You can edit and
 
 ## Keep a portable copy
 
-In **Settings → Data & Privacy**, choose **Export all data**. This downloads a dated JSON backup of all your diagrams, nodes, connections, owners, preferences and templates. Keep the file somewhere you choose. Visual Nerve does not upload it or create an automatic backup.
+In **Settings → Data & Privacy**, choose **Export all data**. This downloads a dated JSON backup of all your diagrams, nodes, connections, owners, portable preferences and templates. The local import-size preference is excluded. Keep the file somewhere you choose. Visual Nerve does not upload it or create an automatic backup.
 
-On another browser or computer, use **Restore backup**. **Merge with existing data** keeps current diagrams and adds the imported work. **Replace all local data** removes the current workspace before restoring the file and requires confirmation. Connection permissions are never imported.
+On another browser or computer, use **Restore backup**. **Merge with existing data** keeps current diagrams and adds the imported work. **Replace all local data** removes the current workspace before restoring the file and requires confirmation. Connection permissions are never imported. Both modes ignore any imported file-size preference and keep the destination browser's own limit.
 
 **Export diagram** is a separate option for a single diagram as PNG, PDF, Markdown or JSON. Use **Export all data** for a complete restorable workspace.
 
 Clearing this site's browser data, resetting your browser profile or uninstalling the browser may remove your work. Private or incognito browsing may use temporary storage that disappears when the session ends. Export a backup when you want a separate copy.
 
 **Storage details** shows an estimate of site storage, when your browser supports it. Once you have a diagram, you can ask the browser to keep local data. Browser decisions vary; a grant can reduce automatic eviction under storage pressure, but cannot prevent manual clearing or guarantee retention.
+
+## Import size preference
+
+Local imports default to 50 MB. **Settings → Import file size → Maximum import file size (MB)** accepts whole numbers from 50 to 1024; **Save import limit** keeps the preference only in this browser. MB here means MiB, and 1024 MB is 1 GB. Only imports up to 50 MB are supported and guaranteed. Higher limits are experimental and may be slow or fail because of browser memory or format constraints. The preference changes neither source privacy nor the 32 MiB API/MCP JSON/WebSocket envelope. [Import size and limits](/help/#import-file-size).
 
 ## SQL schema import
 

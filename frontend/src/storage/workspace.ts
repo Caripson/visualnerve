@@ -12,6 +12,7 @@ import {
 } from '../integration/access';
 import type { WorkspaceBackup } from './database';
 import { getSpatialView } from '../spatial/types';
+import { assertImportLimitMb, IMPORT_LIMIT_SETTING, importLimitMb } from '../imports/limits';
 
 /** Commit a pending local camera before a user-requested snapshot or navigation. */
 export function flushSpatialCamera() {
@@ -102,6 +103,7 @@ export class Workspace {
         diagrams: [],
         owners: [],
         mcpAccess: 'off',
+        importFileLimitMb: 50,
         workspaceId: '',
       });
       return;
@@ -235,6 +237,7 @@ export class Workspace {
       diagrams: preferences.get('storage-consent') === true ? diagrams : [],
       owners: preferences.get('storage-consent') === true ? owners : [],
       theme: String(preferences.get('theme') ?? 'system'),
+      importFileLimitMb: importLimitMb(preferences.get(IMPORT_LIMIT_SETTING)),
       mcpAccess:
         preferences.get('storage-consent') === true
           ? mcpAccess(preferences.get('mcp-access'))
@@ -325,6 +328,7 @@ export class Workspace {
     if (key === 'bridge-url') localBridgeUrl(String(value));
     if (key === 'mcp-access' && !['off', 'read', 'write'].includes(String(value)))
       throw new StorageError(422, 'Invalid MCP access level.');
+    if (key === IMPORT_LIMIT_SETTING) assertImportLimitMb(value);
     this.settingsRevision++;
     if (key === 'theme') useEditor.setState({ theme: String(value) });
     if (key === 'mcp-access') useEditor.setState({ mcpAccess: mcpAccess(value) });
@@ -333,6 +337,7 @@ export class Workspace {
       useEditor.setState({ backupNudgeDismissed: value === true });
     try {
       await this.repo.db.settings.put({ key, value });
+      if (key === IMPORT_LIMIT_SETTING) useEditor.setState({ importFileLimitMb: value as number });
       await this.refresh();
     } catch (error) {
       this.error(error);

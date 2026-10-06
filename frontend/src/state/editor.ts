@@ -56,6 +56,7 @@ interface Editor {
   status: SaveStatus;
   message: string;
   theme: string;
+  importFileLimitMb: number;
   mcpAccess: McpAccess;
   bridgeUrl: string;
   workspaceId: string;
@@ -125,6 +126,7 @@ export const useEditor = create<Editor>((set, get) => ({
   status: 'saved',
   message: '',
   theme: 'system',
+  importFileLimitMb: 50,
   mcpAccess: 'off',
   bridgeUrl: '',
   workspaceId: '',

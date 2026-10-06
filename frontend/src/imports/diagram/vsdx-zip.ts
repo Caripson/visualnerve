@@ -1,9 +1,8 @@
 import { Inflate } from 'fflate';
-import { diagramImportLimits } from './types';
+import { diagramImportLimits, diagramByteLimits } from './types';
 import { decodeXmlBytes } from './input';
+import { assertImportBytes, DEFAULT_IMPORT_LIMIT_BYTES } from '../limits';
 
-const fileLimit = diagramImportLimits.fileBytes;
-const expandedLimit = diagramImportLimits.expandedBytes;
 const entryLimit = diagramImportLimits.entries;
 const utf8 = new TextDecoder('utf-8', { fatal: true });
 const invalidZip = () => new Error('Invalid or unsupported Visio ZIP package.');
@@ -33,9 +32,15 @@ export class VisioPackage {
   private entries = new Map<string, Entry>();
   private cache = new Map<string, string>();
   private expanded = 0;
+  private expandedLimit: number;
 
-  constructor(private bytes: Uint8Array) {
-    if (bytes.length > fileLimit) throw new Error('Visio files are limited to 32 MiB.');
+  constructor(
+    private bytes: Uint8Array,
+    byteLimit = DEFAULT_IMPORT_LIMIT_BYTES,
+  ) {
+    const limits = diagramByteLimits(byteLimit);
+    this.expandedLimit = limits.expandedBytes;
+    assertImportBytes(bytes.length, limits.fileBytes, 'Visio file');
     if (bytes.length < 22) throw invalidZip();
     const data = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     const u16 = (offset: number) => data.getUint16(offset, true);
@@ -99,8 +104,7 @@ export class VisioPackage {
       )
         throw invalidZip();
       declared += expanded;
-      if (declared > expandedLimit)
-        throw new Error('Expanded Visio packages are limited to 64 MiB.');
+      assertImportBytes(declared, this.expandedLimit, 'Expanded Visio package');
       if (u32(local) !== 0x04034b50 || u16(local + 6) !== flags || u16(local + 8) !== compression)
         throw invalidZip();
       const localNameLength = u16(local + 26);
@@ -144,7 +148,7 @@ export class VisioPackage {
       let count = 0;
       const inflater = new Inflate((chunk) => {
         count += chunk.length;
-        if (count > entry.expanded || this.expanded + count > expandedLimit)
+        if (count > entry.expanded || this.expanded + count > this.expandedLimit)
           throw new Error('Visio ZIP data exceeds its declared expanded size.');
         chunks.push(chunk);
       });

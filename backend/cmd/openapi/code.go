@@ -14,14 +14,14 @@ func addCodeSchemas(schemas object) {
 		"id": ref("CodeLanguage"), "name": text(100), "extensions": list(text(100), 30), "family": text(100), "capabilities": list(text(100), 30),
 	})
 	schemas["CodeFile"] = record([]string{"path", "content"}, object{
-		"path": text(500), "content": object{"type": "string", "maxLength": 5 * 1024 * 1024}, "language": ref("CodeLanguage"),
+		"path": text(500), "content": object{"type": "string", "maxLength": absoluteImportByteLimit}, "language": ref("CodeLanguage"),
 	})
 	schemas["CodeFile"].(object)["description"] = "Relative unique file path. Explicit language is required for ambiguous extensions such as .m; SQL defaults to SQL, use tsql/plsql explicitly for dialects. Source is analyzed locally and never executed."
 	schemas["CodeInput"] = record([]string{"files"}, object{
 		"name": text(500), "files": list(ref("CodeFile"), 500), "mode": object{"type": "string", "enum": []string{"files", "symbols"}, "default": "files"}, "focus": text(500),
 	})
 	schemas["CodeInput"].(object)["properties"].(object)["files"].(object)["minItems"] = 1
-	schemas["CodeInput"].(object)["description"] = "20 MiB total decoded UTF-8, 5 MiB per file, 500 files, 100,000 lines per file, 500,000 project lines, 20,000 characters per line, 10,000 extracted symbols, 5,000 diagram objects and 10,000 diagram connections. Structural outline, not compiler verification. Focus matches path/name substrings case-insensitively and includes immediate neighbors. Bridge JSON envelope limit: 32 MiB. Original source/comments/string literals are not saved; names/paths are retained."
+	schemas["CodeInput"].(object)["description"] = importLimitPolicyDescription + " Code applies that selected decoded UTF-8 byte limit to each file and to the total project (50 MiB each by default), with an absolute 1 GiB ceiling. Other limits: 500 files, 100,000 lines per file, 500,000 project lines, 20,000 characters per line, 10,000 extracted symbols, 5,000 diagram objects and 10,000 diagram connections; 30-second worker deadline. Structural outline, not compiler verification. Focus matches path/name substrings case-insensitively and includes immediate neighbors. Original source/comments/string literals are not saved; names/paths are retained."
 	schemas["CodeObject"] = record([]string{"version", "language", "path", "kind", "name"}, object{
 		"version": object{"type": "integer", "enum": []int{1}}, "language": ref("CodeLanguage"), "path": text(500), "kind": object{"type": "string", "enum": []string{"file", "class", "function", "type", "resource", "query", "measure", "variable", "external"}}, "name": text(500), "line": object{"type": "integer", "minimum": 1}, "endLine": object{"type": "integer", "minimum": 1}, "external": object{"type": "boolean"}, "summary": list(text(500), 200),
 	})

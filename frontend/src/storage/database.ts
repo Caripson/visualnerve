@@ -9,6 +9,7 @@ import {
   type Owner,
 } from '../model/types';
 import { instantiate, templates } from '../templates/templates';
+import { IMPORT_LIMIT_SETTING } from '../imports/limits';
 export interface Setting {
   key: string;
   value: unknown;
@@ -239,6 +240,7 @@ export class WorkspaceDatabase extends Dexie {
             'storage-consent',
             'last-export',
             'backup-nudge-dismissed',
+            IMPORT_LIMIT_SETTING,
           ].includes(setting.key),
       ),
       templates: await this.templates.toArray(),

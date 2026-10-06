@@ -1,9 +1,16 @@
 import { blankGraph, newEdge, newNode, type Graph } from '../model/types';
 import type { SqlColumn, SqlRelationship, SqlTable } from './schema';
 import { parseSqlQueries } from './query';
+import {
+  assertImportBytes,
+  checkedImportLimitBytes,
+  DEFAULT_IMPORT_LIMIT_BYTES,
+  LARGE_IMPORT_WARNING,
+  utf8Bytes,
+} from '../imports/limits';
 
 export const sqlLimits = {
-  bytes: 50 * 1024 * 1024,
+  bytes: DEFAULT_IMPORT_LIMIT_BYTES,
   tables: 2000,
   columns: 100_000,
   relationships: 10_000,
@@ -606,26 +613,17 @@ function tableDefinition(tokens: Token[], table: Table, warn: (message: string) 
 }
 
 /** Local structural import. SQL is never executed or retained as a complete source script. */
-export function parseSql(sql: string, name = 'Imported SQL'): SqlImportResult {
-  if (sql.length > sqlLimits.bytes) fail('SQL files are limited to 50 MiB.');
-  let bytes = 0;
-  for (let i = 0; i < sql.length; i++) {
-    const code = sql.charCodeAt(i);
-    if (code < 0x80) bytes++;
-    else if (code < 0x800) bytes += 2;
-    else if (
-      code >= 0xd800 &&
-      code <= 0xdbff &&
-      sql.charCodeAt(i + 1) >= 0xdc00 &&
-      sql.charCodeAt(i + 1) <= 0xdfff
-    ) {
-      bytes += 4;
-      i++;
-    } else bytes += 3;
-    if (bytes > sqlLimits.bytes) fail('SQL files are limited to 50 MiB.');
-  }
+export function parseSql(
+  sql: string,
+  name = 'Imported SQL',
+  byteLimit = DEFAULT_IMPORT_LIMIT_BYTES,
+): SqlImportResult {
+  const limit = checkedImportLimitBytes(byteLimit);
+  assertImportBytes(sql.length, limit, 'SQL');
+  const sourceBytes = utf8Bytes(sql);
+  assertImportBytes(sourceBytes, limit, 'SQL');
   const tables = new Map<string, Table>();
-  const warnings: string[] = [];
+  const warnings: string[] = sourceBytes > DEFAULT_IMPORT_LIMIT_BYTES ? [LARGE_IMPORT_WARNING] : [];
   let droppedWarnings = 0;
   const warn = (message: string) => {
     if (warnings.length < sqlLimits.warnings - 1) warnings.push(message);
@@ -786,7 +784,14 @@ export function parseSql(sql: string, name = 'Imported SQL'): SqlImportResult {
     }
     if (skipped) ignoredStatementCount++;
   }
-  if (!tables.size && queries.length) return parseSqlQueries(queries, name, ignoredStatementCount);
+  if (!tables.size && queries.length) {
+    const result = parseSqlQueries(queries, name, ignoredStatementCount);
+    if (sourceBytes > DEFAULT_IMPORT_LIMIT_BYTES) {
+      result.warnings.unshift(LARGE_IMPORT_WARNING);
+      result.warnings.splice(sqlLimits.warnings);
+    }
+    return result;
+  }
   if (queries.length) {
     ignoredStatementCount += queries.length;
     warn(

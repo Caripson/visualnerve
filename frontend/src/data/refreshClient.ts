@@ -2,11 +2,19 @@ import type { Graph } from '../model/types';
 import type { CsvDataset } from './types';
 import type { CsvRefreshOptions, RemovedSourcePolicy, SourceRefreshResult } from './refresh';
 import { graphDatasets } from './model';
+import { assertImportBytes, checkedImportLimitBytes, utf8Bytes } from '../imports/limits';
+import { currentImportLimitBytes } from '../imports/preference';
 
 export type RefreshRequest =
-  | { operation: 'parse'; file: File }
+  | { operation: 'parse'; file: File; byteLimit?: number }
   | { operation: 'csv'; graph: Graph; incoming: CsvDataset; options: CsvRefreshOptions }
-  | { operation: 'sql'; graph: Graph; text: string; removedPolicy: RemovedSourcePolicy };
+  | {
+      operation: 'sql';
+      graph: Graph;
+      text: string;
+      removedPolicy: RemovedSourcePolicy;
+      byteLimit?: number;
+    };
 
 function aborted() {
   return new DOMException('Source refresh was cancelled.', 'AbortError');
@@ -75,9 +83,16 @@ function restoreUnchangedSources(graph: Graph, result: SourceRefreshResult): Sou
     },
   };
 }
-export async function loadRefreshCsv(file: File, { signal }: { signal?: AbortSignal } = {}) {
-  if (file.size > 50 * 1024 * 1024) throw new Error('CSV exceeds the 50 MiB file limit.');
-  return request<CsvDataset>({ operation: 'parse', file }, signal);
+export async function loadRefreshCsv(
+  file: File,
+  {
+    signal,
+    byteLimit = currentImportLimitBytes(),
+  }: { signal?: AbortSignal; byteLimit?: number } = {},
+) {
+  const limit = checkedImportLimitBytes(byteLimit);
+  assertImportBytes(file.size, limit, 'CSV');
+  return request<CsvDataset>({ operation: 'parse', file, byteLimit: limit }, signal);
 }
 export async function previewCsvRefresh(
   graph: Graph,
@@ -94,11 +109,19 @@ export async function previewSqlRefresh(
   graph: Graph,
   text: string,
   removedPolicy: RemovedSourcePolicy,
-  { signal }: { signal?: AbortSignal } = {},
+  {
+    signal,
+    byteLimit = currentImportLimitBytes(),
+  }: { signal?: AbortSignal; byteLimit?: number } = {},
 ) {
-  if (text.length > 50 * 1024 * 1024) throw new Error('SQL exceeds the 50 MiB file limit.');
+  const limit = checkedImportLimitBytes(byteLimit);
+  assertImportBytes(text.length, limit, 'SQL');
+  assertImportBytes(utf8Bytes(text), limit, 'SQL');
   return restoreUnchangedSources(
     graph,
-    await request<SourceRefreshResult>({ operation: 'sql', graph, text, removedPolicy }, signal),
+    await request<SourceRefreshResult>(
+      { operation: 'sql', graph, text, removedPolicy, byteLimit: limit },
+      signal,
+    ),
   );
 }

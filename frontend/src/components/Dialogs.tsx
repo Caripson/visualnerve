@@ -18,6 +18,7 @@ import { type Owner, type Graph, ownersFor } from '../model/types';
 import { download, markdown, safeName } from '../export/semantic';
 import { DataPrivacy, StorageNotice } from './DataPrivacy';
 import { McpSettings } from './McpSettings';
+import { ImportSettings } from './ImportSettings';
 import { exportAllData } from '../storage/backup';
 import type { WorkspaceBackup } from '../storage/database';
 import type { RenderOptions } from '../export/rendered';
@@ -506,6 +507,7 @@ export function SettingsDialog({
         </select>
       </Field>
       <DataPrivacy restore={restore} deleted={close} />
+      <ImportSettings />
       <McpSettings />
       <div className="property-section">Keyboard shortcuts</div>
       <div className="shortcuts">

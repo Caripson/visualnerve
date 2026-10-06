@@ -479,3 +479,62 @@ the preview/page-selection guide and the complete updated OpenAPI schema
 (192,706 bytes), without modifying browser records.
 
 Work stays on main; deployment to S3/CloudFront remains manual.
+
+## 2026-10-06: Configurable local import size and dialog spacing
+
+Settings now saves a browser-local integer import limit from 50 through 1024
+MB (MiB), with 50 MB as the supported default and 1 GiB as the hard ceiling.
+Only imports up to 50 MB are supported and guaranteed. Higher limits show an
+experimental warning in Settings and large-source import dialogs; format,
+row/object counts and analysis deadlines remain enforced. Shared nonallocating
+UTF-8 byte counting and captured worker budgets replace the former fixed byte
+checks across CSV, source refresh, SQL, code, diagram files and native imports.
+Backup file reads also check the selected limit before reading. Code checks
+both each file and the complete project. Compressed diagram expansion remains
+bounded, scaling with the preference up to an absolute 1 GiB.
+
+The preference persists in IndexedDB, is excluded from exported backups, and
+Merge/Replace ignore incoming values while retaining the destination's own
+limit. Invalid numeric values, extra setting fields and failed storage writes
+cannot replace the committed preference. GET returns the effective integer,
+defaulting to 50 for absent/invalid saved data; PUT validates an exact value
+payload. REST/MCP commands capture the browser preference rather than accepting
+an override in source input. Their JSON/WebSocket envelopes remain 32 MiB.
+API, generated OpenAPI, MCP discovery and user/privacy/storage docs agree.
+
+Common dialog styles moved to a separate CSS module. Modal block spacing,
+paragraph line height, label/control gaps, touch checkboxes and wrapped action
+rows are consistent; source refresh and nested SQL quality text receive explicit
+spacing. The new browser cases measure those gaps and confirm no horizontal
+overflow at 320 pixels. Phone Settings, source refresh, SQL diagnostics and the
+large-file warning screenshots were visually inspected.
+
+The complete frontend run passed 922 cases across 86 files in 189.5 seconds.
+After the final batch CSV fix, all 65 relevant cases passed: the first file is
+deferred while the preference changes, and every file retains the budget that
+was captured at batch start. Formatting, Go race tests/vet and the production
+TypeScript/Vite/Hugo/OpenAPI/Go build passed. The static audit contains 269
+application files and 39 offline-shell assets, without user data files.
+
+All 36 relevant browser scenarios passed across focused runs: three new cases
+and regressions for CSV/SQL/code/Visio/draw.io imports, source refresh, quality,
+MCP/read-write grants, public HTTPS storage, backups, phone layout and rendered
+exports. A real draw.io file slightly above 50 MiB is refused before parsing at
+the default, then parses in a worker and persists one native object after the
+limit is raised to 60 MB. Its large ignored source comment is not retained.
+The 1 GiB setting/validation boundary is tested without allocating a 1 GiB
+file; this is not a claim that every browser/format can process that size.
+
+An existing linked-data scenario attempted analysis before search finished its
+camera animation and viewport save. Its helper now waits for the selected
+object to be centered and for the displayed viewport to match its persisted
+coordinates before issuing the next command; totals and focus assertions remain
+unchanged. Five subsequent complete 100,000-order runs passed, and the final
+two repeated runs of both linked-data and quality cases were green. Historical
+screenshot fixtures were retained.
+
+The local bridge was restarted with its existing bind/origin configuration.
+Live read-only MCP checks confirm initialization and request-tool discovery,
+the import guide, GET/PUT setting contract and the full updated OpenAPI resource,
+without changing browser records. Work stays on main and S3/CloudFront
+deployment remains manual.

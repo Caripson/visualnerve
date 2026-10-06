@@ -4,6 +4,7 @@ import { useEditor } from '../state/editor';
 import type { Base, Graph } from '../model/types';
 import type { CsvDataset } from '../data/types';
 import { openCsvFile } from '../data/client';
+import { currentImportLimitBytes } from '../imports/preference';
 import { defaultAnalysis } from '../data/csv';
 import {
   graphDatasets,
@@ -137,6 +138,7 @@ export function DataSourcesDialog({
       if (!graph || !files.length) return;
       cancel();
       const current = generation.current;
+      const byteLimit = currentImportLimitBytes();
       setWorking(true);
       setError('');
       setPreview(null);
@@ -145,7 +147,7 @@ export function DataSourcesDialog({
         if (graphDatasets(next).length + files.length > 8)
           throw new Error('A diagram supports up to 8 CSV sources.');
         for (const file of files) {
-          const parsed = await openCsvFile(file);
+          const parsed = await openCsvFile(file, byteLimit);
           if (!mounted.current || current !== generation.current) return;
           const dataset = { ...parsed, diagramId: graph.diagram.id };
           next = {

@@ -59,8 +59,8 @@ export function CodeSourceFields({
         </label>
       </div>
       <p className="code-note">
-        Up to 500 files, 5 MiB per file and 20 MiB total. Folder selection skips dependencies and
-        build output.
+        Up to 500 files. The import size setting applies to each file and the complete project; its
+        default is 50 MB. Folder selection skips dependencies and build output.
       </p>
       {loadNote && <p className="code-note">{loadNote}</p>}
       {files.length ? (

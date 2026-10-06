@@ -1,6 +1,7 @@
 import { SaxesParser } from 'saxes';
 import { decodeHTML } from 'entities';
 import { diagramImportLimits } from './types';
+import { assertImportBytes, utf8Bytes } from '../limits';
 
 export interface XmlNode {
   name: string;
@@ -11,9 +12,11 @@ export interface XmlNode {
 }
 
 /** Worker-safe XML tree. No DTD, external resolver, DOM insertion or fetch. */
-export function parseXml(text: string): XmlNode {
-  if (new TextEncoder().encode(text).length > diagramImportLimits.expandedBytes)
-    throw new Error('Diagram XML exceeds the 64 MiB expanded limit.');
+export function parseXml(
+  text: string,
+  expandedByteLimit: number = diagramImportLimits.expandedBytes,
+): XmlNode {
+  assertImportBytes(utf8Bytes(text), expandedByteLimit, 'Expanded diagram XML');
   if (/<!\s*(?:DOCTYPE|ENTITY)\b/i.test(text))
     throw new Error('Diagram XML must not contain DTD or entity declarations.');
   let root: XmlNode | undefined;

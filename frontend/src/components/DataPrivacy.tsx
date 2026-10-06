@@ -5,6 +5,8 @@ import { workspace } from '../storage/workspace';
 import { database, type WorkspaceBackup } from '../storage/database';
 import { exportAllData } from '../storage/backup';
 import { Modal } from './Modal';
+import { assertImportBytes } from '../imports/limits';
+import { currentImportLimitBytes } from '../imports/preference';
 
 export function StorageNotice() {
   return (
@@ -310,6 +312,7 @@ export function DataPrivacy({
           const selected = event.target.files?.[0];
           if (!selected) return;
           try {
+            assertImportBytes(selected.size, currentImportLimitBytes(), 'Backup file');
             const data = JSON.parse(await selected.text()) as WorkspaceBackup;
             if (data.format !== 'visual-nerve-workspace' || !Array.isArray(data.diagrams))
               throw new Error('Choose a Visual Nerve backup file.');
