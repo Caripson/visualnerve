@@ -10,6 +10,7 @@ Base: `http://localhost:4317/api/v1`. Responses and request bodies are JSON unle
 | --- | --- | --- |
 | GET | /health | Static server, indexeddb storage, bridge enabled/connected and version |
 | GET / POST | /diagrams | List / create diagram |
+| POST | /spatial-diagrams | Create and open a 3D diagram; return complete Graph |
 | GET / PATCH / DELETE | /diagrams/{id} | Complete canonical graph / diagram properties / cascading deletion |
 | GET / POST | /diagrams/{id}/nodes | List / create node |
 | GET / PATCH / DELETE | /nodes/{id} | Read / update / delete and detach children |
@@ -67,6 +68,18 @@ Send to `POST /diagrams/DIAGRAM_UUID/bulk`. `parentExternalId` resolves a node h
 `POST /import` accepts `{ "format": "json", "data": GRAPH_OBJECT }`, or `{ "format": "markdown", "data": "# Root\n## Child" }`, or CSV text. JSON remaps colliding IDs and their internal references together, preserving graph information. Owners with unchanged identity/content are reused. See [EXPORT_FORMAT.md](EXPORT_FORMAT.md) for exchange details. Dates must be valid `YYYY-MM-DD`; user URLs are absolute HTTP(S); entity IDs are UUIDs.
 
 ## MCP
+
+Create an empty 3D mind map through `visual_nerve_request`:
+
+```json
+{"path":"/spatial-diagrams","method":"POST","data":{"name":"Project overview","type":"mindmap"}}
+```
+
+The optional `type` selects an existing diagram type; the default is `mindmap`. The response is a canonical Graph with UUIDs and versions. Populate it with node creation or bulk external-ID upserts, then use versioned PATCH for edits. Any subject uses ordinary diagram objects and relationships: for example, an AI can create a Brain topic linked to topics for its parts and add explanations in descriptions or notes.
+
+`metadata.spatial` accepts `{ "version": 1, "position": { "x": -2, "y": 0, "z": 1 } }`. Without explicit positions, the view derives bounded depth from hierarchy and directed relationships. +Y points up, +Z toward the front and −X toward the left. `diagram.settings.spatialView` stores `{ "version": 1, "mode": "3d" }` and optional `camera: { position: {x,y,z}, target: {x,y,z} }`. Supply the complete reserved object when replacing it; other settings/metadata keys follow the existing patch contract.
+
+Node coordinates must be finite and within ±1,000,000; camera coordinates allow ±10,000,000 to frame the diagram. Camera position must differ from target, and unknown reserved keys are rejected transactionally. Keep node `x/y/width/height` readable for the 2D view and PNG/PDF export. See [spatial diagrams](docs/SPATIAL_DIAGRAMS.md).
 
 The same optional server exposes Streamable HTTP POST at `/mcp`. Supported protocol: 2025-06-18. Clients initialize, send notifications/initialized, then use tools/list or tools/call. The `visual_nerve_request` tool accepts:
 

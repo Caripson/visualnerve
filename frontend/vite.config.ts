@@ -8,6 +8,8 @@ export default defineConfig(({ command }) => ({
   build: {
     outDir: '../hugo/static/editor',
     emptyOutDir: true,
+    // The static shell serves one fixed stylesheet; keep lazy views in that file.
+    cssCodeSplit: false,
     rollupOptions: {
       input: 'src/main.tsx',
       output: {

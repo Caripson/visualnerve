@@ -1,4 +1,15 @@
 import { defineConfig } from '@playwright/test';
+export const browserLaunchOptions = {
+  ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+    ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
+    : {}),
+  args: [
+    '--no-sandbox',
+    '--ignore-certificate-errors',
+    '--host-resolver-rules=MAP public-app.test 127.0.0.1',
+    '--no-proxy-server',
+  ],
+};
 export default defineConfig({
   testDir: './tests/e2e',
   timeout: 90000,
@@ -12,18 +23,8 @@ export default defineConfig({
     viewport: { width: 1440, height: 980 },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    launchOptions: {
-      ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
-        ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
-        : {}),
-      // Self-signed certificates and synthetic DNS are confined to isolated tests.
-      args: [
-        '--no-sandbox',
-        '--ignore-certificate-errors',
-        '--host-resolver-rules=MAP public-app.test 127.0.0.1',
-        '--no-proxy-server',
-      ],
-    },
+    // Self-signed certificates and synthetic DNS are confined to isolated tests.
+    launchOptions: browserLaunchOptions,
   },
   webServer: {
     command: '../scripts/e2e-server.sh',

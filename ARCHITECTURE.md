@@ -23,6 +23,8 @@ Optional: Codex → local MCP → loopback WebSocket bridge → active browser �
 
 The canonical TypeScript model is `frontend/src/model/types.ts`. The Go model supplies matching documented integration DTOs, not persistence. The editor separates semantic models, canvas projection/rendering, layout, state/commands, storage, optional integration, and exports. Node renderers remain registered in one extensible registry.
 
+The optional 3D canvas is a lazy-loaded Three.js view over the same projection, canonical objects and relationships. Spatial metadata supplies independent world coordinates and camera state; 2D geometry remains the export source. Bounded scene construction, shared geometries, event-driven rendering and explicit disposal keep the view usable over large data diagrams. Context failure retains a keyboard object list and an immediate return to 2D. See [3D diagrams](docs/SPATIAL_DIAGRAMS.md).
+
 ## Persistence and state
 
 `storage/database.ts` defines the seven Dexie tables and upgrades existing browser data in place. `storage/repository.ts` validates and applies graph operations inside IndexedDB transactions. `storage/workspace.ts` opens IndexedDB, loads diagrams/owners/preferences and the last project, then connects editor state. UI commands update optimistically and immediately queue database transactions. Saved means the transaction committed; it does not depend on a server or internet connection. Drag and resize gestures commit at their end.

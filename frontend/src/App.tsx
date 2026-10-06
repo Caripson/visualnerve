@@ -35,6 +35,7 @@ import {
   clearDataModelFocus,
 } from './data/model';
 import { getExploration } from './analysis/types';
+import { getSpatialView } from './spatial/types';
 import { reanalyzeDataModelAsync } from './data/modelClient';
 import { DataSourcesDialog } from './components/DataSourcesDialog';
 import { SourceRefreshDialog } from './components/SourceRefreshDialog';
@@ -462,7 +463,8 @@ export function App() {
         s.selectedNodes.length === 1
       ) {
         e.preventDefault();
-        s.beginEditing(s.selectedNodes[0]);
+        if (getSpatialView(s.graph!).mode === '2d') s.beginEditing(s.selectedNodes[0]);
+        else useEditor.setState({ mobilePanel: 'details' });
       } else if (
         s.graph?.diagram.type === 'mindmap' &&
         s.selectedNodes.length &&
@@ -472,7 +474,8 @@ export function App() {
         e.preventDefault();
         e.stopPropagation();
         const id = s.child(key === 'enter');
-        if (id) useEditor.getState().beginEditing(id);
+        if (id && getSpatialView(s.graph!).mode === '2d') useEditor.getState().beginEditing(id);
+        else if (id) useEditor.setState({ mobilePanel: 'details' });
       }
     };
     window.addEventListener('keydown', listener, true);
@@ -576,7 +579,11 @@ export function App() {
                   )}
                 </span>
                 <span>
-                  {graph.diagram.type === 'mindmap' ? (
+                  {getSpatialView(graph).mode === '3d' ? (
+                    <>
+                      Drag: rotate <i>·</i> Scroll: zoom <i>·</i> Select: inspect
+                    </>
+                  ) : graph.diagram.type === 'mindmap' ? (
                     <>
                       Tab: subtopic <i>·</i> Enter: sibling <i>·</i> Double-click: edit
                     </>

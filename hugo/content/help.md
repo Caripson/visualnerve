@@ -12,6 +12,10 @@ On a phone, drag the empty canvas with one finger to pan and pinch with two fing
 
 ## Edit your graph
 
+Use **3D** above the canvas to explore the same objects and relationships in space. Drag to rotate, scroll or pinch to zoom, and choose Front, Back, Left, Right or Top for a named orientation. Fit frames the view and Focus selected centers an object. **2D** and **Return to 2D** bring back the saved overview. PNG and PDF always use this independent 2D layout; while in 3D, the viewport export uses the saved 2D pan and zoom.
+
+Select a diagram object, relationship or an entry in **Objects and relationships** to edit its shared properties, notes, status or links. **3D placement** sets independent X/Y/Z positions. Draw on the overview in 2D; the drawing layer is retained in exports. **Data → New 3D truck lifecycle example** (phones: **…**) creates a truck lifecycle diagram with ordinary topics, descriptions and connections. Camera and placement save locally and are included in JSON and full backups. If this browser cannot render 3D, the object list and Return to 2D remain available.
+
 Use **Add node**, choose a type, and edit its title and details in the properties panel. Drag between node handles to connect them, or use the toolbar connection button. Select an edge to change its label, direction, relationship, description or style. Drag an edge endpoint to reconnect it. Select a node and drag a corner handle to resize it.
 
 Click the project name to rename it; Enter saves and Escape cancels. With no item selected, **F2** also opens the project name. Choose a project icon beside its name. Select an item for quick **Edit**, **Color**, **Icon**, duplicate and delete actions. The icon picker includes sixteen areas and supports searching in English or Swedish. Icons are also available in properties and are preserved in JSON, copying and image exports.

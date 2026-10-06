@@ -219,3 +219,47 @@ All 45 distinct browser scenarios passed across the full run and final six-case
 rerun. The rerun kept the existing 5,000-object performance thresholds unchanged.
 The final 100,000-row source-refresh review took 1,229 ms, with 69 animation frames
 and a largest frame gap of 100 ms on this machine.
+
+## Shared 2D and compact 3D diagrams
+
+Ordinary mind map objects, text and relationships can be viewed and edited in a
+rotatable 3D diagram. Large mind maps receive deterministic, compact hierarchy
+clusters across three axes; explicit spatial positions take precedence. The
+same canonical objects retain their notes, status, parent hierarchy and
+relationships. Spatial positions and the saved camera remain independent of
+the original 2D geometry, so returning to 2D and exporting PNG/PDF preserves
+the readable diagram overview.
+
+The fictional Truck lifecycle example contains 25 objects and 24 relationships:
+one root, six lifecycle stages and three subtopics per stage. Manufacturing,
+delivery, operation, maintenance, second life and recycling have distinct 3D
+branches and a separate readable 2D arrangement.
+
+The six [spatial browser scenarios](../frontend/tests/e2e/spatial.spec.ts) cover
+rotation and saved camera state while editing objects, statuses and connections;
+MCP creation and population with nonblank canonical 2D PNG/PDF exports and JSON
+round trips; offline reload and full workspace backup restoration; usable
+Return to 2D controls at 320 px; recovery of the complete saved 2D diagram when
+the deferred 3D module cannot load; and an interactive, automatically placed
+mind map with 2,501 ordinary objects and 2,500 relationships. The large fixture
+checks actual rendered counts, labels after switching to the Back view, focus
+of a searched object, and unchanged 2D geometry and relationships. It is a
+functional check on the test machine, rather than a performance guarantee for
+arbitrary devices or graphs.
+
+Verified locally on 2026-10-06. The full frontend run passed all 449
+unit/component cases across 53 files. The complete browser run passed 50
+scenarios, followed by all six spatial cases passing against the final
+production build in 2.1 minutes, covering 51 distinct scenarios in total.
+Go race tests and vet, formatting, TypeScript/Vite/Hugo/OpenAPI/Go production
+build and the static audit passed. The audit found 261 application files with
+no user data; the offline shell contains 32 local assets, including the deferred
+3D renderer. The final screenshots and canonical 2D export were visually
+reviewed.
+
+Retained fictional fixture evidence:
+[Truck lifecycle in 3D](acceptance/spatial-truck-lifecycle.png),
+[2,501-object mind map](acceptance/spatial-2501-mindmap.png),
+[Canonical 2D export](acceptance/spatial-2d-export.png) and
+[320 px phone 2D overview](acceptance/spatial-phone-2d.png).
+No actual user data is included. S3/CloudFront deployment remains manual.

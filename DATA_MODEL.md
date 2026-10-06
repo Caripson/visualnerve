@@ -4,6 +4,8 @@
 
 All entity IDs are UUIDs, with positive versions and creation/update timestamps. Exchange documents contain `format: "visual-nerve"`, `formatVersion: 1`, diagram, nodes, edges and referenced owners. Application extensions belong in metadata.
 
+3D shares these canonical records and IDs. `diagram.settings.spatialView` stores version 1, mode (`2d`/`3d`) and an optional position/target camera. `node.metadata.spatial` stores version 1, optional X/Y/Z placement. Node world coordinates allow ±1,000,000 and camera coordinates ±10,000,000; both require finite numbers, and camera position must differ from target. Reserved keys and enums are strictly validated. Existing 2D geometry and viewport remain independent. No IndexedDB migration or additional table is needed. See [3D contract](docs/SPATIAL_DIAGRAMS.md).
+
 - Diagram: name, description, type, folder, tags, favorite, metadata and settings. Supported types: blank, mindmap, flowchart, timeline, process, dependency, responsibility and freeform.
 - Node: diagramId, externalId, nodeType, title, description, notes, URL, status, color, tags, metadata, dates, parentId and collapsed. Absolute x/y/width/height describe layout. ownerIds is canonical; ownerId aliases its first member.
 - Edge: diagramId, externalId, sourceNodeId, targetNodeId, label, edgeType, direction, style, description and metadata. Endpoints must exist in the same diagram.

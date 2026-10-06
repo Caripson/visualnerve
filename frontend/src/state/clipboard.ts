@@ -1,6 +1,7 @@
 import { base, type Graph, type GraphNode, type GraphEdge } from '../model/types';
 import { getCsvNode } from '../data/csv';
 import { graphDatasets } from '../data/model';
+import { offsetSpatialNode } from '../spatial/types';
 export interface Clip {
   format: 'visual-nerve-clipboard';
   nodes: GraphNode[];
@@ -26,7 +27,7 @@ export function pasteSelection(
   const remap = new Map(clip.nodes.map((n) => [n.id, crypto.randomUUID()]));
   return {
     nodes: clip.nodes.map((n) => {
-      const copy = structuredClone(n);
+      const copy = offsetSpatialNode(structuredClone(n), offset / 120);
       const csv = getCsvNode(copy);
       if (csv && copy.metadata.csv !== undefined) {
         if (!datasetIds.has(csv.datasetId)) {

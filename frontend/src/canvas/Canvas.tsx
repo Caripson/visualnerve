@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   applyNodeChanges,
   applyEdgeChanges,
@@ -32,6 +32,21 @@ import { fitDiagram } from '../drawing/navigation';
 import { exploreRelationshipsAsync } from '../analysis/client';
 import { getExploration } from '../analysis/types';
 import '../components/analysis-tools.css';
+import { getSpatialView, setSpatialView, type SpatialCamera } from '../spatial/types';
+import type { SpatialCanvasProps } from '../spatial/SpatialCanvas';
+function SpatialLoadFailure({ onReturnTo2D }: SpatialCanvasProps) {
+  return (
+    <div className="canvas-shell spatial-canvas">
+      <p role="status">The 3D view could not be loaded. Continue editing in 2D.</p>
+      <button onClick={onReturnTo2D}>Return to 2D</button>
+    </div>
+  );
+}
+const SpatialCanvas = lazy(() =>
+  import('../spatial/SpatialCanvas')
+    .then((module) => ({ default: module.SpatialCanvas }))
+    .catch(() => ({ default: SpatialLoadFailure })),
+);
 const pendingExploration = {
   nodeIds: [],
   edgeIds: [],
@@ -53,6 +68,7 @@ export function Canvas() {
   const explorationBusy = useEditor((s) => s.explorationBusy);
   const explorationError = useEditor((s) => s.explorationError);
   const viewportRequest = useEditor((s) => s.viewportRequest);
+  const spatial = graph ? getSpatialView(graph).mode === '3d' : false;
   const exploration = useMemo(
     () => (graph ? getExploration(graph) : undefined),
     [graph?.diagram.settings.relationshipExploration],
@@ -195,10 +211,10 @@ export function Canvas() {
   const diagramId = graph?.diagram.id;
   useEffect(() => {
     const viewport = useEditor.getState().graph?.diagram.settings.viewport;
-    if (viewportRequest && viewport) void flow.setViewport(viewport, { duration: 180 });
-  }, [viewportRequest, flow]);
+    if (!spatial && viewportRequest && viewport) void flow.setViewport(viewport, { duration: 180 });
+  }, [viewportRequest, flow, spatial]);
   useEffect(() => {
-    if (!graph) return;
+    if (!graph || spatial) return;
     const frame = requestAnimationFrame(() => {
       const viewport = graph.diagram.settings.viewport;
       const touchView = graph.diagram.settings.viewportDevice === 'touch';
@@ -226,10 +242,10 @@ export function Canvas() {
         void flow.fitView({ padding: graph.diagram.type === 'mindmap' ? 0.14 : 0.3, maxZoom: 1 });
     });
     return () => cancelAnimationFrame(frame);
-  }, [diagramId, touch]);
+  }, [diagramId, touch, spatial]);
   const focus = useEditor((s) => s.focusNode);
   useEffect(() => {
-    if (!focus) return;
+    if (!focus || spatial) return;
     const node = flow.getNode(focus);
     if (node && !node.hidden) {
       if (useEditor.getState().editingNode === focus && graph?.diagram.type === 'mindmap') {
@@ -242,7 +258,7 @@ export function Canvas() {
       } else void flow.fitView({ nodes: [node], maxZoom: 1.1, padding: 1, duration: 250 });
       useEditor.setState({ focusNode: null });
     }
-  }, [focus, nodes, flow]);
+  }, [focus, nodes, flow, spatial]);
   const changes = useCallback((changes: NodeChange<CanvasNode>[]) => {
     const state = useEditor.getState();
     const selection = changes.filter((change) => change.type === 'select');
@@ -278,7 +294,7 @@ export function Canvas() {
       )
         return;
       const s = useEditor.getState();
-      if (!s.graph) return;
+      if (!s.graph || getSpatialView(s.graph).mode === '3d') return;
       if (s.drawingTool !== 'none') return;
       if (e.key.startsWith('Arrow') && s.selectedNodes.length && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
@@ -307,7 +323,43 @@ export function Canvas() {
     window.addEventListener('keydown', listener, true);
     return () => window.removeEventListener('keydown', listener, true);
   }, [flow]);
+  const returnTo2D = useCallback(() => {
+    useEditor.getState().command('2D view', (current) => setSpatialView(current, { mode: '2d' }));
+  }, []);
+  const saveCamera = useCallback(
+    (camera: SpatialCamera) => {
+      const state = useEditor.getState();
+      if (
+        !state.graph ||
+        state.graph.diagram.id !== diagramId ||
+        getSpatialView(state.graph).mode !== '3d'
+      )
+        return;
+      if (JSON.stringify(getSpatialView(state.graph).camera) === JSON.stringify(camera)) return;
+      state.command('3D camera', (current) => setSpatialView(current, { camera }), true);
+    },
+    [diagramId],
+  );
   if (!graph) return null;
+  if (spatial)
+    return (
+      <Suspense
+        fallback={
+          <div className="canvas-shell spatial-canvas">
+            <p role="status">Loading 3D view…</p>
+            <button onClick={returnTo2D}>Return to 2D</button>
+          </div>
+        }
+      >
+        <SpatialCanvas
+          graph={graph}
+          nodes={projected.nodes}
+          edges={projected.edges}
+          onReturnTo2D={returnTo2D}
+          onCameraChange={saveCamera}
+        />
+      </Suspense>
+    );
   const toggle = (key: 'grid' | 'snap') =>
     useEditor.getState().command(`Toggle ${key}`, (g) => ({
       ...g,
@@ -348,6 +400,7 @@ export function Canvas() {
           if (
             s.graph &&
             s.graph.diagram.id === diagramId &&
+            getSpatialView(s.graph).mode === '2d' &&
             (JSON.stringify(s.graph.diagram.settings.viewport) !== JSON.stringify(viewport) ||
               s.graph.diagram.settings.viewportDevice !== (touch ? 'touch' : 'desktop'))
           ) {

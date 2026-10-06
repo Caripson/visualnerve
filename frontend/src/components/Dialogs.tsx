@@ -11,7 +11,7 @@ import {
 import { Modal } from './Modal';
 import { Field } from './Properties';
 import { useEditor } from '../state/editor';
-import { workspace } from '../storage/workspace';
+import { flushSpatialCamera, workspace } from '../storage/workspace';
 import { database } from '../storage/database';
 import { templates, instantiate } from '../templates/templates';
 import { type Owner, type Graph, ownersFor } from '../model/types';
@@ -21,6 +21,7 @@ import { McpSettings } from './McpSettings';
 import { exportAllData } from '../storage/backup';
 import type { WorkspaceBackup } from '../storage/database';
 import type { RenderOptions } from '../export/rendered';
+import { getSpatialView } from '../spatial/types';
 export function NewDiagram({ close }: { close: () => void }) {
   const [name, setName] = useState('Untitled diagram');
   const [template, setTemplate] = useState('blank');
@@ -89,6 +90,9 @@ export function NewDiagram({ close }: { close: () => void }) {
   );
 }
 export function ExportDialog({ close }: { close: () => void }) {
+  const spatial = useEditor((state) =>
+    state.graph ? getSpatialView(state.graph).mode === '3d' : false,
+  );
   const [target, setTarget] = useState('diagram');
   const [format, setFormat] = useState<'json' | 'markdown' | 'png' | 'pdf'>('json');
   const [options, setOptions] = useState<RenderOptions>({
@@ -168,7 +172,7 @@ export function ExportDialog({ close }: { close: () => void }) {
               onChange={(e) => set({ scope: e.target.value as RenderOptions['scope'] })}
             >
               <option value="complete">Complete diagram</option>
-              <option value="viewport">Current viewport</option>
+              <option value="viewport">{spatial ? 'Saved 2D viewport' : 'Current viewport'}</option>
               <option value="selected">Selected nodes</option>
             </select>
           </Field>
@@ -229,7 +233,9 @@ export function ExportDialog({ close }: { close: () => void }) {
           ? 'Includes nodes, relationships, owners, metadata, layout and view settings. Import this file to restore the diagram.'
           : format === 'markdown'
             ? 'Exports graph meaning as headings, process steps and relationships.'
-            : 'Rendered locally from the canvas. Complete export includes off-screen and collapsed nodes.'}
+            : spatial
+              ? 'PNG and PDF use the 2D diagram, including drawing marks. Complete includes off-screen and collapsed nodes. Saved 2D viewport uses your last 2D crop, or fits the diagram if none is saved.'
+              : 'Rendered locally from the canvas. Complete export includes off-screen and collapsed nodes.'}
       </p>
       <StorageNotice />
       {error && <p className="form-error">{error}</p>}
@@ -242,6 +248,7 @@ export function ExportDialog({ close }: { close: () => void }) {
             setBusy(true);
             setError('');
             try {
+              flushSpatialCamera();
               await workspace.settled();
               const state = useEditor.getState();
               if (!state.graph) return;

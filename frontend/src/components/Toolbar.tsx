@@ -31,6 +31,9 @@ import type { NodeKind, TimelineScale } from '../model/types';
 import type { DialogName } from '../App';
 import { DocumentTitle } from '../ui/DocumentTitle';
 import { statusLabel } from '../ui/status';
+import { getSpatialView, setSpatialView } from '../spatial/types';
+import { createSpatialExample } from '../spatial/examples';
+import { workspace } from '../storage/workspace';
 export function Toolbar({
   open,
   showFilters,
@@ -57,6 +60,21 @@ export function Toolbar({
   );
   if (!graph) return null;
   const mindmap = graph.diagram.type === 'mindmap';
+  const spatial = getSpatialView(graph).mode === '3d';
+  const switchView = (mode: '2d' | '3d') => {
+    window.dispatchEvent(new Event('visualnerve:spatial-camera-flush'));
+    const state = useEditor.getState();
+    state.finishEditing();
+    state.setDrawingTool('none');
+    state.command(`${mode.toUpperCase()} view`, (current) => setSpatialView(current, { mode }));
+  };
+  const newSpatialExample = async () => {
+    try {
+      await workspace.create(createSpatialExample());
+    } catch (error) {
+      useEditor.setState({ status: 'error', message: (error as Error).message });
+    }
+  };
   const addTopic = (sibling = false) => {
     const state = useEditor.getState();
     const current = state.graph!;
@@ -68,7 +86,8 @@ export function Toolbar({
       state.select([parent.id]);
       id = state.child(sibling);
     } else id = state.addNode();
-    if (id) useEditor.getState().beginEditing(id);
+    if (id && !spatial) useEditor.getState().beginEditing(id);
+    else if (id) useEditor.setState({ mobilePanel: 'details' });
   };
   const runLayout = async () => {
     setBusy(true);
@@ -154,6 +173,15 @@ export function Toolbar({
           </button>
         </div>
       </div>
+      <div className="spatial-view-bar" role="group" aria-label="Diagram view">
+        <button aria-label="2D view" aria-pressed={!spatial} onClick={() => switchView('2d')}>
+          2D
+        </button>
+        <button aria-label="3D view" aria-pressed={spatial} onClick={() => switchView('3d')}>
+          3D
+        </button>
+        <span>{spatial ? 'Rotate to explore · export uses 2D' : 'Overview · draw and export'}</span>
+      </div>
       <div className="editor-toolbar">
         <div className="toolbar-group">
           {mindmap ? (
@@ -190,12 +218,13 @@ export function Toolbar({
                 className="add-node"
                 onClick={() => {
                   const rect = document.querySelector('.canvas-shell')?.getBoundingClientRect();
-                  const point = rect
-                    ? flow.screenToFlowPosition({
-                        x: rect.left + rect.width / 2 - 100,
-                        y: rect.top + rect.height / 2 - 43,
-                      })
-                    : { x: 0, y: 0 };
+                  const point =
+                    rect && !spatial
+                      ? flow.screenToFlowPosition({
+                          x: rect.left + rect.width / 2 - 100,
+                          y: rect.top + rect.height / 2 - 43,
+                        })
+                      : undefined;
                   useEditor.getState().addNode({ nodeType: kind, ...point });
                 }}
               >
@@ -256,7 +285,11 @@ export function Toolbar({
             <option value="UP">Bottom → Top</option>
             <option value="RADIAL">Radial</option>
           </select>
-          <button disabled={busy || !graph.nodes.length} onClick={runLayout}>
+          <button
+            disabled={spatial || busy || !graph.nodes.length}
+            onClick={runLayout}
+            title={spatial ? 'Switch to 2D to arrange the overview' : undefined}
+          >
             <GitBranch size={14} />
             {busy ? 'Laying out…' : 'Auto layout'}
           </button>
@@ -271,7 +304,10 @@ export function Toolbar({
               useEditor.setState({ focusMap: !focusMap });
               setTimeout(() => {
                 const current = useEditor.getState().graph;
-                if (current?.diagram.id === graph.diagram.id)
+                if (
+                  current?.diagram.id === graph.diagram.id &&
+                  getSpatialView(current).mode === '2d'
+                )
                   void fitDiagram(flow, current, 0.14, 250, 1, flowStore.getState());
               }, 80);
             }}
@@ -311,6 +347,15 @@ export function Toolbar({
             <Database size={15} /> Data
           </summary>
           <div className="picker-panel mobile-tool-menu">
+            <button
+              className="full"
+              onClick={(event) => {
+                event.currentTarget.closest('details')?.removeAttribute('open');
+                void newSpatialExample();
+              }}
+            >
+              New 3D truck lifecycle example
+            </button>
             <button className="full" onClick={() => open('sources')}>
               Data sources
             </button>
@@ -327,6 +372,15 @@ export function Toolbar({
             <MoreHorizontal size={20} />
           </summary>
           <div className="picker-panel mobile-tool-menu">
+            <button
+              className="full"
+              onClick={(event) => {
+                event.currentTarget.closest('details')?.removeAttribute('open');
+                void newSpatialExample();
+              }}
+            >
+              New 3D truck lifecycle example
+            </button>
             <button className="full" onClick={() => open('sources')}>
               Data sources
             </button>
@@ -358,7 +412,7 @@ export function Toolbar({
             </select>
             <button
               className="full"
-              disabled={busy || !graph.nodes.length}
+              disabled={spatial || busy || !graph.nodes.length}
               onClick={(e) => {
                 e.currentTarget.closest('details')?.removeAttribute('open');
                 void runLayout();
@@ -409,6 +463,7 @@ export function Toolbar({
         <button
           aria-label="Fit diagram"
           title="Fit diagram (F)"
+          disabled={spatial}
           onClick={() => void fitDiagram(flow, graph, mindmap ? 0.14 : 0.25)}
         >
           <Maximize size={15} />

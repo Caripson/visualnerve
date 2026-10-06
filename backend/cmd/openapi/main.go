@@ -67,14 +67,22 @@ func clone(m object) object {
 }
 func main() {
 	schemas := object{}
+	schemas["SpatialPoint"] = object{"type": "object", "required": []string{"x", "y", "z"}, "additionalProperties": false, "properties": object{"x": object{"type": "number", "minimum": -1000000, "maximum": 1000000}, "y": object{"type": "number", "minimum": -1000000, "maximum": 1000000}, "z": object{"type": "number", "minimum": -1000000, "maximum": 1000000}}}
+	schemas["SpatialCameraPoint"] = object{"type": "object", "required": []string{"x", "y", "z"}, "additionalProperties": false, "properties": object{"x": object{"type": "number", "minimum": -10000000, "maximum": 10000000}, "y": object{"type": "number", "minimum": -10000000, "maximum": 10000000}, "z": object{"type": "number", "minimum": -10000000, "maximum": 10000000}}}
+	schemas["SpatialCamera"] = object{"type": "object", "required": []string{"position", "target"}, "additionalProperties": false, "description": "Position must differ from target. +Y is up, +Z is front and -X is left. Camera coordinates have a wider limit to frame all valid node positions.", "properties": object{"position": ref("SpatialCameraPoint"), "target": ref("SpatialCameraPoint")}}
+	schemas["SpatialView"] = object{"type": "object", "required": []string{"version", "mode"}, "additionalProperties": false, "properties": object{"version": object{"type": "integer", "enum": []int{1}}, "mode": object{"type": "string", "enum": []string{"2d", "3d"}}, "camera": ref("SpatialCamera")}}
+	schemas["SpatialNode"] = object{"type": "object", "required": []string{"version"}, "additionalProperties": false, "properties": object{"version": object{"type": "integer", "enum": []int{1}}, "position": ref("SpatialPoint")}}
+	schemas["SpatialDiagramInput"] = object{"type": "object", "required": []string{"name"}, "additionalProperties": false, "properties": object{"name": object{"type": "string", "minLength": 1, "maxLength": 500}, "type": object{"type": "string", "enum": model.DiagramTypes}}}
 	for name, v := range map[string]any{"Diagram": model.Diagram{}, "Node": model.Node{}, "Edge": model.Edge{}, "Owner": model.Owner{}} {
 		s := schema(reflect.TypeOf(v))
 		p := s["properties"].(object)
 		if name == "Diagram" {
+			p["settings"].(object)["properties"] = object{"spatialView": ref("SpatialView")}
 			p["type"].(object)["enum"] = model.DiagramTypes
 			s["required"] = []string{"name", "type"}
 		}
 		if name == "Node" {
+			p["metadata"].(object)["properties"] = object{"spatial": ref("SpatialNode")}
 			p["nodeType"].(object)["enum"] = model.NodeTypes
 			s["required"] = []string{"title"}
 		}
@@ -193,6 +201,7 @@ func main() {
 	add("GET", "/health", "Check static server and optional bridge; storage is in the browser", "", "Health", "200")
 	add("GET", "/diagrams", "List diagrams", "", "Diagram[]", "200")
 	add("POST", "/diagrams", "Create a diagram", "DiagramInput", "Diagram", "201")
+	add("POST", "/spatial-diagrams", "Create and open a 3D diagram with independent 2D layout", "SpatialDiagramInput", "Graph", "201")
 	add("GET", "/diagrams/{diagramId}", "Get complete canonical graph", "", "Graph", "200")
 	add("PATCH", "/diagrams/{diagramId}", "Update diagram using its version", "DiagramPatch", "Diagram", "200")
 	add("DELETE", "/diagrams/{diagramId}", "Delete diagram and graph; retain owners", "", "", "204")

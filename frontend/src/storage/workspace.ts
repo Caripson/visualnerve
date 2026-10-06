@@ -11,6 +11,40 @@ import {
   localBridgeUrl,
 } from '../integration/access';
 import type { WorkspaceBackup } from './database';
+import { getSpatialView } from '../spatial/types';
+
+/** Commit a pending local camera before a user-requested snapshot or navigation. */
+export function flushSpatialCamera() {
+  const graph = useEditor.getState().graph;
+  if (graph && getSpatialView(graph).mode === '3d')
+    window.dispatchEvent(new Event('visualnerve:spatial-camera-flush'));
+}
+
+function spatialNavigation(graph: Graph | null, path: string, method: string, value: unknown) {
+  if (!graph || method === 'GET') return false;
+  if (method === 'POST' && ['/spatial-diagrams', '/api/v1/spatial-diagrams'].includes(path))
+    return true;
+  const [collection, id, action] = new URL(
+    path.replace(/^\/api\/v1/, ''),
+    'http://browser.local',
+  ).pathname
+    .split('/')
+    .filter(Boolean);
+  if (
+    collection !== 'diagrams' ||
+    id !== graph.diagram.id ||
+    !['PATCH', 'PUT', 'POST'].includes(method)
+  )
+    return false;
+  const payload = value as
+    | { settings?: { spatialView?: { mode?: unknown } }; graph?: Graph }
+    | undefined;
+  const mode =
+    action === 'graph'
+      ? payload?.graph?.diagram?.settings?.spatialView?.mode
+      : payload?.settings?.spatialView?.mode;
+  return (mode === '2d' || mode === '3d') && mode !== getSpatialView(graph).mode;
+}
 
 function acknowledged(local: Graph, saved: Graph): Graph {
   const nodes = new Map(saved.nodes.map((node) => [node.id, node]));
@@ -232,6 +266,7 @@ export class Workspace {
   }
   async open(id: string, nodeId?: string) {
     await this.requireStorageConsent();
+    flushSpatialCamera();
     await this.settled();
     const navigation = ++this.navigation;
     const graph = await this.repo.getGraph(id);
@@ -259,6 +294,7 @@ export class Workspace {
   }
   async create(graph: Graph) {
     await this.requireStorageConsent();
+    useEditor.getState().finishEditing();
     await this.settled();
     const stored = await this.repo.importGraph(graph);
     await this.refresh();
@@ -295,15 +331,32 @@ export class Workspace {
     await this.settled();
     const permission = await this.repo.db.settings.get('mcp-access');
     assertMcpAccess(mcpAccess(permission?.value), path, method);
-    return this.execute<T>(path, method, data);
+    if (spatialNavigation(useEditor.getState().graph, path, method, data)) {
+      await this.requireStorageConsent();
+      window.dispatchEvent(new Event('visualnerve:spatial-camera-flush'));
+      const state = useEditor.getState();
+      state.finishEditing();
+      state.setDrawingTool('none');
+      await this.settled();
+      // A camera/title commit can yield; honor grants revoked while it was being saved.
+      const latest = await this.repo.db.settings.get('mcp-access');
+      assertMcpAccess(useEditor.getState().mcpAccess, path, method);
+      assertMcpAccess(mcpAccess(latest?.value), path, method);
+    }
+    const result = await this.execute<T>(path, method, data);
+    if (method === 'POST' && ['/spatial-diagrams', '/api/v1/spatial-diagrams'].includes(path))
+      await this.open((result as Graph).diagram.id);
+    return result;
   }
   async backup() {
     await this.requireStorageConsent();
+    flushSpatialCamera();
     await this.settled();
     return this.repo.db.backup();
   }
   async restoreBackup(backup: WorkspaceBackup, mode: 'merge' | 'replace') {
     await this.requireStorageConsent();
+    flushSpatialCamera();
     await this.settled();
     const graphs = await this.repo.restore(backup, mode);
     this.versions.clear();

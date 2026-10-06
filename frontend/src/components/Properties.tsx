@@ -17,6 +17,7 @@ import { getCsvNode } from '../data/csv';
 import { nodeStatuses, statusLabel } from '../ui/status';
 import { SqlRelationshipDetails, SqlTableDetails } from './SqlTableSummary';
 import { AnalysisDialog, AnalysisTools } from './AnalysisTools';
+import { SpatialProperties } from './SpatialProperties';
 interface PropertiesProps {
   editCsv?: (datasetId?: string) => void;
   focusCsv?: (path: CsvPathEntry[], datasetId?: string) => void;
@@ -113,6 +114,7 @@ function PropertyPanel({
             onPageCsv={pageCsv}
           />
           <SqlTableDetails node={node} />
+          <SpatialProperties graph={graph} node={node} />
           <div className="field">
             <span>Area icon</span>
             <IconPicker
@@ -476,6 +478,7 @@ function PropertyPanel({
       <div className="panel-heading">Diagram properties</div>
       <div className="property-content">
         <AnalysisTools onOpen={onOpenAnalysis} />
+        <SpatialProperties graph={graph} />
         <div className="diagram-summary">
           <span className="eyebrow">WORKSPACE</span>
           <h2>{d.name}</h2>

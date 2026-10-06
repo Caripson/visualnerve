@@ -1,6 +1,7 @@
 import {
   base,
   blankGraph,
+  diagramTypes,
   descendantIds,
   newEdge,
   newNode,
@@ -23,6 +24,7 @@ import {
 import { reconnectedSqlEdge } from '../sql/relationships';
 import { markdown, parseImport } from '../export/semantic';
 import { database, type WorkspaceBackup, type WorkspaceDatabase } from './database';
+import { setSpatialView } from '../spatial/types';
 
 type Patch = Record<string, unknown>;
 export interface SearchResult {
@@ -560,6 +562,30 @@ export class Repository {
       [collection, id, action] = parts;
     const read = method === 'GET',
       remove = method === 'DELETE';
+    if (collection === 'spatial-diagrams') {
+      if (
+        !['/spatial-diagrams', '/api/v1/spatial-diagrams'].includes(path) ||
+        url.search ||
+        url.hash ||
+        parts.length !== 1
+      )
+        throw new StorageError(404, 'Unknown 3D diagram endpoint.');
+      if (method !== 'POST') throw new StorageError(405, '3D diagrams are created with POST.');
+      const data = object(payload);
+      if (
+        Object.keys(data).some((key) => !['name', 'type'].includes(key)) ||
+        typeof data.name !== 'string' ||
+        !data.name.trim() ||
+        data.name.length > 500 ||
+        (data.type !== undefined && !diagramTypes.includes(data.type as Diagram['type']))
+      )
+        throw new StorageError(422, 'Choose a name and supported diagram type.');
+      const graph = setSpatialView(
+        blankGraph(data.name, (data.type ?? 'mindmap') as Diagram['type']),
+        { mode: '3d' },
+      );
+      return (await this.saveGraph(graph, 0)) as T;
+    }
     if (collection === 'health')
       return { status: 'ok', storage: 'indexeddb', version: '0.2.0' } as T;
     if (collection === 'search' && read)

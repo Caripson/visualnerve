@@ -6,6 +6,7 @@ import {
   ViewportPortal,
   useNodesInitialized,
   useReactFlow,
+  getViewportForBounds,
   type Viewport,
 } from '@xyflow/react';
 import { toSvg } from 'html-to-image';
@@ -18,6 +19,7 @@ import { DrawingSvg } from '../drawing/DrawingSvg';
 import { drawingBounds, unionBounds } from '../drawing/geometry';
 import { getDrawingLayer } from '../drawing/types';
 import { getCsvNode } from '../data/csv';
+import { getSpatialView } from '../spatial/types';
 export interface RenderOptions {
   scope: 'complete' | 'viewport' | 'selected';
   multiplier: 1 | 2 | 4;
@@ -154,12 +156,31 @@ export function renderedScene(graph: Graph, scope: 'complete' | 'selected', sele
   return { nodes, edges, strokes, bounds };
 }
 
+/** 3D camera movement never changes the crop or coordinates of a 2D image export. */
+export function rendered2DViewport(
+  graph: Graph,
+  bounds: { x: number; y: number; width: number; height: number },
+  size: { width: number; height: number },
+): Viewport {
+  const saved = graph.diagram.settings.viewport;
+  if (
+    saved &&
+    Number.isFinite(saved.x) &&
+    Number.isFinite(saved.y) &&
+    Number.isFinite(saved.zoom) &&
+    saved.zoom > 0
+  )
+    return { ...saved };
+  return getViewportForBounds(bounds, size.width, size.height, 0.01, 1, 0.2);
+}
+
 export async function graphPNG(
   graph: Graph,
   options: RenderOptions,
   selection: string[],
 ): Promise<string> {
-  if (options.scope === 'viewport') {
+  const spatial = getSpatialView(graph).mode === '3d';
+  if (options.scope === 'viewport' && !spatial) {
     const flow = document.querySelector<HTMLElement>('.canvas-shell .react-flow');
     if (!flow) throw new Error('Open a diagram first.');
     return capturePNG(flow, {
@@ -168,9 +189,21 @@ export async function graphPNG(
       filter,
     });
   }
-  const { nodes, edges, strokes, bounds } = renderedScene(graph, options.scope, selection);
-  const width = Math.ceil(bounds.width + 80),
-    height = Math.ceil(bounds.height + 80);
+  const { nodes, edges, strokes, bounds } = renderedScene(
+    graph,
+    options.scope === 'viewport' ? 'complete' : options.scope,
+    selection,
+  );
+  const canvas = document.querySelector<HTMLElement>('.canvas-shell');
+  const size = canvas?.getBoundingClientRect();
+  const width =
+      options.scope === 'viewport'
+        ? Math.ceil(size?.width || canvas?.clientWidth || 1024)
+        : Math.ceil(bounds.width + 80),
+    height =
+      options.scope === 'viewport'
+        ? Math.ceil(size?.height || canvas?.clientHeight || 768)
+        : Math.ceil(bounds.height + 80);
   if (
     width * options.multiplier > 16384 ||
     height * options.multiplier > 16384 ||
@@ -191,7 +224,10 @@ export async function graphPNG(
   });
   document.body.append(container);
   const root = createRoot(container);
-  const viewport: Viewport = { x: 40 - bounds.x, y: 40 - bounds.y, zoom: 1 };
+  const viewport: Viewport =
+    options.scope === 'viewport'
+      ? rendered2DViewport(graph, bounds, { width, height })
+      : { x: 40 - bounds.x, y: 40 - bounds.y, zoom: 1 };
   try {
     await new Promise<void>((resolve, reject) => {
       const timer = setTimeout(
