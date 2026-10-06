@@ -220,45 +220,66 @@ rerun. The rerun kept the existing 5,000-object performance thresholds unchanged
 The final 100,000-row source-refresh review took 1,229 ms, with 69 animation frames
 and a largest frame gap of 100 ms on this machine.
 
-## Shared 2D and compact 3D diagrams
+## The same diagram in 2D and 3D relief
 
-Ordinary mind map objects, text and relationships can be viewed and edited in a
-rotatable 3D diagram. Large mind maps receive deterministic, compact hierarchy
-clusters across three axes; explicit spatial positions take precedence. The
-same canonical objects retain their notes, status, parent hierarchy and
-relationships. Spatial positions and the saved camera remain independent of
-the original 2D geometry, so returning to 2D and exporting PNG/PDF preserves
-the readable diagram overview.
+Activating 3D lifts the existing diagram objects into shallow relief cards with
+their existing appearance printed on each front face. The face capture uses
+the actual 2D node renderer, including its text, colors, icons and status.
+Object positions, widths, heights and
+relationships follow the 2D diagram; switching views does not rearrange a mind
+map into a new layout. Turning the camera rotates the complete diagram and its
+text together, so a ten-degree turn shows the same cards from an oblique angle.
+The same canonical objects retain their notes, status, parent hierarchy and
+relationships. Returning to 2D and exporting PNG/PDF preserves the original
+diagram overview. The saved camera and optional object depth remain separate
+from the canonical 2D geometry.
 
 The fictional Truck lifecycle example contains 25 objects and 24 relationships:
 one root, six lifecycle stages and three subtopics per stage. Manufacturing,
-delivery, operation, maintenance, second life and recycling have distinct 3D
-branches and a separate readable 2D arrangement.
+delivery, operation, maintenance, second life and recycling occupy the same
+arrangement in the flat overview and the rotatable relief view.
 
-The six [spatial browser scenarios](../frontend/tests/e2e/spatial.spec.ts) cover
+The seven [spatial browser scenarios](../frontend/tests/e2e/spatial.spec.ts) cover
 rotation and saved camera state while editing objects, statuses and connections;
 MCP creation and population with nonblank canonical 2D PNG/PDF exports and JSON
 round trips; offline reload and full workspace backup restoration; usable
 Return to 2D controls at 320 px; recovery of the complete saved 2D diagram when
-the deferred 3D module cannot load; and an interactive, automatically placed
-mind map with 2,501 ordinary objects and 2,500 relationships. The large fixture
-checks actual rendered counts, labels after switching to the Back view, focus
-of a searched object, and unchanged 2D geometry and relationships. It is a
-functional check on the test machine, rather than a performance guarantee for
-arbitrary devices or graphs.
+the deferred 3D module cannot load; and an interactive relief mind map with
+2,501 ordinary cards and 2,500 relationships. A dedicated three-card fixture
+starts in 2D, checks identical relative placement and card aspect ratios from
+the front, compares a rendered Rocket icon against its original 2D pixels, then
+uses the actual ten-degree tilt control. Its projected front faces become
+perspective trapezoids, their text stays attached to those faces, and a real
+WebGL pointer selects the correct object. Returning to 2D compares every node
+and relationship to the original records.
 
-Verified locally on 2026-10-06. The full frontend run passed all 449
-unit/component cases across 53 files. The complete browser run passed 50
-scenarios, followed by all six spatial cases passing against the final
-production build in 2.1 minutes, covering 51 distinct scenarios in total.
-Go race tests and vet, formatting, TypeScript/Vite/Hugo/OpenAPI/Go production
-build and the static audit passed. The audit found 261 application files with
-no user data; the offline shell contains 32 local assets, including the deferred
-3D renderer. The final screenshots and canonical 2D export were visually
-reviewed.
+The [navigation browser scenario](../frontend/tests/e2e/spatial-navigation.spec.ts)
+uses actual pointer drags on the visible Move, Rotate and Scale gizmo. It checks
+rotation at a fixed target and distance, equal camera/target displacement during
+pan, uniform zoom, keyboard axis control and Z-axis roll restored into the actual
+WebGL camera after reload. All canonical node and relationship records remain
+unchanged. Unit regressions cover turns after roll, rotation from the named Top
+view, camera bounds, JSON/database/backup preservation and rejection of invalid
+up vectors.
+
+The large fixture checks actual rendered counts, front-face text visibility
+when viewed from the front and its absence when viewing the backs, focus of a
+searched object, and unchanged 2D geometry and relationships. It is a functional
+check on the test machine, rather than a performance guarantee for arbitrary
+devices or graphs.
+
+The full frontend run passed 487 unit/component cases. Formatting, Go race tests
+and vet, and the TypeScript/Vite/Hugo/OpenAPI/Go production build passed. The
+static audit found 262 application files and a 33-asset offline shell with no
+user data. All eight distinct spatial browser scenarios passed against this
+production build, including the final three-case rerun for the gizmo and direct
+canvas navigation. The visual review uses the actual relief renderer and native
+card appearance.
 
 Retained fictional fixture evidence:
 [Truck lifecycle in 3D](acceptance/spatial-truck-lifecycle.png),
+[The same 2D cards turned ten degrees](acceptance/spatial-relief-10deg.png),
+[Move, Rotate and Scale controls](acceptance/spatial-navigation-controls.png),
 [2,501-object mind map](acceptance/spatial-2501-mindmap.png),
 [Canonical 2D export](acceptance/spatial-2d-export.png) and
 [320 px phone 2D overview](acceptance/spatial-phone-2d.png).

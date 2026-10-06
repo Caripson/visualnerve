@@ -7,7 +7,12 @@ import type { Graph } from '../model/types';
 import type { CanvasNode } from '../canvas/projection';
 import { useEditor } from '../state/editor';
 import { getSpatialView, spatialLimits, type SpatialCamera, type SpatialPoint } from './types';
-import { defaultSpatialCamera, orientationCamera, spatialBounds, spatialPositions } from './layout';
+import {
+  defaultSpatialCamera,
+  orientationCamera,
+  spatialBounds,
+  projectSpatialGraph,
+} from './layout';
 import {
   boundedSpatialProjection,
   createSpatialBatches,
@@ -17,10 +22,20 @@ import {
   disposeSpatialScene,
   isCompletedStatus,
   SPATIAL_LABEL_LIMIT,
-  spatialGlyphScale,
-  spatialTextSprite,
+  spatialNodeDimensions,
+  spatialNodeAppearance,
+  spatialTextPlane,
+  setSpatialFaceOpacity,
+  setSpatialNodeFaceCaptured,
 } from './scene';
 import './spatial.css';
+import { captureSpatialNodeFaces } from './faces';
+import { NavigationGizmo } from './NavigationGizmo';
+import {
+  navigateSpatialCamera,
+  type SpatialNavigationAxis,
+  type SpatialNavigationMode,
+} from './navigation';
 
 export interface SpatialCanvasProps {
   graph: Graph;
@@ -30,6 +45,44 @@ export interface SpatialCanvasProps {
   onCameraChange: (camera: SpatialCamera) => void;
 }
 type Bounds = ReturnType<typeof spatialBounds>;
+type FaceMesh = THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
+function faceCorners(face: FaceMesh, camera: THREE.Camera, width: number, height: number) {
+  const size = face.geometry.parameters;
+  return [
+    [-size.width / 2, size.height / 2],
+    [size.width / 2, size.height / 2],
+    [size.width / 2, -size.height / 2],
+    [-size.width / 2, -size.height / 2],
+  ].map(([x, y]) => {
+    const point = new THREE.Vector3(x, y, 0).applyMatrix4(face.matrixWorld).project(camera);
+    return [((point.x + 1) * width) / 2, ((1 - point.y) * height) / 2];
+  });
+}
+function capturedCardColor(source: HTMLCanvasElement) {
+  const sample = document.createElement('canvas');
+  sample.width = sample.height = 16;
+  const context = sample.getContext('2d', { willReadFrequently: true });
+  if (!context) return undefined;
+  context.drawImage(source, 0, 0, 16, 16);
+  const pixels = context.getImageData(0, 0, 16, 16).data;
+  const colors = new Map<string, { rgb: number[]; count: number }>();
+  for (let index = 0; index < pixels.length; index += 4) {
+    if (pixels[index + 3] < 240) continue;
+    const rgb = [pixels[index], pixels[index + 1], pixels[index + 2]];
+    const key = rgb.join(',');
+    const existing = colors.get(key);
+    colors.set(key, { rgb, count: (existing?.count ?? 0) + 1 });
+  }
+  const dominant = [...colors.values()].sort((a, b) => b.count - a.count)[0];
+  return dominant
+    ? new THREE.Color().setRGB(
+        dominant.rgb[0] / 255,
+        dominant.rgb[1] / 255,
+        dominant.rgb[2] / 255,
+        THREE.SRGBColorSpace,
+      )
+    : undefined;
+}
 interface Runtime {
   renderer: THREE.WebGLRenderer;
   scene: THREE.Scene;
@@ -49,7 +102,10 @@ interface Runtime {
   draw: () => void;
   setCamera: (camera: SpatialCamera, persist?: boolean) => void;
   saveCamera: () => void;
+  queueCamera: () => void;
   flushCamera: () => void;
+  refreshFaces: () => void;
+  captureAbort?: AbortController;
 }
 function cameraValue(runtime: Runtime): SpatialCamera {
   const point = (value: THREE.Vector3) => ({
@@ -57,7 +113,13 @@ function cameraValue(runtime: Runtime): SpatialCamera {
     y: Number(value.y.toFixed(5)),
     z: Number(value.z.toFixed(5)),
   });
-  return { position: point(runtime.camera.position), target: point(runtime.controls.target) };
+  const value: SpatialCamera = {
+    position: point(runtime.camera.position),
+    target: point(runtime.controls.target),
+  };
+  if (runtime.camera.up.distanceToSquared(new THREE.Vector3(0, 1, 0)) > 0.0000000001)
+    value.up = point(runtime.camera.up.clone().normalize());
+  return value;
 }
 function colorValue(value: unknown, fallback: string) {
   return typeof value === 'string' && CSS.supports('color', value) ? value : fallback;
@@ -68,9 +130,18 @@ function compareLabelDepth(a: number | undefined, b: number | undefined) {
   return left === right ? 0 : left - right;
 }
 function focusSpatialObjects(current: Runtime, ids: string[]) {
-  const chosen = ids
-    .map((id) => current.positions.get(id))
-    .filter((point): point is SpatialPoint => !!point);
+  const chosen = ids.flatMap((id) => {
+    const instance = current.batches?.nodes.get(id);
+    if (!instance) return [];
+    const { position, dimensions } = instance;
+    return [-1, 1].flatMap((x) =>
+      [-1, 1].map((y) => ({
+        x: position.x + (x * dimensions.x) / 2,
+        y: position.y + (y * dimensions.y) / 2,
+        z: position.z,
+      })),
+    );
+  });
   if (!chosen.length) return;
   const value = spatialBounds(chosen);
   const offset = current.camera.position
@@ -86,6 +157,7 @@ function focusSpatialObjects(current: Runtime, ids: string[]) {
         z: value.center.z + offset.z,
       },
       target: value.center,
+      ...(cameraValue(current).up ? { up: cameraValue(current).up } : {}),
     },
     true,
   );
@@ -108,7 +180,11 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
   const [relationshipPage, setRelationshipPage] = useState(0);
   const [relationshipQuery, setRelationshipQuery] = useState('');
   const [showLabels, setShowLabels] = useState(true);
+  const [faceRevision, setFaceRevision] = useState(0);
+  const [faceCaptureError, setFaceCaptureError] = useState('');
+  const [faceCaptureBusy, setFaceCaptureBusy] = useState(false);
   const [renderedCounts, setRenderedCounts] = useState({ nodes: 0, edges: 0 });
+  const [navigationCamera, setNavigationCamera] = useState<SpatialCamera>();
   const view = getSpatialView(graph);
   const visibleNodes = useMemo(() => nodes.filter((node) => !node.hidden), [nodes]);
   const visibleEdges = useMemo(() => edges.filter((edge) => !edge.hidden), [edges]);
@@ -122,13 +198,30 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       ),
     [nodes, edges, selectedNodes, selectedEdges, focusNode],
   );
-  const positions = useMemo(
-    () => spatialPositions(graph),
+  const relief = useMemo(
+    () => projectSpatialGraph(graph),
     [graph.nodes, graph.edges, graph.diagram.type],
   );
+  const positions = relief.positions;
   const bounds = useMemo(
-    () => spatialBounds(projected.nodes.map((node) => positions.get(node.id)!).filter(Boolean)),
-    [positions, projected.nodes],
+    () =>
+      spatialBounds(
+        projected.nodes.flatMap((node) => {
+          const position = positions.get(node.id);
+          if (!position) return [];
+          const { width, height, depth } = spatialNodeDimensions(node, relief.scale);
+          return [-1, 1].flatMap((x) =>
+            [-1, 1].flatMap((y) =>
+              [-1, 1].map((z) => ({
+                x: position.x + (x * width) / 2,
+                y: position.y + (y * height) / 2,
+                z: position.z + (z * depth) / 2,
+              })),
+            ),
+          );
+        }),
+      ),
+    [positions, projected.nodes, relief.scale],
   );
   // Selection and camera changes do not recreate geometry, materials, labels or GPU buffers.
   const sceneKey = JSON.stringify([
@@ -141,7 +234,11 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
         node.data.mindmap?.depth,
         node.data.node.status,
         node.data.node.nodeType,
+        node.width,
+        node.height,
         node.data.node.metadata.spatial,
+        node.data.node.metadata,
+        node.data.owners,
         node.style?.opacity,
         node.className,
         positions.get(node.id),
@@ -159,8 +256,8 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       ])
       .sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
   ]);
-  const modelRef = useRef({ projected, positions, bounds, showLabels });
-  modelRef.current = { projected, positions, bounds, showLabels };
+  const modelRef = useRef({ projected, positions, bounds, showLabels, scale: relief.scale });
+  modelRef.current = { projected, positions, bounds, showLabels, scale: relief.scale };
 
   useEffect(() => {
     const container = host.current;
@@ -189,7 +286,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(42, 1, 0.01, 10000);
     camera.up.set(0, 1, 0);
-    const controls = new OrbitControls(camera, canvas);
+    let controls = new OrbitControls(camera, canvas);
     controls.enableDamping = false;
     controls.minDistance = 0.2;
     controls.maxDistance = spatialLimits.cameraCoordinate;
@@ -228,57 +325,109 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
             // Controls change the camera quaternion before Three updates its world matrix.
             // Label projection must use the same orientation as this frame's geometry.
             camera.updateMatrixWorld(true);
+            root.updateMatrixWorld(true);
+            const width = Math.max(1, canvas.clientWidth);
             const height = Math.max(1, canvas.clientHeight);
             const labels = current.labelLayer.children.filter(
-              (object): object is THREE.Sprite => object instanceof THREE.Sprite,
+              (object): object is FaceMesh => object instanceof THREE.Mesh,
             );
-            labels.sort(
-              (a, b) =>
-                Number(b.userData.selected) - Number(a.userData.selected) ||
-                compareLabelDepth(a.userData.mindmapDepth, b.userData.mindmapDepth) ||
-                a.position.distanceToSquared(controls.target) -
-                  b.position.distanceToSquared(controls.target),
-            );
-            const occupied: Array<{ x: number; y: number; width: number; height: number }> = [];
-            const projectedPoint = new THREE.Vector3();
             for (const object of labels) {
-              const distance = camera.position.distanceTo(object.position);
-              const visibleHeight =
-                distance * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * 2;
-              const width = (visibleHeight * object.userData.labelPixelWidth) / height;
-              object.scale.set(width, (width * 112) / 512, 1);
-              projectedPoint.copy(object.position).project(camera);
-              const box = {
-                x:
-                  ((projectedPoint.x + 1) * canvas.clientWidth) / 2 -
-                  object.userData.labelPixelWidth / 2,
-                y:
-                  ((1 - projectedPoint.y) * height) / 2 -
-                  (object.userData.labelPixelWidth * 112) / 1024,
-                width: object.userData.labelPixelWidth,
-                height: (object.userData.labelPixelWidth * 112) / 512 + 6,
-              };
-              const onScreen =
-                projectedPoint.z > -1 &&
-                projectedPoint.z < 1 &&
-                Math.abs(projectedPoint.x) < 1.1 &&
-                Math.abs(projectedPoint.y) < 1.1;
-              const overlaps = occupied.some(
-                (other) =>
-                  box.x < other.x + other.width &&
-                  box.x + box.width > other.x &&
-                  box.y < other.y + other.height &&
-                  box.y + box.height > other.y,
-              );
-              object.visible = onScreen && (object.userData.selected || !overlaps);
-              if (object.visible) occupied.push(box);
+              const corners = faceCorners(object, camera, width, height);
+              const center = new THREE.Vector3().setFromMatrixPosition(object.matrixWorld);
+              const normal = new THREE.Vector3(0, 0, 1).transformDirection(object.matrixWorld);
+              const front = normal.dot(camera.position.clone().sub(center)) > 0;
+              const projected = center.clone().project(camera);
+              object.visible =
+                front &&
+                projected.z > -1 &&
+                projected.z < 1 &&
+                Math.min(...corners.map(([x]) => x)) < width &&
+                Math.max(...corners.map(([x]) => x)) > 0 &&
+                Math.min(...corners.map(([, y]) => y)) < height &&
+                Math.max(...corners.map(([, y]) => y)) > 0;
             }
             canvas.dataset.visibleLabels = String(labels.filter((label) => label.visible).length);
+            canvas.dataset.nodeFaces = 'relief';
+            const nodeFaces = labels.filter((face) => face.userData.nodeId);
+            const captured = nodeFaces.filter(
+              (face) => face.userData.faceSource === '2d-node',
+            ).length;
+            canvas.dataset.faceCaptures = String(captured);
+            canvas.dataset.faceSource =
+              nodeFaces.length && captured === nodeFaces.length
+                ? '2d-node'
+                : nodeFaces.length
+                  ? 'loading'
+                  : 'empty';
+            if (current.batches) {
+              const faces = new Map(
+                labels
+                  .filter((face) => face.userData.nodeId)
+                  .map((face) => [face.userData.nodeId, face]),
+              );
+              const sampled = [...current.batches.nodes.entries()].filter(
+                ([, instance], index) =>
+                  index < 12 ||
+                  current.selectedNodeIds.has(instance.mesh.userData.nodeIds[instance.index]),
+              );
+              canvas.dataset.faceProjections = JSON.stringify(
+                sampled.map(([id, instance]) => {
+                  const { position, dimensions } = instance;
+                  const project = (x: number, y: number) => {
+                    const point = new THREE.Vector3(
+                      position.x + (x * dimensions.x) / 2,
+                      position.y + (y * dimensions.y) / 2,
+                      position.z + dimensions.z / 2 + 0.002,
+                    ).project(camera);
+                    return [((point.x + 1) * width) / 2, ((1 - point.y) * height) / 2];
+                  };
+                  const face = faces.get(id);
+                  return {
+                    id,
+                    center: project(0, 0),
+                    corners: [project(-1, 1), project(1, 1), project(1, -1), project(-1, -1)],
+                    width: dimensions.x,
+                    height: dimensions.y,
+                    depth: dimensions.z,
+                    labelBillboard: face instanceof THREE.Sprite,
+                    source: face?.userData.faceSource,
+                    textCorners: face ? faceCorners(face, camera, width, height) : [],
+                  };
+                }),
+              );
+            }
             renderer.render(scene, camera);
+            const value = cameraValue(current);
+            setNavigationCamera((previous) =>
+              JSON.stringify(previous) === JSON.stringify(value) ? previous : value,
+            );
           }
         });
       },
       setCamera: (value, persist = false) => {
+        const before = cameraValue(current);
+        const up = new THREE.Vector3(
+          value.up?.x ?? 0,
+          value.up?.y ?? 1,
+          value.up?.z ?? 0,
+        ).normalize();
+        if (camera.up.distanceToSquared(up) > 0.0000000001) {
+          // OrbitControls derives its orbit basis from camera.up at construction.
+          // Recreate only the controls when a gizmo changes that basis, preserving
+          // the renderer, graph buffers, textures and all canonical objects.
+          controls.removeEventListener('change', change);
+          controls.removeEventListener('end', end);
+          controls.dispose();
+          camera.up.copy(up);
+          controls = new OrbitControls(camera, canvas);
+          controls.enableDamping = false;
+          controls.minDistance = 0.2;
+          controls.maxDistance = spatialLimits.cameraCoordinate;
+          controls.enabled = !lost;
+          controls.addEventListener('change', change);
+          controls.addEventListener('end', end);
+          current.controls = controls;
+        }
         const bounded = (coordinate: number) =>
           Math.max(
             -spatialLimits.cameraCoordinate,
@@ -305,6 +454,11 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
         camera.updateProjectionMatrix();
         controls.update();
         current.draw();
+        if (
+          current.labelLayer.children.length &&
+          JSON.stringify(before) !== JSON.stringify(cameraValue(current))
+        )
+          current.refreshFaces();
         syncCameraAttributes();
         if (persist) current.saveCamera();
       },
@@ -321,6 +475,13 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
         propsRef.current.onCameraChange(value);
         syncCameraAttributes();
       },
+      queueCamera: () => {
+        if (saveTimer) clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => {
+          saveTimer = undefined;
+          current.saveCamera();
+        }, 180);
+      },
       flushCamera: () => {
         if (saveTimer) {
           clearTimeout(saveTimer);
@@ -328,11 +489,15 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
           current.saveCamera();
         }
       },
+      refreshFaces: () => {
+        if (!disposed) setFaceRevision((revision) => revision + 1);
+      },
     };
     const syncCameraAttributes = () => {
       const value = cameraValue(current);
       canvas.dataset.cameraPosition = JSON.stringify(value.position);
       canvas.dataset.cameraTarget = JSON.stringify(value.target);
+      canvas.dataset.cameraUp = JSON.stringify({ x: camera.up.x, y: camera.up.y, z: camera.up.z });
     };
     runtime.current = current;
     const resize = () => {
@@ -352,7 +517,10 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       current.draw();
     };
     theme();
-    const themeObserver = new MutationObserver(theme);
+    const themeObserver = new MutationObserver(() => {
+      theme();
+      current.refreshFaces();
+    });
     themeObserver.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['data-theme', 'class'],
@@ -366,11 +534,8 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       current.draw();
     };
     const end = () => {
-      if (saveTimer) clearTimeout(saveTimer);
-      saveTimer = setTimeout(() => {
-        saveTimer = undefined;
-        current.saveCamera();
-      }, 180);
+      current.refreshFaces();
+      current.queueCamera();
     };
     controls.addEventListener('change', change);
     controls.addEventListener('end', end);
@@ -430,6 +595,8 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       if (frame) cancelAnimationFrame(frame);
       frame = 0;
       current.flushCamera();
+      current.captureAbort?.abort();
+      current.captureAbort = undefined;
       setRendererState('lost');
     };
     const contextRestored = () => {
@@ -437,6 +604,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       controls.enabled = true;
       setRendererState('ready');
       current.draw();
+      current.refreshFaces();
     };
     canvas.addEventListener('webglcontextlost', contextLost);
     canvas.addEventListener('webglcontextrestored', contextRestored);
@@ -450,25 +618,25 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       event.preventDefault();
       event.stopPropagation();
       if (event.key === 'Home') {
-        current.setCamera(defaultSpatialCamera(current.bounds), true);
+        current.setCamera(defaultSpatialCamera(current.bounds, camera.aspect), true);
         return;
       }
-      const offset = camera.position.clone().sub(controls.target);
-      const spherical = new THREE.Spherical().setFromVector3(offset);
-      if (event.key === 'ArrowLeft') spherical.theta -= 0.12;
-      if (event.key === 'ArrowRight') spherical.theta += 0.12;
-      if (event.key === 'ArrowUp') spherical.phi = Math.max(0.04, spherical.phi - 0.12);
-      if (event.key === 'ArrowDown') spherical.phi = Math.min(Math.PI - 0.04, spherical.phi + 0.12);
-      if (event.key === '+' || event.key === '=')
-        spherical.radius = Math.max(0.2, spherical.radius * 0.85);
-      if (event.key === '-')
-        spherical.radius = Math.min(spatialLimits.cameraCoordinate, spherical.radius / 0.85);
-      offset.setFromSpherical(spherical).add(controls.target);
+      const zoom = event.key === '+' || event.key === '=' || event.key === '-';
+      const vertical = event.key === 'ArrowUp' || event.key === 'ArrowDown';
+      const pixels = zoom
+        ? (Math.log(1 / 0.85) / 0.012) * (event.key === '-' ? -1 : 1)
+        : vertical
+          ? event.key === 'ArrowUp'
+            ? -10
+            : 10
+          : (Math.PI / (18 * 0.012)) * (event.key === 'ArrowLeft' ? -1 : 1);
       current.setCamera(
-        {
-          position: { x: offset.x, y: offset.y, z: offset.z },
-          target: cameraValue(current).target,
-        },
+        navigateSpatialCamera(
+          cameraValue(current),
+          zoom ? 'scale' : 'rotate',
+          zoom ? 'free' : vertical ? 'x' : 'y',
+          { x: pixels, y: 0 },
+        ),
         true,
       );
     };
@@ -476,6 +644,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     setRendererState('ready');
     return () => {
       current.flushCamera();
+      current.captureAbort?.abort();
       disposed = true;
       if (frame) cancelAnimationFrame(frame);
       observer.disconnect();
@@ -503,11 +672,13 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     const current = runtime.current;
     if (!current) return;
     const model = modelRef.current;
+    current.captureAbort?.abort();
+    current.captureAbort = undefined;
     disposeSpatialScene(current.root);
     current.pickable = [];
     current.positions = model.positions;
     current.bounds = model.bounds;
-    current.glyphScale = spatialGlyphScale(model.bounds.radius);
+    current.glyphScale = model.scale;
     current.batches = createSpatialBatches(
       model.projected.nodes,
       model.projected.edges,
@@ -527,7 +698,8 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     if (!current.initialized) {
       current.initialized = true;
       current.setCamera(
-        getSpatialView(propsRef.current.graph).camera ?? defaultSpatialCamera(model.bounds),
+        getSpatialView(propsRef.current.graph).camera ??
+          defaultSpatialCamera(model.bounds, current.camera.aspect),
       );
     }
     current.draw();
@@ -555,6 +727,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     const current = runtime.current;
     if (!current?.batches) return;
     const model = modelRef.current;
+    current.camera.updateMatrixWorld(true);
     const wanted = new Map<
       string,
       {
@@ -563,38 +736,53 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
         nodeId?: string;
         edgeId?: string;
         selected: boolean;
-        depth?: number;
+        options: NonNullable<Parameters<typeof spatialTextPlane>[1]>;
+        opacity: number;
       }
     >();
     const selected = new Set(selectedNodes),
       selectedLinks = new Set(selectedEdges);
     if (showLabels) {
-      const nodeOrder = [
-        ...model.projected.nodes.filter((node) => selected.has(node.id)),
-        ...model.projected.nodes.filter((node) => !selected.has(node.id)),
-      ];
-      if (nodeOrder.some((node) => node.data.mindmap))
-        nodeOrder.sort(
-          (a, b) =>
-            Number(selected.has(b.id)) - Number(selected.has(a.id)) ||
-            compareLabelDepth(a.data.mindmap?.depth, b.data.mindmap?.depth) ||
-            (current
-              .batches!.nodes.get(a.id)
-              ?.position.distanceToSquared(current.controls.target) ?? Infinity) -
-              (current
-                .batches!.nodes.get(b.id)
-                ?.position.distanceToSquared(current.controls.target) ?? Infinity),
-        );
-      for (const view of nodeOrder.slice(0, SPATIAL_LABEL_LIMIT)) {
-        const position = current.batches.nodes.get(view.id)?.position;
-        if (!position) continue;
+      // Keep physical text faces near the visible camera region resident. Camera movement
+      // changes which textures are useful, never their world orientation or dimensions.
+      const candidates = model.projected.nodes.flatMap((view) => {
+        const instance = current.batches!.nodes.get(view.id);
+        if (!instance) return [];
+        const point = instance.position.clone().project(current.camera);
+        const onScreen =
+          point.z > -1 && point.z < 1 && Math.abs(point.x) < 1.3 && Math.abs(point.y) < 1.3;
+        if (
+          !selected.has(view.id) &&
+          (!onScreen || current.camera.position.z < instance.position.z)
+        )
+          return [];
+        return [{ view, instance, distance: point.x ** 2 + point.y ** 2 }];
+      });
+      candidates.sort(
+        (a, b) =>
+          Number(selected.has(b.view.id)) - Number(selected.has(a.view.id)) ||
+          compareLabelDepth(a.view.data.mindmap?.depth, b.view.data.mindmap?.depth) ||
+          a.distance - b.distance,
+      );
+      for (const { view, instance } of candidates.slice(0, SPATIAL_LABEL_LIMIT)) {
         const node = view.data.node;
+        const appearance = spatialNodeAppearance(view);
         wanted.set(`node:${node.id}`, {
-          text: `${view.className === 'analysis-outside-data-view' ? '↗ ' : ''}${isCompletedStatus(node.status) ? '✓ ' : ''}${node.title}`,
-          position: position.clone().add(new THREE.Vector3(0, 0.42 * current.glyphScale, 0)),
+          text: `${view.className === 'analysis-outside-data-view' ? '↗ ' : ''}${node.title}`,
+          position: instance.position
+            .clone()
+            .add(new THREE.Vector3(0, 0, instance.dimensions.z / 2 + 0.002)),
           nodeId: node.id,
           selected: selected.has(node.id),
-          depth: view.data.mindmap?.depth,
+          options: {
+            width: instance.dimensions.x,
+            height: instance.dimensions.y,
+            background: appearance.background,
+            color: appearance.color,
+            status: node.status,
+            kind: node.nodeType,
+          },
+          opacity: Number(view.style?.opacity ?? 1),
         });
       }
       const edgeOrder = [
@@ -608,46 +796,136 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
           text: String(edge.label || 'Connection'),
           position: points[Math.floor(points.length / 2)]
             .clone()
-            .add(new THREE.Vector3(0, 0.13 * current.glyphScale, 0)),
+            .add(new THREE.Vector3(0, 0.13 * current.glyphScale, 0.003)),
           edgeId: edge.id,
           selected: selectedLinks.has(edge.id),
+          options: {
+            width: 1.3 * current.glyphScale,
+            height: 0.22 * current.glyphScale,
+            color: '#4e6058',
+            background: '#edf2ee',
+            fontSize: 48,
+          },
+          opacity: Number(edge.style?.opacity ?? 1),
         });
       }
     }
+    const signature = (label: { text: string; options: object }) =>
+      JSON.stringify([
+        label.text,
+        label.options,
+        document.documentElement.dataset.theme,
+        document.documentElement.className,
+      ]);
     const existing = new Map(
-      current.labelLayer.children.map((object) => [
-        object.userData.labelKey,
-        object as THREE.Sprite,
-      ]),
+      current.labelLayer.children.map((object) => [object.userData.labelKey, object as FaceMesh]),
     );
     for (const [key, object] of existing) {
-      if (wanted.get(key)?.text === object.userData.labelText) continue;
+      const label = wanted.get(key);
+      if (label && signature(label) === object.userData.labelSignature) continue;
+      if (object.userData.nodeId)
+        setSpatialNodeFaceCaptured(
+          current.batches,
+          object.userData.nodeId,
+          false,
+          current.selectedNodeIds.has(object.userData.nodeId),
+        );
       current.labelLayer.remove(object);
       disposeSpatialScene(object);
       existing.delete(key);
     }
     for (const [key, label] of wanted) {
-      let sprite = existing.get(key);
-      if (!sprite) {
-        sprite = spatialTextSprite(
-          label.text,
-          label.edgeId ? { width: 1.3, color: '#4e6058', background: '#edf2ee' } : undefined,
-        );
-        if (!sprite) continue;
-        sprite.userData.labelKey = key;
-        sprite.userData.labelText = label.text;
-        current.labelLayer.add(sprite);
+      let face = existing.get(key);
+      if (!face) {
+        face = spatialTextPlane(label.text, label.options);
+        if (!face) continue;
+        face.userData.labelKey = key;
+        face.userData.labelSignature = signature(label);
+        current.labelLayer.add(face);
       }
-      sprite.position.copy(label.position);
-      sprite.userData.nodeId = label.nodeId;
-      sprite.userData.edgeId = label.edgeId;
-      sprite.userData.selected = label.selected;
-      sprite.userData.mindmapDepth = label.depth;
-      sprite.material.color.set(label.selected ? '#ccdeff' : '#ffffff');
+      face.position.copy(label.position);
+      face.userData.nodeId = label.nodeId;
+      face.userData.edgeId = label.edgeId;
+      face.userData.selected = label.selected;
+      face.material.color.set('#ffffff');
+      setSpatialFaceOpacity(face, label.opacity);
     }
     current.pickable = [...current.batches.pickable, ...current.labelLayer.children];
     current.draw();
-  }, [sceneKey, showLabels, selectedNodes, selectedEdges]);
+    const pendingFaces = current.labelLayer.children.filter(
+      (face) => face.userData.nodeId && face.userData.faceSource !== '2d-node',
+    ) as FaceMesh[];
+    if (!pendingFaces.length) {
+      setFaceCaptureBusy(false);
+      return;
+    }
+    if (current.captureAbort) return;
+    const pendingIds = new Set(pendingFaces.map((face) => face.userData.nodeId));
+    const abort = new AbortController();
+    current.captureAbort = abort;
+    const captureSignatures = new Map(
+      pendingFaces.map((face) => [face.userData.nodeId, face.userData.labelSignature]),
+    );
+    setFaceCaptureError('');
+    setFaceCaptureBusy(true);
+    void captureSpatialNodeFaces(
+      propsRef.current.graph,
+      model.projected.nodes.filter((view) => pendingIds.has(view.id)),
+      abort.signal,
+    )
+      .then((canvases) => {
+        if (abort.signal.aborted || runtime.current !== current) return;
+        for (const face of current.labelLayer.children as FaceMesh[]) {
+          const canvas = canvases.get(face.userData.nodeId);
+          if (
+            !canvas ||
+            captureSignatures.get(face.userData.nodeId) !== face.userData.labelSignature
+          )
+            continue;
+          const texture = new THREE.CanvasTexture(canvas);
+          texture.colorSpace = THREE.SRGBColorSpace;
+          texture.generateMipmaps = false;
+          texture.minFilter = THREE.LinearFilter;
+          face.material.map?.dispose();
+          face.material.map = texture;
+          face.material.alphaTest = 0.01;
+          face.material.needsUpdate = true;
+          face.userData.faceSource = '2d-node';
+          setSpatialFaceOpacity(face, face.material.opacity);
+          if (current.batches)
+            setSpatialNodeFaceCaptured(
+              current.batches,
+              face.userData.nodeId,
+              true,
+              current.selectedNodeIds.has(face.userData.nodeId),
+            );
+          const instance = current.batches?.nodes.get(face.userData.nodeId);
+          const color = capturedCardColor(canvas);
+          if (instance && color) {
+            instance.color.copy(color);
+            if (!current.selectedNodeIds.has(face.userData.nodeId))
+              instance.mesh.setColorAt(instance.index, color);
+            instance.mesh.instanceColor?.addUpdateRange(instance.index * 3, 3);
+            if (instance.mesh.instanceColor) instance.mesh.instanceColor.needsUpdate = true;
+          }
+        }
+        current.draw();
+        if (current.captureAbort === abort) current.captureAbort = undefined;
+        // A turn may have brought a few new cards into the resident set. Finish
+        // the current bounded batch, then capture those cards without restarting it.
+        current.refreshFaces();
+        setFaceCaptureBusy(false);
+      })
+      .catch((error: unknown) => {
+        if (!abort.signal.aborted) {
+          if (current.captureAbort === abort) current.captureAbort = undefined;
+          setFaceCaptureBusy(false);
+          setFaceCaptureError(
+            error instanceof Error ? error.message : 'Could not render the original node faces.',
+          );
+        }
+      });
+  }, [sceneKey, showLabels, selectedNodes, selectedEdges, faceRevision]);
 
   const cameraKey = JSON.stringify(view.camera);
   useEffect(() => {
@@ -665,8 +943,36 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
   };
   const fit = () => {
     const current = runtime.current;
-    if (current) current.setCamera(defaultSpatialCamera(current.bounds), true);
+    if (current)
+      current.setCamera(defaultSpatialCamera(current.bounds, current.camera.aspect), true);
   };
+  const tilt = (radians: number) => {
+    const current = runtime.current;
+    if (!current) return;
+    current.flushCamera();
+    current.setCamera(
+      navigateSpatialCamera(cameraValue(current), 'rotate', 'y', { x: radians / 0.012, y: 0 }),
+      true,
+    );
+  };
+  const navigate = (
+    mode: SpatialNavigationMode,
+    axis: SpatialNavigationAxis,
+    delta: { x: number; y: number },
+  ) => {
+    const current = runtime.current;
+    if (!current || rendererState !== 'ready') return;
+    const value = navigateSpatialCamera(
+      cameraValue(current),
+      mode,
+      axis,
+      delta,
+      current.renderer.domElement.clientHeight,
+    );
+    current.setCamera(value);
+    current.queueCamera();
+  };
+  const endNavigation = () => runtime.current?.flushCamera();
   const focus = () => {
     const current = runtime.current;
     if (current) focusSpatialObjects(current, selectedNodes);
@@ -722,6 +1028,12 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       data-rendered-edges={renderedCounts.edges}
     >
       <div ref={host} className="spatial-stage" />
+      <NavigationGizmo
+        camera={navigationCamera}
+        disabled={!ready}
+        onNavigate={navigate}
+        onGestureEnd={endNavigation}
+      />
       <div className="spatial-toolbar" role="toolbar" aria-label="3D navigation">
         <button className="spatial-return" onClick={returnTo2D}>
           <ArrowLeft size={15} />
@@ -740,6 +1052,20 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
             </button>
           ))}
         </div>
+        <button
+          disabled={!ready}
+          onClick={() => tilt(-Math.PI / 18)}
+          aria-label="Tilt diagram left 10 degrees"
+        >
+          −10°
+        </button>
+        <button
+          disabled={!ready}
+          onClick={() => tilt(Math.PI / 18)}
+          aria-label="Tilt diagram right 10 degrees"
+        >
+          +10°
+        </button>
         <button onClick={fit} disabled={!ready} aria-label="Fit 3D diagram">
           <Maximize size={15} />
           Fit
@@ -762,15 +1088,16 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
         </label>
       </div>
       <div className="spatial-caption">
-        <strong>3D diagram</strong>
+        <strong>Diagram relief</strong>
         <span id="spatial-instructions">
-          Drag to rotate · scroll or pinch to zoom · right drag or two fingers to pan. Keyboard:
-          arrows rotate, +/− zoom, Home fits.
+          The same diagram with depth. Drag to tilt · scroll or pinch to zoom · right drag or two
+          fingers to pan. Use the Move, Rotate and Scale handles for axis control. Keyboard: arrows
+          rotate, +/− zoom, Home fits.
         </span>
         {showLabels && projected.nodes.length > SPATIAL_LABEL_LIMIT && (
           <small>
-            Labels adapt to available space. Select an object to keep its label visible, or find any
-            object in the list below.
+            Text stays on the card faces and follows the perspective. Zoom or select an object to
+            read it, or find any object in the list below.
           </small>
         )}
         {outsideDataView > 0 && (
@@ -779,6 +1106,12 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
             values. They were included by relationship exploration.
           </small>
         )}
+        {faceCaptureError && (
+          <small role="status">
+            The original card appearance could not be loaded. Return to 2D to continue.
+          </small>
+        )}
+        {faceCaptureBusy && <small role="status">Preparing the original node appearance…</small>}
       </div>
       {(rendererState === 'unavailable' || rendererState === 'lost') && (
         <div className="spatial-fallback" role="status">
@@ -924,7 +1257,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
           {projected.nodes.length.toLocaleString()} objects ·{' '}
           {projected.edges.length.toLocaleString()} relationships
         </span>
-        <span>Same objects, separate 2D and 3D layouts</span>
+        <span>The same diagram, with depth and perspective</span>
       </div>
     </section>
   );

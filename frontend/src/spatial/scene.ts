@@ -2,11 +2,34 @@ import * as THREE from 'three';
 import type { Edge } from '@xyflow/react';
 import type { CanvasNode } from '../canvas/projection';
 import type { SpatialPoint } from './types';
+import { topicInk } from '../ui/colors';
 
 export const SPATIAL_NODE_LIMIT = 8000;
 export const SPATIAL_EDGE_LIMIT = 16000;
 export const SPATIAL_LABEL_LIMIT = 120;
-export const spatialGlyphScale = (radius: number) => Math.max(1, radius / 60);
+
+/** The same card footprint as the 2D diagram, with a shallow physical relief. */
+export function spatialNodeDimensions(view: CanvasNode, scale = 1) {
+  const dimension = (value: number | undefined, fallback: number) =>
+    Math.max(0.01, (Number.isFinite(value) && value! > 0 ? value! : fallback) / 100);
+  const width = dimension(view.width ?? view.data.node.width, 200);
+  const height = dimension(view.height ?? view.data.node.height, 86);
+  return {
+    width: width * scale,
+    height: height * scale,
+    depth: 0.14 * scale,
+  };
+}
+
+/** Match the inherited branch colors and foreground contrast of the 2D cards. */
+export function spatialNodeAppearance(view: CanvasNode) {
+  const accent = view.data.mindmap?.color || view.data.node.color || '#538971';
+  const depth = view.data.mindmap?.depth;
+  if (depth === 1) return { background: accent, color: topicInk(accent), accent };
+  const background = new THREE.Color('#ffffff');
+  if (depth !== undefined) background.lerp(new THREE.Color(accent), depth === 0 ? 0.07 : 0.14);
+  return { background: `#${background.getHexString()}`, color: '#182c25', accent };
+}
 
 /** Keep selection visible without letting a large imported graph overwhelm WebGL. */
 export function boundedSpatialProjection(
@@ -103,42 +126,94 @@ export function disposeSpatialScene(group: THREE.Object3D) {
   group.clear();
 }
 
-export function spatialTextSprite(
+/** Canvas text is painted onto the physical card face; it never faces the camera. */
+export function spatialTextPlane(
   text: string,
-  options: { color?: string; background?: string; width?: number } = {},
+  options: {
+    color?: string;
+    background?: string;
+    width?: number;
+    height?: number;
+    status?: string;
+    kind?: string;
+    fontSize?: number;
+  } = {},
 ) {
+  const width = options.width ?? 1.75;
+  const height = options.height ?? (width * 112) / 512;
   const canvas = document.createElement('canvas');
   canvas.width = 512;
-  canvas.height = 112;
+  canvas.height = Math.max(96, Math.min(1024, Math.round((512 * height) / width)));
   const context = canvas.getContext('2d');
   if (!context) return undefined;
   context.fillStyle = options.background ?? '#ffffff';
-  context.beginPath();
-  context.roundRect(4, 8, 504, 96, 16);
-  context.fill();
-  context.strokeStyle = '#d2dad5';
-  context.lineWidth = 2;
-  context.stroke();
+  context.fillRect(0, 0, canvas.width, canvas.height);
   context.fillStyle = options.color ?? '#182c25';
-  context.font = '600 38px system-ui, sans-serif';
+  const fontSize = options.fontSize ?? Math.min(44, Math.max(22, canvas.height * 0.18));
+  const lineHeight = fontSize * 1.26;
+  context.font = `600 ${fontSize}px system-ui, sans-serif`;
   context.textAlign = 'center';
   context.textBaseline = 'middle';
-  let title = text;
-  while (title.length > 1 && context.measureText(title).width > 472) title = title.slice(0, -1);
-  if (title !== text) title = `${title.slice(0, -1)}…`;
-  context.fillText(title, 256, 56);
+  const lines: string[] = [];
+  // Wrapping preserves useful titles on a card instead of placing a separate billboard above it.
+  for (const paragraph of text.split(/\r?\n/)) {
+    let line = '';
+    for (const word of paragraph.split(/\s+/)) {
+      const candidate = line ? `${line} ${word}` : word;
+      if (line && context.measureText(candidate).width > 456) {
+        lines.push(line);
+        line = word;
+      } else line = candidate;
+      while (context.measureText(line).width > 456 && line.length > 1) {
+        let length = line.length - 1;
+        while (length > 1 && context.measureText(line.slice(0, length)).width > 456) length--;
+        lines.push(line.slice(0, length));
+        line = line.slice(length);
+      }
+    }
+    lines.push(line);
+  }
+  const statusSpace = options.status ? Math.min(38, canvas.height * 0.17) : 0;
+  const maxLines = Math.max(1, Math.floor((canvas.height - 28 - statusSpace) / lineHeight));
+  const visible = lines.slice(0, maxLines);
+  if (lines.length > maxLines) {
+    let last = visible.at(-1)!;
+    while (last.length > 1 && context.measureText(`${last}…`).width > 456) last = last.slice(0, -1);
+    visible[visible.length - 1] = `${last}…`;
+  }
+  const titleCenter = (canvas.height - statusSpace) / 2;
+  visible.forEach((line, index) =>
+    context.fillText(line, 256, titleCenter + (index - (visible.length - 1) / 2) * lineHeight),
+  );
+  if (options.status) {
+    context.font = `600 ${Math.min(24, fontSize * 0.65)}px system-ui, sans-serif`;
+    const label = `${isCompletedStatus(options.status) ? '✓ ' : ''}${options.status}`;
+    context.fillText(label, 256, canvas.height - statusSpace / 2 - 5, 456);
+  }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.generateMipmaps = false;
   texture.minFilter = THREE.LinearFilter;
-  const sprite = new THREE.Sprite(
-    new THREE.SpriteMaterial({ map: texture, depthTest: false, transparent: true }),
+  const face = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, height),
+    new THREE.MeshBasicMaterial({ map: texture, side: THREE.FrontSide }),
   );
-  const width = options.width ?? 1.75;
-  sprite.scale.set(width, (width * 112) / 512, 1);
-  sprite.renderOrder = 5;
-  sprite.userData.labelPixelWidth = options.width ? 130 : 155;
-  return sprite;
+  face.userData.faceWidth = width;
+  face.userData.faceHeight = height;
+  return face;
+}
+
+/** Native front textures contain translucent fills and antialiased edges. */
+export function setSpatialFaceOpacity(
+  face: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>,
+  opacity: number,
+) {
+  const transparent = face.userData.faceSource === '2d-node' || opacity < 1;
+  if (face.material.transparent !== transparent) {
+    face.material.transparent = transparent;
+    face.material.needsUpdate = true;
+  }
+  face.material.opacity = opacity;
 }
 
 export function isCompletedStatus(status: string | undefined) {
@@ -151,6 +226,7 @@ export interface SpatialNodeInstance {
   mesh: THREE.InstancedMesh;
   index: number;
   position: THREE.Vector3;
+  dimensions: THREE.Vector3;
   color: THREE.Color;
 }
 export interface SpatialEdgeBatchRange {
@@ -164,16 +240,140 @@ export interface SpatialArrowInstance {
   index: number;
   color: THREE.Color;
 }
+export interface SpatialFrameInstance extends SpatialArrowInstance {
+  matrix: THREE.Matrix4;
+  completed: boolean;
+  captured?: boolean;
+}
 export interface SpatialBatches {
   group: THREE.Group;
   pickable: THREE.Object3D[];
   nodes: Map<string, SpatialNodeInstance>;
   edges: Map<string, SpatialEdgeBatchRange>;
   arrows: Map<string, SpatialArrowInstance[]>;
+  frames: Map<string, SpatialFrameInstance[]>;
   edgePoints: Map<string, THREE.Vector3[]>;
 }
 const batchColor = (value: unknown, fallback: string) =>
   new THREE.Color(typeof value === 'string' && !value.includes('var(') ? value : fallback);
+
+interface ReliefProfile {
+  opacity: number;
+  radiusX: number;
+  radiusY: number;
+  skew: number;
+  inset: number;
+}
+
+function reliefProfile(view: CanvasNode): ReliefProfile {
+  const kind = view.data.node.nodeType;
+  const topicDepth = view.data.mindmap?.depth;
+  const radius =
+    topicDepth !== undefined
+      ? topicDepth === 0
+        ? 24
+        : topicDepth === 1
+          ? 14
+          : 12
+      : kind === 'start' || kind === 'end'
+        ? 44
+        : kind === 'decision' || kind === 'document'
+          ? 14
+          : kind === 'note'
+            ? 13
+            : kind === 'input' || kind === 'output'
+              ? 2
+              : kind === 'group'
+                ? 7
+                : kind === 'database'
+                  ? 20
+                  : 6;
+  const dimensions = spatialNodeDimensions(view);
+  // Quantize outwards so the relief cannot fill a transparent rounded face corner.
+  const quantize = (value: number) => Math.min(0.5, Math.ceil(value * 512) / 512);
+  return {
+    opacity: Number(view.style?.opacity ?? 1) * (kind === 'group' ? 0.03 : 1),
+    radiusX: quantize(radius / (dimensions.width * 100)),
+    radiusY: quantize((kind === 'database' ? 8 : radius) / (dimensions.height * 100)),
+    // CSS skew(-4deg) uses downward Y; world Y points up. Normalize the
+    // shear for the card aspect ratio before instance dimensions are applied.
+    skew:
+      topicDepth === undefined && (kind === 'input' || kind === 'output')
+        ? Math.tan((4 * Math.PI) / 180) * (dimensions.height / dimensions.width)
+        : 0,
+    inset: 1,
+  };
+}
+
+function clipReliefContour(points: THREE.Vector2[], boundary: number, keepLeft: boolean) {
+  const result: THREE.Vector2[] = [];
+  const inside = (point: THREE.Vector2) => (keepLeft ? point.x <= boundary : point.x >= boundary);
+  let previous = points.at(-1)!;
+  for (const point of points) {
+    if (inside(previous) !== inside(point)) {
+      const amount = (boundary - previous.x) / (point.x - previous.x);
+      result.push(new THREE.Vector2(boundary, previous.y + (point.y - previous.y) * amount));
+    }
+    if (inside(point)) result.push(point);
+    previous = point;
+  }
+  return result;
+}
+
+function reliefGeometry(profile: ReliefProfile) {
+  const { radiusX: x, radiusY: y } = profile;
+  const shape = new THREE.Shape();
+  shape.moveTo(-0.5 + x, -0.5);
+  shape.lineTo(0.5 - x, -0.5);
+  shape.absellipse(0.5 - x, -0.5 + y, x, y, -Math.PI / 2, 0, false);
+  shape.lineTo(0.5, 0.5 - y);
+  shape.absellipse(0.5 - x, 0.5 - y, x, y, 0, Math.PI / 2, false);
+  shape.lineTo(-0.5 + x, 0.5);
+  shape.absellipse(-0.5 + x, 0.5 - y, x, y, Math.PI / 2, Math.PI, false);
+  shape.lineTo(-0.5, -0.5 + y);
+  shape.absellipse(-0.5 + x, -0.5 + y, x, y, Math.PI, (Math.PI * 3) / 2, false);
+  shape.closePath();
+  let contour = shape
+    .getPoints(4)
+    .map(
+      (point) =>
+        new THREE.Vector2(
+          (point.x + profile.skew * point.y) * profile.inset,
+          point.y * profile.inset,
+        ),
+    );
+  if (profile.skew) {
+    // Native face capture has the original SVG width, clipping CSS overflow.
+    contour = clipReliefContour(clipReliefContour(contour, 0.5, true), -0.5, false);
+  }
+  const geometry = new THREE.ExtrudeGeometry(new THREE.Shape(contour), {
+    depth: 1,
+    steps: 1,
+    bevelEnabled: false,
+    curveSegments: 4,
+  });
+  geometry.translate(0, 0, -0.5);
+  return geometry;
+}
+
+function cardConnectionPoint(
+  point: SpatialPoint,
+  destination: SpatialPoint,
+  dimensions: THREE.Vector3,
+  scale: number,
+) {
+  const direction = new THREE.Vector2(destination.x - point.x, destination.y - point.y);
+  const distance = Math.min(
+    direction.x ? dimensions.x / (2 * Math.abs(direction.x)) : Infinity,
+    direction.y ? dimensions.y / (2 * Math.abs(direction.y)) : Infinity,
+    0.48,
+  );
+  return {
+    x: point.x + direction.x * distance,
+    y: point.y + direction.y * distance,
+    z: point.z + dimensions.z / 2 + 0.004 * scale,
+  };
+}
 
 /** Thousands of canonical objects share a handful of meshes and line buffers. */
 export function createSpatialBatches(
@@ -188,28 +388,69 @@ export function createSpatialBatches(
     nodes: new Map(),
     edges: new Map(),
     arrows: new Map(),
+    frames: new Map(),
     edgePoints: new Map(),
   };
   const nodeGroups = new Map<string, CanvasNode[]>();
+  const profiles = new Map<string, ReliefProfile>();
+  const profileKey = (profile: ReliefProfile) =>
+    `${profile.opacity}:${profile.radiusX}:${profile.radiusY}:${profile.skew}:${profile.inset}`;
+  const fallbacks = new Map<number, string>();
+  // Reserve a conservative fallback for each projection opacity (normally 1 and 0.2).
+  const requestedProfiles = new Map(nodes.map((view) => [view.id, reliefProfile(view)]));
+  for (const opacity of new Set(
+    [...requestedProfiles.values()].map((profile) => profile.opacity),
+  )) {
+    const largestSkew = Math.max(
+      0,
+      ...[...requestedProfiles.values()]
+        .filter((profile) => profile.opacity === opacity)
+        .map((profile) => Math.abs(profile.skew)),
+    );
+    // An inset ellipse fits even the most skewed face if the profile budget is full.
+    const fallback = {
+      opacity,
+      radiusX: 0.5,
+      radiusY: 0.5,
+      skew: 0,
+      inset: 1 / (1 + largestSkew),
+    };
+    const key = profileKey(fallback);
+    profiles.set(key, fallback);
+    fallbacks.set(opacity, key);
+  }
   for (const view of nodes) {
     if (!positions.has(view.id)) continue;
-    const key = `${view.data.node.nodeType === 'group' ? 'group' : 'object'}:${Number(view.style?.opacity ?? 1)}`;
+    const requested = requestedProfiles.get(view.id)!;
+    let key = profileKey(requested);
+    if (!profiles.has(key)) {
+      if (profiles.size < 32) profiles.set(key, requested);
+      else {
+        const suitable = [...profiles].filter(
+          ([, profile]) =>
+            profile.opacity === requested.opacity &&
+            profile.skew === requested.skew &&
+            profile.radiusX >= requested.radiusX &&
+            profile.radiusY >= requested.radiusY,
+        );
+        suitable.sort(([, a], [, b]) => a.radiusX + a.radiusY - (b.radiusX + b.radiusY));
+        key = suitable[0]?.[0] ?? fallbacks.get(requested.opacity)!;
+      }
+    }
     const group = nodeGroups.get(key);
     if (group) group.push(view);
     else nodeGroups.set(key, [view]);
   }
   const matrix = new THREE.Matrix4();
   for (const [key, views] of nodeGroups) {
-    const [shape, opacityText] = key.split(':');
-    const opacity = Number(opacityText);
-    const geometry =
-      shape === 'group'
-        ? new THREE.BoxGeometry(0.36 * scale, 0.3 * scale, 0.22 * scale)
-        : new THREE.IcosahedronGeometry(0.17 * scale, 1);
+    const profile = profiles.get(key)!;
+    const opacity = profile.opacity;
+    const geometry = reliefGeometry(profile);
     const material = new THREE.MeshStandardMaterial({
       color: '#ffffff',
       roughness: 0.52,
       transparent: opacity < 1,
+      depthWrite: opacity === 1,
       opacity,
     });
     const mesh = new THREE.InstancedMesh(geometry, material, views.length);
@@ -217,33 +458,78 @@ export function createSpatialBatches(
     mesh.userData.nodeIds = views.map((view) => view.id);
     views.forEach((view, index) => {
       const point = positions.get(view.id)!;
-      const position = new THREE.Vector3(point.x, point.y, point.z);
-      const color = batchColor(view.data.mindmap?.color || view.data.node.color, '#538971');
-      mesh.setMatrixAt(index, matrix.makeTranslation(point.x, point.y, point.z));
+      const position = new THREE.Vector3(
+        point.x,
+        point.y,
+        point.z - (view.data.node.nodeType === 'group' ? 0.16 * scale : 0),
+      );
+      const appearance = spatialNodeAppearance(view);
+      const color = batchColor(appearance.background, '#ffffff');
+      const { width, height, depth } = spatialNodeDimensions(view, scale);
+      const dimensions = new THREE.Vector3(width, height, depth);
+      matrix.makeScale(width, height, depth).setPosition(position);
+      mesh.setMatrixAt(index, matrix);
       mesh.setColorAt(index, color);
-      result.nodes.set(view.id, { mesh, index, position, color });
+      result.nodes.set(view.id, { mesh, index, position, color, dimensions });
     });
     mesh.instanceColor?.setUsage(THREE.DynamicDrawUsage);
     mesh.computeBoundingSphere();
-    if (mesh.boundingSphere) mesh.boundingSphere.radius += 0.2 * scale;
     result.group.add(mesh);
     result.pickable.push(mesh);
-    const complete = views.filter((view) => isCompletedStatus(view.data.node.status));
-    if (complete.length) {
-      const rings = new THREE.InstancedMesh(
-        new THREE.TorusGeometry(0.23 * scale, 0.035 * scale, 6, 12),
-        new THREE.MeshBasicMaterial({ color: '#168251', transparent: opacity < 1, opacity }),
-        complete.length,
+    // Original borders are part of the captured 2D face. Separate strips only
+    // indicate completion or selection; they do not restyle an ordinary card.
+    const frames = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: opacity < 1, opacity }),
+      views.length * 4,
+    );
+    frames.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    frames.userData.nodeIds = views.flatMap((view) => Array(4).fill(view.id));
+    views.forEach((view, viewIndex) => {
+      const point = result.nodes.get(view.id)!.position;
+      const { width, height, depth } = spatialNodeDimensions(view, scale);
+      const completed = isCompletedStatus(view.data.node.status);
+      const thickness = Math.min(width / 8, height / 8, (completed ? 0.025 : 0.012) * scale);
+      const color = batchColor(
+        completed ? '#168251' : spatialNodeAppearance(view).accent,
+        '#538971',
       );
-      rings.userData.nodeIds = complete.map((view) => view.id);
-      complete.forEach((view, index) => {
-        const point = positions.get(view.id)!;
-        rings.setMatrixAt(index, matrix.makeTranslation(point.x, point.y, point.z));
+      const strips = [
+        [width, thickness, 0, (height - thickness) / 2],
+        [width, thickness, 0, -(height - thickness) / 2],
+        [thickness, height, (width - thickness) / 2, 0],
+        [thickness, height, -(width - thickness) / 2, 0],
+      ];
+      const entries: SpatialFrameInstance[] = [];
+      strips.forEach(([stripWidth, stripHeight, x, y], stripIndex) => {
+        const index = viewIndex * 4 + stripIndex;
+        matrix.makeScale(stripWidth, stripHeight, Math.min(depth / 8, 0.012 * scale));
+        matrix.setPosition(point.x + x, point.y + y, point.z + depth / 2 + 0.006 * scale);
+        const visibleMatrix = matrix.clone();
+        frames.setMatrixAt(
+          index,
+          completed
+            ? matrix
+            : new THREE.Matrix4()
+                .makeScale(0, 0, 0)
+                .setPosition(point.x + x, point.y + y, point.z + depth / 2),
+        );
+        frames.setColorAt(index, color);
+        entries.push({ mesh: frames, index, color, matrix: visibleMatrix, completed });
       });
-      rings.computeBoundingSphere();
-      result.group.add(rings);
-      result.pickable.push(rings);
-    }
+      result.frames.set(view.id, entries);
+    });
+    frames.instanceColor?.setUsage(THREE.DynamicDrawUsage);
+    frames.computeBoundingSphere();
+    if (frames.boundingSphere)
+      frames.boundingSphere.radius += Math.max(
+        ...views.map((view) => {
+          const dimensions = spatialNodeDimensions(view, scale);
+          return Math.hypot(dimensions.width, dimensions.height);
+        }),
+      );
+    result.group.add(frames);
+    result.pickable.push(frames);
   }
   type LineData = {
     positions: number[];
@@ -260,10 +546,30 @@ export function createSpatialBatches(
     color: THREE.Color;
   }> = [];
   for (const edge of edges) {
-    const source = positions.get(edge.source),
-      target = positions.get(edge.target);
+    const source = result.nodes.get(edge.source)?.position,
+      target = result.nodes.get(edge.target)?.position;
     if (!source || !target) continue;
-    let points = spatialEdgePoints(source, target, edge.source === edge.target, scale);
+    const sourceDimensions = result.nodes.get(edge.source)?.dimensions;
+    const targetDimensions = result.nodes.get(edge.target)?.dimensions;
+    const selfLoop = edge.source === edge.target;
+    let points =
+      !selfLoop && sourceDimensions && targetDimensions
+        ? spatialEdgePoints(
+            cardConnectionPoint(source, target, sourceDimensions, scale),
+            cardConnectionPoint(target, source, targetDimensions, scale),
+            false,
+            scale,
+          )
+        : spatialEdgePoints(source, target, selfLoop, scale);
+    if (selfLoop && sourceDimensions) {
+      const loopScale = Math.max(sourceDimensions.x, sourceDimensions.y) * 0.8;
+      points = spatialEdgePoints(
+        { x: source.x, y: source.y + sourceDimensions.y / 2, z: source.z + sourceDimensions.z / 2 },
+        target,
+        true,
+        loopScale,
+      );
+    }
     // Explicitly colocated objects still have a real, pickable relationship.
     if (points.length < 2) points = spatialEdgePoints(source, target, true, scale);
     result.edgePoints.set(edge.id, points);
@@ -376,6 +682,36 @@ export function spatialIntersectionIdentity(hit: THREE.Intersection | undefined)
   return { nodeId: hit.object.userData.nodeId, edgeId: hit.object.userData.edgeId };
 }
 
+function updateSpatialFrameVisibility(
+  frames: SpatialFrameInstance[],
+  position: THREE.Vector3,
+  selected: boolean,
+) {
+  const hidden = new THREE.Matrix4().makeScale(0, 0, 0).setPosition(position);
+  for (const frame of frames) {
+    frame.mesh.setMatrixAt(
+      frame.index,
+      (frame.completed && !frame.captured) || selected ? frame.matrix : hidden,
+    );
+    frame.mesh.instanceMatrix.addUpdateRange(frame.index * 16, 16);
+    frame.mesh.instanceMatrix.needsUpdate = true;
+  }
+}
+
+/** The native Done border replaces its fallback only while its texture is resident. */
+export function setSpatialNodeFaceCaptured(
+  batches: SpatialBatches,
+  id: string,
+  captured: boolean,
+  selected: boolean,
+) {
+  const entry = batches.nodes.get(id);
+  if (!entry) return;
+  const frames = batches.frames.get(id) ?? [];
+  for (const frame of frames) frame.captured = captured;
+  updateSpatialFrameVisibility(frames, entry.position, selected);
+}
+
 /** Update only the affected instances and buffer ranges, leaving geometry and textures intact. */
 export function selectSpatialBatches(
   batches: SpatialBatches,
@@ -389,14 +725,22 @@ export function selectSpatialBatches(
   for (const id of new Set([...previousNodes, ...selectedNodes])) {
     const entry = batches.nodes.get(id);
     if (!entry) continue;
-    const scale = selectedNodes.has(id) ? 1.45 : 1;
-    matrix.makeScale(scale, scale, scale).setPosition(entry.position);
+    matrix
+      .makeScale(entry.dimensions.x, entry.dimensions.y, entry.dimensions.z)
+      .setPosition(entry.position);
     entry.mesh.setMatrixAt(entry.index, matrix);
     entry.mesh.setColorAt(entry.index, selectedNodes.has(id) ? color : entry.color);
     entry.mesh.instanceMatrix.addUpdateRange(entry.index * 16, 16);
     entry.mesh.instanceMatrix.needsUpdate = true;
     entry.mesh.instanceColor?.addUpdateRange(entry.index * 3, 3);
     if (entry.mesh.instanceColor) entry.mesh.instanceColor.needsUpdate = true;
+    const frames = batches.frames.get(id) ?? [];
+    updateSpatialFrameVisibility(frames, entry.position, selectedNodes.has(id));
+    for (const frame of frames) {
+      frame.mesh.setColorAt(frame.index, selectedNodes.has(id) ? color : frame.color);
+      frame.mesh.instanceColor?.addUpdateRange(frame.index * 3, 3);
+      if (frame.mesh.instanceColor) frame.mesh.instanceColor.needsUpdate = true;
+    }
   }
   for (const id of new Set([...previousEdges, ...selectedEdges])) {
     const entry = batches.edges.get(id);

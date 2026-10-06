@@ -1,7 +1,6 @@
 import { blankGraph, newEdge, newNode, type Graph } from '../model/types';
-import type { SpatialPoint } from './types';
 
-/** Ordinary topics and links, with a readable 2D overview and compact 3D branch clusters. */
+/** Ordinary topics and links, with the same readable layout in 2D and 3D relief. */
 export function createSpatialExample(name = 'Truck lifecycle'): Graph {
   const graph = blankGraph(name, 'mindmap');
   graph.diagram.description =
@@ -16,14 +15,12 @@ export function createSpatialExample(name = 'Truck lifecycle'): Graph {
     width: 260,
     height: 120,
     color: '#d7e7ec',
-    metadata: { spatial: { version: 1, position: { x: 0, y: 0, z: 0 } } },
   });
   graph.nodes.push(lifecycle);
   const stages: {
     title: string;
     description: string;
     color: string;
-    position: SpatialPoint;
     status?: string;
     topics: { title: string; description: string }[];
   }[] = [
@@ -31,7 +28,6 @@ export function createSpatialExample(name = 'Truck lifecycle'): Graph {
       title: 'Manufacturing',
       description: 'Turn the specification into a truck ready for delivery.',
       color: '#5c9fe5',
-      position: { x: -3, y: 2.5, z: -2.5 },
       status: 'done',
       topics: [
         {
@@ -46,7 +42,6 @@ export function createSpatialExample(name = 'Truck lifecycle'): Graph {
       title: 'Delivery',
       description: 'Hand over the vehicle and introduce it to the fleet.',
       color: '#e6b74f',
-      position: { x: -3, y: 0, z: 0 },
       status: 'done',
       topics: [
         {
@@ -67,7 +62,6 @@ export function createSpatialExample(name = 'Truck lifecycle'): Graph {
       title: 'Operation',
       description: 'Understand how the truck is used in everyday work.',
       color: '#79ba8b',
-      position: { x: -3, y: -2.5, z: 2.5 },
       topics: [
         {
           title: 'Routes and loads',
@@ -87,7 +81,6 @@ export function createSpatialExample(name = 'Truck lifecycle'): Graph {
       title: 'Maintenance',
       description: 'Plan work that keeps the truck available and useful.',
       color: '#b793dc',
-      position: { x: 3, y: 2.5, z: 2.5 },
       topics: [
         { title: 'Inspections', description: 'Record checks, observations and work to follow up.' },
         { title: 'Repairs', description: 'Track faults, repair decisions and completed work.' },
@@ -101,7 +94,6 @@ export function createSpatialExample(name = 'Truck lifecycle'): Graph {
       title: 'Second life',
       description: 'Consider how the truck can serve another purpose or owner.',
       color: '#e29077',
-      position: { x: 3, y: 0, z: 0 },
       topics: [
         { title: 'Refurbishment', description: 'Identify the changes needed for continued use.' },
         {
@@ -118,7 +110,6 @@ export function createSpatialExample(name = 'Truck lifecycle'): Graph {
       title: 'Recycling',
       description: 'Separate reusable components and recover materials at the end of service.',
       color: '#71bdbd',
-      position: { x: 3, y: -2.5, z: -2.5 },
       topics: [
         {
           title: 'Dismantling',
@@ -150,7 +141,6 @@ export function createSpatialExample(name = 'Truck lifecycle'): Graph {
       y: 130 + row * 420,
       width: 260,
       height: 120,
-      metadata: { spatial: { version: 1, position: { ...stage.position } } },
     });
     graph.nodes.push(node);
     link(lifecycle.id, node.id);
@@ -165,16 +155,6 @@ export function createSpatialExample(name = 'Truck lifecycle'): Graph {
         y: row * 420 + topicIndex * 130,
         width: 300,
         height: 100,
-        metadata: {
-          spatial: {
-            version: 1,
-            position: {
-              x: stage.position.x + (left ? -1 : 1) * (2.4 + topicIndex * 0.45),
-              y: stage.position.y + (1 - topicIndex) * 1.25,
-              z: stage.position.z + 1.4 + topicIndex * 0.7,
-            },
-          },
-        },
       });
       graph.nodes.push(child);
       link(node.id, child.id);

@@ -7,6 +7,9 @@ import { browserLaunchOptions } from '../../playwright.config';
 
 // Keep GPU-less WebGL testing local to these cases; ordinary editor tests use their normal driver.
 test.use({
+  // DOM rasterization and software WebGL add overhead to graphics acceptance.
+  // Ordinary editor tests keep their original action and performance limits.
+  actionTimeout: 45000,
   launchOptions: {
     ...browserLaunchOptions,
     args: [
@@ -34,6 +37,66 @@ async function ready(page: Page) {
     'aria-pressed',
     'true',
   );
+}
+async function dragSpatialCanvas(page: Page) {
+  const bounds = (await page.getByTestId('spatial-canvas').boundingBox())!;
+  // Start on the canvas itself, outside the visible navigation gizmo and HUD.
+  const start = { x: bounds.x + bounds.width * 0.58, y: bounds.y + bounds.height * 0.72 };
+  expect(
+    await page.evaluate(
+      ({ x, y }) => (document.elementFromPoint(x, y) as HTMLElement | null)?.dataset.testid,
+      start,
+    ),
+  ).toBe('spatial-canvas');
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.mouse.move(bounds.x + bounds.width * 0.43, bounds.y + bounds.height * 0.6, {
+    steps: 12,
+  });
+  await page.mouse.up();
+}
+interface ReliefFace {
+  id: string;
+  corners: [number, number][];
+  center: [number, number];
+  width: number;
+  height: number;
+  depth: number;
+  labelBillboard: boolean;
+  textCorners: [number, number][];
+  source: string;
+}
+async function reliefFaces(page: Page): Promise<ReliefFace[]> {
+  const canvas = page.getByTestId('spatial-canvas');
+  await expect(canvas).toHaveAttribute('data-node-faces', 'relief');
+  await expect
+    .poll(
+      async () => JSON.parse((await canvas.getAttribute('data-face-projections')) ?? '[]').length,
+    )
+    .toBeGreaterThan(0);
+  return JSON.parse((await canvas.getAttribute('data-face-projections'))!);
+}
+async function yawFromFront(page: Page, request: APIRequestContext, id: string, degrees = 10) {
+  await page.getByRole('button', { name: 'Front view', exact: true }).click();
+  await saved(page);
+  const canvas = page.getByTestId('spatial-canvas');
+  const frontPosition = await canvas.getAttribute('data-camera-position');
+  await page.getByRole('button', { name: 'Tilt diagram right 10 degrees', exact: true }).click();
+  await ready(page);
+  await expect.poll(() => canvas.getAttribute('data-camera-position')).not.toBe(frontPosition);
+  await saved(page);
+  await expect
+    .poll(async () => {
+      const camera = getSpatialView(await stored(request, id)).camera;
+      return camera
+        ? (Math.atan2(camera.position.x - camera.target.x, camera.position.z - camera.target.z) *
+            180) /
+            Math.PI
+        : Infinity;
+    })
+    .toBeCloseTo(degrees, 3);
+  // Camera and face projections belong to the same rendered animation frame.
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
 }
 async function create(request: APIRequestContext, name: string, type?: Graph['diagram']['type']) {
   const response = await request.post('/api/v1/spatial-diagrams', {
@@ -246,6 +309,68 @@ async function pixels(page: Page, png: Buffer) {
     return { width: image.width, height: image.height, magenta, colorful, transparent };
   }, png.toString('base64'));
 }
+async function iconFidelity(
+  page: Page,
+  icon: Buffer,
+  rendered: Buffer,
+  crop: { x: number; y: number; width: number; height: number },
+  canvasSize: { width: number; height: number },
+) {
+  return page.evaluate(
+    async ({ reference, rendered, crop, canvasSize }) => {
+      const load = async (base64: string) => {
+        const image = new Image();
+        image.src = `data:image/png;base64,${base64}`;
+        await image.decode();
+        return image;
+      };
+      const [original, view] = await Promise.all([load(reference), load(rendered)]);
+      const pixelRatio = view.width / canvasSize.width;
+      const sampleWidth = Math.max(3, Math.round(crop.width * pixelRatio));
+      const sampleHeight = Math.max(3, Math.round(crop.height * pixelRatio));
+      const samples = [original, view].map((image, index) => {
+        const native = document.createElement('canvas');
+        native.width = sampleWidth;
+        native.height = sampleHeight;
+        const context = native.getContext('2d')!;
+        if (!index) context.drawImage(image, 0, 0, sampleWidth, sampleHeight);
+        else
+          context.drawImage(
+            image,
+            crop.x * pixelRatio,
+            crop.y * pixelRatio,
+            crop.width * pixelRatio,
+            crop.height * pixelRatio,
+            0,
+            0,
+            sampleWidth,
+            sampleHeight,
+          );
+        // Match the source to the rendered icon's pixel resolution before
+        // comparing shape, so browser antialiasing is not a scale difference.
+        const normalized = document.createElement('canvas');
+        normalized.width = normalized.height = 32;
+        const normalizedContext = normalized.getContext('2d')!;
+        normalizedContext.drawImage(native, 0, 0, 32, 32);
+        const rgba = normalizedContext.getImageData(0, 0, 32, 32).data;
+        return Array.from({ length: 1024 }, (_, pixel) =>
+          Math.max(0, 1 - (rgba[pixel * 4] + rgba[pixel * 4 + 1] + rgba[pixel * 4 + 2]) / 765),
+        );
+      });
+      const norm = (values: number[]) =>
+        Math.sqrt(values.reduce((sum, value) => sum + value * value, 0));
+      const referenceNorm = norm(samples[0]),
+        renderedNorm = norm(samples[1]);
+      return {
+        similarity:
+          samples[0].reduce((sum, value, index) => sum + value * samples[1][index], 0) /
+          (referenceNorm * renderedNorm || 1),
+        inkRatio: renderedNorm / (referenceNorm || 1),
+      };
+    },
+    { reference: icon.toString('base64'), rendered: rendered.toString('base64'), crop, canvasSize },
+  );
+}
 async function databaseGraph(page: Page, id: string) {
   return page.evaluate(async (id) => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -272,10 +397,180 @@ async function databaseGraph(page: Page, id: string) {
   }, id);
 }
 
-test('rotates and saves a real 3D camera while object edits, statuses and relationships retain independent 2D geometry', async ({
+test('lifts the same 2D cards and their text into relief, rotates the complete diagram by 10 degrees and keeps card picking and 2D geometry', async ({
   page,
   request,
 }, testInfo) => {
+  test.setTimeout(180000);
+  const name = 'The same release diagram in relief';
+  const created = await request.post('/api/v1/diagrams', {
+    data: { name, type: 'process' },
+  });
+  expect(created.status()).toBe(201);
+  const diagram = (await created.json()) as Graph['diagram'];
+  const populated = await request.post(`/api/v1/diagrams/${diagram.id}/bulk`, {
+    data: {
+      nodes: [
+        {
+          externalId: 'plan',
+          title: 'Plan the release',
+          x: 100,
+          y: 110,
+          width: 300,
+          height: 90,
+          color: '#5c9fe5',
+          nodeType: 'process',
+          metadata: { visualNerve: { icon: 'launch' } },
+        },
+        {
+          externalId: 'build',
+          title: 'Build the version',
+          x: 660,
+          y: 150,
+          width: 240,
+          height: 120,
+          color: '#79ba8b',
+          status: 'done',
+          nodeType: 'process',
+          metadata: { visualNerve: { icon: 'technology' } },
+        },
+        {
+          externalId: 'ship',
+          title: 'Ship the release',
+          x: 340,
+          y: 440,
+          width: 280,
+          height: 110,
+          color: '#e6b74f',
+          nodeType: 'process',
+        },
+      ],
+      edges: [
+        {
+          sourceExternalId: 'plan',
+          targetExternalId: 'build',
+          label: 'Ready',
+          direction: 'forward',
+        },
+        {
+          sourceExternalId: 'build',
+          targetExternalId: 'ship',
+          label: 'Verified',
+          direction: 'forward',
+        },
+      ],
+    },
+  });
+  expect(populated.ok()).toBe(true);
+  await page.locator('.diagram-item').filter({ hasText: name }).click();
+  await saved(page);
+  await expect(page.locator('.canvas-shell .react-flow')).toBeVisible();
+  const before = await stored(request, diagram.id);
+  expect(before.nodes.every((node) => node.metadata.spatial === undefined)).toBe(true);
+  const firstNode = before.nodes.find((node) => node.externalId === 'plan')!;
+  const originalCard = page.locator(`.canvas-shell [data-node-id="${firstNode.id}"]`);
+  const originalIcon = originalCard.locator('[data-area-icon="launch"]');
+  await expect(originalIcon).toBeVisible();
+  const originalCardBox = (await originalCard.boundingBox())!;
+  const originalIconBox = (await originalIcon.boundingBox())!;
+  const iconBounds = {
+    x: (originalIconBox.x - originalCardBox.x) / originalCardBox.width,
+    y: (originalIconBox.y - originalCardBox.y) / originalCardBox.height,
+    width: originalIconBox.width / originalCardBox.width,
+    height: originalIconBox.height / originalCardBox.height,
+  };
+  const iconPixels = await originalIcon.screenshot();
+  await originalCard.screenshot({ path: '/tmp/visualnerve-2d-relief-source.png' });
+  await page.getByRole('button', { name: '3D view', exact: true }).click();
+  await ready(page);
+  await page.getByRole('button', { name: 'Front view', exact: true }).click();
+  await saved(page);
+  const canvas = page.getByTestId('spatial-canvas');
+  await expect(canvas).toHaveAttribute('data-face-source', '2d-node', { timeout: 30000 });
+  await expect(canvas).toHaveAttribute('data-face-captures', '3');
+  const front = await reliefFaces(page);
+  expect(front).toHaveLength(3);
+  const firstFace = front.find((face) => face.id === firstNode.id)!;
+  const scale = (firstFace.corners[1][0] - firstFace.corners[0][0]) / firstNode.width;
+  expect(scale).toBeGreaterThan(0);
+  for (const node of before.nodes) {
+    const face = front.find((entry) => entry.id === node.id)!;
+    expect(face.source).toBe('2d-node');
+    expect(face.depth).toBeGreaterThan(0);
+    expect(face.labelBillboard).toBe(false);
+    expect(face.width / face.height).toBeCloseTo(node.width / node.height, 4);
+    expect(face.corners[0][1]).toBeCloseTo(face.corners[1][1], 3);
+    expect(face.corners[0][0]).toBeCloseTo(face.corners[3][0], 3);
+    expect(face.center[0] - firstFace.center[0]).toBeCloseTo(
+      (node.x + node.width / 2 - firstNode.x - firstNode.width / 2) * scale,
+      2,
+    );
+    expect(face.center[1] - firstFace.center[1]).toBeCloseTo(
+      (node.y + node.height / 2 - firstNode.y - firstNode.height / 2) * scale,
+      2,
+    );
+  }
+  const faceWidth = firstFace.corners[1][0] - firstFace.corners[0][0];
+  const faceHeight = firstFace.corners[3][1] - firstFace.corners[0][1];
+  const frontBox = (await canvas.boundingBox())!;
+  const capturedIcon = await iconFidelity(
+    page,
+    iconPixels,
+    await canvas.screenshot(),
+    {
+      x: firstFace.corners[0][0] + iconBounds.x * faceWidth,
+      y: firstFace.corners[0][1] + iconBounds.y * faceHeight,
+      width: iconBounds.width * faceWidth,
+      height: iconBounds.height * faceHeight,
+    },
+    frontBox,
+  );
+  expect(capturedIcon.inkRatio).toBeGreaterThan(0.3);
+  expect(capturedIcon.inkRatio).toBeLessThan(3);
+  expect(capturedIcon.similarity).toBeGreaterThan(0.65);
+  await yawFromFront(page, request, diagram.id);
+  const angled = await reliefFaces(page);
+  const planFace = angled.find((face) => face.id === firstNode.id)!;
+  const sideLength = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  // A camera-facing label rectangle would remain parallel and equally tall on both sides.
+  // The actual card face and its printed text share a perspective trapezoid after the turn.
+  expect(Math.abs(planFace.corners[0][1] - planFace.corners[1][1])).toBeGreaterThan(0.1);
+  expect(
+    Math.abs(
+      sideLength(planFace.corners[0], planFace.corners[3]) -
+        sideLength(planFace.corners[1], planFace.corners[2]),
+    ),
+  ).toBeGreaterThan(0.1);
+  expect(planFace.labelBillboard).toBe(false);
+  expect(planFace.source).toBe('2d-node');
+  for (const [index, corner] of planFace.corners.entries()) {
+    expect(Math.abs(planFace.textCorners[index][0] - corner[0])).toBeLessThan(0.1);
+    expect(Math.abs(planFace.textCorners[index][1] - corner[1])).toBeLessThan(0.1);
+  }
+  const pixelsInView = await pixels(page, await canvas.screenshot());
+  expect(pixelsInView.colorful).toBeGreaterThan(1000);
+  await page.screenshot({ path: '/tmp/visualnerve-3d-relief-10deg.png' });
+  await testInfo.attach('same-2d-diagram-in-10-degree-relief.png', {
+    path: '/tmp/visualnerve-3d-relief-10deg.png',
+    contentType: 'image/png',
+  });
+  const bounds = (await canvas.boundingBox())!;
+  await page.mouse.click(bounds.x + planFace.center[0], bounds.y + planFace.center[1]);
+  await expect(page.getByLabel('Node title', { exact: true })).toHaveValue('Plan the release');
+  await page.getByRole('button', { name: '2D view', exact: true }).click();
+  await saved(page);
+  await expect(page.locator('.canvas-shell .react-flow')).toBeVisible();
+  const after = await stored(request, diagram.id);
+  expect(geometry(after)).toEqual(geometry(before));
+  expect(canonicalRecords(after.nodes)).toEqual(canonicalRecords(before.nodes));
+  expect(canonicalRecords(after.edges)).toEqual(canonicalRecords(before.edges));
+});
+
+test('rotates and saves a real 3D camera while object edits, statuses and relationships retain the same 2D geometry', async ({
+  page,
+  request,
+}, testInfo) => {
+  test.setTimeout(180000);
   const initial = await create(request, 'Spatial release plan', 'process');
   const response = await request.post(`/api/v1/diagrams/${initial.diagram.id}/bulk`, {
     data: {
@@ -318,13 +613,7 @@ test('rotates and saves a real 3D camera while object edits, statuses and relati
   await saved(page);
   const canvas = page.getByTestId('spatial-canvas');
   const originalCamera = await canvas.getAttribute('data-camera-position');
-  const bounds = (await canvas.boundingBox())!;
-  await page.mouse.move(bounds.x + bounds.width * 0.82, bounds.y + bounds.height * 0.8);
-  await page.mouse.down();
-  await page.mouse.move(bounds.x + bounds.width * 0.65, bounds.y + bounds.height * 0.67, {
-    steps: 12,
-  });
-  await page.mouse.up();
+  await dragSpatialCanvas(page);
   await expect.poll(() => canvas.getAttribute('data-camera-position')).not.toBe(originalCamera);
   await saved(page);
   await expect
@@ -407,6 +696,12 @@ test('rotates and saves a real 3D camera while object edits, statuses and relati
       page.getByRole('button', { name: `Select object ${stage}`, exact: true }),
     ).toBeVisible();
   await page.locator('.spatial-object-list > summary').click();
+  const diagrams = (await (await request.get('/api/v1/diagrams')).json()) as Graph['diagram'][];
+  const truck = diagrams.find((entry) => entry.name === 'Truck lifecycle')!;
+  await yawFromFront(page, request, truck.id);
+  await expect(page.getByTestId('spatial-canvas')).toHaveAttribute('data-face-source', '2d-node', {
+    timeout: 45000,
+  });
   await page.screenshot({ path: '/tmp/visualnerve-3d-truck-lifecycle.png' });
   await testInfo.attach('truck-lifecycle-3d.png', {
     path: '/tmp/visualnerve-3d-truck-lifecycle.png',
@@ -418,7 +713,7 @@ test('MCP creates and populates a 3D mind map whose objects export nonblank 2D P
   page,
   request,
 }, testInfo) => {
-  test.setTimeout(120000);
+  test.setTimeout(180000);
   const source = await createExampleThroughMcp(request, '3D project export proof');
   expect(source.nodes).toHaveLength(7);
   expect(source.edges).toHaveLength(6);
@@ -465,23 +760,11 @@ test('MCP creates and populates a 3D mind map whose objects export nonblank 2D P
   expect(backCamera.position.z).toBeLessThan(backCamera.target.z);
   await page.getByRole('button', { name: 'Front view', exact: true }).click();
   await saved(page);
-  // Project a known ordinary object's position through the public front-view camera,
-  // then select its visible object via the real WebGL pointer/raycast path.
-  const position = (root.metadata.spatial as { position: { x: number; y: number; z: number } })
-    .position;
-  const point = await page.getByTestId('spatial-canvas').evaluate((canvas, position) => {
-    const box = canvas.getBoundingClientRect();
-    const camera = JSON.parse((canvas as HTMLElement).dataset.cameraPosition!);
-    const target = JSON.parse((canvas as HTMLElement).dataset.cameraTarget!);
-    const halfHeight = (camera.z - position.z) * Math.tan((42 * Math.PI) / 360);
-    return {
-      x:
-        box.x +
-        (((position.x - target.x) / (halfHeight * (box.width / box.height)) + 1) * box.width) / 2,
-      y: box.y + ((1 - (position.y - target.y) / halfHeight) * box.height) / 2,
-    };
-  }, position);
-  await page.mouse.click(point.x, point.y);
+  // Pick the actual card face through WebGL, using its projected center rather than
+  // the legacy spatial X/Y metadata that no longer rearranges the 2D diagram.
+  const rootFace = (await reliefFaces(page)).find((face) => face.id === root.id)!;
+  const box = (await page.getByTestId('spatial-canvas').boundingBox())!;
+  await page.mouse.click(box.x + rootFace.center[0], box.y + rootFace.center[1]);
   await expect(page.getByLabel('Node title', { exact: true })).toHaveValue('Project');
   await page
     .getByLabel('Node notes', { exact: true })
@@ -533,7 +816,13 @@ test('MCP creates and populates a 3D mind map whose objects export nonblank 2D P
       .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
   };
   expect(relationships(imported)).toEqual(relationships(exported));
-  await page.screenshot({ path: '/tmp/visualnerve-3d-mindmap.png' });
+  await expect(page.getByTestId('spatial-canvas')).toHaveAttribute('data-face-source', '2d-node', {
+    timeout: 45000,
+  });
+  // An imported graph mounts a fresh WebGL surface after the export renderer closes.
+  // Capture only after its real card textures have rendered; this is visual evidence,
+  // separate from the unchanged functional and large-graph timing assertions.
+  await page.screenshot({ path: '/tmp/visualnerve-3d-mindmap.png', timeout: 45000 });
   await testInfo.attach('mindmap-3d.png', {
     path: '/tmp/visualnerve-3d-mindmap.png',
     contentType: 'image/png',
@@ -545,6 +834,7 @@ test('3D mind map objects, camera and relationships survive offline reload and f
   request,
   context,
 }) => {
+  test.setTimeout(180000);
   const source = await populateExample(request, await create(request, 'Offline spatial mind map'));
   await ready(page);
   await page.getByRole('button', { name: 'Left view', exact: true }).click();
@@ -701,7 +991,7 @@ test.describe('interrupted 3D module download', () => {
   });
 });
 
-test('keeps 2,501 ordinary mind map objects and 2,500 links interactive in a complete automatically placed WebGL view', async ({
+test('keeps the same 2,501 mind map cards and 2,500 links interactive as a complete 3D relief diagram', async ({
   page,
   request,
 }, testInfo) => {
@@ -775,11 +1065,7 @@ test('keeps 2,501 ordinary mind map objects and 2,500 links interactive in a com
   await expect(view).toHaveAttribute('data-rendered-edges', '2500');
   const canvas = page.getByTestId('spatial-canvas');
   const cameraBefore = await canvas.getAttribute('data-camera-position');
-  const box = (await canvas.boundingBox())!;
-  await page.mouse.move(box.x + box.width * 0.85, box.y + box.height * 0.8);
-  await page.mouse.down();
-  await page.mouse.move(box.x + box.width * 0.65, box.y + box.height * 0.67, { steps: 12 });
-  await page.mouse.up();
+  await dragSpatialCanvas(page);
   await expect.poll(() => canvas.getAttribute('data-camera-position')).not.toBe(cameraBefore);
   await page.getByRole('button', { name: 'Front view', exact: true }).click();
   await saved(page);
@@ -789,11 +1075,18 @@ test('keeps 2,501 ordinary mind map objects and 2,500 links interactive in a com
   await saved(page);
   camera = getSpatialView(await stored(request, initial.diagram.id)).camera!;
   expect(camera.position.z).toBeLessThan(camera.target.z);
-  // Let the requested Back frame update label visibility before checking its result.
+  // Card text belongs to the front face. A view from behind exposes the back of
+  // the same relief cards instead of independently rotating camera-facing labels.
   await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
   await expect
     .poll(async () => Number((await canvas.getAttribute('data-visible-labels')) ?? 0))
+    .toBe(0);
+  await yawFromFront(page, request, initial.diagram.id);
+  await expect(canvas).toHaveAttribute('data-face-source', '2d-node', { timeout: 45000 });
+  await expect
+    .poll(async () => Number((await canvas.getAttribute('data-visible-labels')) ?? 0))
     .toBeGreaterThan(0);
+  await expect(canvas).toHaveAttribute('data-node-faces', 'relief');
   await page.screenshot({ path: '/tmp/visualnerve-3d-2501-mindmap.png' });
   await objects(page);
   await page.getByLabel('Find a 3D object', { exact: true }).fill('Truck check 2494');

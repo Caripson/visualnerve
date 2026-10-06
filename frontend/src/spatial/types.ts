@@ -9,6 +9,8 @@ export interface SpatialPoint {
 export interface SpatialCamera {
   position: SpatialPoint;
   target: SpatialPoint;
+  /** Optional camera up direction preserves rotation around the viewing axis. */
+  up?: SpatialPoint;
 }
 export interface SpatialView {
   version: 1;
@@ -50,7 +52,7 @@ export function validateSpatialPoint(
   );
 }
 export function validateSpatialCamera(value: unknown): asserts value is SpatialCamera {
-  check(object(value) && keys(value, ['position', 'target']), 'Invalid 3D camera.');
+  check(object(value) && keys(value, ['position', 'target', 'up']), 'Invalid 3D camera.');
   const camera = value as SpatialCamera;
   validateSpatialPoint(camera.position, spatialLimits.cameraCoordinate);
   validateSpatialPoint(camera.target, spatialLimits.cameraCoordinate);
@@ -62,6 +64,24 @@ export function validateSpatialCamera(value: unknown): asserts value is SpatialC
     ) > 0.000001,
     'The 3D camera position must differ from its target.',
   );
+  if (camera.up !== undefined) {
+    validateSpatialPoint(camera.up, 1);
+    const length = Math.hypot(camera.up.x, camera.up.y, camera.up.z);
+    check(Math.abs(length - 1) < 0.0001, 'The 3D camera up direction must be a unit vector.');
+    const direction = {
+      x: camera.position.x - camera.target.x,
+      y: camera.position.y - camera.target.y,
+      z: camera.position.z - camera.target.z,
+    };
+    const distance = Math.hypot(direction.x, direction.y, direction.z);
+    const parallel =
+      (direction.x * camera.up.x + direction.y * camera.up.y + direction.z * camera.up.z) /
+      (distance * length);
+    check(
+      Math.abs(parallel) < 0.999999,
+      'The 3D camera up direction must differ from its viewing axis.',
+    );
+  }
 }
 export function validateSpatialView(value: unknown): asserts value is SpatialView {
   check(object(value), 'Invalid 3D view settings.');

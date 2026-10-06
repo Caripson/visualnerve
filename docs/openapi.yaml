@@ -1395,13 +1395,16 @@
       },
       "SpatialCamera": {
         "additionalProperties": false,
-        "description": "Position must differ from target. +Y is up, +Z is front and -X is left. Camera coordinates have a wider limit to frame all valid node positions.",
+        "description": "Position must differ from target. +Y is up, +Z is front and -X is left. Camera coordinates have a wider limit to frame all valid node positions. Optional up preserves view roll.",
         "properties": {
           "position": {
             "$ref": "#/components/schemas/SpatialCameraPoint"
           },
           "target": {
             "$ref": "#/components/schemas/SpatialCameraPoint"
+          },
+          "up": {
+            "$ref": "#/components/schemas/SpatialCameraUp"
           }
         },
         "required": [
@@ -1426,6 +1429,33 @@
           "z": {
             "maximum": 10000000,
             "minimum": -10000000,
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "z"
+        ],
+        "type": "object"
+      },
+      "SpatialCameraUp": {
+        "additionalProperties": false,
+        "description": "Unit up vector, not parallel to position-target. Defaults to +Y when omitted. Preserves roll from the Z-axis view control.",
+        "properties": {
+          "x": {
+            "maximum": 1,
+            "minimum": -1,
+            "type": "number"
+          },
+          "y": {
+            "maximum": 1,
+            "minimum": -1,
+            "type": "number"
+          },
+          "z": {
+            "maximum": 1,
+            "minimum": -1,
             "type": "number"
           }
         },
