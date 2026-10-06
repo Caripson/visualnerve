@@ -114,7 +114,7 @@ export function csvFormattedNumber(cell: string, format: 'auto' | 'dot' | 'comma
 
 const cleanedSources = new WeakMap<CsvDataset, { rules: string; rows: string[][] }>();
 const validatedSources = new WeakSet<CsvDataset>();
-function effectiveDataset(dataset: CsvDataset, analysis?: CsvAnalysis): CsvDataset {
+export function effectiveDataset(dataset: CsvDataset, analysis?: CsvAnalysis): CsvDataset {
   if (!analysis?.columnRules.length) return dataset;
   const key = JSON.stringify(analysis.columnRules);
   const cached = cleanedSources.get(dataset);
@@ -138,7 +138,7 @@ function effectiveDataset(dataset: CsvDataset, analysis?: CsvAnalysis): CsvDatas
   return { ...dataset, rows };
 }
 
-function numberFor(cell: string, columnId: string, analysis: CsvAnalysis): number | null {
+export function numberFor(cell: string, columnId: string, analysis: CsvAnalysis): number | null {
   const format = analysis.columnRules.find((rule) => rule.columnId === columnId)?.numberFormat;
   return csvFormattedNumber(cell, format ?? 'auto');
 }
@@ -472,7 +472,11 @@ export function profileCsv(
   });
 }
 
-function measures(dataset: CsvDataset, analysis: CsvAnalysis, rows: string[][]): CsvMeasure[] {
+export function measures(
+  dataset: CsvDataset,
+  analysis: CsvAnalysis,
+  rows: string[][],
+): CsvMeasure[] {
   return analysis.metrics.map((metric) => {
     const index = dataset.columns.findIndex((column) => column.id === metric.columnId);
     const label =
@@ -529,7 +533,7 @@ function measures(dataset: CsvDataset, analysis: CsvAnalysis, rows: string[][]):
   });
 }
 
-function rowPredicate(dataset: CsvDataset, path: CsvPathEntry[], analysis?: CsvAnalysis) {
+export function rowPredicate(dataset: CsvDataset, path: CsvPathEntry[], analysis?: CsvAnalysis) {
   const indices = new Map(dataset.columns.map((column, index) => [column.id, index]));
   requireValue(
     Array.isArray(path) &&

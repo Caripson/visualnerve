@@ -12,6 +12,10 @@ On a phone, drag the empty canvas with one finger to pan and pinch with two fing
 
 ## Edit your graph
 
+Use **3D** above the canvas to lift the existing diagram into shallow relief. The cards keep their placement, colors, text, icons and status; the whole diagram turns together. Drag to rotate, scroll or pinch to zoom, or use the visible **Move**, **Rotate** and **Scale** controls with red X, green Y and blue Z handles. Move pans the view, Rotate turns it around an axis and Scale changes the zoom. Arrow keys on a focused handle work too. **−10°/+10°** give small predictable turns, and Front, Back, Left, Right or Top choose named orientations. Fit frames the view and Focus selected centers an object. **2D** and **Return to 2D** bring back the saved overview. PNG and PDF always use this 2D layout; while in 3D, the viewport export uses the saved 2D pan and zoom.
+
+Select a diagram object, relationship or an entry in **Objects and relationships** to edit its shared properties, notes, status or links. **3D placement** sets independent X/Y/Z positions. Draw on the overview in 2D; the drawing layer is retained in exports. **Data → New 3D truck lifecycle example** (phones: **…**) creates a truck lifecycle diagram with ordinary topics, descriptions and connections. Camera and placement save locally and are included in JSON and full backups. If this browser cannot render 3D, the object list and Return to 2D remain available.
+
 Use **Add node**, choose a type, and edit its title and details in the properties panel. Drag between node handles to connect them, or use the toolbar connection button. Select an edge to change its label, direction, relationship, description or style. Drag an edge endpoint to reconnect it. Select a node and drag a corner handle to resize it.
 
 Click the project name to rename it; Enter saves and Escape cancels. With no item selected, **F2** also opens the project name. Choose a project icon beside its name. Select an item for quick **Edit**, **Color**, **Icon**, duplicate and delete actions. The icon picker includes sixteen areas and supports searching in English or Swedish. Icons are also available in properties and are preserved in JSON, copying and image exports.
@@ -53,6 +57,18 @@ CSV groups are real diagram objects. Move them and add connections with labels, 
 Copying a CSV object into another diagram keeps its measures as a snapshot; the source rows remain with the original data diagram.
 
 CSV sources and analysis choices stay in this browser and are included in diagram JSON and full backups. PNG/PDF exports show the current CSV view. Files support at most 50 MiB, 200,000 rows, 200 columns and 10 million cells. CSVs using the older `title`-column diagram format can still use **Import as existing diagram rows instead** in the preview.
+
+## Connect sources and repeat an analysis
+
+Use **Data → Data sources** (on phones: **… → Data sources**) to add CSV files and explicitly match columns. Preview match counts, missing keys and duplicate-key cardinality before applying. Each source keeps its own grouping, filters and measures; related rows contribute once rather than multiplying totals. Multiple CSV files can be dropped together. Choose **Explore this group** to follow matching entities across files, and **All data** to reset connected focus. Up to eight sources and 32 relationships are supported, with a combined limit of 20 million cells.
+
+Select an object and choose **Explore relationships and views** in Properties. Show incoming, outgoing or all neighbors one or two steps away, or find the shortest path to another object. Large results show a bounded subset with a notice. Groups outside the current CSV view are excluded unless explicitly included, and their old values are marked. Reset exploration to return to the diagram.
+
+The same dialog saves named analysis views with filters, source configurations, relationships, layout and viewport. The views share source data; notes, status, pen marks and manual connections stay current. Save, load, update and delete views with undo support.
+
+**Data → Refresh source** loads a replacement CSV or SQL schema and previews additions, changes and removals before applying. Choose and map CSV identity columns; empty or duplicate keys block ambiguous updates. SQL tables match by qualified names. Matching objects retain their status, annotations and placement. Review split or merged groups and choose whether removed objects remain detached annotations or are removed. Refresh supports undo and cancels stale previews when the diagram changes.
+
+Beside a CSV measure, **Why this value?** explains the calculation and shows contributing, excluded or repeated original data rows in pages. **Data → Data quality** checks missing values, numeric ambiguity, cleanup collisions, selected identity keys and missing references. Click a check to inspect its rows, with original and cleaned values. SQL quality reports missing table definitions and unresolved column references; it does not inspect table data.
 
 ## Import a SQL schema
 

@@ -1,0 +1,85 @@
+.data-sources {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  max-height: calc(100dvh - 150px);
+  overflow-y: auto;
+}
+.data-sources p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.data-source-list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.data-source-list li,
+.data-source-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding: 10px 0;
+}
+.data-source-list span,
+.data-source-link span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.data-source-list small {
+  display: block;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.data-source-matching {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  border: 1px solid var(--line);
+  padding: 14px;
+  min-width: 0;
+}
+.data-source-matching .field,
+.data-source-matching select {
+  min-width: 0;
+  max-width: 100%;
+}
+.data-match-preview {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 10px;
+}
+.data-match-preview dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  margin: 0;
+}
+.data-match-preview dd {
+  margin: 0;
+}
+.data-source-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.data-sources .data-source-error {
+  color: var(--danger, #b3261e);
+}
+@media (max-width: 600px) {
+  .data-source-matching {
+    grid-template-columns: 1fr;
+  }
+  .data-source-list li,
+  .data-source-link {
+    align-items: start;
+    flex-direction: column;
+  }
+  .data-sources input,
+  .data-sources select {
+    font-size: 16px;
+  }
+}

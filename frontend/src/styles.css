@@ -604,6 +604,38 @@ kbd {
   border-bottom: 1px solid var(--border);
   overflow-x: auto;
 }
+.spatial-view-bar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.spatial-view-bar button {
+  min-height: 32px;
+  min-width: 44px;
+}
+.spatial-view-bar button[aria-pressed='true'] {
+  background: var(--accent);
+  color: white;
+}
+.spatial-view-bar span {
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: 7px;
+}
+@media (max-width: 720px) {
+  .spatial-view-bar {
+    padding: 3px 8px;
+  }
+  .spatial-view-bar button {
+    min-height: 44px;
+  }
+  .spatial-view-bar span {
+    font-size: 10px;
+  }
+}
 .toolbar-group {
   display: flex;
   align-items: center;

@@ -181,3 +181,106 @@ The full frontend suite passed all 288 unit/component cases. Go race tests and v
 All three [SQL browser scenarios](../frontend/tests/e2e/sql.spec.ts) passed against the final production build, alongside the existing CSV draft/drop replacement and PNG/PDF export scenarios. The SQL file scenario verifies preview without persistence, generated columns/keys/three relationships, object status, edited connection style/label, reconnect/undo, reload, lossless JSON and schema-only Lovable text. It checks that the self-reference path exits the card and that its path/label produces pixels outside the card in a complete PNG export. The 320 px phone scenario covers pasted input, malformed/SELECT-only rejection, missing definitions, unresolved keys and complete column details without page overflow. A fictional 100,000-row SQL dump is imported after an offline reload: animation frames continue during worker analysis, and the saved one-table/two-column graph contains none of the row payload. This fixture is a functional acceptance check, not a performance guarantee for arbitrary scripts or devices.
 
 Retained fictional evidence: [SQL tables and foreign-key properties](acceptance/sql-schema.png). No actual user data is included. The complete browser suite remains part of GitHub CI; S3/CloudFront publication remains manual.
+
+## Connected sources, repeatable views and source review
+
+[Analysis workflows](ANALYSIS_WORKFLOWS.md) describes relationship neighbors and
+shortest paths, explicit CSV column matches, named analysis views, reviewed source
+refreshes, and aggregate explanations with quality evidence. All source rows and
+saved views remain in IndexedDB; source files are shared between views rather
+than copied into every saved perspective.
+
+The connected-source browser fixture drops a 2,001-row customer file and a
+100,000-row order file together. It checks explicit matching, duplicate customer
+keys without inflated order totals, an unmatched order key, related-customer
+focus, original source row numbers in aggregate explanations, and restoration
+after reload. The quality fixture checks original strings merged by regex
+cleanup and excluded/ambiguous numeric cells.
+
+The refresh fixture replaces 100,000 keyed CSV rows, reviewing additions,
+changes, removals and column mappings before applying. It verifies preserved
+object identity, notes, status, geometry, pen strokes, manual relationships,
+undo, reload and saved views. A separate SQL fixture reviews foreign-key and
+table changes while preserving surviving annotations and undo. Multiple-source
+backup and named-view scenarios verify that switching perspectives retains
+current annotations and complete native sources.
+
+These large fixtures are functional checks on the test machine, rather than a
+performance guarantee for arbitrary files or devices. Calculation and previews
+use workers with cached source data, bounded evidence pages and rendered groups.
+Display limits never limit aggregate totals.
+
+Verified locally on 2026-10-06 with the production build in system Chrome. The
+full frontend run passed 363 unit/component cases, followed by passing targeted
+regressions for selection pruning and stable analysis-dialog mounting. Formatting,
+TypeScript, Go race tests/vet and the production build passed; the static audit
+found 253 application files and a 31-asset offline shell, with no user data.
+All 45 distinct browser scenarios passed across the full run and final six-case
+rerun. The rerun kept the existing 5,000-object performance thresholds unchanged.
+The final 100,000-row source-refresh review took 1,229 ms, with 69 animation frames
+and a largest frame gap of 100 ms on this machine.
+
+## The same diagram in 2D and 3D relief
+
+Activating 3D lifts the existing diagram objects into shallow relief cards with
+their existing appearance printed on each front face. The face capture uses
+the actual 2D node renderer, including its text, colors, icons and status.
+Object positions, widths, heights and
+relationships follow the 2D diagram; switching views does not rearrange a mind
+map into a new layout. Turning the camera rotates the complete diagram and its
+text together, so a ten-degree turn shows the same cards from an oblique angle.
+The same canonical objects retain their notes, status, parent hierarchy and
+relationships. Returning to 2D and exporting PNG/PDF preserves the original
+diagram overview. The saved camera and optional object depth remain separate
+from the canonical 2D geometry.
+
+The fictional Truck lifecycle example contains 25 objects and 24 relationships:
+one root, six lifecycle stages and three subtopics per stage. Manufacturing,
+delivery, operation, maintenance, second life and recycling occupy the same
+arrangement in the flat overview and the rotatable relief view.
+
+The seven [spatial browser scenarios](../frontend/tests/e2e/spatial.spec.ts) cover
+rotation and saved camera state while editing objects, statuses and connections;
+MCP creation and population with nonblank canonical 2D PNG/PDF exports and JSON
+round trips; offline reload and full workspace backup restoration; usable
+Return to 2D controls at 320 px; recovery of the complete saved 2D diagram when
+the deferred 3D module cannot load; and an interactive relief mind map with
+2,501 ordinary cards and 2,500 relationships. A dedicated three-card fixture
+starts in 2D, checks identical relative placement and card aspect ratios from
+the front, compares a rendered Rocket icon against its original 2D pixels, then
+uses the actual ten-degree tilt control. Its projected front faces become
+perspective trapezoids, their text stays attached to those faces, and a real
+WebGL pointer selects the correct object. Returning to 2D compares every node
+and relationship to the original records.
+
+The [navigation browser scenario](../frontend/tests/e2e/spatial-navigation.spec.ts)
+uses actual pointer drags on the visible Move, Rotate and Scale gizmo. It checks
+rotation at a fixed target and distance, equal camera/target displacement during
+pan, uniform zoom, keyboard axis control and Z-axis roll restored into the actual
+WebGL camera after reload. All canonical node and relationship records remain
+unchanged. Unit regressions cover turns after roll, rotation from the named Top
+view, camera bounds, JSON/database/backup preservation and rejection of invalid
+up vectors.
+
+The large fixture checks actual rendered counts, front-face text visibility
+when viewed from the front and its absence when viewing the backs, focus of a
+searched object, and unchanged 2D geometry and relationships. It is a functional
+check on the test machine, rather than a performance guarantee for arbitrary
+devices or graphs.
+
+The full frontend run passed 487 unit/component cases. Formatting, Go race tests
+and vet, and the TypeScript/Vite/Hugo/OpenAPI/Go production build passed. The
+static audit found 262 application files and a 33-asset offline shell with no
+user data. All eight distinct spatial browser scenarios passed against this
+production build, including the final three-case rerun for the gizmo and direct
+canvas navigation. The visual review uses the actual relief renderer and native
+card appearance.
+
+Retained fictional fixture evidence:
+[Truck lifecycle in 3D](acceptance/spatial-truck-lifecycle.png),
+[The same 2D cards turned ten degrees](acceptance/spatial-relief-10deg.png),
+[Move, Rotate and Scale controls](acceptance/spatial-navigation-controls.png),
+[2,501-object mind map](acceptance/spatial-2501-mindmap.png),
+[Canonical 2D export](acceptance/spatial-2d-export.png) and
+[320 px phone 2D overview](acceptance/spatial-phone-2d.png).
+No actual user data is included. S3/CloudFront deployment remains manual.

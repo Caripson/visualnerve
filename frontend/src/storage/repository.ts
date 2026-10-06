@@ -1,6 +1,7 @@
 import {
   base,
   blankGraph,
+  diagramTypes,
   descendantIds,
   newEdge,
   newNode,
@@ -13,9 +14,17 @@ import {
 } from '../model/types';
 import { StorageError, validateGraph, validateOwner } from '../model/validation';
 import { getCsvNode } from '../data/csv';
+import { remapAnalysisReferences } from '../analysis/views';
+import {
+  graphDatasets,
+  remapDataModelSources,
+  suppressDataModelEdge,
+  reconnectedDataModelEdge,
+} from '../data/model';
 import { reconnectedSqlEdge } from '../sql/relationships';
 import { markdown, parseImport } from '../export/semantic';
 import { database, type WorkspaceBackup, type WorkspaceDatabase } from './database';
+import { setSpatialView } from '../spatial/types';
 
 type Patch = Record<string, unknown>;
 export interface SearchResult {
@@ -69,6 +78,7 @@ function requireVersion(actual: number, expected: unknown) {
     );
 }
 function suppressCsvParentConnection(graph: Graph, edge: GraphEdge) {
+  Object.assign(graph, suppressDataModelEdge(graph, edge));
   if (edge.metadata?.csvGenerated !== true) return;
   graph.nodes = graph.nodes.map((node) => {
     const csv =
@@ -84,7 +94,10 @@ function suppressCsvParentConnection(graph: Graph, edge: GraphEdge) {
   });
 }
 function reconnectedEdge(graph: Graph, previous: GraphEdge, next: GraphEdge): GraphEdge {
-  const reconnected = reconnectedSqlEdge(previous, next);
+  const endpointsChanged =
+    previous.sourceNodeId !== next.sourceNodeId || previous.targetNodeId !== next.targetNodeId;
+  if (endpointsChanged) Object.assign(graph, suppressDataModelEdge(graph, previous));
+  const reconnected = reconnectedDataModelEdge(previous, reconnectedSqlEdge(previous, next));
   if (
     previous.metadata?.csvGenerated !== true ||
     (previous.sourceNodeId === next.sourceNodeId && previous.targetNodeId === next.targetNodeId)
@@ -128,24 +141,44 @@ export class Repository {
         const referenced = new Set(input.nodes.flatMap((node) => node.ownerIds));
         const graph: Graph = {
           ...input,
-          ...((input.dataset === undefined ? old?.dataset : input.dataset)
-            ? { dataset: input.dataset === undefined ? old?.dataset : input.dataset }
-            : {}),
+          dataset: input.dataset ?? (input.datasets === undefined ? old?.dataset : undefined),
+          datasets: input.datasets ?? old?.datasets,
           nodes: input.nodes.map((node) => ({ ...node, ownerId: node.ownerIds[0] })),
           owners: [...registry.values()].filter((owner) => referenced.has(owner.id)),
         };
-        validateGraph(graph, old?.dataset);
-        if (graph.dataset) {
-          if (graph.dataset.id !== old?.dataset?.id) {
-            const record = await this.db.datasets.get(graph.dataset.id);
+        const sources = graphDatasets(graph);
+        graph.diagram = {
+          ...graph.diagram,
+          settings: {
+            ...graph.diagram.settings,
+            csvDatasetOrder: sources.map((source) => source.id),
+          },
+        };
+        const oldSources = new Map(
+          (old ? graphDatasets(old) : []).map((source) => [source.id, source]),
+        );
+        validateGraph(graph, [...oldSources.values()]);
+        const stamped = [] as typeof sources;
+        for (const source of sources) {
+          if (!oldSources.has(source.id)) {
+            const record = await this.db.datasets.get(source.id);
             if (record && record.diagramId !== graph.diagram.id)
               throw new StorageError(409, 'Dataset id belongs to another project.');
           }
-          graph.dataset = stamp(
-            graph.dataset,
-            old?.dataset?.id === graph.dataset.id ? old.dataset : undefined,
-          );
+          const previous = oldSources.get(source.id);
+          const sameRaw =
+            previous &&
+            source.rows === previous.rows &&
+            source.columns === previous.columns &&
+            source.name === previous.name &&
+            source.fileName === previous.fileName &&
+            source.diagramId === previous.diagramId &&
+            source.formatVersion === previous.formatVersion;
+          stamped.push(sameRaw ? previous : stamp(source, previous));
         }
+        graph.dataset = stamped[0];
+        graph.datasets =
+          stamped.length > 1 || input.datasets !== undefined ? stamped.slice(1) : undefined;
         const otherNodes = await this.db.nodes.bulkGet(graph.nodes.map((node) => node.id));
         const otherEdges = await this.db.edges.bulkGet(graph.edges.map((edge) => edge.id));
         if (
@@ -189,15 +222,16 @@ export class Repository {
           [...registry.values()].filter((owner) => !owners.some((old) => old.id === owner.id)),
         );
         await this.db.diagrams.put(graph.diagram);
-        if (graph.dataset && graph.dataset !== old?.dataset) {
-          if (old?.dataset && old.dataset.id !== graph.dataset.id)
-            await this.db.datasets.delete(old.dataset.id);
-          await this.db.datasets.put(graph.dataset);
-        }
+        const sourceIds = new Set(stamped.map((source) => source.id));
+        await this.db.datasets.bulkDelete(
+          [...oldSources.keys()].filter((id) => !sourceIds.has(id)),
+        );
+        for (const source of stamped)
+          if (source !== oldSources.get(source.id)) await this.db.datasets.put(source);
         return graph;
       },
     );
-    this.db.rememberDataset(saved.diagram, saved.dataset);
+    this.db.rememberDataset(saved.diagram, saved.dataset, saved.datasets);
     return saved;
   }
   async removeDiagram(id: string) {
@@ -255,28 +289,12 @@ export class Repository {
           graph.nodes.map((node) => [node.id, collision ? crypto.randomUUID() : node.id]),
         );
         if (collision) graph.diagram.id = crypto.randomUUID();
-        if (graph.dataset) {
-          const oldDatasetId = graph.dataset.id;
-          const datasetCollision = !!(await this.db.datasets.get(oldDatasetId));
-          graph.dataset = {
-            ...graph.dataset,
-            id: collision || datasetCollision ? crypto.randomUUID() : oldDatasetId,
-            diagramId: graph.diagram.id,
-          };
-          graph.nodes = graph.nodes.map((node) => {
-            if (!node.metadata?.csv) return node;
-            return {
-              ...node,
-              metadata: {
-                ...node.metadata,
-                csv: {
-                  ...(node.metadata.csv as Record<string, unknown>),
-                  datasetId: graph.dataset!.id,
-                },
-              },
-            };
-          });
+        const sourceIds = new Map<string, string>();
+        for (const source of graphDatasets(graph)) {
+          const datasetCollision = !!(await this.db.datasets.get(source.id));
+          sourceIds.set(source.id, collision || datasetCollision ? crypto.randomUUID() : source.id);
         }
+        Object.assign(graph, remapDataModelSources(graph, sourceIds));
         graph.nodes = graph.nodes.map((node) => ({
           ...node,
           id: nodeIds.get(node.id)!,
@@ -291,11 +309,26 @@ export class Repository {
           diagramId: graph.diagram.id,
           sourceNodeId: nodeIds.get(edge.sourceNodeId)!,
           targetNodeId: nodeIds.get(edge.targetNodeId)!,
+          ...(edge.metadata.csvModelGenerated === true && edge.externalId
+            ? {
+                externalId: `csv-rel:${(edge.metadata.csvSourceRelationship as { relationshipId: string }).relationshipId}:${nodeIds.get(edge.sourceNodeId)!}:${nodeIds.get(edge.targetNodeId)!}`,
+              }
+            : {}),
         }));
+        Object.assign(graph, remapAnalysisReferences(graph, nodeIds));
+        if (graph.diagram.settings.csvSuppressedRelationshipEdges)
+          graph.diagram.settings.csvSuppressedRelationshipEdges =
+            graph.diagram.settings.csvSuppressedRelationshipEdges.map((id) =>
+              id.replace(
+                /^csv-rel:([^:]+):([^:]+):([^:]+)$/,
+                (_whole, relationship, source, target) =>
+                  `csv-rel:${relationship}:${nodeIds.get(source) ?? source}:${nodeIds.get(target) ?? target}`,
+              ),
+            );
         return this.saveGraph(graph, 0);
       },
     );
-    this.db.rememberDataset(imported.diagram, imported.dataset);
+    this.db.rememberDataset(imported.diagram, imported.dataset, imported.datasets);
     return imported;
   }
   async restore(backup: WorkspaceBackup, mode: 'merge' | 'replace' = 'merge'): Promise<Graph[]> {
@@ -335,8 +368,7 @@ export class Repository {
         datasets.some(
           (dataset) => !dataset || typeof dataset !== 'object' || !diagrams.has(dataset.diagramId),
         ) ||
-        new Set(datasets.map((dataset) => dataset.id)).size !== datasets.length ||
-        new Set(datasets.map((dataset) => dataset.diagramId)).size !== datasets.length
+        new Set(datasets.map((dataset) => dataset.id)).size !== datasets.length
       )
         throw new StorageError(422, 'Invalid or duplicate workspace references.');
       const ownerIds = new Map<string, string>();
@@ -361,7 +393,16 @@ export class Repository {
       await this.db.owners.bulkPut(owners);
       const graphs: Graph[] = [];
       for (const diagram of backup.diagrams) {
-        const dataset = datasets.find((dataset) => dataset.diagramId === diagram.id);
+        const sources = datasets.filter((dataset) => dataset.diagramId === diagram.id);
+        const sourceOrder = new Map(
+          diagram.settings.csvDatasetOrder?.map((id, index) => [id, index]) ?? [],
+        );
+        sources.sort(
+          (a, b) =>
+            (sourceOrder.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+            (sourceOrder.get(b.id) ?? Number.MAX_SAFE_INTEGER),
+        );
+        const [dataset, ...additional] = sources;
         const nodes = backup.nodes
           .filter((node) => node.diagramId === diagram.id)
           .map((node) => ({
@@ -388,6 +429,7 @@ export class Repository {
             ),
             owners,
             ...(dataset ? { dataset } : {}),
+            ...(additional.length ? { datasets: additional } : {}),
           }),
         );
       }
@@ -420,7 +462,8 @@ export class Repository {
       await this.db.initialize();
       return graphs;
     });
-    for (const graph of restored) this.db.rememberDataset(graph.diagram, graph.dataset);
+    for (const graph of restored)
+      this.db.rememberDataset(graph.diagram, graph.dataset, graph.datasets);
     return restored;
   }
   async clearAll() {
@@ -519,6 +562,30 @@ export class Repository {
       [collection, id, action] = parts;
     const read = method === 'GET',
       remove = method === 'DELETE';
+    if (collection === 'spatial-diagrams') {
+      if (
+        !['/spatial-diagrams', '/api/v1/spatial-diagrams'].includes(path) ||
+        url.search ||
+        url.hash ||
+        parts.length !== 1
+      )
+        throw new StorageError(404, 'Unknown 3D diagram endpoint.');
+      if (method !== 'POST') throw new StorageError(405, '3D diagrams are created with POST.');
+      const data = object(payload);
+      if (
+        Object.keys(data).some((key) => !['name', 'type'].includes(key)) ||
+        typeof data.name !== 'string' ||
+        !data.name.trim() ||
+        data.name.length > 500 ||
+        (data.type !== undefined && !diagramTypes.includes(data.type as Diagram['type']))
+      )
+        throw new StorageError(422, 'Choose a name and supported diagram type.');
+      const graph = setSpatialView(
+        blankGraph(data.name, (data.type ?? 'mindmap') as Diagram['type']),
+        { mode: '3d' },
+      );
+      return (await this.saveGraph(graph, 0)) as T;
+    }
     if (collection === 'health')
       return { status: 'ok', storage: 'indexeddb', version: '0.2.0' } as T;
     if (collection === 'search' && read)
@@ -858,7 +925,7 @@ export class Repository {
         return this.saveGraph(graph, current.version);
       },
     );
-    this.db.rememberDataset(saved.diagram, saved.dataset);
+    this.db.rememberDataset(saved.diagram, saved.dataset, saved.datasets);
     return saved;
   }
 }

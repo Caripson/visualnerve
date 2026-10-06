@@ -1,0 +1,549 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Modal } from './Modal';
+import { useEditor } from '../state/editor';
+import type { Base, Graph } from '../model/types';
+import type { CsvDataset } from '../data/types';
+import { openCsvFile } from '../data/client';
+import { defaultAnalysis } from '../data/csv';
+import {
+  graphDatasets,
+  removeDataModelSource,
+  setAnalysisForDataset,
+  type CsvRelationshipPreview,
+  type CsvSourceRelationship,
+} from '../data/model';
+import { previewCsvRelationshipAsync, reanalyzeDataModelAsync } from '../data/modelClient';
+import './data-sources.css';
+
+const content = <T extends Base>(value: T) => {
+  const { version: _version, updatedAt: _updatedAt, ...fields } = value;
+  return fields;
+};
+function sameSource(a: CsvDataset, b: CsvDataset) {
+  if (a === b) return true;
+  if (a.rows !== b.rows) return false;
+  const { rows: _aRows, ...aSchema } = content(a);
+  const { rows: _bRows, ...bSchema } = content(b);
+  return JSON.stringify(aSchema) === JSON.stringify(bSchema);
+}
+function sameBaseline(a: Graph, b: Graph) {
+  if (a === b) return true;
+  const sources = graphDatasets(a),
+    previous = graphDatasets(b);
+  if (
+    sources.length !== previous.length ||
+    sources.some((source, index) => !sameSource(source, previous[index]))
+  )
+    return false;
+  const canonical = (graph: Graph) => {
+    const { dataset: _primary, datasets: _additional, ...light } = graph;
+    // Viewport movement is automatic on initial fit. Entity order is derived
+    // from the arrays compared below; committed revisions carry no user data.
+    const {
+      viewport: _viewport,
+      viewportDevice: _device,
+      entityOrder: _order,
+      ...settings
+    } = graph.diagram.settings;
+    return {
+      ...light,
+      diagram: { ...content(graph.diagram), settings },
+      nodes: graph.nodes.map(content),
+      edges: graph.edges.map(content),
+      owners: graph.owners.map(content),
+    };
+  };
+  return JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
+}
+function rebaseResult(result: Graph, current: Graph): Graph {
+  const revisions = <T extends Base>(items: T[], existing: T[]) => {
+    const index = new Map(existing.map((item) => [item.id, item]));
+    return items.map((item) => {
+      const saved = index.get(item.id);
+      return saved
+        ? {
+            ...item,
+            version: saved.version,
+            createdAt: saved.createdAt,
+            updatedAt: saved.updatedAt,
+          }
+        : item;
+    });
+  };
+  const sources = new Map(graphDatasets(current).map((source) => [source.id, source]));
+  const source = (value: CsvDataset) => {
+    const saved = sources.get(value.id);
+    return saved && sameSource(value, saved) ? saved : value;
+  };
+  return {
+    ...result,
+    dataset: result.dataset ? source(result.dataset) : undefined,
+    datasets: result.datasets?.map(source),
+    nodes: revisions(result.nodes, current.nodes),
+    edges: revisions(result.edges, current.edges),
+    owners: current.owners,
+    diagram: {
+      ...result.diagram,
+      version: current.diagram.version,
+      createdAt: current.diagram.createdAt,
+      updatedAt: current.diagram.updatedAt,
+      settings: {
+        ...result.diagram.settings,
+        viewport: current.diagram.settings.viewport,
+        viewportDevice: current.diagram.settings.viewportDevice,
+      },
+    },
+  };
+}
+
+export function DataSourcesDialog({
+  onClose,
+  initialFiles,
+}: {
+  onClose: () => void;
+  initialFiles?: File[];
+}) {
+  const initial = useRef(useEditor.getState().graph);
+  const [draft, setDraft] = useState<Graph | null>(initial.current);
+  const [relationship, setRelationship] = useState<CsvSourceRelationship | null>(null);
+  const [preview, setPreview] = useState<CsvRelationshipPreview | null>(null);
+  const [working, setWorking] = useState(false);
+  const [error, setError] = useState('');
+  const [dirty, setDirty] = useState(false);
+  const controller = useRef<AbortController | null>(null);
+  const generation = useRef(0);
+  const mounted = useRef(true);
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const cancel = useCallback(() => {
+    generation.current++;
+    controller.current?.abort();
+    controller.current = null;
+  }, []);
+  const close = useCallback(() => {
+    cancel();
+    onClose();
+  }, [cancel, onClose]);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      cancel();
+    };
+  }, [cancel]);
+  const addFiles = useCallback(
+    async (files: File[]) => {
+      const graph = draftRef.current;
+      if (!graph || !files.length) return;
+      cancel();
+      const current = generation.current;
+      setWorking(true);
+      setError('');
+      setPreview(null);
+      try {
+        let next = graph;
+        if (graphDatasets(next).length + files.length > 8)
+          throw new Error('A diagram supports up to 8 CSV sources.');
+        for (const file of files) {
+          const parsed = await openCsvFile(file);
+          if (!mounted.current || current !== generation.current) return;
+          const dataset = { ...parsed, diagramId: graph.diagram.id };
+          next = {
+            ...next,
+            ...(!next.dataset
+              ? { dataset, datasets: next.datasets ?? [] }
+              : { datasets: [...(next.datasets ?? []), dataset] }),
+          };
+          next = setAnalysisForDataset(next, dataset.id, defaultAnalysis(dataset));
+        }
+        next = {
+          ...next,
+          diagram: {
+            ...next.diagram,
+            settings: {
+              ...next.diagram.settings,
+              csvDatasetOrder: graphDatasets(next).map((source) => source.id),
+            },
+          },
+        };
+        setDraft(next);
+        draftRef.current = next;
+        setDirty(true);
+      } catch (error) {
+        if (mounted.current && current === generation.current) setError((error as Error).message);
+      } finally {
+        if (mounted.current && current === generation.current) setWorking(false);
+      }
+    },
+    [cancel],
+  );
+  const started = useRef(false);
+  useEffect(() => {
+    if (!started.current && initialFiles?.length) {
+      started.current = true;
+      void addFiles(initialFiles);
+    }
+  }, [initialFiles, addFiles]);
+  if (!draft) return null;
+  const sources = graphDatasets(draft);
+  const source = sources.find((source) => source.id === relationship?.sourceDatasetId);
+  const target = sources.find((source) => source.id === relationship?.targetDatasetId);
+  const choose = (update: Partial<CsvSourceRelationship>) => {
+    cancel();
+    setWorking(false);
+    setPreview(null);
+    setError('');
+    setRelationship((previous) => (previous ? { ...previous, ...update } : null));
+  };
+  const beginRelationship = () => {
+    const [a, b] = sources;
+    if (!a || !b) return;
+    setRelationship({
+      id: crypto.randomUUID(),
+      sourceDatasetId: a.id,
+      sourceColumnId: a.columns[0].id,
+      targetDatasetId: b.id,
+      targetColumnId: b.columns[0].id,
+      matchMode: 'trim',
+    });
+    setPreview(null);
+    setError('');
+  };
+  const previewRelationship = async () => {
+    if (!relationship) return;
+    cancel();
+    const current = generation.current,
+      pending = new AbortController();
+    controller.current = pending;
+    setWorking(true);
+    setPreview(null);
+    setError('');
+    try {
+      const result = await previewCsvRelationshipAsync(draft, relationship, {
+        signal: pending.signal,
+      });
+      if (mounted.current && current === generation.current) setPreview(result);
+    } catch (error) {
+      if (mounted.current && current === generation.current && !pending.signal.aborted)
+        setError((error as Error).message);
+    } finally {
+      if (mounted.current && current === generation.current) setWorking(false);
+    }
+  };
+  const addRelationship = () => {
+    if (!relationship || !preview) return;
+    const next = {
+      ...draft,
+      diagram: {
+        ...draft.diagram,
+        settings: {
+          ...draft.diagram.settings,
+          csvRelationships: [...(draft.diagram.settings.csvRelationships ?? []), relationship],
+        },
+      },
+    };
+    setDraft(next);
+    draftRef.current = next;
+    setDirty(true);
+    setRelationship(null);
+    setPreview(null);
+  };
+  const apply = async () => {
+    cancel();
+    const current = generation.current,
+      pending = new AbortController();
+    controller.current = pending;
+    setWorking(true);
+    setError('');
+    try {
+      const result = await reanalyzeDataModelAsync(draft, { signal: pending.signal });
+      if (!mounted.current || current !== generation.current) return;
+      const state = useEditor.getState();
+      if (!state.graph || !initial.current || !sameBaseline(state.graph, initial.current))
+        throw new Error(
+          'The diagram changed while this dialog was open. Close and reopen Data sources before applying.',
+        );
+      state.command('Update data sources', (graph) => rebaseResult(result, graph));
+      close();
+    } catch (error) {
+      if (mounted.current && current === generation.current && !pending.signal.aborted)
+        setError((error as Error).message);
+    } finally {
+      if (mounted.current && current === generation.current) setWorking(false);
+    }
+  };
+  return (
+    <Modal title="Data sources" close={close} wide>
+      <div
+        className="data-sources"
+        aria-busy={working}
+        onDragOver={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (working) return;
+          const files = Array.from(event.dataTransfer.files).filter((file) =>
+            /\.(csv|tsv)$/i.test(file.name),
+          );
+          if (files.length) void addFiles(files);
+          else setError('Drop CSV or TSV files to add diagram sources.');
+        }}
+      >
+        <p>
+          Add CSV files to this diagram, then explicitly match columns. Each source keeps its own
+          filters, grouping and totals. Matching never duplicates source rows in sums.
+        </p>
+        <label className="field">
+          Add CSV sources
+          <input
+            aria-label="Add CSV sources"
+            type="file"
+            accept=".csv,.tsv,text/csv,text/tab-separated-values"
+            multiple
+            disabled={working || sources.length >= 8}
+            onChange={(event) => {
+              const files = Array.from(event.target.files ?? []);
+              event.target.value = '';
+              void addFiles(files);
+            }}
+          />
+        </label>
+        <ul className="data-source-list">
+          {sources.map((dataset) => (
+            <li key={dataset.id}>
+              <span>
+                <strong>{dataset.name}</strong>
+                <small>
+                  {dataset.rows.length.toLocaleString()} rows · {dataset.columns.length} columns
+                  {dataset.id === draft.dataset?.id ? ' · Primary source' : ''}
+                </small>
+              </span>
+              <button
+                type="button"
+                disabled={working}
+                onClick={() => {
+                  const next = removeDataModelSource(draft, dataset.id);
+                  setDraft(next);
+                  draftRef.current = next;
+                  setRelationship(null);
+                  setPreview(null);
+                  setDirty(true);
+                }}
+              >
+                Remove source {dataset.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+        <h3>Column relationships</h3>
+        {(draft.diagram.settings.csvRelationships ?? []).map((link) => {
+          const a = sources.find((source) => source.id === link.sourceDatasetId),
+            b = sources.find((source) => source.id === link.targetDatasetId);
+          return (
+            <div className="data-source-link" key={link.id}>
+              <span>
+                {a?.name}.{a?.columns.find((c) => c.id === link.sourceColumnId)?.label} → {b?.name}.
+                {b?.columns.find((c) => c.id === link.targetColumnId)?.label}
+              </span>
+              <button
+                type="button"
+                disabled={working}
+                onClick={() => {
+                  const next = {
+                    ...draft,
+                    diagram: {
+                      ...draft.diagram,
+                      settings: {
+                        ...draft.diagram.settings,
+                        csvRelationships: draft.diagram.settings.csvRelationships?.filter(
+                          (r) => r.id !== link.id,
+                        ),
+                      },
+                    },
+                  };
+                  setDraft(next);
+                  draftRef.current = next;
+                  setDirty(true);
+                }}
+              >
+                Remove relationship
+              </button>
+            </div>
+          );
+        })}
+        {!relationship && (
+          <button
+            type="button"
+            disabled={working || sources.length < 2}
+            onClick={beginRelationship}
+          >
+            Match columns
+          </button>
+        )}
+        {relationship && (
+          <fieldset disabled={working} className="data-source-matching">
+            <legend>Preview a column match</legend>
+            <label className="field">
+              From source
+              <select
+                aria-label="Relationship source"
+                value={relationship.sourceDatasetId}
+                onChange={(event) => {
+                  const dataset = sources.find((s) => s.id === event.target.value)!;
+                  choose({
+                    sourceDatasetId: dataset.id,
+                    sourceColumnId: dataset.columns[0].id,
+                    ...(dataset.id === relationship.targetDatasetId
+                      ? {
+                          targetDatasetId: relationship.sourceDatasetId,
+                          targetColumnId: relationship.sourceColumnId,
+                        }
+                      : {}),
+                  });
+                }}
+              >
+                {sources.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              From column
+              <select
+                aria-label="Source matching column"
+                value={relationship.sourceColumnId}
+                onChange={(event) => choose({ sourceColumnId: event.target.value })}
+              >
+                {source?.columns.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              To source
+              <select
+                aria-label="Relationship target"
+                value={relationship.targetDatasetId}
+                onChange={(event) => {
+                  const dataset = sources.find((s) => s.id === event.target.value)!;
+                  choose({
+                    targetDatasetId: dataset.id,
+                    targetColumnId: dataset.columns[0].id,
+                    ...(dataset.id === relationship.sourceDatasetId
+                      ? {
+                          sourceDatasetId: relationship.targetDatasetId,
+                          sourceColumnId: relationship.targetColumnId,
+                        }
+                      : {}),
+                  });
+                }}
+              >
+                {sources.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              To column
+              <select
+                aria-label="Target matching column"
+                value={relationship.targetColumnId}
+                onChange={(event) => choose({ targetColumnId: event.target.value })}
+              >
+                {target?.columns.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              Match values
+              <select
+                aria-label="Column match mode"
+                value={relationship.matchMode ?? 'trim'}
+                onChange={(event) =>
+                  choose({ matchMode: event.target.value as CsvSourceRelationship['matchMode'] })
+                }
+              >
+                <option value="trim">Trim whitespace</option>
+                <option value="exact">Exact text</option>
+                <option value="case-insensitive">Trim and ignore case</option>
+              </select>
+            </label>
+            <button type="button" onClick={() => void previewRelationship()}>
+              Preview match
+            </button>
+            {preview && (
+              <div className="data-match-preview" role="status">
+                <strong>{preview.cardinality}</strong>
+                <dl>
+                  <dt>Matched source rows</dt>
+                  <dd>
+                    {preview.matchedSourceRows.toLocaleString()} /{' '}
+                    {preview.sourceRows.toLocaleString()}
+                  </dd>
+                  <dt>Matched target rows</dt>
+                  <dd>
+                    {preview.matchedTargetRows.toLocaleString()} /{' '}
+                    {preview.targetRows.toLocaleString()}
+                  </dd>
+                  <dt>Unmatched source / target rows</dt>
+                  <dd>
+                    {preview.unmatchedSourceRows.toLocaleString()} /{' '}
+                    {preview.unmatchedTargetRows.toLocaleString()}
+                  </dd>
+                  <dt>Missing source / target keys</dt>
+                  <dd>
+                    {preview.missingSourceRows.toLocaleString()} /{' '}
+                    {preview.missingTargetRows.toLocaleString()}
+                  </dd>
+                  <dt>Duplicate source / target keys</dt>
+                  <dd>
+                    {preview.duplicateSourceKeys.toLocaleString()} /{' '}
+                    {preview.duplicateTargetKeys.toLocaleString()}
+                  </dd>
+                  <dt>Matching row pairs</dt>
+                  <dd>{preview.matchedPairs.toLocaleString()}</dd>
+                </dl>
+                <p>
+                  Totals use each original row once, regardless of the number of matching pairs.
+                </p>
+                <button type="button" onClick={addRelationship}>
+                  Add this relationship
+                </button>
+              </div>
+            )}
+          </fieldset>
+        )}
+        {error && (
+          <p className="data-source-error" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="data-source-actions">
+          <button type="button" onClick={close}>
+            {working ? 'Cancel' : 'Close'}
+          </button>
+          <button
+            className="primary"
+            type="button"
+            disabled={working || !dirty || !!relationship}
+            onClick={() => void apply()}
+          >
+            {working ? 'Working…' : 'Apply data model'}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}

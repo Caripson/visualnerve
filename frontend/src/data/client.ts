@@ -1,6 +1,7 @@
 import type { Graph } from '../model/types';
 import type { CsvAnalysis, CsvDataset, CsvPathEntry } from './types';
 import { csvGraph, parseCsv, previewCsvRowsSync, profileCsv, type CsvColumnProfile } from './csv';
+import { previewDataModelRowsAsync } from './modelClient';
 
 export interface CsvWorkerRequest {
   id: number;
@@ -170,7 +171,9 @@ export async function previewCsvRows(
   analysis: CsvAnalysis,
   path: CsvPathEntry[] = [],
   limit = 100,
+  model?: Graph,
 ): Promise<{ rows: string[][]; originalRows: string[][]; total: number }> {
+  if (model) return previewDataModelRowsAsync(model, dataset.id, analysis, path, limit);
   if (typeof Worker === 'undefined') return previewCsvRowsSync(dataset, analysis, path, limit);
   return sourceRequest({ operation: 'preview', dataset, analysis, path, limit });
 }

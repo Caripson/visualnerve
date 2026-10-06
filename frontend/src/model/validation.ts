@@ -1,7 +1,19 @@
 import { diagramTypes, nodeKinds, type Graph, type Owner } from './types';
 import type { CsvDataset } from '../data/types';
+import {
+  analysisForDataset,
+  graphDatasets,
+  isGeneratedCsvNode,
+  validateDataModel,
+} from '../data/model';
+import {
+  validateExploration,
+  validateNamedAnalysisViews,
+  validateFilters,
+} from '../analysis/types';
 import { getCsvNode, validateAnalysis, validateCsvNode, validateDataset } from '../data/csv';
 import { drawingLimits, type DrawingLayer } from '../drawing/types';
+import { validateSpatialGraph } from '../spatial/types';
 
 export class StorageError extends Error {
   constructor(
@@ -89,7 +101,7 @@ export function validateOwner(owner: Owner) {
     'Unsupported owner kind.',
   );
 }
-export function validateGraph(graph: Graph, trustedDataset?: CsvDataset) {
+export function validateGraph(graph: Graph, trustedDataset?: CsvDataset | CsvDataset[]) {
   requireValue(
     graph && graph.diagram && [graph.nodes, graph.edges, graph.owners].every(Array.isArray),
     'Invalid graph structure.',
@@ -124,22 +136,34 @@ export function validateGraph(graph: Graph, trustedDataset?: CsvDataset) {
     )
       validateDrawingLayer(drawing);
   }
-  const dataset = graph.dataset;
-  const analysis = graph.diagram.settings.csvAnalysis;
+  const sources = graphDatasets(graph);
+  const trusted = new Set(
+    Array.isArray(trustedDataset) ? trustedDataset : trustedDataset ? [trustedDataset] : [],
+  );
   try {
-    if (dataset !== undefined) {
-      // Repository reads return immutable, previously validated source data.
-      // Drawing/configuration saves need only validate their references.
-      if (dataset !== trustedDataset) validateDataset(dataset);
+    validateSpatialGraph(graph);
+    validateDataModel(graph);
+    for (const dataset of sources) {
+      if (!trusted.has(dataset)) validateDataset(dataset);
       requireValue(
         dataset.diagramId === graph.diagram.id,
         'CSV dataset belongs to another diagram.',
       );
     }
-    if (analysis !== undefined) {
-      requireValue(dataset, 'CSV analysis requires its source dataset.');
-      validateAnalysis(dataset!, analysis);
+    if (graph.diagram.settings.csvAnalysis !== undefined) {
+      requireValue(graph.dataset, 'CSV analysis requires its source dataset.');
+      validateAnalysis(graph.dataset!, graph.diagram.settings.csvAnalysis);
     }
+    if (graph.diagram.settings.analysisFilters !== undefined)
+      validateFilters(graph.diagram.settings.analysisFilters);
+    if (graph.diagram.settings.relationshipExploration !== undefined)
+      validateExploration(graph.diagram.settings.relationshipExploration);
+    if (graph.diagram.settings.namedAnalysisViews !== undefined)
+      validateNamedAnalysisViews(
+        graph,
+        graph.diagram.settings.namedAnalysisViews,
+        validateDataModel,
+      );
   } catch (error) {
     if (error instanceof StorageError) throw error;
     throw new StorageError(422, (error as Error).message);
@@ -207,8 +231,10 @@ export function validateGraph(graph: Graph, trustedDataset?: CsvDataset) {
     const csv = node.metadata?.csv !== undefined ? getCsvNode(node) : undefined;
     if (
       node.metadata?.csv !== undefined &&
-      (dataset !== undefined || analysis !== undefined || csv)
+      (sources.length || graph.diagram.settings.csvAnalysis !== undefined || csv)
     ) {
+      const dataset = sources.find((source) => source.id === csv?.datasetId);
+      const analysis = dataset ? analysisForDataset(graph, dataset.id) : undefined;
       requireValue(csv && dataset && analysis, 'CSV node requires a valid source and analysis.');
       try {
         validateCsvNode(csv!);
@@ -223,7 +249,7 @@ export function validateGraph(graph: Graph, trustedDataset?: CsvDataset) {
           csv!.path.every((entry) =>
             dataset!.columns.some((column) => column.id === entry.columnId),
           ) &&
-          (node.externalId !== csv!.groupKey ||
+          (!isGeneratedCsvNode(node) ||
             csv!.visible === false ||
             (csv!.path.length <= analysis!.levels.length &&
               csv!.path.every((entry, index) => entry.columnId === analysis!.levels[index]))) &&

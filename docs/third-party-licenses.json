@@ -321,6 +321,16 @@
   },
   {
     "ecosystem": "npm",
+    "name": "@dimforge/rapier3d-compat",
+    "version": "0.12.0",
+    "license": "Apache-2.0",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/_dimforge_rapier3d-compat-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm",
     "name": "@esbuild/aix-ppc64",
     "version": "0.28.2",
     "license": "MIT",
@@ -868,6 +878,16 @@
   },
   {
     "ecosystem": "npm",
+    "name": "@tweenjs/tween.js",
+    "version": "23.1.3",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/_tweenjs_tween.js-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm",
     "name": "@types/aria-query",
     "version": "5.0.4",
     "license": "MIT",
@@ -1068,12 +1088,42 @@
   },
   {
     "ecosystem": "npm",
+    "name": "@types/stats.js",
+    "version": "0.17.4",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/_types_stats.js-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm",
+    "name": "@types/three",
+    "version": "0.186.0",
+    "license": "MIT",
+    "scope": "direct development",
+    "notices": [
+      "licenses/_types_three-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm",
     "name": "@types/trusted-types",
     "version": "2.0.7",
     "license": "MIT",
     "scope": "transitive runtime",
     "notices": [
       "licenses/_types_trusted-types-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm",
+    "name": "@types/webxr",
+    "version": "0.5.24",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/_types_webxr-LICENSE"
     ]
   },
   {
@@ -1898,6 +1948,16 @@
   },
   {
     "ecosystem": "npm",
+    "name": "meshoptimizer",
+    "version": "1.1.1",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/meshoptimizer-LICENSE.md"
+    ]
+  },
+  {
+    "ecosystem": "npm",
     "name": "min-indent",
     "version": "1.0.1",
     "license": "MIT",
@@ -2303,6 +2363,16 @@
     "scope": "transitive runtime",
     "notices": [
       "licenses/text-segmentation-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm",
+    "name": "three",
+    "version": "0.186.1",
+    "license": "MIT",
+    "scope": "direct runtime",
+    "notices": [
+      "licenses/three-LICENSE"
     ]
   },
   {

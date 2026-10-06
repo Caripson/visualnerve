@@ -26,13 +26,28 @@ import { LovableDialog } from './components/LovableDialog';
 import { SqlImportDialog } from './components/SqlImportDialog';
 import { SQL_FILE_LIMIT } from './sql/client';
 import { analyzeCsv, openCsvFile } from './data/client';
-import { getCsvAnalysis, getCsvNode } from './data/csv';
+import { getCsvNode } from './data/csv';
 import type { CsvAnalysis, CsvDataset, CsvPathEntry } from './data/types';
+import {
+  analysisForDataset,
+  graphDatasets,
+  setSourceAnalysis,
+  clearDataModelFocus,
+} from './data/model';
+import { getExploration } from './analysis/types';
+import { getSpatialView } from './spatial/types';
+import { reanalyzeDataModelAsync } from './data/modelClient';
+import { DataSourcesDialog } from './components/DataSourcesDialog';
+import { SourceRefreshDialog } from './components/SourceRefreshDialog';
+import { DataQualityDialog } from './components/DataQualityDialog';
 export type DialogName =
   | 'new'
   | 'export'
   | 'lovable'
   | 'sql'
+  | 'sources'
+  | 'refresh'
+  | 'quality'
   | 'owners'
   | 'search'
   | 'settings'
@@ -43,6 +58,8 @@ export function App() {
   const [ready, setReady] = useState(false);
   const [backup, setBackup] = useState<WorkspaceBackup | null>(null);
   const [sqlDraft, setSqlDraft] = useState<{ id: string; text: string; name: string }>();
+  const [sourceFiles, setSourceFiles] = useState<File[]>();
+  const pendingSourceFiles = useRef<File[]>([]);
   const [csvDraft, setCsvDraft] = useState<{
     dataset: CsvDataset;
     previous?: Graph;
@@ -66,20 +83,35 @@ export function App() {
       .catch((error) => useEditor.setState({ status: 'error', message: error.message }));
   };
   const graph = useEditor((s) => s.graph);
+  const explorationResult = useEditor((s) => s.explorationResult);
   const viewCounts = useMemo(() => {
     if (!graph) return { nodes: 0, edges: 0, hidden: 0 };
-    if (!graph.dataset) return { nodes: graph.nodes.length, edges: graph.edges.length, hidden: 0 };
+    const explored =
+      getExploration(graph) && explorationResult ? new Set(explorationResult.nodeIds) : undefined;
+    const exploredEdges =
+      explored && explorationResult ? new Set(explorationResult.edgeIds) : undefined;
     const visible = new Set(
-      graph.nodes.filter((node) => getCsvNode(node)?.visible !== false).map((node) => node.id),
+      graph.nodes
+        .filter(
+          (node) =>
+            (getCsvNode(node)?.visible !== false ||
+              (explored?.has(node.id) && getExploration(graph)?.includeHidden)) &&
+            (!explored || explored.has(node.id)),
+        )
+        .map((node) => node.id),
     );
     return {
       nodes: visible.size,
       edges: graph.edges.filter(
-        (edge) => visible.has(edge.sourceNodeId) && visible.has(edge.targetNodeId),
+        (edge) =>
+          (exploredEdges ? exploredEdges.has(edge.id) : edge.metadata.csvModelVisible !== false) &&
+          visible.has(edge.sourceNodeId) &&
+          visible.has(edge.targetNodeId) &&
+          (!exploredEdges || exploredEdges.has(edge.id)),
       ).length,
       hidden: graph.nodes.length - visible.size,
     };
-  }, [graph]);
+  }, [graph, explorationResult]);
   const focusMap = useEditor((s) => s.focusMap);
   const mobilePanel = useEditor((s) => s.mobilePanel);
   const status = useEditor((s) => s.status);
@@ -113,7 +145,7 @@ export function App() {
             text,
             name: picked.name.replace(/\.(sql|ddl)$/i, '').slice(0, 500) || 'Imported SQL',
           });
-        } else if (/\.csv$/i.test(picked.name)) {
+        } else if (/\.(csv|tsv)$/i.test(picked.name)) {
           const dataset = await openCsvFile(picked);
           setDialog(null);
           setSqlDraft(undefined);
@@ -129,6 +161,7 @@ export function App() {
           }
         }
       } catch (error) {
+        pendingSourceFiles.current = [];
         useEditor.setState({
           status: 'error',
           message: `Import failed: ${(error as Error).message}`,
@@ -162,6 +195,11 @@ export function App() {
           const generated = await analyzeCsv(dataset, analysis);
           generated.diagram = { ...generated.diagram, name };
           await workspace.create(generated);
+          if (pendingSourceFiles.current.length) {
+            setSourceFiles(pendingSourceFiles.current);
+            pendingSourceFiles.current = [];
+            open('sources');
+          }
           return;
         }
         await workspace.settled();
@@ -169,7 +207,13 @@ export function App() {
         const revision = useEditor.getState().editRevision;
         if (!snapshot || snapshot.diagram.id !== previous.diagram.id)
           throw new Error('Open this data diagram before changing its view.');
-        const generated = await analyzeCsv(dataset, analysis, snapshot);
+        const liveDataset = graphDatasets(snapshot).find((source) => source.id === dataset.id);
+        if (!liveDataset || liveDataset.version !== dataset.version)
+          throw new Error('The source changed while its settings were open. Reopen the data view.');
+        const linked = !!snapshot.datasets?.length || !!snapshot.diagram.settings.csvSourceAnalyses;
+        const generated = linked
+          ? await reanalyzeDataModelAsync(setSourceAnalysis(snapshot, dataset.id, analysis))
+          : await analyzeCsv(liveDataset, analysis, snapshot);
         const current = useEditor.getState();
         if (
           current.graph?.diagram.id !== snapshot.diagram.id ||
@@ -187,21 +231,56 @@ export function App() {
         importInFlight.current = false;
       }
     },
-    [],
+    [open],
   );
 
   const navigateCsv = useCallback(
-    async (patch: Partial<CsvAnalysis>) => {
+    async (patch: Partial<CsvAnalysis>, datasetId?: string) => {
       if (importInFlight.current) return;
       const current = useEditor.getState().graph;
-      const analysis = current && getCsvAnalysis(current);
-      if (!current?.dataset || !analysis) return;
+      const dataset =
+        current &&
+        graphDatasets(current).find((source) => source.id === (datasetId ?? current.dataset?.id));
+      const analysis = current && dataset && analysisForDataset(current, dataset.id);
+      if (!current || !dataset || !analysis) return;
       setImporting(true);
       try {
-        await applyCsv(current.dataset, { ...analysis, ...patch }, current.diagram.name, current);
+        if (current.diagram.settings.csvRelationships?.length && patch.focusPath) {
+          importInFlight.current = true;
+          await workspace.settled();
+          const snapshot = useEditor.getState().graph;
+          const revision = useEditor.getState().editRevision;
+          if (!snapshot || snapshot.diagram.id !== current.diagram.id) return;
+          const focused = patch.focusPath.length
+            ? setSourceAnalysis(snapshot, dataset.id, { ...analysis, ...patch })
+            : clearDataModelFocus(snapshot);
+          const generated = await reanalyzeDataModelAsync({
+            ...focused,
+            diagram: {
+              ...focused.diagram,
+              settings: {
+                ...focused.diagram.settings,
+                csvEntityFocus: patch.focusPath.length
+                  ? { datasetId: dataset.id, path: patch.focusPath }
+                  : undefined,
+              },
+            },
+          });
+          const live = useEditor.getState();
+          if (
+            live.graph?.diagram.id !== snapshot.diagram.id ||
+            live.graph.diagram.version !== snapshot.diagram.version ||
+            live.editRevision !== revision
+          )
+            throw new Error('The diagram changed during analysis. Explore the group again.');
+          live.command('Explore related CSV data', () => generated);
+          useEditor.setState({ selectedNodes: [], selectedEdges: [], focusNode: null });
+          await workspace.settled();
+        } else await applyCsv(dataset, { ...analysis, ...patch }, current.diagram.name, current);
       } catch (error) {
         useEditor.setState({ status: 'error', message: (error as Error).message });
       } finally {
+        importInFlight.current = false;
         setImporting(false);
       }
     },
@@ -229,6 +308,7 @@ export function App() {
       if (!dragDepth.current) setDraggingFile(false);
     };
     const drop = (event: DragEvent) => {
+      if (event.defaultPrevented) return;
       if (!isFile(event)) return;
       event.preventDefault();
       dragDepth.current = 0;
@@ -237,6 +317,17 @@ export function App() {
       const files = event.dataTransfer?.files;
       if (!files?.length) return;
       if (files.length > 1) {
+        const selected = Array.from(files);
+        if (selected.every((picked) => /\.(csv|tsv)$/i.test(picked.name))) {
+          if (useEditor.getState().graph) {
+            open('sources');
+            setSourceFiles(selected);
+          } else {
+            pendingSourceFiles.current = selected.slice(1);
+            void importFile(selected[0]);
+          }
+          return;
+        }
         useEditor.setState({
           status: 'error',
           message: 'Drop one file at a time to create a data diagram.',
@@ -255,7 +346,7 @@ export function App() {
       window.removeEventListener('dragleave', leave);
       window.removeEventListener('drop', drop);
     };
-  }, [importFile]);
+  }, [importFile, open]);
   useEffect(() => {
     const outside = (event: PointerEvent) => {
       document.querySelectorAll('details.quick-picker[open]').forEach((picker) => {
@@ -307,7 +398,14 @@ export function App() {
       const editing = (e.target as HTMLElement)?.closest(
         'input,textarea,select,[contenteditable="true"]',
       );
-      if (dialog || backup || csvDraft || importing || !useEditor.getState().privacyAcknowledged)
+      if (
+        dialog ||
+        backup ||
+        csvDraft ||
+        importing ||
+        document.querySelector('[role="dialog"][aria-modal="true"]') ||
+        !useEditor.getState().privacyAcknowledged
+      )
         return;
       if (modifier && (key === 'f' || key === 'k')) {
         e.preventDefault();
@@ -365,7 +463,8 @@ export function App() {
         s.selectedNodes.length === 1
       ) {
         e.preventDefault();
-        s.beginEditing(s.selectedNodes[0]);
+        if (getSpatialView(s.graph!).mode === '2d') s.beginEditing(s.selectedNodes[0]);
+        else useEditor.setState({ mobilePanel: 'details' });
       } else if (
         s.graph?.diagram.type === 'mindmap' &&
         s.selectedNodes.length &&
@@ -375,7 +474,8 @@ export function App() {
         e.preventDefault();
         e.stopPropagation();
         const id = s.child(key === 'enter');
-        if (id) useEditor.getState().beginEditing(id);
+        if (id && getSpatialView(s.graph!).mode === '2d') useEditor.getState().beginEditing(id);
+        else if (id) useEditor.setState({ mobilePanel: 'details' });
       }
     };
     window.addEventListener('keydown', listener, true);
@@ -479,7 +579,11 @@ export function App() {
                   )}
                 </span>
                 <span>
-                  {graph.diagram.type === 'mindmap' ? (
+                  {getSpatialView(graph).mode === '3d' ? (
+                    <>
+                      Drag: rotate <i>·</i> Scroll: zoom <i>·</i> Select: inspect
+                    </>
+                  ) : graph.diagram.type === 'mindmap' ? (
                     <>
                       Tab: subtopic <i>·</i> Enter: sibling <i>·</i> Double-click: edit
                     </>
@@ -552,27 +656,39 @@ export function App() {
             <X size={19} />
           </button>
           <Properties
-            editCsv={() => {
-              if (graph?.dataset) setCsvDraft({ dataset: graph.dataset, previous: graph });
+            editCsv={(datasetId) => {
+              const dataset =
+                graph &&
+                graphDatasets(graph).find(
+                  (source) => source.id === (datasetId ?? graph.dataset?.id),
+                );
+              if (graph && dataset) setCsvDraft({ dataset, previous: graph });
             }}
-            focusCsv={(path: CsvPathEntry[]) => void navigateCsv({ focusPath: path, offset: 0 })}
-            pageCsv={(direction: 'next' | 'previous') => {
-              const analysis = graph && getCsvAnalysis(graph);
+            focusCsv={(path: CsvPathEntry[], datasetId) =>
+              void navigateCsv({ focusPath: path, offset: 0 }, datasetId)
+            }
+            pageCsv={(direction: 'next' | 'previous', datasetId) => {
+              const id = datasetId ?? graph?.dataset?.id;
+              const analysis = graph && id && analysisForDataset(graph, id);
               if (analysis) {
                 const group = graph!.nodes
                   .map(getCsvNode)
                   .find(
                     (data) =>
                       data?.visible !== false &&
+                      data?.datasetId === id &&
                       data?.groupKey === JSON.stringify(analysis.focusPath),
                   );
                 const step =
                   direction === 'next' && group
                     ? Math.max(1, group.totalChildren - group.hiddenChildren)
                     : analysis.limit;
-                void navigateCsv({
-                  offset: Math.max(0, analysis.offset + (direction === 'next' ? step : -step)),
-                });
+                void navigateCsv(
+                  {
+                    offset: Math.max(0, analysis.offset + (direction === 'next' ? step : -step)),
+                  },
+                  id,
+                );
               }
             }}
           />
@@ -583,7 +699,7 @@ export function App() {
         aria-label="Import file"
         className="file-input"
         type="file"
-        accept=".json,.md,.markdown,.csv,.sql,.ddl"
+        accept=".json,.md,.markdown,.csv,.tsv,.sql,.ddl"
         onChange={async (e) => {
           const picked = e.target.files?.[0];
           if (!picked) return;
@@ -594,6 +710,17 @@ export function App() {
       {dialog === 'new' && <NewDiagram close={close} />}
       {dialog === 'export' && <ExportDialog close={close} />}
       {dialog === 'lovable' && <LovableDialog close={close} />}
+      {dialog === 'sources' && graph && (
+        <DataSourcesDialog
+          initialFiles={sourceFiles}
+          onClose={() => {
+            setSourceFiles(undefined);
+            close();
+          }}
+        />
+      )}
+      {dialog === 'refresh' && graph && <SourceRefreshDialog onClose={close} />}
+      {dialog === 'quality' && graph && <DataQualityDialog graph={graph} onClose={close} />}
       {dialog === 'sql' && (
         <SqlImportDialog
           key={sqlDraft?.id ?? 'script'}
@@ -620,7 +747,15 @@ export function App() {
           key={csvDraft.dataset.id}
           dataset={csvDraft.dataset}
           previous={csvDraft.previous}
-          close={() => setCsvDraft(null)}
+          initialAnalysis={
+            csvDraft.previous
+              ? analysisForDataset(csvDraft.previous, csvDraft.dataset.id)
+              : undefined
+          }
+          close={() => {
+            setCsvDraft(null);
+            pendingSourceFiles.current = [];
+          }}
           apply={(analysis, name) => applyCsv(csvDraft.dataset, analysis, name, csvDraft.previous)}
           legacyImport={
             csvDraft.file

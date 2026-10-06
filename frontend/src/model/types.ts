@@ -1,5 +1,7 @@
 import type { CsvAnalysis, CsvDataset } from '../data/types';
+import type { CsvEntityFocus, CsvSourceRelationship } from '../data/model';
 import type { DrawingLayer } from '../drawing/types';
+import type { SpatialView } from '../spatial/types';
 export type { DrawingLayer, DrawingStroke } from '../drawing/types';
 
 export const diagramTypes = [
@@ -55,7 +57,13 @@ export interface Diagram extends Base {
     snap?: boolean;
     timelineScale?: TimelineScale;
     csvAnalysis?: CsvAnalysis;
+    csvSourceAnalyses?: Record<string, CsvAnalysis>;
+    csvRelationships?: CsvSourceRelationship[];
+    csvEntityFocus?: CsvEntityFocus;
+    csvDatasetOrder?: string[];
+    csvSuppressedRelationshipEdges?: string[];
     drawing?: DrawingLayer;
+    spatialView?: SpatialView;
     [key: string]: unknown;
   };
 }
@@ -113,6 +121,8 @@ export interface Graph {
   edges: GraphEdge[];
   owners: Owner[];
   dataset?: CsvDataset;
+  /** Additional immutable sources; dataset remains the primary legacy source. */
+  datasets?: CsvDataset[];
 }
 export interface Filters {
   owner: string;

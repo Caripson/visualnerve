@@ -129,6 +129,11 @@
           },
           "metadata": {
             "additionalProperties": true,
+            "properties": {
+              "spatial": {
+                "$ref": "#/components/schemas/SpatialNode"
+              }
+            },
             "type": "object"
           },
           "nodeType": {
@@ -367,6 +372,11 @@
           },
           "settings": {
             "additionalProperties": true,
+            "properties": {
+              "spatialView": {
+                "$ref": "#/components/schemas/SpatialView"
+              }
+            },
             "type": "object"
           },
           "tags": {
@@ -428,6 +438,11 @@
           },
           "settings": {
             "additionalProperties": true,
+            "properties": {
+              "spatialView": {
+                "$ref": "#/components/schemas/SpatialView"
+              }
+            },
             "type": "object"
           },
           "tags": {
@@ -476,6 +491,11 @@
           },
           "settings": {
             "additionalProperties": true,
+            "properties": {
+              "spatialView": {
+                "$ref": "#/components/schemas/SpatialView"
+              }
+            },
             "type": "object"
           },
           "tags": {
@@ -724,6 +744,13 @@
           "dataset": {
             "$ref": "#/components/schemas/CsvDataset"
           },
+          "datasets": {
+            "description": "Additional diagram-owned CSV sources; the primary source remains in dataset. Analysis settings and saved views share these source records.",
+            "items": {
+              "$ref": "#/components/schemas/CsvDataset"
+            },
+            "type": "array"
+          },
           "diagram": {
             "$ref": "#/components/schemas/Diagram"
           },
@@ -861,6 +888,11 @@
           },
           "metadata": {
             "additionalProperties": true,
+            "properties": {
+              "spatial": {
+                "$ref": "#/components/schemas/SpatialNode"
+              }
+            },
             "type": "object"
           },
           "nodeType": {
@@ -977,6 +1009,11 @@
           },
           "metadata": {
             "additionalProperties": true,
+            "properties": {
+              "spatial": {
+                "$ref": "#/components/schemas/SpatialNode"
+              }
+            },
             "type": "object"
           },
           "nodeType": {
@@ -1081,6 +1118,11 @@
           },
           "metadata": {
             "additionalProperties": true,
+            "properties": {
+              "spatial": {
+                "$ref": "#/components/schemas/SpatialNode"
+              }
+            },
             "type": "object"
           },
           "nodeType": {
@@ -1351,6 +1393,176 @@
         },
         "type": "object"
       },
+      "SpatialCamera": {
+        "additionalProperties": false,
+        "description": "Position must differ from target. +Y is up, +Z is front and -X is left. Camera coordinates have a wider limit to frame all valid node positions. Optional up preserves view roll.",
+        "properties": {
+          "position": {
+            "$ref": "#/components/schemas/SpatialCameraPoint"
+          },
+          "target": {
+            "$ref": "#/components/schemas/SpatialCameraPoint"
+          },
+          "up": {
+            "$ref": "#/components/schemas/SpatialCameraUp"
+          }
+        },
+        "required": [
+          "position",
+          "target"
+        ],
+        "type": "object"
+      },
+      "SpatialCameraPoint": {
+        "additionalProperties": false,
+        "properties": {
+          "x": {
+            "maximum": 10000000,
+            "minimum": -10000000,
+            "type": "number"
+          },
+          "y": {
+            "maximum": 10000000,
+            "minimum": -10000000,
+            "type": "number"
+          },
+          "z": {
+            "maximum": 10000000,
+            "minimum": -10000000,
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "z"
+        ],
+        "type": "object"
+      },
+      "SpatialCameraUp": {
+        "additionalProperties": false,
+        "description": "Unit up vector, not parallel to position-target. Defaults to +Y when omitted. Preserves roll from the Z-axis view control.",
+        "properties": {
+          "x": {
+            "maximum": 1,
+            "minimum": -1,
+            "type": "number"
+          },
+          "y": {
+            "maximum": 1,
+            "minimum": -1,
+            "type": "number"
+          },
+          "z": {
+            "maximum": 1,
+            "minimum": -1,
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "z"
+        ],
+        "type": "object"
+      },
+      "SpatialDiagramInput": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "blank",
+              "mindmap",
+              "flowchart",
+              "timeline",
+              "process",
+              "dependency",
+              "responsibility",
+              "freeform"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "SpatialNode": {
+        "additionalProperties": false,
+        "properties": {
+          "position": {
+            "$ref": "#/components/schemas/SpatialPoint"
+          },
+          "version": {
+            "enum": [
+              1
+            ],
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "type": "object"
+      },
+      "SpatialPoint": {
+        "additionalProperties": false,
+        "properties": {
+          "x": {
+            "maximum": 1000000,
+            "minimum": -1000000,
+            "type": "number"
+          },
+          "y": {
+            "maximum": 1000000,
+            "minimum": -1000000,
+            "type": "number"
+          },
+          "z": {
+            "maximum": 1000000,
+            "minimum": -1000000,
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "z"
+        ],
+        "type": "object"
+      },
+      "SpatialView": {
+        "additionalProperties": false,
+        "properties": {
+          "camera": {
+            "$ref": "#/components/schemas/SpatialCamera"
+          },
+          "mode": {
+            "enum": [
+              "2d",
+              "3d"
+            ],
+            "type": "string"
+          },
+          "version": {
+            "enum": [
+              1
+            ],
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "mode"
+        ],
+        "type": "object"
+      },
       "WorkspaceBackup": {
         "properties": {
           "datasets": {
@@ -1401,7 +1613,7 @@
             "type": "array"
           },
           "schemaVersion": {
-            "description": "IndexedDB schema version at export; currently 5. Older backups may omit this.",
+            "description": "IndexedDB schema version at export; currently 6. Older backups may omit this.",
             "type": "integer"
           },
           "settings": {
@@ -4862,6 +5074,140 @@
           {}
         ],
         "summary": "Search diagrams, nodes, descriptions, tags, owners and metadata"
+      }
+    },
+    "/spatial-diagrams": {
+      "post": {
+        "operationId": "post_spatial-diagrams",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpatialDiagramInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Graph"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin or host"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Create and open a 3D diagram with independent 2D layout"
       }
     },
     "/workspace/export": {

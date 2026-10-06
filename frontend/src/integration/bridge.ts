@@ -9,6 +9,14 @@ interface Command {
   method: string;
   data?: unknown;
 }
+export function bridgeResponseStatus(path: string, method: string): number {
+  return method === 'DELETE'
+    ? 204
+    : method === 'POST' &&
+        /\/(spatial-diagrams|diagrams|nodes|edges|owners|children|import)$/.test(path)
+      ? 201
+      : 200;
+}
 class Bridge {
   private socket?: WebSocket;
   private retry?: ReturnType<typeof setTimeout>;
@@ -68,13 +76,7 @@ class Bridge {
         if (!command.id || !command.path?.startsWith('/')) return;
         try {
           const body = await workspace.external(command.path, command.method, command.data);
-          const status =
-            command.method === 'DELETE'
-              ? 204
-              : command.method === 'POST' &&
-                  /\/(diagrams|nodes|edges|owners|children|import)$/.test(command.path)
-                ? 201
-                : 200;
+          const status = bridgeResponseStatus(command.path, command.method);
           if (socket.readyState === WebSocket.OPEN)
             socket.send(JSON.stringify({ id: command.id, status, body }));
         } catch (error) {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ArrowRight, Layers, Link, Plus, Trash2, ChevronRight, Star } from 'lucide-react';
 import { useEditor } from '../state/editor';
 import {
@@ -16,15 +16,34 @@ import type { CsvPathEntry } from '../data/types';
 import { getCsvNode } from '../data/csv';
 import { nodeStatuses, statusLabel } from '../ui/status';
 import { SqlRelationshipDetails, SqlTableDetails } from './SqlTableSummary';
-export function Properties({
+import { AnalysisDialog, AnalysisTools } from './AnalysisTools';
+import { SpatialProperties } from './SpatialProperties';
+interface PropertiesProps {
+  editCsv?: (datasetId?: string) => void;
+  focusCsv?: (path: CsvPathEntry[], datasetId?: string) => void;
+  pageCsv?: (direction: 'next' | 'previous', datasetId?: string) => void;
+}
+export function Properties(props: PropertiesProps) {
+  const graph = useEditor((state) => state.graph);
+  const selected = useEditor((state) => state.selectedNodes);
+  const [analysisOpen, setAnalysisOpen] = useState(false);
+  const openAnalysis = useCallback(() => setAnalysisOpen(true), []);
+  const closeAnalysis = useCallback(() => setAnalysisOpen(false), []);
+  return (
+    <>
+      <PropertyPanel {...props} onOpenAnalysis={openAnalysis} />
+      {analysisOpen && graph && (
+        <AnalysisDialog key={graph.diagram.id} close={closeAnalysis} startId={selected[0]} />
+      )}
+    </>
+  );
+}
+function PropertyPanel({
   editCsv,
   focusCsv,
   pageCsv,
-}: {
-  editCsv?: () => void;
-  focusCsv?: (path: CsvPathEntry[]) => void;
-  pageCsv?: (direction: 'next' | 'previous') => void;
-}) {
+  onOpenAnalysis,
+}: PropertiesProps & { onOpenAnalysis: () => void }) {
   const graph = useEditor((s) => s.graph);
   const selected = useEditor((s) => s.selectedNodes);
   const edges = useEditor((s) => s.selectedEdges);
@@ -44,6 +63,7 @@ export function Properties({
       <aside className="properties">
         <div className="panel-heading">{selected.length} nodes selected</div>
         <div className="property-content">
+          <AnalysisTools onOpen={onOpenAnalysis} />
           <p className="muted">Move, copy, group or delete this selection.</p>
           <button className="full" onClick={() => useEditor.getState().group()}>
             <Layers size={15} />
@@ -78,6 +98,7 @@ export function Properties({
           Node properties<span className="muted">{config.label}</span>
         </div>
         <div className="property-content" key={node.id}>
+          <AnalysisTools onOpen={onOpenAnalysis} />
           <Field title="Title">
             <input
               aria-label="Node title"
@@ -93,6 +114,7 @@ export function Properties({
             onPageCsv={pageCsv}
           />
           <SqlTableDetails node={node} />
+          <SpatialProperties graph={graph} node={node} />
           <div className="field">
             <span>Area icon</span>
             <IconPicker
@@ -362,6 +384,7 @@ export function Properties({
           Connection properties
         </div>
         <div className="property-content" key={edge.id}>
+          <AnalysisTools onOpen={onOpenAnalysis} />
           <Field title="Label">
             <input
               aria-label="Connection label"
@@ -454,6 +477,8 @@ export function Properties({
     <aside className="properties">
       <div className="panel-heading">Diagram properties</div>
       <div className="property-content">
+        <AnalysisTools onOpen={onOpenAnalysis} />
+        <SpatialProperties graph={graph} />
         <div className="diagram-summary">
           <span className="eyebrow">WORKSPACE</span>
           <h2>{d.name}</h2>

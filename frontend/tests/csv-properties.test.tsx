@@ -194,11 +194,11 @@ it('explores and pages full groups while previewing cleaned and original source 
   expect(screen.getByText(/Current view: groups 1–1 of 3/)).toBeVisible();
   expect(screen.getByRole('button', { name: 'Previous groups' })).toBeDisabled();
   fireEvent.click(screen.getByRole('button', { name: 'Next groups' }));
-  expect(pageCsv).toHaveBeenCalledWith('next');
+  expect(pageCsv).toHaveBeenCalledWith('next', dataset.id);
   fireEvent.click(screen.getByRole('button', { name: 'Explore this group' }));
-  expect(focusCsv).toHaveBeenCalledWith(getCsvNode(node)!.path);
+  expect(focusCsv).toHaveBeenCalledWith(getCsvNode(node)!.path, dataset.id);
   fireEvent.click(screen.getByRole('button', { name: 'All data' }));
-  expect(focusCsv).toHaveBeenCalledWith([]);
+  expect(focusCsv).toHaveBeenCalledWith([], dataset.id);
 
   fireEvent.click(screen.getByText('Source rows (2)'));
   const table = await screen.findByRole('table', { name: 'Source rows' });

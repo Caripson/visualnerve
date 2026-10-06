@@ -1,6 +1,7 @@
 import { liveQuery, type Subscription } from 'dexie';
 import { useEditor } from '../state/editor';
 import { ownersFor, type Graph } from '../model/types';
+import { graphDatasets } from '../data/model';
 import { StorageError } from '../model/validation';
 import { Repository, repository } from './repository';
 import {
@@ -10,6 +11,40 @@ import {
   localBridgeUrl,
 } from '../integration/access';
 import type { WorkspaceBackup } from './database';
+import { getSpatialView } from '../spatial/types';
+
+/** Commit a pending local camera before a user-requested snapshot or navigation. */
+export function flushSpatialCamera() {
+  const graph = useEditor.getState().graph;
+  if (graph && getSpatialView(graph).mode === '3d')
+    window.dispatchEvent(new Event('visualnerve:spatial-camera-flush'));
+}
+
+function spatialNavigation(graph: Graph | null, path: string, method: string, value: unknown) {
+  if (!graph || method === 'GET') return false;
+  if (method === 'POST' && ['/spatial-diagrams', '/api/v1/spatial-diagrams'].includes(path))
+    return true;
+  const [collection, id, action] = new URL(
+    path.replace(/^\/api\/v1/, ''),
+    'http://browser.local',
+  ).pathname
+    .split('/')
+    .filter(Boolean);
+  if (
+    collection !== 'diagrams' ||
+    id !== graph.diagram.id ||
+    !['PATCH', 'PUT', 'POST'].includes(method)
+  )
+    return false;
+  const payload = value as
+    | { settings?: { spatialView?: { mode?: unknown } }; graph?: Graph }
+    | undefined;
+  const mode =
+    action === 'graph'
+      ? payload?.graph?.diagram?.settings?.spatialView?.mode
+      : payload?.settings?.spatialView?.mode;
+  return (mode === '2d' || mode === '3d') && mode !== getSpatialView(graph).mode;
+}
 
 function acknowledged(local: Graph, saved: Graph): Graph {
   const nodes = new Map(saved.nodes.map((node) => [node.id, node]));
@@ -21,15 +56,20 @@ function acknowledged(local: Graph, saved: Graph): Graph {
     stored && value.version === stored.version && value.updatedAt === stored.updatedAt
       ? value
       : (stored ?? value);
+  const sources = new Map(graphDatasets(local).map((source) => [source.id, source]));
+  const shareSource = (stored: Graph['dataset']) => {
+    const value = stored ? sources.get(stored.id) : undefined;
+    return value &&
+      stored &&
+      value.version === stored.version &&
+      value.updatedAt === stored.updatedAt
+      ? value
+      : stored;
+  };
   return {
     ...saved,
-    ...(local.dataset &&
-    saved.dataset &&
-    local.dataset.id === saved.dataset.id &&
-    local.dataset.version === saved.dataset.version &&
-    local.dataset.updatedAt === saved.dataset.updatedAt
-      ? { dataset: local.dataset }
-      : {}),
+    dataset: shareSource(saved.dataset),
+    datasets: saved.datasets?.map((source) => shareSource(source)!),
     nodes: local.nodes.map((node) => share(node, nodes.get(node.id))),
     edges: local.edges.map((edge) => share(edge, edges.get(edge.id))),
   };
@@ -41,7 +81,7 @@ export class Workspace {
   private unsubscribe?: () => void;
   private observer?: Subscription;
   private versions = new Map<string, number>();
-  private pending = new Map<string, Graph>();
+  private pending = new Map<string, { graph: Graph; sourcesChanged: boolean }>();
   private navigation = 0;
   private settingsRevision = 0;
   private stopped = false;
@@ -70,8 +110,14 @@ export class Workspace {
       if (state.editRevision === previous.editRevision || !state.graph) return;
       const graph = ownersFor(state.graph, state.owners);
       const revision = state.editRevision;
-      this.pending.set(graph.diagram.id, graph);
-      this.queue = this.queue.then(() => this.persist(graph, revision));
+      const oldSources = previous.graph ? graphDatasets(previous.graph) : [];
+      const sources = graphDatasets(graph);
+      const sourcesChanged =
+        this.pending.get(graph.diagram.id)?.sourcesChanged === true ||
+        oldSources.length !== sources.length ||
+        sources.some((source, index) => source !== oldSources[index]);
+      this.pending.set(graph.diagram.id, { graph, sourcesChanged });
+      this.queue = this.queue.then(() => this.persist(graph, revision, sourcesChanged));
     });
     await this.refresh();
     const last = await this.repo.db.settings.get('last-diagram');
@@ -125,15 +171,15 @@ export class Workspace {
       message: (error as Error).message,
     });
   }
-  private async persist(graph: Graph, revision: number) {
+  private async persist(graph: Graph, revision: number, sourcesChanged = false) {
     const id = graph.diagram.id;
     if (useEditor.getState().status === 'conflict') return;
     try {
       await this.requireStorageConsent();
       // Editor commands change the drawing/configuration, not the original CSV cells.
-      const { dataset: _dataset, ...drawing } = graph;
+      const { dataset: _dataset, datasets: _datasets, ...drawing } = graph;
       const stored = await this.repo.saveGraph(
-        drawing,
+        sourcesChanged ? { ...graph, datasets: graph.datasets ?? [] } : drawing,
         this.versions.get(id) ?? graph.diagram.version,
       );
       this.versions.set(id, stored.diagram.version);
@@ -151,7 +197,7 @@ export class Workspace {
           message: '',
         });
       }
-      if (this.pending.get(id) === graph) this.pending.delete(id);
+      if (this.pending.get(id)?.graph === graph) this.pending.delete(id);
     } catch (error) {
       this.error(error);
     }
@@ -161,8 +207,8 @@ export class Workspace {
     if (this.pending.size) {
       const state = useEditor.getState();
       if (state.status === 'conflict') throw new StorageError(409, state.message);
-      for (const graph of this.pending.values())
-        await this.persist(graph, useEditor.getState().editRevision);
+      for (const { graph, sourcesChanged } of this.pending.values())
+        await this.persist(graph, useEditor.getState().editRevision, sourcesChanged);
       if (this.pending.size) throw new StorageError(500, useEditor.getState().message);
     }
   }
@@ -220,6 +266,7 @@ export class Workspace {
   }
   async open(id: string, nodeId?: string) {
     await this.requireStorageConsent();
+    flushSpatialCamera();
     await this.settled();
     const navigation = ++this.navigation;
     const graph = await this.repo.getGraph(id);
@@ -247,6 +294,7 @@ export class Workspace {
   }
   async create(graph: Graph) {
     await this.requireStorageConsent();
+    useEditor.getState().finishEditing();
     await this.settled();
     const stored = await this.repo.importGraph(graph);
     await this.refresh();
@@ -283,15 +331,32 @@ export class Workspace {
     await this.settled();
     const permission = await this.repo.db.settings.get('mcp-access');
     assertMcpAccess(mcpAccess(permission?.value), path, method);
-    return this.execute<T>(path, method, data);
+    if (spatialNavigation(useEditor.getState().graph, path, method, data)) {
+      await this.requireStorageConsent();
+      window.dispatchEvent(new Event('visualnerve:spatial-camera-flush'));
+      const state = useEditor.getState();
+      state.finishEditing();
+      state.setDrawingTool('none');
+      await this.settled();
+      // A camera/title commit can yield; honor grants revoked while it was being saved.
+      const latest = await this.repo.db.settings.get('mcp-access');
+      assertMcpAccess(useEditor.getState().mcpAccess, path, method);
+      assertMcpAccess(mcpAccess(latest?.value), path, method);
+    }
+    const result = await this.execute<T>(path, method, data);
+    if (method === 'POST' && ['/spatial-diagrams', '/api/v1/spatial-diagrams'].includes(path))
+      await this.open((result as Graph).diagram.id);
+    return result;
   }
   async backup() {
     await this.requireStorageConsent();
+    flushSpatialCamera();
     await this.settled();
     return this.repo.db.backup();
   }
   async restoreBackup(backup: WorkspaceBackup, mode: 'merge' | 'replace') {
     await this.requireStorageConsent();
+    flushSpatialCamera();
     await this.settled();
     const graphs = await this.repo.restore(backup, mode);
     this.versions.clear();

@@ -1,4 +1,5 @@
-import { getCsvAnalysis, getCsvNode } from '../data/csv';
+import { getCsvNode } from '../data/csv';
+import { graphDatasets, analysisForDataset, isGeneratedCsvNode } from '../data/model';
 import type { CsvNodeData } from '../data/types';
 import type { Graph, GraphEdge } from '../model/types';
 import { getSqlRelationship, getSqlTable, type SqlTable } from '../sql/schema';
@@ -52,11 +53,7 @@ export function buildLovablePrompt(
   const included = graph.nodes.filter((node) => {
     if (options.scope === 'selected') return selected.has(node.id);
     const data = csv.get(node.id);
-    const generated =
-      node.metadata.csv !== undefined &&
-      data !== undefined &&
-      node.externalId === data.groupKey &&
-      (!graph.dataset || data.datasetId === graph.dataset.id);
+    const generated = isGeneratedCsvNode(node);
     return options.scope !== 'csv-view' || !generated || data?.visible !== false;
   });
   const byId = new Map(graph.nodes.map((node) => [node.id, node]));
@@ -74,40 +71,50 @@ export function buildLovablePrompt(
     return external;
   };
   const owners = new Map(graph.owners.map((owner) => [owner.id, owner]));
-  const columns = new Map<string, { ref: string; label: string }>();
-  for (const column of graph.dataset?.columns ?? [])
-    columns.set(column.id, { ref: `c${columns.size + 1}`, label: column.label });
-  const column = (id: string) => {
-    let item = columns.get(id);
-    if (!item) {
-      item = {
+  const sources = graphDatasets(graph);
+  const sourceRefs = new Map(sources.map((source, index) => [source.id, `s${index + 1}`]));
+  const columns = new Map<string, { ref: string; label: string; source?: string }>();
+  for (const source of sources)
+    for (const column of source.columns)
+      columns.set(`${source.id}:${column.id}`, {
         ref: `c${columns.size + 1}`,
-        label: 'Source column (original schema unavailable)',
-      };
-      columns.set(id, item);
+        label: column.label,
+        ...(sources.length > 1 ? { source: sourceRefs.get(source.id) } : {}),
+      });
+  const column = (id: string, datasetId = graph.dataset?.id ?? '') => {
+    const key = `${datasetId}:${id}`;
+    let item = columns.get(key);
+    if (!item) {
+      item = { ref: `c${columns.size + 1}`, label: 'Source column (original schema unavailable)' };
+      columns.set(key, item);
     }
     return item.ref;
   };
   const metricRefs = new Map<string, string>();
-  const metricRef = (id: string) => {
-    let item = metricRefs.get(id);
+  const metricRef = (id: string, datasetId = graph.dataset?.id ?? '') => {
+    const key = `${datasetId}:${id}`;
+    let item = metricRefs.get(key);
     if (!item) {
       item = `m${metricRefs.size + 1}`;
-      metricRefs.set(id, item);
+      metricRefs.set(key, item);
     }
     return item;
   };
   const group = (data: CsvNodeData) => ({
-    path: data.path.map((entry) => ({ column: column(entry.columnId), value: entry.value })),
+    ...(sources.length > 1 ? { source: sourceRefs.get(data.datasetId) } : {}),
+    path: data.path.map((entry) => ({
+      column: column(entry.columnId, data.datasetId),
+      value: entry.value,
+    })),
     matchingRows: data.rowCount,
     totalChildGroups: data.totalChildren,
     childGroupsOutsidePage: data.hiddenChildren,
     retainedOutsideCurrentView: data.visible === false,
     measures: data.measures.map((measure) => ({
-      ref: metricRef(measure.id),
+      ref: metricRef(measure.id, data.datasetId),
       label: measure.label,
       operation: measure.operation,
-      column: measure.columnId ? column(measure.columnId) : undefined,
+      column: measure.columnId ? column(measure.columnId, data.datasetId) : undefined,
       value: measure.value,
       numericCount: measure.numericCount,
       missingCount: measure.missingCount,
@@ -149,6 +156,12 @@ export function buildLovablePrompt(
   const boundaryEdges: object[] = [];
   const explicitParents = new Set<string>();
   for (const edge of graph.edges) {
+    if (
+      options.scope === 'csv-view' &&
+      edge.metadata.csvModelGenerated === true &&
+      edge.metadata.csvModelVisible === false
+    )
+      continue;
     if (edge.edgeType === 'hierarchy')
       explicitParents.add(json([edge.sourceNodeId, edge.targetNodeId]));
     const sourceIncluded = refs.has(edge.sourceNodeId);
@@ -197,10 +210,10 @@ export function buildLovablePrompt(
     parentRelations.push({ parent, child, type: 'implicit hierarchy', externalContext: boundary });
   }
 
-  const analysis = getCsvAnalysis(graph);
+  const analysis = graph.dataset ? analysisForDataset(graph, graph.dataset.id) : undefined;
   const csvSummary = analysis
     ? {
-        grouping: analysis.levels.map(column),
+        grouping: analysis.levels.map((id) => column(id)),
         measures: analysis.metrics.map((metric) => ({
           ref: metricRef(metric.id),
           operation: metric.operation,
@@ -225,7 +238,7 @@ export function buildLovablePrompt(
           direction: analysis.sortDirection,
         },
         decimalSeparator: analysis.decimalSeparator,
-        displayedColumns: analysis.displayColumns.map(column),
+        displayedColumns: analysis.displayColumns.map((id) => column(id)),
         columnRules: analysis.columnRules.map((rule) => ({
           column: column(rule.columnId),
           trim: rule.trim,
@@ -246,7 +259,7 @@ export function buildLovablePrompt(
       sqlTable: sqlTableSchema(getSqlTable(node)),
     };
   });
-  const csvPresent = !!graph.dataset || [...csv.values()].some(Boolean);
+  const csvPresent = sources.length > 0 || [...csv.values()].some(Boolean);
   const lines = [
     'Build a web application from the application and workflow specification below.',
     'The diagram describes the desired APP: its features, business objects, roles and workflow. Do not recreate Visual Nerve or build a diagram editor unless the user explicitly asks for one.',
@@ -286,6 +299,57 @@ export function buildLovablePrompt(
       `CSV analysis: ${json(csvSummary ?? { sourceAnalysisUnavailable: true })}`,
       'CSV group totals may overlap along the hierarchy; do not sum parent and child totals together. Cached groups outside the current view may reflect earlier analysis settings.',
     );
+  }
+  if (sources.length > 1) {
+    lines.push(
+      `CSV sources: ${json(
+        sources.map((source) => {
+          const analysis = analysisForDataset(graph, source.id)!;
+          return {
+            ref: sourceRefs.get(source.id),
+            name: source.name,
+            columns: source.columns.map((c) => column(c.id, source.id)),
+            grouping: analysis.levels.map((id) => column(id, source.id)),
+            measures: analysis.metrics.map((metric) => ({
+              ref: metricRef(metric.id, source.id),
+              operation: metric.operation,
+              column: metric.columnId ? column(metric.columnId, source.id) : undefined,
+            })),
+            filters: analysis.filters.map((filter) => ({
+              column: column(filter.columnId, source.id),
+              operation: filter.operation,
+              value: filter.value,
+              caseSensitive: filter.caseSensitive ?? false,
+            })),
+            focus: analysis.focusPath.map((p) => ({
+              column: column(p.columnId, source.id),
+              value: p.value,
+            })),
+            page: { offset: analysis.offset, groupsPerLevel: analysis.limit },
+            decimalSeparator: analysis.decimalSeparator,
+            columnRules: analysis.columnRules.map((rule) => ({
+              column: column(rule.columnId, source.id),
+              trim: rule.trim,
+              pattern: rule.pattern,
+              replacement: rule.replacement,
+              flags: rule.flags,
+              numberFormat: rule.numberFormat,
+            })),
+          };
+        }),
+      )}`,
+    );
+    lines.push(
+      `CSV column relationships: ${json((graph.diagram.settings.csvRelationships ?? []).map((relationship) => ({ source: sourceRefs.get(relationship.sourceDatasetId), sourceColumn: column(relationship.sourceColumnId, relationship.sourceDatasetId), target: sourceRefs.get(relationship.targetDatasetId), targetColumn: column(relationship.targetColumnId, relationship.targetDatasetId), matching: relationship.matchMode ?? 'trim' })))}`,
+    );
+    lines.push(
+      'Compute each source aggregate from its own original rows once. Relationship matching is a semijoin for entity context, never a joined-row sum; one-to-many or many-to-many matches must not multiply money or counts.',
+    );
+    const focus = graph.diagram.settings.csvEntityFocus;
+    if (focus)
+      lines.push(
+        `Related entity focus: ${json({ source: sourceRefs.get(focus.datasetId), path: focus.path.map((p) => ({ column: column(p.columnId, focus.datasetId), value: p.value })) })}`,
+      );
   }
   if (graph.nodes.some((node) => getSqlTable(node))) {
     lines.push(

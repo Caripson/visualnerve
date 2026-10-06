@@ -10,6 +10,7 @@ import {
 import { timelineGeometry, type Geometry } from '../layouts/layout';
 import { mindmapTopics, type MindmapTopic } from '../mindmap/tree';
 import { getCsvNode } from '../data/csv';
+import type { ExplorationResult } from '../analysis/types';
 export type NodeData = {
   node: GraphNode;
   owners: Owner[];
@@ -48,13 +49,20 @@ export function projectGraph(
   dataCache?: Map<string, NodeData>,
   renderCache?: RenderCache,
   topicContext?: GraphNode[],
+  exploration?: ExplorationResult | null,
 ): { nodes: CanvasNode[]; edges: Edge[] } {
-  const visibleNodes = graph.nodes.filter((node) => getCsvNode(node)?.visible !== false);
+  const exploredIds = exploration ? new Set(exploration.nodeIds) : undefined;
+  const exploredEdges = exploration ? new Set(exploration.edgeIds) : undefined;
+  const visibleNodes = graph.nodes.filter((node) =>
+    exploredIds ? exploredIds.has(node.id) : getCsvNode(node)?.visible !== false,
+  );
   const byId = new Map(visibleNodes.map((n) => [n.id, n]));
   const mindmap = graph.diagram.type === 'mindmap';
   const topics = mindmap
     ? mindmapTopics(
-        (topicContext ?? visibleNodes).filter((node) => getCsvNode(node)?.visible !== false),
+        (topicContext ?? visibleNodes).filter((node) =>
+          exploredIds ? exploredIds.has(node.id) : getCsvNode(node)?.visible !== false,
+        ),
       )
     : undefined;
   const ownerById = new Map(owners.map((o) => [o.id, o]));
@@ -65,7 +73,7 @@ export function projectGraph(
     if (n.parentId) counts.set(n.parentId, (counts.get(n.parentId) ?? 0) + 1);
   const hidden = new Map<string, boolean>();
   const collapsed = (n: GraphNode): boolean => {
-    if (exporting) return false;
+    if (exporting || exploration) return false;
     if (hidden.has(n.id)) return hidden.get(n.id)!;
     const p = n.parentId ? byId.get(n.parentId) : undefined;
     const value = !!p && (p.collapsed || collapsed(p));
@@ -97,7 +105,7 @@ export function projectGraph(
       const geom = timeline?.positions.get(n.id) ?? n;
       const parent = n.parentId ? byId.get(n.parentId) : undefined;
       const grouped = !timeline && parent?.nodeType === 'group';
-      const match = exporting || matches(n);
+      const match = exporting || !!exploration || matches(n);
       let data: NodeData = {
         node: n,
         owners: n.ownerIds.map((id) => ownerById.get(id)).filter((o): o is Owner => !!o),
@@ -123,6 +131,10 @@ export function projectGraph(
       dataCache?.set(n.id, data);
       const view: CanvasNode = {
         id: n.id,
+        className:
+          exploration && getCsvNode(n)?.visible === false
+            ? 'analysis-outside-data-view'
+            : undefined,
         type: mindmap && n.nodeType !== 'group' ? 'mindmap-topic' : n.nodeType,
         position: { x: geom.x - (grouped ? parent!.x : 0), y: geom.y - (grouped ? parent!.y : 0) },
         ...(grouped ? { parentId: parent!.id } : {}),
@@ -150,6 +162,7 @@ export function projectGraph(
         cached.parentId === view.parentId &&
         cached.selected === view.selected &&
         cached.hidden === view.hidden &&
+        cached.className === view.className &&
         cached.position.x === view.position.x &&
         cached.position.y === view.position.y &&
         cached.width === view.width &&
@@ -165,7 +178,10 @@ export function projectGraph(
     for (const id of renderCache.nodes.keys()) if (!byId.has(id)) renderCache.nodes.delete(id);
   const hiddenIds = new Set(nodes.filter((n) => n.hidden).map((n) => n.id));
   const visibleEdges = graph.edges.filter(
-    (edge) => byId.has(edge.sourceNodeId) && byId.has(edge.targetNodeId),
+    (edge) =>
+      byId.has(edge.sourceNodeId) &&
+      byId.has(edge.targetNodeId) &&
+      (exploredEdges ? exploredEdges.has(edge.id) : edge.metadata.csvModelVisible !== false),
   );
   const represented = new Set(
     visibleEdges.flatMap((e) => [
@@ -180,6 +196,7 @@ export function projectGraph(
           !parent ||
           getCsvNode(n) ||
           parent.nodeType === 'group' ||
+          (exploredEdges && !exploredEdges.has(`hierarchy:${n.id}`)) ||
           represented.has(`${parent.id}:${n.id}`)
         )
           return [];
@@ -238,7 +255,10 @@ export function projectGraph(
       id: e.id,
       source: e.sourceNodeId,
       target: e.targetNodeId,
-      label: e.label,
+      label:
+        exploration && e.metadata.csvModelVisible === false
+          ? `${e.label || e.edgeType} · outside current data view`
+          : e.label,
       type: branch ? 'mindmap-branch' : mindmap ? 'default' : 'smoothstep',
       sourceHandle,
       targetHandle,

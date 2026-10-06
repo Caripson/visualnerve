@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   applyNodeChanges,
   applyEdgeChanges,
@@ -29,6 +29,33 @@ import { projectGraph, type CanvasNode, type NodeData, type RenderCache } from '
 import { DrawingOverlay } from '../drawing/DrawingOverlay';
 import { getDrawingLayer } from '../drawing/types';
 import { fitDiagram } from '../drawing/navigation';
+import { exploreRelationshipsAsync } from '../analysis/client';
+import { getExploration } from '../analysis/types';
+import '../components/analysis-tools.css';
+import { getSpatialView, setSpatialView, type SpatialCamera } from '../spatial/types';
+import type { SpatialCanvasProps } from '../spatial/SpatialCanvas';
+function SpatialLoadFailure({ onReturnTo2D }: SpatialCanvasProps) {
+  return (
+    <div className="canvas-shell spatial-canvas">
+      <p role="status">The 3D view could not be loaded. Continue editing in 2D.</p>
+      <button onClick={onReturnTo2D}>Return to 2D</button>
+    </div>
+  );
+}
+const SpatialCanvas = lazy(() =>
+  import('../spatial/SpatialCanvas')
+    .then((module) => ({ default: module.SpatialCanvas }))
+    .catch(() => ({ default: SpatialLoadFailure })),
+);
+const pendingExploration = {
+  nodeIds: [],
+  edgeIds: [],
+  totalNodes: 0,
+  truncated: false,
+  found: false,
+  outsideViewIds: [],
+  outsideViewEdgeIds: [],
+};
 
 export function Canvas() {
   const graph = useEditor((s) => s.graph);
@@ -37,6 +64,38 @@ export function Canvas() {
   const selectedEdges = useEditor((s) => s.selectedEdges);
   const drawingTool = useEditor((s) => s.drawingTool);
   const filters = useEditor((s) => s.filters);
+  const explorationResult = useEditor((s) => s.explorationResult);
+  const explorationBusy = useEditor((s) => s.explorationBusy);
+  const explorationError = useEditor((s) => s.explorationError);
+  const viewportRequest = useEditor((s) => s.viewportRequest);
+  const spatial = graph ? getSpatialView(graph).mode === '3d' : false;
+  const exploration = useMemo(
+    () => (graph ? getExploration(graph) : undefined),
+    [graph?.diagram.settings.relationshipExploration],
+  );
+  useEffect(() => {
+    let current = true;
+    if (!graph || !exploration) {
+      useEditor.setState({ explorationResult: null, explorationBusy: false, explorationError: '' });
+      return;
+    }
+    useEditor.setState({ explorationBusy: true, explorationError: '' });
+    void exploreRelationshipsAsync(graph, exploration)
+      .then((result) => {
+        if (current) useEditor.setState({ explorationResult: result, explorationBusy: false });
+      })
+      .catch((error: Error) => {
+        if (current)
+          useEditor.setState({
+            explorationResult: null,
+            explorationBusy: false,
+            explorationError: error.message,
+          });
+      });
+    return () => {
+      current = false;
+    };
+  }, [graph?.diagram.id, graph?.nodes, graph?.edges, exploration]);
   const dataCache = useRef(new Map<string, NodeData>());
   const renderCache = useRef<RenderCache>({ nodes: new Map(), edges: new Map() });
   const flow = useReactFlow<CanvasNode>();
@@ -139,9 +198,11 @@ export function Canvas() {
             resize,
             dataCache.current,
             renderCache.current,
+            undefined,
+            exploration ? (explorationResult ?? pendingExploration) : undefined,
           )
         : { nodes: [], edges: [] },
-    [graph, owners, selectedNodes, selectedEdges, filters, resize],
+    [graph, owners, selectedNodes, selectedEdges, filters, resize, exploration, explorationResult],
   );
   const [nodes, setNodes] = useState<CanvasNode[]>(projected.nodes);
   const [edges, setEdges] = useState<Edge[]>(projected.edges);
@@ -149,7 +210,11 @@ export function Canvas() {
   useEffect(() => setEdges(projected.edges), [projected.edges]);
   const diagramId = graph?.diagram.id;
   useEffect(() => {
-    if (!graph) return;
+    const viewport = useEditor.getState().graph?.diagram.settings.viewport;
+    if (!spatial && viewportRequest && viewport) void flow.setViewport(viewport, { duration: 180 });
+  }, [viewportRequest, flow, spatial]);
+  useEffect(() => {
+    if (!graph || spatial) return;
     const frame = requestAnimationFrame(() => {
       const viewport = graph.diagram.settings.viewport;
       const touchView = graph.diagram.settings.viewportDevice === 'touch';
@@ -177,10 +242,10 @@ export function Canvas() {
         void flow.fitView({ padding: graph.diagram.type === 'mindmap' ? 0.14 : 0.3, maxZoom: 1 });
     });
     return () => cancelAnimationFrame(frame);
-  }, [diagramId, touch]);
+  }, [diagramId, touch, spatial]);
   const focus = useEditor((s) => s.focusNode);
   useEffect(() => {
-    if (!focus) return;
+    if (!focus || spatial) return;
     const node = flow.getNode(focus);
     if (node && !node.hidden) {
       if (useEditor.getState().editingNode === focus && graph?.diagram.type === 'mindmap') {
@@ -193,7 +258,7 @@ export function Canvas() {
       } else void flow.fitView({ nodes: [node], maxZoom: 1.1, padding: 1, duration: 250 });
       useEditor.setState({ focusNode: null });
     }
-  }, [focus, nodes, flow]);
+  }, [focus, nodes, flow, spatial]);
   const changes = useCallback((changes: NodeChange<CanvasNode>[]) => {
     const state = useEditor.getState();
     const selection = changes.filter((change) => change.type === 'select');
@@ -229,7 +294,7 @@ export function Canvas() {
       )
         return;
       const s = useEditor.getState();
-      if (!s.graph) return;
+      if (!s.graph || getSpatialView(s.graph).mode === '3d') return;
       if (s.drawingTool !== 'none') return;
       if (e.key.startsWith('Arrow') && s.selectedNodes.length && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
@@ -258,7 +323,43 @@ export function Canvas() {
     window.addEventListener('keydown', listener, true);
     return () => window.removeEventListener('keydown', listener, true);
   }, [flow]);
+  const returnTo2D = useCallback(() => {
+    useEditor.getState().command('2D view', (current) => setSpatialView(current, { mode: '2d' }));
+  }, []);
+  const saveCamera = useCallback(
+    (camera: SpatialCamera) => {
+      const state = useEditor.getState();
+      if (
+        !state.graph ||
+        state.graph.diagram.id !== diagramId ||
+        getSpatialView(state.graph).mode !== '3d'
+      )
+        return;
+      if (JSON.stringify(getSpatialView(state.graph).camera) === JSON.stringify(camera)) return;
+      state.command('3D camera', (current) => setSpatialView(current, { camera }), true);
+    },
+    [diagramId],
+  );
   if (!graph) return null;
+  if (spatial)
+    return (
+      <Suspense
+        fallback={
+          <div className="canvas-shell spatial-canvas">
+            <p role="status">Loading 3D view…</p>
+            <button onClick={returnTo2D}>Return to 2D</button>
+          </div>
+        }
+      >
+        <SpatialCanvas
+          graph={graph}
+          nodes={projected.nodes}
+          edges={projected.edges}
+          onReturnTo2D={returnTo2D}
+          onCameraChange={saveCamera}
+        />
+      </Suspense>
+    );
   const toggle = (key: 'grid' | 'snap') =>
     useEditor.getState().command(`Toggle ${key}`, (g) => ({
       ...g,
@@ -299,6 +400,7 @@ export function Canvas() {
           if (
             s.graph &&
             s.graph.diagram.id === diagramId &&
+            getSpatialView(s.graph).mode === '2d' &&
             (JSON.stringify(s.graph.diagram.settings.viewport) !== JSON.stringify(viewport) ||
               s.graph.diagram.settings.viewportDevice !== (touch ? 'touch' : 'desktop'))
           ) {
@@ -362,6 +464,27 @@ export function Canvas() {
             )}
         </Controls>
         <DrawingOverlay />
+        {!!exploration && (
+          <Panel position="top-left" className="analysis-canvas-notice">
+            <strong>
+              {exploration.mode === 'path' ? 'Relationship path' : 'Relationship neighborhood'}
+            </strong>
+            <span role="status">
+              {explorationBusy
+                ? 'Exploring…'
+                : explorationError ||
+                  (!explorationResult?.found
+                    ? 'No matching path or visible starting object.'
+                    : `${explorationResult.nodeIds.length} objects shown${explorationResult.truncated ? ' · bounded view; refine the exploration' : ''}`)}
+            </span>
+            {!!(
+              (explorationResult?.outsideViewIds.length ?? 0) +
+              (explorationResult?.outsideViewEdgeIds.length ?? 0)
+            ) && <span>Groups marked “Outside current data view” retain earlier measures.</span>}
+            <span>Object filters and collapsed branches are temporarily overridden.</span>
+            <button onClick={() => useEditor.getState().explore()}>Reset exploration</button>
+          </Panel>
+        )}
         {minimap && (
           <MiniMap
             pannable

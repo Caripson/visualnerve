@@ -1,5 +1,7 @@
 import { base, type Graph, type GraphNode, type GraphEdge } from '../model/types';
 import { getCsvNode } from '../data/csv';
+import { graphDatasets } from '../data/model';
+import { offsetSpatialNode } from '../spatial/types';
 export interface Clip {
   format: 'visual-nerve-clipboard';
   nodes: GraphNode[];
@@ -19,14 +21,16 @@ export function pasteSelection(
   offset = 40,
 ): { nodes: GraphNode[]; edges: GraphEdge[] } {
   const diagramId = typeof target === 'string' ? target : target.diagram.id;
-  const datasetId = typeof target === 'string' ? undefined : target.dataset?.id;
+  const datasetIds = new Set(
+    typeof target === 'string' ? [] : graphDatasets(target).map((source) => source.id),
+  );
   const remap = new Map(clip.nodes.map((n) => [n.id, crypto.randomUUID()]));
   return {
     nodes: clip.nodes.map((n) => {
-      const copy = structuredClone(n);
+      const copy = offsetSpatialNode(structuredClone(n), offset / 120);
       const csv = getCsvNode(copy);
       if (csv && copy.metadata.csv !== undefined) {
-        if (csv.datasetId !== datasetId) {
+        if (!datasetIds.has(csv.datasetId)) {
           const { csv: _binding, ...metadata } = copy.metadata;
           copy.metadata = { ...metadata, csvSnapshot: { ...csv, visible: true } };
         } else copy.metadata = { ...copy.metadata, csv: { ...csv, visible: true } };
@@ -51,8 +55,14 @@ export function pasteSelection(
       externalId: undefined,
       sourceNodeId: remap.get(e.sourceNodeId)!,
       targetNodeId: remap.get(e.targetNodeId)!,
-      ...(e.metadata.csvGenerated === true
-        ? { metadata: { ...structuredClone(e.metadata), csvGenerated: false } }
+      ...(e.metadata.csvGenerated === true || e.metadata.csvModelGenerated === true
+        ? {
+            metadata: {
+              ...structuredClone(e.metadata),
+              csvGenerated: false,
+              csvModelGenerated: false,
+            },
+          }
         : {}),
     })),
   };

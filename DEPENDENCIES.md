@@ -12,6 +12,7 @@ Versions are locked in frontend/package-lock.json and backend/go.mod/go.sum. The
 | @types/papaparse | 5.5.2 | MIT | direct development |
 | @types/react | 19.3.0 | MIT | direct development |
 | @types/react-dom | 19.3.0 | MIT | direct development |
+| @types/three | 0.186.0 | MIT | direct development |
 | @vitejs/plugin-react | 5.2.0 | MIT | direct development |
 | @xyflow/react | 12.12.0 | MIT | direct runtime |
 | dexie | 4.4.6 | Apache-2.0 | direct runtime |
@@ -26,6 +27,7 @@ Versions are locked in frontend/package-lock.json and backend/go.mod/go.sum. The
 | react | 19.3.0 | MIT | direct runtime |
 | react-dom | 19.3.0 | MIT | direct runtime |
 | swagger-ui-dist | 5.33.1 | Apache-2.0 | direct runtime |
+| three | 0.186.1 | MIT | direct runtime |
 | typescript | 5.9.3 | Apache-2.0 | direct development |
 | vite | 7.3.6 | MIT | direct development |
 | vitest | 4.1.11 | MIT | direct development |

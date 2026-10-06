@@ -6,6 +6,12 @@ Before the workspace opens, users must explicitly accept local browser storage a
 
 Hugo builds the application shell and help pages. React and TypeScript power the editor, React Flow renders the canvas, ELK performs explicit layouts, and Dexie manages IndexedDB transactions. The built site can run on a static HTTP server. An optional Go server serves the files and bridges local REST/MCP commands to an open browser; it stores no application data.
 
+## Explore diagrams in 3D
+
+Use **3D** to tilt and inspect the same diagram as a physical relief. Nodes retain their 2D positions and sizes; their actual 2D appearance supplies the front faces, including fonts, colors, icons and status. Text and connections follow the perspective when the diagram turns. Visible **Move**, **Rotate** and **Scale** controls provide colored axis handles for pan, rotation and zoom; **−10°/+10°** make small turns predictable. **2D** and **Return to 2D** restore the editable overview. Front, Back, Left, Right, Top, Fit and Focus selected provide named views. Select a card or relationship, or an entry in **Objects and relationships** to edit its title, description, notes, status and connections in Properties. **3D placement** permits explicit X/Y/Z overrides; automatic placement follows the 2D layout. The pen layer remains available in the 2D overview and exports.
+
+Choose **Data → New 3D truck lifecycle example** (phones: **…**) for a truck lifecycle mind map with manufacturing, delivery, operation, maintenance, second life and recycling branches. MCP can create an empty 3D diagram using `POST /spatial-diagrams`, then populate any subject through the existing node/bulk commands. Camera and object placements persist in IndexedDB, JSON and workspace backups. PNG and PDF always render the canonical 2D diagram; no 3D screenshot is required. See [3D diagrams](docs/SPATIAL_DIAGRAMS.md) for the data contract, export behavior and bounded rendering.
+
 Mind maps use a central topic, colored curved branches and rounded topic backgrounds at every depth, with a balanced layout on both sides. Edit topics directly by double-clicking or F2, extend them with the branch **+** buttons or Tab/Enter, and use **Focus map** to give the canvas the whole workspace. While editing, Tab saves the topic and opens a new child in view. Diagram modes keep their node cards and directional connections. Switching modes preserves the canonical graph.
 
 Click the project name to rename it. Selection actions give quick access to editing, colors, domain icons, duplication and deletion; deleting a whole branch is a separate undoable action. The green theme uses darker text and eight contrasting colors. Sixteen open source Lucide icons cover work, learning, people, health, technology and other areas. On phones, the canvas fills the screen, project navigation opens in a drawer, properties open in a bottom panel, and touch gestures pan and zoom.
@@ -19,6 +25,10 @@ Drop a CSV anywhere in the accepted workspace or use **Import**. Choose cleanup 
 The groups are ordinary diagram objects: move them, add or edit connections, labels and directions, and use undo. Explore a group, return to all data or page through groups. Hidden groups retain their objects and connections so they return when included again. Each object can show selected measures and source columns; **Show source rows** previews up to 100 matching rows with an original-values toggle.
 
 Parsing, cleanup and aggregation run in a Web Worker. A view renders at most 600 data objects, while count, sum, average, median, minimum, maximum and distinct count use all matching rows. The regression suite includes 100,000 rows and 2,000 customers. Raw source rows and analysis choices are stored locally in IndexedDB and included in diagram JSON and full backups. See [CSV exploration](docs/CSV_EXPLORER.md) for limits and usage.
+
+## Connected data and saved analysis views
+
+Use **Data → Data sources** to connect CSV files through explicit matching columns and review match counts before applying. Each source keeps its own aggregates without multiplying joined rows. **Explore this group** follows matching entities across connected sources. **Explore relationships and views** in Properties shows neighbors or paths and saves named perspectives over shared data. **Data → Refresh source** previews keyed CSV or SQL updates while preserving matched annotations and status. **Why this value?** traces measures to contributing rows; **Data → Data quality** inspects duplicate identities, cleanup collisions, ambiguous numbers and missing references. See [analysis workflows](docs/ANALYSIS_WORKFLOWS.md).
 
 ## Draw on a diagram
 
