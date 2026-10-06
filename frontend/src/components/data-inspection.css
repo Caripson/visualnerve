@@ -1,0 +1,73 @@
+.data-inspection {
+  padding: 0 24px 24px;
+  min-width: 0;
+}
+.data-inspection h3 {
+  margin: 18px 0 8px;
+}
+.data-inspection .field {
+  margin: 14px 0;
+}
+.data-inspection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+.data-inspection-issues {
+  display: grid;
+  gap: 6px;
+  max-height: 240px;
+  overflow: auto;
+  margin: 14px 0;
+}
+.data-inspection-issues button {
+  display: flex;
+  text-align: left;
+  justify-content: space-between;
+  gap: 12px;
+}
+.data-inspection-issues button.active {
+  outline: 2px solid var(--accent);
+}
+.data-evidence-scroll {
+  overflow: auto;
+  max-height: 340px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.data-evidence table {
+  border-collapse: collapse;
+  font-size: 12px;
+  width: 100%;
+}
+.data-evidence th,
+.data-evidence td {
+  text-align: left;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+  white-space: pre-wrap;
+  min-width: 90px;
+  max-width: 300px;
+  overflow-wrap: anywhere;
+}
+.data-evidence th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+}
+.data-evidence .evidence-highlight {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.data-inspection-key-columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  max-height: 140px;
+  overflow: auto;
+}
+@media (max-width: 600px) {
+  .data-inspection {
+    padding: 0 14px 14px;
+  }
+}

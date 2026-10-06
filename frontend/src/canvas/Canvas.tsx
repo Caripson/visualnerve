@@ -29,6 +29,18 @@ import { projectGraph, type CanvasNode, type NodeData, type RenderCache } from '
 import { DrawingOverlay } from '../drawing/DrawingOverlay';
 import { getDrawingLayer } from '../drawing/types';
 import { fitDiagram } from '../drawing/navigation';
+import { exploreRelationshipsAsync } from '../analysis/client';
+import { getExploration } from '../analysis/types';
+import '../components/analysis-tools.css';
+const pendingExploration = {
+  nodeIds: [],
+  edgeIds: [],
+  totalNodes: 0,
+  truncated: false,
+  found: false,
+  outsideViewIds: [],
+  outsideViewEdgeIds: [],
+};
 
 export function Canvas() {
   const graph = useEditor((s) => s.graph);
@@ -37,6 +49,37 @@ export function Canvas() {
   const selectedEdges = useEditor((s) => s.selectedEdges);
   const drawingTool = useEditor((s) => s.drawingTool);
   const filters = useEditor((s) => s.filters);
+  const explorationResult = useEditor((s) => s.explorationResult);
+  const explorationBusy = useEditor((s) => s.explorationBusy);
+  const explorationError = useEditor((s) => s.explorationError);
+  const viewportRequest = useEditor((s) => s.viewportRequest);
+  const exploration = useMemo(
+    () => (graph ? getExploration(graph) : undefined),
+    [graph?.diagram.settings.relationshipExploration],
+  );
+  useEffect(() => {
+    let current = true;
+    if (!graph || !exploration) {
+      useEditor.setState({ explorationResult: null, explorationBusy: false, explorationError: '' });
+      return;
+    }
+    useEditor.setState({ explorationBusy: true, explorationError: '' });
+    void exploreRelationshipsAsync(graph, exploration)
+      .then((result) => {
+        if (current) useEditor.setState({ explorationResult: result, explorationBusy: false });
+      })
+      .catch((error: Error) => {
+        if (current)
+          useEditor.setState({
+            explorationResult: null,
+            explorationBusy: false,
+            explorationError: error.message,
+          });
+      });
+    return () => {
+      current = false;
+    };
+  }, [graph?.diagram.id, graph?.nodes, graph?.edges, exploration]);
   const dataCache = useRef(new Map<string, NodeData>());
   const renderCache = useRef<RenderCache>({ nodes: new Map(), edges: new Map() });
   const flow = useReactFlow<CanvasNode>();
@@ -139,15 +182,21 @@ export function Canvas() {
             resize,
             dataCache.current,
             renderCache.current,
+            undefined,
+            exploration ? (explorationResult ?? pendingExploration) : undefined,
           )
         : { nodes: [], edges: [] },
-    [graph, owners, selectedNodes, selectedEdges, filters, resize],
+    [graph, owners, selectedNodes, selectedEdges, filters, resize, exploration, explorationResult],
   );
   const [nodes, setNodes] = useState<CanvasNode[]>(projected.nodes);
   const [edges, setEdges] = useState<Edge[]>(projected.edges);
   useEffect(() => setNodes(projected.nodes), [projected.nodes]);
   useEffect(() => setEdges(projected.edges), [projected.edges]);
   const diagramId = graph?.diagram.id;
+  useEffect(() => {
+    const viewport = useEditor.getState().graph?.diagram.settings.viewport;
+    if (viewportRequest && viewport) void flow.setViewport(viewport, { duration: 180 });
+  }, [viewportRequest, flow]);
   useEffect(() => {
     if (!graph) return;
     const frame = requestAnimationFrame(() => {
@@ -362,6 +411,27 @@ export function Canvas() {
             )}
         </Controls>
         <DrawingOverlay />
+        {!!exploration && (
+          <Panel position="top-left" className="analysis-canvas-notice">
+            <strong>
+              {exploration.mode === 'path' ? 'Relationship path' : 'Relationship neighborhood'}
+            </strong>
+            <span role="status">
+              {explorationBusy
+                ? 'Exploring…'
+                : explorationError ||
+                  (!explorationResult?.found
+                    ? 'No matching path or visible starting object.'
+                    : `${explorationResult.nodeIds.length} objects shown${explorationResult.truncated ? ' · bounded view; refine the exploration' : ''}`)}
+            </span>
+            {!!(
+              (explorationResult?.outsideViewIds.length ?? 0) +
+              (explorationResult?.outsideViewEdgeIds.length ?? 0)
+            ) && <span>Groups marked “Outside current data view” retain earlier measures.</span>}
+            <span>Object filters and collapsed branches are temporarily overridden.</span>
+            <button onClick={() => useEditor.getState().explore()}>Reset exploration</button>
+          </Panel>
+        )}
         {minimap && (
           <MiniMap
             pannable

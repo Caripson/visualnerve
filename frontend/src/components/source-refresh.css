@@ -1,0 +1,116 @@
+.source-refresh,
+.modal:has(.source-refresh) {
+  min-width: 0;
+  max-width: 100%;
+}
+.source-refresh-intro,
+.source-removal-note,
+.source-refresh fieldset p,
+.source-column-map p,
+.source-change-preview p {
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.source-refresh fieldset {
+  min-width: 0;
+  padding: 14px;
+  margin: 16px 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.source-refresh legend {
+  font-size: 13px;
+  font-weight: 650;
+}
+.source-key-columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}
+.source-column-map {
+  margin: 16px 0;
+}
+.source-column-map summary {
+  padding: 8px 0;
+  cursor: pointer;
+  font-size: 13px;
+}
+.source-map-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+  align-items: center;
+  gap: 10px;
+  overflow-wrap: anywhere;
+}
+.source-refresh textarea {
+  font:
+    12px/1.6 ui-monospace,
+    monospace;
+  min-height: 180px;
+  max-height: 45dvh;
+}
+.source-refresh-error {
+  color: var(--danger, #a84236);
+  padding: 10px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.source-change-preview {
+  padding: 15px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-alt);
+  margin-top: 18px;
+}
+.source-change-preview h3 {
+  margin-top: 0;
+}
+.source-change-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 20px;
+}
+.source-change-counts dt {
+  color: var(--muted);
+  font-size: 11px;
+}
+.source-change-counts dd {
+  font-size: 18px;
+  font-weight: 650;
+  margin: 5px 0 0;
+}
+.source-change-preview ul {
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.source-change-preview > ul {
+  max-height: 200px;
+  overflow: auto;
+}
+.source-refresh-actions {
+  flex-wrap: wrap;
+}
+.source-refresh-actions button {
+  min-height: 44px;
+  white-space: normal;
+}
+@media (max-width: 720px) {
+  .source-map-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .source-refresh input,
+  .source-refresh select {
+    min-height: 44px;
+  }
+  .source-key-columns input[type='checkbox'] {
+    min-height: auto;
+  }
+  .source-refresh-actions button {
+    flex: 1 1 160px;
+  }
+}

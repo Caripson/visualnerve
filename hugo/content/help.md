@@ -54,6 +54,18 @@ Copying a CSV object into another diagram keeps its measures as a snapshot; the 
 
 CSV sources and analysis choices stay in this browser and are included in diagram JSON and full backups. PNG/PDF exports show the current CSV view. Files support at most 50 MiB, 200,000 rows, 200 columns and 10 million cells. CSVs using the older `title`-column diagram format can still use **Import as existing diagram rows instead** in the preview.
 
+## Connect sources and repeat an analysis
+
+Use **Data → Data sources** (on phones: **… → Data sources**) to add CSV files and explicitly match columns. Preview match counts, missing keys and duplicate-key cardinality before applying. Each source keeps its own grouping, filters and measures; related rows contribute once rather than multiplying totals. Multiple CSV files can be dropped together. Choose **Explore this group** to follow matching entities across files, and **All data** to reset connected focus. Up to eight sources and 32 relationships are supported, with a combined limit of 20 million cells.
+
+Select an object and choose **Explore relationships and views** in Properties. Show incoming, outgoing or all neighbors one or two steps away, or find the shortest path to another object. Large results show a bounded subset with a notice. Groups outside the current CSV view are excluded unless explicitly included, and their old values are marked. Reset exploration to return to the diagram.
+
+The same dialog saves named analysis views with filters, source configurations, relationships, layout and viewport. The views share source data; notes, status, pen marks and manual connections stay current. Save, load, update and delete views with undo support.
+
+**Data → Refresh source** loads a replacement CSV or SQL schema and previews additions, changes and removals before applying. Choose and map CSV identity columns; empty or duplicate keys block ambiguous updates. SQL tables match by qualified names. Matching objects retain their status, annotations and placement. Review split or merged groups and choose whether removed objects remain detached annotations or are removed. Refresh supports undo and cancels stale previews when the diagram changes.
+
+Beside a CSV measure, **Why this value?** explains the calculation and shows contributing, excluded or repeated original data rows in pages. **Data → Data quality** checks missing values, numeric ambiguity, cleanup collisions, selected identity keys and missing references. Click a check to inspect its rows, with original and cleaned values. SQL quality reports missing table definitions and unresolved column references; it does not inspect table data.
+
 ## Import a SQL schema
 
 Drop a `.sql` or `.ddl` file, use **Import**, or choose **Import SQL script**. On phones, use **… → Import SQL script**. Enter a diagram name and paste the SQL script, or use **Load SQL file**. **Preview schema** analyzes it locally in a worker and shows table, column, relationship and unresolved-table counts with import notes. Review the preview, then choose **Create diagram**. Changing the input clears the preview; Cancel aborts pending analysis.

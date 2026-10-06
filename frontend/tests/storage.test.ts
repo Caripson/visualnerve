@@ -324,7 +324,7 @@ describe('authoritative IndexedDB repository', () => {
       { key: 'privacy-acknowledged', value: true },
     ]);
     const backup = await db.backup();
-    expect(backup.schemaVersion).toBe(5);
+    expect(backup.schemaVersion).toBe(6);
     expect(Number.isFinite(Date.parse(backup.exportedAt!))).toBe(true);
     expect(backup.settings).toEqual([{ key: 'theme', value: 'dark' }]);
   });

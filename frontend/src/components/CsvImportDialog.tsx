@@ -43,19 +43,21 @@ const number = (value: number) =>
 export function CsvImportDialog({
   dataset,
   previous,
+  initialAnalysis,
   close,
   apply,
   legacyImport,
 }: {
   dataset: CsvDataset;
   previous?: Graph;
+  initialAnalysis?: CsvAnalysis;
   close: () => void;
   apply: (analysis: CsvAnalysis, name: string) => Promise<void>;
   legacyImport?: () => Promise<void>;
 }) {
   const [name, setName] = useState(previous?.diagram.name ?? dataset.name);
   const [analysis, setAnalysis] = useState<CsvAnalysis>(
-    () => (previous && getCsvAnalysis(previous)) || defaultAnalysis(dataset),
+    () => initialAnalysis || (previous && getCsvAnalysis(previous)) || defaultAnalysis(dataset),
   );
   const [preview, setPreview] = useState<Graph | null>(null);
   const [samples, setSamples] = useState<{

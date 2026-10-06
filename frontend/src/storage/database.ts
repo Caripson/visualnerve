@@ -34,7 +34,7 @@ export interface WorkspaceBackup {
 }
 
 export class WorkspaceDatabase extends Dexie {
-  private datasetCache = new Map<string, { diagramVersion: number; dataset?: CsvDataset }>();
+  private datasetCache = new Map<string, { diagramVersion: number; datasets: CsvDataset[] }>();
   private immutableDatasets = new WeakSet<CsvDataset>();
   private datasetMutation = (parts: ObservabilitySet) => {
     if (Object.keys(parts).some((part) => part.startsWith(`idb://${this.name}/datasets/`)))
@@ -97,6 +97,7 @@ export class WorkspaceDatabase extends Dexie {
         await tx.table('settings').delete('integration-enabled');
       });
     this.version(5).stores({ datasets: 'id,&diagramId,updatedAt' });
+    this.version(6).stores({ datasets: 'id,diagramId,updatedAt' });
     this.on(
       'ready',
       () => {
@@ -114,21 +115,23 @@ export class WorkspaceDatabase extends Dexie {
   forgetDatasets() {
     this.datasetCache.clear();
   }
-  rememberDataset(diagram: Diagram, dataset?: CsvDataset) {
+  rememberDataset(diagram: Diagram, dataset?: CsvDataset, additional: CsvDataset[] = []) {
+    const datasets = [...(dataset ? [dataset] : []), ...additional];
     // Raw cells are immutable. Normal edits share this object without copying
     // or fetching a large dataset again. The committed diagram version changes
     // on every repository write, including source replacement in another tab.
-    if (dataset && !this.immutableDatasets.has(dataset)) {
-      dataset.rows.forEach(Object.freeze);
-      dataset.columns.forEach(Object.freeze);
-      Object.freeze(dataset.rows);
-      Object.freeze(dataset.columns);
-      Object.freeze(dataset);
-      this.immutableDatasets.add(dataset);
-    }
+    for (const dataset of datasets)
+      if (!this.immutableDatasets.has(dataset)) {
+        dataset.rows.forEach(Object.freeze);
+        dataset.columns.forEach(Object.freeze);
+        Object.freeze(dataset.rows);
+        Object.freeze(dataset.columns);
+        Object.freeze(dataset);
+        this.immutableDatasets.add(dataset);
+      }
     const remember = () => {
       this.datasetCache.delete(diagram.id);
-      this.datasetCache.set(diagram.id, { diagramVersion: diagram.version, dataset });
+      this.datasetCache.set(diagram.id, { diagramVersion: diagram.version, datasets });
       // Keep the active source and a few recent projects without retaining
       // every large dataset ever opened during this browser session.
       while (this.datasetCache.size > 3)
@@ -190,10 +193,12 @@ export class WorkspaceDatabase extends Dexie {
           (owner): owner is Owner => !!owner,
         );
         const cached = this.datasetCache.get(id);
-        const dataset =
+        const datasets =
           cached?.diagramVersion === diagram.version
-            ? cached.dataset
-            : await this.datasets.where('diagramId').equals(id).first();
+            ? cached.datasets
+            : await this.datasets.where('diagramId').equals(id).toArray();
+        sort(datasets, diagram.settings.csvDatasetOrder);
+        const [dataset, ...additional] = datasets;
         const graph: Graph = {
           format: 'visual-nerve',
           formatVersion: 1,
@@ -202,13 +207,14 @@ export class WorkspaceDatabase extends Dexie {
           edges: sort(edges, order.edges),
           owners,
           ...(dataset ? { dataset } : {}),
+          ...(additional.length ? { datasets: additional } : {}),
         };
         return graph;
       },
     );
     // Outside a top-level transaction its mutation event has already fired.
     // Nested graph reads register against the outer commit instead.
-    if (graph) this.rememberDataset(graph.diagram, graph.dataset);
+    if (graph) this.rememberDataset(graph.diagram, graph.dataset, graph.datasets);
     return graph;
   }
   async backup(): Promise<WorkspaceBackup> {

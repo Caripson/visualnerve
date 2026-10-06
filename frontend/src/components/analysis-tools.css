@@ -1,0 +1,109 @@
+.analysis-tools {
+  display: grid;
+  gap: 8px;
+  margin-block: 12px;
+}
+.analysis-dialog {
+  display: grid;
+  gap: 24px;
+  padding: 18px 24px 24px;
+}
+.analysis-dialog section {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.analysis-dialog section + section {
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+.analysis-dialog h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.analysis-dialog p {
+  margin: 0;
+  line-height: 1.5;
+}
+.analysis-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.analysis-dialog .field {
+  margin: 0;
+  min-width: 0;
+}
+.analysis-dialog input:not([type='checkbox']),
+.analysis-dialog select,
+.analysis-dialog button {
+  min-height: 44px;
+}
+.analysis-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.analysis-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+.analysis-check input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+}
+.analysis-warning,
+.analysis-notice {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.analysis-canvas-notice {
+  display: grid;
+  gap: 4px;
+  max-width: min(330px, calc(100vw - 32px));
+  font-size: 12px;
+  padding: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+.analysis-canvas-notice button {
+  min-height: 44px;
+}
+.react-flow__node.analysis-outside-data-view::after {
+  content: 'Outside current data view';
+  position: absolute;
+  left: 0;
+  top: -22px;
+  padding: 2px 6px;
+  background: #fff4d0;
+  color: #604700;
+  border: 1px solid #a98a3a;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+@media (max-width: 520px) {
+  .analysis-dialog {
+    padding: 14px;
+  }
+  .analysis-fields {
+    grid-template-columns: 1fr;
+  }
+  .analysis-actions > button {
+    flex: 1 1 120px;
+  }
+  .analysis-canvas-notice {
+    max-width: 220px;
+  }
+}

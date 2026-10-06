@@ -17,6 +17,7 @@ import { download, safeName } from './semantic';
 import { DrawingSvg } from '../drawing/DrawingSvg';
 import { drawingBounds, unionBounds } from '../drawing/geometry';
 import { getDrawingLayer } from '../drawing/types';
+import { getCsvNode } from '../data/csv';
 export interface RenderOptions {
   scope: 'complete' | 'viewport' | 'selected';
   multiplier: 1 | 2 | 4;
@@ -97,17 +98,30 @@ async function capturePNG(
 /** Selection keeps its node crop; complete export includes all visible world-coordinate ink. */
 export function renderedScene(graph: Graph, scope: 'complete' | 'selected', selection: string[]) {
   const selected = new Set(selection);
+  const historicIds = new Set(
+    graph.nodes
+      .filter((node) => selected.has(node.id) && getCsvNode(node)?.visible === false)
+      .map((node) => node.id),
+  );
+  const selectedNode = (node: Graph['nodes'][number]) => {
+    if (scope !== 'selected' || !historicIds.has(node.id)) return node;
+    const key = node.metadata.csv !== undefined ? 'csv' : 'csvSnapshot';
+    return {
+      ...node,
+      metadata: { ...node.metadata, [key]: { ...getCsvNode(node)!, visible: true } },
+    };
+  };
   const source =
     scope === 'selected'
       ? {
           ...graph,
-          nodes: graph.nodes.filter((n) => selected.has(n.id)),
+          nodes: graph.nodes.filter((n) => selected.has(n.id)).map(selectedNode),
           edges: graph.edges.filter(
             (e) => selected.has(e.sourceNodeId) && selected.has(e.targetNodeId),
           ),
         }
       : graph;
-  const { nodes, edges } = projectGraph(
+  const projection = projectGraph(
     source,
     source.owners,
     [],
@@ -117,8 +131,15 @@ export function renderedScene(graph: Graph, scope: 'complete' | 'selected', sele
     undefined,
     undefined,
     undefined,
-    graph.nodes,
+    scope === 'selected' ? graph.nodes.map(selectedNode) : graph.nodes,
   );
+  const nodes =
+    scope === 'selected'
+      ? projection.nodes.map((node) =>
+          historicIds.has(node.id) ? { ...node, className: 'analysis-outside-data-view' } : node,
+        )
+      : projection.nodes;
+  const edges = projection.edges;
   const drawing = getDrawingLayer(graph.diagram.settings.drawing);
   const strokes = drawing?.visible ? drawing.strokes : [];
   const nodeBounds = nodes.length ? projectedBounds(nodes) : undefined;

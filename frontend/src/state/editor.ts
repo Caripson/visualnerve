@@ -7,6 +7,14 @@ import { getCsvNode } from '../data/csv';
 import { getDrawingLayer } from '../drawing/types';
 import { validateDrawingLayer } from '../model/validation';
 import { reconnectedSqlEdge } from '../sql/relationships';
+import { reconnectedDataModelEdge, suppressDataModelEdge } from '../data/model';
+import { applyViewConfiguration, deleteAnalysisView, saveAnalysisView } from '../analysis/views';
+import {
+  getNamedAnalysisViews,
+  validateFilters,
+  type ExplorationResult,
+  type RelationshipExploration,
+} from '../analysis/types';
 import {
   descendantIds,
   emptyFilters,
@@ -55,6 +63,10 @@ interface Editor {
   backupNudgeDismissed: boolean;
   bridgeStatus: string;
   filters: Filters;
+  explorationResult: ExplorationResult | null;
+  explorationBusy: boolean;
+  explorationError: string;
+  viewportRequest: number;
   focusNode: string | null;
   editingNode: string | null;
   editingTitle: string;
@@ -86,6 +98,19 @@ interface Editor {
   eraseDrawingStrokes(ids: string[]): void;
   toggleDrawingVisibility(): void;
   clearDrawing(): void;
+  explore(config?: RelationshipExploration): void;
+  saveView(name: string, replaceId?: string): void;
+  deleteView(id: string): void;
+  loadView(id: string): Promise<void>;
+}
+function analysisFilters(graph: Graph | null): Filters {
+  const value = graph?.diagram.settings.analysisFilters;
+  try {
+    validateFilters(value);
+    return value;
+  } catch {
+    return emptyFilters;
+  }
 }
 export const useEditor = create<Editor>((set, get) => ({
   graph: null,
@@ -107,6 +132,10 @@ export const useEditor = create<Editor>((set, get) => ({
   backupNudgeDismissed: false,
   bridgeStatus: 'disabled',
   filters: emptyFilters,
+  explorationResult: null,
+  explorationBusy: false,
+  explorationError: '',
+  viewportRequest: 0,
   focusNode: null,
   editingNode: null,
   editingTitle: '',
@@ -123,7 +152,10 @@ export const useEditor = create<Editor>((set, get) => ({
       selectedEdges: [],
       history: [],
       future: [],
-      filters: emptyFilters,
+      filters: analysisFilters(graph),
+      explorationResult: null,
+      explorationBusy: false,
+      explorationError: '',
       focusNode: null,
       editingNode: null,
       editingTitle: '',
@@ -134,8 +166,20 @@ export const useEditor = create<Editor>((set, get) => ({
     const s = get();
     if (!s.graph) return;
     const next = change(s.graph);
-    const delta = diffGraph(s.graph, next, label);
-    if (!delta.nodes.length && !delta.edges.length && !delta.diagram) return;
+    const changedFilters =
+      s.graph.diagram.settings.analysisFilters !== next.diagram.settings.analysisFilters;
+    const before = changedFilters
+      ? {
+          ...s.graph,
+          diagram: {
+            ...s.graph.diagram,
+            settings: { ...s.graph.diagram.settings, analysisFilters: { ...s.filters } },
+          },
+        }
+      : s.graph;
+    const delta = diffGraph(before, next, label);
+    if (!delta.nodes.length && !delta.edges.length && !delta.diagram && !delta.sources?.length)
+      return;
     const h = s.history;
     const prev = h.at(-1);
     const merge = coalesce && prev?.label === label && Date.now() - prev.timestamp < 650;
@@ -146,6 +190,60 @@ export const useEditor = create<Editor>((set, get) => ({
       editRevision: s.editRevision + 1,
       status: 'saving',
       message: '',
+      ...(changedFilters ? { filters: analysisFilters(next) } : {}),
+    });
+  },
+  explore: (config) => {
+    const previous = get().graph;
+    get().command(config ? 'Explore relationships' : 'Reset relationship exploration', (graph) => ({
+      ...graph,
+      diagram: {
+        ...graph.diagram,
+        settings: { ...graph.diagram.settings, relationshipExploration: config },
+      },
+    }));
+    if (get().graph !== previous) set({ explorationResult: null, explorationError: '' });
+  },
+  saveView: (name, replaceId) => {
+    const state = get();
+    state.command(replaceId ? 'Update saved analysis view' : 'Save analysis view', (graph) =>
+      saveAnalysisView(graph, state.filters, name, replaceId),
+    );
+  },
+  deleteView: (id) =>
+    get().command('Delete saved analysis view', (graph) => deleteAnalysisView(graph, id)),
+  loadView: async (id) => {
+    // Settle pending persistence before taking a versioned source snapshot.
+    const { workspace } = await import('../storage/workspace');
+    await workspace.settled();
+    const state = get();
+    const snapshot = state.graph;
+    if (!snapshot) return;
+    const view = getNamedAnalysisViews(snapshot).views.find((item) => item.id === id);
+    if (!view) throw new Error('This saved analysis view no longer exists.');
+    const revision = state.editRevision;
+    let next = applyViewConfiguration(snapshot, view);
+    if (next.dataset || next.diagram.settings.csvSourceAnalyses) {
+      const { reanalyzeDataModelAsync } = await import('../data/modelClient');
+      next = await reanalyzeDataModelAsync(next);
+      next = applyViewConfiguration(next, view);
+    }
+    const current = get();
+    if (
+      current.graph?.diagram.id !== snapshot.diagram.id ||
+      current.editRevision !== revision ||
+      current.graph.diagram.version !== snapshot.diagram.version
+    )
+      throw new Error(
+        'The diagram changed while loading this view. Load it again to keep the latest edits.',
+      );
+    current.command('Load analysis view', () => next);
+    const changed = get().graph !== current.graph;
+    set({
+      selectedNodes: [],
+      selectedEdges: [],
+      ...(changed ? { explorationResult: null, explorationError: '' } : {}),
+      viewportRequest: current.viewportRequest + 1,
     });
   },
   setDrawingTool: (tool) => {
@@ -326,30 +424,38 @@ export const useEditor = create<Editor>((set, get) => ({
       'Edit connection',
       (g) => {
         const original = g.edges.find((edge) => edge.id === id);
+        const endpointsChanged =
+          original &&
+          ((patch.sourceNodeId !== undefined && patch.sourceNodeId !== original.sourceNodeId) ||
+            (patch.targetNodeId !== undefined && patch.targetNodeId !== original.targetNodeId));
+        const model = original && endpointsChanged ? suppressDataModelEdge(g, original) : g;
         const reconnected =
           original?.metadata.csvGenerated === true &&
           ((patch.sourceNodeId !== undefined && patch.sourceNodeId !== original.sourceNodeId) ||
             (patch.targetNodeId !== undefined && patch.targetNodeId !== original.targetNodeId));
         return {
-          ...g,
+          ...model,
           nodes: reconnected
             ? suppressCsvParentConnections(g.nodes, new Set([original!.targetNodeId]))
             : g.nodes,
           edges: g.edges.map((edge) =>
             edge.id === id
-              ? reconnectedSqlEdge(edge, {
-                  ...edge,
-                  ...patch,
-                  ...(reconnected
-                    ? {
-                        metadata: {
-                          ...edge.metadata,
-                          ...patch.metadata,
-                          csvGenerated: false,
-                        },
-                      }
-                    : {}),
-                })
+              ? reconnectedDataModelEdge(
+                  edge,
+                  reconnectedSqlEdge(edge, {
+                    ...edge,
+                    ...patch,
+                    ...(reconnected
+                      ? {
+                          metadata: {
+                            ...edge.metadata,
+                            ...patch.metadata,
+                            csvGenerated: false,
+                          },
+                        }
+                      : {}),
+                  }),
+                )
               : edge,
           ),
         };
@@ -375,7 +481,12 @@ export const useEditor = create<Editor>((set, get) => ({
         .map((edge) => edge.targetNodeId),
     );
     s.command('Delete selection', (g) => ({
-      ...g,
+      ...g.edges
+        .filter(
+          (edge) =>
+            edges.has(edge.id) && !ids.has(edge.sourceNodeId) && !ids.has(edge.targetNodeId),
+        )
+        .reduce((model, edge) => suppressDataModelEdge(model, edge), g),
       nodes: suppressCsvParentConnections(
         g.nodes
           .filter((n) => !ids.has(n.id))
@@ -391,9 +502,10 @@ export const useEditor = create<Editor>((set, get) => ({
   undo: () => {
     const s = get();
     const delta = s.history.at(-1);
-    if (s.graph && delta)
+    if (s.graph && delta) {
+      const graph = applyDelta(s.graph, delta, false);
       set({
-        graph: applyDelta(s.graph, delta, false),
+        graph,
         history: s.history.slice(0, -1),
         future: [...s.future, delta],
         editRevision: s.editRevision + 1,
@@ -402,14 +514,30 @@ export const useEditor = create<Editor>((set, get) => ({
         selectedEdges: [],
         editingNode: null,
         editingTitle: '',
+        ...(delta.diagram &&
+        delta.diagram.before.settings.analysisFilters !==
+          delta.diagram.after.settings.analysisFilters
+          ? { filters: analysisFilters(graph) }
+          : {}),
+        ...(delta.diagram &&
+        delta.diagram.before.settings.relationshipExploration !==
+          delta.diagram.after.settings.relationshipExploration
+          ? { explorationResult: null }
+          : {}),
+        ...(delta.diagram &&
+        delta.diagram.before.settings.viewport !== delta.diagram.after.settings.viewport
+          ? { viewportRequest: s.viewportRequest + 1 }
+          : {}),
       });
+    }
   },
   redo: () => {
     const s = get();
     const delta = s.future.at(-1);
-    if (s.graph && delta)
+    if (s.graph && delta) {
+      const graph = applyDelta(s.graph, delta, true);
       set({
-        graph: applyDelta(s.graph, delta, true),
+        graph,
         future: s.future.slice(0, -1),
         history: [...s.history, delta],
         editRevision: s.editRevision + 1,
@@ -418,7 +546,22 @@ export const useEditor = create<Editor>((set, get) => ({
         selectedEdges: [],
         editingNode: null,
         editingTitle: '',
+        ...(delta.diagram &&
+        delta.diagram.before.settings.analysisFilters !==
+          delta.diagram.after.settings.analysisFilters
+          ? { filters: analysisFilters(graph) }
+          : {}),
+        ...(delta.diagram &&
+        delta.diagram.before.settings.relationshipExploration !==
+          delta.diagram.after.settings.relationshipExploration
+          ? { explorationResult: null }
+          : {}),
+        ...(delta.diagram &&
+        delta.diagram.before.settings.viewport !== delta.diagram.after.settings.viewport
+          ? { viewportRequest: s.viewportRequest + 1 }
+          : {}),
       });
+    }
   },
   select: (selectedNodes, selectedEdges = []) => {
     if (get().editingNode && !selectedNodes.includes(get().editingNode!)) get().finishEditing();

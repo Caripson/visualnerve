@@ -306,11 +306,36 @@ export function Toolbar({
           <SlidersHorizontal size={14} />
           Filters
         </button>
+        <details className="quick-picker desktop-tools">
+          <summary aria-label="Data tools">
+            <Database size={15} /> Data
+          </summary>
+          <div className="picker-panel mobile-tool-menu">
+            <button className="full" onClick={() => open('sources')}>
+              Data sources
+            </button>
+            <button className="full" onClick={() => open('refresh')}>
+              Refresh source
+            </button>
+            <button className="full" onClick={() => open('quality')}>
+              Data quality
+            </button>
+          </div>
+        </details>
         <details className="quick-picker mobile-only mobile-more">
           <summary aria-label="More tools">
             <MoreHorizontal size={20} />
           </summary>
           <div className="picker-panel mobile-tool-menu">
+            <button className="full" onClick={() => open('sources')}>
+              Data sources
+            </button>
+            <button className="full" onClick={() => open('refresh')}>
+              Refresh source
+            </button>
+            <button className="full" onClick={() => open('quality')}>
+              Data quality
+            </button>
             <button className="full" onClick={() => open('sql')}>
               <Database size={17} />
               Import SQL script

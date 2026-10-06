@@ -20,6 +20,10 @@ The groups are ordinary diagram objects: move them, add or edit connections, lab
 
 Parsing, cleanup and aggregation run in a Web Worker. A view renders at most 600 data objects, while count, sum, average, median, minimum, maximum and distinct count use all matching rows. The regression suite includes 100,000 rows and 2,000 customers. Raw source rows and analysis choices are stored locally in IndexedDB and included in diagram JSON and full backups. See [CSV exploration](docs/CSV_EXPLORER.md) for limits and usage.
 
+## Connected data and saved analysis views
+
+Use **Data → Data sources** to connect CSV files through explicit matching columns and review match counts before applying. Each source keeps its own aggregates without multiplying joined rows. **Explore this group** follows matching entities across connected sources. **Explore relationships and views** in Properties shows neighbors or paths and saves named perspectives over shared data. **Data → Refresh source** previews keyed CSV or SQL updates while preserving matched annotations and status. **Why this value?** traces measures to contributing rows; **Data → Data quality** inspects duplicate identities, cleanup collisions, ambiguous numbers and missing references. See [analysis workflows](docs/ANALYSIS_WORKFLOWS.md).
+
 ## Draw on a diagram
 
 Choose the pencil in the canvas controls to draw over any diagram with a mouse, finger or pen. Choose a color and thickness, erase whole strokes or hide the drawing layer. **Done drawing** or Escape returns to normal diagram editing. Drawing uses a separate layer that follows pan and zoom, supports undo/redo, persists in IndexedDB and appears in PNG/PDF exports. Diagram JSON and full backups preserve it, including hidden strokes. See [drawing on diagrams](docs/DRAWING.md).

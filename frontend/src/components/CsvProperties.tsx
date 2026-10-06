@@ -6,6 +6,8 @@ import { previewCsvRows } from '../data/client';
 import { useEditor } from '../state/editor';
 import { formatCsvMeasure } from './MetricSummary';
 import './csv-properties.css';
+import { MeasureExplanationDialog } from './MeasureExplanationDialog';
+import { analysisForDataset, datasetForNode } from '../data/model';
 
 export function CsvProperties({
   graph,
@@ -16,11 +18,12 @@ export function CsvProperties({
 }: {
   graph: Graph;
   node?: GraphNode;
-  onEditCsv?: () => void;
-  onFocusCsv?: (path: CsvPathEntry[]) => void;
-  onPageCsv?: (direction: 'next' | 'previous') => void;
+  onEditCsv?: (datasetId?: string) => void;
+  onFocusCsv?: (path: CsvPathEntry[], datasetId?: string) => void;
+  onPageCsv?: (direction: 'next' | 'previous', datasetId?: string) => void;
 }) {
   const [sourceOpen, setSourceOpen] = useState(false);
+  const [explainId, setExplainId] = useState<string>();
   const [sourceBusy, setSourceBusy] = useState(false);
   const [sourceError, setSourceError] = useState('');
   const [originalValues, setOriginalValues] = useState(false);
@@ -29,8 +32,8 @@ export function CsvProperties({
     originalRows: string[][];
     total: number;
   }>();
-  const dataset = graph.dataset;
-  const analysis = getCsvAnalysis(graph);
+  const dataset = node ? datasetForNode(graph, node) : graph.dataset;
+  const analysis = dataset ? analysisForDataset(graph, dataset.id) : getCsvAnalysis(graph);
   const data = node ? getCsvNode(node) : undefined;
   const sourceAvailable =
     node?.metadata.csvSnapshot === undefined &&
@@ -54,7 +57,7 @@ export function CsvProperties({
       return;
     }
     setSourceBusy(true);
-    void previewCsvRows(dataset, analysis, data.path, 100)
+    void previewCsvRows(dataset, analysis, data.path, 100, graph)
       .then((result) => {
         if (active) setPreview(result);
       })
@@ -67,7 +70,7 @@ export function CsvProperties({
     return () => {
       active = false;
     };
-  }, [sourceOpen, dataset, data?.groupKey, sourceAvailable, analysis]);
+  }, [sourceOpen, dataset, data?.groupKey, sourceAvailable, analysis, graph]);
   if (node && !data) return null;
   if (!node && !dataset) return null;
   const focusedGroup = graph.nodes
@@ -83,8 +86,8 @@ export function CsvProperties({
         analysis={analysis}
         focusedGroup={focusedGroup}
         group={data}
-        onFocus={onFocusCsv}
-        onPage={onPageCsv}
+        onFocus={onFocusCsv ? (path) => onFocusCsv(path, dataset?.id) : undefined}
+        onPage={onPageCsv ? (direction) => onPageCsv(direction, dataset?.id) : undefined}
       />
     );
 
@@ -126,7 +129,7 @@ export function CsvProperties({
         )}
         {navigation}
         {onEditCsv && (
-          <button className="full" onClick={onEditCsv}>
+          <button className="full" onClick={() => onEditCsv(dataset?.id)}>
             Change grouping and measures
           </button>
         )}
@@ -153,6 +156,11 @@ export function CsvProperties({
         </p>
       )}
       {navigation}
+      {sourceAvailable && onEditCsv && (
+        <button className="full" onClick={() => onEditCsv(dataset?.id)}>
+          Change grouping and measures
+        </button>
+      )}
       <div className="csv-measure-controls">
         {data!.measures.map((measure) => (
           <div className="csv-measure-control" key={measure.id}>
@@ -171,6 +179,17 @@ export function CsvProperties({
               <span>{measure.label}</span>
               <b>{formatCsvMeasure(measure.value)}</b>
             </label>
+            {sourceAvailable &&
+              data!.visible !== false &&
+              analysis?.metrics.some((metric) => metric.id === measure.id) && (
+                <button
+                  className="quiet"
+                  aria-label={`Explain ${measure.label}`}
+                  onClick={() => setExplainId(measure.id)}
+                >
+                  Why this value?
+                </button>
+              )}
             {(measure.missingCount > 0 || measure.invalidCount > 0) && (
               <small className="csv-measure-quality">
                 {measure.missingCount} empty · {measure.invalidCount} non-numeric
@@ -280,6 +299,16 @@ export function CsvProperties({
         </details>
       ) : (
         <p className="muted">The CSV source is unavailable for this object.</p>
+      )}
+      {explainId && dataset && analysis && (
+        <MeasureExplanationDialog
+          model={graph}
+          dataset={dataset}
+          analysis={analysis}
+          path={data!.path}
+          metricId={explainId}
+          onClose={() => setExplainId(undefined)}
+        />
       )}
     </section>
   );

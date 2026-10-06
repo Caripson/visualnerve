@@ -724,6 +724,13 @@
           "dataset": {
             "$ref": "#/components/schemas/CsvDataset"
           },
+          "datasets": {
+            "description": "Additional diagram-owned CSV sources; the primary source remains in dataset. Analysis settings and saved views share these source records.",
+            "items": {
+              "$ref": "#/components/schemas/CsvDataset"
+            },
+            "type": "array"
+          },
           "diagram": {
             "$ref": "#/components/schemas/Diagram"
           },
@@ -1401,7 +1408,7 @@
             "type": "array"
           },
           "schemaVersion": {
-            "description": "IndexedDB schema version at export; currently 5. Older backups may omit this.",
+            "description": "IndexedDB schema version at export; currently 6. Older backups may omit this.",
             "type": "integer"
           },
           "settings": {
