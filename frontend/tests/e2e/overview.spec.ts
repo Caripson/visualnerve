@@ -40,6 +40,9 @@ async function create(request: APIRequestContext) {
       await request.post(`/api/v1/diagrams/${d.id}/bulk`, {
         data: {
           nodes: Array.from({ length: 12 }, (_, i) => ({
+            // Stage 0 belongs in the last column after expansion, regardless
+            // of random UUID ordering on a particular machine.
+            id: `${(i === 0 ? 12 : i).toString(16).padStart(8, '0')}-1111-4111-8111-111111111111`,
             externalId: `stage-${i}`,
             nodeType: i % 3 === 0 ? 'database' : i % 3 === 1 ? 'process' : 'decision',
             title: `Truck stage ${i}`,
@@ -120,6 +123,14 @@ test('semantic overview retains counts/directions, native styles, shared 2D/3D e
   await expect(page.getByTestId('overview-group')).toHaveAttribute('data-overview-count', '12');
   await expect(page.getByTestId('overview-group')).toContainText('Done');
   await expect(page.getByTestId('overview-group')).toContainText('Blocked');
+  await expect
+    .poll(() =>
+      page.locator('.react-flow__viewport').evaluate((viewport) => {
+        const transform = new DOMMatrixReadOnly(getComputedStyle(viewport).transform);
+        return Math.abs(transform.a - 1) < 0.000001;
+      }),
+    )
+    .toBe(true);
   await page.getByRole('button', { name: 'Expand overview group Tags', exact: true }).click();
   await expect(page.getByTestId('overview-group')).toHaveCount(2);
   await saved(page);
@@ -138,6 +149,25 @@ test('semantic overview retains counts/directions, native styles, shared 2D/3D e
   expect(compact.relationships.some((r: { internal: boolean }) => r.internal)).toBe(true);
   await page.getByRole('button', { name: 'Expand overview group Assembly', exact: true }).click();
   await expect(page.locator(`[data-node-id="${before.nodes[0].id}"]`).first()).toBeVisible();
+  for (const node of before.nodes.slice(0, 6))
+    await expect(page.locator(`[data-node-id="${node.id}"]`).first()).toBeVisible();
+  await expect
+    .poll(async () => {
+      const card = await page
+        .locator(`[data-node-id="${before.nodes[0].id}"]`)
+        .first()
+        .boundingBox();
+      const canvas = await page.getByTestId('canvas').boundingBox();
+      return (
+        !!card &&
+        !!canvas &&
+        card.x >= canvas.x &&
+        card.y >= canvas.y &&
+        card.x + card.width <= canvas.x + canvas.width &&
+        card.y + card.height <= canvas.y + canvas.height
+      );
+    })
+    .toBe(true);
   const expandedStyle = await page
     .locator(`[data-node-id="${before.nodes[0].id}"]`)
     .first()

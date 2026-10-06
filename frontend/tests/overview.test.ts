@@ -17,6 +17,7 @@ import { remapOverview } from '../src/overview/copy';
 import { renderedScene } from '../src/export/rendered';
 import { useEditor } from '../src/state/editor';
 import { expandOverviewGroup } from '../src/overview/OverviewNode';
+import { OVERVIEW_RESET_VIEW } from '../src/overview/Controls';
 import {
   publishOverview,
   renderedOverview,
@@ -379,21 +380,51 @@ it('invalidates cached projections for configuration/filter changes even when so
   expect(renderedOverview(changed)).toBeUndefined();
   clearRenderedOverview(graph.diagram.id);
 });
-it('keeps expansion configuration undoable while source nodes/edges and positions stay canonical', () => {
+it('fits newly expanded groups once with committed configuration while canonical layout and undo remain intact', () => {
   const graph = fixture();
+  graph.diagram.settings.viewport = { x: 45, y: 80, zoom: 0.6 };
+  const original = structuredClone(graph);
   useEditor.getState().setGraph(graph);
   const root = projectCanonicalOverview(graph).nodes[0].id;
-  expandOverviewGroup(root);
-  const state = useEditor.getState();
-  expect(getOverviewConfig(state.graph!).expanded).toEqual([root]);
-  expect(state.graph!.nodes).toBe(graph.nodes);
-  expect(state.graph!.edges).toBe(graph.edges);
-  expect(state.history[0].nodes).toHaveLength(0);
-  expect(state.history[0].edges).toHaveLength(0);
-  state.undo();
-  expect(getOverviewConfig(useEditor.getState().graph!).expanded).toEqual([]);
-  useEditor.getState().redo();
-  expect(getOverviewConfig(useEditor.getState().graph!).expanded).toEqual([root]);
+  const fit = vi.fn(() => {
+    const current = useEditor.getState().graph!;
+    expect(getOverviewConfig(current).expanded).toEqual([root]);
+    expect(projectCanonicalOverview(current).counts.representedNodes).toBe(2);
+    expect(current.nodes).toBe(graph.nodes);
+    expect(current.edges).toBe(graph.edges);
+    expect(current.diagram.settings.viewport).toEqual(original.diagram.settings.viewport);
+  });
+  window.addEventListener(OVERVIEW_RESET_VIEW, fit);
+  try {
+    expandOverviewGroup(root);
+    const state = useEditor.getState();
+    expect(getOverviewConfig(state.graph!).expanded).toEqual([root]);
+    expect(fit).toHaveBeenCalledTimes(1);
+    expect(state.history).toHaveLength(1);
+    expect(state.history[0].nodes).toHaveLength(0);
+    expect(state.history[0].edges).toHaveLength(0);
+    expandOverviewGroup(root);
+    expect(fit).toHaveBeenCalledTimes(1);
+    expect(useEditor.getState().graph).toBe(state.graph);
+    expect(useEditor.getState().history).toHaveLength(1);
+    state.undo();
+    expect(getOverviewConfig(useEditor.getState().graph!).expanded).toEqual([]);
+    expect(useEditor.getState().graph!.nodes).toEqual(original.nodes);
+    expect(useEditor.getState().graph!.edges).toEqual(original.edges);
+    expect(useEditor.getState().graph!.diagram.settings.viewport).toEqual(
+      original.diagram.settings.viewport,
+    );
+    useEditor.getState().redo();
+    expect(getOverviewConfig(useEditor.getState().graph!).expanded).toEqual([root]);
+    expect(useEditor.getState().graph!.nodes).toEqual(original.nodes);
+    expect(useEditor.getState().graph!.edges).toEqual(original.edges);
+    expect(useEditor.getState().graph!.diagram.settings.viewport).toEqual(
+      original.diagram.settings.viewport,
+    );
+    expect(graph).toEqual(original);
+  } finally {
+    window.removeEventListener(OVERVIEW_RESET_VIEW, fit);
+  }
 });
 it('remaps expanded hierarchy groups by represented original membership when a diagram is cloned/imported', () => {
   let source = fixture();

@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { expect, test, type APIRequestContext } from './fixtures';
+import { expect, test, type APIRequestContext, type Page } from './fixtures';
 import type { Graph } from '../../src/model/types';
 import { browserLaunchOptions } from '../../playwright.config';
 test.use({
@@ -112,15 +112,44 @@ async function save(request: APIRequestContext, graph: Graph, view?: unknown) {
   expect(response.ok()).toBe(true);
   return storyboard;
 }
+async function openDiagram(page: Page, request: APIRequestContext, graph: Graph) {
+  expect(
+    (
+      await request.post('/api/v1/presentation/open', { data: { diagramId: graph.diagram.id } })
+    ).ok(),
+  ).toBe(true);
+  // Saved can precede the initial fit. Wait for its actual viewport to be
+  // acknowledged before issuing a versioned storyboard write.
+  await expect
+    .poll(async () => {
+      const saved = (await (
+        await request.get(`/api/v1/diagrams/${graph.diagram.id}`)
+      ).json()) as Graph;
+      const viewport = saved.diagram.settings.viewport;
+      if (!viewport) return false;
+      const actual = await page.locator('.react-flow__viewport').evaluate((element) => {
+        const matrix = new DOMMatrix(getComputedStyle(element).transform);
+        return { x: matrix.e, y: matrix.f, zoom: matrix.a };
+      });
+      return (
+        Math.abs(viewport.x - actual.x) < 0.001 &&
+        Math.abs(viewport.y - actual.y) < 0.001 &&
+        Math.abs(viewport.zoom - actual.zoom) < 0.001 &&
+        (await page.locator('.document-actions .save-status').textContent()) === 'Saved'
+      );
+    })
+    .toBe(true);
+}
 test('edits authored multi-object scenes, previews a saved 2D view and keeps numbered nodes and layout', async ({
   page,
   request,
 }) => {
   const graph = await create(request, 'Editable truck storyboard');
-  await request.post('/api/v1/presentation/open', { data: { diagramId: graph.diagram.id } });
-  await expect(page.locator('.document-actions .save-status')).toHaveText('Saved');
+  await openDiagram(page, request, graph);
   await save(request, graph, { mode: '2d', viewport: { x: 80, y: 30, zoom: 0.55 } });
-  await request.post('/api/v1/presentation/open', { data: { source: 'storyboard' } });
+  expect(
+    (await request.post('/api/v1/presentation/open', { data: { source: 'storyboard' } })).ok(),
+  ).toBe(true);
   const player = page.getByRole('region', { name: 'Diagram player' });
   await expect(player.locator('.presentation-heading')).toContainText('1 / 2');
   await player.getByRole('button', { name: 'Order', exact: true }).click();
@@ -173,7 +202,7 @@ test('plays a saved 3D scene and exports a playable storyboard movie without cha
 }) => {
   test.setTimeout(180000);
   const graph = await create(request, '3D storyboard truck movie');
-  await request.post('/api/v1/presentation/open', { data: { diagramId: graph.diagram.id } });
+  await openDiagram(page, request, graph);
   await page.getByRole('button', { name: '3D view', exact: true }).click();
   await expect(page.getByTestId('spatial-view')).toHaveAttribute('data-renderer', 'ready', {
     timeout: 30000,
@@ -184,7 +213,9 @@ test('plays a saved 3D scene and exports a playable storyboard movie without cha
     up: JSON.parse(canvas.dataset.cameraUp!),
   }));
   await save(request, graph, { mode: '3d', camera });
-  await request.post('/api/v1/presentation/open', { data: { source: 'storyboard' } });
+  expect(
+    (await request.post('/api/v1/presentation/open', { data: { source: 'storyboard' } })).ok(),
+  ).toBe(true);
   await expect(page.locator('.document-actions .save-status')).toHaveText('Saved');
   const before = (await (
     await request.get(`/api/v1/diagrams/${graph.diagram.id}`)
@@ -330,7 +361,7 @@ test('explains saved-view incompatibility in Overview and reveals canonical obje
   request,
 }) => {
   const graph = await create(request, 'Storyboard overview compatibility');
-  await request.post('/api/v1/presentation/open', { data: { diagramId: graph.diagram.id } });
+  await openDiagram(page, request, graph);
   await save(request, graph, { mode: '2d', viewport: { x: 0, y: 0, zoom: 1 } });
   const current = (await (
     await request.get(`/api/v1/diagrams/${graph.diagram.id}`)
@@ -345,7 +376,9 @@ test('explains saved-view incompatibility in Overview and reveals canonical obje
       })
     ).ok(),
   ).toBe(true);
-  await request.post('/api/v1/presentation/open', { data: { source: 'storyboard' } });
+  expect(
+    (await request.post('/api/v1/presentation/open', { data: { source: 'storyboard' } })).ok(),
+  ).toBe(true);
   const player = page.getByRole('region', { name: 'Diagram player' });
   await player.getByRole('button', { name: 'Order', exact: true }).click();
   const editor = player.getByLabel('Storyboard editor');

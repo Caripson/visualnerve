@@ -4,6 +4,7 @@ import type { CanvasNode } from '../canvas/projection';
 import { useEditor } from '../state/editor';
 import { statusLabel } from '../ui/status';
 import { getOverviewConfig, overviewLimits, overviewNodeGroup, setOverviewConfig } from './types';
+import { OVERVIEW_RESET_VIEW } from './Controls';
 import './overview.css';
 
 export function expandOverviewGroup(id: string) {
@@ -24,6 +25,7 @@ export function expandOverviewGroup(id: string) {
       expanded: [...getOverviewConfig(graph).expanded, id],
     }),
   );
+  window.dispatchEvent(new Event(OVERVIEW_RESET_VIEW));
 }
 export function OverviewNode({ data }: NodeProps<CanvasNode>) {
   const group = overviewNodeGroup({ data } as CanvasNode);

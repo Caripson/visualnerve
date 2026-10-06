@@ -168,7 +168,7 @@ Ask Codex to call **visual_nerve_api_docs** first. It returns a compact API guid
 
 ## Understand a large diagram
 
-Open **Understand** (or **More tools** on a phone). **Semantic overview** groups related objects into count/status cards with aggregated connections. Zoom in or expand a group to inspect it; **Details** returns to the original editable layout and pen layer. Original objects and connections stay saved.
+Open **Understand** (or **More tools** on a phone). **Semantic overview** groups related objects into count/status cards with aggregated connections. Zoom in or expand a group to inspect it. Explicit expansion frames the newly revealed cards in 2D and 3D; **Details** returns to the original editable layout and pen layer. Original objects and connections stay saved.
 
 **Ask diagram** finds upstream/downstream objects or a path between two objects, over several steps. Inspect **Why is this connected?** for code, SQL, CSV or manual evidence, then focus the related objects. Uncertain relationships are labeled. A modeled dependency does not prove actual runtime impact.
 

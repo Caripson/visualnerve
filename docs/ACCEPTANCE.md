@@ -736,18 +736,32 @@ Verified regressions and fixes:
   and saves. Saving failures retain the open changes. Short-screen 3D panels
   share a scrollable stack without covering each other's summaries; desktop
   sidebar projects and footer actions remain reachable at 780 × 400.
+- Expanding an overview group frames its newly revealed cards in 2D and 3D.
+  The first Linux CI run exposed an existing camera bug: UUID-sorted cards
+  could land beyond the old summary viewport and be virtualized out of the
+  DOM. The browser fixture now puts its first source card in the last column
+  deterministically and checks that every expanded card is visible. Canonical
+  layout and the saved Details camera remain unchanged.
 
 The final unit/component suite passed **1,228 tests in 124 files**, including
 48 additional regression tests. Go race tests and vet, Prettier, strict
 TypeScript, and the production Vite/Hugo/OpenAPI/Go build passed. The static
 audit contains 304 application files and 49 offline-shell assets.
 
-The final complete Chrome E2E run passed **all 95 tests in 17.0 minutes**.
+The final complete Chrome E2E run passed **all 95 tests in 17.4 minutes**.
 Coverage includes the 100,000-row/2,000-customer CSV fixture, 1,000/5,000-node
 2D graphs and the 2,501-card 3D fixture. Two newly added test setup errors were
 corrected and checked independently before rerunning the complete suite.
 These are checks on the development host, not performance guarantees for
 other devices.
+
+The audit also exposed a storyboard test setup race:
+the initial 2D camera fit had not yet saved when the test issued a versioned
+API write. Optimistic conflict protection correctly preserved the pending
+local change and returned 409. Storyboard setup now waits for the actual
+viewport to match its saved record and verifies the open responses. The
+previously failing scenario passed three consecutive Chrome runs without
+retries or fixed sleeps.
 
 An additional real-Piper Chrome acceptance run used the pinned local Alan
 model fixture with the production neural runtime. The warm player exported
