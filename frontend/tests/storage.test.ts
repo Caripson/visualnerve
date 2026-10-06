@@ -36,11 +36,15 @@ function graph(name = 'Mind map') {
   return graph;
 }
 describe('authoritative IndexedDB repository', () => {
-  it('opens only the seven required stores and seeds templates once', async () => {
+  it('opens the authoritative workspace and history stores and seeds templates once', async () => {
     expect(db.tables.map((table) => table.name).sort()).toEqual([
       'datasets',
       'diagrams',
       'edges',
+      'historyContents',
+      'historyRows',
+      'historySnapshots',
+      'historySources',
       'nodes',
       'owners',
       'settings',
@@ -324,7 +328,7 @@ describe('authoritative IndexedDB repository', () => {
       { key: 'privacy-acknowledged', value: true },
     ]);
     const backup = await db.backup();
-    expect(backup.schemaVersion).toBe(6);
+    expect(backup.schemaVersion).toBe(7);
     expect(Number.isFinite(Date.parse(backup.exportedAt!))).toBe(true);
     expect(backup.settings).toEqual([{ key: 'theme', value: 'dark' }]);
   });

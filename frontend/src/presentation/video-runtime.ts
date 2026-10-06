@@ -1,7 +1,7 @@
 import type { Graph } from '../model/types';
 import { StorageError } from '../model/errors';
 import { safeName } from '../export/semantic';
-import { getPresentation } from './definition';
+import { presentationSteps, type PresentationStep } from './sequence';
 import {
   VIDEO_FPS,
   VIDEO_HEIGHT,
@@ -15,7 +15,7 @@ import { drawVideoCaption, subtitlePages } from './video-subtitles';
 
 export interface VideoScene {
   draw(context: CanvasRenderingContext2D, width: number, height: number): Promise<void> | void;
-  prepare?(nodeId: string): Promise<void>;
+  prepare?(nodeId: string, nodeIds?: string[]): Promise<void>;
   dispose(): void;
 }
 export interface VideoEncoder {
@@ -37,12 +37,15 @@ export interface VideoDependencies {
   scene(signal: AbortSignal): Promise<VideoScene>;
   encoder(canvas: HTMLCanvasElement, audio: boolean, signal: AbortSignal): Promise<VideoEncoder>;
   focus(nodeId: string, transitionMs: number, signal: AbortSignal): Promise<void>;
+  prepareStep?(step: PresentationStep, signal: AbortSignal): Promise<void>;
+  focusStep?(step: PresentationStep, signal: AbortSignal): Promise<void>;
   stop(): void;
   ready(blob: Blob, name: string): void;
   nextFrame(signal: AbortSignal): Promise<void>;
 }
 const initial = (): VideoState => ({
   status: 'idle',
+  source: 'nodes',
   progress: 0,
   nodeIndex: -1,
   total: 0,
@@ -74,10 +77,17 @@ export class VideoExporter {
       throw new StorageError(409, 'A video export is already running or being cancelled.');
     const graph = this.deps.graph();
     if (!graph) throw new StorageError(422, 'Open a diagram before exporting video.');
-    const definition = getPresentation(graph);
-    if (!definition.nodeIds.length) throw new StorageError(422, 'Number walkthrough nodes first.');
+    const source = options.source ?? 'nodes';
+    const steps = presentationSteps(graph, source);
+    if (!steps.length)
+      throw new StorageError(
+        422,
+        source === 'storyboard'
+          ? 'Create storyboard scenes first.'
+          : 'Number walkthrough nodes first.',
+      );
     if (
-      definition.nodeIds.length * (definition.secondsPerNode + definition.transitionMs / 1000) >
+      steps.reduce((sum, step) => sum + step.seconds + step.transitionMs / 1000, 0) >
       VIDEO_MAX_SECONDS
     )
       throw new StorageError(
@@ -89,7 +99,8 @@ export class VideoExporter {
     this.set({
       ...initial(),
       status: 'preparing',
-      total: definition.nodeIds.length,
+      source,
+      total: steps.length,
       message: 'Preparing local video export…',
     });
     this.task = this.run(graph, options, abort.signal)
@@ -119,8 +130,8 @@ export class VideoExporter {
     const check = () => {
       signal.throwIfAborted();
     };
-    const definition = getPresentation(graph);
-    const nodes = new Map(graph.nodes.map((node) => [node.id, node]));
+    const steps = presentationSteps(graph, options.source ?? 'nodes');
+    const nodes = new Set(graph.nodes.map((node) => node.id));
     const canvas = document.createElement('canvas');
     canvas.width = VIDEO_WIDTH;
     canvas.height = VIDEO_HEIGHT;
@@ -153,16 +164,17 @@ export class VideoExporter {
         check();
         frame++;
       };
-      for (let index = 0; index < definition.nodeIds.length; index++) {
+      for (let index = 0; index < steps.length; index++) {
         check();
-        const node = nodes.get(definition.nodeIds[index]);
-        if (!node) throw new Error('A walkthrough object is missing.');
-        const number = `${index + 1} / ${definition.nodeIds.length}`;
-        const description = node.description ?? '';
+        const step = steps[index];
+        if (step.nodeIds.some((id) => !nodes.has(id)))
+          throw new Error('A walkthrough object is missing.');
+        const number = `${index + 1} / ${steps.length}`;
+        const description = step.narration;
         this.set({
           status: 'preparing',
           nodeIndex: index,
-          message: `Preparing ${number}: ${node.title}`,
+          message: `Preparing ${number}: ${step.name}`,
         });
         const clip =
           options.audio && description.trim()
@@ -171,17 +183,22 @@ export class VideoExporter {
               })
             : undefined;
         check();
-        await scene.prepare?.(node.id);
+        await this.deps.prepareStep?.(step, signal);
+        check();
+        await scene.prepare?.(step.nodeIds[0], step.nodeIds);
         check();
         context.font = '22px system-ui, sans-serif';
         const pages = options.subtitles
           ? subtitlePages(description, (text) => context.measureText(text).width, VIDEO_WIDTH - 80)
           : [];
-        this.set({ status: 'exporting', message: `Exporting ${number}: ${node.title}` });
+        this.set({ status: 'exporting', message: `Exporting ${number}: ${step.name}` });
         // Capture the live collision-safe camera flight. Preparation time is never recorded.
         let arrived = false;
         let movementError: unknown;
-        const movement = this.deps.focus(node.id, definition.transitionMs, signal).then(
+        const focus = this.deps.focusStep
+          ? this.deps.focusStep(step, signal)
+          : this.deps.focus(step.nodeIds[0], step.transitionMs, signal);
+        const movement = focus.then(
           () => {
             arrived = true;
           },
@@ -193,9 +210,9 @@ export class VideoExporter {
         const started = performance.now();
         const startFrame = frame;
         while (!arrived) {
-          await write(node.title, number, [], true);
+          await write(step.name, number, [], true);
           const due = startFrame + Math.floor(((performance.now() - started) * VIDEO_FPS) / 1000);
-          while (frame < due) await write(node.title, number, [], false);
+          while (frame < due) await write(step.name, number, [], false);
           await this.deps.nextFrame(signal);
         }
         await movement;
@@ -203,7 +220,7 @@ export class VideoExporter {
         if (movementError) throw movementError;
         const duration = clip ? await encoder.addAudio(clip, timestamp()) : 0;
         check();
-        const seconds = Math.max(definition.secondsPerNode, duration, pages.length * 3);
+        const seconds = Math.max(step.seconds, duration, pages.length * 3);
         if (timestamp() + seconds > VIDEO_MAX_SECONDS)
           throw new Error(
             'The narrated video exceeds 30 minutes. Shorten the descriptions or walkthrough.',
@@ -212,10 +229,10 @@ export class VideoExporter {
         let previousPage = -1;
         for (let hold = 0; hold < holdFrames; hold++) {
           const page = Math.min(pages.length - 1, Math.floor((hold / holdFrames) * pages.length));
-          await write(node.title, number, pages[page] ?? [], hold === 0 || page !== previousPage);
+          await write(step.name, number, pages[page] ?? [], hold === 0 || page !== previousPage);
           previousPage = page;
           if (hold % 12 === 0) {
-            this.set({ progress: (index + hold / holdFrames) / definition.nodeIds.length });
+            this.set({ progress: (index + hold / holdFrames) / steps.length });
             await this.deps.nextFrame(signal);
           }
         }

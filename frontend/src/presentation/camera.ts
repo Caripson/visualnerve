@@ -1,14 +1,28 @@
 import type { SpatialPoint } from '../spatial/types';
+import { validateStoryboardView, type StoryboardView } from './storyboard';
 
 export const PRESENTATION_FOCUS = 'visualnerve:presentation-focus';
 export const PRESENTATION_ARRIVED = 'visualnerve:presentation-arrived';
 export const PRESENTATION_CAMERA_CANCEL = 'visualnerve:presentation-camera-cancel';
 export const PRESENTATION_INTERRUPTED = 'visualnerve:presentation-interrupted';
+export const PRESENTATION_VIEW_REQUEST = 'visualnerve:presentation-view-request';
+export const PRESENTATION_RELEASE = 'visualnerve:presentation-release';
+export const PRESENTATION_REVEAL = 'visualnerve:presentation-reveal';
+export interface PresentationRevealRequest {
+  signal?: AbortSignal;
+  nodeIds: string[];
+  edgeIds: string[];
+  respond(): void;
+  error(message: string): void;
+}
 
 export interface PresentationFocus {
   nodeId: string;
   transitionMs: number;
   requestId: number;
+  nodeIds?: string[];
+  edgeIds?: string[];
+  view?: StoryboardView;
 }
 
 export function presentationViewportKey(viewport: { x: number; y: number; zoom: number }) {
@@ -24,10 +38,65 @@ export function presentationFocus(event: Event): PresentationFocus | undefined {
     !Number.isSafeInteger(value.requestId) ||
     !Number.isFinite(value.transitionMs) ||
     value.transitionMs < 0 ||
-    value.transitionMs > 30_000
+    value.transitionMs > 30_000 ||
+    [value.nodeIds, value.edgeIds].some(
+      (ids) =>
+        ids !== undefined &&
+        (!Array.isArray(ids) ||
+          ids.some((id) => typeof id !== 'string' || !id) ||
+          new Set(ids).size !== ids.length),
+    ) ||
+    (value.nodeIds !== undefined &&
+      (!value.nodeIds.length || !value.nodeIds.includes(value.nodeId)))
   )
     return undefined;
+  if (value.view !== undefined) {
+    try {
+      validateStoryboardView(value.view);
+    } catch {
+      return undefined;
+    }
+  }
   return value;
+}
+
+export interface PresentationViewRequest {
+  respond(view: StoryboardView): void;
+  error(message: string): void;
+}
+export function capturePresentationView(): Promise<StoryboardView> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        reject(new Error('Open a diagram view to capture its camera.'));
+      }
+    }, 2000);
+    window.dispatchEvent(
+      new CustomEvent<PresentationViewRequest>(PRESENTATION_VIEW_REQUEST, {
+        detail: {
+          respond(value) {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            try {
+              validateStoryboardView(value);
+              resolve(structuredClone(value));
+            } catch (error) {
+              reject(error);
+            }
+          },
+          error(message) {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            reject(new Error(message));
+          },
+        },
+      }),
+    );
+  });
 }
 
 export function presentationArrived(request: PresentationFocus, error?: string) {

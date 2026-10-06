@@ -159,3 +159,17 @@ For an app hosted at a public HTTPS address, start the loopback bridge with `--a
 Settings shows **Visual Nerve website** and its API documentation on the website's domain. Configure that exact website origin as allowed by the bridge. **MCP server URL for Codex** is a separate HTTP(S) address for the service running on your computer; the WebSocket address under Local connection details is for the browser. The saved local connection determines the Codex address. **Instructions for Codex** provides a copyable setup note without your integration token.
 
 Ask Codex to call **visual_nerve_api_docs** first. It returns a compact API guide directly over MCP, with the complete OpenAPI available through `document: "openapi"`. MCP also lists these as documentation resources. The connection announces both 2D and 3D: when you request 3D, Codex can create through `/spatial-diagrams`, then add ordinary diagram nodes and connections. Both views use the same styled objects and retain a readable 2D layout for PNG/PDF. Restart an updated local bridge and reconnect the MCP client to refresh its tools.
+
+## Understand a large diagram
+
+Open **Understand** (or **More tools** on a phone). **Semantic overview** groups related objects into count/status cards with aggregated connections. Zoom in or expand a group to inspect it; **Details** returns to the original editable layout and pen layer. Original objects and connections stay saved.
+
+**Ask diagram** finds upstream/downstream objects or a path between two objects, over several steps. Inspect **Why is this connected?** for code, SQL, CSV or manual evidence, then focus the related objects. Uncertain relationships are labeled. A modeled dependency does not prove actual runtime impact.
+
+**Version history** saves named local snapshots. Review additions, removals, changed details and modeled affected dependencies before restoring a version. Restoration checkpoints current work first. Source refresh also saves a safety copy before applying changes. History is included in a full workspace backup and retains old source rows until its snapshots or diagram are deleted. Capacity errors preserve current work; delete unwanted snapshots explicitly.
+
+## Present scenes and review an app specification
+
+In **Diagram player**, choose **Storyboard scenes**, then **Order**. Create a scene from selected objects and connections; give it its own narration, dwell and transition timing. In **Details**, capture the current 2D or 3D view, or choose **Auto-fit objects**. A captured view requires its matching mode and Details. In semantic overview, use Auto-fit objects; capture is unavailable until you choose Details. Reorder and save scenes, preview one, or play/export the storyboard with the existing audio, subtitles and preload controls. Narration does not replace node descriptions. Closing the player restores the prior selection; diagram positions remain intact.
+
+**Build with Lovable → Review the app specification** shows data model, screens, business rules, a proposed API, acceptance criteria and open decisions. Add corrections and answer missing choices before copying, downloading or explicitly opening the brief in Lovable. Source facts and design proposals are labeled separately. Opening this dialog shares nothing externally; the brief stays unsent until you choose to share it.

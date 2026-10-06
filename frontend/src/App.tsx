@@ -45,6 +45,7 @@ import { reanalyzeDataModelAsync } from './data/modelClient';
 import { DataSourcesDialog } from './components/DataSourcesDialog';
 import { SourceRefreshDialog } from './components/SourceRefreshDialog';
 import { DataQualityDialog } from './components/DataQualityDialog';
+import { UnderstandingDialogs } from './components/UnderstandingDialogs';
 export type DialogName =
   | 'new'
   | 'export'
@@ -54,6 +55,9 @@ export type DialogName =
   | 'sources'
   | 'refresh'
   | 'quality'
+  | 'overview'
+  | 'questions'
+  | 'history'
   | 'owners'
   | 'search'
   | 'settings'
@@ -665,6 +669,7 @@ export function App() {
       {dialog === 'new' && <NewDiagram close={close} />}
       {dialog === 'export' && <ExportDialog close={close} />}
       {dialog === 'lovable' && <LovableDialog close={close} />}
+      <UnderstandingDialogs name={dialog} close={close} />
       {dialog === 'sources' && graph && (
         <DataSourcesDialog
           initialFiles={sourceFiles}

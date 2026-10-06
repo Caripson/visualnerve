@@ -1,0 +1,163 @@
+.overview-controls {
+  min-width: 180px;
+  max-width: 320px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 4px 16px #0001;
+  font-size: 12px;
+}
+.overview-controls > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 10px 12px;
+  list-style: none;
+}
+.overview-controls-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 12px 14px;
+}
+.overview-controls-body label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.overview-controls-body label:has(select) {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.overview-controls-body p {
+  margin: 0;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.overview-controls-body select,
+.overview-controls-body button {
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text);
+}
+.overview-view-switch {
+  display: flex;
+  gap: 6px;
+}
+.overview-view-switch button {
+  flex: 1;
+}
+.overview-view-switch button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft, var(--surface));
+  font-weight: 700;
+}
+.overview-controls-body button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+}
+.overview-group-card {
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px !important;
+  border: 2px solid var(--node-accent) !important;
+  border-radius: 12px !important;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  background: var(--node-bg);
+  overflow: hidden;
+}
+.overview-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.overview-group-card .node-title {
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.overview-card-count {
+  font-size: 26px;
+  line-height: 1;
+}
+.overview-card-count span {
+  font-size: 12px;
+  font-weight: 400;
+}
+.overview-card-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  font-size: 11px;
+}
+.overview-card-status > span {
+  display: flex;
+  gap: 5px;
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: var(--surface);
+}
+.overview-status-done {
+  color: #28744f;
+}
+.overview-status-blocked {
+  color: #bd4437;
+}
+.overview-group-card small {
+  font-size: 10px;
+  color: var(--muted);
+}
+.overview-expand {
+  pointer-events: auto;
+  margin-top: auto;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 0;
+  font-size: 11px;
+  cursor: pointer;
+}
+.react-flow__node.overview-detail-card.selected .vn-node,
+.react-flow__node.overview-detail-card.selected .mindmap-topic {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px #4e9a7812;
+}
+.spatial-canvas > .overview-controls {
+  position: absolute;
+  left: 16px;
+  top: 114px;
+  z-index: 5;
+}
+@media (max-width: 720px) {
+  .overview-controls {
+    max-width: 240px;
+  }
+  .spatial-canvas > .overview-controls {
+    top: 180px;
+    left: 8px;
+  }
+  .overview-controls-body {
+    max-height: 240px;
+    overflow: auto;
+  }
+}

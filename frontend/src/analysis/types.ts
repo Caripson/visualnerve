@@ -4,13 +4,15 @@ import { validateAnalysis } from '../data/csv';
 
 export interface RelationshipExploration {
   version: 1;
-  mode: 'neighbors' | 'path';
+  mode: 'neighbors' | 'path' | 'impact';
   startId: string;
   targetId?: string;
   direction: 'all' | 'incoming' | 'outgoing';
-  steps: 1 | 2;
+  steps: number;
   directed: boolean;
   includeHidden: boolean;
+  edgeTypes?: string[];
+  includeUncertain?: boolean;
 }
 export interface ExplorationResult {
   nodeIds: string[];
@@ -91,14 +93,21 @@ export function validateExploration(value: unknown): asserts value is Relationsh
   const config = value as RelationshipExploration;
   check(
     config.version === 1 &&
-      ['neighbors', 'path'].includes(config.mode) &&
+      ['neighbors', 'path', 'impact'].includes(config.mode) &&
       text(config.startId) &&
       !!config.startId &&
       (config.targetId === undefined || text(config.targetId)) &&
       ['all', 'incoming', 'outgoing'].includes(config.direction) &&
-      [1, 2].includes(config.steps) &&
+      (config.mode === 'impact'
+        ? Number.isSafeInteger(config.steps) && config.steps >= 1 && config.steps <= 64
+        : [1, 2].includes(config.steps)) &&
       typeof config.directed === 'boolean' &&
       typeof config.includeHidden === 'boolean' &&
+      (config.edgeTypes === undefined ||
+        (Array.isArray(config.edgeTypes) &&
+          config.edgeTypes.length <= 100 &&
+          config.edgeTypes.every((type) => text(type) && !!type.trim()))) &&
+      (config.includeUncertain === undefined || typeof config.includeUncertain === 'boolean') &&
       exactKeys(config, [
         'version',
         'mode',
@@ -108,6 +117,8 @@ export function validateExploration(value: unknown): asserts value is Relationsh
         'steps',
         'directed',
         'includeHidden',
+        'edgeTypes',
+        'includeUncertain',
       ]),
     'Invalid relationship exploration options.',
   );

@@ -16,7 +16,7 @@ export const VIDEO_SCENE_CACHE_BYTES = 128 * 1024 * 1024;
 export const VIDEO_VISIBLE_CARD_LIMIT = 5000;
 export interface VideoScene {
   /** Warm native cards before the player starts moving its camera. */
-  prepare(nodeId?: string): Promise<void>;
+  prepare(nodeId?: string, nodeIds?: string[]): Promise<void>;
   draw(context: CanvasRenderingContext2D, width: number, height: number): Promise<void> | void;
   dispose(): void;
 }
@@ -145,7 +145,7 @@ export async function createVideoScene(signal: AbortSignal): Promise<VideoScene>
     abort.abort();
   };
   if (mode === '3d') {
-    const prepare = async (nodeId?: string) => {
+    const prepare = async (nodeId?: string, nodeIds?: string[]) => {
       check();
       let failure: string | undefined;
       window.dispatchEvent(

@@ -140,7 +140,7 @@ it('roundtrips all sources, source analyses, entity focus and real relationships
     ),
   ).toHaveLength(0);
   const backup = await db.backup();
-  expect(backup.schemaVersion).toBe(6);
+  expect(backup.schemaVersion).toBe(7);
   const merged = await repo.restore(backup, 'merge');
   expect(merged).toHaveLength(2);
   expect(await db.datasets.count()).toBe(8);

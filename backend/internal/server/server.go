@@ -262,7 +262,7 @@ func commandTimeout(path string) time.Duration {
 	// Browser analysis is cancellable after 30 seconds. Leave time for layout,
 	// validation and the final IndexedDB transaction before the transport expires.
 	path = strings.TrimPrefix(path, "/api/v1")
-	if path == "/sql/preview" || path == "/sql/diagrams" || path == "/code/preview" || path == "/code/diagrams" || path == "/diagram-files/preview" || path == "/import" {
+	if path == "/sql/preview" || path == "/sql/diagrams" || path == "/code/preview" || path == "/code/diagrams" || path == "/diagram-files/preview" || path == "/import" || strings.Contains(path, "/history") || strings.Contains(path, "/evidence?") {
 		return 45 * time.Second
 	}
 	return 25 * time.Second

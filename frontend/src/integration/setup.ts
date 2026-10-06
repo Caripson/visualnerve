@@ -21,6 +21,7 @@ export function mcpSetupNote(websiteOrigin: string, bridgeAddress: string): stri
     'Use visual_nerve_request for diagram commands. Paths omit /api/v1.',
     'For 2D, create with POST /diagrams. When I request 3D, create with POST /spatial-diagrams using {"name":"Diagram name","type":"mindmap"}, then populate its ordinary nodes and connections through the bulk endpoint.',
     'The same styled objects appear in 2D and 3D. Keep a readable 2D layout for switching views and PNG/PDF export. 3D is a diagram relief view, not a separate 3D model.',
+    'The guide also covers semantic overview, source-backed relationship questions, named local version history, editable storyboard scenes and reviewed Lovable app specifications. Exact POST /diagrams/{id}/questions and /build-brief previews work with Read only; saving versions/scenes or controlling playback requires Read + write.',
     'The public website serves application files and documentation. The MCP service runs locally; diagrams remain in this browser’s IndexedDB.',
   ].join('\n');
 }

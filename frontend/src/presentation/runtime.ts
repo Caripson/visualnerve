@@ -1,6 +1,7 @@
 import type { Graph } from '../model/types';
 import { StorageError } from '../model/errors';
-import { getPresentation } from './definition';
+import { presentationSteps, type PresentationStep } from './sequence';
+import type { PresentationSource } from './storyboard';
 import type { PresentationRuntimeState } from './types';
 
 export interface Narration {
@@ -27,6 +28,8 @@ export interface PlayerDependencies {
     progress: (value: number, message: string) => void,
   ): Promise<void>;
   focus(nodeId: string, transitionMs: number, signal: AbortSignal): Promise<void>;
+  focusStep?(step: PresentationStep, signal: AbortSignal): Promise<void>;
+  releaseHighlight?(): void;
   cancelCamera(): void;
   release?(): void;
   narration: Narration;
@@ -38,6 +41,12 @@ const initial: PresentationRuntimeState = {
   index: -1,
   total: 0,
   nodeId: null,
+  source: 'nodes',
+  sceneId: null,
+  nodeIds: [],
+  edgeIds: [],
+  title: '',
+  narration: '',
   audio: false,
   subtitles: true,
   preload: false,
@@ -78,19 +87,40 @@ export class PresentationPlayer {
       throw new StorageError(409, 'Open the presentation diagram first.');
     return graph;
   }
-  open() {
+  private fields(step?: PresentationStep) {
+    return {
+      nodeId: step?.nodeIds[0] ?? null,
+      sceneId: this.state.source === 'storyboard' ? (step?.id ?? null) : null,
+      nodeIds: step?.nodeIds ?? [],
+      edgeIds: step?.edgeIds ?? [],
+      title: step?.name ?? '',
+      narration: step?.narration ?? '',
+    };
+  }
+  private steps(graph = this.snapshot()) {
+    return presentationSteps(graph, this.state.source);
+  }
+  private focus(step: PresentationStep, signal: AbortSignal) {
+    return this.deps.focusStep
+      ? this.deps.focusStep(step, signal)
+      : this.deps.focus(step.nodeIds[0], step.transitionMs, signal);
+  }
+  open(source: PresentationSource = 'nodes') {
     const graph = this.deps.graph();
     if (!graph) throw new StorageError(409, 'Open a diagram first.');
     this.cancel();
     this.clips.clear();
-    this.sequence = [...getPresentation(graph).nodeIds];
+    this.deps.releaseHighlight?.();
+    this.update({ source });
+    const steps = this.steps(graph);
+    this.sequence = steps.map((step) => step.id);
     this.update({
       open: true,
       diagramId: graph.diagram.id,
       status: 'idle',
       index: this.sequence.length ? 0 : -1,
       total: this.sequence.length,
-      nodeId: this.sequence[0] ?? null,
+      ...this.fields(steps[0]),
       buffered: 0,
       progress: 0,
       message: '',
@@ -102,11 +132,13 @@ export class PresentationPlayer {
     this.clips.clear();
     this.deps.narration.dispose();
     this.deps.release?.();
+    this.deps.releaseHighlight?.();
     this.update({
       ...initial,
       audio: this.state.audio,
       subtitles: this.state.subtitles,
       preload: this.state.preload,
+      source: this.state.source,
     });
     return this.state;
   }
@@ -119,15 +151,17 @@ export class PresentationPlayer {
       return;
     }
     const wasActive = active.has(this.state.status);
-    const previous = this.state.nodeId;
+    const previous = this.state.sceneId ?? this.state.nodeId;
     this.cancel();
     this.clips.clear();
-    this.sequence = [...getPresentation(graph).nodeIds];
+    this.deps.releaseHighlight?.();
+    const steps = this.steps(graph);
+    this.sequence = steps.map((step) => step.id);
     const index = Math.max(0, this.sequence.indexOf(previous ?? ''));
     this.update({
       total: this.sequence.length,
       index: this.sequence.length ? index : -1,
-      nodeId: this.sequence[index] ?? null,
+      ...this.fields(steps[index]),
       status: wasActive ? 'paused' : 'idle',
       buffered: 0,
       progress: 0,
@@ -171,7 +205,12 @@ export class PresentationPlayer {
     if (!this.state.open) this.open();
     if (active.has(this.state.status)) return this.state;
     if (!this.sequence.length)
-      throw new StorageError(422, 'Number some nodes before playing the diagram.');
+      throw new StorageError(
+        422,
+        this.state.source === 'storyboard'
+          ? 'Create a storyboard scene before playing.'
+          : 'Number some nodes before playing the diagram.',
+      );
     // Invoked synchronously from the user's click, before downloads or camera awaits.
     const epoch = this.epoch;
     const unlocked = this.state.audio ? this.deps.narration.unlock() : Promise.resolve();
@@ -184,15 +223,12 @@ export class PresentationPlayer {
     if (!this.state.open || epoch !== this.epoch) return this.state;
     if (this.resumable && this.state.status === 'paused') {
       try {
-        if (this.needsFocus && this.state.nodeId) {
+        const step = this.steps()[this.state.index];
+        if (this.needsFocus && step) {
           this.abort?.abort();
           this.abort = new AbortController();
           this.update({ status: 'moving', message: '' });
-          await this.deps.focus(
-            this.state.nodeId,
-            getPresentation(this.snapshot()).transitionMs,
-            this.abort.signal,
-          );
+          await this.focus(step, this.abort.signal);
           if (epoch !== this.epoch) return this.state;
           this.needsFocus = false;
         }
@@ -205,12 +241,13 @@ export class PresentationPlayer {
       }
       return this.state;
     }
-    if (this.state.status === 'ended') this.update({ index: 0, nodeId: this.sequence[0] });
+    if (this.state.status === 'ended') this.update({ index: 0, ...this.fields(this.steps()[0]) });
     void this.step(true);
     return this.state;
   }
   private fail(error: unknown) {
     this.cancel();
+    this.deps.releaseHighlight?.();
     this.update({
       status: 'error',
       progress: 0,
@@ -254,17 +291,17 @@ export class PresentationPlayer {
     this.abort = abort;
     try {
       const graph = this.snapshot();
-      const definition = getPresentation(graph);
-      const nodeId = this.sequence[this.state.index];
-      const node = graph.nodes.find((value) => value.id === nodeId);
-      if (!node) throw new StorageError(409, 'This presentation node no longer exists.');
-      this.update({ nodeId, status: 'loading', progress: 0, message: '' });
+      const step = this.steps(graph)[this.state.index];
+      const existing = new Set(graph.nodes.map((node) => node.id));
+      if (!step || step.nodeIds.some((id) => !existing.has(id)))
+        throw new StorageError(409, 'This presentation object no longer exists.');
+      this.update({ ...this.fields(step), status: 'loading', progress: 0, message: '' });
       let blob: Blob | undefined;
-      if (continuePlaying && this.state.audio && node.description?.trim())
-        blob = await this.clip(node.description, await this.deps.voice(), abort.signal, epoch);
+      if (continuePlaying && this.state.audio && step.narration.trim())
+        blob = await this.clip(step.narration, await this.deps.voice(), abort.signal, epoch);
       if (epoch !== this.epoch) return;
       this.update({ status: 'moving', progress: 0, message: '' });
-      await this.deps.focus(nodeId, definition.transitionMs, abort.signal);
+      await this.focus(step, abort.signal);
       if (epoch !== this.epoch) return;
       if (!continuePlaying) {
         this.update({ status: 'paused' });
@@ -273,7 +310,7 @@ export class PresentationPlayer {
       const seconds = blob ? await this.deps.narration.play(blob, abort.signal) : 0;
       if (epoch !== this.epoch) return;
       this.update({ status: 'playing', progress: 1, message: '' });
-      this.schedule(Math.max(definition.secondsPerNode, seconds) * 1000);
+      this.schedule(Math.max(step.seconds, seconds) * 1000);
       this.prefetch();
     } catch (error) {
       if (epoch !== this.epoch || abort.signal.aborted) return;
@@ -302,12 +339,21 @@ export class PresentationPlayer {
   }
   skip(direction: -1 | 1) {
     if (!this.state.open) this.open();
-    if (!this.sequence.length) throw new StorageError(422, 'Number some nodes first.');
+    if (!this.sequence.length)
+      throw new StorageError(422, 'Add a walkthrough node or storyboard scene first.');
     const running = active.has(this.state.status);
     this.update({
       index: Math.max(0, Math.min(this.sequence.length - 1, this.state.index + direction)),
     });
     void this.step(running);
+    return this.state;
+  }
+  seek(index: number) {
+    if (!this.state.open) this.open();
+    if (!Number.isSafeInteger(index) || index < 0 || index >= this.sequence.length)
+      throw new StorageError(422, 'Seek index must identify an existing walkthrough step.');
+    this.update({ index });
+    void this.step(false);
     return this.state;
   }
   options(value: unknown) {
@@ -341,7 +387,8 @@ export class PresentationPlayer {
   }
   async preload() {
     if (!this.state.open) this.open();
-    if (!this.sequence.length) throw new StorageError(422, 'Number some nodes before preloading.');
+    if (!this.sequence.length)
+      throw new StorageError(422, 'Add walkthrough steps before preloading.');
     this.update({ preload: true });
     this.prefetch(true);
     return this.state;
@@ -357,10 +404,9 @@ export class PresentationPlayer {
       const graph = this.snapshot();
       const voice = await this.deps.voice();
       await this.deps.preloadVoice(voice, abort.signal, this.progress(epoch));
-      const byId = new Map(graph.nodes.map((node) => [node.id, node]));
-      for (const id of this.sequence.slice(this.state.index, this.state.index + 3)) {
+      for (const step of this.steps(graph).slice(this.state.index, this.state.index + 3)) {
         if (abort.signal.aborted) return;
-        const text = byId.get(id)?.description;
+        const text = step.narration;
         if (text?.trim()) await this.clip(text, voice, abort.signal, epoch);
       }
       if (epoch === this.epoch && !abort.signal.aborted)

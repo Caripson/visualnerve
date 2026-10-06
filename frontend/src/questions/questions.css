@@ -1,0 +1,37 @@
+.question-dialog {
+  display: grid;
+  gap: 1rem;
+}
+.question-dialog > section {
+  display: grid;
+  gap: 0.8rem;
+}
+.question-answers {
+  display: grid;
+  gap: 1rem;
+  padding-left: 1.4rem;
+}
+.question-answers > li {
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.question-answers > li > span {
+  display: block;
+  margin: 0.45rem 0;
+  color: var(--muted);
+}
+.question-answers details {
+  margin: 0.7rem 0;
+}
+.question-answers details li {
+  margin: 0.8rem 0;
+  overflow-wrap: anywhere;
+}
+.question-answers details p {
+  margin: 0.3rem 0;
+}
+.question-answers code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

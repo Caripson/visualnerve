@@ -352,6 +352,14 @@ export class Workspace {
     await this.settled();
     const permission = await this.repo.db.settings.get('mcp-access');
     assertMcpAccess(mcpAccess(permission?.value), path, method);
+    const authorize = async () => {
+      await this.requireStorageConsent();
+      const permission = await this.repo.db.settings.get('mcp-access');
+      if (!useEditor.getState().privacyAcknowledged)
+        throw new StorageError(403, 'Accept local storage before using the workspace.');
+      assertMcpAccess(useEditor.getState().mcpAccess, path, method);
+      assertMcpAccess(mcpAccess(permission?.value), path, method);
+    };
     if (spatialNavigation(useEditor.getState().graph, path, method, data)) {
       await this.requireStorageConsent();
       window.dispatchEvent(new Event('visualnerve:spatial-camera-flush'));
@@ -366,14 +374,6 @@ export class Workspace {
     }
     const endpoint = path.replace(/^\/api\/v1/, '');
     if (endpoint === '/presentation' || endpoint.startsWith('/presentation/')) {
-      const authorize = async () => {
-        await this.requireStorageConsent();
-        const permission = await this.repo.db.settings.get('mcp-access');
-        if (!useEditor.getState().privacyAcknowledged)
-          throw new StorageError(403, 'Accept local storage before using the player.');
-        assertMcpAccess(useEditor.getState().mcpAccess, path, method);
-        assertMcpAccess(mcpAccess(permission?.value), path, method);
-      };
       await authorize();
       let payload = data;
       if (endpoint === '/presentation/open' && method === 'POST') {
@@ -381,10 +381,14 @@ export class Workspace {
           !payload ||
           typeof payload !== 'object' ||
           Array.isArray(payload) ||
-          Object.keys(payload).some((key) => key !== 'diagramId') ||
-          ('diagramId' in payload && typeof payload.diagramId !== 'string')
+          Object.keys(payload).some((key) => !['diagramId', 'source'].includes(key)) ||
+          ('diagramId' in payload && typeof payload.diagramId !== 'string') ||
+          ('source' in payload && !['nodes', 'storyboard'].includes(String(payload.source)))
         )
-          throw new StorageError(422, 'Open expects an optional diagramId.');
+          throw new StorageError(
+            422,
+            'Open expects an optional diagramId and nodes or storyboard source.',
+          );
         const { isVideoExporting } = await import('../presentation/video-service');
         const authorizeOpen = async () => {
           await authorize();
@@ -394,7 +398,7 @@ export class Workspace {
         await authorizeOpen();
         if ('diagramId' in payload)
           await this.open(payload.diagramId as string, undefined, authorizeOpen);
-        payload = {};
+        payload = 'source' in payload ? { source: payload.source } : {};
       }
       const { presentationRequest } = await import('../presentation/service');
       await authorize();
@@ -433,6 +437,7 @@ export class Workspace {
     try {
       const result = await this.execute<T>(path, method, data, {
         signal: controller?.signal,
+        beforeHistoryWrite: authorize,
         beforeAnalysisSave: analysis
           ? async () => {
               await this.requireStorageConsent();

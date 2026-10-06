@@ -40,6 +40,7 @@ import { createSpatialExample } from '../spatial/examples';
 import { workspace } from '../storage/workspace';
 import { ToolbarMenu } from './ToolbarMenu';
 import { DataToolActions, ToolbarDataTools } from './ToolbarDataTools';
+import { UnderstandingActions, UnderstandingTools } from './UnderstandingTools';
 export function Toolbar({
   open,
   showFilters,
@@ -359,6 +360,7 @@ export function Toolbar({
           Filters
         </button>
         <ToolbarDataTools graph={graph} open={open} />
+        <UnderstandingTools open={open} />
         <ToolbarMenu label="Examples" icon={<LayoutTemplate size={15} />} className="desktop-tools">
           <h3>Diagram examples</h3>
           <p>Start a separate diagram to explore an example.</p>
@@ -382,6 +384,7 @@ export function Toolbar({
             New 3D truck lifecycle example
           </button>
           <DataToolActions graph={graph} open={open} />
+          <UnderstandingActions open={open} />
           <h3>Import and build</h3>
           <button className="full" onClick={() => open('code')}>
             <Code2 size={17} />

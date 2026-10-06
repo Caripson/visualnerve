@@ -8,6 +8,10 @@ export function assertMcpAccess(access: McpAccess, path: string, method: string)
   const reading =
     method === 'GET' ||
     (method === 'POST' &&
+      /^\/diagrams\/[\da-f-]{36}\/(questions|build-brief)$/i.test(
+        path.replace(/^\/api\/v1/, ''),
+      )) ||
+    (method === 'POST' &&
       ['/export', '/sql/preview', '/code/preview', '/diagram-files/preview'].includes(
         path.replace(/^\/api\/v1/, ''),
       ));

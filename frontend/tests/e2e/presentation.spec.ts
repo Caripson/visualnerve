@@ -66,7 +66,10 @@ async function create(request: APIRequestContext, name: string) {
           presentation: {
             version: 1,
             nodeIds: graph.nodes.map((node) => node.id),
-            secondsPerNode: 2,
+            // Manual-control assertions must not race automatic advancement while
+            // Playwright waits for a moving button to become stable. Automatic
+            // timing is covered by runtime tests and the short movie fixture.
+            secondsPerNode: 30,
             transitionMs: 300,
           },
         },
@@ -123,6 +126,7 @@ test('numbered walkthrough plays, pauses, skips, captions and persists sequence 
   );
   await player.getByRole('button', { name: 'Pause presentation', exact: true }).click();
   await expect(player).toHaveAttribute('data-status', 'paused');
+  await expect(player.locator('.presentation-current')).toHaveText('First module');
   expect(
     (await (await request.get(`/api/v1/diagrams/${graph.diagram.id}`)).json()).diagram.version,
   ).toBe(before.diagram.version);

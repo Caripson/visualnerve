@@ -6,6 +6,7 @@ import { emptyRefreshSummary, type SourceRefreshResult } from '../src/data/refre
 import { blankGraph, newEdge, newNode, type Graph } from '../src/model/types';
 import { useEditor } from '../src/state/editor';
 import { workspace } from '../src/storage/workspace';
+import { repository } from '../src/storage/repository';
 import { parseSql } from '../src/sql/parser';
 import { csvGraph, defaultAnalysis, parseCsv } from '../src/data/csv';
 
@@ -15,6 +16,7 @@ vi.mock('../src/data/refreshClient', () => ({
   loadRefreshCsv: vi.fn(),
 }));
 vi.mock('../src/storage/workspace', () => ({ workspace: { settled: vi.fn() } }));
+vi.mock('../src/storage/repository', () => ({ repository: { history: { create: vi.fn() } } }));
 const sql = 'CREATE TABLE customers(id INT PRIMARY KEY);';
 const parse = vi.mocked(previewSqlRefresh);
 function deferred<T>() {
@@ -52,6 +54,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   parse.mockReset();
   vi.mocked(workspace.settled).mockResolvedValue(undefined);
+  vi.mocked(repository.history.create).mockResolvedValue({} as never);
   useEditor.getState().setGraph(parseSql(sql).graph);
   useEditor.setState({ status: 'saved', editRevision: 0, message: '' });
 });
@@ -75,9 +78,71 @@ it('reviews explicit changes before committing and preserves the complete source
   expect(useEditor.getState().graph).toBe(old);
   fireEvent.click(screen.getByRole('button', { name: 'Apply source refresh' }));
   await waitFor(() => expect(close).toHaveBeenCalledOnce());
+  expect(repository.history.create).toHaveBeenCalledWith(old.diagram.id, {
+    name: expect.stringContaining('Before source refresh'),
+    baseVersion: old.diagram.version,
+    kind: 'source-refresh',
+  });
   expect(useEditor.getState().graph?.nodes).toHaveLength(2);
   act(() => useEditor.getState().undo());
   expect(useEditor.getState().graph?.nodes).toHaveLength(1);
+});
+
+it('preserves the reviewed graph when its safety checkpoint cannot be saved', async () => {
+  const original = useEditor.getState().graph!;
+  parse.mockResolvedValue(
+    preview({
+      ...original,
+      nodes: [...original.nodes, newNode(original.diagram.id, { title: 'Unsaved refresh' })],
+    }),
+  );
+  vi.mocked(repository.history.create).mockRejectedValueOnce(
+    new Error('History capacity reached.'),
+  );
+  const close = open();
+  fireEvent.click(screen.getByRole('button', { name: 'Preview changes' }));
+  await screen.findByLabelText('Source changes preview');
+  fireEvent.click(screen.getByRole('button', { name: 'Apply source refresh' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('History capacity reached.');
+  expect(useEditor.getState().graph).toBe(original);
+  expect(close).not.toHaveBeenCalled();
+});
+
+it('rejects edits made while saving the safety checkpoint before applying source changes', async () => {
+  const original = useEditor.getState().graph!;
+  parse.mockResolvedValue(preview(original));
+  const pending = deferred<Awaited<ReturnType<typeof repository.history.create>>>();
+  vi.mocked(repository.history.create).mockReturnValueOnce(pending.promise);
+  const close = open();
+  fireEvent.click(screen.getByRole('button', { name: 'Preview changes' }));
+  await screen.findByLabelText('Source changes preview');
+  fireEvent.click(screen.getByRole('button', { name: 'Apply source refresh' }));
+  await waitFor(() => expect(repository.history.create).toHaveBeenCalledOnce());
+  act(() => useEditor.getState().updateNode(original.nodes[0].id, { description: 'Keep my edit' }));
+  await act(async () => pending.resolve({} as never));
+  expect(await screen.findByRole('alert')).toHaveTextContent(/diagram changed/);
+  expect(useEditor.getState().graph?.nodes[0].description).toBe('Keep my edit');
+  expect(close).not.toHaveBeenCalled();
+});
+
+it('does not apply a source refresh after unmounting during its safety checkpoint', async () => {
+  const original = useEditor.getState().graph!;
+  parse.mockResolvedValue(
+    preview({
+      ...original,
+      nodes: [...original.nodes, newNode(original.diagram.id, { title: 'Cancelled refresh' })],
+    }),
+  );
+  const pending = deferred<Awaited<ReturnType<typeof repository.history.create>>>();
+  vi.mocked(repository.history.create).mockReturnValueOnce(pending.promise);
+  open();
+  fireEvent.click(screen.getByRole('button', { name: 'Preview changes' }));
+  await screen.findByLabelText('Source changes preview');
+  fireEvent.click(screen.getByRole('button', { name: 'Apply source refresh' }));
+  await waitFor(() => expect(repository.history.create).toHaveBeenCalledOnce());
+  cleanup();
+  await act(async () => pending.resolve({} as never));
+  expect(useEditor.getState().graph).toBe(original);
 });
 
 it('invalidates an in-flight preview on input edits and aborts rather than allowing a stale response to replace the draft', async () => {

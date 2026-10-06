@@ -22,8 +22,22 @@ import { Crosshair, Grid3X3, Magnet, Map as MapIcon, Maximize, Pencil } from 'lu
 import { useEditor } from '../state/editor';
 import { descendantIds, type Graph, type GraphNode } from '../model/types';
 import { dayMS, timelineGeometry, type Geometry } from '../layouts/layout';
-import { nodeTypes } from '../nodes/registry';
-import { edgeTypes } from '../mindmap/Branch';
+import {
+  overviewNodeTypes as nodeTypes,
+  overviewEdgeTypes as edgeTypes,
+} from '../overview/renderers';
+import { projectOverview } from '../overview/projection';
+import { OverviewControls, OVERVIEW_RESET_VIEW } from '../overview/Controls';
+import { getOverviewConfig, isOverviewGroupId, isOverviewEdgeId } from '../overview/types';
+import { useOverviewZoom } from '../overview/useZoom';
+import {
+  useOverviewPreview,
+  releaseOverview,
+  publishOverview,
+  clearRenderedOverview,
+  OVERVIEW_RESTORE_VIEW,
+} from '../overview/runtime';
+import { revealOverviewTargets } from '../overview/reveal';
 import { SelectionTools } from '../ui/SelectionTools';
 import { projectGraph, type CanvasNode, type NodeData, type RenderCache } from './projection';
 import { DrawingOverlay } from '../drawing/DrawingOverlay';
@@ -39,6 +53,10 @@ import {
   presentationFocus,
   presentationArrived,
   presentationViewportKey,
+  PRESENTATION_RELEASE,
+  PRESENTATION_REVEAL,
+  type PresentationRevealRequest,
+  capturePresentationView,
 } from '../presentation/camera';
 import { attachCanvasPresentationCamera } from '../presentation/canvas-camera';
 import { VIDEO_CANVAS_INFO, type VideoCanvasInfoRequest } from '../presentation/video-frame-events';
@@ -205,7 +223,7 @@ export function Canvas() {
     },
     [commit],
   );
-  const projected = useMemo(
+  const baseProjected = useMemo(
     () =>
       graph
         ? projectGraph(
@@ -224,11 +242,95 @@ export function Canvas() {
         : { nodes: [], edges: [] },
     [graph, owners, selectedNodes, selectedEdges, filters, resize, exploration, explorationResult],
   );
+  const overviewZoom = useOverviewZoom(graph?.diagram.id, spatial);
+  const zoomLevel = overviewZoom.level;
+  const preview = useOverviewPreview();
+  const zooms = [0.1, 0.3, 0.8, 1.5];
+  const overviewZoomRef = useRef(zooms[zoomLevel]);
+  overviewZoomRef.current = zooms[zoomLevel];
+  const overview = useMemo(
+    () =>
+      graph
+        ? projectOverview(graph, baseProjected.nodes, baseProjected.edges, {
+            zoom: preview.diagramId === graph.diagram.id ? preview.zoom : zooms[zoomLevel],
+            revealNodeIds: preview.diagramId === graph.diagram.id ? preview.nodeIds : undefined,
+          })
+        : undefined,
+    [graph, baseProjected, preview, zoomLevel],
+  );
+  const projected = overview ?? baseProjected;
+  const projectedRef = useRef(projected);
+  projectedRef.current = projected;
+  useEffect(() => {
+    if (graph && overview) publishOverview(graph, overview);
+  }, [graph, overview]);
+  useEffect(() => {
+    const id = graph?.diagram.id;
+    return () => {
+      if (id) clearRenderedOverview(id);
+    };
+  }, [graph?.diagram.id]);
+  const revealPresentation = useCallback(
+    async (ids: string[], signal?: AbortSignal) => {
+      signal?.throwIfAborted();
+      const current = useEditor.getState().graph;
+      if (!current) return;
+      await revealOverviewTargets(current, ids, {
+        zoom: overviewZoomRef.current,
+        ready: (id) => projectedRef.current.nodes.some((node) => node.id === id && !node.hidden),
+        captureView: capturePresentationView,
+        signal,
+      });
+    },
+    [graph?.diagram.id],
+  );
   const [nodes, setNodes] = useState<CanvasNode[]>(projected.nodes);
   const [edges, setEdges] = useState<Edge[]>(projected.edges);
   useEffect(() => setNodes(projected.nodes), [projected.nodes]);
   useEffect(() => setEdges(projected.edges), [projected.edges]);
   const diagramId = graph?.diagram.id;
+  useEffect(() => {
+    if (!diagramId) return;
+    const reveal = (event: Event) => {
+      const detail = (event as CustomEvent<PresentationRevealRequest>).detail;
+      if (
+        !Array.isArray(detail?.nodeIds) ||
+        typeof detail.respond !== 'function' ||
+        typeof detail.error !== 'function'
+      )
+        return;
+      void revealPresentation(detail.nodeIds, detail.signal).then(
+        () => detail.respond(),
+        (error) => detail.error(error instanceof Error ? error.message : 'Overview reveal failed.'),
+      );
+    };
+    const release = () => releaseOverview(diagramId);
+    window.addEventListener(PRESENTATION_REVEAL, reveal);
+    window.addEventListener(PRESENTATION_RELEASE, release);
+    return () => {
+      window.removeEventListener(PRESENTATION_REVEAL, reveal);
+      window.removeEventListener(PRESENTATION_RELEASE, release);
+      release();
+    };
+  }, [diagramId, revealPresentation]);
+  useEffect(() => {
+    if (!diagramId || spatial) return;
+    const restore = (event: Event) => {
+      const view = (event as CustomEvent<import('../presentation/storyboard').StoryboardView>)
+        .detail;
+      const current = useEditor.getState().graph;
+      if (
+        view?.mode !== '2d' ||
+        current?.diagram.id !== diagramId ||
+        !getOverviewConfig(current).enabled
+      )
+        return;
+      presentationViewports.current.add(`${diagramId}:${presentationViewportKey(view.viewport)}`);
+      void flow.setViewport(view.viewport, { duration: 0 });
+    };
+    window.addEventListener(OVERVIEW_RESTORE_VIEW, restore);
+    return () => window.removeEventListener(OVERVIEW_RESTORE_VIEW, restore);
+  }, [diagramId, spatial, flow]);
   useEffect(() => {
     if (!diagramId || spatial) return;
     const receive = (event: Event) => {
@@ -250,6 +352,7 @@ export function Canvas() {
         nodes: flow.getNodes(),
         edges: flow.getEdges(),
         viewport,
+        overviewActive: overview?.active,
         width: host.clientWidth || flowStore.getState().width,
         height: host.clientHeight || flowStore.getState().height,
         absolute: (id) => flow.getInternalNode(id)?.internals.positionAbsolute,
@@ -257,14 +360,21 @@ export function Canvas() {
     };
     window.addEventListener(VIDEO_CANVAS_INFO, receive);
     return () => window.removeEventListener(VIDEO_CANVAS_INFO, receive);
-  }, [diagramId, flow, flowStore, spatial]);
+  }, [diagramId, flow, flowStore, spatial, overview?.active]);
   useEffect(() => {
     if (!diagramId || spatial) return;
     const camera = attachCanvasPresentationCamera(flow, {
+      viewportSize: () => {
+        const { width, height } = flowStore.getState();
+        return { width, height };
+      },
       transient: (value) => {
         presentationViewport.current = value;
       },
       select: (id) => useEditor.setState({ selectedNodes: [id], selectedEdges: [] }),
+      selectMany: (nodeIds, edgeIds) =>
+        useEditor.setState({ selectedNodes: nodeIds, selectedEdges: edgeIds }),
+      reveal: (request) => revealPresentation(request.nodeIds ?? [request.nodeId]),
       ignoreViewport: (viewport) => {
         const ignored = presentationViewports.current;
         ignored.add(`${diagramId}:${presentationViewportKey(viewport)}`);
@@ -276,7 +386,7 @@ export function Canvas() {
       camera.dispose();
       interruptPresentation.current = () => {};
     };
-  }, [diagramId, flow, spatial, graph?.nodes, filters, explorationResult, touch]);
+  }, [diagramId, flow, flowStore, spatial, graph?.nodes, filters, explorationResult, touch]);
   useEffect(() => {
     const viewport = useEditor.getState().graph?.diagram.settings.viewport;
     if (!spatial && viewportRequest && viewport) {
@@ -287,6 +397,10 @@ export function Canvas() {
   useEffect(() => {
     if (!graph || spatial) return;
     const frame = requestAnimationFrame(() => {
+      if (getOverviewConfig(graph).enabled) {
+        window.dispatchEvent(new Event(OVERVIEW_RESET_VIEW));
+        return;
+      }
       const viewport = graph.diagram.settings.viewport;
       const touchView = graph.diagram.settings.viewportDevice === 'touch';
       if (viewport && touchView === touch) void flow.setViewport(viewport);
@@ -336,6 +450,7 @@ export function Canvas() {
     if (selection.length) {
       const selected = new Set(state.selectedNodes);
       for (const change of selection) {
+        if (isOverviewGroupId(change.id)) continue;
         if (change.selected) selected.add(change.id);
         else selected.delete(change.id);
       }
@@ -349,6 +464,7 @@ export function Canvas() {
     if (selection.length) {
       const selected = new Set(state.selectedEdges);
       for (const change of selection) {
+        if (isOverviewEdgeId(change.id)) continue;
         if (change.selected) selected.add(change.id);
         else selected.delete(change.id);
       }
@@ -369,6 +485,7 @@ export function Canvas() {
       if (s.drawingTool !== 'none') return;
       if (e.key.startsWith('Arrow') || e.key.toLowerCase() === 'f') interruptPresentation.current();
       if (e.key.startsWith('Arrow') && s.selectedNodes.length && !e.ctrlKey && !e.metaKey) {
+        if (overview?.active) return;
         e.preventDefault();
         e.stopPropagation();
         const step = e.shiftKey ? 50 : 10;
@@ -394,7 +511,38 @@ export function Canvas() {
     };
     window.addEventListener('keydown', listener, true);
     return () => window.removeEventListener('keydown', listener, true);
-  }, [flow]);
+  }, [flow, overview?.active]);
+  useEffect(() => {
+    if (spatial) return;
+    const reset = () => {
+      const graph = useEditor.getState().graph;
+      if (!graph) return;
+      const enabled = (graph.diagram.settings.overview as { enabled?: boolean } | undefined)
+        ?.enabled;
+      releaseOverview(graph.diagram.id);
+      if (!enabled && graph.diagram.settings.viewport) {
+        const viewport = graph.diagram.settings.viewport;
+        presentationViewports.current.add(
+          `${graph.diagram.id}:${presentationViewportKey(viewport)}`,
+        );
+        void flow.setViewport(viewport, { duration: 0 });
+        return;
+      }
+      if (enabled) void overviewZoom.fit();
+      else void flow.fitView({ padding: 0.25, maxZoom: 1, duration: 0 });
+    };
+    window.addEventListener(OVERVIEW_RESET_VIEW, reset);
+    return () => window.removeEventListener(OVERVIEW_RESET_VIEW, reset);
+  }, [flow, spatial, overviewZoom.fit]);
+  const overviewEnabled = graph ? getOverviewConfig(graph).enabled : false;
+  const previousOverview = useRef({ id: diagramId, enabled: overviewEnabled });
+  useEffect(() => {
+    const previous = previousOverview.current;
+    previousOverview.current = { id: diagramId, enabled: overviewEnabled };
+    if (previous.id !== diagramId || previous.enabled === overviewEnabled) return;
+    const frame = requestAnimationFrame(() => window.dispatchEvent(new Event(OVERVIEW_RESET_VIEW)));
+    return () => cancelAnimationFrame(frame);
+  }, [diagramId, overviewEnabled]);
   const returnTo2D = useCallback(() => {
     useEditor.getState().command('2D view', (current) => setSpatialView(current, { mode: '2d' }));
   }, []);
@@ -407,6 +555,7 @@ export function Canvas() {
         getSpatialView(state.graph).mode !== '3d'
       )
         return;
+      if (getOverviewConfig(state.graph).enabled) return;
       if (JSON.stringify(getSpatialView(state.graph).camera) === JSON.stringify(camera)) return;
       state.command('3D camera', (current) => setSpatialView(current, { camera }), true);
     },
@@ -429,6 +578,8 @@ export function Canvas() {
           edges={projected.edges}
           onReturnTo2D={returnTo2D}
           onCameraChange={saveCamera}
+          overview={overview}
+          onPresentationReveal={revealPresentation}
         />
       </Suspense>
     );
@@ -472,6 +623,9 @@ export function Canvas() {
         onMoveEnd={(event, viewport) => {
           if (
             presentationViewport.current ||
+            overview?.active ||
+            (!!useEditor.getState().graph &&
+              getOverviewConfig(useEditor.getState().graph!).enabled) ||
             (!event &&
               presentationViewports.current.has(
                 `${diagramId}:${presentationViewportKey(viewport)}`,
@@ -517,6 +671,11 @@ export function Canvas() {
         edgesFocusable
         zoomOnDoubleClick={graph.diagram.type !== 'mindmap'}
       >
+        {overview && (
+          <Panel position="top-right">
+            <OverviewControls projection={overview} />
+          </Panel>
+        )}
         {graph.diagram.settings.grid !== false && (
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="var(--grid)" />
         )}
@@ -530,11 +689,13 @@ export function Canvas() {
         <Controls
           showInteractive={false}
           showFitView={
+            overview?.active ||
             !getDrawingLayer(graph.diagram.settings.drawing)?.visible ||
             !getDrawingLayer(graph.diagram.settings.drawing)?.strokes.length
           }
         >
-          {getDrawingLayer(graph.diagram.settings.drawing)?.visible &&
+          {!overview?.active &&
+            getDrawingLayer(graph.diagram.settings.drawing)?.visible &&
             !!getDrawingLayer(graph.diagram.settings.drawing)?.strokes.length && (
               <ControlButton
                 aria-label="Fit view"
@@ -545,7 +706,7 @@ export function Canvas() {
               </ControlButton>
             )}
         </Controls>
-        <DrawingOverlay />
+        {!overview?.active && <DrawingOverlay />}
         {!!exploration && (
           <Panel position="top-left" className="analysis-canvas-notice">
             <strong>
@@ -584,6 +745,7 @@ export function Canvas() {
               title="Draw on diagram"
               aria-label="Draw on diagram"
               aria-pressed={drawingTool !== 'none'}
+              disabled={overview?.active}
               onClick={() => {
                 const state = useEditor.getState();
                 if (state.drawingTool !== 'none') state.setDrawingTool('none');
@@ -640,7 +802,7 @@ export function Canvas() {
           </div>
         </Panel>
       </ReactFlow>
-      {graph.diagram.type === 'timeline' && <TimelineRuler graph={graph} />}
+      {graph.diagram.type === 'timeline' && !overview?.active && <TimelineRuler graph={graph} />}
       {graph.nodes.length === 0 &&
         drawingTool === 'none' &&
         !getDrawingLayer(graph.diagram.settings.drawing)?.strokes.length && (

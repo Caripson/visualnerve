@@ -17,8 +17,8 @@ Source paths below are relative to frontend/src or frontend/tests where appropri
 | 9. Data & Privacy | Settings shows browser location, cloud not used, no automatic sync and optional MCP. IndexedDB, schema, origin and workspace ID are in advanced details. | DataPrivacy; privacy.spec.ts |
 | 10. Plain language | Product text explains browser-local saving and manual moving/backups; technical details stay in expandable sections. | PrivacyIntro; Settings; /privacy/ |
 | 11. Browser clearing | Settings, both export targets and docs explain clearing/profile reset/uninstall; portable exports keep an independent copy. | StorageNotice; privacy/help pages; PRIVACY.md |
-| 12. Export all data | Dated portable JSON contains all seven tables, appropriate settings, schemaVersion and exportedAt; credentials/grants/consent/local identity excluded. | storage/backup.ts; database.backup; unit/browser tests |
-| 13. Restore modes | Preview defaults to Merge; Replace has a separate confirmation. All seven stores restore atomically; invalid data rolls back replacement. | RestoreBackup; Repository.restore; tests |
+| 12. Export all data | Dated portable JSON contains all eleven tables, appropriate settings, schemaVersion and exportedAt; credentials/grants/consent/local identity excluded. | storage/backup.ts; database.backup; unit/browser tests |
+| 13. Restore modes | Preview defaults to Merge; Replace has a separate confirmation. All eleven stores restore atomically; invalid data rolls back replacement. | RestoreBackup; Repository.restore; tests |
 | 14. Subtle reminder | At ten diagrams with no export, a small dismissible reminder appears; dismissal persists and export records suppress it. | BackupNudge; privacy.spec.ts |
 | 15. MCP path | Codex → loopback MCP → local WebSocket → active browser → shared repository → IndexedDB. No second copy or S3 content access. | mcp.go; bridge.ts; architecture; tests |
 | 16. MCP explanation/states | Settings explains tool access, active-browser requirement and local-only data, showing Disabled/Waiting/Connected/Error. | McpSettings; bridge.ts; privacy browser tests |
@@ -150,3 +150,20 @@ label/control gaps, wrapped action rows and reachable controls on narrow
 screens. Settings, source refresh and nested SQL quality diagnostics must stay
 within a 320-pixel viewport without horizontal overflow. Shared modal styles
 live in their own CSS module.
+
+## 2026-10-06: Five workflows for understanding systems
+
+| Workflow | Required behavior | Implementation and verification |
+| --- | --- | --- |
+| Semantic overview | Stable group summaries, statuses, directed typed aggregate links and original-ID mappings; shared 2D/3D/export, bounded detail, exact canonical layout preserved | overview modules; overview unit/browser tests; reproducible 10,000-node/30,000-edge benchmark |
+| Relationship questions | Paged multi-level paths, cycles/directions/types and retained source evidence, explicit uncertainty; focus original objects without deleting them | questions modules and relationship exploration; question/contract/browser tests |
+| Local history | Named snapshots, semantic comparison and modeled dependencies; pre-refresh/pre-restore checkpoints, atomic restore, bounded deduplicated history and portable backups | history modules, IndexedDB schema 7; persistence/compare/dialog/contract/browser regressions |
+| Storyboard | Editable multi-object scenes, highlighted edges, authored narration/timings, captured or auto-fit views, legacy numbering preserved; same scene playback/movie | presentation storyboard/sequence/camera/video modules; definition/editor/runtime/camera/movie/browser tests |
+| Reviewed app specification | Observed data and explicit rules separated from proposed screens/API; editable additions/answers, acceptance criteria and missing decisions; complete unsent Lovable brief | modular build-specification and source allowlists; specification/Lovable/SQL privacy/contract/browser tests |
+
+The same workflows are documented through API/OpenAPI and MCP discovery.
+English remains the default speech language; Swedish is available. A captured
+scene view requires Details (overview off) and its matching current mode. Source facts and modeled impact
+do not imply executed behavior. Work stays local in IndexedDB and all S3
+deployment remains manual. See [UNDERSTANDING.md](UNDERSTANDING.md) for the full
+contracts, quotas and privacy behavior.

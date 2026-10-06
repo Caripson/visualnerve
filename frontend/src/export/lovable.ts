@@ -1,16 +1,23 @@
+import { sqlTableSchema, sqlForeignKeySchema } from './sql-schema';
 import { getCodeAnalysis, getCodeObject, getCodeRelation } from '../code/schema';
 import { codeAnalysisSummary, codeObjectSummary, codeRelationSummary } from './code';
 import { getCsvNode } from '../data/csv';
 import { graphDatasets, analysisForDataset, isGeneratedCsvNode } from '../data/model';
 import type { CsvNodeData } from '../data/types';
 import type { Graph, GraphEdge } from '../model/types';
-import { getSqlRelationship, getSqlTable, type SqlTable } from '../sql/schema';
+import { getSqlRelationship, getSqlTable } from '../sql/schema';
 import { getSqlQuerySource, getSqlQueryResult, getSqlQueryRelationship } from '../sql/query-schema';
 import {
   sqlQuerySourceSummary,
   sqlQueryResultSummary,
   sqlQueryRelationshipSummary,
 } from './sql-query';
+import {
+  applicationSpecification,
+  buildSectionLabels,
+  type ApplicationSpecification,
+  type BuildSection,
+} from './build-specification';
 
 export const LOVABLE_MAX_PROMPT_LENGTH = 50_000;
 /** A local limit on the encoded URL, separate from Lovable's prompt limit. */
@@ -28,28 +35,10 @@ export interface LovablePrompt {
   edgeCount: number;
   /** Crossing relationships, including otherwise implicit parent boundaries. */
   boundaryCount: number;
+  specification: ApplicationSpecification;
 }
 
 const json = (value: unknown) => JSON.stringify(value);
-
-function sqlTableSchema(table: SqlTable | undefined) {
-  if (!table) return undefined;
-  return {
-    name: table.name,
-    qualifiedName: table.qualifiedName,
-    columns: table.columns.map((column) => ({
-      name: column.name,
-      dataType: column.dataType,
-      nullable: column.nullable,
-      primaryKey: column.primaryKey,
-      foreignKey: column.foreignKey,
-      unique: column.unique,
-    })),
-    primaryKey: table.primaryKey,
-    uniqueKeys: table.uniqueKeys,
-    external: table.external ?? false,
-  };
-}
 
 export function buildLovablePrompt(
   graph: Graph,
@@ -196,16 +185,7 @@ export function buildLovablePrompt(
       loop: source === target,
       codeRelation: codeRelationSummary(getCodeRelation(edge)),
       sqlQueryRelationship: sqlQueryRelationshipSummary(getSqlQueryRelationship(edge)),
-      sqlForeignKey: foreignKey
-        ? {
-            columns: foreignKey.columns,
-            referencedColumns: foreignKey.unresolved ? null : foreignKey.referencedColumns,
-            ...(foreignKey.unresolved ? { unresolved: true } : {}),
-            name: foreignKey.name,
-            onDelete: foreignKey.onDelete,
-            onUpdate: foreignKey.onUpdate,
-          }
-        : undefined,
+      sqlForeignKey: sqlForeignKeySchema(foreignKey),
     });
   }
   const parentRelations: object[] = [];
@@ -392,11 +372,35 @@ export function buildLovablePrompt(
       'Original source, comments and string literal values are not included. Names, paths and extracted identifiers remain in this prompt. Dependencies describe code structure, not workflow execution order.',
     );
   }
+  const specification = applicationSpecification(graph, options);
+  const portableIds = new Map([
+    ...refs,
+    ...sources.map((source, index) => [source.id, `s${index + 1}`] as const),
+    ...graph.edges.map((edge, index) => [edge.id, `relationship-${index + 1}`] as const),
+  ]);
+  const portable = (text: string) =>
+    text.replace(
+      /[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}/gi,
+      (id) => portableIds.get(id) ?? id,
+    );
+  lines.push(
+    'Reviewable application build specification:',
+    'Observed source facts and proposed app designs are labeled separately. Generated API routes and screen candidates require confirmation. Decision answers and user-reviewed additions express explicit requirements. Unanswered decisions must be clarified before assuming behavior.',
+    `Unresolved decisions: ${specification.unresolved}. Do not silently treat unresolved questions as approved defaults.`,
+    ...(Object.keys(buildSectionLabels) as BuildSection[]).flatMap((key) => [
+      buildSectionLabels[key],
+      portable(specification.sections[key])
+        .split('\n')
+        .map((line) => `  ${line}`)
+        .join('\n'),
+    ]),
+  );
   return {
     text: lines.filter((line) => line !== '').join('\n\n'),
     nodeCount: included.length,
     edgeCount: internalEdges.length,
     boundaryCount: boundaryEdges.length + parentBoundaries,
+    specification,
   };
 }
 

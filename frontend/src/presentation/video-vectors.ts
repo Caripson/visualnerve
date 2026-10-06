@@ -234,8 +234,9 @@ export class VideoVectors {
           this.edges.set(id, { signature, commands: compileEdge(element, info) });
       }
     }
-    if (this.drawing !== info.graph.diagram.settings.drawing) {
-      this.drawing = info.graph.diagram.settings.drawing;
+    const drawing = info.overviewActive ? undefined : info.graph.diagram.settings.drawing;
+    if (this.drawing !== drawing) {
+      this.drawing = drawing;
       const layer = getDrawingLayer(this.drawing);
       this.strokes = !layer?.visible
         ? []

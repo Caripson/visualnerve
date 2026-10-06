@@ -14,6 +14,7 @@ export interface VideoCanvasInfo {
   width: number;
   height: number;
   viewport: { x: number; y: number; zoom: number };
+  overviewActive?: boolean;
   absolute: (id: string) => { x: number; y: number } | undefined;
 }
 
@@ -26,6 +27,7 @@ export interface VideoSpatialFrameRequest {
 }
 export interface VideoSpatialPrepareRequest {
   nodeId?: string;
+  nodeIds?: string[];
   error?: (message: string) => void;
 }
 export const VIDEO_SPATIAL_LIMIT_ERROR =

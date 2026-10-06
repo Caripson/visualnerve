@@ -15,6 +15,10 @@ The historical database name `visual-nerve-cache` remains so existing data upgra
 | settings | Appearance, local import-file limit, local identity/last diagram, required consent, MCP grant/address, export/reminder bookkeeping |
 | templates | Built-in seeds and user templates with complete graphs |
 | datasets | Original CSV strings and stable column IDs, up to eight sources per diagram; nonunique diagramId index |
+| historySnapshots | Named and pre-refresh/pre-restore snapshot headers |
+| historyContents | Deduplicated structural graphs without raw CSV rows |
+| historySources | Archived source headers referencing immutable row content |
+| historyRows | Shared immutable historical CSV strings |
 
 CSV analysis filters, cleanup, grouping and measures persist in diagram settings: `csvAnalysis` remains the primary-source legacy configuration and `csvSourceAnalyses` holds source-specific configurations. `csvRelationships` records explicit matching columns and `csvEntityFocus` records related-entity context. Matching selects original rows once per source; it does not persist joined rows or multiply source-native sums. Raw CSV strings live once in the datasets store; ordinary node/edge edits do not rewrite or clone them. A bounded immutable source cache is invalidated by IndexedDB mutations across connections. Source refresh and source additions/removals are atomically saved with graph changes, and undo/redo keeps immutable source references.
 
@@ -30,6 +34,7 @@ The browser-local `import-file-limit-mb` setting defaults to 50 and accepts inte
 4. Preserve canonical records; remove the obsolete boolean integration grant and require new explicit permission.
 5. Add the datasets store without rewriting or removing existing records.
 6. Change the `datasets.diagramId` index from unique to nonunique to support multiple diagram-owned sources. Existing source rows and diagrams are preserved; source order is stored in `diagram.settings.csvDatasetOrder`.
+7. Add four history stores without rewriting current graphs or datasets. Existing records remain intact.
 
 Acceptance is separate from an integration grant or informational acknowledgement. Existing data remains intact before acceptance. Updates never reset the database. Version changes close older connections so upgrades can complete. Each upgrade needs transactional migration tests; keep the database name stable.
 
@@ -41,8 +46,10 @@ Startup checks consent before loading graphs, seeding templates, subscribing to 
 
 ## Export, restore, clear
 
-Backups use one read transaction across all seven stores and include format/schema versions, CSV sources and export date. Diagram JSON includes its primary `dataset` and optional additional `datasets`; older single-source diagrams and backups remain accepted. Import, Merge and Replace remap all source IDs, per-source analyses, relationship endpoints, entity focus, CSV node bindings and saved-view references together. Deleting a diagram deletes every owned source in the same transaction. Malformed imports roll back without partially replacing existing data. They exclude credentials, grants, consent, the local import-file limit, local identity/selection and reminder bookkeeping. See [EXPORT_FORMAT.md](../EXPORT_FORMAT.md).
+Backups use one read transaction across all eleven stores and include format/schema versions, CSV sources and export date. Diagram JSON includes its primary `dataset` and optional additional `datasets`; older single-source diagrams and backups remain accepted. Import, Merge and Replace remap all source IDs, per-source analyses, relationship endpoints, entity focus, CSV node bindings and saved-view references together. Deleting a diagram deletes every owned source in the same transaction. Malformed imports roll back without partially replacing existing data. They exclude credentials, grants, consent, the local import-file limit, local identity/selection and reminder bookkeeping. See [EXPORT_FORMAT.md](../EXPORT_FORMAT.md).
 
 Merge and Replace use one transaction across all stores. Invalid records roll back everything, including destructive replacement. Collision remapping preserves shared owners and internal references. Merge keeps destination connection choices; Replace creates a new local identity with MCP Off. Both preserve the destination's own consent and import-file limit, ignoring those settings in the backup. Confirmed deletion clears every user record/preference and seeds only built-in templates and a fresh identity.
 
 Cache Storage holds only service-worker app files, not graph records. Manual downloads are explicit user-controlled artifacts. Browser profile and exact origin own each database; other devices/profiles/ports/hosts have separate workspaces. Keep one canonical production origin and export/import to move work. Browser clearing or eviction can remove data; persistence requests are advisory and never guarantee retention. See [PRIVACY.md](PRIVACY.md) and [DEPLOYMENT.md](DEPLOYMENT.md).
+
+Named local history and automatic safety checkpoints retain removed content until the versions or diagram are explicitly deleted. Unchanged CSV rows are deduplicated. Full backups include history and remap historical references; single-diagram export includes current content only. Restore keeps current shared owner profiles and exact saved positions. See [understanding workflows](UNDERSTANDING.md) for quotas and comparison bounds.

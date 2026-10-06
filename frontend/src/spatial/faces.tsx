@@ -4,7 +4,7 @@ import { ReactFlow, ReactFlowProvider, useNodesInitialized, useReactFlow } from 
 import { toSvg } from 'html-to-image';
 import type { CanvasNode } from '../canvas/projection';
 import type { Graph } from '../model/types';
-import { nodeTypes } from '../nodes/registry';
+import { overviewNodeTypes as nodeTypes } from '../overview/renderers';
 
 /** Only a bounded set of nearby, readable cards is ever mounted for texture capture. */
 export const SPATIAL_FACE_CAPTURE_LIMIT = 120;

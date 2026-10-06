@@ -10,8 +10,13 @@ import {
   type Viewport,
 } from '@xyflow/react';
 import { toSvg } from 'html-to-image';
-import { nodeTypes } from '../nodes/registry';
-import { edgeTypes } from '../mindmap/Branch';
+import {
+  overviewNodeTypes as nodeTypes,
+  overviewEdgeTypes as edgeTypes,
+} from '../overview/renderers';
+import { getOverviewConfig } from '../overview/types';
+import { projectCanonicalOverview } from '../overview/projection';
+import { renderedOverview } from '../overview/runtime';
 import { projectGraph, projectedBounds } from '../canvas/projection';
 import { emptyFilters, type Graph } from '../model/types';
 import { download, safeName } from './semantic';
@@ -135,15 +140,22 @@ export function renderedScene(graph: Graph, scope: 'complete' | 'selected', sele
     undefined,
     scope === 'selected' ? graph.nodes.map(selectedNode) : graph.nodes,
   );
-  const nodes =
+  const baseNodes =
     scope === 'selected'
       ? projection.nodes.map((node) =>
           historicIds.has(node.id) ? { ...node, className: 'analysis-outside-data-view' } : node,
         )
       : projection.nodes;
-  const edges = projection.edges;
+  const overview =
+    getOverviewConfig(graph).enabled && scope === 'complete'
+      ? (renderedOverview(graph) ?? projectCanonicalOverview(graph))
+      : undefined;
+  const nodes = (overview?.active ? overview.nodes : baseNodes).map((node) =>
+    overview?.active ? { ...node, data: { ...node.data, exporting: true } } : node,
+  );
+  const edges = overview?.active ? overview.edges : projection.edges;
   const drawing = getDrawingLayer(graph.diagram.settings.drawing);
-  const strokes = drawing?.visible ? drawing.strokes : [];
+  const strokes = drawing?.visible && !overview?.active ? drawing.strokes : [];
   const nodeBounds = nodes.length ? projectedBounds(nodes) : undefined;
   const bounds =
     scope === 'selected' ? nodeBounds : unionBounds(nodeBounds, drawingBounds(strokes));

@@ -1,0 +1,67 @@
+.history-dialog {
+  display: grid;
+  gap: 12px;
+}
+.history-dialog p {
+  margin: 0;
+}
+.history-dialog label {
+  display: grid;
+  gap: 6px;
+}
+.history-create {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+}
+.history-create label {
+  flex: 1;
+}
+.history-capacity {
+  color: var(--muted, #657067);
+  font-size: 13px;
+}
+.history-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.history-dialog section {
+  display: grid;
+  gap: 12px;
+}
+.history-dialog table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.history-dialog th,
+.history-dialog td {
+  text-align: left;
+  padding: 6px;
+  border-bottom: 1px solid var(--border, #dce4dc);
+}
+.history-changes {
+  max-height: 260px;
+  overflow: auto;
+  padding-left: 22px;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.history-changes li {
+  margin-bottom: 7px;
+}
+.history-dialog .history-ack {
+  display: flex;
+  align-items: start;
+  gap: 8px;
+}
+.history-ack input {
+  flex: none;
+  margin-top: 3px;
+}
+@media (max-width: 600px) {
+  .history-create {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

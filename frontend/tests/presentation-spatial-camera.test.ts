@@ -222,3 +222,72 @@ it('checks complete collision geometry once, including obstacles that are not re
     dispose();
   }
 });
+
+it('fits a multi-node storyboard scene and highlights its selected links', () => {
+  const { runtime, options, dispose, card, arrived } = setup();
+  const selection = options as typeof options & { selectMany?: ReturnType<typeof vi.fn> };
+  selection.selectMany = vi.fn();
+  const entry = card('two', new THREE.Vector3(8, 3, 0), new THREE.Vector3(2, 1, 0.14));
+  runtime.batches.nodes.set(...entry);
+  try {
+    window.dispatchEvent(
+      new CustomEvent(PRESENTATION_FOCUS, {
+        detail: {
+          nodeId: 'one',
+          nodeIds: ['one', 'two'],
+          edgeIds: ['link'],
+          requestId: 90,
+          transitionMs: 800,
+        },
+      }),
+    );
+    expect(selection.selectMany).toHaveBeenCalledWith(['one', 'two'], ['link']);
+    tick(0);
+    tick(800);
+    tick(16);
+    expect(runtime.controls.target.x).toBeCloseTo(4);
+    expect(runtime.controls.target.y).toBeCloseTo(1.5);
+    expect(arrived.mock.calls.at(-1)![0].detail.error).toBeUndefined();
+    expect(runtime.setCamera.mock.calls.every(([, persist]) => persist !== true)).toBe(true);
+  } finally {
+    dispose();
+  }
+});
+
+it('captures and flies to a saved 3D storyboard camera without writing the canonical camera', async () => {
+  const { runtime, dispose, arrived } = setup();
+  const { capturePresentationView } = await import('../src/presentation/camera');
+  try {
+    expect(await capturePresentationView()).toMatchObject({
+      mode: '3d',
+      camera: { position: { x: 0, y: 0, z: 8 }, target: { x: 0, y: 0, z: 0 } },
+    });
+    window.dispatchEvent(
+      new CustomEvent(PRESENTATION_FOCUS, {
+        detail: {
+          nodeId: 'one',
+          requestId: 91,
+          transitionMs: 800,
+          view: {
+            mode: '3d',
+            camera: {
+              position: { x: 4, y: 3, z: 7 },
+              target: { x: 0.2, y: 0.1, z: 0 },
+              up: { x: 1, y: 0, z: 0 },
+            },
+          },
+        },
+      }),
+    );
+    tick(0);
+    tick(800);
+    tick(16);
+    expect(runtime.camera.position.toArray()).toEqual([4, 3, 7]);
+    expect(runtime.controls.target.x).toBeCloseTo(0.2);
+    expect(runtime.controls.target.y).toBeCloseTo(0.1);
+    expect(arrived.mock.calls.at(-1)![0].detail.error).toBeUndefined();
+    expect(runtime.setCamera.mock.calls.every(([, persist]) => persist !== true)).toBe(true);
+  } finally {
+    dispose();
+  }
+});

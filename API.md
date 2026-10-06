@@ -45,7 +45,7 @@ Use `visual_nerve_request` for graph commands. HTTP documentation paths `/api/do
 | GET                  | /settings/import-file-limit-mb | Read the effective local import limit; missing/invalid stored values return 50; read-only allowed |
 | PUT                  | /settings/import-file-limit-mb | Save this browser’s import limit as an integer from 50 to 1024 MiB; write access required         |
 
-Creates return 201 and an entity (import returns Graph). Bulk/replacement return 200 and Graph. Deletes return 204. Errors are `{ "error": "message" }`: 400 malformed JSON, 401 token missing/wrong, 403 origin/host rejected, storage not accepted or read-only mutation denied, 404 missing entity, 409 stale version or duplicate identity, 422 validation 428 missing update version, 503 no connected browser and 504 browser timeout. No partially committed graph remains after validation fails. Requests are limited to 32 MiB. All integration requests with a configured VISUAL_NERVE_BRIDGE_TOKEN need `Authorization: Bearer TOKEN`.
+Creates return 201 and an entity (import returns Graph). Bulk/replacement return 200 and Graph. Deletes return 204. Errors are `{ "error": "message" }`: 400 malformed JSON, 401 token missing/wrong, 403 origin/host rejected, storage not accepted or read-only mutation denied, 404 missing entity, 409 stale version or duplicate identity, 413 local history capacity/quota, 422 validation, 428 missing update version, 503 no connected browser and 504 browser timeout. No partially committed graph remains after validation fails. Requests are limited to 32 MiB. All integration requests with a configured VISUAL_NERVE_BRIDGE_TOKEN need `Authorization: Bearer TOKEN`.
 
 ## Local import size preference
 
@@ -79,7 +79,7 @@ Playback is transient state in the connected browser, using its current 2D or 3D
 | Method    | Route                          | Body and result                                                                      |
 | --------- | ------------------------------ | ------------------------------------------------------------------------------------ |
 | GET       | `/presentation`                | Current playback state, including while closed                                       |
-| POST      | `/presentation/open`           | Exact `{}` for the current diagram, or `{ "diagramId": "UUID" }`                     |
+| POST      | `/presentation/open`           | Exact optional `diagramId` and `source:"nodes"|"storyboard"`; source defaults to nodes                     |
 | POST      | `/presentation/play`           | Exact `{}`                                                                           |
 | POST      | `/presentation/pause`          | Exact `{}`                                                                           |
 | POST      | `/presentation/rewind`         | Exact `{}`                                                                           |
@@ -90,27 +90,54 @@ Playback is transient state in the connected browser, using its current 2D or 3D
 | GET       | `/presentation/voices`         | `{defaultVoiceId,voices:[{id,label,language,sampleRate,modelBytes,license,source}]}` |
 | GET / PUT | `/settings/presentation-voice` | Read selected voice; PUT exact `{ "value": "VOICE_ID" }`                             |
 
-Runtime commands return `{open,diagramId,status,index,total,nodeId,audio,subtitles,preload,buffered,progress,message}`. `diagramId` and `nodeId` may be null. `index` is zero-based, or -1 for an empty sequence; `progress` is from 0 to 1 and `buffered` counts prepared speech clips. Status is `idle`, `loading`, `moving`, `playing`, `paused`, `ended` or `error`. All runtime POST/PATCH commands require accepted local storage and **Read + write**, including navigation and preloading; GET permits **Read only**. They do not rewrite the saved sequence or node geometry.
+Runtime commands return `{open,diagramId,status,index,total,nodeId,audio,subtitles,preload,buffered,progress,message,source,sceneId,nodeIds,edgeIds,title,narration}`. `diagramId` and `nodeId` may be null. `index` is zero-based, or -1 for an empty sequence; `progress` is from 0 to 1 and `buffered` counts prepared speech clips. Status is `idle`, `loading`, `moving`, `playing`, `paused`, `ended` or `error`. All runtime POST/PATCH commands require accepted local storage and **Read + write**, including navigation and preloading; GET permits **Read only**. They do not rewrite the saved sequence or node geometry.
 
 Audio and preload default to false, subtitles to true. Voice IDs are `en_US-ljspeech-high` (default), `en_GB-cori-high` and `sv_SE-nst-medium`. Voice selection is a browser-local setting. Speech is generated locally; enabling speech or explicit preloading can download model assets. Discover the model sizes, licenses and sources through the voice catalog. Runtime state, generated audio and playback progress are not graph data. See [MCP presentation workflow](docs/MCP.md).
 
 ### Walkthrough video export
 
-Video export renders the entire saved numbered sequence from its first node in the current 2D or 3D view, at fixed 1280 × 720 and 30 fps. It uses the saved transition and dwell timings and lets narration finish before advancing. Long subtitle descriptions use pages; a node's dwell extends to at least 3 seconds per subtitle page. The graph and saved sequence are unchanged. Keep the browser tab visible; manual camera interaction, diagram edits or closing the player cancel the export.
+Video export renders the entire selected numbered sequence or storyboard from its first step in the current 2D or 3D view, at fixed 1280 × 720 and 30 fps. It uses the saved transition and dwell timings and lets narration finish before advancing. Long subtitle descriptions use pages; a node's dwell extends to at least 3 seconds per subtitle page. The graph and saved sequence are unchanged. Keep the browser tab visible; manual camera interaction, diagram edits or closing the player cancel the export.
 
 | Method | Route                 | Body and result                                                                                         |
 | ------ | --------------------- | ------------------------------------------------------------------------------------------------------- |
 | GET    | `/presentation/video` | Current transient video export state; **Read only** is sufficient                                       |
-| POST   | `/presentation/video` | Exact optional boolean `audio` and `subtitles`, including `{}`; starts asynchronously and returns state |
+| POST   | `/presentation/video` | Exact optional boolean `audio`/`subtitles` and `source:"nodes"|"storyboard"`, including `{}`; starts asynchronously and returns state |
 | DELETE | `/presentation/video` | Exact `{}`; cancels the active export and returns state                                                 |
 
-Omitted POST options use the current player options, initially audio off and subtitles on. POST can start while the player is closed; it opens the player for progress. POST and DELETE require accepted local storage and **Read + write**. Unknown fields, nulls and nonboolean options return 422.
+Omitted POST options use the current player options and source, initially audio off and subtitles on. POST can start while the player is closed; it opens the player for progress. POST and DELETE require accepted local storage and **Read + write**. Unknown fields, nulls and nonboolean options return 422.
 
 Starting another export or using competing player controls returns 409 while export or cancellation cleanup is active. GET state remains available. `POST /presentation/close` with exact `{}` cancels export and closes the player.
 
-All three routes return `{status,progress,nodeIndex,total,format,message,fileName}`. Status is `idle`, `preparing`, `exporting`, `complete`, `cancelled` or `error`; progress is from 0 to 1, `nodeIndex` is zero-based or -1 before a node is active, and `total` is the sequence length. `format` is `mp4`, `webm` or null; `fileName` is null until available. MP4 is preferred. WebM is a fallback only when the browser supports the requested video and optional audio codecs; narration is never silently omitted. Completion downloads the file in the connected browser; **Save video again** can repeat that download. REST and MCP return state only, without video bytes.
+All three routes return `{status,progress,nodeIndex,total,format,message,fileName,source}`. Status is `idle`, `preparing`, `exporting`, `complete`, `cancelled` or `error`; progress is from 0 to 1, `nodeIndex` is zero-based or -1 before a node is active, and `total` is the sequence length. `format` is `mp4`, `webm` or null; `fileName` is null until available. MP4 is preferred. WebM is a fallback only when the browser supports the requested video and optional audio codecs; narration is never silently omitted. Completion downloads the file in the connected browser; **Save video again** can repeat that download. REST and MCP return state only, without video bytes.
 
 Narration WAVs are synthesized locally and inserted into the exported timeline offline. Export does not require a screen picker, screen recording permission, audible playback or an audio playback gesture. Explicit export with audio can download the selected voice assets. The generated file is limited to **256 MiB**, and the final timeline, including camera movement and completed narration, to **30 minutes**. Native 2D rendering supports at most **5,000 visible cards per frame** and a **128 MiB card texture cache**. 3D export requires a complete visible projection, supporting up to **8,000 objects and 16,000 relationships**; a truncated projection fails explicitly. Exceeding limits or lacking the required codec produces an explicit error; objects, video and narration are never silently omitted or truncated. Temporary frame/audio/video buffers are not stored in IndexedDB or workspace backups.
+
+## Overview, questions, history, scenes and app specifications
+
+All routes below use the same browser-local canonical graph and are discoverable through `visual_nerve_api_docs`. Read [understanding workflows](docs/UNDERSTANDING.md) for exact nested definitions, privacy and capacity bounds; the generated OpenAPI contains complete schemas.
+
+| Method | Route | Contract |
+| --- | --- | --- |
+| GET / PUT | `/diagrams/{id}/overview` | Read config / save exact `{baseVersion,overview}` |
+| GET | `/diagrams/{id}/overview/projection?zoom=0.1` | View-only summaries, typed directed aggregates and original-ID mappings; zoom `(0,10]` |
+| POST | `/diagrams/{id}/questions` | Read-only `{startId,kind,targetId?,maxDepth?,edgeTypes?,includeHidden?,includeUncertain?,offset?,limit?}`; `kind` downstream/upstream/path |
+| GET | `/diagrams/{id}/evidence?nodeId=UUID` | Retained source metadata; adding `metricId` explicitly requests paged original CSV measure cells |
+| GET / POST | `/diagrams/{id}/history` | List / save named snapshot with exact `{baseVersion,name}` |
+| GET / DELETE | `/diagrams/{id}/history/{snapshotId}` | Read / delete archive, preserving current work |
+| GET | `/diagrams/{id}/history/{snapshotId}/compare?to=current` | Semantic diff with modeled affected dependencies; `to` may be another snapshot UUID |
+| POST | `/diagrams/{id}/history/{snapshotId}/restore` | Exact `{baseVersion}`; atomic safety copy then restore, stale version 409 |
+| GET / PUT | `/diagrams/{id}/storyboard` | Read / save exact `{baseVersion,storyboard}` |
+| POST | `/presentation/seek` | Exact `{index}`; zero-based existing step, previews paused |
+| GET / PUT | `/diagrams/{id}/build-specification` | Read / save reviewed additions and answers using exact `{baseVersion,specification}` |
+| POST | `/diagrams/{id}/build-brief` | Read-only optional `{scope,selectedIds,instructions}`; full unsent brief and structured specification |
+
+Question paths follow modeled directions, exclude unarrowed associations, handle cycles and label uncertainty; they do not establish runtime impact. Traversal is bounded at 50,000 objects, 200,000 relationships and depth 64, with pages up to 100 answers. Compact overview shows at most 2,000 cards without removing original content. Summary IDs cannot be patched as graph UUIDs.
+
+History is separate from Undo/Redo and autosave. Explicit snapshots and pre-refresh/pre-restore checkpoints retain old source rows locally; full workspace backups include them. Limits are 50 versions per diagram, 1,000 per workspace, 256 MiB archives and 32 MiB per structural graph. Capacity errors never evict named snapshots automatically. Restore preserves exact saved coordinates and IDs; shared owner profiles stay current. Diff counts remain complete while detailed lists expose truncation.
+
+Storyboard scenes store `{id,name,nodeIds,edgeIds,narration,seconds,transitionMs,view?}`. A saved view requires its matching current mode and **Details** (semantic overview off); otherwise preview/playback/video returns 422. Choose **Details** or omit `view` to **Auto-fit objects** in either mode, including overview. Open using `{diagramId?,source:"storyboard"}` and optionally export using `{source:"storyboard",audio?,subtitles?}`. The existing numbering workflow stays available with source `nodes`. Source content, layout and node descriptions are preserved.
+
+The app brief labels observed source facts and proposed behavior separately and counts unresolved decisions. It does not include original CSV rows, send to Lovable or create an external app. Both exact question and brief POST routes permit Read only without advancing graph versions. Other writes require Read + write and current `baseVersion`. Transport limits remain 32 MiB, even for backups and archived graph reads.
 
 ## Versions and metadata
 

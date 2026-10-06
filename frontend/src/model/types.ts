@@ -3,6 +3,9 @@ import type { CsvEntityFocus, CsvSourceRelationship } from '../data/model';
 import type { DrawingLayer } from '../drawing/types';
 import type { SpatialView } from '../spatial/types';
 import type { PresentationDefinition } from '../presentation/types';
+import type { StoryboardDefinition } from '../presentation/storyboard';
+import type { OverviewConfig } from '../overview/types';
+import type { BuildSpecificationDraft } from '../export/build-specification-draft';
 export type { DrawingLayer, DrawingStroke } from '../drawing/types';
 
 export const diagramTypes = [
@@ -66,6 +69,9 @@ export interface Diagram extends Base {
     drawing?: DrawingLayer;
     spatialView?: SpatialView;
     presentation?: PresentationDefinition;
+    storyboard?: StoryboardDefinition;
+    overview?: OverviewConfig;
+    buildSpecification?: BuildSpecificationDraft;
     [key: string]: unknown;
   };
 }

@@ -178,3 +178,55 @@ describe('local walkthrough movie export', () => {
       expect(() => videoOptions(value, { audio: false, subtitles: true })).toThrow();
   });
 });
+
+it('exports authored storyboard scenes with independent narration, durations and multiple selected objects', async () => {
+  const { exporter, deps, encoder, graph, context, scene } = fixture();
+  const { setStoryboard, getStoryboard } = await import('../src/presentation/storyboard');
+  const sceneId = crypto.randomUUID();
+  const updated = setStoryboard(graph, {
+    version: 1,
+    scenes: [
+      {
+        id: sceneId,
+        name: 'Assembly overview',
+        nodeIds: graph.nodes.map((n) => n.id),
+        edgeIds: [],
+        narration: 'Narration authored for the whole scene',
+        seconds: 6,
+        transitionMs: 500,
+        view: { mode: '2d', viewport: { x: 20, y: 40, zoom: 0.7 } },
+      },
+    ],
+  });
+  deps.graph = () => updated;
+  deps.focusStep = vi.fn(async () => undefined);
+  deps.prepareStep = vi.fn(async () => undefined);
+  const before = JSON.stringify(updated);
+  exporter.start({ source: 'storyboard', audio: true, subtitles: true });
+  await exporter.settled();
+  expect(exporter.getState()).toMatchObject({
+    source: 'storyboard',
+    status: 'complete',
+    total: 1,
+    nodeIndex: 0,
+  });
+  expect(deps.prepare).toHaveBeenCalledWith(
+    'Narration authored for the whole scene',
+    'en_US-ljspeech-high',
+    expect.any(AbortSignal),
+    expect.any(Function),
+  );
+  expect(deps.prepareStep).toHaveBeenCalledBefore(scene.prepare);
+  expect(deps.focusStep).toHaveBeenCalledWith(
+    getStoryboard(updated).scenes[0],
+    expect.any(AbortSignal),
+  );
+  expect(deps.focus).not.toHaveBeenCalled();
+  expect(scene.prepare).toHaveBeenCalledWith(
+    graph.nodes[0].id,
+    graph.nodes.map((n) => n.id),
+  );
+  expect(context.fillText).toHaveBeenCalledWith('1 / 1 · Assembly overview', 24, 27, 1232);
+  expect(vi.mocked(encoder.addFrame).mock.calls.length / 30).toBeGreaterThanOrEqual(6);
+  expect(JSON.stringify(updated)).toBe(before);
+});

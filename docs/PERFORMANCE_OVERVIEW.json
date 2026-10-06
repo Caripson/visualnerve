@@ -1,0 +1,38 @@
+{
+  "benchmark": "semantic-overview-v1",
+  "measuredAt": "2026-10-06",
+  "scope": "Full pure canonical render projection, deterministic grouping, compact layout and typed/directed relationship aggregation. Excludes DOM card capture, browser paint and GPU rendering.",
+  "environment": {
+    "os": "macOS 13.7.8",
+    "architecture": "x86_64",
+    "cpu": "Intel Core i5-6500 @ 3.20GHz",
+    "node": "v22.17.0",
+    "vitest": "4.1.11",
+    "environment": "JSDOM",
+    "note": "Diagnostic measurement on the development host while other checks were running; timing is not a cross-machine performance guarantee."
+  },
+  "fixture": {
+    "source": "frontend/tests/overview-fixture.ts",
+    "nodes": 10000,
+    "edges": 30000,
+    "zoom": 1.5,
+    "fixedIdsDatesAndSourcePaths": true,
+    "inputOrderIndependenceChecked": true
+  },
+  "result": {
+    "displayedCards": 65,
+    "displayedRelationships": 393,
+    "originalNodeMappings": 10000,
+    "originalEdgeMappings": 30000,
+    "warmupPasses": 2,
+    "measuredPasses": 5,
+    "runsMs": [369, 430, 438, 464, 783],
+    "medianMs": 438,
+    "fingerprint": "879f8b85bae8f862"
+  },
+  "reproduce": {
+    "workingDirectory": "frontend",
+    "command": "npx vitest run tests/overview-benchmark.test.ts --reporter=verbose",
+    "boundedDetailRegression": "npx vitest run tests/overview.test.ts"
+  }
+}

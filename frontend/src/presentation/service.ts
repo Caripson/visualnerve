@@ -7,9 +7,51 @@ import { PresentationPlayer } from './runtime';
 import { speechService } from './speech/service';
 import { VOICE_SETTING, normalizeVoiceId, VOICES, DEFAULT_VOICE_ID } from './speech/voices';
 import type { SpeechProgress } from './speech/protocol';
+import {
+  PRESENTATION_RELEASE,
+  PRESENTATION_REVEAL,
+  type PresentationRevealRequest,
+} from './camera';
+import type { PresentationStep } from './sequence';
+import type { PresentationSource } from './storyboard';
+import { assertStoryboardViewCompatible } from './view-compatibility';
 
 let requestId = 0;
-export function focusPresentationCamera(nodeId: string, transitionMs: number, signal: AbortSignal) {
+let selectionBefore: { diagramId: string; nodes: string[]; edges: string[] } | undefined;
+export function releasePresentationHighlight() {
+  const state = useEditor.getState();
+  if (selectionBefore && state.graph?.diagram.id === selectionBefore.diagramId) {
+    const nodes = new Set(state.graph.nodes.map((node) => node.id)),
+      edges = new Set(state.graph.edges.map((edge) => edge.id));
+    useEditor.setState({
+      selectedNodes: selectionBefore.nodes.filter((id) => nodes.has(id)),
+      selectedEdges: selectionBefore.edges.filter((id) => edges.has(id)),
+    });
+  }
+  selectionBefore = undefined;
+  window.dispatchEvent(new Event(PRESENTATION_RELEASE));
+}
+function rememberSelection() {
+  const state = useEditor.getState();
+  if (state.graph && (!selectionBefore || selectionBefore.diagramId !== state.graph.diagram.id))
+    selectionBefore = {
+      diagramId: state.graph.diagram.id,
+      nodes: [...state.selectedNodes],
+      edges: [...state.selectedEdges],
+    };
+}
+function moveCamera(
+  target: {
+    nodeId: string;
+    nodeIds?: string[];
+    edgeIds?: string[];
+    view?: PresentationStep['view'];
+  },
+  transitionMs: number,
+  signal: AbortSignal,
+) {
+  signal.throwIfAborted();
+  rememberSelection();
   return new Promise<void>((resolve, reject) => {
     const id = ++requestId;
     const finish = (error?: string) => {
@@ -36,10 +78,73 @@ export function focusPresentationCamera(nodeId: string, transitionMs: number, si
     }
     window.dispatchEvent(
       new CustomEvent('visualnerve:presentation-focus', {
-        detail: { nodeId, transitionMs, requestId: id },
+        detail: { ...target, transitionMs, requestId: id },
       }),
     );
   });
+}
+export function focusPresentationCamera(nodeId: string, transitionMs: number, signal: AbortSignal) {
+  return moveCamera({ nodeId }, transitionMs, signal);
+}
+function stepTarget(step: PresentationStep) {
+  const graph = useEditor.getState().graph;
+  const edges = graph?.edges.filter((edge) => step.edgeIds.includes(edge.id)) ?? [];
+  const ids = [
+    ...new Set([
+      ...step.nodeIds,
+      ...edges.flatMap((edge) => [edge.sourceNodeId, edge.targetNodeId]),
+    ]),
+  ];
+  return {
+    nodeId: ids[0],
+    nodeIds: ids,
+    edgeIds: step.edgeIds,
+    ...(step.view ? { view: step.view } : {}),
+  };
+}
+export function revealPresentationStep(step: PresentationStep, signal: AbortSignal): Promise<void> {
+  signal.throwIfAborted();
+  const graph = useEditor.getState().graph;
+  if (graph) assertStoryboardViewCompatible(graph, step.view);
+  rememberSelection();
+  const target = stepTarget(step);
+  useEditor.setState({ selectedNodes: target.nodeIds, selectedEdges: target.edgeIds });
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (error?: string) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      signal.removeEventListener('abort', stop);
+      error ? reject(new Error(error)) : resolve();
+    };
+    const stop = () => finish('Storyboard preparation cancelled.');
+    const timer = setTimeout(
+      () => finish('The diagram view did not prepare the storyboard objects.'),
+      8000,
+    );
+    signal.addEventListener('abort', stop, { once: true });
+    if (signal.aborted) {
+      stop();
+      return;
+    }
+    window.dispatchEvent(
+      new CustomEvent<PresentationRevealRequest>(PRESENTATION_REVEAL, {
+        detail: {
+          nodeIds: target.nodeIds,
+          edgeIds: target.edgeIds,
+          signal,
+          respond: () => finish(),
+          error: finish,
+        },
+      }),
+    );
+  });
+}
+export async function focusPresentationStepCamera(step: PresentationStep, signal: AbortSignal) {
+  await revealPresentationStep(step, signal);
+  signal.throwIfAborted();
+  return moveCamera(stepTarget(step), step.transitionMs, signal);
 }
 const progressAdapter =
   (progress: (value: number, message: string) => void) => (value: SpeechProgress) =>
@@ -52,6 +157,8 @@ export const presentation = new PresentationPlayer({
   preloadVoice: (voice, signal, progress) =>
     speechService.preload(normalizeVoiceId(voice), signal, progressAdapter(progress)),
   focus: focusPresentationCamera,
+  focusStep: focusPresentationStepCamera,
+  releaseHighlight: releasePresentationHighlight,
   cancelCamera: () => window.dispatchEvent(new Event('visualnerve:presentation-camera-cancel')),
   narration: new Narrator(),
   release: () => speechService.cancel(),
@@ -97,6 +204,35 @@ export async function presentationRequest(
     if (video.isVideoExporting())
       throw new StorageError(409, 'Cancel or finish video export before controlling the player.');
     return presentation.options(value);
+  }
+  if (path === '/presentation/seek' && method === 'POST') {
+    if (video.isVideoExporting())
+      throw new StorageError(409, 'Cancel or finish video export before controlling the player.');
+    if (
+      !value ||
+      typeof value !== 'object' ||
+      Array.isArray(value) ||
+      Object.keys(value).some((key) => key !== 'index')
+    )
+      throw new StorageError(422, 'Seek requires an exact index.');
+    return presentation.seek((value as { index: number }).index);
+  }
+  if (
+    path === '/presentation/open' &&
+    method === 'POST' &&
+    value &&
+    typeof value === 'object' &&
+    !Array.isArray(value)
+  ) {
+    const fields = value as { source?: PresentationSource };
+    if (
+      Object.keys(fields).some((key) => key !== 'source') ||
+      (fields.source !== undefined && !['nodes', 'storyboard'].includes(fields.source))
+    )
+      throw new StorageError(422, 'Open accepts an optional nodes or storyboard source.');
+    if (video.isVideoExporting())
+      throw new StorageError(409, 'Cancel or finish video export before controlling the player.');
+    return presentation.open(fields.source);
   }
   const action = path.slice('/presentation/'.length);
   if (

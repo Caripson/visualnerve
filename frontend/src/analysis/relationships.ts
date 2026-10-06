@@ -1,5 +1,8 @@
 import type { Graph } from '../model/types';
 import { getCsvNode } from '../data/csv';
+import { getCodeRelation } from '../code/schema';
+import { getSqlQueryRelationship } from '../sql/query-schema';
+import { getSqlRelationship } from '../sql/schema';
 import {
   analysisLimits,
   validateExploration,
@@ -15,6 +18,8 @@ export interface RelationshipGraph {
     target: string;
     direction: 'forward' | 'backward' | 'both' | 'none';
     outsideView?: boolean;
+    edgeType?: string;
+    uncertain?: boolean;
   }[];
 }
 export function relationshipGraph(graph: Graph): RelationshipGraph {
@@ -24,6 +29,13 @@ export function relationshipGraph(graph: Graph): RelationshipGraph {
     target: edge.targetNodeId,
     direction: edge.direction,
     outsideView: edge.metadata.csvModelVisible === false,
+    edgeType: edge.edgeType,
+    uncertain:
+      ['heuristic', 'unresolved'].includes(getCodeRelation(edge)?.confidence ?? '') ||
+      getSqlRelationship(edge)?.unresolved === true ||
+      getSqlQueryRelationship(edge)?.references?.some(
+        (reference) => reference.resolution !== 'resolved',
+      ),
   }));
   if (graph.diagram.type === 'mindmap') {
     const pairs = new Set(
@@ -42,6 +54,7 @@ export function relationshipGraph(graph: Graph): RelationshipGraph {
           source: node.parentId,
           target: node.id,
           direction: 'forward',
+          edgeType: 'hierarchy',
         });
   }
   return {
@@ -86,11 +99,14 @@ export function exploreRelationships(
   const undirected = config.mode === 'path' ? !config.directed : config.direction === 'all';
   for (const edge of graph.edges) {
     if (edge.outsideView && !config.includeHidden) continue;
+    if (config.edgeTypes?.length && !config.edgeTypes.includes(edge.edgeType ?? 'relationship'))
+      continue;
+    if (config.includeUncertain === false && edge.uncertain) continue;
     if (undirected) {
       put(edge.source, edge.target, edge.id);
       put(edge.target, edge.source, edge.id);
     } else {
-      const incoming = config.mode === 'neighbors' && config.direction === 'incoming';
+      const incoming = config.mode !== 'path' && config.direction === 'incoming';
       if (edge.direction === 'forward' || edge.direction === 'both')
         put(incoming ? edge.target : edge.source, incoming ? edge.source : edge.target, edge.id);
       if (edge.direction === 'backward' || edge.direction === 'both')
@@ -105,7 +121,7 @@ export function exploreRelationships(
     const current = queue[index];
     const distance = reached.get(current)!.distance;
     if (config.mode === 'path' && current === config.targetId) break;
-    if (config.mode === 'neighbors' && distance >= config.steps) continue;
+    if (config.mode !== 'path' && distance >= config.steps) continue;
     for (const connection of adjacency.get(current) ?? []) {
       if (reached.has(connection.node)) continue;
       reached.set(connection.node, {
@@ -138,6 +154,9 @@ export function exploreRelationships(
       .filter(
         (edge) =>
           (config.includeHidden || !edge.outsideView) &&
+          (!config.edgeTypes?.length ||
+            config.edgeTypes.includes(edge.edgeType ?? 'relationship')) &&
+          (config.includeUncertain !== false || !edge.uncertain) &&
           included.has(edge.source) &&
           included.has(edge.target),
       )

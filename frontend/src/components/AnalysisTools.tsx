@@ -37,11 +37,13 @@ export function AnalysisDialog({ close, startId }: { close: () => void; startId?
   const result = useEditor((state) => state.explorationResult);
   const working = useEditor((state) => state.explorationBusy);
   const previous = graph && getExploration(graph);
-  const [mode, setMode] = useState<'neighbors' | 'path'>(previous?.mode ?? 'neighbors');
+  const [mode, setMode] = useState<'neighbors' | 'path'>(
+    previous?.mode === 'path' ? 'path' : 'neighbors',
+  );
   const [direction, setDirection] = useState<RelationshipExploration['direction']>(
     previous?.direction ?? 'all',
   );
-  const [steps, setSteps] = useState<1 | 2>(previous?.steps ?? 1);
+  const [steps, setSteps] = useState<1 | 2>(previous?.steps === 2 ? 2 : 1);
   const [directed, setDirected] = useState(previous?.directed ?? true);
   const [includeHidden, setIncludeHidden] = useState(previous?.includeHidden ?? false);
   const [search, setSearch] = useState('');

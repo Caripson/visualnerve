@@ -114,3 +114,27 @@
     font-size: 12px;
   }
 }
+.build-specification {
+  display: grid;
+  gap: 1rem;
+}
+.build-specification details {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.9rem;
+}
+.build-specification summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.build-specification pre {
+  max-height: 18rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 0.8rem;
+  font-size: 0.8rem;
+}
+.build-specification details > .field {
+  margin-top: 1rem;
+}

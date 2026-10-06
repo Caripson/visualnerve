@@ -3,12 +3,20 @@ import { useEditor } from '../state/editor';
 import { repository } from '../storage/repository';
 import { download } from '../export/semantic';
 import { StorageError } from '../model/errors';
-import { focusPresentationCamera, presentation } from './service';
+import {
+  focusPresentationCamera,
+  focusPresentationStepCamera,
+  revealPresentationStep,
+  releasePresentationHighlight,
+  presentation,
+} from './service';
 import { speechService } from './speech/service';
 import { normalizeVoiceId, VOICE_SETTING } from './speech/voices';
 import { VideoExporter } from './video-runtime';
 import { VIDEO_FPS, VIDEO_HEIGHT, VIDEO_WIDTH, videoOptions } from './video-types';
 import { videoGraphFingerprint } from './video-graph';
+import { presentationSteps } from './sequence';
+import { assertStoryboardViewCompatible } from './view-compatibility';
 
 let file: { blob: Blob; name: string } | undefined;
 function nextFrame(signal: AbortSignal) {
@@ -40,6 +48,8 @@ export const videoExport = new VideoExporter({
       canvas,
     ),
   focus: focusPresentationCamera,
+  prepareStep: revealPresentationStep,
+  focusStep: focusPresentationStepCamera,
   stop: () => {
     presentation.pause('', true);
     window.dispatchEvent(new Event('visualnerve:presentation-camera-cancel'));
@@ -67,6 +77,9 @@ export function startVideo(value: unknown, external = false) {
     throw new StorageError(403, 'Video export requires MCP write access.');
   if (document.hidden) throw new StorageError(409, 'Keep the diagram tab visible to export video.');
   if (isVideoExporting()) throw new StorageError(409, 'A video export is already running.');
+  if (before.graph)
+    for (const step of presentationSteps(before.graph, options.source ?? 'nodes'))
+      assertStoryboardViewCompatible(before.graph, step.view);
   before.finishEditing();
   window.dispatchEvent(new Event('visualnerve:spatial-camera-flush'));
   const editor = useEditor.getState();
@@ -105,6 +118,7 @@ export function startVideo(value: unknown, external = false) {
   document.addEventListener('visibilitychange', hidden);
   window.addEventListener('pagehide', close);
   const cleanup = () => {
+    releasePresentationHighlight();
     unsubscribe();
     window.removeEventListener('visualnerve:presentation-interrupted', interrupted);
     surface?.removeEventListener('pointerdown', interrupted, true);
@@ -113,7 +127,11 @@ export function startVideo(value: unknown, external = false) {
     window.removeEventListener('pagehide', close);
   };
   try {
-    if (!presentation.getState().open) presentation.open();
+    if (
+      !presentation.getState().open ||
+      presentation.getState().source !== (options.source ?? 'nodes')
+    )
+      presentation.open(options.source ?? 'nodes');
     const state = videoExport.start(options);
     file = undefined;
     void videoExport.settled().finally(cleanup);

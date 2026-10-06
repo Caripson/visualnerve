@@ -18,6 +18,9 @@ import { validateSqlQueryGraph } from '../sql/query-schema';
 import { validateCodeGraph } from '../code/schema';
 import { StorageError } from './errors';
 import { validatePresentation } from '../presentation/types';
+import { validateStoryboard } from '../presentation/storyboard';
+import { validateOverviewConfig } from '../overview/types';
+import { validateBuildSpecification } from '../export/build-specification';
 
 export { StorageError } from './errors';
 const uuid = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
@@ -136,6 +139,12 @@ export function validateGraph(graph: Graph, trustedDataset?: CsvDataset | CsvDat
   const sources = graphDatasets(graph);
   if (graph.diagram.settings.presentation !== undefined)
     validatePresentation(graph.diagram.settings.presentation, graph);
+  if (graph.diagram.settings.storyboard !== undefined)
+    validateStoryboard(graph.diagram.settings.storyboard, graph);
+  if (graph.diagram.settings.overview !== undefined)
+    validateOverviewConfig(graph.diagram.settings.overview);
+  if (graph.diagram.settings.buildSpecification !== undefined)
+    validateBuildSpecification(graph.diagram.settings.buildSpecification);
   const trusted = new Set(
     Array.isArray(trustedDataset) ? trustedDataset : trustedDataset ? [trustedDataset] : [],
   );

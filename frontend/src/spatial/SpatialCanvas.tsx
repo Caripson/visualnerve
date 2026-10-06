@@ -35,6 +35,14 @@ import { spatialDragPoint } from './drag';
 import { spatialMovementPreview } from './movementScene';
 import './spatial.css';
 import { captureSpatialNodeFaces } from './faces';
+import type { OverviewProjection } from '../overview/types';
+import { isOverviewGroupId, isOverviewEdgeId } from '../overview/types';
+import { overviewRenderGraph } from '../overview/layout';
+import { overviewSelection } from '../overview/selection';
+import { OverviewControls, OVERVIEW_RESET_VIEW } from '../overview/Controls';
+import { expandOverviewGroup } from '../overview/OverviewNode';
+import { OVERVIEW_RESTORE_VIEW } from '../overview/runtime';
+import type { StoryboardView } from '../presentation/storyboard';
 import { NavigationGizmo } from './NavigationGizmo';
 import {
   navigateSpatialCamera,
@@ -61,6 +69,8 @@ export interface SpatialCanvasProps {
   edges: Edge[];
   onReturnTo2D: () => void;
   onCameraChange: (camera: SpatialCamera) => void;
+  overview?: OverviewProjection;
+  onPresentationReveal?: (ids: string[], signal?: AbortSignal) => Promise<void>;
 }
 type Bounds = ReturnType<typeof spatialBounds>;
 type FaceMesh = THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
@@ -230,19 +240,23 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
   const view = getSpatialView(graph);
   const visibleNodes = useMemo(() => nodes.filter((node) => !node.hidden), [nodes]);
   const visibleEdges = useMemo(() => edges.filter((edge) => !edge.hidden), [edges]);
+  const renderSelection = useMemo(
+    () => overviewSelection(props.overview, selectedNodes, selectedEdges),
+    [props.overview, selectedNodes, selectedEdges],
+  );
   const projected = useMemo(
     () =>
       boundedSpatialProjection(
         nodes,
         edges,
-        focusNode ? [...selectedNodes, focusNode] : selectedNodes,
-        selectedEdges,
+        focusNode ? [...renderSelection.nodes, focusNode] : renderSelection.nodes,
+        renderSelection.edges,
       ),
-    [nodes, edges, selectedNodes, selectedEdges, focusNode],
+    [nodes, edges, renderSelection, focusNode],
   );
   const relief = useMemo(
-    () => projectSpatialGraph(graph),
-    [graph.nodes, graph.edges, graph.diagram.type],
+    () => projectSpatialGraph(props.overview?.active ? overviewRenderGraph(graph, nodes) : graph),
+    [graph.nodes, graph.edges, graph.diagram.type, nodes, props.overview?.active],
   );
   const positions = relief.positions;
   const presentationGeometryKey = useMemo(
@@ -536,6 +550,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
         if (
           disposed ||
           current.presentationActive ||
+          propsRef.current.overview?.active ||
           propsRef.current.graph.diagram.id !== diagramId
         )
           return;
@@ -580,6 +595,10 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       unavailable: () => disposed || lost,
       visible: (id) => propsRef.current.nodes.some((node) => node.id === id && !node.hidden),
       select: (id) => useEditor.setState({ selectedNodes: [id], selectedEdges: [] }),
+      selectMany: (nodeIds, edgeIds) =>
+        useEditor.setState({ selectedNodes: nodeIds, selectedEdges: edgeIds }),
+      reveal: (request) =>
+        propsRef.current.onPresentationReveal?.(request.nodeIds ?? [request.nodeId]),
       syncCameraAttributes,
       obstacles: () => {
         current.positions = modelRef.current.positions;
@@ -660,13 +679,43 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
         detail?.error?.(VIDEO_SPATIAL_LIMIT_ERROR);
         return;
       }
-      const id = detail?.nodeId;
-      if (id && propsRef.current.nodes.some((node) => node.id === id && !node.hidden))
-        useEditor.setState({ selectedNodes: [id], selectedEdges: [] });
+      const ids = detail?.nodeIds ?? (detail?.nodeId ? [detail.nodeId] : []);
+      const visible = new Set(
+        propsRef.current.nodes.filter((node) => !node.hidden).map((node) => node.id),
+      );
+      const selected = ids.filter((id) => visible.has(id));
+      if (selected.length) useEditor.setState({ selectedNodes: selected });
       current.refreshFaces();
     };
     window.addEventListener(VIDEO_SPATIAL_FRAME, captureFrame);
     window.addEventListener(VIDEO_SPATIAL_PREPARE, prepareFrame);
+    const resetOverview = () => {
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          if (!disposed && !lost) {
+            const saved =
+              !propsRef.current.overview?.active && getSpatialView(propsRef.current.graph).camera;
+            current.setCamera(
+              saved || defaultSpatialCamera(current.bounds, camera.aspect),
+              false,
+              true,
+            );
+          }
+        }),
+      );
+    };
+    window.addEventListener(OVERVIEW_RESET_VIEW, resetOverview);
+    const restoreOverview = (event: Event) => {
+      const view = (event as CustomEvent<StoryboardView>).detail;
+      if (view?.mode !== '3d') return;
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          if (!disposed && !lost && propsRef.current.overview?.active)
+            current.setCamera(view.camera, false, true);
+        }),
+      );
+    };
+    window.addEventListener(OVERVIEW_RESTORE_VIEW, restoreOverview);
     const raycaster = new THREE.Raycaster();
     raycaster.params.Line = { threshold: 0.07 };
     const pointers = new Set<number>();
@@ -729,6 +778,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
         clickStart = { x: event.clientX, y: event.clientY, id: event.pointerId };
       else clickStart = undefined;
       if (!clickStart || !moveObjectsRef.current || lost || !current.batches) return;
+      if (propsRef.current.overview?.active) return;
       const { identity } = pick(event);
       if (!identity.nodeId) return;
       const state = useEditor.getState();
@@ -828,6 +878,10 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
         return;
       const { identity, hits } = pick(event);
       if (identity.nodeId) {
+        if (isOverviewGroupId(identity.nodeId)) {
+          expandOverviewGroup(identity.nodeId);
+          return;
+        }
         const selected = useEditor.getState().selectedNodes;
         useEditor
           .getState()
@@ -838,7 +892,11 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
                 : [...selected, identity.nodeId]
               : [identity.nodeId],
           );
-      } else if (identity.edgeId && !identity.edgeId.startsWith('hierarchy:'))
+      } else if (
+        identity.edgeId &&
+        !identity.edgeId.startsWith('hierarchy:') &&
+        !isOverviewEdgeId(identity.edgeId)
+      )
         useEditor.getState().select([], [identity.edgeId]);
       else if (!hits.length) useEditor.getState().select([]);
     };
@@ -946,6 +1004,8 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       window.removeEventListener('visualnerve:spatial-camera-flush', current.flushCamera);
       window.removeEventListener(VIDEO_SPATIAL_FRAME, captureFrame);
       window.removeEventListener(VIDEO_SPATIAL_PREPARE, prepareFrame);
+      window.removeEventListener(OVERVIEW_RESET_VIEW, resetOverview);
+      window.removeEventListener(OVERVIEW_RESTORE_VIEW, restoreOverview);
       controls.dispose();
       disposeSpatialScene(root);
       renderer.renderLists.dispose();
@@ -989,8 +1049,9 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     if (!current.initialized) {
       current.initialized = true;
       current.setCamera(
-        getSpatialView(propsRef.current.graph).camera ??
-          defaultSpatialCamera(model.bounds, current.camera.aspect),
+        (!propsRef.current.overview?.active
+          ? getSpatialView(propsRef.current.graph).camera
+          : undefined) ?? defaultSpatialCamera(model.bounds, current.camera.aspect),
       );
     }
     current.draw();
@@ -999,8 +1060,8 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
   useEffect(() => {
     const current = runtime.current;
     if (!current) return;
-    const selected = new Set(selectedNodes),
-      relationships = new Set(selectedEdges);
+    const selected = new Set(renderSelection.nodes),
+      relationships = new Set(renderSelection.edges);
     if (current.batches)
       selectSpatialBatches(
         current.batches,
@@ -1012,7 +1073,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     current.selectedNodeIds = selected;
     current.selectedEdgeIds = relationships;
     current.draw();
-  }, [selectedNodes, selectedEdges, sceneKey]);
+  }, [renderSelection, sceneKey]);
 
   useEffect(() => {
     const current = runtime.current;
@@ -1031,8 +1092,8 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
         opacity: number;
       }
     >();
-    const selected = new Set(selectedNodes),
-      selectedLinks = new Set(selectedEdges);
+    const selected = new Set(renderSelection.nodes),
+      selectedLinks = new Set(renderSelection.edges);
     if (showLabels) {
       // Keep physical text faces near the visible camera region resident. Camera movement
       // changes which textures are useful, never their world orientation or dimensions.
@@ -1215,7 +1276,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
           );
         }
       });
-  }, [sceneKey, showLabels, selectedNodes, selectedEdges, faceRevision]);
+  }, [sceneKey, showLabels, renderSelection, faceRevision]);
 
   const cameraKey = JSON.stringify(view.camera);
   useEffect(() => {
@@ -1329,6 +1390,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
         runtime.current?.cancelPresentation('Camera movement interrupted.', true)
       }
     >
+      {props.overview && <OverviewControls projection={props.overview} />}
       <div ref={host} className="spatial-stage" />
       <NavigationGizmo
         camera={navigationCamera}
@@ -1342,7 +1404,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
           Return to 2D
         </button>
         <button
-          disabled={!ready}
+          disabled={!ready || props.overview?.active}
           aria-pressed={moveObjects}
           onClick={() => {
             runtime.current?.abortMovement();
@@ -1475,7 +1537,11 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
                   aria-pressed={selectedNodes.includes(view.id)}
                   data-node-id={view.id}
                   data-node-status={view.data.node.status ?? ''}
-                  onClick={() => useEditor.getState().select([view.id])}
+                  onClick={() =>
+                    isOverviewGroupId(view.id)
+                      ? expandOverviewGroup(view.id)
+                      : useEditor.getState().select([view.id])
+                  }
                 >
                   <span>{view.data.node.title}</span>
                   {view.className === 'analysis-outside-data-view' && (
@@ -1526,7 +1592,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
               {listedRelationships.map((edge) => (
                 <div role="listitem" key={edge.id}>
                   <button
-                    disabled={edge.id.startsWith('hierarchy:')}
+                    disabled={edge.id.startsWith('hierarchy:') || isOverviewEdgeId(edge.id)}
                     aria-label={`Select relationship ${edge.label || 'connection'} from ${nodeNames.get(edge.source)} to ${nodeNames.get(edge.target)}`}
                     aria-pressed={selectedEdges.includes(edge.id)}
                     onClick={() => useEditor.getState().select([], [edge.id])}

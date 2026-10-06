@@ -1,5 +1,6 @@
 import type { Graph } from '../model/types';
 import { StorageError } from '../model/errors';
+import type { PresentationSource } from './storyboard';
 
 export interface PresentationDefinition {
   version: 1;
@@ -27,6 +28,12 @@ export interface PresentationRuntimeState {
   index: number;
   total: number;
   nodeId: string | null;
+  source: PresentationSource;
+  sceneId: string | null;
+  nodeIds: string[];
+  edgeIds: string[];
+  title: string;
+  narration: string;
   audio: boolean;
   subtitles: boolean;
   preload: boolean;

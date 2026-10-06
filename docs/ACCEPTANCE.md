@@ -7,7 +7,7 @@ Verified on 2026-10-05 in the provided Linux/WSL workspace with Go 1.27.1, Node 
 | Area | Result |
 | --- | --- |
 | Architecture | Public static application files served by any static host; private content remains in the browser. S3/CloudFront deployment artifacts are supplied, without provisioning AWS resources. |
-| Storage | IndexedDB is authoritative, with seven stores and explicit Dexie v1–v5 upgrades. React holds working state; complete exports and atomic Merge/Replace restore provide manual portability. |
+| Storage | IndexedDB is authoritative, with eleven stores and explicit Dexie v1–v7 upgrades. React holds working state; complete exports and atomic Merge/Replace restore provide manual portability. |
 | Privacy | Normal editing uploads no content. Another browser, profile, device or origin has independent data. Optional MCP returns content only through the explicitly enabled local bridge. |
 | UI | Required remembered storage/cache acceptance, Local only badge, Data & Privacy settings, separate diagram/full-backup exports, confirmed restore/deletion, storage details and dismissible backup reminder. |
 | MCP | Active browser required; loopback-only bridge; Off, Read only and Read + write permissions; shared graph validation; clear failure when disconnected. An authenticated user-requested example was created successfully. |
@@ -538,3 +538,90 @@ Live read-only MCP checks confirm initialization and request-tool discovery,
 the import guide, GET/PUT setting contract and the full updated OpenAPI resource,
 without changing browser records. Work stays on main and S3/CloudFront
 deployment remains manual.
+
+## 2026-10-06: Five understanding workflows
+
+Semantic overview projects the canonical graph into stable summary cards with
+status counts and typed, directed relationship aggregates. Expand, Back one
+level and Details navigate without replacing original IDs, styles, icons,
+positions or connections. The same projection supports 2D, 3D and rendered
+exports; canonical JSON/Markdown and the Details pen layer retain their original
+coordinates. The reproducible 10,000-node/30,000-edge fixture produces 65 cards
+and 393 aggregates, retaining every original reference. Five measured pure
+projections have a 438 ms median on the documented host. This excludes browser
+painting and GPU rendering and is not a cross-machine frame-rate guarantee.
+
+Relationship questions and modeled impact analysis traverse multiple levels
+with direction, type, cycle, uncertainty and depth handling. Paths carry
+retained code/SQL/CSV or manual evidence. Analysis runs in a worker, respects
+documented size/page limits, preserves HTTP error statuses and rejects stale
+focus results. Static relationships are not asserted to prove runtime impact.
+Raw CSV measure cells are shared only by an explicitly requested evidence page;
+ordinary questions and app briefs exclude them and arbitrary custom metadata.
+
+Named local history supports semantic comparisons, automatic checkpoints before
+source refresh and atomic safety checkpoints before restoration. Restore retains
+exact canonical 2D/3D positions and IDs. Portable workspace backups include
+history and deduplicate immutable source rows; older backups remain supported.
+Deferred real WebCrypto regressions revoke MCP grants or storage consent during
+snapshot/restore preparation and verify 403 with all history tables and current
+graph unchanged. The local UI history remains available with MCP Off. Capacity,
+stale-version and failed-checkpoint cases preserve current work.
+
+Storyboards extend numbered presentations with editable multi-object scenes,
+highlighted connections, separate narration, ordering, dwell/transition times
+and captured 2D/3D views. Saved views require Details and their matching mode;
+Auto-fit works in either mode and semantic overview. Playback and film export
+reuse local English-default/Swedish narration, subtitles and preload. Temporary
+selection, reveal and camera navigation leave the canonical layout intact. The
+2D camera now uses a directly cancellable viewport animation instead of queuing
+a late fit after pause or cancellation; controller regressions cover that race.
+
+Lovable handoff adds editable reviewed sections and decision answers. Source
+facts remain distinct from proposed screens/read APIs, explicit constraints
+supply acceptance criteria, and missing behavior becomes an open decision.
+The preview is read-only and unsent; the existing copy, download and explicit
+Lovable controls complete handoff. SQL export uses shared strict allowlists so
+unknown metadata and original scripts cannot leak into the brief.
+
+REST, generated OpenAPI, MCP initialization, tool descriptions and bundled
+guide/resources expose all five workflows. An isolated instance of the final
+production binary returned the exact 389,729-byte OpenAPI resource and every new
+workflow during read-only discovery without a browser or workspace writes.
+Implementation is split into overview, questions, history, storyboard and
+specification modules, with shared repository command routing.
+
+The complete final frontend run passed 1,154 tests across 118 files. TypeScript,
+formatting, Go race tests/vet and the TypeScript/Vite/Hugo/OpenAPI/Go production
+build passed. The static audit contains 304 application files and 49 offline
+shell assets, with no user data. The benchmark and compact overview screenshot
+were checked; summary counts, internal loops, both directed relation types and
+readable native cards are visible.
+
+All six new production-browser scenarios passed across focused runs: overview
+expansion/back and identical 2D/3D rendered projection; source-backed questions,
+read-only MCP preview and Lovable draft persistence; reviewed restoration and
+safety checkpoint persistence; storyboard editing/exact saved 2D view; authored
+3D view and a decoded, playable 1280×720 scene movie; and Overview capture
+guards with Auto-fit highlighting. The original node/edge records and canonical
+layouts remain unchanged by presentation and overview navigation.
+
+Across the broad regression run and focused final retries, all 86 distinct
+browser scenarios passed. The first broad run passed 72 of 80 older scenarios;
+its failures led to the cancellable 2D camera fix, Details reveal fast path and
+schema-7 backup expectations. Final runs passed both legacy movie exports, all
+nine privacy/backup/grant cases, all three numbered-player cases and the complete
+2,501-card/2,500-connection 3D regression. That large case verifies rotation,
+readable physical faces, search/edit/focus and return to unchanged 2D geometry;
+its screenshot was inspected.
+
+The manual-player fixture now uses a 30-second dwell and asserts that Pause
+retains the first node before Forward. Its trace showed a 2.459-second stable
+click wait outlasting the former two-second dwell, followed by correct natural
+advancement. Runtime timing and short movie assertions remain covered. A final
+3D readiness timeout coincided with ReadPixels GPU stalls; the renderer became
+ready immediately afterward and the isolated retry passed with the original
+time limits. Software-GPU suites were serialized on the development host.
+
+Historical screenshot fixtures were retained. Work is committed directly to
+main; S3/CloudFront deployment remains manual and no deployment was triggered.

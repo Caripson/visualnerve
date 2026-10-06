@@ -31,6 +31,16 @@ func presentationObject(data json.RawMessage, allowed ...string) (map[string]jso
 	return fields, nil
 }
 
+func presentationSource(fields map[string]json.RawMessage) error {
+	if raw, exists := fields["source"]; exists {
+		var source string
+		if json.Unmarshal(raw, &source) != nil || !Contains([]string{"nodes", "storyboard"}, source) {
+			return fmt.Errorf("presentation source must be nodes or storyboard")
+		}
+	}
+	return nil
+}
+
 func ValidatePresentationDefinition(data json.RawMessage) (PresentationDefinition, error) {
 	var definition PresentationDefinition
 	fields, err := presentationObject(data, "version", "nodeIds", "secondsPerNode", "transitionMs")
@@ -89,17 +99,31 @@ func ValidatePresentationCommand(path, method string, data json.RawMessage) erro
 	if path == "/presentation/video" && (method == "POST" || method == "DELETE") {
 		allowed := []string{}
 		if method == "POST" {
-			allowed = append(allowed, "audio", "subtitles")
+			allowed = append(allowed, "audio", "subtitles", "source")
 		}
 		fields, err := presentationObject(data, allowed...)
 		if err != nil {
 			return err
 		}
 		for key, raw := range fields {
+			if key == "source" {
+				continue
+			}
 			var enabled bool
 			if json.Unmarshal(raw, &enabled) != nil {
 				return fmt.Errorf("%s must be a boolean", key)
 			}
+		}
+		return presentationSource(fields)
+	}
+	if path == "/presentation/seek" && method == "POST" {
+		fields, err := presentationObject(data, "index")
+		if err != nil {
+			return err
+		}
+		var index float64
+		if len(fields) != 1 || json.Unmarshal(fields["index"], &index) != nil || math.IsNaN(index) || math.IsInf(index, 0) || index < 0 || index > 9007199254740991 || math.Trunc(index) != index {
+			return fmt.Errorf("seek requires a non-negative safe integer index")
 		}
 		return nil
 	}
@@ -137,7 +161,7 @@ func ValidatePresentationCommand(path, method string, data json.RawMessage) erro
 		}
 		allowed := []string{}
 		if action == "open" {
-			allowed = append(allowed, "diagramId")
+			allowed = append(allowed, "diagramId", "source")
 		}
 		fields, err := presentationObject(data, allowed...)
 		if err != nil {
@@ -149,7 +173,7 @@ func ValidatePresentationCommand(path, method string, data json.RawMessage) erro
 				return fmt.Errorf("diagramId must be a UUID")
 			}
 		}
-		return nil
+		return presentationSource(fields)
 	}
 	parts := strings.Split(strings.Trim(path, "/"), "/")
 	if len(parts) == 3 && parts[0] == "diagrams" && parts[2] == "presentation" && method == "PUT" {

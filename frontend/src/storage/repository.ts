@@ -40,8 +40,17 @@ import {
   isPresentationVoiceId,
 } from '../presentation/types';
 import { analysisCommand, type AnalysisCommandOptions } from './analysis-commands';
+import { HistoryStore, historyTables } from '../history/store';
+import { understandingActions, understandingCommand } from './understanding-commands';
+import { remapStoryboard, pruneStoryboard } from '../presentation/storyboard';
+import { remapBuildSpecification } from '../export/build-specification';
+import { remapOverview } from '../overview/copy';
+import { importHistoryBackup } from '../history/backup';
 
-export type CommandOptions = AnalysisCommandOptions;
+export type CommandOptions = AnalysisCommandOptions & {
+  /** Recheck external grants after history hashing and before its first write. */
+  beforeHistoryWrite?: () => Promise<void>;
+};
 
 type Patch = Record<string, unknown>;
 export interface SearchResult {
@@ -130,13 +139,25 @@ function object(data: unknown): Patch {
 }
 
 export class Repository {
-  constructor(public db: WorkspaceDatabase = database) {}
+  history: HistoryStore;
+  constructor(public db: WorkspaceDatabase = database) {
+    this.history = new HistoryStore(db, (graph, baseVersion) =>
+      this.persistGraph(graph, baseVersion, true),
+    );
+  }
   async getGraph(id: string): Promise<Graph> {
     const graph = await this.db.graph(id);
     if (!graph) throw new StorageError(404, 'Project does not exist in this browser.');
     return graph;
   }
   async saveGraph(input: Graph, expectedVersion?: number): Promise<Graph> {
+    return this.persistGraph(input, expectedVersion);
+  }
+  private async persistGraph(
+    input: Graph,
+    expectedVersion?: number,
+    canonicalPositions = false,
+  ): Promise<Graph> {
     const saved = await this.db.transaction(
       'rw',
       this.db.diagrams,
@@ -151,7 +172,7 @@ export class Repository {
           throw new StorageError(409, 'This project was deleted by another tab.');
         // Apply API/graph-replacement 2D moves in the same transaction as their 3D placement.
         // Editor commands that already updated both positions are unchanged by this helper.
-        if (old) input = syncSpatialPositions(old, input);
+        if (old && !canonicalPositions) input = syncSpatialPositions(old, input);
         const owners = await this.db.owners.toArray();
         const registry = new Map(owners.map((owner) => [owner.id, owner]));
         for (const owner of input.owners) {
@@ -257,16 +278,14 @@ export class Repository {
   async removeDiagram(id: string) {
     await this.db.transaction(
       'rw',
-      this.db.diagrams,
-      this.db.nodes,
-      this.db.edges,
-      this.db.datasets,
+      [this.db.diagrams, this.db.nodes, this.db.edges, this.db.datasets, ...historyTables(this.db)],
       async () => {
         this.db.forgetDatasets();
         await this.db.nodes.where('diagramId').equals(id).delete();
         await this.db.edges.where('diagramId').equals(id).delete();
         await this.db.diagrams.delete(id);
         await this.db.datasets.where('diagramId').equals(id).delete();
+        await this.history.removeDiagram(id);
       },
     );
   }
@@ -323,9 +342,12 @@ export class Repository {
           ownerIds: node.ownerIds.map((id) => ownerIds.get(id)!),
           ownerId: node.ownerIds[0] ? ownerIds.get(node.ownerIds[0]) : undefined,
         }));
+        const edgeIds = new Map(
+          graph.edges.map((edge) => [edge.id, collision ? crypto.randomUUID() : edge.id]),
+        );
         graph.edges = graph.edges.map((edge) => ({
           ...edge,
-          id: collision ? crypto.randomUUID() : edge.id,
+          id: edgeIds.get(edge.id)!,
           diagramId: graph.diagram.id,
           sourceNodeId: nodeIds.get(edge.sourceNodeId)!,
           targetNodeId: nodeIds.get(edge.targetNodeId)!,
@@ -337,6 +359,9 @@ export class Repository {
         }));
         Object.assign(graph, remapAnalysisReferences(graph, nodeIds));
         Object.assign(graph, remapPresentation(graph, nodeIds));
+        Object.assign(graph, remapStoryboard(graph, nodeIds, edgeIds));
+        Object.assign(graph, remapBuildSpecification(graph, nodeIds, edgeIds, sourceIds));
+        Object.assign(graph, remapOverview(graph, source, nodeIds));
         if (graph.diagram.settings.csvSuppressedRelationshipEdges)
           graph.diagram.settings.csvSuppressedRelationshipEdges =
             graph.diagram.settings.csvSuppressedRelationshipEdges.map((id) =>
@@ -414,6 +439,7 @@ export class Repository {
       }
       await this.db.owners.bulkPut(owners);
       const graphs: Graph[] = [];
+      const historyMappings: { sourceGraph: Graph; importedGraph: Graph }[] = [];
       for (const diagram of backup.diagrams) {
         const sources = datasets.filter((dataset) => dataset.diagramId === diagram.id);
         const sourceOrder = new Map(
@@ -439,22 +465,24 @@ export class Repository {
           const index = new Map(ids?.map((id, position) => [id, position]) ?? []);
           return values.sort((a, b) => (index.get(a.id) ?? 0) - (index.get(b.id) ?? 0));
         };
-        graphs.push(
-          await this.importGraph({
-            format: 'visual-nerve',
-            formatVersion: 1,
-            diagram,
-            nodes: sort(nodes, order?.nodes),
-            edges: sort(
-              backup.edges.filter((edge) => edge.diagramId === diagram.id),
-              order?.edges,
-            ),
-            owners,
-            ...(dataset ? { dataset } : {}),
-            ...(additional.length ? { datasets: additional } : {}),
-          }),
-        );
+        const sourceGraph: Graph = {
+          format: 'visual-nerve',
+          formatVersion: 1,
+          diagram,
+          nodes: sort(nodes, order?.nodes),
+          edges: sort(
+            backup.edges.filter((edge) => edge.diagramId === diagram.id),
+            order?.edges,
+          ),
+          owners,
+          ...(dataset ? { dataset } : {}),
+          ...(additional.length ? { datasets: additional } : {}),
+        };
+        const importedGraph = await this.importGraph(sourceGraph);
+        graphs.push(importedGraph);
+        historyMappings.push({ sourceGraph, importedGraph });
       }
+      await importHistoryBackup(this.db, backup.history, datasets, historyMappings, ownerIds);
       for (const template of backup.templates) {
         if (typeof template.id !== 'string' || !template.id || typeof template.name !== 'string')
           throw new StorageError(422, 'Invalid template.');
@@ -726,6 +754,16 @@ export class Repository {
       return (data.format === 'markdown' ? markdown(graph) : graph) as T;
     }
     if (collection === 'diagrams') {
+      if (id && understandingActions.includes(action))
+        return (await understandingCommand(
+          this,
+          id,
+          parts,
+          url,
+          method,
+          payload,
+          options.beforeHistoryWrite,
+        )) as T;
       if (!id) {
         if (read) return (await this.db.diagrams.orderBy('updatedAt').reverse().toArray()) as T;
         const data = object(payload),
@@ -873,7 +911,7 @@ export class Repository {
               graph.edges = graph.edges.filter(
                 (edge) => !removed.has(edge.sourceNodeId) && !removed.has(edge.targetNodeId),
               );
-              Object.assign(graph, prunePresentation(graph));
+              Object.assign(graph, pruneStoryboard(prunePresentation(graph)));
             } else {
               const next = patch(node, data);
               if (data.ownerId !== undefined && data.ownerIds === undefined)
@@ -893,6 +931,7 @@ export class Repository {
             if (remove) {
               suppressCsvParentConnection(graph, edge);
               graph.edges = graph.edges.filter((edge) => edge.id !== id);
+              Object.assign(graph, pruneStoryboard(graph));
             } else {
               const next = reconnectedEdge(graph, edge, patch(edge, data));
               graph.edges = graph.edges.map((edge) => (edge.id === id ? next : edge));

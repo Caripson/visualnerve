@@ -2,6 +2,7 @@ import { getViewportForBounds, type Edge, type Node, type ReactFlowInstance } fr
 import type { Graph } from '../model/types';
 import { drawingBounds, unionBounds } from './geometry';
 import { getDrawingLayer } from './types';
+import { getOverviewConfig } from '../overview/types';
 
 /** Fit visible diagram objects and its separate annotation layer together. */
 export function fitDiagram<N extends Node, E extends Edge>(
@@ -13,7 +14,8 @@ export function fitDiagram<N extends Node, E extends Edge>(
   viewportSize?: { width: number; height: number; minZoom: number },
 ) {
   const layer = getDrawingLayer(graph.diagram.settings.drawing);
-  const ink = layer?.visible ? drawingBounds(layer.strokes) : undefined;
+  const ink =
+    layer?.visible && !getOverviewConfig(graph).enabled ? drawingBounds(layer.strokes) : undefined;
   if (!ink)
     return flow.fitView({ padding, duration, ...(maxZoom === undefined ? {} : { maxZoom }) });
   const nodes = flow.getNodes().filter((node) => !node.hidden);

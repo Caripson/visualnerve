@@ -210,6 +210,7 @@ export function SourceRefreshDialog({ onClose }: { onClose: () => void }) {
     setError('');
     try {
       await workspace.settled();
+      if (!mounted.current || generation.current !== snapshot.generation) return;
       const state = useEditor.getState();
       if (
         state.graph?.diagram.id !== snapshot.graph.diagram.id ||
@@ -218,6 +219,22 @@ export function SourceRefreshDialog({ onClose }: { onClose: () => void }) {
         generation.current !== snapshot.generation
       )
         throw new Error('The diagram changed. Preview changes again before applying.');
+      const { repository } = await import('../storage/repository');
+      await repository.history.create(snapshot.graph.diagram.id, {
+        name: `Before source refresh · ${new Date().toLocaleString()}`,
+        baseVersion: snapshot.graph.diagram.version,
+        kind: 'source-refresh',
+      });
+      if (!mounted.current || generation.current !== snapshot.generation) return;
+      const latest = useEditor.getState();
+      if (
+        latest.graph?.diagram.id !== snapshot.graph.diagram.id ||
+        latest.editRevision !== snapshot.revision ||
+        latest.graph.diagram.version !== snapshot.graph.diagram.version
+      )
+        throw new Error(
+          'The diagram changed while preserving history. Preview changes again before applying.',
+        );
       state.command('Refresh source', () => result.graph);
       const applied = useEditor.getState();
       const nodeIds = new Set(applied.graph?.nodes.map((node) => node.id));

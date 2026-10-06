@@ -4,7 +4,8 @@ Draw the workflow or features you want to turn into an app, including decision l
 
 1. Describe what to build in **App instructions**: users, screens, expected behavior and any design or technology preferences.
 2. Choose **Entire diagram**, **Current CSV groups** or **Selected objects**. The preview shows the complete prompt and object/relationship counts.
-3. Review the preview, then choose **Open in Lovable**. A new tab opens with the prompt filled in. Review it in Lovable and press **Send** to start building.
+3. Expand **Review the app specification**, add requirements/corrections and answer open decisions. Observed data and proposed screens/API are labeled separately; acceptance criteria and unresolved choices are included.
+4. Review the preview, then choose **Open in Lovable**. A new tab opens with the prompt filled in. Review it in Lovable and press **Send** to start building.
 
 Your draft instructions and scope are saved locally with the diagram and travel with its JSON export and workspace backup. Visual Nerve creates the brief without an account, API key, MCP bridge or network request. Lovable handles its own account and build process after you open it.
 
@@ -31,3 +32,5 @@ Lovable allows at most 50,000 prompt characters. Visual Nerve also limits the en
 Opening the dialog sends no data. Opening Lovable explicitly shares the previewed text with that service. Normal editing and saving continue locally in IndexedDB. See [privacy](PRIVACY.md).
 
 Code diagrams contribute recognized language/path/name/kind/source-location summaries and relationships with their confidence and evidence. Original source and arbitrary metadata are excluded. The brief labels the outline as static and asks the recipient to clarify heuristic/unresolved behavior instead of inventing implementations. File paths and identifiers are included as shown; review them before sharing.
+
+The six reviewed sections and decision answers save with the diagram. Exact read-only `POST /diagrams/{id}/build-brief` returns the unsent prompt and structured specification; `GET/PUT /diagrams/{id}/build-specification` reads/saves the reviewed draft. See [understanding workflows](UNDERSTANDING.md) for limits and assumptions.

@@ -1,4 +1,5 @@
 import { prunePresentation } from '../presentation/definition';
+import { pruneStoryboard } from '../presentation/storyboard';
 import { create } from 'zustand';
 import type { McpAccess } from '../integration/access';
 import { applyDelta, diffGraph, mergeDelta, type Delta } from './history';
@@ -169,7 +170,7 @@ export const useEditor = create<Editor>((set, get) => ({
   command: (label, change, coalesce = false) => {
     const s = get();
     if (!s.graph) return;
-    const next = prunePresentation(syncSpatialPositions(s.graph, change(s.graph)));
+    const next = pruneStoryboard(prunePresentation(syncSpatialPositions(s.graph, change(s.graph))));
     const changedFilters =
       s.graph.diagram.settings.analysisFilters !== next.diagram.settings.analysisFilters;
     const before = changedFilters

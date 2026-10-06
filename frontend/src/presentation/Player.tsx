@@ -24,6 +24,9 @@ import {
 import { presentation, usePresentation } from './service';
 import { VideoControls } from './VideoControls';
 import { useVideoExport, videoExport, isVideoExporting } from './video-service';
+import { getStoryboard } from './storyboard';
+import { presentationSteps } from './sequence';
+import { StoryboardEditor } from './StoryboardEditor';
 import './presentation.css';
 
 /** Kept outside App: watches graph revisions and renders a compact canvas overlay. */
@@ -47,6 +50,8 @@ export function PresentationFeature() {
         ? JSON.stringify([
             graph.diagram.id,
             getPresentation(graph),
+            getStoryboard(graph),
+            graph.edges.map((edge) => [edge.id, edge.sourceNodeId, edge.targetNodeId, edge.label]),
             getSpatialView(graph).mode,
             graph.nodes.map((node) => [
               node.id,
@@ -95,9 +100,10 @@ export function PresentationFeature() {
   if (!graph || !player.open || graph.diagram.id !== player.diagramId) return null;
   const definition = getPresentation(graph);
   const byId = new Map(graph.nodes.map((node) => [node.id, node]));
-  const currentId =
-    exporting && video.nodeIndex >= 0 ? definition.nodeIds[video.nodeIndex] : player.nodeId;
-  const node = currentId ? byId.get(currentId) : undefined;
+  const source = exporting ? video.source : player.source;
+  const steps = presentationSteps(graph, source);
+  const current = steps[exporting ? video.nodeIndex : player.index];
+  const total = exporting ? video.total : player.total;
   const running = ['loading', 'moving', 'playing'].includes(player.status);
   const run = async (action: () => unknown) => {
     try {
@@ -135,9 +141,11 @@ export function PresentationFeature() {
         <ListOrdered size={16} />
         <strong>Diagram walkthrough</strong>
         <span>
-          {player.total
-            ? `${(exporting ? Math.max(0, video.nodeIndex) : player.index) + 1} / ${player.total}`
-            : 'No numbered nodes'}
+          {total
+            ? `${(exporting ? Math.max(0, video.nodeIndex) : player.index) + 1} / ${total}`
+            : source === 'storyboard'
+              ? 'No scenes'
+              : 'No numbered nodes'}
         </span>
         <button
           className="icon-button"
@@ -150,12 +158,33 @@ export function PresentationFeature() {
           <X size={16} />
         </button>
       </div>
-      <div className="presentation-current">
-        <strong>{node?.title ?? 'Choose the walkthrough order'}</strong>
+      <div className="presentation-order-actions" aria-label="Walkthrough source">
+        <button
+          disabled={exporting}
+          aria-pressed={source === 'nodes'}
+          onClick={() => void run(() => presentation.open('nodes'))}
+        >
+          Numbered nodes
+        </button>
+        <button
+          disabled={exporting}
+          aria-pressed={source === 'storyboard'}
+          onClick={() => void run(() => presentation.open('storyboard'))}
+        >
+          Storyboard scenes
+        </button>
       </div>
-      {player.subtitles && node?.description && (
+      <div className="presentation-current">
+        <strong>
+          {current?.name ??
+            (source === 'storyboard'
+              ? 'Create a storyboard scene'
+              : 'Choose the walkthrough order')}
+        </strong>
+      </div>
+      {player.subtitles && current?.narration && (
         <div className="presentation-subtitle" aria-label="Walkthrough subtitles">
-          {node.description}
+          {current.narration}
         </div>
       )}
       <fieldset className="presentation-control-fieldset" disabled={exporting}>
@@ -185,7 +214,7 @@ export function PresentationFeature() {
           </button>
           <button
             aria-label="Presentation audio"
-            title="Read descriptions aloud"
+            title="Read step narration aloud"
             aria-pressed={player.audio}
             onClick={() => presentation.options({ audio: !player.audio })}
           >
@@ -193,7 +222,7 @@ export function PresentationFeature() {
           </button>
           <button
             aria-label="Presentation subtitles"
-            title="Show node descriptions"
+            title="Show step narration"
             aria-pressed={player.subtitles}
             onClick={() => presentation.options({ subtitles: !player.subtitles })}
           >
@@ -236,7 +265,10 @@ export function PresentationFeature() {
           {error || player.message}
         </p>
       )}
-      {!exporting && (ordering || !player.total) && (
+      {source === 'storyboard' && (ordering || !player.total) && (
+        <StoryboardEditor disabled={exporting} />
+      )}
+      {!exporting && source === 'nodes' && (ordering || !player.total) && (
         <div className="presentation-order">
           <div className="presentation-order-actions">
             <button onClick={() => number()}>Number all nodes</button>

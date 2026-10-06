@@ -10,6 +10,7 @@ import { getSqlQuerySource, getSqlQueryResult } from '../sql/query-schema';
 import { buildLovablePrompt, lovableLink, type LovableScope } from '../export/lovable';
 import { download, safeName } from '../export/semantic';
 import './lovable.css';
+import { BuildSpecificationEditor } from './BuildSpecificationEditor';
 
 const scopes: LovableScope[] = ['diagram', 'selected', 'csv-view'];
 type Draft = { version: 1; instructions: string; scope: LovableScope };
@@ -173,6 +174,7 @@ export function LovableDialog({ close }: { close: () => void }) {
             Drawing marks are visual notes. Describe anything important in your instructions.
           </p>
         )}
+        <BuildSpecificationEditor specification={prompt.specification} />
         <label className="field lovable-preview">
           Exact build prompt
           <textarea

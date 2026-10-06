@@ -68,7 +68,7 @@ async function backup(page: Page) {
   expect(file.suggestedFilename()).toMatch(/^visual-nerve-backup-\d{4}-\d{2}-\d{2}\.json$/);
   const bytes = await buffer(file),
     data = JSON.parse(bytes.toString());
-  expect(data.schemaVersion).toBe(6);
+  expect(data.schemaVersion).toBe(7);
   expect(data.datasets).toEqual([]);
   expect(Number.isFinite(Date.parse(data.exportedAt))).toBe(true);
   expect(
@@ -523,7 +523,7 @@ test('export menu separates one diagram from all data and storage retention deni
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await settings(page);
     await page.getByText('Storage details', { exact: true }).click();
-    await expect(page.getByText('IndexedDB · schema 6', { exact: true })).toBeVisible();
+    await expect(page.getByText('IndexedDB · schema 7', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Ask browser to keep local data', exact: true }).click();
     await expect(
       page.getByRole('status').filter({ hasText: 'did not grant persistent storage' }),

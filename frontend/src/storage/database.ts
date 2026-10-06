@@ -10,6 +10,14 @@ import {
 } from '../model/types';
 import { instantiate, templates } from '../templates/templates';
 import { IMPORT_LIMIT_SETTING } from '../imports/limits';
+import type {
+  HistoryBackup,
+  HistoryContent,
+  HistoryRows,
+  HistorySnapshot,
+  HistorySource,
+} from '../history/types';
+import { exportHistoryBackup } from '../history/backup';
 export interface Setting {
   key: string;
   value: unknown;
@@ -32,6 +40,7 @@ export interface WorkspaceBackup {
   settings: Setting[];
   templates: TemplateRecord[];
   datasets?: CsvDataset[];
+  history?: HistoryBackup;
 }
 
 export class WorkspaceDatabase extends Dexie {
@@ -48,6 +57,10 @@ export class WorkspaceDatabase extends Dexie {
   settings!: EntityTable<Setting, 'key'>;
   templates!: EntityTable<TemplateRecord, 'id'>;
   datasets!: EntityTable<CsvDataset, 'id'>;
+  historySnapshots!: EntityTable<HistorySnapshot, 'id'>;
+  historyContents!: EntityTable<HistoryContent, 'id'>;
+  historySources!: EntityTable<HistorySource, 'id'>;
+  historyRows!: EntityTable<HistoryRows, 'id'>;
   constructor(name = 'visual-nerve-cache') {
     // Retain the historical database name to upgrade existing browser data in place.
     super(name);
@@ -99,6 +112,12 @@ export class WorkspaceDatabase extends Dexie {
       });
     this.version(5).stores({ datasets: 'id,&diagramId,updatedAt' });
     this.version(6).stores({ datasets: 'id,diagramId,updatedAt' });
+    this.version(7).stores({
+      historySnapshots: 'id,diagramId,createdAt,contentId,*sourceIds',
+      historyContents: 'id,diagramId,bytes',
+      historySources: 'id,diagramId,&[diagramId+datasetId+datasetVersion],rowId,bytes',
+      historyRows: 'id,diagramId,bytes',
+    });
     this.on(
       'ready',
       () => {
@@ -219,33 +238,38 @@ export class WorkspaceDatabase extends Dexie {
     return graph;
   }
   async backup(): Promise<WorkspaceBackup> {
-    return this.transaction('r', this.tables, async () => ({
-      format: 'visual-nerve-workspace',
-      formatVersion: 1,
-      schemaVersion: this.verno,
-      exportedAt: new Date().toISOString(),
-      diagrams: await this.diagrams.toArray(),
-      nodes: await this.nodes.toArray(),
-      edges: await this.edges.toArray(),
-      owners: await this.owners.toArray(),
-      settings: (await this.settings.toArray()).filter(
-        (setting) =>
-          ![
-            'workspace-id',
-            'last-diagram',
-            'integration-enabled',
-            'mcp-access',
-            'bridge-url',
-            'privacy-acknowledged',
-            'storage-consent',
-            'last-export',
-            'backup-nudge-dismissed',
-            IMPORT_LIMIT_SETTING,
-          ].includes(setting.key),
-      ),
-      templates: await this.templates.toArray(),
-      datasets: await this.datasets.toArray(),
-    }));
+    return this.transaction('r', this.tables, async () => {
+      const datasets = await this.datasets.toArray();
+      const history = await exportHistoryBackup(this, datasets);
+      return {
+        format: 'visual-nerve-workspace',
+        formatVersion: 1,
+        schemaVersion: this.verno,
+        exportedAt: new Date().toISOString(),
+        diagrams: await this.diagrams.toArray(),
+        nodes: await this.nodes.toArray(),
+        edges: await this.edges.toArray(),
+        owners: await this.owners.toArray(),
+        settings: (await this.settings.toArray()).filter(
+          (setting) =>
+            ![
+              'workspace-id',
+              'last-diagram',
+              'integration-enabled',
+              'mcp-access',
+              'bridge-url',
+              'privacy-acknowledged',
+              'storage-consent',
+              'last-export',
+              'backup-nudge-dismissed',
+              IMPORT_LIMIT_SETTING,
+            ].includes(setting.key),
+        ),
+        templates: await this.templates.toArray(),
+        datasets,
+        ...(history ? { history } : {}),
+      };
+    });
   }
 }
 export const database = new WorkspaceDatabase();

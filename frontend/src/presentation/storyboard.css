@@ -1,0 +1,105 @@
+.storyboard-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-top: 1px solid var(--border, #ddd);
+  padding-top: 14px;
+}
+.storyboard-editor fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.storyboard-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.storyboard-actions button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.storyboard-scenes {
+  margin: 0;
+  padding-left: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.storyboard-scenes li > button:first-child {
+  max-width: calc(100% - 118px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+.storyboard-scenes li > button {
+  margin-right: 5px;
+  vertical-align: middle;
+}
+.storyboard-scenes button.active {
+  background: #d6eae0;
+  color: #184c38;
+}
+.storyboard-draft {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.storyboard-draft > label,
+.storyboard-draft details > label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.storyboard-draft textarea {
+  resize: vertical;
+  min-height: 100px;
+  line-height: 1.5;
+}
+.storyboard-draft details {
+  border: 1px solid var(--border, #ddd);
+  border-radius: 8px;
+  padding: 12px;
+}
+.storyboard-draft details[open] > summary {
+  margin-bottom: 12px;
+}
+.storyboard-timing {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.storyboard-timing label {
+  display: flex;
+  flex: 1;
+  min-width: 140px;
+  flex-direction: column;
+  gap: 6px;
+}
+.storyboard-object-list {
+  margin: 10px 0 16px;
+  max-height: 180px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.storyboard-object-list label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.storyboard-object-list input {
+  flex: none;
+  width: auto;
+}
+.storyboard-object-list span {
+  overflow-wrap: anywhere;
+}

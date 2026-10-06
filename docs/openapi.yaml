@@ -1,6 +1,234 @@
 {
   "components": {
     "schemas": {
+      "ApplicationSpecification": {
+        "additionalProperties": false,
+        "description": "Observed schemas/relationships, clearly proposed screens/read API routes, acceptance criteria and missing decisions. No runtime behavior, unknown schema fields or hidden source records are invented. At most 200 decisions are shown; omittedDecisions counts additional open questions and remains unresolved until a narrower scope is reviewed.",
+        "properties": {
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/BuildDecision"
+            },
+            "maxItems": 200,
+            "type": "array"
+          },
+          "nodeCount": {
+            "type": "integer"
+          },
+          "omittedDecisions": {
+            "type": "integer"
+          },
+          "sections": {
+            "additionalProperties": false,
+            "properties": {
+              "acceptanceCriteria": {
+                "type": "string"
+              },
+              "apiContract": {
+                "type": "string"
+              },
+              "businessRules": {
+                "type": "string"
+              },
+              "dataModel": {
+                "type": "string"
+              },
+              "decisions": {
+                "type": "string"
+              },
+              "screens": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "dataModel",
+              "screens",
+              "businessRules",
+              "apiContract",
+              "acceptanceCriteria",
+              "decisions"
+            ],
+            "type": "object"
+          },
+          "unresolved": {
+            "type": "integer"
+          },
+          "version": {
+            "enum": [
+              1
+            ],
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "sections",
+          "decisions",
+          "unresolved",
+          "omittedDecisions",
+          "nodeCount"
+        ],
+        "type": "object"
+      },
+      "BuildBrief": {
+        "additionalProperties": false,
+        "properties": {
+          "boundaryCount": {
+            "type": "integer"
+          },
+          "edgeCount": {
+            "type": "integer"
+          },
+          "nodeCount": {
+            "type": "integer"
+          },
+          "specification": {
+            "$ref": "#/components/schemas/ApplicationSpecification"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "nodeCount",
+          "edgeCount",
+          "boundaryCount",
+          "specification"
+        ],
+        "type": "object"
+      },
+      "BuildBriefInput": {
+        "additionalProperties": false,
+        "description": "Selected scope requires at least one existing selected object. Entire diagram includes collapsed/offscreen objects; csv-view excludes retained generated groups outside the current data view. Original source rows/code/scripts and arbitrary metadata are excluded. This previews locally and does not send to Lovable.",
+        "properties": {
+          "instructions": {
+            "maxLength": 30000,
+            "type": "string"
+          },
+          "scope": {
+            "default": "diagram",
+            "enum": [
+              "diagram",
+              "selected",
+              "csv-view"
+            ],
+            "type": "string"
+          },
+          "selectedIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 20000,
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "type": "object"
+      },
+      "BuildDecision": {
+        "additionalProperties": false,
+        "properties": {
+          "answer": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "nodeIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 20000,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "question": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "question",
+          "nodeIds"
+        ],
+        "type": "object"
+      },
+      "BuildSpecificationDraft": {
+        "additionalProperties": false,
+        "description": "User-reviewed additions to six generated app specification sections and explicit answers keyed by decision ID. Draft text is limited to 180,000 characters combined; unknown fields and reserved prototype answer keys are rejected. Canonical source facts remain included.",
+        "properties": {
+          "answers": {
+            "additionalProperties": {
+              "maxLength": 30000,
+              "type": "string"
+            },
+            "maxProperties": 200,
+            "type": "object"
+          },
+          "sections": {
+            "additionalProperties": false,
+            "properties": {
+              "acceptanceCriteria": {
+                "maxLength": 30000,
+                "type": "string"
+              },
+              "apiContract": {
+                "maxLength": 30000,
+                "type": "string"
+              },
+              "businessRules": {
+                "maxLength": 30000,
+                "type": "string"
+              },
+              "dataModel": {
+                "maxLength": 30000,
+                "type": "string"
+              },
+              "decisions": {
+                "maxLength": 30000,
+                "type": "string"
+              },
+              "screens": {
+                "maxLength": 30000,
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "version": {
+            "enum": [
+              1
+            ],
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "sections",
+          "answers"
+        ],
+        "type": "object"
+      },
+      "BuildSpecificationUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "baseVersion": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "specification": {
+            "$ref": "#/components/schemas/BuildSpecificationDraft"
+          }
+        },
+        "required": [
+          "baseVersion",
+          "specification"
+        ],
+        "type": "object"
+      },
       "Bulk": {
         "additionalProperties": false,
         "properties": {
@@ -827,11 +1055,20 @@
           "settings": {
             "additionalProperties": true,
             "properties": {
+              "buildSpecification": {
+                "$ref": "#/components/schemas/BuildSpecificationDraft"
+              },
+              "overview": {
+                "$ref": "#/components/schemas/OverviewConfig"
+              },
               "presentation": {
                 "$ref": "#/components/schemas/PresentationDefinition"
               },
               "spatialView": {
                 "$ref": "#/components/schemas/SpatialView"
+              },
+              "storyboard": {
+                "$ref": "#/components/schemas/StoryboardDefinition"
               }
             },
             "type": "object"
@@ -1024,11 +1261,20 @@
           "settings": {
             "additionalProperties": true,
             "properties": {
+              "buildSpecification": {
+                "$ref": "#/components/schemas/BuildSpecificationDraft"
+              },
+              "overview": {
+                "$ref": "#/components/schemas/OverviewConfig"
+              },
               "presentation": {
                 "$ref": "#/components/schemas/PresentationDefinition"
               },
               "spatialView": {
                 "$ref": "#/components/schemas/SpatialView"
+              },
+              "storyboard": {
+                "$ref": "#/components/schemas/StoryboardDefinition"
               }
             },
             "type": "object"
@@ -1085,11 +1331,20 @@
           "settings": {
             "additionalProperties": true,
             "properties": {
+              "buildSpecification": {
+                "$ref": "#/components/schemas/BuildSpecificationDraft"
+              },
+              "overview": {
+                "$ref": "#/components/schemas/OverviewConfig"
+              },
               "presentation": {
                 "$ref": "#/components/schemas/PresentationDefinition"
               },
               "spatialView": {
                 "$ref": "#/components/schemas/SpatialView"
+              },
+              "storyboard": {
+                "$ref": "#/components/schemas/StoryboardDefinition"
               }
             },
             "type": "object"
@@ -1119,6 +1374,143 @@
         },
         "required": [
           "version"
+        ],
+        "type": "object"
+      },
+      "DiagramQuestion": {
+        "additionalProperties": false,
+        "description": "Breadth-first directed modeled paths, maximum 50,000 nodes and 200,000 edges. Handles cycles, reverse arrows, types, depth and uncertain links. None-direction associations are excluded. Paged answers do not limit traversal. A path is one shortest observed path, not all possible paths or proof of runtime impact.",
+        "properties": {
+          "edgeTypes": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 100,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "includeHidden": {
+            "default": false,
+            "type": "boolean"
+          },
+          "includeUncertain": {
+            "default": true,
+            "type": "boolean"
+          },
+          "kind": {
+            "enum": [
+              "downstream",
+              "upstream",
+              "path"
+            ],
+            "type": "string"
+          },
+          "limit": {
+            "default": 25,
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "maxDepth": {
+            "default": 16,
+            "maximum": 64,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "offset": {
+            "default": 0,
+            "maximum": 50000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "startId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "targetId": {
+            "description": "Required only for path; prohibited for other kinds.",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "startId",
+          "kind"
+        ],
+        "type": "object"
+      },
+      "DiagramQuestionResult": {
+        "additionalProperties": false,
+        "properties": {
+          "answers": {
+            "items": {
+              "$ref": "#/components/schemas/QuestionAnswer"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
+          "depthLimited": {
+            "type": "boolean"
+          },
+          "diagramId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/RelationshipEvidence"
+            },
+            "type": "array"
+          },
+          "found": {
+            "type": "boolean"
+          },
+          "graphVersion": {
+            "type": "integer"
+          },
+          "hasMore": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "question": {
+            "$ref": "#/components/schemas/DiagramQuestion"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "total": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "diagramId",
+          "graphVersion",
+          "question",
+          "summary",
+          "answers",
+          "evidence",
+          "total",
+          "offset",
+          "limit",
+          "hasMore",
+          "found",
+          "depthLimited",
+          "warnings"
         ],
         "type": "object"
       },
@@ -1436,6 +1828,457 @@
             "type": "string"
           }
         },
+        "type": "object"
+      },
+      "HistoryBackup": {
+        "additionalProperties": false,
+        "properties": {
+          "contents": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryContent"
+            },
+            "type": "array"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryRowBackup"
+            },
+            "type": "array"
+          },
+          "snapshots": {
+            "items": {
+              "$ref": "#/components/schemas/HistorySnapshot"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/HistorySource"
+            },
+            "type": "array"
+          },
+          "version": {
+            "enum": [
+              1
+            ],
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "snapshots",
+          "contents",
+          "sources",
+          "rows"
+        ],
+        "type": "object"
+      },
+      "HistoryChange": {
+        "additionalProperties": false,
+        "properties": {
+          "entity": {
+            "enum": [
+              "diagram",
+              "node",
+              "edge",
+              "owner",
+              "source"
+            ],
+            "type": "string"
+          },
+          "fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "added",
+              "removed",
+              "changed"
+            ],
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity",
+          "kind",
+          "id",
+          "label",
+          "fields"
+        ],
+        "type": "object"
+      },
+      "HistoryComparison": {
+        "additionalProperties": false,
+        "description": "Semantic changes omit revision timestamps and routine viewport movement. Dependency impact follows modeled connections and is not a runtime execution guarantee. Large lists expose truncation flags and complete counts. Restore requires currentVersion as baseVersion and creates a safety checkpoint atomically; stale restore fails with 409. Shared owner profiles remain current so other diagrams are not rewound.",
+        "properties": {
+          "affectedEdgeIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "affectedNodeIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 50000,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "affectedTotal": {
+            "type": "integer"
+          },
+          "affectedTruncated": {
+            "type": "boolean"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryChange"
+            },
+            "type": "array"
+          },
+          "changesTruncated": {
+            "type": "boolean"
+          },
+          "counts": {
+            "additionalProperties": {
+              "properties": {
+                "added": {
+                  "type": "integer"
+                },
+                "changed": {
+                  "type": "integer"
+                },
+                "removed": {
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            },
+            "type": "object"
+          },
+          "currentVersion": {
+            "type": "integer"
+          },
+          "diagramId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "fromSnapshotId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "toSnapshotId": {
+            "type": "string"
+          },
+          "totalChanges": {
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "diagramId",
+          "fromSnapshotId",
+          "toSnapshotId",
+          "currentVersion",
+          "counts",
+          "changes",
+          "totalChanges",
+          "changesTruncated",
+          "affectedNodeIds",
+          "affectedEdgeIds",
+          "affectedTotal",
+          "affectedTruncated",
+          "warnings"
+        ],
+        "type": "object"
+      },
+      "HistoryContent": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes": {
+            "type": "integer"
+          },
+          "diagramId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "digest": {
+            "type": "string"
+          },
+          "graph": {
+            "$ref": "#/components/schemas/Graph"
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "diagramId",
+          "digest",
+          "bytes",
+          "graph"
+        ],
+        "type": "object"
+      },
+      "HistoryCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "baseVersion": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "baseVersion",
+          "name"
+        ],
+        "type": "object"
+      },
+      "HistoryRead": {
+        "additionalProperties": false,
+        "properties": {
+          "graph": {
+            "$ref": "#/components/schemas/Graph"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/HistorySnapshot"
+          }
+        },
+        "required": [
+          "snapshot",
+          "graph"
+        ],
+        "type": "object"
+      },
+      "HistoryRestore": {
+        "additionalProperties": false,
+        "properties": {
+          "baseVersion": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "baseVersion"
+        ],
+        "type": "object"
+      },
+      "HistoryRestoreResult": {
+        "additionalProperties": false,
+        "properties": {
+          "graph": {
+            "$ref": "#/components/schemas/Graph"
+          },
+          "safetySnapshot": {
+            "$ref": "#/components/schemas/HistorySnapshot"
+          }
+        },
+        "required": [
+          "graph",
+          "safetySnapshot"
+        ],
+        "type": "object"
+      },
+      "HistoryRowBackup": {
+        "additionalProperties": false,
+        "description": "Exactly one of rows or datasetRef. A dataset reference resolves identical rows already exported in the workspace's datasets array, avoiding duplicate large source data.",
+        "oneOf": [
+          {
+            "not": {
+              "required": [
+                "datasetRef"
+              ]
+            },
+            "required": [
+              "rows"
+            ]
+          },
+          {
+            "not": {
+              "required": [
+                "rows"
+              ]
+            },
+            "required": [
+              "datasetRef"
+            ]
+          }
+        ],
+        "properties": {
+          "bytes": {
+            "type": "integer"
+          },
+          "datasetRef": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "version"
+            ],
+            "type": "object"
+          },
+          "diagramId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "digest": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "diagramId",
+          "digest",
+          "bytes"
+        ],
+        "type": "object"
+      },
+      "HistorySnapshot": {
+        "additionalProperties": false,
+        "description": "Explicit named versions and automatic pre-source-refresh/pre-restore safety checkpoints in local IndexedDB. Up to 50 snapshots per diagram, 1,000 per workspace, 256 MiB archived content total and 32 MiB per structural graph. Immutable source rows are shared across unchanged snapshots. Capacity errors preserve current work and never silently evict named snapshots. This is separate from transient Undo/Redo.",
+        "properties": {
+          "contentId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "diagramId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "edges": {
+            "type": "integer"
+          },
+          "graphVersion": {
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "named",
+              "source-refresh",
+              "pre-restore"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "nodes": {
+            "type": "integer"
+          },
+          "rows": {
+            "type": "integer"
+          },
+          "sourceIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "diagramId",
+          "name",
+          "kind",
+          "createdAt",
+          "graphVersion",
+          "contentId",
+          "sourceIds",
+          "nodes",
+          "edges",
+          "rows"
+        ],
+        "type": "object"
+      },
+      "HistorySource": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes": {
+            "type": "integer"
+          },
+          "dataset": {
+            "additionalProperties": true,
+            "description": "Shared source header without rows.",
+            "type": "object"
+          },
+          "datasetId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "datasetVersion": {
+            "type": "integer"
+          },
+          "diagramId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "rowId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "diagramId",
+          "datasetId",
+          "datasetVersion",
+          "rowId",
+          "bytes",
+          "dataset"
+        ],
         "type": "object"
       },
       "Import": {
@@ -1880,6 +2723,275 @@
         ],
         "type": "object"
       },
+      "OverviewConfig": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "expanded": {
+            "items": {
+              "pattern": "^overview-group:[a-f0-9]{16}$",
+              "type": "string"
+            },
+            "maxItems": 2000,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "grouping": {
+            "enum": [
+              "auto",
+              "groups",
+              "tags",
+              "source"
+            ],
+            "type": "string"
+          },
+          "version": {
+            "enum": [
+              1
+            ],
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "enabled",
+          "grouping",
+          "expanded"
+        ],
+        "type": "object"
+      },
+      "OverviewGroup": {
+        "additionalProperties": false,
+        "properties": {
+          "childGroupIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "depth": {
+            "type": "integer"
+          },
+          "expanded": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "internalEdgeCount": {
+            "type": "integer"
+          },
+          "label": {
+            "type": "string"
+          },
+          "matchingNodeCount": {
+            "type": "integer"
+          },
+          "nodeIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 50000,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "nodeTypeCounts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "parentId": {
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "hierarchy",
+              "tag",
+              "source",
+              "kind",
+              "area",
+              "partition"
+            ],
+            "type": "string"
+          },
+          "statusCounts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "reason",
+          "depth",
+          "nodeIds",
+          "childGroupIds",
+          "statusCounts",
+          "nodeTypeCounts",
+          "matchingNodeCount",
+          "internalEdgeCount",
+          "expanded"
+        ],
+        "type": "object"
+      },
+      "OverviewProjection": {
+        "additionalProperties": false,
+        "description": "View-only stable summary cards, original-ID mappings and typed directed relationship rollups. Proxy IDs are not canonical graph UUIDs and cannot be edited as ordinary nodes/edges. Current render budget is 2,000 cards; every input object remains mapped. Legal zoom is (0,10], default 0.1; detail levels change at 0.2, 0.55 and 1.2.",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "bounded": {
+            "type": "boolean"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "edgeMap": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "edges": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/OverviewGroup"
+            },
+            "type": "array"
+          },
+          "nodeMap": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "nodes": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "relationships": {
+            "items": {
+              "$ref": "#/components/schemas/OverviewRelationship"
+            },
+            "type": "array"
+          },
+          "zoomLevel": {
+            "maximum": 3,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "active",
+          "nodes",
+          "edges",
+          "groups",
+          "relationships",
+          "nodeMap",
+          "edgeMap",
+          "counts",
+          "bounded",
+          "zoomLevel"
+        ],
+        "type": "object"
+      },
+      "OverviewRelationship": {
+        "additionalProperties": false,
+        "properties": {
+          "direction": {
+            "enum": [
+              "forward",
+              "backward",
+              "both",
+              "none"
+            ],
+            "type": "string"
+          },
+          "edgeIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "edgeType": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "internal": {
+            "type": "boolean"
+          },
+          "labels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "source": {
+            "type": "string"
+          },
+          "style": {
+            "enum": [
+              "solid",
+              "dashed",
+              "dotted"
+            ],
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "target",
+          "edgeType",
+          "direction",
+          "style",
+          "edgeIds",
+          "labels",
+          "internal"
+        ],
+        "type": "object"
+      },
+      "OverviewUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "baseVersion": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "overview": {
+            "$ref": "#/components/schemas/OverviewConfig"
+          }
+        },
+        "required": [
+          "baseVersion",
+          "overview"
+        ],
+        "type": "object"
+      },
       "Owner": {
         "additionalProperties": false,
         "properties": {
@@ -2085,6 +3197,14 @@
             "description": "Defaults to the currently open diagram.",
             "format": "uuid",
             "type": "string"
+          },
+          "source": {
+            "default": "nodes",
+            "enum": [
+              "nodes",
+              "storyboard"
+            ],
+            "type": "string"
           }
         },
         "type": "object"
@@ -2125,6 +3245,15 @@
             "nullable": true,
             "type": "string"
           },
+          "edgeIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 20000,
+            "type": "array",
+            "uniqueItems": true
+          },
           "index": {
             "description": "Zero-based active index, -1 for an empty sequence.",
             "minimum": -1,
@@ -2133,10 +3262,22 @@
           "message": {
             "type": "string"
           },
+          "narration": {
+            "type": "string"
+          },
           "nodeId": {
             "format": "uuid",
             "nullable": true,
             "type": "string"
+          },
+          "nodeIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 20000,
+            "type": "array",
+            "uniqueItems": true
           },
           "open": {
             "type": "boolean"
@@ -2148,6 +3289,19 @@
             "maximum": 1,
             "minimum": 0,
             "type": "number"
+          },
+          "sceneId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "source": {
+            "default": "nodes",
+            "enum": [
+              "nodes",
+              "storyboard"
+            ],
+            "type": "string"
           },
           "status": {
             "enum": [
@@ -2163,6 +3317,9 @@
           },
           "subtitles": {
             "type": "boolean"
+          },
+          "title": {
+            "type": "string"
           },
           "total": {
             "maximum": 20000,
@@ -2182,7 +3339,28 @@
           "preload",
           "buffered",
           "progress",
-          "message"
+          "message",
+          "source",
+          "sceneId",
+          "nodeIds",
+          "edgeIds",
+          "title",
+          "narration"
+        ],
+        "type": "object"
+      },
+      "PresentationSeek": {
+        "additionalProperties": false,
+        "properties": {
+          "index": {
+            "description": "Zero-based existing step in the active presentation source.",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "index"
         ],
         "type": "object"
       },
@@ -2205,10 +3383,18 @@
       },
       "PresentationVideoInput": {
         "additionalProperties": false,
-        "description": "Optional audio and subtitles override the current player options for this export; omitted values use those options (initially audio false and subtitles true). Starts the whole numbered sequence from its first node in the current 2D or 3D view.",
+        "description": "Optional audio/subtitles booleans and nodes/storyboard source. Omitted values use current player options/source. Export starts at the first numbered step or scene. Uses per-scene narration/timing/view/highlights and the same local voices, subtitle paging, limits and cancellation rules.",
         "properties": {
           "audio": {
             "type": "boolean"
+          },
+          "source": {
+            "description": "Defaults to the current player source.",
+            "enum": [
+              "nodes",
+              "storyboard"
+            ],
+            "type": "string"
           },
           "subtitles": {
             "type": "boolean"
@@ -2246,6 +3432,14 @@
             "minimum": 0,
             "type": "number"
           },
+          "source": {
+            "default": "nodes",
+            "enum": [
+              "nodes",
+              "storyboard"
+            ],
+            "type": "string"
+          },
           "status": {
             "enum": [
               "idle",
@@ -2270,7 +3464,8 @@
           "total",
           "format",
           "message",
-          "fileName"
+          "fileName",
+          "source"
         ],
         "type": "object"
       },
@@ -2357,6 +3552,129 @@
         ],
         "type": "object"
       },
+      "QuestionAnswer": {
+        "additionalProperties": false,
+        "properties": {
+          "confidence": {
+            "enum": [
+              "explicit",
+              "syntax",
+              "heuristic",
+              "unresolved"
+            ],
+            "type": "string"
+          },
+          "distance": {
+            "maximum": 64,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "edgeIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "nodeId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "nodeIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 65,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "nodeId",
+          "title",
+          "distance",
+          "confidence",
+          "nodeIds",
+          "edgeIds"
+        ],
+        "type": "object"
+      },
+      "RelationshipEvidence": {
+        "additionalProperties": false,
+        "properties": {
+          "confidence": {
+            "enum": [
+              "explicit",
+              "syntax",
+              "heuristic",
+              "unresolved"
+            ],
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "direction": {
+            "enum": [
+              "forward",
+              "backward",
+              "both",
+              "none"
+            ],
+            "type": "string"
+          },
+          "edgeId": {
+            "description": "Canonical UUID or synthetic hierarchy:\u003cnodeUUID\u003e.",
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "line": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "path": {
+            "type": "string"
+          },
+          "shortened": {
+            "type": "boolean"
+          },
+          "source": {
+            "enum": [
+              "diagram",
+              "code",
+              "sql",
+              "csv",
+              "hierarchy"
+            ],
+            "type": "string"
+          },
+          "sourceNodeId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "targetNodeId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "edgeId",
+          "kind",
+          "confidence",
+          "source",
+          "description",
+          "sourceNodeId",
+          "targetNodeId",
+          "direction"
+        ],
+        "type": "object"
+      },
       "Replacement": {
         "additionalProperties": false,
         "properties": {
@@ -2394,6 +3712,59 @@
             "type": "string"
           }
         },
+        "type": "object"
+      },
+      "SourceEvidence": {
+        "additionalProperties": true,
+        "description": "Code declarations carry retained source path/line; SQL carries retained schema or logical expressions. CSV metadata identifies source/path/measures. Supplying metricId returns explanation with up to 100 original/cleaned rows, original data-row numbers and contributing/excluded/duplicate dispositions. No code or SQL is executed; original code/SQL scripts are not retained. Evidence explicitly requested over MCP can include sensitive original cells.",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/CodeObject"
+          },
+          "columns": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "datasetId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "diagramId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "explanation": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "graphVersion": {
+            "type": "integer"
+          },
+          "nodeId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "sqlResult": {
+            "$ref": "#/components/schemas/SqlQueryResult"
+          },
+          "sqlSource": {
+            "$ref": "#/components/schemas/SqlQuerySource"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "diagramId",
+          "graphVersion",
+          "nodeId",
+          "warnings"
+        ],
         "type": "object"
       },
       "SpatialCamera": {
@@ -2923,6 +4294,173 @@
         ],
         "type": "object"
       },
+      "StoryboardDefinition": {
+        "additionalProperties": false,
+        "description": "Up to 1,000 unique scene UUIDs and 100,000 total canonical object/relationship references. Scene narration is independent of node descriptions. Each referenced ID exists in this graph; edge endpoints also participate in framing/highlighting. Playback temporarily highlights selected content, auto-fits or uses saved views and preserves canonical graph layout. Storyboards coexist with legacy numbering.",
+        "properties": {
+          "scenes": {
+            "items": {
+              "$ref": "#/components/schemas/StoryboardScene"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "version": {
+            "enum": [
+              1
+            ],
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "scenes"
+        ],
+        "type": "object"
+      },
+      "StoryboardScene": {
+        "additionalProperties": false,
+        "properties": {
+          "edgeIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 20000,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "narration": {
+            "maxLength": 12000,
+            "type": "string"
+          },
+          "nodeIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 20000,
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "seconds": {
+            "maximum": 600,
+            "minimum": 2,
+            "type": "number"
+          },
+          "transitionMs": {
+            "maximum": 10000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "view": {
+            "$ref": "#/components/schemas/StoryboardView"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "nodeIds",
+          "edgeIds",
+          "narration",
+          "seconds",
+          "transitionMs"
+        ],
+        "type": "object"
+      },
+      "StoryboardUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "baseVersion": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "storyboard": {
+            "$ref": "#/components/schemas/StoryboardDefinition"
+          }
+        },
+        "required": [
+          "baseVersion",
+          "storyboard"
+        ],
+        "type": "object"
+      },
+      "StoryboardView": {
+        "description": "Saved view requires its matching current mode and Details (semantic overview off); mismatches return 422 before navigation or video export. Choose Details or omit view to auto-fit the same canonical objects in either mode, including overview.",
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "mode": {
+                "enum": [
+                  "2d"
+                ],
+                "type": "string"
+              },
+              "viewport": {
+                "additionalProperties": false,
+                "properties": {
+                  "x": {
+                    "maximum": 10000000,
+                    "minimum": -10000000,
+                    "type": "number"
+                  },
+                  "y": {
+                    "maximum": 10000000,
+                    "minimum": -10000000,
+                    "type": "number"
+                  },
+                  "zoom": {
+                    "maximum": 100,
+                    "minimum": 0.01,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "x",
+                  "y",
+                  "zoom"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "mode",
+              "viewport"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "camera": {
+                "$ref": "#/components/schemas/SpatialCamera"
+              },
+              "mode": {
+                "enum": [
+                  "3d"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "mode",
+              "camera"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "WorkspaceBackup": {
         "description": "Portable local workspace data. The device-specific import-file-limit-mb setting is excluded from export and ignored during Merge/Replace; the destination's selected limit is retained.",
         "properties": {
@@ -2961,6 +4499,9 @@
             ],
             "type": "integer"
           },
+          "history": {
+            "$ref": "#/components/schemas/HistoryBackup"
+          },
           "nodes": {
             "items": {
               "$ref": "#/components/schemas/Node"
@@ -2974,7 +4515,7 @@
             "type": "array"
           },
           "schemaVersion": {
-            "description": "IndexedDB schema version at export; currently 6. Older backups may omit this.",
+            "description": "IndexedDB schema version at export; currently 7. Older backups may omit this. History archives are optional and included in complete workspace backups.",
             "type": "integer"
           },
           "settings": {
@@ -3036,7 +4577,7 @@
     }
   },
   "info": {
-    "description": "IndexedDB in the browser is authoritative and is the only database. This optional API forwards commands through a WebSocket bridge to an open browser with explicit storage acceptance and MCP access set to Read only or Read + write (default Off). Read-only access permits GET, POST /export and exact POST /sql/preview, /code/preview or /diagram-files/preview, rejecting mutations with 403. Draw.io XML and base64 Visio .vsdx ZIP files are analyzed locally without executing or fetching embedded content; POST /import saves only a selected native page and requires write access. Multipage imports require pageId from preview. Original XML/ZIP is transient. SQL SELECT/WITH visualization retains scoped aliases, expressions, joins and clauses locally; it never executes SQL or connects to a database. POST /sql/diagrams and POST /code/diagrams save and open validated graphs and require write access. GET /code/languages discovers all 50 supported structural analyzers. Code diagrams retain identifiers, paths, source lines and confidence; original source and nonstructural string values are discarded. The public static host provides no content API; endpoints target a loopback bridge only. Start the static server with --bridge. No application records are stored in the server. PATCH requires version; graph replacement requires baseVersion. Optional VISUAL_NERVE_BRIDGE_TOKEN protects all integration requests. PNG/PDF render in the browser. MCP is available at /mcp. Its initialize instructions advertise native 2D and opt-in 3D. visual_nerve_api_docs provides a compact guide by default and the full bundled OpenAPI with document=openapi; the same documents are MCP resources. Documentation discovery requires no connected browser. The website domain is the allowed app origin; Settings shows a separate local MCP HTTP URL for Codex and WebSocket URL for the browser.",
+    "description": "IndexedDB in the browser is authoritative and is the only database. This optional API forwards commands through a WebSocket bridge to an open browser with explicit storage acceptance and MCP access set to Read only or Read + write (default Off). Read-only access permits GET, POST /export, exact POST /sql/preview, /code/preview or /diagram-files/preview and exact diagram questions/build-brief previews, rejecting mutations with 403. Semantic overview, evidence-backed multi-level questions, local version history, editable storyboard scenes and reviewed app specifications share the same canonical graph and browser-local persistence. Draw.io XML and base64 Visio .vsdx ZIP files are analyzed locally without executing or fetching embedded content; POST /import saves only a selected native page and requires write access. Multipage imports require pageId from preview. Original XML/ZIP is transient. SQL SELECT/WITH visualization retains scoped aliases, expressions, joins and clauses locally; it never executes SQL or connects to a database. POST /sql/diagrams and POST /code/diagrams save and open validated graphs and require write access. GET /code/languages discovers all 50 supported structural analyzers. Code diagrams retain identifiers, paths, source lines and confidence; original source and nonstructural string values are discarded. The public static host provides no content API; endpoints target a loopback bridge only. Start the static server with --bridge. No application records are stored in the server. PATCH requires version; graph replacement requires baseVersion. Optional VISUAL_NERVE_BRIDGE_TOKEN protects all integration requests. PNG/PDF render in the browser. MCP is available at /mcp. Its initialize instructions advertise native 2D and opt-in 3D. visual_nerve_api_docs provides a compact guide by default and the full bundled OpenAPI with document=openapi; the same documents are MCP resources. Documentation discovery requires no connected browser. The website domain is the allowed app origin; Settings shows a separate local MCP HTTP URL for Codex and WebSocket URL for the browser.",
     "title": "Visual Nerve local API",
     "version": "0.2.0"
   },
@@ -4234,6 +5775,429 @@
         "summary": "Update diagram using its version"
       }
     },
+    "/diagrams/{diagramId}/build-brief": {
+      "post": {
+        "operationId": "post_diagrams_diagramId_build-brief",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diagramId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BuildBriefInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildBrief"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Read-only complete Lovable brief and generated app specification; does not send or publish"
+      }
+    },
+    "/diagrams/{diagramId}/build-specification": {
+      "get": {
+        "operationId": "get_diagrams_diagramId_build-specification",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diagramId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildSpecificationDraft"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Read reviewed app requirements and decision answers"
+      },
+      "put": {
+        "operationId": "put_diagrams_diagramId_build-specification",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diagramId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BuildSpecificationUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Graph"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Save reviewed app requirements at baseVersion"
+      }
+    },
     "/diagrams/{diagramId}/bulk": {
       "post": {
         "operationId": "post_diagrams_diagramId_bulk",
@@ -4660,6 +6624,182 @@
         "summary": "Create relationship"
       }
     },
+    "/diagrams/{diagramId}/evidence": {
+      "get": {
+        "operationId": "get_diagrams_diagramId_evidence",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diagramId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "nodeId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "metricId",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "disposition",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "all",
+                "included",
+                "excluded"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceEvidence"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Read object source metadata or an explicitly requested CSV measure page including original cells"
+      }
+    },
     "/diagrams/{diagramId}/graph": {
       "put": {
         "operationId": "put_diagrams_diagramId_graph",
@@ -4803,6 +6943,874 @@
           {}
         ],
         "summary": "Replace graph transactionally at baseVersion"
+      }
+    },
+    "/diagrams/{diagramId}/history": {
+      "get": {
+        "operationId": "get_diagrams_diagramId_history",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diagramId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/HistorySnapshot"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "List named local versions and pre-refresh/pre-restore checkpoints"
+      },
+      "post": {
+        "operationId": "post_diagrams_diagramId_history",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diagramId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HistoryCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistorySnapshot"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Save a named local snapshot at current baseVersion; bounded storage and write access required"
+      }
+    },
+    "/diagrams/{diagramId}/history/{snapshotId}": {
+      "delete": {
+        "operationId": "delete_diagrams_diagramId_history_snapshotId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diagramId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshotId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Remove a snapshot and unreferenced archives; current diagram unchanged"
+      },
+      "get": {
+        "operationId": "get_diagrams_diagramId_history_snapshotId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diagramId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshotId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryRead"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Read archived graph and shared source version"
+      }
+    },
+    "/diagrams/{diagramId}/history/{snapshotId}/compare": {
+      "get": {
+        "operationId": "get_diagrams_diagramId_history_snapshotId_compare",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diagramId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshotId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "default": "current",
+              "description": "current or a snapshot UUID in this diagram",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryComparison"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Compare semantic changes and modeled affected dependencies with current or another snapshot"
+      }
+    },
+    "/diagrams/{diagramId}/history/{snapshotId}/restore": {
+      "post": {
+        "operationId": "post_diagrams_diagramId_history_snapshotId_restore",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diagramId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshotId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HistoryRestore"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryRestoreResult"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Restore at baseVersion with an atomic safety snapshot; preserve IDs and current shared owner profiles"
       }
     },
     "/diagrams/{diagramId}/nodes": {
@@ -5086,6 +8094,431 @@
         "summary": "Create a node with sensible default position"
       }
     },
+    "/diagrams/{diagramId}/overview": {
+      "get": {
+        "operationId": "get_diagrams_diagramId_overview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diagramId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OverviewConfig"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Read semantic overview configuration; read-only allowed"
+      },
+      "put": {
+        "operationId": "put_diagrams_diagramId_overview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diagramId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OverviewUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Graph"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Update view-only semantic grouping at baseVersion; canonical objects stay intact"
+      }
+    },
+    "/diagrams/{diagramId}/overview/projection": {
+      "get": {
+        "operationId": "get_diagrams_diagramId_overview_projection",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diagramId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "zoom",
+            "required": false,
+            "schema": {
+              "default": 0.1,
+              "exclusiveMinimum": true,
+              "maximum": 10,
+              "minimum": 0,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OverviewProjection"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Read stable groups and aggregated relations at a chosen zoom"
+      }
+    },
     "/diagrams/{diagramId}/presentation": {
       "get": {
         "operationId": "get_diagrams_diagramId_presentation",
@@ -5362,6 +8795,429 @@
           {}
         ],
         "summary": "Save an exact presentation definition transactionally at baseVersion; stale versions return 409; write access required"
+      }
+    },
+    "/diagrams/{diagramId}/questions": {
+      "post": {
+        "operationId": "post_diagrams_diagramId_questions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diagramId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiagramQuestion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiagramQuestionResult"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Read-only multi-level modeled relationship question with paged source evidence; never executes code or SQL"
+      }
+    },
+    "/diagrams/{diagramId}/storyboard": {
+      "get": {
+        "operationId": "get_diagrams_diagramId_storyboard",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diagramId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoryboardDefinition"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Read saved multi-object scenes or an empty storyboard"
+      },
+      "put": {
+        "operationId": "put_diagrams_diagramId_storyboard",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diagramId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoryboardUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Graph"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Save scene content, authored narration and camera views at baseVersion"
       }
     },
     "/edges/{edgeId}": {
@@ -8299,6 +12155,140 @@
           {}
         ],
         "summary": "Presentation rewind; exact empty object body and write access required; returns 409 while video export or cancellation cleanup is active"
+      }
+    },
+    "/presentation/seek": {
+      "post": {
+        "operationId": "post_presentation_seek",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PresentationSeek"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresentationRuntime"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Preview a scene or numbered step paused; write access required"
       }
     },
     "/presentation/video": {
