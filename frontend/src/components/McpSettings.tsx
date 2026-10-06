@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useEditor } from '../state/editor';
 import { workspace } from '../storage/workspace';
 import type { McpAccess } from '../integration/access';
+import { McpConnectionInfo } from './McpConnectionInfo';
 
 export function McpSettings() {
   const access = useEditor((state) => state.mcpAccess);
@@ -44,6 +45,7 @@ export function McpSettings() {
               : 'Waiting'}
       </p>
       <p className="muted">Visual Nerve must stay open for MCP access to work.</p>
+      <McpConnectionInfo endpoint={endpoint} />
       {state === 'error' && (
         <p className="muted">
           Cannot reach the local bridge. Start it, allow this website's origin, and check the local
@@ -52,6 +54,11 @@ export function McpSettings() {
       )}
       <details className="storage-details">
         <summary>Local connection details</summary>
+        <p className="muted">
+          This WebSocket connects the browser to the local service. Codex uses the MCP server URL
+          shown above. The website domain is configured as an allowed origin when starting the
+          bridge.
+        </p>
         <label className="field">
           <span>Local bridge address</span>
           <input

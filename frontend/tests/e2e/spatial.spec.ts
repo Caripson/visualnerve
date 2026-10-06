@@ -1075,12 +1075,11 @@ test('keeps the same 2,501 mind map cards and 2,500 links interactive as a compl
   await saved(page);
   camera = getSpatialView(await stored(request, initial.diagram.id)).camera!;
   expect(camera.position.z).toBeLessThan(camera.target.z);
-  // Card text belongs to the front face. A view from behind exposes the back of
-  // the same relief cards instead of independently rotating camera-facing labels.
+  // Both physical card faces retain native 2D text, including a view from behind.
   await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
   await expect
     .poll(async () => Number((await canvas.getAttribute('data-visible-labels')) ?? 0))
-    .toBe(0);
+    .toBeGreaterThan(0);
   await yawFromFront(page, request, initial.diagram.id);
   await expect(canvas).toHaveAttribute('data-face-source', '2d-node', { timeout: 45000 });
   await expect

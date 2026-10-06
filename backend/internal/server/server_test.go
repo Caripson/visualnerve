@@ -231,10 +231,17 @@ func TestMCPToolUsesTheSameBrowserBridge(t *testing.T) {
 		t.Fatal(initialized)
 	}
 	list := call(`{"jsonrpc":"2.0","id":2,"method":"tools/list"}`)
-	if len(list["result"].(map[string]any)["tools"].([]any)) != 1 {
-		t.Fatal(list)
+	var tool map[string]any
+	for _, candidate := range list["result"].(map[string]any)["tools"].([]any) {
+		value := candidate.(map[string]any)
+		if value["name"] == "visual_nerve_request" {
+			tool = value
+			break
+		}
 	}
-	tool := list["result"].(map[string]any)["tools"].([]any)[0].(map[string]any)
+	if tool == nil {
+		t.Fatal("MCP browser command tool is missing", list)
+	}
 	if !strings.Contains(tool["description"].(string), "/spatial-diagrams") || !strings.Contains(tool["description"].(string), "independent readable 2D") {
 		t.Fatal("MCP tool must expose the 3D creation and 2D export contract", tool)
 	}

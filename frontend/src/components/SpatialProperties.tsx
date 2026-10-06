@@ -55,7 +55,10 @@ export function SpatialProperties({ graph, node }: { graph: Graph; node?: GraphN
   return (
     <details className="spatial-properties" open={getSpatialView(graph).mode === '3d'}>
       <summary>3D placement</summary>
-      <p className="muted">Independent of the 2D overview. Y is up; Z points toward the front.</p>
+      <p className="muted">
+        3D placement leaves the 2D overview intact. Moving a card in 2D also shifts this placement.
+        Y is up; Z points toward the front.
+      </p>
       <div className="field-row">
         {(['x', 'y', 'z'] as const).map((axis) => (
           <label className="field" key={axis}>

@@ -1,13 +1,13 @@
 package server
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
 )
 
-// Stateless Streamable HTTP endpoint. Tool execution always passes through the browser bridge.
+// Stateless Streamable HTTP endpoint. Workspace commands use the browser bridge;
+// documentation discovery reads only the bundled public API contract.
 func (s *Server) mcp(w http.ResponseWriter, r *http.Request) {
 	if !s.config.Bridge {
 		failure(w, 404, "local integration is disabled")
@@ -44,38 +44,37 @@ func (s *Server) mcp(w http.ResponseWriter, r *http.Request) {
 	response := map[string]any{"jsonrpc": "2.0", "id": request.ID}
 	switch request.Method {
 	case "initialize":
-		response["result"] = map[string]any{"protocolVersion": "2025-06-18", "capabilities": map[string]any{"tools": map[string]any{}}, "serverInfo": map[string]string{"name": "visual-nerve", "version": "0.2.0"}, "instructions": "Commands require an open Visual Nerve browser with local integration enabled. IndexedDB in the browser is the only database."}
+		response["result"] = map[string]any{"protocolVersion": "2025-06-18", "capabilities": map[string]any{"tools": map[string]any{}, "resources": map[string]any{}}, "serverInfo": map[string]string{"name": "visual-nerve", "version": "0.2.0"}, "instructions": mcpInstructions}
 	case "ping":
 		response["result"] = map[string]any{}
 	case "tools/list":
-		response["result"] = map[string]any{"tools": []any{map[string]any{"name": "visual_nerve_request", "description": mcpToolDescription, "inputSchema": map[string]any{"type": "object", "required": []string{"path"}, "properties": map[string]any{"path": map[string]string{"type": "string"}, "method": map[string]any{"type": "string", "enum": []string{"GET", "POST", "PUT", "PATCH", "DELETE"}}, "data": map[string]any{}, "workspaceId": map[string]string{"type": "string"}}, "additionalProperties": false}}}}
+		if err := mcpListParams(request.Params); err != nil {
+			response["error"] = err
+		} else {
+			response["result"] = map[string]any{"tools": mcpTools()}
+		}
 	case "tools/call":
-		var params struct {
-			Name      string `json:"name"`
-			Arguments struct {
-				Path        string          `json:"path"`
-				Method      string          `json:"method"`
-				Data        json.RawMessage `json:"data"`
-				WorkspaceID string          `json:"workspaceId"`
-			} `json:"arguments"`
-		}
-		if json.Unmarshal(request.Params, &params) != nil || params.Name != "visual_nerve_request" {
-			response["error"] = map[string]any{"code": -32602, "message": "unknown tool or invalid arguments"}
-			break
-		}
-		if params.Arguments.Method == "" {
-			params.Arguments.Method = "GET"
-		}
-		ctx, cancel := context.WithTimeout(r.Context(), commandTimeout(params.Arguments.Path))
-		result, err := s.forward(ctx, params.Arguments.WorkspaceID, params.Arguments.Path, params.Arguments.Method, params.Arguments.Data)
-		cancel()
+		result, err := s.mcpCallTool(r.Context(), request.Params)
 		if err != nil {
-			result.Body, _ = json.Marshal(map[string]string{"error": err.Error()})
+			response["error"] = err
+		} else {
+			response["result"] = result
 		}
-		if len(result.Body) == 0 {
-			result.Body = json.RawMessage(`null`)
+	case "resources/list", "resources/templates/list":
+		if err := mcpListParams(request.Params); err != nil {
+			response["error"] = err
+		} else if request.Method == "resources/templates/list" {
+			response["result"] = map[string]any{"resourceTemplates": []any{}}
+		} else {
+			response["result"] = map[string]any{"resources": mcpResources()}
 		}
-		response["result"] = map[string]any{"isError": err != nil || result.Status >= 400, "content": []any{map[string]string{"type": "text", "text": string(result.Body)}}, "structuredContent": map[string]any{"status": result.Status, "body": result.Body}}
+	case "resources/read":
+		result, err := s.mcpReadResource(request.Params)
+		if err != nil {
+			response["error"] = err
+		} else {
+			response["result"] = result
+		}
 	default:
 		response["error"] = map[string]any{"code": -32601, "message": "method not found"}
 	}

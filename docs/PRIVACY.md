@@ -48,6 +48,8 @@ MCP is Off by default; users explicitly choose Read only or Read + write. This g
 
 The bridge binds to localhost, checks exact trusted app origins and forwards commands in memory. The browser uses the same validation and transactions as the UI. Read-only access permits reads, export and exact SQL/code preview, and rejects mutations and grant escalation. SQL preview analyzes supplied SQL without saving a graph; creating a SQL diagram requires write access. The bridge cannot read IndexedDB independently, read graphs from S3, store a second copy or fall back to another database. Off, disconnection and browser closure produce clear errors. See [setup](DEPLOYMENT.md#optional-local-mcp).
 
+Settings distinguishes the current website and its documentation from the local MCP HTTP address and browser WebSocket address. Copied connection instructions omit the session token and contain no diagram records. MCP documentation discovery reads only the bundled public guide/OpenAPI and works without browser content access; Off still blocks workspace commands. The documentation tool/resources make 2D and optional 3D discoverable without sending content to an external documentation service.
+
 ## Network requests and deletion
 
 Normal traffic downloads same-origin static app/documentation files. There is no analytics, telemetry, remote font/CDN script or error reporting. Normal editing uploads no graph title, owners, metadata or export content. The optional bridge is restricted to literal loopback hosts and explicit grants. Hosts may log ordinary file requests and client IPs; diagram data is not included.

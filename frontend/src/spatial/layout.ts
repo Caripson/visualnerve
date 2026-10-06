@@ -57,10 +57,8 @@ export function spatialBounds(points: Iterable<SpatialPoint>): SpatialBounds {
   };
 }
 
-/** The relief uses the same absolute node faces as the 2D canvas, without a new layout. */
-function planarProjection(graph: Graph): { positions: Map<string, SpatialPoint>; scale: number } {
-  const positions = new Map<string, SpatialPoint>();
-  if (!graph.nodes.length) return { positions, scale: 1 };
+/** Canonical x/y already contain the absolute placement of children inside groups. */
+export function spatialPlanarGeometry(graph: Graph) {
   const timeline =
     graph.diagram.type === 'timeline'
       ? timelineGeometry(graph.nodes, graph.diagram.settings.timelineScale ?? 'month')
@@ -75,6 +73,7 @@ function planarProjection(graph: Graph): { positions: Map<string, SpatialPoint>;
       height: geometry.height ?? node.height,
     };
   });
+  if (!faces.length) return { faces, centerX: 0, centerY: 0, scale: 1, timeline };
   let left = Infinity,
     right = -Infinity,
     top = Infinity,
@@ -93,6 +92,13 @@ function planarProjection(graph: Graph): { positions: Map<string, SpatialPoint>;
     1,
     spatialLimits.derivedExtent / Math.max(1, (right - left) / 100, (bottom - top) / 100),
   );
+  return { faces, centerX, centerY, scale, timeline };
+}
+
+/** The relief uses the same absolute node faces as the 2D canvas, without a new layout. */
+function planarProjection(graph: Graph): { positions: Map<string, SpatialPoint>; scale: number } {
+  const positions = new Map<string, SpatialPoint>();
+  const { faces, centerX, centerY, scale } = spatialPlanarGeometry(graph);
   for (const { node, x, y, width, height } of faces) {
     const explicit = getSpatialNode(node)?.position;
     positions.set(

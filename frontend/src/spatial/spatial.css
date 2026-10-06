@@ -58,6 +58,16 @@
   color: var(--accent, #27724f);
   font-weight: 650;
 }
+.spatial-toolbar button[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--accent, #27724f) 15%, var(--surface));
+  color: var(--accent, #27724f);
+}
+.spatial-canvas[data-object-mode='move'] .spatial-stage canvas {
+  cursor: grab;
+}
+.spatial-canvas[data-object-mode='move'] .spatial-stage canvas[data-object-dragging='true'] {
+  cursor: grabbing;
+}
 .spatial-orientations {
   display: flex;
   gap: 2px;

@@ -405,9 +405,19 @@ test('public HTTPS app grants read-only or write access solely to a local TLS MC
     await create(page, 'MCP Private Strategy');
     expect(sockets).toEqual([]);
     await settings(page);
+    await expect(page.getByLabel('Visual Nerve website', { exact: true })).toHaveValue(
+      new URL(publicURL).origin,
+    );
+    await expect(page.getByRole('link', { name: 'API documentation — 2D and 3D' })).toHaveAttribute(
+      'href',
+      new URL('/api/docs/', publicURL).href,
+    );
     await page.getByText('Local connection details', { exact: true }).click();
     await page.getByLabel('Local bridge address').fill('wss://127.0.0.1:4329/bridge');
     await page.getByRole('button', { name: 'Save connection', exact: true }).click();
+    await expect(page.getByLabel('MCP server URL for Codex', { exact: true })).toHaveValue(
+      'https://127.0.0.1:4329/mcp',
+    );
     await page.getByLabel('MCP access', { exact: true }).selectOption('read');
     await connected(1);
     await expect(page.getByText('MCP connection: Connected', { exact: true })).toBeVisible();

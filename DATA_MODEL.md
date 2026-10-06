@@ -4,7 +4,7 @@
 
 All entity IDs are UUIDs, with positive versions and creation/update timestamps. Exchange documents contain `format: "visual-nerve"`, `formatVersion: 1`, diagram, nodes, edges and referenced owners. Application extensions belong in metadata.
 
-3D shares these canonical records and IDs. `diagram.settings.spatialView` stores version 1, mode (`2d`/`3d`) and an optional position/target camera, with an optional unit `up` vector for saved roll. `node.metadata.spatial` stores version 1, optional X/Y/Z placement. Node world coordinates allow ±1,000,000 and camera coordinates ±10,000,000; both require finite numbers, camera position must differ from target and an explicit up direction must differ from the viewing axis. Reserved keys and enums are strictly validated. Existing 2D geometry and viewport remain independent. No IndexedDB migration or additional table is needed. See [3D contract](docs/SPATIAL_DIAGRAMS.md).
+3D shares these canonical records and IDs. `diagram.settings.spatialView` stores version 1, mode (`2d`/`3d`) and an optional position/target camera, with an optional unit `up` vector for saved roll. `node.metadata.spatial` stores version 1, optional X/Y/Z placement. Node world coordinates allow ±1,000,000 and camera coordinates ±10,000,000; both require finite numbers, camera position must differ from target and an explicit up direction must differ from the viewing axis. Reserved keys and enums are strictly validated. Camera and explicit 3D edits preserve the native 2D geometry and viewport. A movement of the node's displayed 2D geometry shifts an existing explicit 3D X/Y by the corresponding displacement and preserves Z and the placement offset. The conversion uses the previous uniform relief scale; view recentering does not count as object movement. New explicit X/Y/Z supplied in the same command takes precedence. Editor commands and repository API writes share this synchronization, including PATCH, bulk and graph replacement. No IndexedDB migration, additional table or exchange-format change is needed. See [3D contract](docs/SPATIAL_DIAGRAMS.md).
 
 - Diagram: name, description, type, folder, tags, favorite, metadata and settings. Supported types: blank, mindmap, flowchart, timeline, process, dependency, responsibility and freeform.
 - Node: diagramId, externalId, nodeType, title, description, notes, URL, status, color, tags, metadata, dates, parentId and collapsed. Absolute x/y/width/height describe layout. ownerIds is canonical; ownerId aliases its first member.
@@ -23,15 +23,15 @@ Copying/pasting query objects within a diagram gives the pasted logical query in
 
 ## IndexedDB schema
 
-| Table | Key and indexes | Contents |
-| --- | --- | --- |
-| diagrams | id; name, type, updatedAt, folder, tags | Canonical Diagram |
-| nodes | id; diagramId, unique [diagramId+externalId], updatedAt, nodeType, status, parentId, ownerIds | Canonical GraphNode |
-| edges | id; diagramId, unique [diagramId+externalId], sourceNodeId, targetNodeId, updatedAt | Canonical GraphEdge |
-| owners | id; unique externalId, name, kind, team, updatedAt | Canonical Owner |
-| settings | key | Preferences, workspace identity, last project |
-| templates | id; name | Named canonical graph and builtin flag |
-| datasets | id; diagramId, updatedAt | Original CSV column IDs and string rows; multiple sources per diagram |
+| Table     | Key and indexes                                                                               | Contents                                                              |
+| --------- | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| diagrams  | id; name, type, updatedAt, folder, tags                                                       | Canonical Diagram                                                     |
+| nodes     | id; diagramId, unique [diagramId+externalId], updatedAt, nodeType, status, parentId, ownerIds | Canonical GraphNode                                                   |
+| edges     | id; diagramId, unique [diagramId+externalId], sourceNodeId, targetNodeId, updatedAt           | Canonical GraphEdge                                                   |
+| owners    | id; unique externalId, name, kind, team, updatedAt                                            | Canonical Owner                                                       |
+| settings  | key                                                                                           | Preferences, workspace identity, last project                         |
+| templates | id; name                                                                                      | Named canonical graph and builtin flag                                |
+| datasets  | id; diagramId, updatedAt                                                                      | Original CSV column IDs and string rows; multiple sources per diagram |
 
 Dexie version 1 discovers legacy browser snapshots. Version 2 expands them into canonical records, retaining pending edits, owners and settings. Version 3 removes obsolete snapshot/state stores. Version 4 preserves the six stores and removes the historical boolean integration grant, requiring explicit MCP permissions. Version 5 adds diagram-owned CSV datasets while retaining existing records. Version 6 changes their diagramId index to nonunique, retaining all existing sources. Source analyses, matching-column relationships, entity focus and named views persist in diagram settings, with source paths/measures on node metadata; exchange graphs optionally include a primary dataset and additional datasets. Local storage acceptance is a separate preference required before the workspace opens. It and integration grants are never imported from backups. Fresh installations finish with exactly the seven tables above; built-in templates seed only after acceptance and only when absent. No history, attachments or separate metadata table is created. See [STORAGE.md](docs/STORAGE.md).
 

@@ -4,33 +4,43 @@ IndexedDB in the browser is the only database. Start the static server with `--b
 
 Base: `http://localhost:4317/api/v1`. Responses and request bodies are JSON unless exporting Markdown. Swagger is bundled at `/api/docs`, the generated OpenAPI 3 contract at `/api/openapi.yaml`, and its source at `docs/openapi.yaml` (JSON syntax, valid YAML 1.2). Regenerate with `cd backend && go run ./cmd/openapi`.
 
+## MCP discovery and connection addresses
+
+Settings shows **Visual Nerve website**, an API documentation link on that website's domain, and a separate **MCP server URL for Codex**. The website's exact origin belongs in `--allowed-origin`. The MCP server runs on the user's computer; Codex connects to its HTTP(S) `/mcp`, while the browser connects to its WebSocket `/bridge`. The Codex URL is derived from the saved, validated local connection, preserving the hostname, port and TLS choice. Editing an unsaved connection does not change it. The public S3/CloudFront website serves app files and documentation, with no remote content API or MCP process.
+
+`initialize` instructions and `tools/list` announce both native 2D and opt-in 3D. Start with the read-only tool `visual_nerve_api_docs`: `{}` or omitted arguments returns a compact command guide, `{"document":"openapi"}` returns the complete bundled OpenAPI, and `{"document":"all"}` returns both. This works without a connected browser and never reads workspace records. A separate web-documentation link is optional. Normal token/origin/loopback rules still apply.
+
+The same documents are MCP resources: `visual-nerve://docs/guide` (`text/markdown`) and `visual-nerve://docs/openapi` (`application/yaml`), discoverable with `resources/list` and readable with `resources/read`. Unknown resource URIs return `-32002`; malformed/unknown arguments return `-32602`. A missing bundled OpenAPI produces a clear tool error or resource `-32603`.
+
+Use `visual_nerve_request` for graph commands. HTTP documentation paths `/api/docs` and `/api/openapi.yaml` are not browser graph-command paths. For a requested 3D diagram, create through `POST /spatial-diagrams`, then populate its native nodes and edges. Keep the same readable 2D layout for view switching and PNG/PDF; discovering 3D support does not switch ordinary requests to 3D. **Instructions for Codex** in Settings provides a copyable setup note with these capabilities and addresses, excluding the integration token.
+
 ## CRUD and graph operations
 
-| Method | Route | Behavior |
-| --- | --- | --- |
-| GET | /health | Static server, indexeddb storage, bridge enabled/connected and version |
-| GET / POST | /diagrams | List / create diagram |
-| POST | /spatial-diagrams | Create and open a 3D diagram; return complete Graph |
-| POST | /sql/preview | Analyze SELECT/WITH or DDL locally; return graph/counts/warnings without saving |
-| POST | /sql/diagrams | Analyze SQL, save transactionally and open the diagram; return complete Graph |
-| GET | /code/languages | List all 50 language IDs, extensions and capabilities |
-| POST | /code/preview | Analyze source files locally; return structural graph/counts/warnings without saving |
-| POST | /code/diagrams | Save and open a code dependency diagram; write access required |
-| GET / PATCH / DELETE | /diagrams/{id} | Complete canonical graph / diagram properties / cascading deletion |
-| GET / POST | /diagrams/{id}/nodes | List / create node |
-| GET / PATCH / DELETE | /nodes/{id} | Read / update / delete and detach children |
-| POST | /nodes/{id}/children | Add child plus hierarchy edge and default position |
-| GET / POST | /diagrams/{id}/edges | List / create relationship |
-| PATCH / DELETE | /edges/{id} | Update/reconnect / delete |
-| GET / POST | /owners | List / create global owner |
-| PATCH / DELETE | /owners/{id} | Update / remove owner; advance referencing diagram versions |
-| POST | /diagrams/{id}/bulk | Transactional population and external-ID upsert |
-| PUT | /diagrams/{id}/graph | Atomic full graph replacement using baseVersion |
-| POST | /import | JSON, Markdown or CSV, one transaction |
-| POST | /export | Complete JSON or semantic Markdown |
-| GET | /search?q=... | Global results with diagramId and optional nodeId |
-| GET | /workspace/export | Complete IndexedDB workspace snapshot |
-| POST | /workspace/import | Restore all workspace tables in one transaction |
+| Method               | Route                | Behavior                                                                             |
+| -------------------- | -------------------- | ------------------------------------------------------------------------------------ |
+| GET                  | /health              | Static server, indexeddb storage, bridge enabled/connected and version               |
+| GET / POST           | /diagrams            | List / create diagram                                                                |
+| POST                 | /spatial-diagrams    | Create and open a 3D diagram; return complete Graph                                  |
+| POST                 | /sql/preview         | Analyze SELECT/WITH or DDL locally; return graph/counts/warnings without saving      |
+| POST                 | /sql/diagrams        | Analyze SQL, save transactionally and open the diagram; return complete Graph        |
+| GET                  | /code/languages      | List all 50 language IDs, extensions and capabilities                                |
+| POST                 | /code/preview        | Analyze source files locally; return structural graph/counts/warnings without saving |
+| POST                 | /code/diagrams       | Save and open a code dependency diagram; write access required                       |
+| GET / PATCH / DELETE | /diagrams/{id}       | Complete canonical graph / diagram properties / cascading deletion                   |
+| GET / POST           | /diagrams/{id}/nodes | List / create node                                                                   |
+| GET / PATCH / DELETE | /nodes/{id}          | Read / update / delete and detach children                                           |
+| POST                 | /nodes/{id}/children | Add child plus hierarchy edge and default position                                   |
+| GET / POST           | /diagrams/{id}/edges | List / create relationship                                                           |
+| PATCH / DELETE       | /edges/{id}          | Update/reconnect / delete                                                            |
+| GET / POST           | /owners              | List / create global owner                                                           |
+| PATCH / DELETE       | /owners/{id}         | Update / remove owner; advance referencing diagram versions                          |
+| POST                 | /diagrams/{id}/bulk  | Transactional population and external-ID upsert                                      |
+| PUT                  | /diagrams/{id}/graph | Atomic full graph replacement using baseVersion                                      |
+| POST                 | /import              | JSON, Markdown or CSV, one transaction                                               |
+| POST                 | /export              | Complete JSON or semantic Markdown                                                   |
+| GET                  | /search?q=...        | Global results with diagramId and optional nodeId                                    |
+| GET                  | /workspace/export    | Complete IndexedDB workspace snapshot                                                |
+| POST                 | /workspace/import    | Restore all workspace tables in one transaction                                      |
 
 Creates return 201 and an entity (import returns Graph). Bulk/replacement return 200 and Graph. Deletes return 204. Errors are `{ "error": "message" }`: 400 malformed JSON, 401 token missing/wrong, 403 origin/host rejected, storage not accepted or read-only mutation denied, 404 missing entity, 409 stale version or duplicate identity, 422 validation 428 missing update version, 503 no connected browser and 504 browser timeout. No partially committed graph remains after validation fails. Requests are limited to 32 MiB. All integration requests with a configured VISUAL_NERVE_BRIDGE_TOKEN need `Authorization: Bearer TOKEN`.
 
@@ -51,15 +61,29 @@ UUID `id` is the local identity. `externalId` is an optional stable integration 
 ```json
 {
   "upsert": true,
-  "owners": [{"externalId":"engineering","name":"Engineering","kind":"team"}],
+  "owners": [
+    { "externalId": "engineering", "name": "Engineering", "kind": "team" }
+  ],
   "nodes": [
-    {"externalId":"idea","title":"Idea","nodeType":"start"},
-    {"externalId":"build","title":"Development","ownerExternalId":"engineering"},
-    {"externalId":"launch","title":"Launch","nodeType":"milestone"}
+    { "externalId": "idea", "title": "Idea", "nodeType": "start" },
+    {
+      "externalId": "build",
+      "title": "Development",
+      "ownerExternalId": "engineering"
+    },
+    { "externalId": "launch", "title": "Launch", "nodeType": "milestone" }
   ],
   "edges": [
-    {"externalId":"idea-build","sourceExternalId":"idea","targetExternalId":"build"},
-    {"externalId":"build-launch","sourceExternalId":"build","targetExternalId":"launch"}
+    {
+      "externalId": "idea-build",
+      "sourceExternalId": "idea",
+      "targetExternalId": "build"
+    },
+    {
+      "externalId": "build-launch",
+      "sourceExternalId": "build",
+      "targetExternalId": "launch"
+    }
   ]
 }
 ```
@@ -77,7 +101,14 @@ Send to `POST /diagrams/DIAGRAM_UUID/bulk`. `parentExternalId` resolves a node h
 Visualize a SELECT or WITH query through the same browser worker as the SQL dialog:
 
 ```json
-{"path":"/sql/preview","method":"POST","data":{"name":"Invoice flow","sql":"SELECT b.bu_id, invoice_org.bu_name AS invoice_name FROM business b LEFT JOIN business invoice_org ON b.bu_send_bills_to = invoice_org.bu_id WHERE b.active = 1"}}
+{
+  "path": "/sql/preview",
+  "method": "POST",
+  "data": {
+    "name": "Invoice flow",
+    "sql": "SELECT b.bu_id, invoice_org.bu_name AS invoice_name FROM business b LEFT JOIN business invoice_org ON b.bu_send_bills_to = invoice_org.bu_id WHERE b.active = 1"
+  }
+}
 ```
 
 The exact `POST /sql/preview` endpoint is available with Read only. It returns `SqlImportResult` (`graph`, warnings, schema counts and, for queries, `kind: "query"`, `queryCount`, `sourceCount`, `outputColumnCount`). It does not save or open a project. Review warnings and unresolved references before creating the diagram. Use `POST /sql/diagrams` with the same payload to save and open the graph; this requires Read + write. Both endpoints accept only `sql` and optional `name` (nonempty, at most 500 characters). They reject extra fields, unsupported paths, malformed queries and unsupported constructs without partial writes.
@@ -89,19 +120,29 @@ Worker analysis is cancellable and times out after 30 seconds; SQL REST/MCP comm
 Create an empty 3D mind map through `visual_nerve_request`:
 
 ```json
-{"path":"/spatial-diagrams","method":"POST","data":{"name":"Project overview","type":"mindmap"}}
+{
+  "path": "/spatial-diagrams",
+  "method": "POST",
+  "data": { "name": "Project overview", "type": "mindmap" }
+}
 ```
 
 The optional `type` selects an existing diagram type; the default is `mindmap`. The response is a canonical Graph with UUIDs and versions. Populate it with node creation or bulk external-ID upserts, then use versioned PATCH for edits. Any subject uses ordinary diagram objects and relationships: for example, an AI can create a Brain topic linked to topics for its parts and add explanations in descriptions or notes.
 
 `metadata.spatial` accepts `{ "version": 1, "position": { "x": -2, "y": 0, "z": 1 } }`. Without explicit positions, the view preserves the displayed 2D placement and dimensions on one plane with shallow relief. +Y points up, +Z toward the front and −X toward the left. `diagram.settings.spatialView` stores `{ "version": 1, "mode": "3d" }` and optional `camera: { position: {x,y,z}, target: {x,y,z}, up?: {x,y,z} }`. The optional unit `up` vector preserves roll; omission uses +Y. Supply the complete reserved object when replacing it; other settings/metadata keys follow the existing patch contract.
 
-Node coordinates must be finite and within ±1,000,000; camera coordinates allow ±10,000,000 to frame the diagram. Camera position must differ from target. An explicit `up` vector must have unit length and differ from the viewing axis. Unknown reserved keys are rejected transactionally. Keep node `x/y/width/height` readable for the 2D view and PNG/PDF export. See [spatial diagrams](docs/SPATIAL_DIAGRAMS.md).
+Node coordinates must be finite and within ±1,000,000; camera coordinates allow ±10,000,000 to frame the diagram. Camera position must differ from target. An explicit `up` vector must have unit length and differ from the viewing axis. Unknown reserved keys are rejected transactionally. Keep node `x/y/width/height` readable for the 2D view and PNG/PDF export. Changing only explicit 3D coordinates preserves that 2D layout. Moving a node's displayed 2D geometry shifts an existing explicit 3D X/Y by the corresponding displacement while preserving Z and the placement offset; conversion uses the previous uniform relief scale. A new explicit X/Y/Z supplied in the same command takes precedence. This applies to editor commands and repository API writes, including PATCH, bulk upserts and graph replacement. Reserved fields and the exchange format remain version 1.
+
+The 3D UI renders readable fronts and unmirrored backs from the same native 2D capture. Detailed faces are bounded at 120 logical cards, with each front/back pair sharing its texture, material and geometry. Its separate **Move objects** toggle moves the selected objects in world X/Y at retained depth; groups include descendants once. Release commits one undoable command and Escape cancels without partial writes. The **Move**, **Rotate** and **Scale** gizmo controls operate the camera. See [spatial diagrams](docs/SPATIAL_DIAGRAMS.md).
 
 The same optional server exposes Streamable HTTP POST at `/mcp`. Supported protocol: 2025-06-18. Clients initialize, send notifications/initialized, then use tools/list or tools/call. The `visual_nerve_request` tool accepts:
 
 ```json
-{"path":"/diagrams","method":"POST","data":{"name":"AI project","type":"mindmap"}}
+{
+  "path": "/diagrams",
+  "method": "POST",
+  "data": { "name": "AI project", "type": "mindmap" }
+}
 ```
 
 Paths omit /api/v1. The tool's structuredContent contains status and body; isError reports failed commands. MCP dispatch follows MCP → WebSocket bridge → browser command repository → IndexedDB. It cannot access IndexedDB directly. The browser must remain open, and integration must be enabled on both sides.

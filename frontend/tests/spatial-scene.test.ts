@@ -14,6 +14,8 @@ import {
   spatialNodeDimensions,
   spatialNodeAppearance,
   spatialTextPlane,
+  spatialFaceSurfaces,
+  setSpatialFaceIdentity,
   setSpatialFaceOpacity,
   setSpatialNodeFaceCaptured,
 } from '../src/spatial/scene';
@@ -369,6 +371,113 @@ it('paints wrapped title and status on a planar face that turns with the diagram
     expect(normal().z).toBeCloseTo(Math.cos(THREE.MathUtils.degToRad(10)), 7);
     expect(face.quaternion.toArray()).toEqual([0, 0, 0, 1]);
     disposeSpatialScene(surface);
+  } finally {
+    canvasContext.mockRestore();
+  }
+});
+
+it('reads the same left-to-right texture UVs and canonical ID from both physical card sides', () => {
+  const canvasContext = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+    fillRect: vi.fn(),
+    fillText: vi.fn(),
+    measureText: (text: string) => ({ width: text.length * 20 }),
+  } as unknown as CanvasRenderingContext2D);
+  try {
+    const face = spatialTextPlane('Readable card', { width: 3, height: 1.2, depth: 0.14 })!;
+    setSpatialFaceIdentity(face, { nodeId: 'card' });
+    face.position.z = 0.14 / 2 + 0.002;
+    const surfaces = spatialFaceSurfaces(face);
+    expect(surfaces).toHaveLength(2);
+    const [front, back] = surfaces;
+    const card = new THREE.Group();
+    card.add(face);
+    // The card keeps its physical orientation while both viewing directions read it.
+    card.rotation.y = Math.PI / 5;
+    card.updateMatrixWorld(true);
+    const frontNormal = new THREE.Vector3(0, 0, 1).transformDirection(front.matrixWorld);
+    const backNormal = new THREE.Vector3(0, 0, 1).transformDirection(back.matrixWorld);
+    expect(frontNormal.x).toBeCloseTo(Math.sin(Math.PI / 5), 8);
+    expect(frontNormal.z).toBeCloseTo(Math.cos(Math.PI / 5), 8);
+    expect(frontNormal.dot(backNormal)).toBeCloseTo(-1, 8);
+    const frontCenter = new THREE.Vector3().setFromMatrixPosition(front.matrixWorld);
+    const backCenter = new THREE.Vector3().setFromMatrixPosition(back.matrixWorld);
+    expect(frontCenter.clone().sub(backCenter).dot(frontNormal)).toBeCloseTo(0.144, 8);
+    for (const side of [1, -1]) {
+      const camera = new THREE.OrthographicCamera(-2, 2, 1, -1, 0.1, 20);
+      camera.position.copy(frontNormal).multiplyScalar(side * 5);
+      camera.lookAt(0, 0, 0);
+      camera.updateMatrixWorld(true);
+      const sample = (x: number) => {
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(new THREE.Vector2(x, 0.15), camera);
+        const intersections = raycaster.intersectObjects(surfaces, false);
+        expect(intersections).toHaveLength(1);
+        const hit = intersections[0];
+        expect(hit.object).toBe(side === 1 ? front : back);
+        expect(spatialIntersectionIdentity(hit)).toEqual({ nodeId: 'card', edgeId: undefined });
+        return hit.uv!;
+      };
+      const left = sample(-0.25);
+      const right = sample(0.25);
+      // Texture coordinates increase from the viewer's left to right on BOTH faces.
+      // A DoubleSide plane alone would reverse these samples on the back.
+      expect(left.x).toBeCloseTo(1 / 3, 7);
+      expect(right.x).toBeCloseTo(2 / 3, 7);
+      expect(left.y).toBeCloseTo(0.625, 7);
+      expect(right.y).toBeCloseTo(0.625, 7);
+    }
+    expect(front.material.side).toBe(THREE.FrontSide);
+    expect(back.material.side).toBe(THREE.FrontSide);
+    disposeSpatialScene(card);
+  } finally {
+    canvasContext.mockRestore();
+  }
+});
+
+it('shares native capture replacement, opacity, status and GPU ownership across both card sides', () => {
+  const fillText = vi.fn();
+  const canvasContext = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+    fillRect: vi.fn(),
+    fillText,
+    measureText: (text: string) => ({ width: text.length * 20 }),
+  } as unknown as CanvasRenderingContext2D);
+  try {
+    const face = spatialTextPlane('Completed card', {
+      width: 3,
+      height: 1.2,
+      depth: 0.14,
+      status: 'done',
+    })!;
+    const [front, back] = spatialFaceSurfaces(face);
+    expect(fillText.mock.calls.some(([text]) => text === '✓ done')).toBe(true);
+    expect(back.geometry).toBe(front.geometry);
+    expect(back.material).toBe(front.material);
+    expect(back.material.map).toBe(front.material.map);
+    const fallbackTexture = front.material.map!;
+    const fallbackDisposal = vi.spyOn(fallbackTexture, 'dispose');
+    const nativeCanvas = document.createElement('canvas');
+    const nativeTexture = new THREE.CanvasTexture(nativeCanvas);
+    // The native capture path replaces one shared map; both sides update together.
+    front.material.map!.dispose();
+    front.material.map = nativeTexture;
+    front.material.alphaTest = 0.01;
+    front.userData.faceSource = '2d-node';
+    setSpatialFaceOpacity(front, 0.2);
+    expect(back.material.map!.image).toBe(nativeCanvas);
+    expect(back.userData.faceSource).toBe('2d-node');
+    expect(back.material.opacity).toBe(0.2);
+    setSpatialFaceOpacity(front, 1);
+    expect(back.material.transparent).toBe(true);
+    expect(back.material.alphaTest).toBe(0.01);
+    const textureDisposal = vi.spyOn(nativeTexture, 'dispose');
+    const materialDisposal = vi.spyOn(front.material, 'dispose');
+    const geometryDisposal = vi.spyOn(front.geometry, 'dispose');
+    disposeSpatialScene(face);
+    expect(fallbackDisposal).toHaveBeenCalledOnce();
+    expect(textureDisposal).toHaveBeenCalledOnce();
+    expect(materialDisposal).toHaveBeenCalledOnce();
+    expect(geometryDisposal).toHaveBeenCalledOnce();
+    expect(face.children).toEqual([]);
   } finally {
     canvasContext.mockRestore();
   }

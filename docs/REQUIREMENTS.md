@@ -93,3 +93,22 @@ their purpose and expose checks only when the current diagram supplies suitable
 CSV/SQL data. Desktop and phone browser checks verify placement and interaction.
 The 3D-to-2D regression verifies unchanged transforms and canonical nodes; the
 reported intermittent skew has not been reproduced and is not marked fixed.
+
+## 2026-10-06: Readable 3D objects and MCP discovery
+
+The same styled native node must be readable from either physical face in 3D,
+with its back text unmirrored. Front and back share captured appearance and GPU
+resources within the existing detailed-card budget.
+
+Move objects is distinct from camera navigation. Dragging changes world X/Y,
+preserves each object's Z and moves selected groups with their descendants once.
+Connected lines and labels follow the preview. Release commits one undoable
+command; cancellation leaves no partial object changes. A 2D movement also
+shifts existing explicit 3D X/Y, while explicit new coordinates in the same
+command take precedence. The canonical 2D layout remains the export source.
+
+Settings identifies the actual website origin, website API reference and local
+Codex MCP endpoint separately. Copyable connection instructions exclude tokens.
+MCP initialization and read-only documentation tools/resources advertise native
+2D and requested 3D without requiring a separate documentation link or connected
+workspace. Discovery does not grant access to private browser records.

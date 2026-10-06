@@ -61,6 +61,97 @@ function pendingCamera(diagramId: string, camera: SpatialCamera) {
 }
 
 describe('transactional spatial diagram API', () => {
+  it('moves explicit 3D placement with a versioned 2D node move and keeps its depth', async () => {
+    const initial = blankGraph('Move one shared object');
+    initial.nodes = [
+      newNode(initial.diagram.id, {
+        x: 100,
+        y: 200,
+        metadata: { spatial: { version: 1, position: { x: 4, y: 5, z: 6 } } },
+      }),
+    ];
+    const graph = await repo.saveGraph(initial, 0);
+    const node = graph.nodes[0];
+    const moved = await repo.request<Graph['nodes'][number]>(`/nodes/${node.id}`, 'PATCH', {
+      version: node.version,
+      x: 220,
+      y: 170,
+    });
+    expect([moved.x, moved.y]).toEqual([220, 170]);
+    expect(getSpatialNode(moved)?.position).toEqual({ x: 5.2, y: 5.3, z: 6 });
+    const saved = await repo.getGraph(graph.diagram.id);
+    expect(saved.nodes[0]).toEqual(moved);
+    const beforeConflict = await snapshot();
+    await expect(
+      repo.request(`/nodes/${node.id}`, 'PATCH', { version: node.version, x: 400 }),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(await snapshot()).toEqual(beforeConflict);
+  });
+
+  it('keeps an explicit replacement 3D position when the same command also moves 2D geometry', async () => {
+    const initial = blankGraph('Explicit coordinates win');
+    initial.nodes = [
+      newNode(initial.diagram.id, {
+        x: 100,
+        y: 200,
+        metadata: { spatial: { version: 1, position: { x: 4, y: 5, z: 6 } } },
+      }),
+    ];
+    const graph = await repo.saveGraph(initial, 0);
+    const next = structuredClone(graph);
+    next.nodes[0].x += 100;
+    next.nodes[0].metadata.spatial = { version: 1, position: { x: 8, y: -2, z: 9 } };
+    const replaced = await repo.request<Graph>(`/diagrams/${graph.diagram.id}/graph`, 'PUT', {
+      graph: next,
+      baseVersion: graph.diagram.version,
+    });
+    expect(getSpatialNode(replaced.nodes[0])?.position).toEqual({ x: 8, y: -2, z: 9 });
+    expect(replaced.nodes[0].x).toBe(200);
+    const beforeInvalid = await snapshot();
+    const invalid = structuredClone(replaced);
+    invalid.nodes[0].x += 100;
+    invalid.nodes[0].metadata.spatial = { version: 1, position: { x: 0, y: 0, z: Infinity } };
+    await expect(
+      repo.request(`/diagrams/${graph.diagram.id}/graph`, 'PUT', {
+        graph: invalid,
+        baseVersion: replaced.diagram.version,
+      }),
+    ).rejects.toMatchObject({ status: 422 });
+    expect(await snapshot()).toEqual(beforeInvalid);
+  });
+
+  it('does not apply the same 2D movement again when the editor already synchronized both positions', async () => {
+    const workspace = await controller();
+    const initial = blankGraph('One move in editor and storage');
+    initial.nodes = [
+      newNode(initial.diagram.id, {
+        x: 100,
+        y: 200,
+        metadata: { spatial: { version: 1, position: { x: 4, y: 5, z: 6 } } },
+      }),
+    ];
+    await workspace.create(initial);
+    useEditor.getState().updateNode(initial.nodes[0].id, { x: 200, y: 100 });
+    expect(getSpatialNode(useEditor.getState().graph!.nodes[0])?.position).toEqual({
+      x: 5,
+      y: 6,
+      z: 6,
+    });
+    await workspace.settled();
+    expect(getSpatialNode((await repo.getGraph(initial.diagram.id)).nodes[0])?.position).toEqual({
+      x: 5,
+      y: 6,
+      z: 6,
+    });
+    useEditor.getState().undo();
+    await workspace.settled();
+    expect(getSpatialNode((await repo.getGraph(initial.diagram.id)).nodes[0])?.position).toEqual({
+      x: 4,
+      y: 5,
+      z: 6,
+    });
+  });
+
   it('creates a persisted 3D mind map and lets MCP add and annotate ordinary canonical objects', async () => {
     const graph = await repo.request<Graph>('/spatial-diagrams', 'POST', {
       name: 'Explore a project',

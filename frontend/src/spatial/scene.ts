@@ -126,7 +126,31 @@ export function disposeSpatialScene(group: THREE.Object3D) {
   group.clear();
 }
 
-/** Canvas text is painted onto the physical card face; it never faces the camera. */
+export type SpatialFaceMesh = THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
+
+/** A resident card owns one texture and material, shared by its two physical faces. */
+export function spatialFaceSurfaces(face: SpatialFaceMesh): SpatialFaceMesh[] {
+  return [
+    face,
+    ...face.children.filter(
+      (object): object is SpatialFaceMesh =>
+        object instanceof THREE.Mesh && object.userData.spatialFaceBack === true,
+    ),
+  ];
+}
+
+/** Both faces resolve to the same canonical object when raycast independently. */
+export function setSpatialFaceIdentity(
+  face: SpatialFaceMesh,
+  identity: { nodeId?: string; edgeId?: string },
+) {
+  for (const surface of spatialFaceSurfaces(face)) {
+    surface.userData.nodeId = identity.nodeId;
+    surface.userData.edgeId = identity.edgeId;
+  }
+}
+
+/** Canvas text is painted onto both physical card faces; neither faces the camera. */
 export function spatialTextPlane(
   text: string,
   options: {
@@ -134,6 +158,7 @@ export function spatialTextPlane(
     background?: string;
     width?: number;
     height?: number;
+    depth?: number;
     status?: string;
     kind?: string;
     fontSize?: number;
@@ -200,20 +225,28 @@ export function spatialTextPlane(
   );
   face.userData.faceWidth = width;
   face.userData.faceHeight = height;
+  const back = new THREE.Mesh(face.geometry, face.material);
+  // A separate outward-facing surface preserves the texture's left-to-right UVs.
+  // Its local offset puts it just behind the relief, independently of card rotation.
+  back.rotation.y = Math.PI;
+  back.position.z = -Math.max(0, options.depth ?? 0) - 0.004;
+  back.userData.spatialFaceBack = true;
+  back.userData.faceWidth = width;
+  back.userData.faceHeight = height;
+  face.add(back);
   return face;
 }
 
-/** Native front textures contain translucent fills and antialiased edges. */
-export function setSpatialFaceOpacity(
-  face: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>,
-  opacity: number,
-) {
+/** Native textures contain translucent fills and antialiased edges on both sides. */
+export function setSpatialFaceOpacity(face: SpatialFaceMesh, opacity: number) {
   const transparent = face.userData.faceSource === '2d-node' || opacity < 1;
   if (face.material.transparent !== transparent) {
     face.material.transparent = transparent;
     face.material.needsUpdate = true;
   }
   face.material.opacity = opacity;
+  for (const surface of spatialFaceSurfaces(face))
+    surface.userData.faceSource = face.userData.faceSource;
 }
 
 export function isCompletedStatus(status: string | undefined) {
@@ -356,7 +389,7 @@ function reliefGeometry(profile: ReliefProfile) {
   return geometry;
 }
 
-function cardConnectionPoint(
+export function cardConnectionPoint(
   point: SpatialPoint,
   destination: SpatialPoint,
   dimensions: THREE.Vector3,

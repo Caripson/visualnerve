@@ -384,3 +384,41 @@ permissions, exports, privacy/offline/backup behavior, constrained desktop and
 phone menus, actual 3D navigation, unchanged 2D transitions and a 2,501-card
 mind map. Historical screenshot fixtures were retained. Work stays on `main`;
 S3/CloudFront deployment remains manual.
+
+## 2026-10-06: Readable 3D cards, object movement and MCP discovery
+
+Native 2D captures now cover both physical card faces. Back text retains its
+reading direction, styles and icons; front/back pairs share GPU resources and
+count as one card within the 120-card detail budget. Tests verify normals, UV
+orientation, picking and exactly-once resource disposal.
+
+Move objects separates object dragging from camera navigation. GPU previews
+move selected nodes, nested group descendants, connection lines, arrows and
+labels without saving partial placement. Release commits one undoable command;
+Escape and pointer cancellation restore the previous view. Existing 2D geometry
+remains the export source, and 2D moves now shift explicit 3D X/Y while retaining
+Z. Tests include API conflicts, atomic rejection, editor/storage synchronization,
+timeline-origin changes and shared-geometry bounds updates.
+
+Settings separates the real website origin and its documentation URL from the
+local Codex MCP endpoint and advanced browser WebSocket address. Copyable setup
+instructions exclude tokens. MCP announces native 2D and requested 3D through
+initialization, the read-only documentation tool and resources. Both guide and
+complete OpenAPI discovery work without a connected browser. The local bridge
+was restarted with the existing loopback address and hosted-app origin; live
+read-only checks verified both tools, resource capability and the full contract.
+
+758 distinct unit/component cases are verified across 76 files. The full run
+passed 757 cases; after the final timeline/group adjustments, all 67 relevant
+spatial cases passed, including the remaining timeline regression. Formatting,
+Go race tests and vet, TypeScript and the production build passed. The final
+static audit found 265 application files and 36 offline-shell assets, with no
+user data files.
+
+All 22 relevant browser cases passed in 5.6 minutes: documentation discovery,
+public HTTPS/TLS settings and grants, phone layout, 3D drag/undo/cancellation from
+both sides, an actual 2D drag followed by 3D and reload, camera gizmos, repeated
+2D/3D transitions, PNG/PDF/JSON export, offline backups, rendering/download
+fallbacks and a complete 2,501-node/2,500-link relief diagram with readable back
+faces. Historical screenshot fixtures were retained. Work stays on main and
+S3/CloudFront deployment remains manual.

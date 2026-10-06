@@ -25,6 +25,7 @@ import { reconnectedAnalysisEdge } from '../model/relationships';
 import { markdown, parseImport } from '../export/semantic';
 import { database, type WorkspaceBackup, type WorkspaceDatabase } from './database';
 import { setSpatialView } from '../spatial/types';
+import { syncSpatialPositions } from '../spatial/movement';
 import { analysisCommand, type AnalysisCommandOptions } from './analysis-commands';
 
 export type CommandOptions = AnalysisCommandOptions;
@@ -135,6 +136,9 @@ export class Repository {
         if (old) requireVersion(old.diagram.version, expectedVersion);
         else if (expectedVersion !== undefined && expectedVersion !== 0)
           throw new StorageError(409, 'This project was deleted by another tab.');
+        // Apply API/graph-replacement 2D moves in the same transaction as their 3D placement.
+        // Editor commands that already updated both positions are unchanged by this helper.
+        if (old) input = syncSpatialPositions(old, input);
         const owners = await this.db.owners.toArray();
         const registry = new Map(owners.map((owner) => [owner.id, owner]));
         for (const owner of input.owners) {

@@ -5,6 +5,7 @@ import { copySelection, pasteSelection, type Clip } from './clipboard';
 import { mindmapTopics, newTopicPosition } from '../mindmap/tree';
 import { getCsvNode } from '../data/csv';
 import { getDrawingLayer } from '../drawing/types';
+import { syncSpatialPositions } from '../spatial/movement';
 import { validateDrawingLayer } from '../model/validation';
 import { reconnectedAnalysisEdge } from '../model/relationships';
 import { reconnectedDataModelEdge, suppressDataModelEdge } from '../data/model';
@@ -165,7 +166,7 @@ export const useEditor = create<Editor>((set, get) => ({
   command: (label, change, coalesce = false) => {
     const s = get();
     if (!s.graph) return;
-    const next = change(s.graph);
+    const next = syncSpatialPositions(s.graph, change(s.graph));
     const changedFilters =
       s.graph.diagram.settings.analysisFilters !== next.diagram.settings.analysisFilters;
     const before = changedFilters
