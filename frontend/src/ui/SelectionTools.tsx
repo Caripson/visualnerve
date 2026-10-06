@@ -1,7 +1,17 @@
-import { Copy, Pencil, Trash2, Palette, GitBranch } from 'lucide-react';
+import {
+  Copy,
+  Pencil,
+  Trash2,
+  Palette,
+  GitBranch,
+  ListTodo,
+  CircleCheck,
+  RotateCcw,
+} from 'lucide-react';
 import { useEditor } from '../state/editor';
 import { colorPalette } from './colors';
 import { IconPicker, iconKey, withIcon } from './icons';
+import { nodeStatuses, statusLabel } from './status';
 
 export function SelectionTools() {
   const graph = useEditor((state) => state.graph);
@@ -9,7 +19,12 @@ export function SelectionTools() {
   const edges = useEditor((state) => state.selectedEdges);
   if (!graph || (!nodes.length && !edges.length)) return null;
   const selected = new Set(nodes);
-  const first = graph.nodes.find((node) => selected.has(node.id));
+  const objects = graph.nodes.filter((node) => selected.has(node.id));
+  const first = objects[0];
+  const statuses = [...new Set(objects.map((node) => node.status ?? ''))];
+  const allDone = objects.length > 0 && statuses.length === 1 && statuses[0] === 'done';
+  let mixedValue = '__mixed_status__';
+  while (statuses.includes(mixedValue)) mixedValue += '_';
   const canBranch =
     graph.diagram.type === 'mindmap' &&
     first &&
@@ -18,6 +33,11 @@ export function SelectionTools() {
     useEditor.getState().command('Color selection', (g) => ({
       ...g,
       nodes: g.nodes.map((node) => (selected.has(node.id) ? { ...node, color: value } : node)),
+    }));
+  const status = (value: string) =>
+    useEditor.getState().command('Set object status', (g) => ({
+      ...g,
+      nodes: g.nodes.map((node) => (selected.has(node.id) ? { ...node, status: value } : node)),
     }));
   return (
     <div className="selection-tools" aria-label="Selection actions">
@@ -36,6 +56,57 @@ export function SelectionTools() {
       </button>
       {first && (
         <>
+          <details className="quick-picker status-picker">
+            <summary aria-label="Choose status" title="Status">
+              <ListTodo size={17} />
+              <span>Status</span>
+            </summary>
+            <div className="picker-panel status-picker-panel">
+              <label>
+                Status for {objects.length === 1 ? 'this object' : `${objects.length} objects`}
+                <select
+                  aria-label="Selection status"
+                  value={statuses.length > 1 ? mixedValue : statuses[0]}
+                  onChange={(e) => {
+                    status(e.target.value);
+                    const picker = e.currentTarget.closest('details');
+                    picker?.removeAttribute('open');
+                    picker?.querySelector('summary')?.focus();
+                  }}
+                >
+                  {statuses.length > 1 && (
+                    <option value={mixedValue} disabled>
+                      Mixed statuses
+                    </option>
+                  )}
+                  <option value="">None</option>
+                  {nodeStatuses.map((choice) => (
+                    <option key={choice.value} value={choice.value}>
+                      {choice.label}
+                    </option>
+                  ))}
+                  {statuses
+                    .filter(
+                      (value) => value && !nodeStatuses.some((choice) => choice.value === value),
+                    )
+                    .map((value) => (
+                      <option key={value} value={value}>
+                        {statusLabel(value)}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            </div>
+          </details>
+          <button
+            className={`completion-action ${allDone ? 'is-done' : ''}`}
+            aria-label={allDone ? 'Reopen selected objects' : 'Mark selected objects done'}
+            title={allDone ? 'Reopen as In progress' : 'Mark as Done'}
+            onClick={() => status(allDone ? 'in-progress' : 'done')}
+          >
+            {allDone ? <RotateCcw size={17} /> : <CircleCheck size={17} />}
+            <span>{allDone ? 'Reopen' : 'Done'}</span>
+          </button>
           <details className="quick-picker color-picker">
             <summary aria-label="Choose color" title="Color">
               <Palette size={17} />

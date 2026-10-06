@@ -25,7 +25,7 @@ The canonical TypeScript model is `frontend/src/model/types.ts`. The Go model su
 
 ## Persistence and state
 
-`storage/database.ts` defines the six Dexie tables and upgrades existing browser data in place. `storage/repository.ts` validates and applies graph operations inside IndexedDB transactions. `storage/workspace.ts` opens IndexedDB, loads diagrams/owners/preferences and the last project, then connects editor state. UI commands update optimistically and immediately queue database transactions. Saved means the transaction committed; it does not depend on a server or internet connection. Drag and resize gestures commit at their end.
+`storage/database.ts` defines the seven Dexie tables and upgrades existing browser data in place. `storage/repository.ts` validates and applies graph operations inside IndexedDB transactions. `storage/workspace.ts` opens IndexedDB, loads diagrams/owners/preferences and the last project, then connects editor state. UI commands update optimistically and immediately queue database transactions. Saved means the transaction committed; it does not depend on a server or internet connection. Drag and resize gestures commit at their end.
 
 Entity and diagram versions are checked inside transactions. Dexie live queries refresh committed changes across tabs. A stale edit retains its unsaved graph in the editing tab and offers a separate copy, the committed version, or explicit replacement. Unsaved conflict data remains in memory until resolved; export a copy before closing that tab. Normal operation has no graph HTTP requests, polling, secondary store or synchronization database.
 

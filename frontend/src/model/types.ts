@@ -1,3 +1,7 @@
+import type { CsvAnalysis, CsvDataset } from '../data/types';
+import type { DrawingLayer } from '../drawing/types';
+export type { DrawingLayer, DrawingStroke } from '../drawing/types';
+
 export const diagramTypes = [
   'blank',
   'mindmap',
@@ -50,6 +54,8 @@ export interface Diagram extends Base {
     grid?: boolean;
     snap?: boolean;
     timelineScale?: TimelineScale;
+    csvAnalysis?: CsvAnalysis;
+    drawing?: DrawingLayer;
     [key: string]: unknown;
   };
 }
@@ -106,6 +112,7 @@ export interface Graph {
   nodes: GraphNode[];
   edges: GraphEdge[];
   owners: Owner[];
+  dataset?: CsvDataset;
 }
 export interface Filters {
   owner: string;

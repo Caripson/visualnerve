@@ -3,12 +3,18 @@ import type { McpAccess } from '../integration/access';
 import { applyDelta, diffGraph, mergeDelta, type Delta } from './history';
 import { copySelection, pasteSelection, type Clip } from './clipboard';
 import { mindmapTopics, newTopicPosition } from '../mindmap/tree';
+import { getCsvNode } from '../data/csv';
+import { getDrawingLayer } from '../drawing/types';
+import { validateDrawingLayer } from '../model/validation';
+import { reconnectedSqlEdge } from '../sql/relationships';
 import {
   descendantIds,
   emptyFilters,
   newEdge,
   newNode,
   type Diagram,
+  type DrawingLayer,
+  type DrawingStroke,
   type Filters,
   type Graph,
   type GraphEdge,
@@ -17,6 +23,18 @@ import {
 } from '../model/types';
 
 export type SaveStatus = 'saved' | 'saving' | 'error' | 'conflict';
+export type DrawingTool = 'none' | 'pen' | 'eraser';
+
+function suppressCsvParentConnections(nodes: GraphNode[], ids: Set<string>): GraphNode[] {
+  return nodes.map((node) => {
+    if (!ids.has(node.id)) return node;
+    const csv = node.metadata.csv !== undefined ? getCsvNode(node) : undefined;
+    return csv
+      ? { ...node, metadata: { ...node.metadata, csv: { ...csv, suppressParentConnection: true } } }
+      : node;
+  });
+}
+
 interface Editor {
   graph: Graph | null;
   diagrams: Diagram[];
@@ -43,6 +61,9 @@ interface Editor {
   focusMap: boolean;
   mobilePanel: 'projects' | 'details' | null;
   clipboard: Clip | null;
+  drawingTool: DrawingTool;
+  drawingColor: string;
+  drawingWidth: number;
   setGraph(g: Graph | null): void;
   command(label: string, change: (graph: Graph) => Graph, coalesce?: boolean): void;
   addNode(partial?: Partial<GraphNode>): string | undefined;
@@ -60,6 +81,11 @@ interface Editor {
   paste(clip?: Clip): void;
   group(): void;
   ungroup(): void;
+  setDrawingTool(tool: DrawingTool): void;
+  addDrawingStroke(stroke: DrawingStroke): void;
+  eraseDrawingStrokes(ids: string[]): void;
+  toggleDrawingVisibility(): void;
+  clearDrawing(): void;
 }
 export const useEditor = create<Editor>((set, get) => ({
   graph: null,
@@ -87,6 +113,9 @@ export const useEditor = create<Editor>((set, get) => ({
   focusMap: false,
   mobilePanel: null,
   clipboard: null,
+  drawingTool: 'none',
+  drawingColor: '#e85d3f',
+  drawingWidth: 3,
   setGraph: (graph) =>
     set({
       graph,
@@ -99,6 +128,7 @@ export const useEditor = create<Editor>((set, get) => ({
       editingNode: null,
       editingTitle: '',
       mobilePanel: null,
+      drawingTool: 'none',
     }),
   command: (label, change, coalesce = false) => {
     const s = get();
@@ -117,6 +147,73 @@ export const useEditor = create<Editor>((set, get) => ({
       status: 'saving',
       message: '',
     });
+  },
+  setDrawingTool: (tool) => {
+    if (tool !== 'none') get().finishEditing();
+    set({ drawingTool: tool });
+  },
+  addDrawingStroke: (stroke) => {
+    const state = get();
+    if (!state.graph) return;
+    const previous = getDrawingLayer(state.graph.diagram.settings.drawing);
+    const drawing: DrawingLayer = {
+      version: 1,
+      visible: true,
+      strokes: [
+        ...(previous?.strokes ?? []),
+        {
+          ...stroke,
+          points: stroke.points.map(([x, y]) => [x, y]),
+        },
+      ],
+    };
+    validateDrawingLayer(drawing);
+    state.command('Draw stroke', (graph) => ({
+      ...graph,
+      diagram: { ...graph.diagram, settings: { ...graph.diagram.settings, drawing } },
+    }));
+  },
+  eraseDrawingStrokes: (ids) => {
+    const state = get();
+    const previous = getDrawingLayer(state.graph?.diagram.settings.drawing);
+    if (!previous) return;
+    const removed = new Set(ids);
+    const strokes = previous.strokes.filter((stroke) => !removed.has(stroke.id));
+    if (strokes.length === previous.strokes.length) return;
+    state.command('Erase drawing strokes', (graph) => ({
+      ...graph,
+      diagram: {
+        ...graph.diagram,
+        settings: { ...graph.diagram.settings, drawing: { ...previous, strokes } },
+      },
+    }));
+  },
+  toggleDrawingVisibility: () => {
+    const state = get();
+    const previous = getDrawingLayer(state.graph?.diagram.settings.drawing);
+    if (!previous) return;
+    state.command('Toggle drawing visibility', (graph) => ({
+      ...graph,
+      diagram: {
+        ...graph.diagram,
+        settings: {
+          ...graph.diagram.settings,
+          drawing: { ...previous, visible: !previous.visible },
+        },
+      },
+    }));
+  },
+  clearDrawing: () => {
+    const state = get();
+    const previous = getDrawingLayer(state.graph?.diagram.settings.drawing);
+    if (!previous?.strokes.length) return;
+    state.command('Clear drawing', (graph) => ({
+      ...graph,
+      diagram: {
+        ...graph.diagram,
+        settings: { ...graph.diagram.settings, drawing: { ...previous, strokes: [] } },
+      },
+    }));
   },
   addNode: (partial) => {
     const s = get();
@@ -227,7 +324,36 @@ export const useEditor = create<Editor>((set, get) => ({
   updateEdge: (id, patch) =>
     get().command(
       'Edit connection',
-      (g) => ({ ...g, edges: g.edges.map((e) => (e.id === id ? { ...e, ...patch } : e)) }),
+      (g) => {
+        const original = g.edges.find((edge) => edge.id === id);
+        const reconnected =
+          original?.metadata.csvGenerated === true &&
+          ((patch.sourceNodeId !== undefined && patch.sourceNodeId !== original.sourceNodeId) ||
+            (patch.targetNodeId !== undefined && patch.targetNodeId !== original.targetNodeId));
+        return {
+          ...g,
+          nodes: reconnected
+            ? suppressCsvParentConnections(g.nodes, new Set([original!.targetNodeId]))
+            : g.nodes,
+          edges: g.edges.map((edge) =>
+            edge.id === id
+              ? reconnectedSqlEdge(edge, {
+                  ...edge,
+                  ...patch,
+                  ...(reconnected
+                    ? {
+                        metadata: {
+                          ...edge.metadata,
+                          ...patch.metadata,
+                          csvGenerated: false,
+                        },
+                      }
+                    : {}),
+                })
+              : edge,
+          ),
+        };
+      },
       true,
     ),
   connect: (source, target) =>
@@ -243,11 +369,19 @@ export const useEditor = create<Editor>((set, get) => ({
       if (ids.has(n.id) && (n.nodeType === 'group' || branch))
         for (const id of descendantIds(s.graph.nodes, n.id)) ids.add(id);
     const edges = new Set(s.selectedEdges);
+    const disconnectedCsvTargets = new Set(
+      s.graph.edges
+        .filter((edge) => edges.has(edge.id) && edge.metadata.csvGenerated === true)
+        .map((edge) => edge.targetNodeId),
+    );
     s.command('Delete selection', (g) => ({
       ...g,
-      nodes: g.nodes
-        .filter((n) => !ids.has(n.id))
-        .map((n) => (n.parentId && ids.has(n.parentId) ? { ...n, parentId: undefined } : n)),
+      nodes: suppressCsvParentConnections(
+        g.nodes
+          .filter((n) => !ids.has(n.id))
+          .map((n) => (n.parentId && ids.has(n.parentId) ? { ...n, parentId: undefined } : n)),
+        disconnectedCsvTargets,
+      ),
       edges: g.edges.filter(
         (e) => !ids.has(e.sourceNodeId) && !ids.has(e.targetNodeId) && !edges.has(e.id),
       ),
@@ -301,7 +435,7 @@ export const useEditor = create<Editor>((set, get) => ({
     const s = get();
     const c = clip ?? s.clipboard;
     if (!s.graph || !c) return;
-    const p = pasteSelection(c, s.graph.diagram.id);
+    const p = pasteSelection(c, s.graph);
     s.command('Paste nodes', (g) => ({
       ...g,
       nodes: [...g.nodes, ...p.nodes],

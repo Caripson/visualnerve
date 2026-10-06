@@ -1,0 +1,99 @@
+.drawing-surface {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  touch-action: none;
+  user-select: none;
+  cursor: crosshair;
+}
+.drawing-eraser {
+  cursor: cell;
+}
+.react-flow__panel.drawing-panel {
+  z-index: 61;
+  max-width: calc(100% - 24px);
+}
+.drawing-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 5px;
+  box-shadow: var(--shadow);
+  width: max-content;
+  max-width: 100%;
+}
+.drawing-tools button {
+  border: 0;
+  background: transparent;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 7px;
+}
+.drawing-tools button.active {
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+.drawing-tools input[type='color'] {
+  width: 34px;
+  height: 32px;
+  min-height: 32px;
+  padding: 3px;
+  cursor: pointer;
+}
+.drawing-tools select {
+  min-height: 32px;
+  width: 65px;
+  padding: 4px 7px;
+}
+.drawing-hint {
+  margin: 5px 0 0;
+  padding: 4px 7px;
+  width: fit-content;
+  max-width: 100%;
+  font-size: 10px;
+  color: var(--muted);
+  background: var(--surface);
+  border-radius: 5px;
+  pointer-events: none;
+}
+.drawing-visibility button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  min-width: 36px;
+  min-height: 36px;
+  padding: 8px;
+}
+@media (max-width: 720px) {
+  .react-flow__panel.drawing-panel {
+    margin: 8px;
+    max-width: calc(100% - 16px);
+  }
+  .drawing-tools {
+    gap: 3px;
+    padding: 4px;
+  }
+  .drawing-tools button {
+    min-width: 40px;
+    min-height: 44px;
+  }
+  .drawing-tools input[type='color'] {
+    width: 40px;
+    height: 44px;
+  }
+  .drawing-tools select {
+    min-height: 44px;
+    width: 60px;
+  }
+  .drawing-hint {
+    font-size: 9px;
+  }
+  .drawing-visibility button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

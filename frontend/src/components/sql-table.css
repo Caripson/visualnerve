@@ -1,0 +1,137 @@
+.sql-table-summary {
+  width: 100%;
+  min-width: 0;
+  flex-shrink: 0;
+}
+.sql-columns {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  table-layout: fixed;
+  font-size: 10px;
+  line-height: 13px;
+  color: var(--text);
+}
+.sql-columns th,
+.sql-columns td {
+  padding: 2px 3px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.sql-columns th {
+  font-weight: 600;
+}
+.sql-columns th:first-child {
+  width: 38%;
+}
+.sql-columns th:nth-child(2) {
+  width: 30%;
+}
+.sql-columns thead {
+  color: var(--muted);
+}
+.sql-table-summary .sql-columns th,
+.sql-table-summary .sql-columns td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sql-column-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.sql-column-rule {
+  font-size: 9px;
+  line-height: 13px;
+  font-weight: 500;
+  color: var(--text);
+  background: var(--surface-alt);
+  border-radius: 3px;
+  padding-inline: 3px;
+}
+.sql-column-rule abbr {
+  text-decoration: none;
+}
+.sql-columns-overflow,
+.sql-column-legend {
+  margin: 5px 0 0;
+  font-size: 9px;
+  line-height: 13px;
+  color: var(--muted);
+}
+.sql-column-legend {
+  font-size: 8px;
+}
+.sql-table-details {
+  min-width: 0;
+}
+.sql-qualified-name {
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0 0 10px;
+  overflow-wrap: anywhere;
+}
+.sql-schema-notice,
+.sql-external-table {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.sql-columns-scroll {
+  max-height: 360px;
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.sql-table-details .sql-columns {
+  table-layout: auto;
+  font-size: 11px;
+  line-height: 16px;
+}
+.sql-table-details .sql-columns th,
+.sql-table-details .sql-columns td {
+  min-width: 90px;
+  max-width: 220px;
+  padding: 6px;
+}
+.sql-table-details .sql-columns thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-alt);
+}
+.sql-schema-keys {
+  margin: 12px 0;
+  font-size: 11px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.sql-schema-keys dt {
+  color: var(--muted);
+  margin-top: 8px;
+}
+.sql-schema-keys dd {
+  margin: 0;
+}
+.sql-schema-keys ul {
+  margin: 0;
+  padding-left: 16px;
+}
+.sql-schema-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.sql-schema-pagination button {
+  min-height: 44px;
+  padding: 8px;
+  font-size: 11px;
+}
+.sql-schema-pagination > span {
+  font-size: 10px;
+  color: var(--muted);
+}

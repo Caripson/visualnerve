@@ -11,7 +11,20 @@ import {
 import { nodeRegistry } from '../nodes/registry';
 import { mindmapTopics } from '../mindmap/tree';
 import { IconPicker, iconKey, withIcon } from '../ui/icons';
-export function Properties() {
+import { CsvProperties } from './CsvProperties';
+import type { CsvPathEntry } from '../data/types';
+import { getCsvNode } from '../data/csv';
+import { nodeStatuses, statusLabel } from '../ui/status';
+import { SqlRelationshipDetails, SqlTableDetails } from './SqlTableSummary';
+export function Properties({
+  editCsv,
+  focusCsv,
+  pageCsv,
+}: {
+  editCsv?: () => void;
+  focusCsv?: (path: CsvPathEntry[]) => void;
+  pageCsv?: (direction: 'next' | 'previous') => void;
+}) {
   const graph = useEditor((s) => s.graph);
   const selected = useEditor((s) => s.selectedNodes);
   const edges = useEditor((s) => s.selectedEdges);
@@ -72,6 +85,14 @@ export function Properties() {
               onChange={(e) => update({ title: e.target.value })}
             />
           </Field>
+          <CsvProperties
+            graph={graph}
+            node={node}
+            onEditCsv={editCsv}
+            onFocusCsv={focusCsv}
+            onPageCsv={pageCsv}
+          />
+          <SqlTableDetails node={node} />
           <div className="field">
             <span>Area icon</span>
             <IconPicker
@@ -149,12 +170,25 @@ export function Properties() {
               <select
                 aria-label="Node status"
                 value={node.status ?? ''}
-                onChange={(e) => update({ status: e.target.value })}
+                onChange={(e) => {
+                  const status = e.target.value;
+                  command('Set object status', (current) => ({
+                    ...current,
+                    nodes: current.nodes.map((item) =>
+                      item.id === node.id ? { ...item, status } : item,
+                    ),
+                  }));
+                }}
               >
                 <option value="">None</option>
-                {['planned', 'in-progress', 'blocked', 'done'].map((v) => (
-                  <option key={v}>{v}</option>
+                {nodeStatuses.map((choice) => (
+                  <option key={choice.value} value={choice.value}>
+                    {choice.label}
+                  </option>
                 ))}
+                {node.status && !nodeStatuses.some((choice) => choice.value === node.status) && (
+                  <option value={node.status}>{statusLabel(node.status)}</option>
+                )}
               </select>
             </Field>
             <Field title="Color">
@@ -164,7 +198,9 @@ export function Properties() {
                 value={
                   node.color ||
                   (graph.diagram.type === 'mindmap'
-                    ? mindmapTopics(graph.nodes).get(node.id)?.color
+                    ? mindmapTopics(
+                        graph.nodes.filter((item) => getCsvNode(item)?.visible !== false),
+                      ).get(node.id)?.color
                     : owners.find((o) => o.id === node.ownerId)?.color) ||
                   '#31766c'
                 }
@@ -334,6 +370,7 @@ export function Properties() {
               placeholder="Yes, No, depends on…"
             />
           </Field>
+          <SqlRelationshipDetails edge={edge} />
           <Field title="Relationship">
             <input
               aria-label="Relationship type"
@@ -424,6 +461,12 @@ export function Properties() {
             {graph.nodes.length} nodes · {graph.edges.length} connections
           </p>
         </div>
+        <CsvProperties
+          graph={graph}
+          onEditCsv={editCsv}
+          onFocusCsv={focusCsv}
+          onPageCsv={pageCsv}
+        />
         <Field title="Name">
           <input
             aria-label="Diagram name"

@@ -1,4 +1,7 @@
 import { diagramTypes, nodeKinds, type Graph, type Owner } from './types';
+import type { CsvDataset } from '../data/types';
+import { getCsvNode, validateAnalysis, validateCsvNode, validateDataset } from '../data/csv';
+import { drawingLimits, type DrawingLayer } from '../drawing/types';
 
 export class StorageError extends Error {
   constructor(
@@ -12,6 +15,58 @@ const uuid = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 const requireValue = (condition: unknown, message: string) => {
   if (!condition) throw new StorageError(422, message);
 };
+export function validateDrawingLayer(value: unknown): asserts value is DrawingLayer {
+  requireValue(
+    value && typeof value === 'object' && !Array.isArray(value),
+    'Invalid drawing layer.',
+  );
+  const layer = value as DrawingLayer;
+  requireValue(
+    layer.version === 1 && typeof layer.visible === 'boolean' && Array.isArray(layer.strokes),
+    'Unsupported or invalid drawing layer.',
+  );
+  requireValue(layer.strokes.length <= drawingLimits.strokes, 'Drawing has too many strokes.');
+  const ids = new Set<string>();
+  let points = 0;
+  for (const stroke of layer.strokes) {
+    requireValue(
+      stroke && typeof stroke === 'object' && !Array.isArray(stroke),
+      'Invalid drawing stroke.',
+    );
+    requireValue(
+      typeof stroke.id === 'string' && uuid.test(stroke.id),
+      'Drawing stroke id must be a UUID.',
+    );
+    requireValue(!ids.has(stroke.id), 'Duplicate drawing stroke id.');
+    ids.add(stroke.id);
+    requireValue(
+      typeof stroke.color === 'string' &&
+        /^#(?:[\da-f]{3}|[\da-f]{4}|[\da-f]{6}|[\da-f]{8})$/i.test(stroke.color),
+      'Drawing color must use a hex color.',
+    );
+    requireValue(
+      Number.isFinite(stroke.width) && stroke.width >= 1 && stroke.width <= 32,
+      'Drawing width must be between 1 and 32.',
+    );
+    requireValue(
+      Array.isArray(stroke.points) &&
+        stroke.points.length > 0 &&
+        stroke.points.length <= drawingLimits.pointsPerStroke,
+      'Drawing stroke must contain between 1 and 20,000 points.',
+    );
+    points += stroke.points.length;
+    requireValue(points <= drawingLimits.points, 'Drawing has too many points.');
+    requireValue(
+      stroke.points.every(
+        (point) =>
+          Array.isArray(point) &&
+          point.length === 2 &&
+          point.every((coordinate) => Number.isFinite(coordinate) && Math.abs(coordinate) <= 1e8),
+      ),
+      'Invalid drawing coordinates.',
+    );
+  }
+}
 function validateBase(entity: { version: number; createdAt: string; updatedAt: string }) {
   requireValue(
     Number.isSafeInteger(entity.version) &&
@@ -34,7 +89,7 @@ export function validateOwner(owner: Owner) {
     'Unsupported owner kind.',
   );
 }
-export function validateGraph(graph: Graph) {
+export function validateGraph(graph: Graph, trustedDataset?: CsvDataset) {
   requireValue(
     graph && graph.diagram && [graph.nodes, graph.edges, graph.owners].every(Array.isArray),
     'Invalid graph structure.',
@@ -52,6 +107,43 @@ export function validateGraph(graph: Graph) {
     'Diagram name is required and limited to 500 characters.',
   );
   requireValue(diagramTypes.includes(graph.diagram.type), 'Unsupported diagram mode.');
+  requireValue(
+    graph.diagram.settings &&
+      typeof graph.diagram.settings === 'object' &&
+      !Array.isArray(graph.diagram.settings),
+    'Invalid diagram settings.',
+  );
+  const drawing = graph.diagram.settings.drawing;
+  // Settings have always allowed custom keys. Only recognizable drawing-layer
+  // contracts reserve this field; older freeform values remain intact.
+  if (drawing && typeof drawing === 'object' && !Array.isArray(drawing)) {
+    const candidate = drawing as unknown as Record<string, unknown>;
+    if (
+      (candidate.version === 1 && ('visible' in candidate || 'strokes' in candidate)) ||
+      ('visible' in candidate && 'strokes' in candidate)
+    )
+      validateDrawingLayer(drawing);
+  }
+  const dataset = graph.dataset;
+  const analysis = graph.diagram.settings.csvAnalysis;
+  try {
+    if (dataset !== undefined) {
+      // Repository reads return immutable, previously validated source data.
+      // Drawing/configuration saves need only validate their references.
+      if (dataset !== trustedDataset) validateDataset(dataset);
+      requireValue(
+        dataset.diagramId === graph.diagram.id,
+        'CSV dataset belongs to another diagram.',
+      );
+    }
+    if (analysis !== undefined) {
+      requireValue(dataset, 'CSV analysis requires its source dataset.');
+      validateAnalysis(dataset!, analysis);
+    }
+  } catch (error) {
+    if (error instanceof StorageError) throw error;
+    throw new StorageError(422, (error as Error).message);
+  }
   const owners = new Set<string>();
   for (const owner of graph.owners) {
     validateOwner(owner);
@@ -111,6 +203,48 @@ export function validateGraph(graph: Graph) {
     if (node.externalId) {
       requireValue(!externalNodes.has(node.externalId), 'Duplicate external node id.');
       externalNodes.add(node.externalId);
+    }
+    const csv = node.metadata?.csv !== undefined ? getCsvNode(node) : undefined;
+    if (
+      node.metadata?.csv !== undefined &&
+      (dataset !== undefined || analysis !== undefined || csv)
+    ) {
+      requireValue(csv && dataset && analysis, 'CSV node requires a valid source and analysis.');
+      try {
+        validateCsvNode(csv!);
+      } catch (error) {
+        throw new StorageError(422, (error as Error).message);
+      }
+      requireValue(csv!.datasetId === dataset!.id, 'CSV node refers to another dataset.');
+      requireValue(csv!.groupKey === JSON.stringify(csv!.path), 'Invalid CSV group key.');
+      requireValue(
+        csv!.path.length <= 8 &&
+          new Set(csv!.path.map((entry) => entry.columnId)).size === csv!.path.length &&
+          csv!.path.every((entry) =>
+            dataset!.columns.some((column) => column.id === entry.columnId),
+          ) &&
+          (node.externalId !== csv!.groupKey ||
+            csv!.visible === false ||
+            (csv!.path.length <= analysis!.levels.length &&
+              csv!.path.every((entry, index) => entry.columnId === analysis!.levels[index]))) &&
+          Number.isSafeInteger(csv!.rowCount) &&
+          csv!.rowCount >= 0 &&
+          csv!.rowCount <= dataset!.rows.length,
+        'Invalid CSV group path or row count.',
+      );
+      requireValue(
+        (!csv!.displayColumns ||
+          csv!.displayColumns.every((id) => dataset!.columns.some((column) => column.id === id))) &&
+          csv!.measures.every(
+            (measure) =>
+              (measure.columnId === undefined
+                ? measure.operation === 'count'
+                : dataset!.columns.some((column) => column.id === measure.columnId)) &&
+              measure.numericCount + measure.missingCount + measure.invalidCount <= csv!.rowCount &&
+              (measure.operation !== 'count' || measure.value === csv!.rowCount),
+          ),
+        'CSV measure counts do not match their group.',
+      );
     }
   }
   const visited = new Set<string>();

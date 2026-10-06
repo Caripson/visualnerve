@@ -10,6 +10,32 @@ Mind maps use a central topic, colored curved branches and rounded topic backgro
 
 Click the project name to rename it. Selection actions give quick access to editing, colors, domain icons, duplication and deletion; deleting a whole branch is a separate undoable action. The green theme uses darker text and eight contrasting colors. Sixteen open source Lucide icons cover work, learning, people, health, technology and other areas. On phones, the canvas fills the screen, project navigation opens in a drawer, properties open in a bottom panel, and touch gestures pan and zoom.
 
+Select one or more objects and choose **Status**: None, Planned, In progress, Blocked or Done. **Done** marks the whole selection complete in one click; **Reopen** returns completed objects to In progress. Completed objects show a checkmark and a distinct outline in diagrams and mind maps, including overview zoom and PNG/PDF exports. Status supports undo/redo, local saving and CSV regrouping; existing custom statuses are preserved. Use **Filters → Status** to inspect a particular state.
+
+## Explore CSV data
+
+Drop a CSV anywhere in the accepted workspace or use **Import**. Choose cleanup rules, filters, ordered grouping columns and measures, then create a data diagram. For example, remove a customer prefix with `^\d+\s*-\s*`, filter a column with **Starts with → AAA**, and group customers by region. Numeric measures support decimal dots and commas; choose a column's explicit number format when a value such as `1,234` is ambiguous. Original cells remain available.
+
+The groups are ordinary diagram objects: move them, add or edit connections, labels and directions, and use undo. Explore a group, return to all data or page through groups. Hidden groups retain their objects and connections so they return when included again. Each object can show selected measures and source columns; **Show source rows** previews up to 100 matching rows with an original-values toggle.
+
+Parsing, cleanup and aggregation run in a Web Worker. A view renders at most 600 data objects, while count, sum, average, median, minimum, maximum and distinct count use all matching rows. The regression suite includes 100,000 rows and 2,000 customers. Raw source rows and analysis choices are stored locally in IndexedDB and included in diagram JSON and full backups. See [CSV exploration](docs/CSV_EXPLORER.md) for limits and usage.
+
+## Draw on a diagram
+
+Choose the pencil in the canvas controls to draw over any diagram with a mouse, finger or pen. Choose a color and thickness, erase whole strokes or hide the drawing layer. **Done drawing** or Escape returns to normal diagram editing. Drawing uses a separate layer that follows pan and zoom, supports undo/redo, persists in IndexedDB and appears in PNG/PDF exports. Diagram JSON and full backups preserve it, including hidden strokes. See [drawing on diagrams](docs/DRAWING.md).
+
+## Visualize a SQL schema
+
+Drop a `.sql` or `.ddl` file, use **Import**, or choose **Import SQL script** (on phones: **… → Import SQL script**). Paste or load the script, choose **Preview schema**, review counts and warnings, then **Create diagram**. Local worker analysis extracts common PostgreSQL/MySQL/SQL Server `CREATE TABLE` and `ALTER TABLE ... ADD` columns, primary/unique keys and foreign keys, including composite keys, quoted names and forward references. Missing referenced tables remain explicit external objects.
+
+Tables show up to 12 columns; Properties shows all columns in pages of 100 and the full keys/reference pairs. The objects support normal movement, connections, status, drawing, local saving and JSON/backup export. SQL is never executed, and SELECT/JOIN queries are not converted into query plans. DROP/RENAME/MODIFY changes are ignored with warnings. The raw script and row/default/check/procedure values are not saved; ENUM type labels may remain as schema. Limits are 50 MiB, 2,000 table objects, 100,000 columns and 10,000 foreign-key relationships. See [SQL import](docs/SQL_IMPORT.md).
+
+## Build an app with Lovable
+
+Choose **Build with Lovable** (on phones: **… → Build with Lovable**), describe the app you want and review the generated build prompt. Include the entire diagram, the current CSV groups or selected objects. The brief preserves objects, responsibilities, hierarchy and relationships with their directions and branch conditions. Your instructions are saved locally with the diagram. **Open in Lovable** opens a new, unsent prompt; review it and press **Send** there to start building. No API key is needed.
+
+This explicit handoff shares the previewed text with Lovable. Source CSV rows, raw SQL scripts, arbitrary metadata and owner email addresses are excluded; group summaries, recognized SQL schema/foreign keys and written descriptions are included. Unresolved SQL references stay explicit. Copy or download the complete brief when it exceeds the link limits. See [Lovable handoff](docs/LOVABLE.md).
+
 ## Requirements
 
 - Go 1.26 or newer, Node.js 22.12 or newer, npm, and Hugo 0.140 or newer (standard or extended).
@@ -70,7 +96,7 @@ Use `POST /diagrams/{id}/bulk` for transactional graph population and `upsert: t
 
 Data belongs to the browser profile and the exact origin (scheme, hostname and port). Keep using the same address; `localhost` and `127.0.0.1` are separate workspaces. Startup reads IndexedDB; all editor changes commit there, including offline changes. The production service worker stores application assets so the editor can reload offline after a first visit.
 
-Use **Settings → Data & Privacy → Export all data** for a dated complete backup of diagrams, nodes, edges, owners, portable settings and templates. **Restore backup** previews Merge or Replace; replacement requires explicit confirmation. Both restore atomically and remap collisions. Consent and MCP grants are never imported. Per-diagram JSON export is also lossless. Clearing this site's browser data deletes the workspace, so retain exported backups. The app creates no server data directory and has no filesystem database.
+Use **Settings → Data & Privacy → Export all data** for a dated complete backup of diagrams, nodes, edges, owners, portable settings, templates and CSV datasets. **Restore backup** previews Merge or Replace; replacement requires explicit confirmation. Both restore atomically and remap collisions. Consent and MCP grants are never imported. Per-diagram JSON export is also lossless. Clearing this site's browser data deletes the workspace, so retain exported backups. The app creates no server data directory and has no filesystem database.
 
 Existing browser records upgrade in place, including pending edits. The historical IndexedDB name is retained for this purpose; it now contains the canonical tables. If you have data exported by an earlier version, use Import to add it to the browser workspace.
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useReactFlow } from '@xyflow/react';
+import { useReactFlow, useStoreApi } from '@xyflow/react';
 import {
   ArrowRight,
   Download,
@@ -20,13 +20,17 @@ import {
   PanelRight,
   MoreHorizontal,
   Settings,
+  Sparkles,
+  Database,
 } from 'lucide-react';
 import { useEditor } from '../state/editor';
+import { fitDiagram } from '../drawing/navigation';
 import { nodeRegistry } from '../nodes/registry';
 import { layoutGraph, type Direction } from '../layouts/layout';
 import type { NodeKind, TimelineScale } from '../model/types';
 import type { DialogName } from '../App';
 import { DocumentTitle } from '../ui/DocumentTitle';
+import { statusLabel } from '../ui/status';
 export function Toolbar({
   open,
   showFilters,
@@ -46,6 +50,7 @@ export function Toolbar({
   const [direction, setDirection] = useState<Direction>('RIGHT');
   const [busy, setBusy] = useState(false);
   const flow = useReactFlow();
+  const flowStore = useStoreApi();
   useEffect(
     () => setDirection(graph?.diagram.type === 'mindmap' ? 'BALANCED' : 'RIGHT'),
     [graph?.diagram.id, graph?.diagram.type],
@@ -81,7 +86,9 @@ export function Toolbar({
         nodes: g.nodes.map((n) => (positions.has(n.id) ? { ...n, ...positions.get(n.id) } : n)),
       }));
       await new Promise<void>((resolve) => setTimeout(resolve, 80));
-      await flow.fitView({ padding: mindmap ? 0.14 : 0.25, duration: 250 });
+      const laidOut = useEditor.getState().graph;
+      if (laidOut?.diagram.id === current.diagram.id)
+        await fitDiagram(flow, laidOut, laidOut.diagram.type === 'mindmap' ? 0.14 : 0.25, 250);
     } catch (e) {
       useEditor.setState({ status: 'error', message: (e as Error).message });
     } finally {
@@ -121,6 +128,14 @@ export function Toolbar({
           <button aria-label="Export" onClick={() => open('export')}>
             <Download size={14} />
             <span>Export</span>
+          </button>
+          <button
+            className="desktop-tools"
+            aria-label="Build with Lovable"
+            onClick={() => open('lovable')}
+          >
+            <Sparkles size={14} />
+            <span>Build with Lovable</span>
           </button>
           <button
             className="mobile-only"
@@ -254,7 +269,11 @@ export function Toolbar({
             title={focusMap ? 'Show workspace panels' : 'Give the map the whole workspace'}
             onClick={() => {
               useEditor.setState({ focusMap: !focusMap });
-              setTimeout(() => void flow.fitView({ padding: 0.14, maxZoom: 1, duration: 250 }), 80);
+              setTimeout(() => {
+                const current = useEditor.getState().graph;
+                if (current?.diagram.id === graph.diagram.id)
+                  void fitDiagram(flow, current, 0.14, 250, 1, flowStore.getState());
+              }, 80);
             }}
           >
             {focusMap ? <Minimize2 size={14} /> : <Expand size={14} />}
@@ -292,6 +311,14 @@ export function Toolbar({
             <MoreHorizontal size={20} />
           </summary>
           <div className="picker-panel mobile-tool-menu">
+            <button className="full" onClick={() => open('sql')}>
+              <Database size={17} />
+              Import SQL script
+            </button>
+            <button className="full" onClick={() => open('lovable')}>
+              <Sparkles size={17} />
+              Build with Lovable
+            </button>
             <select
               aria-label="Mobile layout direction"
               value={direction}
@@ -357,7 +384,7 @@ export function Toolbar({
         <button
           aria-label="Fit diagram"
           title="Fit diagram (F)"
-          onClick={() => void flow.fitView({ padding: mindmap ? 0.14 : 0.25 })}
+          onClick={() => void fitDiagram(flow, graph, mindmap ? 0.14 : 0.25)}
         >
           <Maximize size={15} />
         </button>
@@ -392,7 +419,9 @@ export function FilterBar() {
       >
         <option value="">All statuses</option>
         {[...new Set(graph?.nodes.map((n) => n.status).filter(Boolean))].map((v) => (
-          <option key={v}>{v}</option>
+          <option key={v} value={v}>
+            {statusLabel(v)}
+          </option>
         ))}
       </select>
       <select

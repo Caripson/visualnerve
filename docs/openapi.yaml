@@ -260,6 +260,83 @@
         },
         "type": "object"
       },
+      "CsvDataset": {
+        "additionalProperties": false,
+        "properties": {
+          "columns": {
+            "items": {
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "label"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "diagramId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "formatVersion": {
+            "enum": [
+              1
+            ],
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "array"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "createdAt",
+          "updatedAt",
+          "formatVersion",
+          "diagramId",
+          "name",
+          "fileName",
+          "columns",
+          "rows"
+        ],
+        "type": "object"
+      },
       "Diagram": {
         "additionalProperties": false,
         "properties": {
@@ -644,6 +721,9 @@
       "Graph": {
         "additionalProperties": false,
         "properties": {
+          "dataset": {
+            "$ref": "#/components/schemas/CsvDataset"
+          },
           "diagram": {
             "$ref": "#/components/schemas/Diagram"
           },
@@ -1273,6 +1353,13 @@
       },
       "WorkspaceBackup": {
         "properties": {
+          "datasets": {
+            "description": "Original CSV source records. Older backups may omit this.",
+            "items": {
+              "$ref": "#/components/schemas/CsvDataset"
+            },
+            "type": "array"
+          },
           "diagrams": {
             "items": {
               "$ref": "#/components/schemas/Diagram"
@@ -1314,7 +1401,7 @@
             "type": "array"
           },
           "schemaVersion": {
-            "description": "IndexedDB schema version at export; currently 4. Older backups may omit this.",
+            "description": "IndexedDB schema version at export; currently 5. Older backups may omit this.",
             "type": "integer"
           },
           "settings": {

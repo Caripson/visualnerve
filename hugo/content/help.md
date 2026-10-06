@@ -16,6 +16,8 @@ Use **Add node**, choose a type, and edit its title and details in the propertie
 
 Click the project name to rename it; Enter saves and Escape cancels. With no item selected, **F2** also opens the project name. Choose a project icon beside its name. Select an item for quick **Edit**, **Color**, **Icon**, duplicate and delete actions. The icon picker includes sixteen areas and supports searching in English or Swedish. Icons are also available in properties and are preserved in JSON, copying and image exports.
 
+Select one or more objects and use **Status** to choose None, Planned, In progress, Blocked or Done. Click **Done** to complete the selection, or **Reopen** to return completed objects to In progress. A checkmark and distinct outline make completed objects visible in diagrams and mind maps, even when zoomed out. Status can also be set in properties, undone, filtered and included in PNG/PDF exports. It is saved locally and retained when you change CSV grouping or filters.
+
 Mind maps have a central idea, colored curved branches and rounded topic backgrounds at every depth. Each main branch has its own color, inherited by its descendants; setting a topic's color changes that part of the branch. Double-click a topic or press **F2** to edit its text directly; Enter saves and Escape cancels. Use the **+** beside a topic or **Add subtopic** in the toolbar to extend it. **Tab** adds a child and **Enter** adds a sibling, immediately opening the new topic for typing; a sibling keeps the same side of the map. While typing, **Tab** saves and creates another child, so you can build many levels without switching to properties. The view follows the new topic. New topics avoid occupied rows while retaining existing manual positions.
 
 **Focus map** hides the workspace panels and fits the mind map to the available space. You can still edit topics directly, add branches, search, save and export. **Exit focus** restores the diagram list and properties panel.
@@ -34,6 +36,46 @@ Arrow keys nudge selected nodes; Shift increases the distance. Ctrl/Cmd+C, V and
 
 Mind maps default to **Balanced branches**, which places main topics on both sides of the central idea and reserves space for their subtopics. For an existing map, choose **Auto layout** to apply it. Four directional layouts and radial placement are also available. Layout is an explicit, undoable operation, and topics remain freely draggable; spatial groups retain their manually arranged contents in balanced mode. Changing diagram mode changes the presentation while preserving node types, parent relationships and positions. Timeline mode uses start/end dates for horizontal placement; its zoom selector offers day, week, month, quarter and year. Dragging changes dates and vertical lanes. Timeline objects retain graph connections.
 
+## Draw over a diagram
+
+Choose the pencil in the bottom canvas controls to draw with a mouse, finger or pen. Pick a color and thickness; **Eraser** removes whole strokes, **Clear drawing** clears the layer, and Undo restores these changes. **Done drawing** or Escape returns to moving objects and editing connections. The eye button hides or shows saved drawings.
+
+Strokes follow the diagram's pan and zoom and save locally as a separate layer. They do not change nodes, connections or CSV calculations. PNG/PDF include the visible layer; JSON and full backups retain it even when hidden. Fit diagram also includes visible strokes, and a drawing-only diagram can be exported.
+
+## Explore a CSV
+
+Drop a CSV onto the workspace or use **Import**. Choose column cleanup, row filters, ordered grouping columns and measures in the preview. A cleanup pattern such as `^\d+\s*-\s*` removes a numeric prefix from company names while preserving original cells. Numeric measures recognize decimal dots and commas; select a column's number format when values such as `1,234` are ambiguous.
+
+Choose count, sum, average, median, minimum, maximum or distinct count. Measures use every matching row, even when only a page of groups is shown. Filter with **Starts with → AAA**, choose a small group limit and sort by a measure to get an overview. Large files are analyzed in the background; each view contains at most 600 data objects.
+
+CSV groups are real diagram objects. Move them and add connections with labels, styles and arrows. Filtering or exploring a group hides other groups and their connections without deleting your edits. Select a group to choose its visible measures and source columns, preview up to 100 **Source rows** and toggle **Original values**. **Explore this group**, **All data** and **Previous/Next groups** change the analysis view. With no object selected, **Change grouping and measures** reopens the preview.
+
+Copying a CSV object into another diagram keeps its measures as a snapshot; the source rows remain with the original data diagram.
+
+CSV sources and analysis choices stay in this browser and are included in diagram JSON and full backups. PNG/PDF exports show the current CSV view. Files support at most 50 MiB, 200,000 rows, 200 columns and 10 million cells. CSVs using the older `title`-column diagram format can still use **Import as existing diagram rows instead** in the preview.
+
+## Import a SQL schema
+
+Drop a `.sql` or `.ddl` file, use **Import**, or choose **Import SQL script**. On phones, use **… → Import SQL script**. Enter a diagram name and paste the SQL script, or use **Load SQL file**. **Preview schema** analyzes it locally in a worker and shows table, column, relationship and unresolved-table counts with import notes. Review the preview, then choose **Create diagram**. Changing the input clears the preview; Cancel aborts pending analysis.
+
+The importer supports common PostgreSQL, MySQL and SQL Server `CREATE TABLE` definitions and `ALTER TABLE ... ADD` columns or primary/unique/foreign keys. Composite keys, quoted/schema-qualified names and references to tables defined later are retained. Foreign-key arrows run from the referencing child table to the referenced parent table. Missing definitions remain **External table · definition missing**; unresolved referenced columns are not invented.
+
+Cards show up to 12 columns and PK/FK/UQ/nullability badges. Select a table to inspect its complete schema and keys in Properties, with 100 columns per page. Select a foreign-key connection for its column pairs and delete/update actions. Move, rename and connect imported objects, assign status or draw over them. Schema objects save locally and survive JSON export, backups and reload.
+
+SQL is never executed. SELECT/JOIN queries are not transformed into query plans. Row data and unsupported statements are ignored; DROP/RENAME/MODIFY changes are not applied and produce notes. Review the result because it represents imported CREATE/ADD definitions, not the final state of every migration. Limits are 50 MiB, 2,000 table objects including external references, 100,000 columns and 10,000 foreign-key relationships.
+
+The raw script is a temporary draft. INSERT/COPY rows, default and CHECK expressions, comments and procedure bodies are not saved. ENUM labels within data types may remain as schema structure. SQL schema can still contain sensitive names or type labels; review it before sharing. [How your data is stored](/privacy/#sql-schema-import).
+
+## Build an app with Lovable
+
+Choose **Build with Lovable** beside Export, or **… → Build with Lovable** on a phone. Describe the app in **App instructions**, choose the entire diagram, current CSV groups or selected objects, and review the complete build prompt. Your draft is saved locally with the diagram.
+
+Objects become app features and workflow steps. Connections preserve their directions, labels, conditions and relationships; hierarchy is distinguished from execution order. Duplicate titles remain separate. Done objects still describe features to build. Connections to objects outside your selected scope appear as external context.
+
+**Open in Lovable** opens a new, unsent prompt. Review it there and press **Send** to start building. This explicitly shares the previewed text with Lovable. Raw CSV rows, source SQL scripts, arbitrary metadata and owner email addresses are excluded; grouping values, calculated summaries and written descriptions may be included. SQL tables contribute recognized column types, nullability, primary/unique keys and foreign-key column pairs/actions; missing definitions remain external context and unknown referenced columns remain unresolved. Freehand notes are not translated into requirements, so explain their meaning in your instructions.
+
+Use **Copy build prompt** or **Download build brief** if the prompt is too large for a link. The brief stays complete. No API key or local MCP bridge is needed. [Lovable's handoff documentation](https://docs.lovable.dev/integrations/build-with-url).
+
 ## Save and work offline
 
 The editor saves changes immediately in this browser's IndexedDB. **Saved** means the local database transaction committed. The server and internet can be unavailable while you edit, create projects, search and export. After the first visit the production app can reload offline. Use the same browser profile and address to return to the same workspace.
@@ -41,9 +83,9 @@ The editor saves changes immediately in this browser's IndexedDB. **Saved** mean
 Changes from other tabs appear through local database updates. A version conflict preserves your unsaved edits in the current tab and offers **Save local copy**, **Use saved version** or **Replace saved version**. Resolve it before closing the tab.
 ## Exchange and backups
 
-JSON is the complete restorable format, including owners, metadata, hierarchy, layout and viewport. Markdown exports semantic outlines and process relationships. Import accepts Visual Nerve JSON, headings/lists in Markdown and CSV with a title column. PNG exports viewport, selection or full graph at 1×, 2× or 4×. PDF supports A4/A3, portrait/landscape and tiled pages. Complete rendered exports include collapsed and off-screen objects.
+JSON is the complete restorable format, including owners, metadata, hierarchy, layout, viewport and imported SQL schema. Markdown exports semantic outlines and process relationships. Import accepts Visual Nerve JSON, headings/lists in Markdown, CSV data or the older CSV diagram format with a title column, and SQL/DDL schema scripts through their preview. PNG exports viewport, selection or full graph at 1×, 2× or 4×. PDF supports A4/A3, portrait/landscape and tiled pages. Complete rendered exports include collapsed and off-screen objects.
 
-Settings controls theme and **Data & Privacy**. **Export all data** downloads a dated complete backup of projects, owners, portable settings and templates. **Restore backup** previews Merge (keep current diagrams) or Replace (remove current work, requiring confirmation). Connection grants and storage acceptance are never imported. **Export diagram** remains a separate PNG/PDF/Markdown/JSON choice.
+Settings controls theme and **Data & Privacy**. **Export all data** downloads a dated complete backup of projects, owners, portable settings, templates and CSV datasets. **Restore backup** previews Merge (keep current diagrams) or Replace (remove current work, requiring confirmation). Connection grants and storage acceptance are never imported. **Export diagram** remains a separate PNG/PDF/Markdown/JSON choice.
 
 Clearing site data, resetting a browser profile or uninstalling the browser may remove work. Private/incognito sessions may discard it on closing. Another browser/profile/device, or a different website address, opens an independent workspace; nothing synchronizes automatically. Export a backup to move or keep a copy. Storage details shows estimated usage and, after you create a diagram, an optional browser retention request. A grant cannot prevent manual clearing or guarantee retention. Global deletion is separately confirmed under Data & Privacy. [How your data is stored](/privacy/).
 
