@@ -27,23 +27,35 @@
   outline: 3px solid var(--accent, #2b7554);
   outline-offset: -3px;
 }
-.spatial-toolbar {
+.spatial-hud {
   position: absolute;
   top: 12px;
   left: 12px;
   right: 12px;
-  z-index: 2;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  pointer-events: none;
+}
+.spatial-hud > .overview-controls {
+  margin-left: 4px;
+  pointer-events: auto;
+}
+.spatial-toolbar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
   width: fit-content;
-  max-width: calc(100% - 24px);
+  max-width: 100%;
   padding: 6px;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--surface);
   box-shadow: 0 3px 15px #16261a13;
+  pointer-events: auto;
 }
 .spatial-toolbar button {
   display: inline-flex;
@@ -82,13 +94,10 @@
   font-size: 12px;
 }
 .spatial-caption {
-  position: absolute;
-  left: 18px;
-  top: 76px;
-  z-index: 1;
   display: grid;
   gap: 5px;
-  max-width: min(530px, calc(100% - 36px));
+  margin-left: 6px;
+  max-width: min(530px, calc(100% - 12px));
   padding: 9px 12px;
   border-radius: 8px;
   color: var(--text);
@@ -97,6 +106,26 @@
 }
 .spatial-caption strong {
   font-size: 13px;
+}
+.spatial-help-content {
+  display: grid;
+  gap: 5px;
+}
+.spatial-caption[hidden],
+.spatial-help-content[hidden] {
+  display: none;
+}
+.spatial-caption-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.spatial-caption-header button {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  pointer-events: auto;
 }
 .spatial-caption span,
 .spatial-caption small {
@@ -226,11 +255,16 @@
   line-height: 1.6;
 }
 @media (max-width: 720px) {
-  .spatial-toolbar {
+  .spatial-hud {
     top: 8px;
     left: 8px;
     right: 8px;
-    max-width: calc(100% - 16px);
+    gap: 8px;
+  }
+  .spatial-hud > .overview-controls {
+    margin-left: 0;
+  }
+  .spatial-toolbar {
     gap: 3px;
   }
   .spatial-toolbar button {
@@ -246,9 +280,8 @@
     padding-left: 0;
   }
   .spatial-caption {
-    top: 112px;
-    left: 12px;
-    max-width: calc(100% - 24px);
+    margin-left: 4px;
+    max-width: calc(100% - 8px);
     padding: 7px 9px;
   }
   .spatial-caption span {

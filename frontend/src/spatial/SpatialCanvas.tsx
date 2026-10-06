@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { Edge } from '@xyflow/react';
-import { ArrowLeft, Focus, Maximize, Move, RotateCcw } from 'lucide-react';
+import { ArrowLeft, CircleHelp, Focus, Maximize, Move, RotateCcw, X } from 'lucide-react';
 import type { Graph } from '../model/types';
 import type { CanvasNode } from '../canvas/projection';
 import { useEditor } from '../state/editor';
@@ -209,6 +209,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
   const propsRef = useRef(props);
   propsRef.current = props;
   const host = useRef<HTMLDivElement>(null);
+  const toolbar = useRef<HTMLDivElement>(null);
   const runtime = useRef<Runtime | null>(null);
   const [rendererState, setRendererState] = useState<'starting' | 'ready' | 'unavailable' | 'lost'>(
     'starting',
@@ -229,6 +230,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
   const [relationshipPage, setRelationshipPage] = useState(0);
   const [relationshipQuery, setRelationshipQuery] = useState('');
   const [showLabels, setShowLabels] = useState(true);
+  const [showHelp, setShowHelp] = useState(true);
   const [moveObjects, setMoveObjects] = useState(false);
   const moveObjectsRef = useRef(moveObjects);
   moveObjectsRef.current = moveObjects;
@@ -1383,14 +1385,15 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       data-rendered-nodes={renderedCounts.nodes}
       data-rendered-edges={renderedCounts.edges}
       data-object-mode={moveObjects ? 'move' : 'orbit'}
-      onPointerDownCapture={() =>
-        runtime.current?.cancelPresentation('Camera movement interrupted.', true)
-      }
+      onPointerDownCapture={(event) => {
+        if (event.target instanceof Element && event.target.closest('[data-spatial-help-control]'))
+          return;
+        runtime.current?.cancelPresentation('Camera movement interrupted.', true);
+      }}
       onWheelCapture={() =>
         runtime.current?.cancelPresentation('Camera movement interrupted.', true)
       }
     >
-      {props.overview && <OverviewControls projection={props.overview} />}
       <div ref={host} className="spatial-stage" />
       <NavigationGizmo
         camera={navigationCamera}
@@ -1398,97 +1401,134 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
         onNavigate={navigate}
         onGestureEnd={endNavigation}
       />
-      <div className="spatial-toolbar" role="toolbar" aria-label="3D navigation">
-        <button className="spatial-return" onClick={returnTo2D}>
-          <ArrowLeft size={15} />
-          Return to 2D
-        </button>
-        <button
-          disabled={!ready || props.overview?.active}
-          aria-pressed={moveObjects}
-          onClick={() => {
-            runtime.current?.abortMovement();
-            setMoveObjects((enabled) => !enabled);
-          }}
-        >
-          <Move size={15} />
-          Move objects
-        </button>
-        <div className="spatial-orientations">
-          {(['front', 'back', 'left', 'right', 'top'] as const).map((orientation) => (
-            <button
-              key={orientation}
-              disabled={!ready}
-              onClick={() => orient(orientation)}
-              aria-label={`${orientation[0].toUpperCase()}${orientation.slice(1)} view`}
-            >
-              {orientation[0].toUpperCase()}
-              {orientation.slice(1)}
-            </button>
-          ))}
+      <div className="spatial-hud">
+        <div ref={toolbar} className="spatial-toolbar" role="toolbar" aria-label="3D navigation">
+          <button className="spatial-return" onClick={returnTo2D}>
+            <ArrowLeft size={15} />
+            Return to 2D
+          </button>
+          <button
+            disabled={!ready || props.overview?.active}
+            aria-pressed={moveObjects}
+            onClick={() => {
+              runtime.current?.abortMovement();
+              setMoveObjects((enabled) => !enabled);
+            }}
+          >
+            <Move size={15} />
+            Move objects
+          </button>
+          <div className="spatial-orientations">
+            {(['front', 'back', 'left', 'right', 'top'] as const).map((orientation) => (
+              <button
+                key={orientation}
+                disabled={!ready}
+                onClick={() => orient(orientation)}
+                aria-label={`${orientation[0].toUpperCase()}${orientation.slice(1)} view`}
+              >
+                {orientation[0].toUpperCase()}
+                {orientation.slice(1)}
+              </button>
+            ))}
+          </div>
+          <button
+            disabled={!ready}
+            onClick={() => tilt(-Math.PI / 18)}
+            aria-label="Tilt diagram left 10 degrees"
+          >
+            −10°
+          </button>
+          <button
+            disabled={!ready}
+            onClick={() => tilt(Math.PI / 18)}
+            aria-label="Tilt diagram right 10 degrees"
+          >
+            +10°
+          </button>
+          <button onClick={fit} disabled={!ready} aria-label="Fit 3D diagram">
+            <Maximize size={15} />
+            Fit
+          </button>
+          <button
+            onClick={focus}
+            disabled={!ready || !selectedNodes.length}
+            aria-label="Focus selected object"
+          >
+            <Focus size={15} />
+            Focus
+          </button>
+          <label>
+            <input
+              type="checkbox"
+              checked={showLabels}
+              onChange={(event) => setShowLabels(event.target.checked)}
+            />
+            Labels
+          </label>
+          <button
+            aria-label="3D help"
+            aria-expanded={showHelp}
+            aria-controls="spatial-help"
+            data-spatial-help-control
+            onClick={() => setShowHelp((visible) => !visible)}
+          >
+            <CircleHelp size={15} />
+            Help
+          </button>
         </div>
-        <button
-          disabled={!ready}
-          onClick={() => tilt(-Math.PI / 18)}
-          aria-label="Tilt diagram left 10 degrees"
+        <div
+          className="spatial-caption"
+          hidden={!showHelp && !outsideDataView && !faceCaptureError && !faceCaptureBusy}
         >
-          −10°
-        </button>
-        <button
-          disabled={!ready}
-          onClick={() => tilt(Math.PI / 18)}
-          aria-label="Tilt diagram right 10 degrees"
-        >
-          +10°
-        </button>
-        <button onClick={fit} disabled={!ready} aria-label="Fit 3D diagram">
-          <Maximize size={15} />
-          Fit
-        </button>
-        <button
-          onClick={focus}
-          disabled={!ready || !selectedNodes.length}
-          aria-label="Focus selected object"
-        >
-          <Focus size={15} />
-          Focus
-        </button>
-        <label>
-          <input
-            type="checkbox"
-            checked={showLabels}
-            onChange={(event) => setShowLabels(event.target.checked)}
-          />
-          Labels
-        </label>
-      </div>
-      <div className="spatial-caption">
-        <strong>Diagram relief</strong>
-        <span id="spatial-instructions">
-          {moveObjects
-            ? 'Drag a card to move selected objects in X/Y at their saved depth. Shift-click adds objects; Escape cancels. 3D placement is saved separately from the 2D overview.'
-            : 'The same diagram with depth. Drag to tilt · scroll or pinch to zoom · right drag or two fingers to pan. Enable Move objects to drag cards.'}{' '}
-          The Move, Rotate and Scale handles control the camera. Keyboard: arrows rotate, +/− zoom,
-          Home fits.
-        </span>
-        {showLabels && projected.nodes.length > SPATIAL_LABEL_LIMIT && (
-          <small>
-            Text stays on the card faces and follows the perspective. Zoom or select an object to
-            read it, or find any object in the list below.
-          </small>
-        )}
-        {outsideDataView > 0 && (
-          <small>
-            {outsideDataView} objects are outside the current data view and show their retained
-            values. They were included by relationship exploration.
-          </small>
-        )}
-        {faceCaptureError && (
-          <small role="status">
-            The original card appearance could not be loaded. Return to 2D to continue.
-          </small>
-        )}
-        {faceCaptureBusy && <small role="status">Preparing the original node appearance…</small>}
+          <div className="spatial-help-content" id="spatial-help" hidden={!showHelp}>
+            <div className="spatial-caption-header">
+              <strong>Diagram relief</strong>
+              <button
+                className="icon-button"
+                aria-label="Hide 3D help"
+                title="Hide 3D help"
+                data-spatial-help-control
+                onClick={() => {
+                  setShowHelp(false);
+                  const focusTarget =
+                    host.current?.querySelector('canvas') ??
+                    toolbar.current?.querySelector<HTMLButtonElement>(
+                      '[data-spatial-help-control]',
+                    );
+                  focusTarget?.focus();
+                }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <span id="spatial-instructions">
+              {moveObjects
+                ? 'Drag a card to move selected objects in X/Y at their saved depth. Shift-click adds objects; Escape cancels. 3D placement is saved separately from the 2D overview.'
+                : 'The same diagram with depth. Drag to tilt · scroll or pinch to zoom · right drag or two fingers to pan. Enable Move objects to drag cards.'}{' '}
+              The Move, Rotate and Scale handles control the camera. Keyboard: arrows rotate, +/−
+              zoom, Home fits.
+            </span>
+            {showLabels && projected.nodes.length > SPATIAL_LABEL_LIMIT && (
+              <small>
+                Text stays on the card faces and follows the perspective. Zoom or select an object
+                to read it, or find any object in the list below.
+              </small>
+            )}
+          </div>
+          {outsideDataView > 0 && (
+            <small>
+              {outsideDataView} objects are outside the current data view and show their retained
+              values. They were included by relationship exploration.
+            </small>
+          )}
+          {faceCaptureError && (
+            <small role="status">
+              The original card appearance could not be loaded. Return to 2D to continue.
+            </small>
+          )}
+          {faceCaptureBusy && <small role="status">Preparing the original node appearance…</small>}
+        </div>
+        {props.overview && <OverviewControls projection={props.overview} />}
       </div>
       {(rendererState === 'unavailable' || rendererState === 'lost') && (
         <div className="spatial-fallback" role="status">

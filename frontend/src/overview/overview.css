@@ -142,19 +142,9 @@
   outline-offset: 2px;
   box-shadow: 0 0 0 5px #4e9a7812;
 }
-.spatial-canvas > .overview-controls {
-  position: absolute;
-  left: 16px;
-  top: 114px;
-  z-index: 5;
-}
 @media (max-width: 720px) {
   .overview-controls {
     max-width: 240px;
-  }
-  .spatial-canvas > .overview-controls {
-    top: 180px;
-    left: 8px;
   }
   .overview-controls-body {
     max-height: 240px;
