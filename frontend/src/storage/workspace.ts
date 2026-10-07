@@ -14,6 +14,11 @@ import {
 import type { WorkspaceBackup } from './database';
 import { getSpatialView } from '../spatial/types';
 import { assertImportLimitMb, IMPORT_LIMIT_SETTING, importLimitMb } from '../imports/limits';
+import {
+  appearancePreference,
+  appearanceSettingsChanged,
+  type AppearancePreference,
+} from '../ui/appearance';
 
 /** Commit a pending local camera before a user-requested snapshot or navigation. */
 export function flushSpatialCamera() {
@@ -91,6 +96,7 @@ export class Workspace {
   private pending = new Map<string, { graph: Graph; sourcesChanged: boolean }>();
   private navigation = 0;
   private settingsRevision = 0;
+  private appearanceTheme?: AppearancePreference;
   private stopped = false;
   private analysisCommands = new Set<AbortController>();
   constructor(public repo: Repository = repository) {}
@@ -106,7 +112,9 @@ export class Workspace {
         mcpAccess: 'off',
         importFileLimitMb: 50,
         workspaceId: '',
+        theme: 'system',
       });
+      this.syncAppearance('system');
       return;
     }
     await this.repo.db.initialize();
@@ -234,10 +242,14 @@ export class Workspace {
     ]);
     const preferences = new Map(settings.map((setting) => [setting.key, setting.value]));
     if (settingsRevision !== this.settingsRevision) return;
+    const theme =
+      preferences.get('storage-consent') === true
+        ? appearancePreference(preferences.get('theme'))
+        : 'system';
     useEditor.setState({
       diagrams: preferences.get('storage-consent') === true ? diagrams : [],
       owners: preferences.get('storage-consent') === true ? owners : [],
-      theme: String(preferences.get('theme') ?? 'system'),
+      theme,
       importFileLimitMb: importLimitMb(preferences.get(IMPORT_LIMIT_SETTING)),
       mcpAccess:
         preferences.get('storage-consent') === true
@@ -249,6 +261,7 @@ export class Workspace {
       lastExport: String(preferences.get('last-export') ?? ''),
       backupNudgeDismissed: preferences.get('backup-nudge-dismissed') === true,
     });
+    this.syncAppearance(theme);
     if (preferences.get('storage-consent') !== true) {
       useEditor.getState().setGraph(null);
       return;
@@ -275,6 +288,11 @@ export class Workspace {
     if (useEditor.getState().graph !== current || this.pending.has(record.id)) return;
     this.versions.set(record.id, graph.diagram.version);
     useEditor.setState({ graph, history: [], future: [], status: 'saved', message: '' });
+  }
+  private syncAppearance(theme: AppearancePreference) {
+    if (theme === this.appearanceTheme) return;
+    this.appearanceTheme = theme;
+    appearanceSettingsChanged();
   }
   async open(id: string, nodeId?: string, beforeOpen?: () => Promise<void>) {
     await this.requireStorageConsent();

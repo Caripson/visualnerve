@@ -39,9 +39,12 @@ function deployment() {
   for (const file of [
     'index.html',
     'error.html',
+    'appearance.js',
     'privacy/index.html',
     'help/index.html',
     'api/docs/index.html',
+    'api/docs/docs.css',
+    'api/docs/docs.js',
     'editor/app.js',
     'editor/app.css',
     'editor/assets/chunk-Ab123.js',

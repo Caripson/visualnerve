@@ -24,6 +24,8 @@ CSV analysis filters, cleanup, grouping and measures persist in diagram settings
 
 Selection, dialogs, canvas filters, pending commands and bounded undo/redo remain in memory. Bridge tokens are ephemeral session storage, excluded from backups. The historical localStorage theme is migrated once and removed. No entity is stored in localStorage, filesystem JSON, another database or a remote service.
 
+Appearance defaults to System and follows operating-system changes. The workspace, Guide, Privacy, License, error page and API reference read the same consented IndexedDB `theme` preference. Reference pages read only the two settings records for appearance and consent; they never create or upgrade the workspace database, enumerate diagrams or register offline caching. Saved changes notify open pages, while focus/reload refreshes the preference when cross-tab messaging is unavailable. The shared `/appearance.js` is included in the offline application shell.
+
 The browser-local `import-file-limit-mb` setting defaults to 50 and accepts integer values from 50 to 1024. **Settings → Import file size → Maximum import file size (MB)** saves it; MB means MiB and 1024 MB is 1 GB. `PUT /settings/import-file-limit-mb` accepts `{ "value": 50 }` with the same range, and invalid values return 422. Import payloads gain no size field. Imports up to 50 MB are supported and guaranteed; higher limits are experimental and can be slow or fail because of browser memory or format constraints. Other structural/deadline limits and the 32 MiB JSON/WebSocket envelopes remain unchanged.
 
 ## Explicit upgrades

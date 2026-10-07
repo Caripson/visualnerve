@@ -168,6 +168,8 @@ JSON is the complete restorable format, including owners, metadata, hierarchy, l
 
 Settings controls theme, **Import file size** and **Data & Privacy**. **Export all data** downloads a dated complete backup of projects, owners, portable settings, templates and CSV datasets. **Restore backup** previews Merge (keep current diagrams) or Replace (remove current work, requiring confirmation). Connection grants and storage acceptance are never imported; both modes keep this browser's own import-file limit. **Export diagram** remains a separate PNG/PDF/Markdown/JSON choice.
 
+**Settings → Appearance** defaults to **System**, following your operating system's light or dark mode. Choose **Light** or **Dark** for a fixed appearance. Your choice also applies to Guide, Privacy, License, the error page and API documentation, including pages already open in another tab. The setting stays with this browser and website address.
+
 Clearing site data, resetting a browser profile or uninstalling the browser may remove work. Private/incognito sessions may discard it on closing. Another browser/profile/device, or a different website address, opens an independent workspace; nothing synchronizes automatically. Export a backup to move or keep a copy. Storage details shows estimated usage and, after you create a diagram, an optional browser retention request. A grant cannot prevent manual clearing or guarantee retention. Global deletion is separately confirmed under Data & Privacy. [How your data is stored](/privacy/).
 
 ## Codex and MCP

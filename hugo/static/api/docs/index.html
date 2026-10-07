@@ -1,7 +1,110 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Visual Nerve local integration</title><link rel="stylesheet" href="/swagger/swagger-ui.css"></head><body><p style="padding:16px;font-family:system-ui">This reference describes an optional bridge on your computer. The public website stores no diagrams and provides no content API. <a href="/help/#codex-and-mcp">Setup guide</a></p><div id="swagger-ui"></div><script src="/swagger/swagger-ui-bundle.js"></script><script>
-const local = ['localhost','127.0.0.1','[::1]'].includes(location.hostname);
-fetch('/openapi.yaml').then(response => response.json()).then(spec => {
-  if (local) spec.servers = [{url:location.origin+'/api/v1',description:'Local bridge'}];
-  SwaggerUIBundle({spec,dom_id:'#swagger-ui',validatorUrl:null,persistAuthorization:false,queryConfigEnabled:false,supportedSubmitMethods:local?['get','post','put','patch','delete']:[]});
-});
-</script></body></html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta
+      name="description"
+      content="The Visual Nerve local API and MCP reference. Connect external tools to your browser workspace through the optional local bridge."
+    />
+    <title>API reference · Visual Nerve</title>
+    <script src="/appearance.js"></script>
+    <link rel="stylesheet" href="/editor/app.css" />
+    <link rel="stylesheet" href="/swagger/swagger-ui.css" />
+    <link rel="stylesheet" href="/api/docs/docs.css" />
+    <script defer src="/swagger/swagger-ui-bundle.js"></script>
+    <script defer src="/api/docs/docs.js"></script>
+  </head>
+  <body class="api-reference-page">
+    <a class="api-skip-link" href="#api-endpoints">Skip to endpoints</a>
+    <header class="site-shell">
+      <a class="site-brand" href="/"
+        ><span class="brand-symbol" aria-hidden="true">⌘</span
+        ><b>Visual Nerve</b
+        ><span class="brand-version">LOCAL WORKSPACE</span></a
+      >
+      <nav aria-label="Site">
+        <a href="/">Workspace</a>
+        <a href="/help/">Guide</a>
+        <a href="/api/docs/" aria-current="page">API reference</a>
+        <a href="/privacy/">Privacy</a>
+        <a class="site-credit" href="/license/">Johan Caripson · MPL-2.0</a>
+      </nav>
+    </header>
+    <main class="api-reference">
+      <header class="api-introduction">
+        <div class="api-eyebrow">
+          <span>DEVELOPER REFERENCE</span
+          ><span class="api-mode" id="api-mode">Reference only</span>
+        </div>
+        <h1>Visual Nerve local API</h1>
+        <p class="api-lead">
+          Connect tools to the diagrams in your browser. The optional local
+          bridge gives API and MCP clients access to the same workspace you edit
+          on the canvas.
+        </p>
+        <div class="api-links">
+          <a class="api-link-primary" href="/help/#codex-and-mcp"
+            >Set up API &amp; MCP <span aria-hidden="true">↗</span></a
+          >
+          <a href="/openapi.yaml" download="visual-nerve-openapi.yaml"
+            >Download OpenAPI</a
+          >
+          <span class="api-contract-version" id="api-version" hidden></span>
+        </div>
+      </header>
+      <section class="api-context" aria-label="How the connection works">
+        <div>
+          <h2>Your browser owns the data</h2>
+          <p>
+            Diagrams stay in local IndexedDB. The bridge forwards commands to
+            your connected browser and does not store application records.
+          </p>
+        </div>
+        <div>
+          <h2>You choose the access</h2>
+          <p>
+            In Settings, enable <strong>Read only</strong> or
+            <strong>Read + write</strong> for MCP access. Access is off by
+            default; changes require write permission.
+          </p>
+        </div>
+        <div>
+          <h2>The same model everywhere</h2>
+          <p>
+            Diagrams, code and SQL imports, 3D views, playback and process
+            simulations use the same model through the UI, API and MCP.
+          </p>
+        </div>
+      </section>
+      <p class="api-connection-note" id="api-connection-note">
+        This public reference cannot send commands. To use the endpoints, start
+        the bridge on your computer and connect it in Settings.
+      </p>
+      <section
+        class="api-endpoints"
+        id="api-endpoints"
+        aria-labelledby="api-endpoints-title"
+        tabindex="-1"
+      >
+        <div class="api-section-heading">
+          <h2 id="api-endpoints-title">Endpoints and schemas</h2>
+          <p>Expand an endpoint for parameters, examples and responses.</p>
+        </div>
+        <p class="api-loading" id="api-load-status" role="status">
+          Loading the API reference…
+        </p>
+        <noscript
+          ><p class="api-loading">
+            Enable JavaScript to browse the interactive reference, or
+            <a href="/openapi.yaml">read the OpenAPI document</a>.
+          </p></noscript
+        >
+        <div id="swagger-ui"></div>
+      </section>
+    </main>
+  </body>
+</html>

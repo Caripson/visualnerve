@@ -49,6 +49,7 @@ import { DataQualityDialog } from './components/DataQualityDialog';
 import { UnderstandingDialogs } from './components/UnderstandingDialogs';
 import { useCompactLayout } from './hooks/useCompactLayout';
 import { MobileWorkspacePanel } from './components/mobile/MobileWorkspacePanel';
+import { applyAppearance } from './ui/appearance';
 import './components/mobile/mobile-workspace.css';
 export type DialogName =
   | 'new'
@@ -347,14 +348,8 @@ export function App() {
       void navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch(() => {});
   }, [acknowledged]);
   useEffect(() => {
-    const media = matchMedia('(prefers-color-scheme: dark)');
-    const apply = () =>
-      (document.documentElement.dataset.theme =
-        theme === 'system' ? (media.matches ? 'dark' : 'light') : theme);
-    apply();
-    media.addEventListener('change', apply);
-    return () => media.removeEventListener('change', apply);
-  }, [theme]);
+    if (ready) return applyAppearance(theme);
+  }, [ready, theme]);
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
       const modifier = e.ctrlKey || e.metaKey;

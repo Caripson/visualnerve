@@ -6,7 +6,7 @@ const publicDir = resolve(dirname(fileURLToPath(import.meta.url)), '../public');
 function files(directory, prefix) { return readdirSync(directory, { withFileTypes: true }).flatMap(file => file.isDirectory() ? files(resolve(directory, file.name), `${prefix}/${file.name}`) : [`${prefix}/${file.name}`]); }
 const editorAssets = files(resolve(publicDir, 'editor'), '/editor');
 const lazyAssets = editorAssets.filter(path => path.startsWith('/editor/speech/'));
-const assets = ['/', '/error.html', '/help/', '/privacy/', '/license/', ...editorAssets.filter(path => !lazyAssets.includes(path))];
+const assets = ['/', '/appearance.js', '/error.html', '/help/', '/privacy/', '/license/', ...editorAssets.filter(path => !lazyAssets.includes(path))];
 const hash = createHash('sha256'); for (const path of [...assets, ...lazyAssets]) hash.update(readFileSync(resolve(publicDir, path.endsWith('/') ? `${path.slice(1)}index.html` : path.slice(1))));
 const cacheName = `visual-nerve-shell-${hash.digest('hex').slice(0, 12)}`;
 writeFileSync(resolve(publicDir, 'sw.js'), `// Static assets only. Application data lives exclusively in browser IndexedDB.

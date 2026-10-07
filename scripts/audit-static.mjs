@@ -8,7 +8,7 @@ export function auditStatic(directory) {
       const stat = lstatSync(resolve(directory, path));
       if (stat.isSymbolicLink()) throw new Error(`Static bundle must not contain symlinks: ${path}`);
       if (stat.isDirectory()) { visit(path); continue; }
-      const allowed = ['index.html', 'error.html', 'sw.js', 'sitemap.xml', 'openapi.yaml', 'help/index.html', 'privacy/index.html', 'license/index.html', 'api/docs/index.html'].includes(path)
+      const allowed = ['index.html', 'error.html', 'sw.js', 'appearance.js', 'sitemap.xml', 'openapi.yaml', 'help/index.html', 'privacy/index.html', 'license/index.html', 'api/docs/index.html', 'api/docs/docs.css', 'api/docs/docs.js'].includes(path)
         || /^editor\/(?:app\.(?:js|css)|assets\/[\w.-]+\.(?:js|css|svg|png|woff2?))$/.test(path)
         || /^editor\/speech\/(?:ort-wasm(?:-simd)?\.wasm|piper_phonemize\.(?:wasm|data))$/.test(path)
         || /^swagger\/swagger-ui(?:-bundle\.js|\.css)$/.test(path)
@@ -22,7 +22,7 @@ export function auditStatic(directory) {
     }
   }
   visit();
-  for (const required of ['index.html', 'error.html', 'editor/app.js', 'privacy/index.html', 'sw.js']) if (!files.includes(required)) throw new Error(`Static bundle is missing ${required}`);
+  for (const required of ['index.html', 'error.html', 'editor/app.js', 'appearance.js', 'privacy/index.html', 'sw.js']) if (!files.includes(required)) throw new Error(`Static bundle is missing ${required}`);
   return files;
 }
 if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
