@@ -786,7 +786,7 @@ export function Canvas() {
           <ParticleOverlay renderGraph={renderGraph ?? undefined} visibility={particleVisibility} />
         )}
         {overview && (
-          <Panel position="top-right">
+          <Panel position="top-right" className="overview-panel">
             <OverviewControls projection={overview} />
           </Panel>
         )}

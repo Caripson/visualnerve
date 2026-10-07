@@ -1,5 +1,7 @@
 import { readdirSync, lstatSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+const helpGuides = ['getting-started', 'editing', 'layouts', '3d', 'csv', 'connected-data', 'sql', 'code', 'diagram-import', 'understanding', 'presentations', 'simulation', 'sharing', 'settings', 'api-mcp', 'troubleshooting'];
+const helpScreenshots = ['new-diagram', 'editor', 'mobile-editor', 'layouts', 'spatial', 'csv-import', 'csv-evidence', 'connected-data', 'data-quality', 'source-refresh', 'sql-query', 'sql-schema', 'code-cobol', 'code-project', 'diagram-import', 'overview', 'history', 'player', 'player-compact', 'storyboard', 'simulation', 'simulation-assumptions', 'simulation-compare', 'export', 'lovable', 'settings', 'backup', 'mcp-settings'];
 export function auditStatic(directory) {
   const files = [];
   function visit(prefix = '') {
@@ -9,6 +11,9 @@ export function auditStatic(directory) {
       if (stat.isSymbolicLink()) throw new Error(`Static bundle must not contain symlinks: ${path}`);
       if (stat.isDirectory()) { visit(path); continue; }
       const allowed = ['index.html', 'error.html', 'sw.js', 'appearance.js', 'sitemap.xml', 'openapi.yaml', 'help/index.html', 'privacy/index.html', 'license/index.html', 'api/docs/index.html', 'api/docs/docs.css', 'api/docs/docs.js'].includes(path)
+        || ['help/help.css', 'help/help.js', 'help/index.json'].includes(path)
+        || helpGuides.some(guide => path === `help/${guide}/index.html`)
+        || helpScreenshots.some(name => path === `help/images/${name}.webp`)
         || /^editor\/(?:app\.(?:js|css)|assets\/[\w.-]+\.(?:js|css|svg|png|woff2?))$/.test(path)
         || /^editor\/speech\/(?:ort-wasm(?:-simd)?\.wasm|piper_phonemize\.(?:wasm|data))$/.test(path)
         || /^swagger\/swagger-ui(?:-bundle\.js|\.css)$/.test(path)

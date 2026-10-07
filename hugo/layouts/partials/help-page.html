@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="{{ .Params.summary | default .Params.description }}">
+  <title>{{ .Title }} · Visual Nerve help</title>
+  <script src="/appearance.js"></script>
+  <link rel="stylesheet" href="/editor/app.css">
+  <link rel="stylesheet" href="/help/help.css">
+  <script defer src="/help/help.js"></script>
+</head>
+<body class="help-site">
+  <a class="help-skip" href="#help-main">Skip to guide</a>
+  {{ partial "navigation.html" . }}
+  <div class="help-layout">
+    <aside class="help-sidebar" aria-label="Help navigation">
+      <a class="help-home" href="/help/">VISUAL NERVE HELP</a>
+      <label class="help-search-label" for="help-search">Search help</label>
+      <input id="help-search" type="search" placeholder="Search topics or tasks…" autocomplete="off" aria-controls="help-search-results">
+      <p class="help-search-hint">Local search · press / to focus</p>
+      <nav class="help-desktop-topics" aria-label="Guide topics">{{ partial "help-topics.html" . }}</nav>
+      <details class="help-mobile-topics"><summary>Topics</summary><nav aria-label="Guide topics mobile">{{ partial "help-topics.html" . }}</nav></details>
+    </aside>
+    <main id="help-main" class="help-main" tabindex="-1">
+      <section id="help-search-results" class="help-search-results" aria-label="Search results" aria-live="polite" hidden><p class="help-search-status"></p><ul></ul></section>
+      <header class="help-article-header">
+        <p class="help-eyebrow">{{ if .IsSection }}THE GUIDE{{ else }}<a href="/help/">HELP</a> / GUIDE {{ .Weight }}{{ end }}</p>
+        <h1>{{ .Title }}</h1>
+        {{ with .Params.summary }}<p class="help-summary">{{ . }}</p>{{ end }}
+        {{ if not .IsSection }}<p class="help-reading-time">{{ .ReadingTime }} min read · desktop &amp; mobile</p>{{ end }}
+      </header>
+      {{ if .IsSection }}
+      <section class="help-guide-grid" aria-label="All guides">
+        {{ range .RegularPages.ByWeight }}<a class="help-guide-card" href="{{ .RelPermalink }}"><span class="help-guide-number">{{ printf "%02d" .Weight }}</span><h2>{{ .Title }}</h2><p>{{ .Params.summary }}</p><span class="help-guide-open">Read guide →</span></a>{{ end }}
+      </section>
+      {{ else }}
+      <details class="help-toc" open><summary>On this page</summary>{{ .TableOfContents }}</details>
+      {{ end }}
+      <article class="help-article">{{ .Content }}</article>
+      {{ if not .IsSection }}
+      <nav class="help-guide-pagination" aria-label="Adjacent guides">
+        {{ $current := .RelPermalink }}{{ $guides := (site.GetPage "/help").RegularPages.ByWeight }}
+        {{ range $index, $guide := $guides }}{{ if eq $guide.RelPermalink $current }}
+        {{ if gt $index 0 }}{{ with index $guides (sub $index 1) }}<a href="{{ .RelPermalink }}"><small>Previous guide</small><span>← {{ .Title }}</span></a>{{ end }}{{ end }}
+        {{ if lt $index (sub (len $guides) 1) }}{{ with index $guides (add $index 1) }}<a href="{{ .RelPermalink }}"><small>Next guide</small><span>{{ .Title }} →</span></a>{{ end }}{{ end }}
+        {{ end }}{{ end }}
+      </nav>
+      {{ end }}
+      <footer class="help-footer">Your diagrams stay in this browser. <a href="/">Return to workspace</a> · <a href="/privacy/">Privacy</a> · <a href="/api/docs/">API reference</a></footer>
+    </main>
+  </div>
+</body>
+</html>

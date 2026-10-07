@@ -19,6 +19,9 @@ The historical database name `visual-nerve-cache` remains so existing data upgra
 | historyContents | Deduplicated structural graphs without raw CSV rows |
 | historySources | Archived source headers referencing immutable row content |
 | historyRows | Shared immutable historical CSV strings |
+| simulationModels | Versioned semantic Process Simulator models, including particle types, shared resources and scenarios |
+| simulationRuns | Bounded run archives, metrics, events and scenario comparison data |
+| simulationCheckpoints | Bounded per-run replay snapshots indexed by simulated time |
 
 CSV analysis filters, cleanup, grouping and measures persist in diagram settings: `csvAnalysis` remains the primary-source legacy configuration and `csvSourceAnalyses` holds source-specific configurations. `csvRelationships` records explicit matching columns and `csvEntityFocus` records related-entity context. Matching selects original rows once per source; it does not persist joined rows or multiply source-native sums. Raw CSV strings live once in the datasets store; ordinary node/edge edits do not rewrite or clone them. A bounded immutable source cache is invalidated by IndexedDB mutations across connections. Source refresh and source additions/removals are atomically saved with graph changes, and undo/redo keeps immutable source references.
 
@@ -37,6 +40,7 @@ The browser-local `import-file-limit-mb` setting defaults to 50 and accepts inte
 5. Add the datasets store without rewriting or removing existing records.
 6. Change the `datasets.diagramId` index from unique to nonunique to support multiple diagram-owned sources. Existing source rows and diagrams are preserved; source order is stored in `diagram.settings.csvDatasetOrder`.
 7. Add four history stores without rewriting current graphs or datasets. Existing records remain intact.
+8. Add three simulation stores without rewriting ordinary diagrams, sources or history. Simulation documents keep an explicit type and model schema version.
 
 Acceptance is separate from an integration grant or informational acknowledgement. Existing data remains intact before acceptance. Updates never reset the database. Version changes close older connections so upgrades can complete. Each upgrade needs transactional migration tests; keep the database name stable.
 

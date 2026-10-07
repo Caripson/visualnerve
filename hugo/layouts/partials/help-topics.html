@@ -1,0 +1,5 @@
+<a class="help-topic{{ if .IsSection }} is-current{{ end }}" href="/help/"{{ if .IsSection }} aria-current="page"{{ end }}>Help home</a>
+{{ $current := .RelPermalink }}
+{{ range (site.GetPage "/help").RegularPages.ByWeight }}
+<a class="help-topic{{ if eq $current .RelPermalink }} is-current{{ end }}" href="{{ .RelPermalink }}"{{ if eq $current .RelPermalink }} aria-current="page"{{ end }}>{{ .Title }}</a>
+{{ end }}

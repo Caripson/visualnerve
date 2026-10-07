@@ -6,6 +6,10 @@ Before the workspace opens, users must explicitly accept local browser storage a
 
 Hugo builds the application shell and help pages. React and TypeScript power the editor, React Flow renders the canvas, ELK performs explicit layouts, and Dexie manages IndexedDB transactions. The built site can run on a static HTTP server. An optional Go server serves the files and bridges local REST/MCP commands to an open browser; it stores no application data.
 
+## Learn the workspace
+
+Open **Guide** for the [user help](https://visualnerve.caripson.com/help/): 16 task-oriented guides with real screenshots, examples, troubleshooting, local search and mobile instructions. The guides cover editing, data/code/diagram imports, 3D, presentations, simulation, exports, settings and API/MCP. They also work offline after the application shell has been cached. See [Help coverage and maintenance](docs/HELP.md) for the documentation and screenshot workflow.
+
 ## Explore diagrams in 3D
 
 Use **3D** to tilt and inspect the same diagram as a physical relief. Nodes retain their 2D positions and sizes; the same capture of their actual 2D appearance supplies both readable sides, including fonts, colors, icons and status. Back text stays unmirrored. Text and connections follow the perspective when the diagram turns. Visible **Move**, **Rotate** and **Scale** controls provide colored axis handles for camera pan, rotation and zoom; **−10°/+10°** make small turns predictable. **2D** and **Return to 2D** restore the editable overview. Front, Back, Left, Right, Top, Fit and Focus selected provide named views. Select a card or relationship, or an entry in **Objects and relationships** to edit its title, description, notes, status and connections in Properties.
@@ -66,7 +70,7 @@ Cards show bounded summaries; Properties shows complete schema columns or query 
 
 ## Visualize code in 50 languages
 
-Choose **Visualize code** to paste a script, select multiple source files or choose a folder. Start with **File overview**, or choose **Declarations and dependencies** for recognized declarations, calls, data and resource dependencies. Select a language for ambiguous file extensions. Preview first, review syntax/heuristic/unresolved connections, then create a normal editable diagram. **Focus** matches a path/name substring and includes immediate neighbors; the existing relationship explorer provides further navigation and saved views.
+Choose **Visualize code** to paste a script, select multiple source files or choose a folder. A single script/file defaults to **Declarations and dependencies**; multiple files default to **File overview**. Either detail level can also be selected explicitly. Declarations show recognized calls, data and resource dependencies. Select a language for ambiguous file extensions. Preview first, review syntax/heuristic/unresolved connections, then create a normal editable diagram. **Focus** matches a path/name substring and includes immediate neighbors; the existing relationship explorer provides further navigation and saved views.
 
 The local worker provides structural analyzers for all 50 languages in the [support matrix](docs/CODE_IMPORT.md), including programming, query, BI and infrastructure languages. This is bounded static analysis, not compilation or execution. Original source, comments and nonstructural literal values are temporary; identifiers, paths, source lines and confidence are saved locally. Code cards and links share normal editing, status, drawing, 2D/3D and exports. API/MCP provides `GET /code/languages`, `POST /code/preview` and `POST /code/diagrams`.
 

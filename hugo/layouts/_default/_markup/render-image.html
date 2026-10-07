@@ -1,0 +1,8 @@
+{{- $path := printf "static%s" .Destination -}}
+{{- $image := false -}}{{- if fileExists $path -}}{{- $image = imageConfig $path -}}{{- end -}}
+<figure class="help-figure"{{ with $image }} style="--screenshot-width: {{ .Width }}px"{{ end }}>
+  <a href="{{ .Destination | safeURL }}" target="_blank" rel="noopener noreferrer" aria-label="Open screenshot: {{ .Text }}">
+    <img src="{{ .Destination | safeURL }}" alt="{{ .Text }}" loading="lazy" decoding="async"{{ with $image }} width="{{ .Width }}" height="{{ .Height }}"{{ end }}>
+  </a>
+  {{ with .Title }}<figcaption>{{ . }}</figcaption>{{ end }}
+</figure>

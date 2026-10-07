@@ -100,6 +100,33 @@ async function exportPng(page: Page) {
   await page.getByRole('dialog').getByRole('button', { name: 'Export', exact: true }).click();
   return readFile((await (await downloading).path())!);
 }
+test('overview controls stay clickable beside a selected object without selection-toolbar overlap', async ({
+  page,
+  request,
+}) => {
+  const created = await create(request);
+  await page.locator('.diagram-item').filter({ hasText: created.diagram.name }).click();
+  await page.getByRole('button', { name: 'Fit diagram', exact: true }).click();
+  const box = await controls(page);
+  await box.getByRole('button', { name: 'Overview', exact: true }).click();
+  await box.getByRole('button', { name: 'Details', exact: true }).click();
+  await page.locator(`[data-node-id="${created.nodes[0].id}"]`).first().click();
+  const selection = page.locator('.selection-panel');
+  await expect(selection).toBeVisible();
+  await box.locator('summary').click();
+  await box.locator('summary').click();
+  await expect(box.getByRole('button', { name: 'Overview', exact: true })).toBeVisible();
+  const toolbar = await selection.boundingBox();
+  const overview = await box.boundingBox();
+  expect(toolbar).not.toBeNull();
+  expect(overview).not.toBeNull();
+  expect(overview!.y).toBeGreaterThanOrEqual(toolbar!.y + toolbar!.height);
+  await box.getByRole('button', { name: 'Overview', exact: true }).click();
+  await expect(box.getByRole('button', { name: 'Overview', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+});
 test('semantic overview retains counts/directions, native styles, shared 2D/3D export and canonical Details layout', async ({
   page,
   request,

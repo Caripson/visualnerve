@@ -1,0 +1,5 @@
+{{- $guides := slice -}}
+{{- range .RegularPages.ByWeight -}}
+  {{- $guides = $guides | append (dict "title" .Title "url" .RelPermalink "summary" .Params.summary "text" .Plain) -}}
+{{- end -}}
+{{- dict "version" 1 "guides" $guides | jsonify -}}
