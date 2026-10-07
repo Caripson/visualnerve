@@ -182,8 +182,15 @@ test('numbered walkthrough plays, pauses, skips, captions and persists sequence 
   );
   await page.getByLabel('Narration voice', { exact: true }).selectOption('sv_SE-nst-medium');
   await page.getByRole('button', { name: 'Save voice', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Presentation voice saved' })).toHaveText(
+    'Presentation voice saved for this browser.',
+  );
+  // CI can delay the browser's IndexedDB-backed bridge response beyond 12s
+  // even after the UI confirms persistence. Keep the exact-value requirement.
   await expect
-    .poll(async () => await (await request.get('/api/v1/settings/presentation-voice')).json())
+    .poll(async () => await (await request.get('/api/v1/settings/presentation-voice')).json(), {
+      timeout: 30000,
+    })
     .toBe('sv_SE-nst-medium');
 });
 test('MCP player uses the same 3D diagram and transient camera with documented read/write controls', async ({
