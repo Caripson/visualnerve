@@ -38,6 +38,7 @@ import { MetricSummary } from '../components/MetricSummary';
 import { NodeStatus } from '../ui/NodeStatus';
 import { SqlTableSummary } from '../components/SqlTableSummary';
 import { CodeSummary } from '../components/CodeSummary';
+import { getCodeObject } from '../code/schema';
 import { SqlQuerySummary } from '../components/SqlQuerySummary';
 import { SimulationNodeSummary } from '../simulation/NodeSummary';
 
@@ -66,13 +67,14 @@ function renderer(kind: NodeKind) {
   const Component = memo(({ id, data, selected }: NodeProps<CanvasNode>) => {
     const { node, owners, exporting } = data;
     const projected = node.metadata.simulationProjected === true;
+    const code = !!getCodeObject(node);
     const smallZoom = useStore((state) => state.transform[2] < 0.2);
     const overview = smallZoom && !exporting && !selected;
     const updateNode = useEditor((s) => s.updateNode);
     const color = node.color || owners[0]?.color || '#31766c';
     return (
       <div
-        className={`vn-node shape-${config.shape} ${overview ? 'node-overview' : ''} ${selected && !exporting ? 'is-selected' : ''}`}
+        className={`vn-node shape-${config.shape} ${code ? 'code-node' : ''} ${overview ? 'node-overview' : ''} ${selected && !exporting ? 'is-selected' : ''}`}
         style={{ '--node-accent': color } as React.CSSProperties}
         data-testid="graph-node"
         data-node-id={id}
@@ -99,8 +101,9 @@ function renderer(kind: NodeKind) {
         )}
         {selected && !exporting && !projected && (
           <NodeResizer
-            minWidth={100}
-            minHeight={50}
+            minWidth={code ? 220 : 100}
+            minHeight={code ? 150 : 50}
+            handleClassName={code ? 'code-resize-handle' : undefined}
             color="#267b6a"
             onResizeEnd={(_, p) =>
               data.resize?.(id, { x: p.x, y: p.y, width: p.width, height: p.height })
@@ -133,7 +136,7 @@ function renderer(kind: NodeKind) {
         {!overview && <MetricSummary node={node} />}
         {!overview && <SqlTableSummary node={node} />}
         {!overview && <SqlQuerySummary node={node} />}
-        {!overview && <CodeSummary node={node} />}
+        {!overview && <CodeSummary node={node} exporting={exporting} selected={selected} />}
         {!overview && (
           <div className="node-bottomline">
             {owners.length > 0 && (

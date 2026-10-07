@@ -6,6 +6,10 @@ Use **Visualize code** to paste a script, choose several source files, or select
 
 These are editable native diagram objects. Move and connect them, annotate, assign status, use the pen, switch between 2D and 3D, and export the canonical 2D layout to PNG/PDF. Select an object for its language, original file and source line. Select a connection for its relationship kind, confidence and file/line evidence. Renaming a card does not rewrite the source. Reconnecting an analyzed edge removes its stale source evidence; undo restores it.
 
+In 2D, scroll inside a code card to read its retained identifiers, full file path, source line range and declaration summary. Long names and paths wrap. The summary shows every saved entry rather than only the first six; file cards retain at most the first 200 recognized declaration names. Choose **Declarations and dependencies** to inspect individual declarations beyond that file-card summary. Focus the scroll area to use the keyboard, and drag the card by its header to move it.
+
+Select a code card to reveal its corner resize handles. Enlarge it to show more details at once; resizing is undoable and saves the same width, height and position used after reload and in 3D. Scroll position is temporary. 3D faces and PNG/PDF/video exports show the top of the card at its saved size, without interactive scrolling. Enlarge the card in 2D before exporting when more details need to fit; JSON preserves all retained metadata regardless of the visible area.
+
 ## What support means
 
 The analyzers recognize common source structures using bounded lexical and syntax patterns. They do not compile, execute, install packages, contact databases, run build scripts or resolve complete type systems. Every supported language has a language-specific extraction path; the catalog is also available through the local API. This first version is a structural outline, not a complete parser for every dialect or a verified runtime call graph.
@@ -59,7 +63,7 @@ External objects remain visible. An imported name is not evidence that its sourc
 | SAS | Data/procedure steps and input/output datasets |
 | Apex | Classes/methods, possible calls |
 | ABAP | Classes/methods/forms, calls and table dependencies |
-| COBOL | Programs/paragraphs, files and calls |
+| COBOL | Programs, numbered paragraphs, calls and file reads/writes (FD record mappings) |
 | Fortran | Modules/procedures, use dependencies and possible calls |
 | Assembly | Labels, include dependencies and calls/jumps |
 | Delphi / Object Pascal | Units/types/procedures, uses dependencies, possible calls |
@@ -102,6 +106,8 @@ Start the optional local bridge and grant access in the open browser. The public
 ```
 
 Preview returns `graph`, `version`, `languages`, `mode`, `fileCount`, `symbolCount`, `dependencyCount`, `unresolvedCount`, `warnings` and optional `focus`. Create returns the canonical `Graph`. Files have unique relative paths; unknown fields and unsupported IDs are rejected. The browser rechecks consent and grants before the first write and cancels pending analysis when access is revoked. Source crosses the loopback bridge transiently; it is not stored by the Go server. JSON and WebSocket envelopes remain limited to 32 MiB regardless of the import preference; source and responses must fit after JSON escaping. See [API](../API.md) and [data model](../DATA_MODEL.md).
+
+Code cards use the existing node geometry contract. Read `GET /nodes/{nodeId}`, then send `PATCH /nodes/{nodeId}` with its current `version` and the desired `width`/`height`; include `x`/`y` when repositioning. Geometry-only changes preserve `metadata.codeObject` and connection evidence. For nodes with an assigned `externalId`, `POST /diagrams/{diagramId}/bulk` with `upsert:true`, the current diagram `baseVersion` and matching node external IDs can update several sizes atomically. Imported code nodes initially have UUIDs without external IDs, so use node PATCH for them. Resizing needs write access; it introduces no new endpoint or metadata schema.
 
 ## Implementation boundaries
 

@@ -90,18 +90,49 @@ export function extractLegacy(content: string, language: CodeLanguage): Extracte
       'ABAP classes, forms, methods and explicit calls are outlined. SAP dictionary metadata and dynamic calls are not resolved.',
     );
   } else if (language === 'cobol') {
+    const divisions = [
+      ...masked.matchAll(/\b(IDENTIFICATION|ENVIRONMENT|DATA|PROCEDURE)\s+DIVISION\b/gi),
+    ];
+    let division = '';
+    let divisionIndex = 0;
     for (const match of masked.matchAll(
-      /\bPROGRAM-ID\s*\.\s*([A-Za-z_][\w-]*)|^\s*(?:\d{6}\s+)?([A-Za-z_][\w-]*)(?:[ \t]+SECTION)?[ \t]*\.(?=\s*(?:\n|$))/gim,
+      /\bPROGRAM-ID\s*\.\s*([A-Za-z0-9_][\w-]*)|^[ \t]*(?:\d{6}[ \t]+)?([A-Za-z0-9_][\w-]*)(?:[ \t]+SECTION)?[ \t]*\.(?=[ \t]*(?:\r?\n|$))/gim,
     )) {
+      while (divisionIndex < divisions.length && divisions[divisionIndex].index <= match.index)
+        division = divisions[divisionIndex++][1].toUpperCase();
+      // A supplied full program has paragraphs in its Procedure Division only.
+      // Without division headers, retain support for standalone procedure snippets.
+      if (!match[1] && divisions.length && division !== 'PROCEDURE') continue;
       const name = match[1] ?? match[2];
       if (
-        /^(?:IDENTIFICATION|ENVIRONMENT|DATA|PROCEDURE|WORKING-STORAGE|LINKAGE|FILE|CONFIGURATION|INPUT-OUTPUT|END-IF|END-PERFORM|GOBACK|STOP|EXIT)$/i.test(
+        /^(?:IDENTIFICATION|ENVIRONMENT|DATA|PROCEDURE|WORKING-STORAGE|LINKAGE|FILE|CONFIGURATION|INPUT-OUTPUT|DECLARATIVES|END-DECLARATIVES|END-IF|END-PERFORM|END-READ|END-WRITE|END-REWRITE|END-START|END-CALL|END-EVALUATE|END-SEARCH|END-STRING|END-UNSTRING|END-ACCEPT|END-DISPLAY|END-ADD|END-SUBTRACT|END-MULTIPLY|END-DIVIDE|END-COMPUTE|END-RETURN|END-DELETE|END-RECEIVE|CONTINUE|GOBACK|STOP|EXIT)$/i.test(
           name,
         )
       )
         continue;
       const key = out.symbol(name, match[1] ? 'resource' : 'function', match.index);
       if (key) declarations.push({ key, offset: match.index });
+    }
+
+    const files = new Map<string, string>();
+    const fileResource = (name: string, offset: number) => {
+      const id = name.toUpperCase();
+      if (!files.has(id)) {
+        files.set(id, name);
+        out.symbol(name, 'resource', offset);
+      }
+      return files.get(id)!;
+    };
+    for (const match of masked.matchAll(/\bSELECT\s+([A-Za-z0-9_][\w-]*)\s+ASSIGN\b/gi))
+      fileResource(match[1], match.index);
+    const records = new Map<string, string>();
+    let currentFile: string | undefined;
+    for (const match of masked.matchAll(
+      /\b(?:FD|SD)\s+([A-Za-z0-9_][\w-]*)|^[ \t]*(?:\d{6}[ \t]+)?01[ \t]+([A-Za-z0-9_][\w-]*)|^[ \t]*(?:\d{6}[ \t]+)?[A-Za-z0-9_][\w-]*[ \t]+(?:SECTION|DIVISION)\b/gim,
+    )) {
+      if (match[1]) currentFile = fileResource(match[1], match.index);
+      else if (match[2] && currentFile) records.set(match[2].toUpperCase(), currentFile);
+      else if (!match[2]) currentFile = undefined;
     }
     for (const match of source.matchAll(/\bCALL\s+["']([A-Za-z_][\w.-]*)["']/gi))
       if (/^CALL/i.test(masked.slice(match.index, match.index + 4)))
@@ -115,31 +146,43 @@ export function extractLegacy(content: string, language: CodeLanguage): Extracte
           },
           match.index,
         );
+    for (const match of source.matchAll(/\bCALL\s+([A-Za-z0-9_][\w-]*)/gi))
+      if (visible(masked, match.index, match[0]))
+        out.dependency(
+          {
+            source: current(declarations, match.index),
+            target: match[1],
+            kind: 'references',
+            targetType: 'symbol',
+            confidence: 'heuristic',
+          },
+          match.index,
+        );
     for (const match of masked.matchAll(
-      /\b(PERFORM|CALL|READ|WRITE|REWRITE|OPEN\s+INPUT|OPEN\s+OUTPUT)\s+([A-Za-z_][\w-]*)/gi,
+      /\b(PERFORM|READ|WRITE|REWRITE|OPEN\s+INPUT|OPEN\s+OUTPUT)\s+([A-Za-z0-9_][\w-]*)/gi,
     )) {
       if (/^(?:UNTIL|VARYING|WITH|TIMES)$/i.test(match[2])) continue;
       const keyword = match[1].toUpperCase();
+      if (
+        keyword === 'PERFORM' &&
+        /^\d+$/.test(match[2]) &&
+        /^\s+TIMES\b/i.test(masked.slice(match.index + match[0].length))
+      )
+        continue;
+      const target = /^(?:WRITE|REWRITE)$/.test(keyword)
+        ? (records.get(match[2].toUpperCase()) ?? match[2])
+        : match[2];
       out.dependency(
         {
           source: current(declarations, match.index),
-          target: match[2],
-          kind:
-            keyword === 'PERFORM'
-              ? 'calls'
-              : keyword === 'CALL'
-                ? 'references'
-                : /WRITE|OUTPUT/.test(keyword)
-                  ? 'writes'
-                  : 'reads',
+          target,
+          kind: keyword === 'PERFORM' ? 'calls' : /WRITE|OUTPUT/.test(keyword) ? 'writes' : 'reads',
           targetType: 'symbol',
           confidence: 'heuristic',
         },
         match.index,
       );
     }
-    for (const match of masked.matchAll(/\bSELECT\s+([A-Za-z_][\w-]*)\s+ASSIGN\b/gi))
-      out.symbol(match[1], 'resource', match.index);
     for (const match of source.matchAll(/\bCOPY\s+(?:["']([-\w./]+)["']|([-\w.]+))/gi)) {
       if (!/^COPY/i.test(masked.slice(match.index, match.index + 4))) continue;
       out.dependency(

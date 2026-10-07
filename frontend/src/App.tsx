@@ -360,7 +360,7 @@ export function App() {
       const modifier = e.ctrlKey || e.metaKey;
       const key = e.key.toLowerCase();
       const editing = (e.target as HTMLElement)?.closest(
-        'input,textarea,select,[contenteditable="true"]',
+        'input,textarea,select,[contenteditable="true"],[data-node-scroll]',
       );
       if (
         dialog ||
@@ -405,7 +405,7 @@ export function App() {
             !importInFlight.current &&
             !document.querySelector('[role="dialog"][aria-modal="true"]') &&
             !(document.activeElement as HTMLElement | null)?.closest(
-              'input,textarea,select,[contenteditable="true"]',
+              'input,textarea,select,[contenteditable="true"],[data-node-scroll]',
             )
           );
         };

@@ -12,7 +12,14 @@ vi.mock('../src/storage/workspace', () => ({
 vi.mock('../src/components/Sidebar', () => ({ Sidebar: () => null }));
 vi.mock('../src/components/Toolbar', () => ({ Toolbar: () => null, FilterBar: () => null }));
 vi.mock('../src/components/Properties', () => ({ Properties: () => null }));
-vi.mock('../src/canvas/Canvas', () => ({ Canvas: () => null }));
+vi.mock('../src/canvas/Canvas', () => ({
+  Canvas: () =>
+    createElement(
+      'div',
+      { 'data-node-scroll': true, tabIndex: 0, 'aria-label': 'Node content' },
+      createElement('span', null, 'Readable declarations'),
+    ),
+}));
 vi.mock('../src/presentation/Player', () => ({ PresentationFeature: () => null }));
 vi.mock('../src/components/UnderstandingDialogs', () => ({ UnderstandingDialogs: () => null }));
 vi.mock('../src/components/DataPrivacy', () => ({
@@ -133,6 +140,70 @@ it.each(['resolve', 'reject'] as const)(
     const { graph, complete } = await pendingPaste();
     fireEvent.keyDown(document.body, { key: 'n', ctrlKey: true });
     expect(screen.getByRole('dialog', { name: 'New diagram' })).toBeVisible();
+    const before = useEditor.getState();
+    await complete(outcome);
+    expect(useEditor.getState().graph).toBe(graph);
+    expect(useEditor.getState().history).toBe(before.history);
+    expect(useEditor.getState().editRevision).toBe(before.editRevision);
+  },
+);
+
+it('leaves native reading shortcuts alone without copying, deleting or editing diagram objects', async () => {
+  const graph = blankGraph('Read-only content', 'mindmap');
+  graph.nodes = [newNode(graph.diagram.id, { title: 'Original title' })];
+  useEditor.getState().setGraph(graph);
+  useEditor.getState().select([graph.nodes[0].id]);
+  useEditor.getState().updateNode(graph.nodes[0].id, { title: 'Saved title' });
+  const clip = copySelection(graph, [graph.nodes[0].id]);
+  useEditor.setState({ clipboard: clip });
+  const readText = vi.fn(async () => JSON.stringify(clip));
+  const writeText = vi.fn(async () => {});
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { readText, writeText },
+  });
+  await act(async () => {
+    render(createElement(App));
+  });
+  const region = screen.getByLabelText('Node content');
+  region.focus();
+  const before = useEditor.getState();
+  for (const shortcut of [
+    { key: 'c', ctrlKey: true },
+    { key: 'v', ctrlKey: true },
+    { key: 'd', ctrlKey: true },
+    { key: 'g', ctrlKey: true },
+    { key: 'z', ctrlKey: true },
+    { key: 'y', metaKey: true },
+    { key: 'Delete' },
+    { key: 'Backspace' },
+    { key: 'Tab' },
+    { key: 'Enter' },
+    { key: 'F2' },
+  ]) {
+    const event = new KeyboardEvent('keydown', {
+      ...shortcut,
+      bubbles: true,
+      cancelable: true,
+    });
+    fireEvent(region.firstElementChild!, event);
+    expect(event.defaultPrevented).toBe(false);
+  }
+  const after = useEditor.getState();
+  expect(after.graph).toBe(before.graph);
+  expect(after.history).toBe(before.history);
+  expect(after.editRevision).toBe(before.editRevision);
+  expect(after.clipboard).toBe(clip);
+  expect(after.editingNode).toBeNull();
+  expect(readText).not.toHaveBeenCalled();
+  expect(writeText).not.toHaveBeenCalled();
+});
+
+it.each(['resolve', 'reject'] as const)(
+  'cancels a pending paste after focus moves into node content when clipboard read %ss',
+  async (outcome) => {
+    const { graph, complete } = await pendingPaste();
+    screen.getByLabelText('Node content').focus();
     const before = useEditor.getState();
     await complete(outcome);
     expect(useEditor.getState().graph).toBe(graph);

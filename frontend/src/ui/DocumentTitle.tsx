@@ -40,7 +40,9 @@ export function DocumentTitle() {
         e.key === 'F2' &&
         !state.selectedNodes.length &&
         !state.selectedEdges.length &&
-        !(e.target as HTMLElement)?.closest('input,textarea,select,[role="dialog"]')
+        !(e.target as HTMLElement)?.closest(
+          'input,textarea,select,[contenteditable="true"],[role="dialog"],[data-node-scroll]',
+        )
       ) {
         e.preventDefault();
         begin();

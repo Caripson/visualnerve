@@ -580,7 +580,7 @@ export function Canvas() {
     const listener = (e: KeyboardEvent) => {
       if (
         (e.target as HTMLElement)?.closest(
-          'input,textarea,select,[contenteditable="true"],[role="dialog"]',
+          'input,textarea,select,[contenteditable="true"],[role="dialog"],[data-node-scroll]',
         )
       )
         return;
@@ -709,7 +709,10 @@ export function Canvas() {
       onKeyDownCapture={(event) => {
         if (event.key !== 'Enter' && event.key !== ' ') return;
         const target = event.target as HTMLElement;
-        if (target.closest('input,textarea,select,button,[contenteditable="true"]')) return;
+        if (
+          target.closest('input,textarea,select,button,[contenteditable="true"],[data-node-scroll]')
+        )
+          return;
         const card = target
           .closest('.react-flow__node')
           ?.querySelector<HTMLElement>('[data-simulation-projected="true"]');

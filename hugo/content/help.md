@@ -134,6 +134,8 @@ Choose **Visualize code**, paste a script and select its language, or choose sou
 
 These are normal editable objects with status, drawing, links, 2D/3D and export. Analysis is local and bounded; it does not execute code or provide full compiler semantic analysis. Dynamic or ambiguous references can be unresolved. Choose the language explicitly for ambiguous extensions such as `.m`, `.h` and `.cls`. Original source/comments/nonstructural literals are not saved; extracted identifiers, paths, lines and evidence remain. Review names and paths before sharing. API/MCP can discover languages and preview/create diagrams through the local bridge. [Data handling](/privacy/#source-code-import).
 
+In 2D, scroll inside a code card to read its retained details; long names and paths wrap. Select the card and drag a corner resize handle to show more at once, or drag its header to move it. Sizes are saved and undoable. File cards retain up to 200 declaration names; choose **Declarations and dependencies** for individual objects. 3D faces and PNG/PDF/video exports show the top of the card at its saved size, so enlarge it in 2D to fit more details. JSON and backups preserve all retained metadata.
+
 The default source limit is 50 MB per file and 50 MB for the whole project; both use the selected [import file size](#import-file-size). Limits remain 500 files, 10,000 extracted symbols, 5,000 diagram objects, 10,000 connections and a 30-second analysis deadline.
 
 ## Import draw.io or Visio
