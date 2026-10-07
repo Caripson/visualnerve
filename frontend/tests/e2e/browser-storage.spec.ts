@@ -1,5 +1,6 @@
 import { expect, test as base, type Page } from '@playwright/test';
 import { test as integrated, acknowledge } from './fixtures';
+import templateManifest from '../../src/templates/manifest.json' with { type: 'json' };
 
 async function saved(page: Page) {
   await expect(page.getByRole('status').filter({ hasText: /^Saved$/ })).toBeVisible();
@@ -46,7 +47,7 @@ base(
     expect(
       backup.owners.some((owner: { name: string }) => owner.name === 'Unassigned browser owner'),
     ).toBe(true);
-    expect(backup.templates).toHaveLength(10);
+    expect(backup.templates).toHaveLength(templateManifest.length);
     await page.getByRole('button', { name: 'Done', exact: true }).click();
     await page.evaluate(async () => {
       await navigator.serviceWorker.ready;

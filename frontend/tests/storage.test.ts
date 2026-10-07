@@ -5,6 +5,7 @@ import { Repository } from '../src/storage/repository';
 import { Workspace } from '../src/storage/workspace';
 import { base, blankGraph, newNode, newEdge, type Graph, type Owner } from '../src/model/types';
 import { useEditor } from '../src/state/editor';
+import { templates } from '../src/templates/templates';
 
 let db: WorkspaceDatabase, repo: Repository;
 const controllers: Workspace[] = [];
@@ -369,7 +370,7 @@ describe('authoritative IndexedDB repository', () => {
     expect(await db.edges.count()).toBe(0);
     expect(await db.owners.count()).toBe(0);
     expect((await db.settings.toArray()).map((setting) => setting.key)).toEqual(['workspace-id']);
-    expect(await db.templates.count()).toBe(10);
+    expect(await db.templates.count()).toBe(templates.length);
     expect(await db.templates.get('custom')).toBeUndefined();
   });
   it('upgrades version 3 without graph loss and requires new explicit MCP permission', async () => {

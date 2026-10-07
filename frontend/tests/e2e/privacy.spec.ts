@@ -10,6 +10,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { acknowledge } from './fixtures';
+import templateManifest from '../../src/templates/manifest.json' with { type: 'json' };
 
 const publicURL = 'https://public-app.test:4340';
 const publicApp = `${publicURL}/app/`;
@@ -280,7 +281,7 @@ test('full backup restores after confirmed deletion, and replacement requires it
     ).toBeVisible();
     const empty = await records(page);
     for (const store of ['diagrams', 'nodes', 'edges', 'owners']) expect(empty[store]).toEqual([]);
-    expect(empty.templates).toHaveLength(10);
+    expect(empty.templates).toHaveLength(templateManifest.length);
     expect(empty.templates.every((record) => record.builtin)).toBe(true);
     expect(empty.settings.map((record) => record.key)).toEqual(['workspace-id']);
     await acknowledge(page);

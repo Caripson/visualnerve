@@ -155,9 +155,9 @@ for (const width of [1440, 768, 390, 320]) {
                     right: rect.right,
                     ratio: screen.width / screen.height,
                     expectedRatio: frame.classList.contains('site-capture--phone')
-                      ? 9 / 16
+                      ? 390 / 844
                       : frame.classList.contains('site-capture--laptop')
-                        ? 4 / 3
+                        ? 16 / 10
                         : image.naturalWidth / image.naturalHeight,
                     fit: getComputedStyle(image).objectFit,
                     background: getComputedStyle(frame).backgroundColor,
@@ -227,12 +227,12 @@ for (const width of [1440, 768, 390, 320]) {
           ).toEqual([
             [1920, 1080],
             [1024, 1366],
-            [1440, 1080],
-            [360, 640],
+            [1440, 900],
+            [390, 844],
           ]);
           for (const [device, ratio] of [
-            ['laptop', 4 / 3],
-            ['phone', 9 / 16],
+            ['laptop', 16 / 10],
+            ['phone', 390 / 844],
           ] as const) {
             const screen = await page.locator('.device-' + device + ' img').boundingBox();
             expect(Math.abs(screen!.width / screen!.height - ratio)).toBeLessThan(0.001);

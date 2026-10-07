@@ -2,6 +2,18 @@
 
 Process Simulator is a separate template and document type for seeing how work, shared capacity and economics affect a whole system. Create it from the template selector, configure assumptions, run it, inspect queues and change assumptions before another run. AI and MCP are optional.
 
+## Guided construction and visual traffic
+
+The UI's **Process Simulator** card starts empty (`process-simulator-blank`). A four-step wizard creates a validated Source → Work → Outcome model, with optional shared capacity, explicit arrivals, processing/transfer times, patience, revenue and hourly costs. Apply is one undoable graph/model change. **Kiosk + package pickup** keeps the original `process-simulator` example key; existing API creation defaults and example links remain compatible. Built-in template graphs are discoverable through `GET /templates`; the wizard produces the same typed model accepted by the simulation PUT endpoint.
+
+Selected nodes expose **Add next**, **Add previous** or **Add work**. Inserting into a single existing process path preserves the original outgoing route properties. Resource-bound additions reuse the same resource ID. New connections disclose and persist three seconds of real transfer; existing zero-time transfers stay instantaneous. Node creation, edges and semantic configuration commit together and undo together.
+
+The live 2D canvas renders traffic from current queue, capacity, utilization, blocking and shared-resource waiters. Green means clear flow; yellow means at least 85% current occupancy, a forming queue or scaling; red requires queued work with saturation or resource blocking (processing failures also show red). Labels/icons accompany colors. Incoming flow routes show their destination's congestion; dashed resource requirements carry no particle flow. Queue counts stay on node cards, while bounded queue/particle samples are drawn on one canvas. Motion interpolates observed simulation timestamps; pause/replay freezes it. Rendering never advances the engine. The UI starts at 10× for legible transfers; all speeds and headless mode retain the same deterministic results.
+
+Main desktop KPIs use a stable card grid. More metrics expands the remaining measures; the current bottleneck is shown directly. Metrics toggles dashboard visibility without changing the run, allowing more canvas space. Mobile keeps playback in its compact strip and all settings/metrics in the existing detail sheet.
+
+Guided construction is split between `starter.ts`, `ProcessWizard.tsx`, `StarterFields.tsx` and `StarterReview.tsx`. Connected-node edits live in `nodes/connected-node.ts` with a separate `NodeQuickAdd.tsx` control. Traffic classification, bounded scene construction and observed-clock interpolation are isolated in `traffic.ts`, `particle-scene.ts` and `render-clock.ts`; `ParticleOverlay.tsx` draws their output on one canvas. None of these modules replaces the simulation engine or stores a second business model.
+
 ## One model and one engine
 
 The document identifies itself with `diagram.type: "process-simulator"` and an explicit `graph.simulation` payload containing `type: "process-simulator"` and `schemaVersion: 1`. Native graph nodes/edges supply positions, styling and ordinary diagram exports. The typed simulation model supplies business semantics. Canvas coordinates never determine processing, capacity or routing.

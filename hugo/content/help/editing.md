@@ -23,6 +23,10 @@ The minimap is pannable and zoomable. Grid and magnet controls toggle canvas dot
 
 ## Create and describe an object
 
+To continue from an existing object, select it and choose **Add next** beside the card. Pick **Process**, **Decision**, **End** or **Note**. The new object is positioned nearby and connected automatically; Undo removes the object and its connection together. Timeline diagrams offer **Timeline item**. Mind maps keep their dedicated **Add subtopic** action.
+
+![The Add next menu offers a connected Process, Decision, End or Note beside the selected object.](/help/images/node-quick-add.webp "Continue a diagram from the selected card without returning to the main toolbar.")
+
 1. Choose a **New node type**, then **Add node**. Mind maps use **Add subtopic** instead; see [mind maps](/help/layouts/).
 2. Select the new card and enter a short **Title**.
 3. Use **Description** for the explanation someone should read or hear in a walkthrough. **Notes** can hold supporting detail.

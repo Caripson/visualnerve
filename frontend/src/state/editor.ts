@@ -1,6 +1,7 @@
 import { prunePresentation } from '../presentation/definition';
 import { pruneStoryboard } from '../presentation/storyboard';
 import { reconcileSimulationGraph } from '../simulation/document';
+import { addConnectedNode, type ConnectedNodeType } from '../nodes/connected-node';
 import { create } from 'zustand';
 import type { McpAccess } from '../integration/access';
 import { applyDelta, diffGraph, mergeDelta, type Delta } from './history';
@@ -84,6 +85,7 @@ interface Editor {
   setGraph(g: Graph | null): void;
   command(label: string, change: (graph: Graph) => Graph, coalesce?: boolean): void;
   addNode(partial?: Partial<GraphNode>): string | undefined;
+  addConnectedNode(sourceId: string, type?: ConnectedNodeType): string | undefined;
   child(sibling?: boolean): string | undefined;
   beginEditing(id: string): void;
   finishEditing(save?: boolean): void;
@@ -356,6 +358,21 @@ export const useEditor = create<Editor>((set, get) => ({
     s.select([n.id]);
     set({ focusNode: n.id });
     return n.id;
+  },
+  addConnectedNode: (sourceId, type) => {
+    const state = get();
+    if (!state.graph) return;
+    try {
+      const added = addConnectedNode(state.graph, sourceId, type);
+      if (!added) return;
+      state.command('Add connected node', () => added.graph);
+      if (!get().graph?.nodes.some((node) => node.id === added.nodeId)) return;
+      get().select([added.nodeId]);
+      set({ focusNode: added.nodeId });
+      return added.nodeId;
+    } catch (error) {
+      set({ status: 'error', message: (error as Error).message });
+    }
   },
   beginEditing: (id) => {
     const state = get();

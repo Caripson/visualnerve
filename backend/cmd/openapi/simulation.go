@@ -109,6 +109,7 @@ func addSimulationSchemas(schemas object) {
 	schemas["SimulationEdge"] = strictObject([]string{"id", "sourceNodeId", "targetNodeId"}, object{
 		"id": simID(), "sourceNodeId": simID(), "targetNodeId": simID(), "travelSeconds": simNumber(0), "particleTypeIds": stringList(), "weight": simNumber(0),
 	})
+	schemas["SimulationEdge"].(object)["properties"].(object)["travelSeconds"].(object)["description"] = "Actual simulated transfer delay along this flow edge, included in cycle time and time-to-revenue. Omitted or zero means instant transfer; the renderer does not invent a delay. Positive values allow real transit particles to move between their departure and arrival timestamps. Resource-allocation connectors are derived separately and never carry work particles."
 	schemas["SimulationResource"] = strictObject([]string{"id", "name", "capacity", "unit"}, object{
 		"id": simID(), "name": object{"type": "string", "minLength": 1}, "capacity": simInteger(0), "unit": object{"type": "string"},
 		"minCapacity": simInteger(0), "maxCapacity": simInteger(0), "costPerHour": simNumber(0),
@@ -162,7 +163,7 @@ func addSimulationSchemas(schemas object) {
 		"resources": simArray("SimulationResource"), "improvements": simArray("SimulationImprovement"), "scenarios": simArray("SimulationScenario"),
 		"defaults": ref("SimulationDefaults"), "economics": ref("SimulationEconomics"), "retention": ref("SimulationRetention"), "description": object{"type": "string"},
 	})
-	schemas["SimulationModel"].(object)["description"] = "Authoritative local-first process model. Time/duration/delays use simulated seconds; rates and operating costs use per-hour units in one configurable model currency. Processing/resource dependencies are semantic, independent of canvas layout. A process-simulator Graph requires this payload; other document types must not acquire it implicitly. Node and edge semantic IDs are canonicalized to graph UUIDs on save; aliases are retained as native externalId."
+	schemas["SimulationModel"].(object)["description"] = "Authoritative local-first process model. Time/duration/delays use simulated seconds; rates and operating costs use per-hour units in one configurable model currency. Processing/resource dependencies are semantic, independent of canvas layout. A process-simulator Graph requires this payload; other document types must not acquire it implicitly. Empty arrays form a valid document for guided setup; a runnable process needs its particle types, connected source/work/outcome nodes and any required resources. GET /templates discovers process-simulator-blank (guided empty setup) and process-simulator (Kiosk + package pickup example). POST /diagrams preserves the kiosk default; versioned PUT /diagrams/{diagramId}/simulation replaces it with an empty or complete model. Node and edge semantic IDs are canonicalized to graph UUIDs on save; aliases are retained as native externalId."
 	schemas["SimulationModel"].(object)["properties"].(object)["nodes"].(object)["maxItems"] = 50000
 	schemas["SimulationModel"].(object)["properties"].(object)["edges"].(object)["maxItems"] = 200000
 	schemas["SimulationModelUpdate"] = versionedInput("model", "SimulationModel")

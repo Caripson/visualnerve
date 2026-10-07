@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useCompactLayout } from '../hooks/useCompactLayout';
 import { useEditor } from '../state/editor';
 import { workspace } from '../storage/workspace';
@@ -20,6 +20,7 @@ import {
 } from './SimulationControls';
 import { SimulationResults } from './SimulationResults';
 import { SimulationWorkbench } from './SimulationWorkbench';
+import { ProcessWizard, simulationSetupEvent } from './ProcessWizard';
 import './simulation.css';
 
 export { simulationTime } from './SimulationControls';
@@ -29,8 +30,11 @@ export function SimulationFeature() {
   const compact = useCompactLayout();
   const [settings, setSettings] = useState(false);
   const [details, setDetails] = useState(false);
+  const [metricsOpen, setMetricsOpen] = useState(true);
+  const [setup, setSetup] = useState(false);
+  const offeredSetup = useRef(new Set<string>());
   const [scenarioId, setScenarioId] = useState('');
-  const [speed, setSpeed] = useState<SimulationSpeed>(100);
+  const [speed, setSpeed] = useState<SimulationSpeed>(10);
   const [duration, setDuration] = useState(86400);
   const [seed, setSeed] = useState(42);
   const [untilComplete, setUntilComplete] = useState(false);
@@ -46,11 +50,27 @@ export function SimulationFeature() {
     setScenarioId('');
     setError('');
     setDetails(false);
+    setMetricsOpen(true);
+    setSetup(false);
+    setUntilComplete(false);
     if (graph?.simulation) {
       setDuration(graph.simulation.defaults.durationSeconds);
       setSeed(graph.simulation.defaults.seed);
     }
   }, [graph?.diagram.id]);
+  useEffect(() => {
+    if (!graph?.simulation) return;
+    const empty = graph.simulation.nodes.length === 0;
+    if (empty && !offeredSetup.current.has(graph.diagram.id)) {
+      offeredSetup.current.add(graph.diagram.id);
+      setSetup(true);
+    }
+    const openSetup = () => {
+      if (!useEditor.getState().graph?.simulation?.nodes.length) setSetup(true);
+    };
+    window.addEventListener(simulationSetupEvent, openSetup);
+    return () => window.removeEventListener(simulationSetupEvent, openSetup);
+  }, [graph?.diagram.id, graph?.simulation?.nodes.length]);
   useEffect(() => {
     if (graph?.simulation)
       void simulationService
@@ -82,6 +102,10 @@ export function SimulationFeature() {
   }
   const play = () =>
     perform(async () => {
+      if (!useEditor.getState().graph?.simulation?.nodes.length) {
+        setSetup(true);
+        return;
+      }
       await workspace.settled();
       if (canResume && view) {
         await simulationService.control(view.run.id, 'resume');
@@ -223,19 +247,35 @@ export function SimulationFeature() {
       ) : (
         <>
           <div className="simulation-controls">
-            <strong>Process Simulator</strong>
-            <SimulationActions {...actions} />
-            {runSettings}
-            <output aria-label="Simulated time">
-              {simulationTime(view?.state?.timeSeconds ?? 0)}
-            </output>
-            <span className="simulation-run-status" role="status">
-              {view?.run.status ?? 'ready'}
-            </span>
+            <div className="simulation-transport">
+              <strong>Process Simulator</strong>
+              {view?.state && (
+                <button
+                  aria-label={`${metricsOpen ? 'Hide' : 'Show'} simulation metrics`}
+                  aria-pressed={metricsOpen}
+                  title="Show or hide live metrics to give the process canvas more space"
+                  onClick={() => setMetricsOpen((open) => !open)}
+                >
+                  Metrics
+                </button>
+              )}
+              <div className="simulation-playback">
+                <SimulationActions {...actions} />
+              </div>
+              <div className="simulation-time">
+                <output aria-label="Simulated time">
+                  {simulationTime(view?.state?.timeSeconds ?? 0)}
+                </output>
+                <span className="simulation-run-status" role="status">
+                  {view?.run.status ?? 'ready'}
+                </span>
+              </div>
+            </div>
+            <div className="simulation-desktop-settings">{runSettings}</div>
           </div>
           <ScenarioControls graph={graph} id={scenarioId} select={setScenarioId} />
           {notices}
-          {metrics}
+          {metricsOpen && metrics}
           {results}
         </>
       )}
@@ -244,6 +284,18 @@ export function SimulationFeature() {
           graph={graph}
           scenarioId={scenarioId || undefined}
           close={() => setSettings(false)}
+        />
+      )}
+      {setup && graph.simulation.nodes.length === 0 && (
+        <ProcessWizard
+          graph={graph}
+          close={() => setSetup(false)}
+          created={(options) => {
+            setDuration(options.durationSeconds);
+            setSeed(graph.simulation!.defaults.seed);
+            setUntilComplete(options.untilComplete);
+            useEditor.setState((state) => ({ viewportRequest: state.viewportRequest + 1 }));
+          }}
         />
       )}
     </section>

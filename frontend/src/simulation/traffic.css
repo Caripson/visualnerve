@@ -1,0 +1,94 @@
+.simulation-node-summary {
+  --simulation-traffic: #8994a6;
+}
+.simulation-node-summary[data-traffic='clear'] {
+  --simulation-traffic: #169b65;
+}
+.simulation-node-summary[data-traffic='busy'] {
+  --simulation-traffic: #d49a16;
+}
+.simulation-node-summary[data-traffic='congested'] {
+  --simulation-traffic: #dc5055;
+}
+.simulation-node-state {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.simulation-node-kind {
+  text-transform: capitalize;
+  opacity: 0.75;
+}
+.simulation-traffic-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 2px 6px 2px 4px;
+  border: 1px solid color-mix(in srgb, var(--simulation-traffic) 55%, transparent);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--simulation-traffic) 12%, transparent);
+  font-weight: 650;
+  line-height: 1.3;
+}
+.simulation-traffic-symbol {
+  display: grid;
+  place-items: center;
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--simulation-traffic);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+.simulation-node-summary[data-traffic='busy'] .simulation-traffic-symbol {
+  color: #202936;
+}
+.simulation-utilization-track {
+  display: block;
+  height: 3px;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 3px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+.simulation-utilization-track > span {
+  display: block;
+  width: var(--simulation-utilization, 0%);
+  height: 100%;
+  background: var(--simulation-traffic);
+}
+.simulation-node-queue {
+  display: block;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, currentColor 6%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+.simulation-node-queue[data-has-queue='true'] {
+  background: color-mix(in srgb, var(--simulation-traffic) 14%, transparent);
+  border-inline-start: 3px solid var(--simulation-traffic);
+  font-weight: 650;
+}
+.vn-node:has(.simulation-node-summary[data-traffic='congested']) {
+  outline: 2px solid #dc5055;
+  outline-offset: 2px;
+}
+.vn-node:has(.simulation-node-summary[data-traffic='busy']) {
+  outline: 1px solid #d49a16;
+  outline-offset: 2px;
+}
+@media (forced-colors: active) {
+  .simulation-traffic-badge,
+  .simulation-node-queue {
+    border: 1px solid CanvasText;
+  }
+  .simulation-node-summary[data-traffic] .simulation-traffic-symbol {
+    background: CanvasText;
+    color: Canvas;
+  }
+}

@@ -135,6 +135,11 @@ func main() {
 		schemas[name+"Patch"] = patch
 	}
 	schemas["Graph"] = object{"type": "object", "required": []string{"format", "formatVersion", "diagram", "nodes", "edges", "owners"}, "properties": object{"format": object{"type": "string", "enum": []string{"visual-nerve"}}, "formatVersion": object{"type": "integer", "enum": []int{1}}, "diagram": ref("Diagram"), "nodes": object{"type": "array", "items": ref("Node")}, "edges": object{"type": "array", "items": ref("Edge")}, "owners": object{"type": "array", "items": ref("Owner")}}, "additionalProperties": false}
+	schemas["TemplateRecord"] = strictObject([]string{"id", "name", "builtin", "graph"}, object{
+		"id":   object{"type": "string", "minLength": 1, "description": "Stable template key, such as process-simulator-blank (guided empty setup) or process-simulator (kiosk example); template keys are not graph UUIDs."},
+		"name": object{"type": "string"}, "builtin": object{"type": "boolean"}, "graph": ref("Graph"),
+	})
+	schemas["TemplateRecord"].(object)["description"] = "Browser-local built-in or user template with its complete reusable native graph. A Process Simulator template includes graph.simulation. Discovery requires an accepted, connected browser and at least Read only access; records are not stored by the server."
 	// CSV source records are validated in the browser and forwarded losslessly by the bridge.
 	schemas["CsvDataset"] = object{
 		"type":                 "object",
@@ -231,6 +236,9 @@ func main() {
 		paths[path].(object)[strings.ToLower(method)] = op
 	}
 	add("GET", "/health", "Check static server and optional bridge; storage is in the browser", "", "Health", "200")
+	add("GET", "/templates", "Discover browser-local templates and complete graphs, including guided Process Simulator and kiosk example", "", "TemplateRecord[]", "200")
+	add("GET", "/templates/{templateId}", "Read one browser-local template by its stable string key", "", "TemplateRecord", "200")
+	paths["/templates/{templateId}"].(object)["get"].(object)["parameters"] = []any{object{"name": "templateId", "in": "path", "required": true, "schema": object{"type": "string", "minLength": 1}}}
 	addPresentationPaths(add)
 	addUnderstandingPaths(add, paths)
 	addSimulationPaths(add, paths)

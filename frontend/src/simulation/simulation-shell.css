@@ -1,0 +1,153 @@
+/* Keep playback, assumptions and results in stable groups above the process canvas. */
+.simulation-feature:not(.simulation-feature-compact) {
+  padding: 14px 18px;
+  scrollbar-gutter: stable;
+}
+.simulation-feature .simulation-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+.simulation-transport {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+}
+.simulation-transport > strong {
+  font-size: 13px;
+  margin-right: auto;
+}
+.simulation-playback,
+.simulation-time {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.simulation-feature .simulation-time {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-alt);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.simulation-time .simulation-run-status {
+  color: var(--muted);
+  font-size: 11px;
+}
+.simulation-desktop-settings {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.simulation-desktop-settings label {
+  min-width: 70px;
+  color: var(--muted);
+}
+.simulation-desktop-settings input,
+.simulation-desktop-settings select {
+  min-height: 32px;
+  font-size: 12px;
+  color: var(--text);
+}
+.simulation-feature .simulation-desktop-settings .simulation-finish-field {
+  flex-direction: row;
+  align-items: center;
+  align-self: end;
+  min-height: 32px;
+}
+.simulation-feature .simulation-finish-field input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+}
+.simulation-feature .simulation-desktop-settings .simulation-scenario-field {
+  flex: 1;
+  min-width: 140px;
+}
+.simulation-bottleneck {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 12px;
+  margin-top: 14px;
+}
+.simulation-bottleneck strong {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+.simulation-feature .simulation-primary-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-block: 10px;
+}
+.simulation-primary-metrics > div {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-alt);
+  min-width: 0;
+}
+.simulation-feature .simulation-primary-metrics dt {
+  font-size: 10px;
+  line-height: 1.4;
+}
+.simulation-feature .simulation-primary-metrics dd {
+  font-size: 13px;
+  line-height: 1.4;
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+}
+.simulation-feature .simulation-extra-metrics > dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+  gap: 16px;
+  padding: 14px 0;
+}
+.simulation-feature:not(.simulation-feature-compact) .simulation-dashboard > details,
+.simulation-feature:not(.simulation-feature-compact) .simulation-results,
+.simulation-feature:not(.simulation-feature-compact) .simulation-scenario-options {
+  padding: 8px 0;
+  margin: 0;
+  border-top: 1px solid var(--border);
+}
+.simulation-feature:not(.simulation-feature-compact) summary {
+  min-height: 24px;
+  line-height: 1.5;
+}
+.simulation-feature:not(.simulation-feature-compact) .simulation-row {
+  gap: 14px;
+  padding-top: 12px;
+}
+.simulation-traffic-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  font-size: 11px;
+  line-height: 1.5;
+  margin-block: 12px;
+}
+.simulation-traffic-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.simulation-traffic-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.simulation-traffic-legend small {
+  color: var(--muted);
+  font-size: 11px;
+}

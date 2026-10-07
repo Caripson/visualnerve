@@ -55,6 +55,7 @@ import { canvasViewportGraph, persistCanvasFocus } from './navigation';
 import { useResponsiveCanvasViewport } from './useResponsiveCanvasViewport';
 import { DrawingOverlay } from '../drawing/DrawingOverlay';
 import { ParticleOverlay } from '../simulation/ParticleOverlay';
+import { ProcessStartPanel } from '../simulation/ProcessWizard';
 import { useSimulation } from '../simulation/useSimulation';
 import {
   logicalNodeId,
@@ -455,9 +456,16 @@ export function Canvas() {
   }, [diagramId, flow, flowStore, spatial, graph?.nodes, filters, explorationResult, touch]);
   useEffect(() => {
     const viewport = useEditor.getState().graph?.diagram.settings.viewport;
-    if (!spatial && viewportRequest && viewport) {
+    if (!spatial && viewportRequest) {
       interruptPresentation.current();
-      void flow.setViewport(viewport, { duration: 180 });
+      if (viewport) void flow.setViewport(viewport, { duration: 180 });
+      else {
+        // Guided creation clears the empty canvas camera; reveal its newly rendered process.
+        const frame = requestAnimationFrame(() => {
+          void flow.fitView({ padding: 0.25, maxZoom: 1, duration: 180 });
+        });
+        return () => cancelAnimationFrame(frame);
+      }
     }
   }, [viewportRequest, flow, spatial]);
   useEffect(() => {
@@ -643,7 +651,11 @@ export function Canvas() {
   }, [flow, spatial, overviewZoom.fit]);
   const overviewEnabled = graph ? getOverviewConfig(graph).enabled : false;
   const cameraOwned = useCallback(() => presentationViewport.current, []);
-  useResponsiveCanvasViewport(touch && !spatial && !overview?.active, diagramId, cameraOwned);
+  useResponsiveCanvasViewport(
+    (touch || !!graph?.simulation) && !spatial && !overview?.active,
+    diagramId,
+    cameraOwned,
+  );
   const previousOverview = useRef({ id: diagramId, enabled: overviewEnabled });
   useEffect(() => {
     const previous = previousOverview.current;
@@ -867,16 +879,24 @@ export function Canvas() {
         drawingTool === 'none' &&
         !getDrawingLayer(graph.diagram.settings.drawing)?.strokes.length && (
           <div className="canvas-empty">
-            <BoxIcon />
-            <h2>A little space for your next idea.</h2>
-            <p>
-              {graph.diagram.type === 'mindmap'
-                ? 'Start with a central idea, then branch out.'
-                : 'Add a node, then connect the dots.'}
-            </p>
-            <button className="primary" onClick={() => useEditor.getState().addNode()}>
-              {graph.diagram.type === 'mindmap' ? 'Add your central idea' : 'Add your first node'}
-            </button>
+            {graph.simulation ? (
+              <ProcessStartPanel />
+            ) : (
+              <>
+                <BoxIcon />
+                <h2>A little space for your next idea.</h2>
+                <p>
+                  {graph.diagram.type === 'mindmap'
+                    ? 'Start with a central idea, then branch out.'
+                    : 'Add a node, then connect the dots.'}
+                </p>
+                <button className="primary" onClick={() => useEditor.getState().addNode()}>
+                  {graph.diagram.type === 'mindmap'
+                    ? 'Add your central idea'
+                    : 'Add your first node'}
+                </button>
+              </>
+            )}
           </div>
         )}
     </div>

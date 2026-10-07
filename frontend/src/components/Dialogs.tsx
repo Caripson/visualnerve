@@ -73,7 +73,13 @@ export function NewDiagram({ close }: { close: () => void }) {
               </div>
               <b>{t.name}</b>
               <small>
-                {t.nodes ? `${t.nodes} nodes · ${t.type}` : 'An open space for your ideas'}
+                {t.key === 'process-simulator-blank'
+                  ? 'Guided setup for your own process'
+                  : t.key === 'process-simulator'
+                    ? 'Example · shared staff, queues and scenarios'
+                    : t.nodes
+                      ? `${t.nodes} nodes · ${t.type}`
+                      : 'An open space for your ideas'}
               </small>
             </button>
           ))}

@@ -8,19 +8,52 @@ Process Simulator helps you ask a whole-system question: “If demand, staffing 
 
 It is a separate **Process Simulator** template and document type. Ordinary diagram placement controls presentation; moving a card does not change arrival rates, processing times, resource requirements or routing.
 
+## Build a process from scratch
+
+1. Choose **New diagram → Process Simulator → Create diagram**. An empty process opens **Set up your process**.
+2. In **Workload**, name the work item. Choose a regular arrival rate or a finite batch, then set the simulation length.
+3. In **Process**, name the Work step, set minutes per item and parallel capacity, and choose the travel time between steps. Optionally add shared staff or equipment.
+4. In **Economics**, set the currency, revenue per completed item and hourly operating costs. Set a maximum queue wait if waiting work may abandon.
+5. Review the assumptions and choose **Create process**.
+6. Choose **Play**. The initial 10× speed makes movement visible; use 1× for closer inspection or MAX to calculate results quickly.
+
+The wizard creates a connected **Arrivals → Work → Completed** model. A shared resource appears as a separate capacity card with a dashed requirement link. All assumptions are saved in the same simulation model used by the API and MCP.
+
+Choose **Set up later** to leave the canvas empty. **Start guided setup** reopens the wizard. Applying setup creates the model in one undoable operation; closing the wizard leaves the existing document unchanged.
+
+![The guided setup review shows arrivals, a Work step and completion, with explicit shared staff and timing assumptions.](/help/images/process-setup.webp "Review the workload, shared resource and economics before creating a runnable process.")
+
+### Extend directly from a node
+
+Select a node and use **Add next** beside it. A new step and its connection are created together. If a Source or Work step already has one outgoing connection, adding a Work or Decision step inserts it into that path. A Decision can add an alternative branch. **Add previous** extends an Outcome; **Add work** on a Resource creates a Work step using that same shared capacity.
+
+New Work steps start with one slot and one minute of processing. New process connections have three seconds of real transfer time. Open **Assumptions** to change those values, resource requirements or routing rules. Undo removes the added node and connection together.
+
 ## Run the kiosk example
 
-1. Choose **New diagram → Process Simulator → Create diagram**.
+1. Choose **New diagram → Kiosk + package pickup → Create diagram**.
 2. Read the example's assumptions under **Assumptions**.
 3. Choose a **Scenario**, **Duration** and **Seed**.
-4. Choose **Play** and watch the 2D diagram.
+4. Choose **Play** and watch the 2D diagram. **Fit diagram** shows the whole process in the space available below the dashboard.
 5. Inspect the metrics, queues and shared resources.
 6. Run a different scenario with the same duration and seed.
 7. Select the saved runs and choose **Compare selected runs**.
 
+The desktop dashboard groups key numbers into cards and identifies the current bottleneck. **More metrics** expands queue statistics, lost work and further timing measures. Use **Metrics** beside the playback controls to hide or show the dashboard without changing the run; hiding it gives the process canvas more space. Replay and comparison remain below the metrics.
+
+### Read the process like a traffic map
+
+Flow connections show the pressure at the next step: **green** means clear, **yellow** means busy or a queue is forming, and **red** means work is queued behind saturated or blocked capacity. Nodes also show words, symbols, actual queue counts and utilization, so color is not the only signal. A shared resource can make a Work step red even when that step has free slots.
+
+Work items keep their particle type's color and shape while traveling along valid process connections. Travel uses the model's transfer time; a zero-second transfer is instant. A small sample waits beside a congested step, while its queue label counts the complete workload. Dashed resource requirements carry no particles.
+
+Use **Pause** to inspect a traffic jam. It freezes the simulation and particle movement together. The renderer interpolates observed simulation timestamps; it never creates extra throughput. MAX calculates the same business result without waiting for animation.
+
+![A paused overloaded process has a red Work node and incoming route, an actual queue of 19 and traffic status labels.](/help/images/simulation-traffic.webp "The traffic map identifies congestion from the simulation's actual queue and capacity state.")
+
 On a phone or short landscape screen, Play, Pause and simulated time stay in a compact canvas strip. Open **Simulation details** to choose **Run settings**, **Metrics** or **Replay & compare**. **Run simulation** starts the configured run and returns to the diagram.
 
-![The kiosk simulator with customer arrivals, work nodes, shared staff and counter capacity, queues and live metrics.](/help/images/simulation.webp "Work flows through the process while shared resources constrain how much can happen at once.")
+![The kiosk simulator with separate customer flows, Work nodes, shared staff and counter capacity, with metrics hidden to give the canvas more space.](/help/images/simulation.webp "Use Metrics to switch between a larger canvas and live results. Shared resources constrain how much work can happen at once.")
 
 ### Understand the example before drawing conclusions
 
@@ -249,7 +282,7 @@ A P95 wait of five minutes means about 95% of observed waits are five minutes or
 4. Set a simulated time and choose **Inspect this moment**.
 5. Select two or more saved runs and choose **Compare selected runs**.
 
-![Saved simulator runs selected for comparison, with throughput, waiting, revenue, cost and contribution.](/help/images/simulation-compare.webp "Compare whole-system effects from runs with consistent assumptions, horizon and seed.")
+![Saved runs compare completed and abandoned work, maximum queue, waiting time and time-to-revenue, with the contribution change below.](/help/images/simulation-compare.webp "Compare whole-system effects from runs with consistent assumptions, horizon and seed.")
 
 Comparison shows deltas, incremental cash and observed payback. “Investment has not paid back within this run” means the simulated cash did not cross the investment during that horizon; it does not invent a future payback date.
 

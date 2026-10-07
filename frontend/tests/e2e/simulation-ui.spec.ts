@@ -32,7 +32,7 @@ test('AT-01/28/29 first-class template survives save/reopen and existing diagram
   request,
 }) => {
   await page.getByRole('button', { name: /^New diagram/ }).click();
-  await page.getByRole('button', { name: /Process Simulator/ }).click();
+  await page.getByRole('button', { name: /Kiosk \+ package pickup/ }).click();
   await page.getByLabel('New diagram name').fill('Simulation template UI');
   await page.getByRole('button', { name: 'Create diagram', exact: true }).click();
   await saved(page);

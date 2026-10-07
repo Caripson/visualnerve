@@ -433,6 +433,9 @@ test('capture truthful kiosk simulation, assumptions and comparison', async ({ p
   await page.getByLabel('Simulation duration hours').fill('24');
   await page.getByRole('button', { name: 'Play simulation' }).click();
   await expect(page.locator('.simulation-run-status')).toHaveText('completed');
+  await page.getByRole('button', { name: 'Hide simulation metrics', exact: true }).click();
+  await page.getByRole('button', { name: 'Fit diagram', exact: true }).click();
+  await page.waitForTimeout(400);
   await screenshot(page, 'simulation');
   page.once('dialog', (dialog) => dialog.accept('Package demand ×100'));
   await page.getByRole('button', { name: 'New scenario', exact: true }).click();
@@ -445,6 +448,7 @@ test('capture truthful kiosk simulation, assumptions and comparison', async ({ p
   await screenshot(page, 'simulation-assumptions', assumptions);
   await page.getByRole('button', { name: 'Apply assumptions', exact: true }).click();
   await saved(page);
+  await page.getByRole('button', { name: 'Show simulation metrics', exact: true }).click();
   await page.getByRole('button', { name: 'Play simulation' }).click();
   await expect(page.locator('.simulation-run-status')).toHaveText('completed');
   await page.getByText(/Replay and compare runs/).click();

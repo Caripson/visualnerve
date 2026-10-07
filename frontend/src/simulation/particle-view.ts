@@ -18,6 +18,8 @@ export function indexSimulationParticleView(
   );
   const cards = new Map<string, GraphNode[]>();
   const edges = new Map<string, GraphEdge[]>();
+  const flowEdges: GraphEdge[] = [];
+  const resourceEdges: GraphEdge[] = [];
   for (const node of nodes.values()) {
     const id = logicalNodeId(node);
     const group = cards.get(id) ?? [];
@@ -26,19 +28,24 @@ export function indexSimulationParticleView(
   }
   for (const edge of graph.edges) {
     if (visibility && !visibility.edgeIds.has(edge.id)) continue;
-    if (edge.edgeType === 'simulation-resource') continue;
+    if (!nodes.has(edge.sourceNodeId) || !nodes.has(edge.targetNodeId)) continue;
+    if (edge.edgeType === 'simulation-resource') {
+      resourceEdges.push(edge);
+      continue;
+    }
+    flowEdges.push(edge);
     const id = edge.metadata.simulationLogicalEdgeId;
     const logicalId = typeof id === 'string' ? id : edge.id;
     const group = edges.get(logicalId) ?? [];
     group.push(edge);
     edges.set(logicalId, group);
   }
-  return { nodes, cards, edges };
+  return { nodes, cards, edges, flowEdges, resourceEdges };
 }
-type ParticleView = ReturnType<typeof indexSimulationParticleView>;
+export type SimulationParticleView = ReturnType<typeof indexSimulationParticleView>;
 
 /** Hidden capacity is represented by the final aggregate card, never an invented node. */
-export function particleCapacityCard(view: ParticleView, logicalId: string, unit = 1) {
+export function particleCapacityCard(view: SimulationParticleView, logicalId: string, unit = 1) {
   const cards = view.cards.get(logicalId) ?? [];
   return (
     cards.find((node) => (getSimulationCapacityCard(node)?.unit ?? 1) === unit) ??
@@ -51,7 +58,7 @@ export function particleCapacityCard(view: ParticleView, logicalId: string, unit
 
 /** Incoming work reaches the shared queue. Departure uses a unit only if observed processing there. */
 export function particleTransitEdge(
-  view: ParticleView,
+  view: SimulationParticleView,
   particle: ParticleSnapshot,
   slots: SimulationPresentationSlots,
 ) {

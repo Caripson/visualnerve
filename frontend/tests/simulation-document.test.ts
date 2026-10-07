@@ -21,7 +21,7 @@ afterEach(() => {
 describe('first-class Process Simulator documents', () => {
   it('creates the normal template with canonical identities and explicit kiosk assumptions', () => {
     expect(templates.find((template) => template.key === 'process-simulator')?.name).toBe(
-      'Process Simulator',
+      'Kiosk + package pickup',
     );
     const first = instantiate('process-simulator', 'Kiosk'),
       second = instantiate('process-simulator', 'Kiosk');

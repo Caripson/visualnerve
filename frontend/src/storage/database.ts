@@ -186,10 +186,10 @@ export class WorkspaceDatabase extends Dexie {
     await this.transaction('rw', this.settings, this.templates, async () => {
       if (!(await this.settings.get('workspace-id')))
         await this.settings.put({ key: 'workspace-id', value: base().id });
-      const existing = new Set(await this.templates.toCollection().primaryKeys());
+      const existing = await this.templates.bulkGet(templates.map((entry) => entry.key));
       await this.templates.bulkPut(
         templates
-          .filter((entry) => !existing.has(entry.key))
+          .filter((entry, index) => !existing[index])
           .map((entry) => ({
             id: entry.key,
             name: entry.name,
@@ -197,6 +197,12 @@ export class WorkspaceDatabase extends Dexie {
             builtin: true,
           })),
       );
+      // Built-in labels can evolve without replacing stored example graphs or custom templates.
+      for (const [index, entry] of templates.entries()) {
+        const previous = existing[index];
+        if (previous?.builtin && previous.name !== entry.name)
+          await this.templates.update(entry.key, { name: entry.name });
+      }
     });
   }
   async graph(id: string): Promise<Graph | undefined> {

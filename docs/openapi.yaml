@@ -4269,6 +4269,7 @@
             "type": "string"
           },
           "travelSeconds": {
+            "description": "Actual simulated transfer delay along this flow edge, included in cycle time and time-to-revenue. Omitted or zero means instant transfer; the renderer does not invent a delay. Positive values allow real transit particles to move between their departure and arrival timestamps. Resource-allocation connectors are derived separately and never carry work particles.",
             "minimum": 0,
             "type": "number"
           },
@@ -4347,6 +4348,7 @@
           "travelSeconds": {
             "oneOf": [
               {
+                "description": "Actual simulated transfer delay along this flow edge, included in cycle time and time-to-revenue. Omitted or zero means instant transfer; the renderer does not invent a delay. Positive values allow real transit particles to move between their departure and arrival timestamps. Resource-allocation connectors are derived separately and never carry work particles.",
                 "minimum": 0,
                 "type": "number"
               },
@@ -4457,6 +4459,7 @@
           "travelSeconds": {
             "oneOf": [
               {
+                "description": "Actual simulated transfer delay along this flow edge, included in cycle time and time-to-revenue. Omitted or zero means instant transfer; the renderer does not invent a delay. Positive values allow real transit particles to move between their departure and arrival timestamps. Resource-allocation connectors are derived separately and never carry work particles.",
                 "minimum": 0,
                 "type": "number"
               },
@@ -5295,7 +5298,7 @@
       },
       "SimulationModel": {
         "additionalProperties": false,
-        "description": "Authoritative local-first process model. Time/duration/delays use simulated seconds; rates and operating costs use per-hour units in one configurable model currency. Processing/resource dependencies are semantic, independent of canvas layout. A process-simulator Graph requires this payload; other document types must not acquire it implicitly. Node and edge semantic IDs are canonicalized to graph UUIDs on save; aliases are retained as native externalId.",
+        "description": "Authoritative local-first process model. Time/duration/delays use simulated seconds; rates and operating costs use per-hour units in one configurable model currency. Processing/resource dependencies are semantic, independent of canvas layout. A process-simulator Graph requires this payload; other document types must not acquire it implicitly. Empty arrays form a valid document for guided setup; a runnable process needs its particle types, connected source/work/outcome nodes and any required resources. GET /templates discovers process-simulator-blank (guided empty setup) and process-simulator (Kiosk + package pickup example). POST /diagrams preserves the kiosk default; versioned PUT /diagrams/{diagramId}/simulation replaces it with an empty or complete model. Node and edge semantic IDs are canonicalized to graph UUIDs on save; aliases are retained as native externalId.",
         "properties": {
           "currency": {
             "pattern": "^[A-Z]{3}$",
@@ -9768,6 +9771,33 @@
             "type": "object"
           }
         ]
+      },
+      "TemplateRecord": {
+        "additionalProperties": false,
+        "description": "Browser-local built-in or user template with its complete reusable native graph. A Process Simulator template includes graph.simulation. Discovery requires an accepted, connected browser and at least Read only access; records are not stored by the server.",
+        "properties": {
+          "builtin": {
+            "type": "boolean"
+          },
+          "graph": {
+            "$ref": "#/components/schemas/Graph"
+          },
+          "id": {
+            "description": "Stable template key, such as process-simulator-blank (guided empty setup) or process-simulator (kiosk example); template keys are not graph UUIDs.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "builtin",
+          "graph"
+        ],
+        "type": "object"
       },
       "WorkspaceBackup": {
         "description": "Portable local workspace data. The device-specific import-file-limit-mb setting is excluded from export and ignored during Merge/Replace; the destination's selected limit is retained.",
@@ -23791,6 +23821,268 @@
           {}
         ],
         "summary": "Preview a SELECT/WITH query or DDL without saving; allowed with read-only access"
+      }
+    },
+    "/templates": {
+      "get": {
+        "operationId": "get_templates",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TemplateRecord"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Discover browser-local templates and complete graphs, including guided Process Simulator and kiosk example"
+      }
+    },
+    "/templates/{templateId}": {
+      "get": {
+        "operationId": "get_templates_templateId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "templateId",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateRecord"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Read one browser-local template by its stable string key"
       }
     },
     "/workspace/export": {

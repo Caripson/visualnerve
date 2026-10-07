@@ -41,6 +41,7 @@ import { CodeSummary } from '../components/CodeSummary';
 import { getCodeObject } from '../code/schema';
 import { SqlQuerySummary } from '../components/SqlQuerySummary';
 import { SimulationNodeSummary } from '../simulation/NodeSummary';
+import { NodeQuickAdd } from './NodeQuickAdd';
 
 export const nodeRegistry: Record<NodeKind, { label: string; icon: LucideIcon; shape: string }> = {
   generic: { label: 'Generic', icon: Box, shape: 'box' },
@@ -91,6 +92,18 @@ function renderer(kind: NodeKind) {
             : undefined
         }
       >
+        {selected &&
+          !exporting &&
+          (!node.metadata.simulationLogicalNodeId ||
+            node.metadata.simulationLogicalNodeId === id) && (
+            <NodeQuickAdd
+              id={id}
+              above={
+                typeof node.metadata.simulationCapacityTotal === 'number' &&
+                node.metadata.simulationCapacityTotal > 1
+              }
+            />
+          )}
         {data.presentationNumber && (
           <span
             className="presentation-node-number"

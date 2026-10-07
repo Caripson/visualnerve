@@ -1,0 +1,42 @@
+.node-quick-add .toolbar-menu > button {
+  min-height: 36px;
+  padding: 7px 12px;
+  border-radius: 18px;
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--surface);
+  box-shadow: 0 3px 12px #00000012;
+  font-weight: 600;
+}
+.node-quick-add-title {
+  overflow-wrap: anywhere;
+}
+.node-quick-add-choice {
+  gap: 12px;
+  padding: 10px;
+}
+.node-quick-add-choice > svg {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.node-quick-add-choice > span {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}
+.node-quick-add-choice strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+.node-quick-add-choice small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+@media (pointer: coarse), (max-width: 900px) {
+  .node-quick-add .toolbar-menu > button {
+    min-height: 44px;
+    padding-inline: 14px;
+    border-radius: 22px;
+  }
+}

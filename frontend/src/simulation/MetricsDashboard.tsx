@@ -1,4 +1,6 @@
 import type { SimulationState } from './types';
+import { simulationTrafficColors } from './traffic';
+import './simulation-shell.css';
 
 export function MetricsDashboard({
   state,
@@ -41,8 +43,46 @@ export function MetricsDashboard({
     ['Investment', money(metrics.investmentCost)],
     ['Cash impact', money(metrics.cumulativeCashImpact)],
   ];
+  const primary = new Set([
+    'Created',
+    'Completed',
+    'Current queue',
+    'Average wait',
+    'Throughput / hour',
+    'Revenue',
+    'Cost',
+    'Contribution',
+    'Lost revenue',
+    'Average TTR',
+  ]);
+  const facts = (items: typeof entries) =>
+    items.map(([label, value]) => (
+      <div key={label}>
+        <dt>{label}</dt>
+        <dd data-metric={label}>{value}</dd>
+      </div>
+    ));
   return (
     <div className="simulation-dashboard" role="region" aria-label="Simulation metrics">
+      <div className="simulation-traffic-legend" aria-label="Process traffic legend">
+        {(['clear', 'busy', 'congested'] as const).map((level) => (
+          <span key={level}>
+            <i style={{ background: simulationTrafficColors[level] }} aria-hidden="true" />
+            {level === 'clear' ? 'Clear' : level === 'busy' ? 'Busy / queue building' : 'Congested'}
+          </span>
+        ))}
+        <small>
+          Queue and shared capacity determine traffic. Particle shapes identify work types.
+        </small>
+      </div>
+      {!compact && (
+        <div className="simulation-bottleneck" role="status">
+          <strong>Current bottleneck</strong>
+          <span title={state.bottlenecks[0]?.reason}>
+            {state.bottlenecks[0]?.name ?? 'No constraint observed'}
+          </span>
+        </div>
+      )}
       {compact ? (
         <div className="simulation-metric-groups">
           {[
@@ -103,14 +143,15 @@ export function MetricsDashboard({
           ))}
         </div>
       ) : (
-        <dl>
-          {entries.map(([label, value]) => (
-            <div key={label}>
-              <dt>{label}</dt>
-              <dd data-metric={label}>{value}</dd>
-            </div>
-          ))}
-        </dl>
+        <>
+          <dl className="simulation-primary-metrics">
+            {facts(entries.filter(([label]) => primary.has(label as string)))}
+          </dl>
+          <details className="simulation-extra-metrics">
+            <summary>More metrics</summary>
+            <dl>{facts(entries.filter(([label]) => !primary.has(label as string)))}</dl>
+          </details>
+        </>
       )}
       <details>
         <summary>Bottlenecks, shared resources and particle types</summary>

@@ -6,7 +6,7 @@ The public Help is a local, static Hugo documentation section at `/help/`. It ha
 
 | Guide           | Product surface                                                                                                                                    |
 | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| getting-started | Consent, all ten templates, first workflow, desktop/mobile navigation, local saving                                                                |
+| getting-started | Consent, all eleven templates, first workflow, desktop/mobile navigation, local saving                                                             |
 | editing         | All visual object kinds, connections, properties, status/quick actions, owners/search/filters, groups, drawing, copy/undo/delete, shortcuts        |
 | layouts         | Mind map editing, Balanced/directional/radial layout, focus mode, ordinary modes, dated timelines                                                  |
 | 3d              | Styled card relief, camera gizmo/orientations, object placement, synchronized 2D moves, fallback/export/view limits                                |
@@ -43,6 +43,12 @@ Build first. Capture tests use isolated browser storage and local fixture server
 ./build.sh
 cd frontend
 VN_CAPTURE_HELP=1 npm run test:e2e -- help-screenshots.spec.ts
+```
+
+The guided process setup, connected-node menu and live congestion images come from the corresponding functional tests:
+
+```bash
+VN_CAPTURE_PROCESS=1 npm run test:e2e -- process-wizard.spec.ts process-building.spec.ts
 ```
 
 The opt-in capture suite needs `cwebp` and converts genuine Playwright PNG captures to WebP. On this macOS host, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to the installed Chrome executable. Normal test runs skip capture and do not overwrite published screenshots. Review the output visually before committing; regenerate affected images after interface changes.

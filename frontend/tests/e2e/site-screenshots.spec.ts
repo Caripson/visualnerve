@@ -235,7 +235,7 @@ test('capture four distinct real app views at device viewport sizes', async ({ p
     await expect(node).toBeInViewport({ ratio: 0.999 });
   await save(page, 'desktop');
 
-  await page.setViewportSize({ width: 1440, height: 1080 });
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByLabel('Import file', { exact: true }).setInputFiles({
     name: 'Customer revenue.sql',
     mimeType: 'application/sql',
@@ -285,7 +285,7 @@ test('capture four distinct real app views at device viewport sizes', async ({ p
 
   await workflow(request);
   await open(page, 'Service delivery');
-  await page.setViewportSize({ width: 360, height: 640 });
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: 'Fit diagram', exact: true }).click();
   await page.waitForTimeout(450);
   await save(page, 'phone');

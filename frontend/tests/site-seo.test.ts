@@ -69,7 +69,7 @@ describe('public site discovery and private workspace indexing', () => {
       expect(features).toContain('site-capture--laptop');
       expect(features).toContain('site-capture--phone');
       expect(features).toContain('site-capture--detail');
-      expect(features).toMatch(/phone.webp[^>]*width="360" height="640"/);
+      expect(features).toMatch(/phone.webp[^>]*width="390" height="844"/);
       const guide = readFileSync(join(directory, 'help/getting-started/index.html'), 'utf8');
       expect(guide).toContain('class="help-figure"');
       expect(guide).not.toContain('site-capture--');

@@ -48,8 +48,14 @@
     "nodes": 5
   },
   {
-    "key": "process-simulator",
+    "key": "process-simulator-blank",
     "name": "Process Simulator",
+    "type": "process-simulator",
+    "nodes": 0
+  },
+  {
+    "key": "process-simulator",
+    "name": "Kiosk + package pickup",
     "type": "process-simulator",
     "nodes": 8
   },

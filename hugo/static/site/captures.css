@@ -42,7 +42,7 @@
 .site-capture__screen {
   position: relative;
   background: #141619;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 10;
   overflow: hidden;
 }
 .site-capture .site-capture__screen img {
@@ -94,7 +94,7 @@
   box-shadow: inset 0 0 0 2px #35373c;
 }
 .site-capture--phone .site-capture__screen {
-  aspect-ratio: 9 / 16;
+  aspect-ratio: 390 / 844;
 }
 .site-capture--phone .site-capture__camera {
   top: 10px;

@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { useEditor } from '../state/editor';
 import { useSimulation } from './useSimulation';
 import type { SimulationModel, SimulationNode, Resource } from './types';
@@ -8,6 +9,8 @@ import {
   resolveSimulationRenderModel,
 } from './render-model';
 import { getSimulationPresentationSlots } from './presentation-slots';
+import { simulationNodeTraffic } from './traffic';
+import './traffic.css';
 
 const indices = new WeakMap<
   SimulationModel,
@@ -41,6 +44,7 @@ export function SimulationNodeSummary({ id, node }: { id: string; node?: GraphNo
   const metric = view?.state?.nodes[logicalId];
   const resource =
     config.type === 'resource' ? view?.state?.resources[config.resourceId] : undefined;
+  const traffic = simulationNodeTraffic(config, view?.state, model);
   const capacity =
     resource?.capacity ??
     metric?.capacity ??
@@ -83,12 +87,29 @@ export function SimulationNodeSummary({ id, node }: { id: string; node?: GraphNo
       className="simulation-node-summary"
       data-simulation-node={id}
       data-simulation-logical-node={logicalId}
+      data-traffic={traffic.level}
       data-queue={
         card && card.unit > 1 ? undefined : (resource?.queue.current ?? metric?.queue.current ?? 0)
       }
     >
-      <span>
-        {config.type} {metric ? `· ${metric.status}` : ''}
+      <span className="simulation-node-state">
+        <span className="simulation-node-kind">{config.type}</span>
+        <span
+          className="simulation-traffic-badge"
+          title={traffic.reason}
+          aria-label={`${traffic.label}: ${traffic.reason}`}
+        >
+          <span className="simulation-traffic-symbol" aria-hidden="true">
+            {traffic.level === 'congested'
+              ? '!'
+              : traffic.level === 'busy'
+                ? '◷'
+                : traffic.level === 'clear'
+                  ? '✓'
+                  : '·'}
+          </span>
+          {traffic.label}
+        </span>
       </span>
       {resourceNames.length > 0 && (
         <span
@@ -113,10 +134,21 @@ export function SimulationNodeSummary({ id, node }: { id: string; node?: GraphNo
       )}
       {(config.type === 'work' || config.type === 'resource') && capacity !== undefined && (
         <>
-          <span>
+          <span className="simulation-node-capacity">
             Capacity {capacity} ·{' '}
             {((resource?.currentUtilization ?? metric?.currentUtilization ?? 0) * 100).toFixed(0)}%
             busy
+          </span>
+          <span
+            className="simulation-utilization-track"
+            aria-hidden="true"
+            style={
+              {
+                '--simulation-utilization': `${Math.min(100, Math.max(0, traffic.utilization * 100))}%`,
+              } as CSSProperties
+            }
+          >
+            <span />
           </span>
           {card ? (
             <>
@@ -152,7 +184,7 @@ export function SimulationNodeSummary({ id, node }: { id: string; node?: GraphNo
       {(metric || resource) &&
         (config.type === 'work' || config.type === 'resource') &&
         (!card || card.unit === 1) && (
-          <span>
+          <span className="simulation-node-queue" data-has-queue={traffic.queue > 0}>
             Queue {resource?.queue.current ?? metric?.queue.current ?? 0}
             {metric && config.type === 'work' ? ` · done ${metric.completed}` : ''}
           </span>
