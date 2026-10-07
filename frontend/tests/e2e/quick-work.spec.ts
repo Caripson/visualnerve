@@ -96,7 +96,9 @@ test('quick project renaming, colors, domain icons, duplication and reversible d
   expect(current.diagram.metadata.visualNerve).toEqual({ icon: 'work' });
   expect(current.nodes[0].color).toBe('#23664d');
   await page.goto('/license/');
-  await expect(page.getByRole('heading', { name: 'MIT License', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Mozilla Public License 2.0 (MPL-2.0)', exact: true }),
+  ).toBeVisible();
   await expect(page.locator('.help-page')).toContainText('2026 Johan Caripson');
 });
 
@@ -284,6 +286,6 @@ test.describe('phone workspace', () => {
     await expect(tools.getByRole('button', { name: 'Auto layout', exact: true })).toBeVisible();
     await tools.getByRole('button', { name: 'Settings', exact: true }).tap();
     await expect(page.getByRole('dialog')).toContainText('Johan Caripson');
-    await expect(page.getByRole('dialog')).toContainText('MIT License');
+    await expect(page.getByRole('dialog')).toContainText('MPL-2.0');
   });
 });

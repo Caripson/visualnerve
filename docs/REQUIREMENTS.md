@@ -70,7 +70,7 @@ Source paths below are relative to frontend/src or frontend/tests where appropri
 
 ## Retained editor behavior
 
-Deep mind maps retain colored curved branches and backgrounds at every depth. Direct editing, Tab/Enter creation, balanced layout, focus, quick naming/deletion/undo, contrast-aware palette, Lucide icons, mobile drawers/pan/pinch, owners, timeline/groups/search and rendered/semantic exports remain covered by the existing browser suite. Johan Caripson credit, MIT license and upper-right GitHub link remain present.
+Deep mind maps retain colored curved branches and backgrounds at every depth. Direct editing, Tab/Enter creation, balanced layout, focus, quick naming/deletion/undo, contrast-aware palette, Lucide icons, mobile drawers/pan/pinch, owners, timeline/groups/search and rendered/semantic exports remain covered by the existing browser suite. Johan Caripson credit, MPL-2.0 license and upper-right GitHub link remain present.
 
 Executed checks and visual evidence are recorded in [ACCEPTANCE.md](ACCEPTANCE.md).
 

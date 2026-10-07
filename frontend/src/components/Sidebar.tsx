@@ -229,7 +229,7 @@ export function Sidebar({
           Your diagrams stay in this browser.
         </div>
         <a className="author-credit" href="/license/">
-          Johan Caripson · MIT License
+          Johan Caripson · MPL-2.0
         </a>
       </div>
     </aside>

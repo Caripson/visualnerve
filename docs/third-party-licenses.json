@@ -2848,10 +2848,10 @@
   },
   {
     "ecosystem": "source",
-    "name": "Piper Web adapter",
+    "name": "Piper Web reference",
     "version": "1.0.5 (adapted)",
     "license": "MIT",
-    "scope": "adapted speech runtime source",
+    "scope": "upstream MIT material retained in speech adapter",
     "notices": [
       "licenses/piper-tts-web-NOTICE"
     ]

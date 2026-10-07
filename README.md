@@ -149,6 +149,8 @@ Architecture, canonical data and exchange formats are described in [ARCHITECTURE
 
 ## License and credit
 
-Created by **Johan Caripson**. Visual Nerve is released under the [MIT License](LICENSE). [Source code on GitHub](https://github.com/Caripson/visualnerve). Third-party libraries retain their respective licenses and notices.
+Created by **Johan Caripson**. Visual Nerve's original code is licensed under the [Mozilla Public License 2.0 (MPL-2.0)](LICENSE), with its scope and attribution in [NOTICE](NOTICE). [Project repository on GitHub](https://github.com/Caripson/visualnerve). Third-party code, libraries and assets retain their respective licenses and notices.
+
+The repository can remain private during development. Before distributing an MPL-covered build, including browser JavaScript, recipients must be able to obtain the corresponding covered source; a link to an inaccessible private repository is insufficient. See [licensing and source distribution](docs/LICENSING.md).
 
 Storage and privacy: [PRIVACY.md](docs/PRIVACY.md), [STORAGE.md](docs/STORAGE.md). Settings includes local storage details, an optional browser retention request and separately confirmed deletion of all local data. Private/incognito sessions may discard data on closing; there is no private-mode detection.

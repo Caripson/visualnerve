@@ -1,0 +1,20 @@
+Visual Nerve
+Copyright (c) 2026 Johan Caripson
+
+This Source Code Form is subject to the terms of the Mozilla Public
+License, v. 2.0. If a copy of the MPL was not distributed with this
+file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+This notice applies to Visual Nerve's original source code and associated
+documentation, except where a file carries separate third-party terms.
+The full MPL-2.0 text is in LICENSE. This project does not apply the
+Exhibit B "Incompatible With Secondary Licenses" notice.
+
+Third-party code, adapted source, libraries, voice models and other assets
+retain their respective licenses, copyright notices and attribution.
+See DEPENDENCIES.md, docs/third-party-licenses.json, docs/SPEECH.md and
+third_party/licenses/ for those terms. The Piper Web attribution and
+eSpeak NG GPL obligations are not replaced by this project license.
+
+This license change does not revoke permissions already granted for
+copies previously distributed under MIT.

@@ -1,5 +1,7 @@
 # Dependencies and licenses
 
+Visual Nerve's original code is MPL-2.0; see [LICENSE](LICENSE), [NOTICE](NOTICE) and [source-distribution requirements](docs/LICENSING.md). This inventory covers third-party components, whose terms remain independent.
+
 Versions are locked in frontend/package-lock.json and backend/go.mod/go.sum. The complete direct/transitive inventory, including development and platform-specific optional packages, is [docs/third-party-licenses.json](docs/third-party-licenses.json). Regenerate with `node scripts/licenses.mjs /path/to/go` after installing dependencies. Production builds copy available upstream license/notice files to `public/licenses/`. The optional Go communication bridge uses coder/websocket (ISC) and has no persistent storage.
 
 | Direct dependency | Version | License | Role |

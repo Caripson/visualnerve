@@ -542,7 +542,7 @@ export function SettingsDialog({
       <p className="author-credit">
         Created by Johan Caripson ·{' '}
         <a href="/license/" target="_blank" rel="noopener noreferrer">
-          MIT License
+          MPL-2.0
         </a>{' '}
         ·{' '}
         <a href="https://github.com/Caripson/visualnerve" target="_blank" rel="noopener noreferrer">

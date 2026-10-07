@@ -20,6 +20,8 @@ The build regenerates `public/` from source. An explicit file allowlist rejects 
 
 ## Manual production deployment
 
+For an MPL-2.0 build, recipients must be able to obtain the corresponding covered source. Before publishing, provide actual source access as described in [licensing and source distribution](LICENSING.md); a link to a private repository alone is insufficient. Repository visibility remains the owner's choice, and this change does not deploy or publish source.
+
 The existing production site is configured in [.github/workflows/deploy.yml](../.github/workflows/deploy.yml):
 
 | Setting | Value |

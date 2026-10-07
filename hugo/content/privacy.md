@@ -72,7 +72,7 @@ The brief includes your instructions and chosen objects, written descriptions, n
 
 Visual Nerve uses no analytics, advertising scripts or remote error reporting. Normal network requests download app files; they contain no diagram content. A static host may keep ordinary website access logs, such as requested file paths and IP addresses. Your graph is never sent in those requests.
 
-Created by **Johan Caripson**. [MIT license](/license/) · [Source code on GitHub](https://github.com/Caripson/visualnerve).
+Created by **Johan Caripson**. [MPL-2.0 license](/license/) · [Project repository on GitHub](https://github.com/Caripson/visualnerve).
 
 ## Source code import
 
