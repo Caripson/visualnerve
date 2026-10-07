@@ -79,7 +79,7 @@ test('all public pages have useful metadata, real images and valid local destina
 });
 test('the four device images are distinct real viewport captures', async ({ request }) => {
   const hashes = new Set<string>();
-  for (const name of ['iphone', 'ipad', 'imac', 'macbook']) {
+  for (const name of ['phone', 'tablet', 'desktop', 'laptop']) {
     const response = await request.get('/site/images/' + name + '.webp');
     expect(response.status()).toBe(200);
     const bytes = await response.body();
@@ -112,6 +112,19 @@ for (const width of [1440, 768, 390, 320]) {
               .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
               .toBe(width);
             await expect(page.locator('h1')).toBeVisible();
+            await expect(page.locator('.public-header .brand-symbol')).toHaveText('⌘');
+            const divider = await page.locator('.public-header-shell').evaluate((header) => {
+              const bounds = header.getBoundingClientRect();
+              return {
+                left: bounds.left,
+                right: bounds.right,
+                border: getComputedStyle(header).borderBottomWidth,
+              };
+            });
+            expect(divider).toEqual({ left: 0, right: width, border: '1px' });
+            expect(await page.locator('main').innerText()).not.toMatch(
+              /iPhone|iPad|iMac|MacBook Pro/,
+            );
             if (path === '/features/') {
               await page
                 .locator('.site-capture img')
@@ -128,10 +141,10 @@ for (const width of [1440, 768, 390, 320]) {
                 )
                 .toBe(true);
               const phone = page.locator(
-                '.site-capture--iphone:has(img[src="/help/images/mobile-editor.webp"])',
+                '.site-capture--phone:has(img[src="/site/images/phone.webp"])',
               );
               await expect(phone).toHaveCount(1);
-              expect(await page.locator('.site-capture--macbook').count()).toBeGreaterThan(0);
+              expect(await page.locator('.site-capture--laptop').count()).toBeGreaterThan(0);
               const bounds = await page.locator('.site-capture').evaluateAll((frames) =>
                 frames.map((frame) => {
                   const rect = frame.getBoundingClientRect();
@@ -141,7 +154,12 @@ for (const width of [1440, 768, 390, 320]) {
                     left: rect.left,
                     right: rect.right,
                     ratio: screen.width / screen.height,
-                    originalRatio: image.naturalWidth / image.naturalHeight,
+                    expectedRatio: frame.classList.contains('site-capture--phone')
+                      ? 9 / 16
+                      : frame.classList.contains('site-capture--laptop')
+                        ? 4 / 3
+                        : image.naturalWidth / image.naturalHeight,
+                    fit: getComputedStyle(image).objectFit,
                     background: getComputedStyle(frame).backgroundColor,
                     hardwareBackground: getComputedStyle(
                       frame.querySelector('.site-capture__hardware')!,
@@ -152,7 +170,8 @@ for (const width of [1440, 768, 390, 320]) {
               for (const frame of bounds) {
                 expect(frame.left).toBeGreaterThanOrEqual(0);
                 expect(frame.right).toBeLessThanOrEqual(width);
-                expect(Math.abs(frame.ratio - frame.originalRatio)).toBeLessThan(0.01);
+                expect(Math.abs(frame.ratio - frame.expectedRatio)).toBeLessThan(0.001);
+                expect(frame.fit).toBe('contain');
                 expect(frame.background).toBe('rgba(0, 0, 0, 0)');
                 expect(frame.hardwareBackground).toBe('rgba(0, 0, 0, 0)');
               }
@@ -160,7 +179,7 @@ for (const width of [1440, 768, 390, 320]) {
                 path: testInfo.outputPath('phone-frame-' + width + '-' + colorScheme + '.png'),
               });
               await page
-                .locator('.site-capture--macbook')
+                .locator('.site-capture--laptop')
                 .first()
                 .screenshot({
                   path: testInfo.outputPath('laptop-frame-' + width + '-' + colorScheme + '.png'),
@@ -208,9 +227,16 @@ for (const width of [1440, 768, 390, 320]) {
           ).toEqual([
             [1920, 1080],
             [1024, 1366],
-            [1440, 900],
-            [390, 844],
+            [1440, 1080],
+            [360, 640],
           ]);
+          for (const [device, ratio] of [
+            ['laptop', 4 / 3],
+            ['phone', 9 / 16],
+          ] as const) {
+            const screen = await page.locator('.device-' + device + ' img').boundingBox();
+            expect(Math.abs(screen!.width / screen!.height - ratio)).toBeLessThan(0.001);
+          }
           if (width <= 1000) {
             const menu = page.getByRole('button', { name: /^Menu/ });
             await menu.click();

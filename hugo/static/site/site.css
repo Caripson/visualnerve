@@ -81,6 +81,10 @@ input:focus-visible {
 #main:focus {
   outline: none;
 }
+.public-header-shell {
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
 .public-header {
   max-width: 1440px;
   padding: 26px 48px;
@@ -102,8 +106,12 @@ input:focus-visible {
 .public-brand:hover {
   text-decoration: none;
 }
-.public-brand img {
+.brand-symbol {
   flex-shrink: 0;
+  color: #d08850;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1;
 }
 .public-header nav {
   display: flex;
@@ -251,15 +259,15 @@ input:focus-visible {
   width: 100%;
   height: auto;
   display: block;
-  border: 1px solid #48534e;
+  border: 0;
 }
-.device-imac {
+.device-desktop {
   width: 60%;
   left: 17%;
   bottom: 78px;
   z-index: 1;
 }
-.device-imac .device-screen {
+.device-desktop .device-screen {
   border-radius: 15px 15px 0 0;
   border-width: 1px;
   padding: 12px;
@@ -273,7 +281,7 @@ input:focus-visible {
   color: #6b7270;
   font-size: 18px;
 }
-.imac-stand {
+.desktop-stand {
   width: 18%;
   height: 64px;
   position: relative;
@@ -281,36 +289,36 @@ input:focus-visible {
   background: linear-gradient(90deg, #a1a6a6, #dddede, #a6aaab);
   clip-path: polygon(17% 0, 83% 0, 100% 100%, 0 100%);
 }
-.imac-foot {
+.desktop-foot {
   height: 7px;
   width: 32%;
   background: #b6babb;
   margin: auto;
   border-radius: 50% 50% 3px 3px;
 }
-.device-ipad {
+.device-tablet {
   width: 21%;
   left: 9%;
   bottom: 78px;
   z-index: 3;
 }
-.device-ipad .device-screen {
+.device-tablet .device-screen {
   border-width: 2px;
   border-radius: 20px;
   padding: 14px 11px;
 }
-.device-macbook {
+.device-laptop {
   width: 44%;
   right: 0;
   bottom: 78px;
   z-index: 4;
 }
-.device-macbook .device-screen {
+.device-laptop .device-screen {
   border-radius: 15px 15px 0 0;
   border-width: 2px;
   padding: 10px;
 }
-.macbook-base {
+.laptop-base {
   width: 110%;
   margin-left: -5%;
   height: 15px;
@@ -318,7 +326,7 @@ input:focus-visible {
   background: linear-gradient(#d0d3d3, #969c9d);
   position: relative;
 }
-.macbook-base:before {
+.laptop-base:before {
   content: "";
   position: absolute;
   top: 0;
@@ -328,18 +336,18 @@ input:focus-visible {
   background: #939a9a;
   border-radius: 0 0 6px 6px;
 }
-.device-iphone {
+.device-phone {
   width: 9.5%;
   left: 0;
   bottom: 78px;
   z-index: 5;
 }
-.device-iphone .device-screen {
+.device-phone .device-screen {
   border-width: 2px;
   border-radius: 19px;
   padding: 10px 5px;
 }
-.device-iphone .device-screen:before {
+.device-phone .device-screen:before {
   content: "";
   position: absolute;
   top: 5px;
@@ -348,17 +356,6 @@ input:focus-visible {
   height: 5px;
   background: #060809;
   border-radius: 6px;
-}
-.device-label {
-  display: block;
-  font-size: 10px;
-  letter-spacing: 0.3px;
-  color: var(--muted);
-  margin-top: 11px;
-  white-space: nowrap;
-}
-.device-imac .device-label {
-  margin-top: 10px;
 }
 .device-showcase figcaption {
   position: absolute;
@@ -894,27 +891,24 @@ input:focus-visible {
     height: 58vw;
     margin-top: 45px;
   }
-  .device-label {
-    font-size: 8px;
-  }
-  .device-imac .device-screen {
+  .device-desktop .device-screen {
     padding: 8px;
   }
   .device-chin {
     height: 30px;
   }
-  .imac-stand {
+  .desktop-stand {
     height: 45px;
   }
-  .device-ipad .device-screen {
+  .device-tablet .device-screen {
     padding: 10px 8px;
     border-radius: 14px;
   }
-  .device-iphone .device-screen {
+  .device-phone .device-screen {
     border-radius: 13px;
     padding: 7px 4px;
   }
-  .device-macbook .device-screen {
+  .device-laptop .device-screen {
     padding: 7px;
     border-radius: 10px 10px 0 0;
   }
@@ -989,22 +983,22 @@ input:focus-visible {
     height: 74vw;
     margin: 35px -5px 0;
   }
-  .device-imac {
+  .device-desktop {
     width: 60%;
     left: 17%;
     bottom: 64px;
   }
-  .device-ipad {
+  .device-tablet {
     width: 21%;
     left: 9%;
     bottom: 64px;
   }
-  .device-macbook {
+  .device-laptop {
     width: 44%;
     right: 0;
     bottom: 64px;
   }
-  .device-iphone {
+  .device-phone {
     width: 9.5%;
     left: 0;
     bottom: 64px;
@@ -1012,7 +1006,7 @@ input:focus-visible {
   .device-screen img {
     border: none;
   }
-  .device-imac .device-screen {
+  .device-desktop .device-screen {
     padding: 5px;
     border-radius: 7px 7px 0 0;
   }
@@ -1021,39 +1015,36 @@ input:focus-visible {
     border-radius: 0 0 5px 5px;
     font-size: 9px;
   }
-  .imac-stand {
+  .desktop-stand {
     height: 22px;
   }
-  .imac-foot {
+  .desktop-foot {
     height: 3px;
   }
-  .device-ipad .device-screen {
+  .device-tablet .device-screen {
     padding: 6px 4px;
     border-radius: 9px;
     border-width: 1px;
   }
-  .device-iphone .device-screen {
+  .device-phone .device-screen {
     padding: 6px 2px;
     border-radius: 9px;
     border-width: 1px;
   }
-  .device-iphone .device-screen:before {
+  .device-phone .device-screen:before {
     height: 3px;
     top: 3px;
   }
-  .device-macbook .device-screen {
+  .device-laptop .device-screen {
     padding: 5px;
     border-width: 1px;
     border-radius: 7px 7px 0 0;
   }
-  .macbook-base {
+  .laptop-base {
     height: 7px;
   }
-  .macbook-base:before {
+  .laptop-base:before {
     height: 3px;
-  }
-  .device-label {
-    display: none;
   }
   .device-showcase figcaption {
     font-size: 11px;

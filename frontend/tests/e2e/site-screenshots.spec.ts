@@ -233,9 +233,9 @@ test('capture four distinct real app views at device viewport sizes', async ({ p
   await expect(simulationNodes).toHaveCount(8);
   for (const node of await simulationNodes.all())
     await expect(node).toBeInViewport({ ratio: 0.999 });
-  await save(page, 'imac');
+  await save(page, 'desktop');
 
-  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.setViewportSize({ width: 1440, height: 1080 });
   await page.getByLabel('Import file', { exact: true }).setInputFiles({
     name: 'Customer revenue.sql',
     mimeType: 'application/sql',
@@ -249,7 +249,7 @@ test('capture four distinct real app views at device viewport sizes', async ({ p
   await expect(sql).toBeHidden();
   await page.getByRole('button', { name: 'Fit diagram', exact: true }).click();
   await page.waitForTimeout(450);
-  await save(page, 'macbook');
+  await save(page, 'laptop');
 
   await page.setViewportSize({ width: 1024, height: 1366 });
   await launchMindMap(request);
@@ -279,14 +279,14 @@ test('capture four distinct real app views at device viewport sizes', async ({ p
   expect(extent.height).toBeGreaterThan(canvas.height * 0.7);
   for (const node of await page.locator('.mindmap-topic').all())
     await expect(node).toBeInViewport({ ratio: 0.999 });
-  await save(page, 'ipad');
+  await save(page, 'tablet');
   await page.getByRole('button', { name: 'Toggle minimap', exact: true }).click();
   await page.getByRole('button', { name: 'Exit map focus', exact: true }).click();
 
   await workflow(request);
   await open(page, 'Service delivery');
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 360, height: 640 });
   await page.getByRole('button', { name: 'Fit diagram', exact: true }).click();
   await page.waitForTimeout(450);
-  await save(page, 'iphone');
+  await save(page, 'phone');
 });

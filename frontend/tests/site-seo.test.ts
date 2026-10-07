@@ -66,10 +66,10 @@ describe('public site discovery and private workspace indexing', () => {
       for (const route of ['app/index.html', 'help/index.html'])
         expect(readFileSync(join(directory, route), 'utf8')).not.toContain('/site/consent.js');
       const features = readFileSync(join(directory, 'features/index.html'), 'utf8');
-      expect(features).toContain('site-capture--macbook');
-      expect(features).toContain('site-capture--iphone');
+      expect(features).toContain('site-capture--laptop');
+      expect(features).toContain('site-capture--phone');
       expect(features).toContain('site-capture--detail');
-      expect(features).toMatch(/mobile-editor.webp[^>]*width="390" height="844"/);
+      expect(features).toMatch(/phone.webp[^>]*width="360" height="640"/);
       const guide = readFileSync(join(directory, 'help/getting-started/index.html'), 'utf8');
       expect(guide).toContain('class="help-figure"');
       expect(guide).not.toContain('site-capture--');

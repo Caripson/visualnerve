@@ -54,7 +54,7 @@ Semantic overview can summarize a larger graph without replacing its original ob
 
 On a smaller screen, **Projects** opens the diagram list, **Edit** opens the selected object's properties, and **Diagram actions** brings the advanced tools into reach. These temporary panels leave more room for the canvas when you close them.
 
-![Visual Nerve's mobile workspace with compact diagram controls.](/help/images/mobile-editor.webp "The phone view keeps the diagram visible, with project navigation and editing tools close at hand.")
+![Visual Nerve's mobile workspace with compact diagram controls.](/site/images/phone.webp "The phone view keeps the diagram visible, with project navigation and editing tools close at hand.")
 
 Use a desktop for large imports, detailed model configuration and broad comparisons. Work stays in the browser profile and website origin where you created it; opening a phone does not automatically synchronize a laptop's workspace. Export and restore a copy when moving between devices.
 

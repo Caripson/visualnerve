@@ -1,11 +1,11 @@
-{{- /* Public screenshots only. Never constrain the screen to a device aspect ratio:
-     the native image dimensions keep every captured control visible. */ -}}
+{{- /* Public screenshots use neutral 4:3 laptop or 9:16 phone screens.
+     Contain the complete image; cropped dialog details keep native proportions. */ -}}
 {{- $width := .width | default 0 -}}
 {{- $height := .height | default 0 -}}
-{{- $device := .device | default "macbook" -}}
+{{- $device := .device | default "laptop" -}}
 {{- if and (not .device) (gt $width 0) (gt $height $width) -}}
   {{- $device = "detail" -}}
-  {{- if ge $height (mul $width 1.55) -}}{{- $device = "iphone" -}}{{- end -}}
+  {{- if ge $height (mul $width 1.55) -}}{{- $device = "phone" -}}{{- end -}}
 {{- end -}}
 <figure class="site-capture site-capture--{{ $device }}{{ with .class }} {{ . }}{{ end }}"{{ if gt $width 0 }} style="--capture-width: {{ $width }}px"{{ end }}>
   <a class="site-capture__link" href="{{ .src | safeURL }}" target="_blank" rel="noopener noreferrer" aria-label="Open screenshot: {{ .alt }}">
@@ -13,13 +13,13 @@
       <div class="site-capture__display">
         {{- if ne $device "detail" -}}<span class="site-capture__camera" aria-hidden="true"></span>{{- end -}}
         <div class="site-capture__screen"><img src="{{ .src | safeURL }}" alt="{{ .alt }}" loading="lazy" decoding="async"{{ if and (gt $width 0) (gt $height 0) }} width="{{ $width }}" height="{{ $height }}"{{ end }}></div>
-        {{- if eq $device "iphone" -}}
+        {{- if eq $device "phone" -}}
         <span class="site-capture__home-indicator" aria-hidden="true"></span>
-        {{- else if eq $device "macbook" -}}
-        <span class="site-capture__wordmark" aria-hidden="true">MacBook Pro</span>
+        {{- else if eq $device "laptop" -}}
+        <span class="site-capture__chin" aria-hidden="true"></span>
         {{- end -}}
       </div>
-      {{- if eq $device "macbook" -}}<div class="site-capture__base" aria-hidden="true"><span></span></div>{{- end -}}
+      {{- if eq $device "laptop" -}}<div class="site-capture__base" aria-hidden="true"><span></span></div>{{- end -}}
     </div>
   </a>
   {{ with .caption }}<figcaption>{{ . }}</figcaption>{{ end }}
