@@ -1,10 +1,9 @@
-// @vitest-environment node
+// @vitest-environment jsdom
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { JSDOM } from 'jsdom';
 
 describe('shared workspace branding', () => {
   let directory: string;
@@ -20,7 +19,10 @@ describe('shared workspace branding', () => {
   afterAll(() => rmSync(directory, { recursive: true, force: true }));
 
   function page(path: string) {
-    return new JSDOM(readFileSync(join(directory, path), 'utf8')).window.document;
+    return new DOMParser().parseFromString(
+      readFileSync(join(directory, path), 'utf8'),
+      'text/html',
+    );
   }
 
   it('uses the workspace symbol in every public header and footer, including the error page', () => {
