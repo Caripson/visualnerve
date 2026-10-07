@@ -106,7 +106,7 @@ export async function decodedMovieColors(page: Page, bytes: number[]) {
               neutralError += delta;
               if (result[i] > result[i + 1] + 30 && result[i + 2] > result[i + 1] + 30) pinkCount++;
             }
-            // The native first card has a #d8efdf accent. Do not count green text
+            // The native first card has a #d8efdf fill. Do not count green text
             // from subtitles or player chrome, which is outside this sample.
             if (
               r >= 200 &&

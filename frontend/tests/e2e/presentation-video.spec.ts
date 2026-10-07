@@ -17,13 +17,19 @@ test.use({
 });
 async function create(request: APIRequestContext, name: string) {
   const diagram = await (
-    await request.post('/api/v1/diagrams', { data: { name, type: 'process' } })
+    await request.post('/api/v1/diagrams', { data: { name, type: 'mindmap' } })
   ).json();
+  const rootResponse = await request.post(`/api/v1/diagrams/${diagram.id}/nodes`, {
+    data: { title: 'Truck lifecycle', x: -300, y: 100, width: 220, height: 110 },
+  });
+  expect(rootResponse.ok()).toBe(true);
+  const root = await rootResponse.json();
   const response = await request.post(`/api/v1/diagrams/${diagram.id}/bulk`, {
     data: {
       nodes: [
         {
           externalId: 'first',
+          parentId: root.id,
           title: 'Build truck',
           description: 'Build the truck and test its safety.',
           x: 100,
@@ -34,6 +40,7 @@ async function create(request: APIRequestContext, name: string) {
         },
         {
           externalId: 'second',
+          parentId: root.id,
           title: 'Deliver truck',
           description: 'Deliver the truck to its customer.',
           x: 680,
@@ -54,7 +61,7 @@ async function create(request: APIRequestContext, name: string) {
           baseVersion: graph.diagram.version,
           presentation: {
             version: 1,
-            nodeIds: graph.nodes.map((node) => node.id),
+            nodeIds: graph.nodes.filter((node) => node.parentId === root.id).map((node) => node.id),
             secondsPerNode: 2,
             transitionMs: 300,
           },
@@ -72,6 +79,14 @@ for (const mode of ['2d', '3d'] as const) {
   }, testInfo) => {
     test.setTimeout(180000);
     const graph = await create(request, `Truck movie ${mode}`);
+    // A direct mind-map child uses its native solid fill. A generic card's
+    // three-pixel accent border can be hidden by 3D selection or antialiasing,
+    // leaving too few sample pixels even when video colors are correct.
+    const colored = graph.nodes.find((node) => node.color === '#d8efdf')!;
+    await expect(page.locator(`.mindmap-main[data-node-id="${colored.id}"]`)).toHaveCSS(
+      'background-color',
+      'rgb(216, 239, 223)',
+    );
     const player = page.getByRole('region', { name: 'Diagram player' });
     await expect(player).toBeVisible();
     await expect
