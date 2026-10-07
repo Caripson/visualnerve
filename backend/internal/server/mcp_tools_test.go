@@ -26,6 +26,8 @@ func TestMCPWorkspaceCommandsRemainBrowserControlled(t *testing.T) {
 		path, method, data, body string
 		status                   int
 	}{
+		{"/code/preview", "POST", `{"files":[{"path":"salary.cbl","language":"cobol","content":"PROCEDURE DIVISION.\nMAIN-PROCEDURE.\nSTOP RUN.\n"}]}`, `{"mode":"symbols","fileCount":1,"symbolCount":1}`, 200},
+		{"/code/preview", "POST", `{"mode":"files","files":[{"path":"salary.cbl","language":"cobol","content":"PROCEDURE DIVISION.\nMAIN-PROCEDURE.\nSTOP RUN.\n"}]}`, `{"mode":"files","fileCount":1,"symbolCount":1}`, 200},
 		{"/spatial-diagrams", "POST", `{"name":"Requested 3D diagram","type":"mindmap"}`, `{"diagram":{"id":"diagram-from-browser","version":1,"settings":{"spatialView":{"version":1,"mode":"3d"}}},"nodes":[],"edges":[]}`, 201},
 		{"/diagrams/diagram-from-browser/bulk", "POST", `{"baseVersion":1,"upsert":true,"nodes":[{"externalId":"node-1","title":"Object","x":20,"y":40,"width":180,"height":80,"metadata":{"spatial":{"version":1,"position":{"x":1,"y":2,"z":3}}}}],"edges":[]}`, `{"error":"MCP access is Read only"}`, 403},
 		{"/diagrams/diagram-from-browser/simulation/runs", "POST", `{"seed":12345,"durationSeconds":86400,"demandMultiplier":1.5,"animated":false}`, `{"id":"run-from-browser","status":"running","diagramId":"diagram-from-browser"}`, 201},

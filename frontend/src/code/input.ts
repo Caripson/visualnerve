@@ -10,6 +10,11 @@ import {
 export interface NormalizedFile extends CodeFile {
   language: CodeLanguage;
 }
+
+export function defaultCodeMode(fileCount: number): 'files' | 'symbols' {
+  return fileCount === 1 ? 'symbols' : 'files';
+}
+
 export function normalizeCodeInput(
   input: CodeInput,
   byteLimit = DEFAULT_IMPORT_LIMIT_BYTES,
@@ -97,7 +102,7 @@ export function normalizeCodeInput(
   return {
     files,
     bytes,
-    mode: input.mode ?? 'files',
+    mode: input.mode ?? defaultCodeMode(files.length),
     name: input.name?.trim() || 'Code relationships',
     ...(input.focus?.trim() ? { focus: input.focus.trim() } : {}),
   };

@@ -27,7 +27,7 @@ function semanticRelations(graph: Graph) {
     .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
 }
 
-function expectPayrollGraph(graph: Graph) {
+function expectPayrollGraph(graph: Graph, path = 'cobol-payroll.cbl') {
   expect(getCodeAnalysis(graph)).toMatchObject({
     languages: ['cobol'],
     mode: 'symbols',
@@ -35,6 +35,7 @@ function expectPayrollGraph(graph: Graph) {
     symbolCount: 7,
     unresolvedCount: 0,
   });
+  expect(graph.nodes).toHaveLength(8);
   const objects = graph.nodes.map((node) => getCodeObject(node));
   expect(objects.every((object) => object && !object.external)).toBe(true);
   expect(objects.filter((object) => object?.kind !== 'file').map((object) => object?.name)).toEqual(
@@ -52,7 +53,7 @@ function expectPayrollGraph(graph: Graph) {
         kind: 'calls',
         confidence: 'heuristic',
         evidence: {
-          path: 'cobol-payroll.cbl',
+          path,
           line: source.slice(0, source.indexOf(`PERFORM ${target}`)).split('\n').length,
         },
       }),
@@ -86,10 +87,10 @@ function expectPayrollGraph(graph: Graph) {
     expect(serialized).not.toContain(excluded);
 }
 
-test('imports the payroll COBOL sample as readable native cards with resolved paragraph and file connections through UI, API and MCP', async ({
+test('defaults a single payroll COBOL file to connected native declarations through UI, API and MCP', async ({
   page,
   request,
-}) => {
+}, testInfo) => {
   const before = await (await request.get('/api/v1/diagrams')).json();
   await page
     .locator('.sidebar-footer')
@@ -98,11 +99,14 @@ test('imports the payroll COBOL sample as readable native cards with resolved pa
   const dialog = page.getByRole('dialog', { name: 'Visualize code', exact: true });
   await dialog.getByLabel('Load source files', { exact: true }).setInputFiles(sourcePath);
   await expect(dialog.getByLabel('Language for cobol-payroll.cbl')).toHaveValue('cobol');
+  await expect(dialog.getByLabel('Code diagram detail')).toHaveValue('symbols');
   await dialog.getByLabel('Code diagram name').fill('Payroll COBOL walkthrough');
-  await dialog.getByLabel('Code diagram detail').selectOption('symbols');
   await expect(dialog.getByRole('button', { name: 'Create diagram', exact: true })).toBeDisabled();
   await dialog.getByRole('button', { name: 'Preview code', exact: true }).click();
   const preview = dialog.getByRole('region', { name: 'Code preview', exact: true });
+  await expect(
+    preview.getByRole('list', { name: 'Preview code objects' }).getByRole('listitem'),
+  ).toHaveCount(8);
   for (const name of declarations) await expect(preview).toContainText(name);
   expect(await (await request.get('/api/v1/diagrams')).json()).toEqual(before);
   await dialog.getByRole('button', { name: 'Create diagram', exact: true }).click();
@@ -118,6 +122,8 @@ test('imports the payroll COBOL sample as readable native cards with resolved pa
   expect(canonicalResponse.status()).toBe(200);
   const canonicalGraph = (await canonicalResponse.json()) as Graph;
   expectPayrollGraph(canonicalGraph);
+  await expect(page.locator('.canvas-shell [data-testid="graph-node"]')).toHaveCount(8);
+  await page.screenshot({ path: testInfo.outputPath('cobol-default-diagram.png') });
 
   const file = canonicalGraph.nodes.find((node) => getCodeObject(node)?.kind === 'file')!;
   const fileCard = page.locator(`.canvas-shell [data-node-id="${file.id}"]`);
@@ -154,7 +160,6 @@ test('imports the payroll COBOL sample as readable native cards with resolved pa
           method: 'POST',
           data: {
             name: 'MCP payroll preview',
-            mode: 'symbols',
             files: [{ path: 'cobol-payroll.cbl', content: source, language: 'cobol' }],
           },
         },
@@ -169,4 +174,69 @@ test('imports the payroll COBOL sample as readable native cards with resolved pa
   expectPayrollGraph(mcpGraph);
   expect(semanticRelations(mcpGraph)).toEqual(semanticRelations(canonicalGraph));
   expect(await (await request.get('/api/v1/diagrams')).json()).toEqual(diagrams);
+});
+
+test('pasted payroll COBOL creates connected paragraphs and files without changing diagram detail', async ({
+  page,
+  request,
+}) => {
+  await page
+    .locator('.sidebar-footer')
+    .getByRole('button', { name: 'Visualize code', exact: true })
+    .click();
+  const dialog = page.getByRole('dialog', { name: 'Visualize code', exact: true });
+  await dialog.getByLabel('Source language').selectOption('cobol');
+  await dialog.getByLabel('Source code', { exact: true }).fill(source);
+  await dialog.getByLabel('Code diagram name').fill('Pasted payroll COBOL');
+  await expect(dialog.getByLabel('Code diagram detail')).toHaveValue('symbols');
+  await dialog.getByRole('button', { name: 'Preview code', exact: true }).click();
+  const preview = dialog.getByRole('region', { name: 'Code preview', exact: true });
+  await expect(
+    preview.getByRole('list', { name: 'Preview code objects' }).getByRole('listitem'),
+  ).toHaveCount(8);
+  for (const name of declarations) await expect(preview).toContainText(name);
+  await dialog.getByRole('button', { name: 'Create diagram', exact: true }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.locator('.save-status')).toHaveText('Saved');
+  const diagrams = (await (await request.get('/api/v1/diagrams')).json()) as Graph['diagram'][];
+  const diagram = diagrams.find((item) => item.name === 'Pasted payroll COBOL')!;
+  expect(diagram).toBeTruthy();
+  const graph = (await (await request.get(`/api/v1/diagrams/${diagram.id}`)).json()) as Graph;
+  expectPayrollGraph(graph, 'source.cob');
+  await expect(page.locator('.canvas-shell [data-testid="graph-node"]')).toHaveCount(8);
+  await expect(page.locator('.canvas-shell .react-flow__edge')).toHaveCount(graph.edges.length);
+});
+
+test('an explicit file overview still keeps a single COBOL file in one readable card', async ({
+  page,
+  request,
+}) => {
+  await page
+    .locator('.sidebar-footer')
+    .getByRole('button', { name: 'Visualize code', exact: true })
+    .click();
+  const dialog = page.getByRole('dialog', { name: 'Visualize code', exact: true });
+  await dialog.getByLabel('Load source files', { exact: true }).setInputFiles(sourcePath);
+  await expect(dialog.getByLabel('Code diagram detail')).toHaveValue('symbols');
+  await dialog.getByLabel('Code diagram detail').selectOption('files');
+  await dialog.getByLabel('Code diagram name').fill('Payroll file overview');
+  await dialog.getByRole('button', { name: 'Preview code', exact: true }).click();
+  const preview = dialog.getByRole('region', { name: 'Code preview', exact: true });
+  await expect(
+    preview.getByRole('list', { name: 'Preview code objects' }).getByRole('listitem'),
+  ).toHaveCount(1);
+  await dialog.getByRole('button', { name: 'Create diagram', exact: true }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.locator('.save-status')).toHaveText('Saved');
+  const diagrams = (await (await request.get('/api/v1/diagrams')).json()) as Graph['diagram'][];
+  const diagram = diagrams.find((item) => item.name === 'Payroll file overview')!;
+  const graph = (await (await request.get(`/api/v1/diagrams/${diagram.id}`)).json()) as Graph;
+  expect(getCodeAnalysis(graph)).toMatchObject({ mode: 'files', fileCount: 1, symbolCount: 7 });
+  expect(graph.nodes).toHaveLength(1);
+  expect(graph.edges).toHaveLength(0);
+  expect(getCodeObject(graph.nodes[0])?.summary).toEqual(declarations);
+  await expect(page.locator('.canvas-shell [data-testid="graph-node"]')).toHaveCount(1);
+  await expect(
+    page.getByRole('region', { name: 'Code details for cobol-payroll.cbl' }).getByRole('listitem'),
+  ).toHaveText(declarations);
 });

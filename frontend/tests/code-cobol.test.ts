@@ -49,7 +49,9 @@ it('recognizes the supplied payroll program, numbered paragraphs and real file r
 });
 
 it('creates resolved native connections with line evidence while discarding the original payroll source', () => {
-  const result = parseCode({ files: [{ path: 'payroll.cbl', content: payroll }], mode: 'symbols' });
+  const result = parseCode({ files: [{ path: 'payroll.cbl', content: payroll }] });
+  expect(result.mode).toBe('symbols');
+  expect(result.graph.nodes).toHaveLength(8);
   expect(result.symbolCount).toBe(7);
   expect(result.unresolvedCount).toBe(0);
   expect(() => validateGraph(result.graph)).not.toThrow();

@@ -2,7 +2,7 @@
 
 Use **Visualize code** to paste a script, choose several source files, or select a folder. Choose the language for pasted text and for ambiguous extensions, then preview and review the objects, connections and analysis notes before **Create diagram**. A single `.sql`/`.ddl` drop still opens the more detailed SQL importer. SQL can also participate in a mixed code project.
 
-**File overview** starts with one card per file and connections between files or external dependencies. **Declarations and dependencies** adds recognized functions, classes, types, resources, measures and query parts. **Focus** matches a case-insensitive substring in paths or object names and includes immediate related objects. For example, import a project and focus on `billing` to examine its neighboring dependencies. The diagram's existing relationship explorer can then inspect neighbors and paths or save a named perspective. Changing the input cancels and invalidates the preview.
+The automatic detail level uses **Declarations and dependencies** for a pasted script or a single source file, and **File overview** for multiple files. **File overview** starts with one card per file and connections between files or external dependencies. **Declarations and dependencies** adds recognized functions, classes, types, resources, measures and query parts. You can explicitly choose either view. For example, a single COBOL program displays its program, recognized paragraphs and file resources with their calls and reads/writes; choosing File overview intentionally reduces it to a file card. **Focus** matches a case-insensitive substring in paths or object names and includes immediate related objects. For example, import a project and focus on `billing` to examine its neighboring dependencies. The diagram's existing relationship explorer can then inspect neighbors and paths or save a named perspective. Changing the input cancels and invalidates the preview.
 
 These are editable native diagram objects. Move and connect them, annotate, assign status, use the pen, switch between 2D and 3D, and export the canonical 2D layout to PNG/PDF. Select an object for its language, original file and source line. Select a connection for its relationship kind, confidence and file/line evidence. Renaming a card does not rewrite the source. Reconnecting an analyzed edge removes its stale source evidence; undo restores it.
 
@@ -92,6 +92,8 @@ Native diagram JSON and full workspace backups preserve the recognized metadata.
 ## API and MCP
 
 Start the optional local bridge and grant access in the open browser. The public S3 site does not expose a code-analysis API. `GET /code/languages` lists the 50 language IDs, extensions and capabilities. Read-only access permits the exact `POST /code/preview` endpoint; `POST /code/diagrams` requires write access and saves/opens the result transactionally.
+
+Omitting `mode` uses `"symbols"` for one supplied file and `"files"` for multiple supplied files, matching the UI's automatic detail level. Explicit `mode:"files"` or `mode:"symbols"` overrides that choice. Preview and `diagram.metadata.codeAnalysis.mode` report the resolved mode; no `"auto"` value is stored or accepted by the API. Existing diagrams retain their saved detail level and are not automatically re-analyzed.
 
 ```json
 {

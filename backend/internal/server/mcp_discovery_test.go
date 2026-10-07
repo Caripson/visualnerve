@@ -160,6 +160,20 @@ func TestMCPDocumentationResourcesMatchToolDocuments(t *testing.T) {
 	}
 }
 
+func TestMCPCodeDiscoveryExplainsAutomaticAndExplicitDetailLevels(t *testing.T) {
+	for surface, text := range map[string]string{
+		"initialize": mcpInstructions,
+		"request":    mcpToolDescription,
+		"guide":      mcpAPIGuide,
+	} {
+		for _, phrase := range []string{"mode uses symbols for one file and files for multiple files", "Explicit files or symbols choices are preserved", "diagram.metadata.codeAnalysis.mode", "COBOL paragraphs", "saved diagrams retain their detail level"} {
+			if !strings.Contains(text, phrase) {
+				t.Fatalf("%s must make code detail behavior discoverable: %q", surface, phrase)
+			}
+		}
+	}
+}
+
 func TestMCPInvalidToolAndResourceArguments(t *testing.T) {
 	handler, _ := bundledMCPServer(t)
 	tests := []struct {

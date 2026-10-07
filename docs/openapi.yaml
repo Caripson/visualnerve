@@ -820,7 +820,7 @@
             "type": "string"
           },
           "mode": {
-            "default": "files",
+            "description": "Optional detail level. When omitted, one file uses symbols (declarations and dependencies); multiple files use files (project overview). An explicit files or symbols choice is always preserved. Preview and saved code analysis return the resolved mode.",
             "enum": [
               "files",
               "symbols"

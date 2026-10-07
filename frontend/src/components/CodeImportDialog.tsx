@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { utf8Bytes } from '../imports/limits';
 import { ImportSizeNotice } from './ImportSizeNotice';
 import { Modal } from './Modal';
@@ -6,6 +6,7 @@ import { CodeSourceFields } from './CodeSourceFields';
 import { CodeImportPreview } from './CodeImportPreview';
 import { parseCodeAsync } from '../code/client';
 import { codeLanguages } from '../code/catalog';
+import { defaultCodeMode } from '../code/input';
 import { readCodeFiles, selectFolderFiles } from '../code/importFiles';
 import type { CodeFile, CodeImportResult, CodeLanguage } from '../code/types';
 import type { Graph } from '../model/types';
@@ -33,7 +34,9 @@ export function CodeImportDialog({
         : utf8Bytes(text),
     [files, text],
   );
-  const [mode, setMode] = useState<'files' | 'symbols'>('files');
+  const [chosenMode, setChosenMode] = useState<'files' | 'symbols'>();
+  const mode = chosenMode ?? defaultCodeMode(files.length || 1);
+  const detailHelpId = useId();
   const [focus, setFocus] = useState('');
   const [preview, setPreview] = useState<CodeImportResult | null>(null);
   const [working, setWorking] = useState(false);
@@ -217,11 +220,12 @@ export function CodeImportDialog({
             Diagram detail
             <select
               aria-label="Code diagram detail"
+              aria-describedby={detailHelpId}
               value={mode}
               disabled={creating}
               onChange={(event) => {
                 invalidate();
-                setMode(event.target.value as typeof mode);
+                setChosenMode(event.target.value as typeof mode);
               }}
             >
               <option value="files">File overview</option>
@@ -243,6 +247,11 @@ export function CodeImportDialog({
             />
           </label>
         </div>
+        <p className="code-note" id={detailHelpId}>
+          {mode === 'symbols'
+            ? 'Creates separate objects for recognized functions, paragraphs, types and resources, with their connections.'
+            : 'Creates one object per source file. Choose Declarations and dependencies to show functions, paragraphs and resources separately.'}
+        </p>
         <p className="code-note">
           Focus keeps matching names or paths and their immediate connections. Inferred and
           unresolved relationships are marked; this is structural analysis, not a compiler or

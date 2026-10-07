@@ -18,7 +18,7 @@ func addCodeSchemas(schemas object) {
 	})
 	schemas["CodeFile"].(object)["description"] = "Relative unique file path. Explicit language is required for ambiguous extensions such as .m; SQL defaults to SQL, use tsql/plsql explicitly for dialects. Source is analyzed locally and never executed."
 	schemas["CodeInput"] = record([]string{"files"}, object{
-		"name": text(500), "files": list(ref("CodeFile"), 500), "mode": object{"type": "string", "enum": []string{"files", "symbols"}, "default": "files"}, "focus": text(500),
+		"name": text(500), "files": list(ref("CodeFile"), 500), "mode": object{"type": "string", "enum": []string{"files", "symbols"}, "description": "Optional detail level. When omitted, one file uses symbols (declarations and dependencies); multiple files use files (project overview). An explicit files or symbols choice is always preserved. Preview and saved code analysis return the resolved mode."}, "focus": text(500),
 	})
 	schemas["CodeInput"].(object)["properties"].(object)["files"].(object)["minItems"] = 1
 	schemas["CodeInput"].(object)["description"] = importLimitPolicyDescription + " Code applies that selected decoded UTF-8 byte limit to each file and to the total project (50 MiB each by default), with an absolute 1 GiB ceiling. Other limits: 500 files, 100,000 lines per file, 500,000 project lines, 20,000 characters per line, 10,000 extracted symbols, 5,000 diagram objects and 10,000 diagram connections; 30-second worker deadline. Structural outline, not compiler verification. Focus matches path/name substrings case-insensitively and includes immediate neighbors. Original source/comments/string literals are not saved; names/paths are retained."

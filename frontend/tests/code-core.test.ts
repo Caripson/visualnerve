@@ -43,9 +43,24 @@ describe('Code graph assembly and bounded local resolution', () => {
   });
   it('shows a compact file overview with declarations and resolved file dependencies', () => {
     const result = parseCode({ files: fixture });
+    expect(result.mode).toBe('files');
     expect(result.graph.nodes).toHaveLength(2);
     expect(result.graph.nodes[0].metadata.codeObject).toMatchObject({ summary: ['run'] });
     expect(result.graph.edges.some((edge) => getCodeRelation(edge)?.kind === 'calls')).toBe(true);
+  });
+  it('defaults a single source to connected declarations while retaining explicit file overview', () => {
+    const files = [
+      { path: 'app.js', content: 'function helper() {}\nfunction run() { helper(); }' },
+    ];
+    const detailed = parseCode({ files });
+    expect(detailed.mode).toBe('symbols');
+    expect(detailed.graph.nodes).toHaveLength(3);
+    expect(relation(detailed, 'run', 'helper', 'calls')).toBeDefined();
+    expect(detailed.graph.diagram.metadata.codeAnalysis).toMatchObject({ mode: 'symbols' });
+    const overview = parseCode({ files, mode: 'files' });
+    expect(overview.mode).toBe('files');
+    expect(overview.graph.nodes).toHaveLength(1);
+    expect(getCodeObject(overview.graph.nodes[0])?.summary).toEqual(['helper', 'run']);
   });
   it('keeps duplicate method names unresolved without picking an arbitrary target', () => {
     const result = parseCode({
@@ -89,7 +104,7 @@ describe('Code graph assembly and bounded local resolution', () => {
       '\n',
     );
     const files = [{ path: 'app.js', content }];
-    expect(parseCode({ files, focus: 'action300' }).graph.nodes).toHaveLength(1);
+    expect(parseCode({ files, mode: 'files', focus: 'action300' }).graph.nodes).toHaveLength(1);
     const result = parseCode({ files, mode: 'symbols', focus: 'action300' });
     expect(result.graph.nodes.map((node) => getCodeObject(node)?.name)).toEqual([
       'app.js',

@@ -80,10 +80,17 @@ it('offers all 50 languages, previews confidence and creates only after explicit
   expect(within(screen.getByLabelText('Source language')).getAllByRole('option')).toHaveLength(50);
   expect(screen.getByText(/Original source is a temporary draft/)).toBeVisible();
   fireEvent.change(screen.getByLabelText('Source code'), { target: { value: initialSource } });
-  fireEvent.change(screen.getByLabelText('Code diagram detail'), { target: { value: 'symbols' } });
+  expect(screen.getByLabelText('Code diagram detail')).toHaveValue('symbols');
+  expect(screen.getByLabelText('Code diagram detail')).toHaveAccessibleDescription(
+    /separate objects/,
+  );
   expect(screen.getByRole('button', { name: 'Create diagram' })).toBeDisabled();
   fireEvent.click(screen.getByRole('button', { name: 'Preview code' }));
   const region = await screen.findByLabelText('Code preview');
+  expect(parse).toHaveBeenCalledWith(
+    expect.objectContaining({ mode: 'symbols' }),
+    expect.any(Object),
+  );
   expect(region).toHaveTextContent('1 unresolved connections');
   expect(region).toHaveTextContent('source.ts:1');
   expect(region).toHaveTextContent('Dynamic targets require source review.');
@@ -107,7 +114,7 @@ it('invalidates an existing preview when focus or language changes', async () =>
   await screen.findByLabelText('Code preview');
   expect(parse).toHaveBeenLastCalledWith(
     expect.objectContaining({
-      mode: 'files',
+      mode: 'symbols',
       focus: 'charge',
       files: [{ path: 'source.py', content: initialSource, language: 'python' }],
     }),
@@ -143,12 +150,14 @@ it('requires a language for an ambiguous file and retains project file paths', a
   parse.mockResolvedValue(result());
   render(<CodeImportDialog initialFiles={[ambiguous, python]} create={vi.fn()} close={vi.fn()} />);
   await screen.findByLabelText('Language for model.m');
+  expect(screen.getByLabelText('Code diagram detail')).toHaveValue('files');
   expect(screen.getByRole('button', { name: 'Preview code' })).toBeDisabled();
   fireEvent.change(screen.getByLabelText('Language for model.m'), { target: { value: 'matlab' } });
   fireEvent.click(screen.getByRole('button', { name: 'Preview code' }));
   await screen.findByLabelText('Code preview');
   expect(parse).toHaveBeenCalledWith(
     expect.objectContaining({
+      mode: 'files',
       files: [
         { path: 'model.m', content: expect.any(String), language: 'matlab' },
         { path: 'project/main.py', content: expect.any(String), language: 'python' },
@@ -156,6 +165,26 @@ it('requires a language for an ambiguous file and retains project file paths', a
     }),
     expect.any(Object),
   );
+});
+
+it('adjusts the default to the source count while preserving a manually chosen detail level', async () => {
+  const first = sourceFile('first.py', 'def first():\n    pass');
+  const second = sourceFile('second.py', 'def second():\n    pass');
+  render(<CodeImportDialog create={vi.fn()} close={vi.fn()} />);
+  const input = screen.getByLabelText('Load source files');
+  const detail = screen.getByLabelText('Code diagram detail');
+  expect(detail).toHaveValue('symbols');
+  fireEvent.change(input, { target: { files: [first, second] } });
+  await screen.findByLabelText('Language for second.py');
+  expect(detail).toHaveValue('files');
+  fireEvent.change(input, { target: { files: [first] } });
+  await waitFor(() => expect(screen.queryByLabelText('Language for second.py')).toBeNull());
+  expect(detail).toHaveValue('symbols');
+  fireEvent.change(detail, { target: { value: 'files' } });
+  fireEvent.change(input, { target: { files: [second] } });
+  await screen.findByLabelText('Language for second.py');
+  expect(detail).toHaveValue('files');
+  expect(detail).toHaveAccessibleDescription(/one object per source file/);
 });
 
 it('aborts analysis on close and preserves a failed create for retry', async () => {

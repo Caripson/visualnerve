@@ -69,6 +69,7 @@ export interface CodeFile {
 export interface CodeInput {
   name?: string;
   files: CodeFile[];
+  /** Omitted: declarations for one file, file overview for multiple files. */
   mode?: 'files' | 'symbols';
   /** Case-insensitive path/name substring. Include immediate related objects. */
   focus?: string;
