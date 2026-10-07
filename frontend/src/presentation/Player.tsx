@@ -12,6 +12,8 @@ import {
   ListOrdered,
   ArrowUp,
   ArrowDown,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { useEditor } from '../state/editor';
 import { getSpatialView } from '../spatial/types';
@@ -28,6 +30,7 @@ import { getStoryboard } from './storyboard';
 import { presentationSteps } from './sequence';
 import { StoryboardEditor } from './StoryboardEditor';
 import './presentation.css';
+import { useCompactLayout } from '../hooks/useCompactLayout';
 
 /** Kept outside App: watches graph revisions and renders a compact canvas overlay. */
 export function PresentationFeature() {
@@ -38,6 +41,11 @@ export function PresentationFeature() {
   const [ordering, setOrdering] = useState(false);
   const [page, setPage] = useState(0);
   const [error, setError] = useState('');
+  const compact = useCompactLayout();
+  const [minimized, setMinimized] = useState(true);
+  useEffect(() => {
+    if (player.open) setMinimized(true);
+  }, [player.open, player.diagramId]);
   useEffect(
     () => setPage((previous) => Math.min(previous, Math.max(0, Math.ceil(player.total / 25) - 1))),
     [player.total],
@@ -136,10 +144,11 @@ export function PresentationFeature() {
       className="presentation-player"
       aria-label="Diagram player"
       data-status={player.status}
+      data-minimized={compact && minimized && player.total > 0 && !exporting}
     >
       <div className="presentation-heading">
         <ListOrdered size={16} />
-        <strong>Diagram walkthrough</strong>
+        <strong>{compact ? 'Walkthrough' : 'Diagram walkthrough'}</strong>
         <span>
           {total
             ? `${(exporting ? Math.max(0, video.nodeIndex) : player.index) + 1} / ${total}`
@@ -147,6 +156,16 @@ export function PresentationFeature() {
               ? 'No scenes'
               : 'No numbered nodes'}
         </span>
+        {compact && player.total > 0 && (
+          <button
+            className="icon-button"
+            aria-label={minimized ? 'Expand player' : 'Minimize player'}
+            aria-expanded={!minimized}
+            onClick={() => setMinimized(!minimized)}
+          >
+            {minimized ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </button>
+        )}
         <button
           className="icon-button"
           aria-label="Close diagram player"
@@ -158,7 +177,10 @@ export function PresentationFeature() {
           <X size={16} />
         </button>
       </div>
-      <div className="presentation-order-actions" aria-label="Walkthrough source">
+      <div
+        className="presentation-order-actions presentation-secondary"
+        aria-label="Walkthrough source"
+      >
         <button
           disabled={exporting}
           aria-pressed={source === 'nodes'}
@@ -213,6 +235,7 @@ export function PresentationFeature() {
             <SkipForward size={18} />
           </button>
           <button
+            className="presentation-secondary"
             aria-label="Presentation audio"
             title="Read step narration aloud"
             aria-pressed={player.audio}
@@ -221,6 +244,7 @@ export function PresentationFeature() {
             {player.audio ? <Volume2 size={18} /> : <VolumeX size={18} />}
           </button>
           <button
+            className="presentation-secondary"
             aria-label="Presentation subtitles"
             title="Show step narration"
             aria-pressed={player.subtitles}
@@ -229,6 +253,7 @@ export function PresentationFeature() {
             <Captions size={18} />
           </button>
           <button
+            className="presentation-secondary"
             aria-label="Preload presentation"
             title="Prepare the selected voice and next three descriptions"
             aria-pressed={player.preload}
@@ -242,14 +267,18 @@ export function PresentationFeature() {
             <Download size={16} />
             <span>Preload</span>
           </button>
-          <button aria-expanded={ordering} onClick={() => setOrdering(!ordering)}>
+          <button
+            className="presentation-secondary"
+            aria-expanded={ordering}
+            onClick={() => setOrdering(!ordering)}
+          >
             Order
           </button>
         </div>
       </fieldset>
       <VideoControls disabled={!player.total} />
       {(player.audio || player.preload) && (
-        <small className="muted">
+        <small className="muted presentation-secondary">
           Local neural voice · choose English or Swedish in Settings. First use downloads 60–109
           MiB.
         </small>

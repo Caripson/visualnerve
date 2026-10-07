@@ -18,7 +18,9 @@ import {
   type EdgeChange,
   type Edge,
 } from '@xyflow/react';
-import { Crosshair, Grid3X3, Magnet, Map as MapIcon, Maximize, Pencil } from 'lucide-react';
+import { Maximize } from 'lucide-react';
+import { CanvasTools } from './CanvasTools';
+import { COMPACT_LAYOUT_QUERY } from '../hooks/useCompactLayout';
 import { useEditor } from '../state/editor';
 import { descendantIds, type Graph, type GraphNode } from '../model/types';
 import { dayMS, timelineGeometry, type Geometry } from '../layouts/layout';
@@ -40,7 +42,16 @@ import {
 import { revealOverviewTargets } from '../overview/reveal';
 import { SelectionTools } from '../ui/SelectionTools';
 import { projectGraph, type CanvasNode, type NodeData, type RenderCache } from './projection';
+import { canvasViewportGraph, persistCanvasFocus } from './navigation';
+import { useResponsiveCanvasViewport } from './useResponsiveCanvasViewport';
 import { DrawingOverlay } from '../drawing/DrawingOverlay';
+import { ParticleOverlay } from '../simulation/ParticleOverlay';
+import { useSimulation } from '../simulation/useSimulation';
+import {
+  logicalNodeId,
+  projectSimulationCapacityNodes,
+  projectSimulationRenderModel,
+} from '../simulation/render-model';
 import { getDrawingLayer } from '../drawing/types';
 import { fitDiagram } from '../drawing/navigation';
 import { exploreRelationshipsAsync } from '../analysis/client';
@@ -83,7 +94,44 @@ export function Canvas() {
   const explorationBusy = useEditor((s) => s.explorationBusy);
   const explorationError = useEditor((s) => s.explorationError);
   const viewportRequest = useEditor((s) => s.viewportRequest);
+  const simulationView = useSimulation(graph?.simulation ? graph.diagram.id : undefined);
   const spatial = graph ? getSpatialView(graph).mode === '3d' : false;
+  const simulationProjection = useMemo(
+    () =>
+      graph?.simulation && simulationView
+        ? projectSimulationRenderModel(graph, simulationView.run)
+        : undefined,
+    [
+      graph,
+      simulationView?.run.model,
+      simulationView?.run.options.scenarioId,
+      simulationView?.run.options.demandMultiplier,
+    ],
+  );
+  const capacityProjection =
+    graph && simulationProjection && !spatial
+      ? projectSimulationCapacityNodes(graph, simulationProjection, simulationView?.state)
+      : undefined;
+  const renderGraph = useMemo(
+    () =>
+      graph && capacityProjection
+        ? { ...graph, nodes: capacityProjection.nodes, edges: capacityProjection.edges }
+        : graph && simulationProjection
+          ? { ...graph, edges: simulationProjection.edges }
+          : graph,
+    [graph, simulationProjection, capacityProjection],
+  );
+  const projectedIds = useMemo(
+    () =>
+      new Set(
+        renderGraph?.nodes
+          .filter((node) => node.metadata.simulationProjected)
+          .map((node) => node.id),
+      ),
+    [renderGraph?.nodes],
+  );
+  const readonlyNodes = useRef(projectedIds);
+  readonlyNodes.current = projectedIds;
   const exploration = useMemo(
     () => (graph ? getExploration(graph) : undefined),
     [graph?.diagram.settings.relationshipExploration],
@@ -118,12 +166,13 @@ export function Canvas() {
   const presentationViewport = useRef(false);
   const presentationViewports = useRef(new Set<string>());
   const interruptPresentation = useRef(() => {});
+  const focusNavigation = useRef(0);
   const [minimap, setMinimap] = useState(true);
   const [touch, setTouch] = useState(
-    () => matchMedia('(pointer: coarse), (max-width: 720px)').matches,
+    () => matchMedia(`(pointer: coarse), ${COMPACT_LAYOUT_QUERY}`).matches,
   );
   useEffect(() => {
-    const media = matchMedia('(pointer: coarse), (max-width: 720px)');
+    const media = matchMedia(`(pointer: coarse), ${COMPACT_LAYOUT_QUERY}`);
     const update = () => setTouch(media.matches);
     media.addEventListener('change', update);
     return () => media.removeEventListener('change', update);
@@ -139,6 +188,7 @@ export function Canvas() {
         : null;
     const adjusted = new Map<string, Partial<GraphNode>>();
     for (const [id, position] of moves) {
+      if (readonlyNodes.current.has(id)) continue;
       const n = index.get(id);
       if (!n) continue;
       const parent = n.parentId ? index.get(n.parentId) : undefined;
@@ -168,12 +218,13 @@ export function Canvas() {
         });
         if (n.nodeType === 'group')
           for (const child of descendantIds(graph.nodes, id))
-            if (!moves.has(child)) {
+            if (!moves.has(child) && !readonlyNodes.current.has(child)) {
               const c = index.get(child)!;
               adjusted.set(child, { x: c.x + x - n.x, y: c.y + y - n.y });
             }
       }
     }
+    if (!adjusted.size) return;
     s.command('Move or resize nodes', (g) => ({
       ...g,
       nodes: g.nodes.map((n) => (adjusted.has(n.id) ? { ...n, ...adjusted.get(n.id) } : n)),
@@ -205,9 +256,9 @@ export function Canvas() {
   );
   const baseProjected = useMemo(
     () =>
-      graph
+      renderGraph
         ? projectGraph(
-            graph,
+            renderGraph,
             owners,
             selectedNodes,
             selectedEdges,
@@ -220,7 +271,16 @@ export function Canvas() {
             exploration ? (explorationResult ?? pendingExploration) : undefined,
           )
         : { nodes: [], edges: [] },
-    [graph, owners, selectedNodes, selectedEdges, filters, resize, exploration, explorationResult],
+    [
+      renderGraph,
+      owners,
+      selectedNodes,
+      selectedEdges,
+      filters,
+      resize,
+      exploration,
+      explorationResult,
+    ],
   );
   const overviewZoom = useOverviewZoom(graph?.diagram.id, spatial);
   const zoomLevel = overviewZoom.level;
@@ -230,20 +290,28 @@ export function Canvas() {
   overviewZoomRef.current = zooms[zoomLevel];
   const overview = useMemo(
     () =>
-      graph
-        ? projectOverview(graph, baseProjected.nodes, baseProjected.edges, {
-            zoom: preview.diagramId === graph.diagram.id ? preview.zoom : zooms[zoomLevel],
-            revealNodeIds: preview.diagramId === graph.diagram.id ? preview.nodeIds : undefined,
+      renderGraph
+        ? projectOverview(renderGraph, baseProjected.nodes, baseProjected.edges, {
+            zoom: preview.diagramId === renderGraph.diagram.id ? preview.zoom : zooms[zoomLevel],
+            revealNodeIds:
+              preview.diagramId === renderGraph.diagram.id ? preview.nodeIds : undefined,
           })
         : undefined,
-    [graph, baseProjected, preview, zoomLevel],
+    [renderGraph, baseProjected, preview, zoomLevel],
   );
   const projected = overview ?? baseProjected;
+  const particleVisibility = useMemo(
+    () => ({
+      nodeIds: new Set(projected.nodes.filter((node) => !node.hidden).map((node) => node.id)),
+      edgeIds: new Set(projected.edges.filter((edge) => !edge.hidden).map((edge) => edge.id)),
+    }),
+    [projected.nodes, projected.edges],
+  );
   const projectedRef = useRef(projected);
   projectedRef.current = projected;
   useEffect(() => {
-    if (graph && overview) publishOverview(graph, overview);
-  }, [graph, overview]);
+    if (renderGraph && overview) publishOverview(renderGraph, overview);
+  }, [renderGraph, overview]);
   useEffect(() => {
     const id = graph?.diagram.id;
     return () => {
@@ -403,28 +471,66 @@ export function Canvas() {
           padding: 0.25,
           maxZoom: 1,
         });
+      } else if (touch && graph.simulation) {
+        // Start at a readable process step. Fit remains available for the whole system.
+        const work = graph.simulation.nodes.find((node) => node.type === 'work');
+        void flow.fitView({
+          ...(work ? { nodes: [{ id: work.id }] } : {}),
+          padding: 0.25,
+          maxZoom: 0.9,
+        });
       } else
         void flow.fitView({ padding: graph.diagram.type === 'mindmap' ? 0.14 : 0.3, maxZoom: 1 });
     });
     return () => cancelAnimationFrame(frame);
   }, [diagramId, touch, spatial]);
+  const persistViewport = useCallback(
+    (viewport: { x: number; y: number; zoom: number }) => {
+      const state = useEditor.getState();
+      const next = canvasViewportGraph(state.graph, diagramId, viewport, touch);
+      if (next) useEditor.setState({ graph: next, editRevision: state.editRevision + 1 });
+    },
+    [diagramId, touch],
+  );
+  useEffect(
+    () => () => {
+      focusNavigation.current++;
+    },
+    [diagramId, spatial],
+  );
   const focus = useEditor((s) => s.focusNode);
   useEffect(() => {
     if (!focus || spatial) return;
     const node = flow.getNode(focus);
     if (node && !node.hidden) {
+      const generation = ++focusNavigation.current;
+      let completion: Promise<boolean>;
       if (useEditor.getState().editingNode === focus && graph?.diagram.type === 'mindmap') {
         const position = flow.getInternalNode(focus)?.internals.positionAbsolute ?? node.position;
-        void flow.setCenter(
+        completion = flow.setCenter(
           position.x + (node.width ?? 180) / 2,
           position.y + (node.height ?? 60) / 2,
           { zoom: Math.max(0.8, Math.min(1.1, flow.getZoom())), duration: 180 },
         );
-      } else void flow.fitView({ nodes: [node], maxZoom: 1.1, padding: 1, duration: 250 });
+      } else completion = flow.fitView({ nodes: [node], maxZoom: 1.1, padding: 1, duration: 250 });
+      if (diagramId)
+        void persistCanvasFocus({
+          completion,
+          diagramId,
+          nodeId: focus,
+          active: () => generation === focusNavigation.current && !presentationViewport.current,
+          current: useEditor.getState,
+          viewport: () => flow.getViewport(),
+          persist: persistViewport,
+        }).catch(() => {});
       useEditor.setState({ focusNode: null });
     }
-  }, [focus, nodes, flow, spatial]);
+  }, [focus, nodes, flow, spatial, diagramId, persistViewport]);
   const changes = useCallback((changes: NodeChange<CanvasNode>[]) => {
+    changes = changes.filter(
+      (change) =>
+        !('id' in change && readonlyNodes.current.has(change.id)) || change.type === 'dimensions',
+    );
     const state = useEditor.getState();
     const selection = changes.filter((change) => change.type === 'select');
     if (selection.length) {
@@ -472,9 +578,12 @@ export function Canvas() {
         const dx = e.key === 'ArrowRight' ? step : e.key === 'ArrowLeft' ? -step : 0;
         const dy = e.key === 'ArrowDown' ? step : e.key === 'ArrowUp' ? -step : 0;
         const ids = new Set(s.selectedNodes);
+        for (const id of readonlyNodes.current) ids.delete(id);
+        if (!ids.size) return;
         for (const n of s.graph.nodes)
           if (ids.has(n.id) && n.nodeType === 'group')
-            for (const child of descendantIds(s.graph.nodes, n.id)) ids.add(child);
+            for (const child of descendantIds(s.graph.nodes, n.id))
+              if (!readonlyNodes.current.has(child)) ids.add(child);
         s.command(
           'Nudge nodes',
           (g) => ({
@@ -515,6 +624,8 @@ export function Canvas() {
     return () => window.removeEventListener(OVERVIEW_RESET_VIEW, reset);
   }, [flow, spatial, overviewZoom.fit]);
   const overviewEnabled = graph ? getOverviewConfig(graph).enabled : false;
+  const cameraOwned = useCallback(() => presentationViewport.current, []);
+  useResponsiveCanvasViewport(touch && !spatial && !overview?.active, diagramId, cameraOwned);
   const previousOverview = useRef({ id: diagramId, enabled: overviewEnabled });
   useEffect(() => {
     const previous = previousOverview.current;
@@ -553,7 +664,7 @@ export function Canvas() {
         }
       >
         <SpatialCanvas
-          graph={graph}
+          graph={renderGraph ?? graph}
           nodes={projected.nodes}
           edges={projected.edges}
           onReturnTo2D={returnTo2D}
@@ -577,6 +688,20 @@ export function Canvas() {
       data-testid="canvas"
       onPointerDownCapture={() => interruptPresentation.current()}
       onWheelCapture={() => interruptPresentation.current()}
+      onKeyDownCapture={(event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        const target = event.target as HTMLElement;
+        if (target.closest('input,textarea,select,button,[contenteditable="true"]')) return;
+        const card = target
+          .closest('.react-flow__node')
+          ?.querySelector<HTMLElement>('[data-simulation-projected="true"]');
+        const id = card?.dataset.simulationLogicalNode ?? card?.dataset.nodeId;
+        if (id) {
+          event.preventDefault();
+          event.stopPropagation();
+          useEditor.getState().select([id]);
+        }
+      }}
     >
       <ReactFlow<CanvasNode>
         nodes={nodes}
@@ -588,6 +713,13 @@ export function Canvas() {
         }
         onNodesChange={changes}
         onEdgesChange={edgeChanges}
+        onPaneClick={() => {
+          if (readonlyNodes.current.size) useEditor.getState().select([]);
+        }}
+        onNodeClick={(_, node) => {
+          if (node.data.node.metadata.simulationProjected)
+            useEditor.getState().select([logicalNodeId(node.data.node)]);
+        }}
         onConnect={(c) => c.source && c.target && useEditor.getState().connect(c.source, c.target)}
         onReconnect={(edge, c) =>
           c.source &&
@@ -612,29 +744,7 @@ export function Canvas() {
               ))
           )
             return;
-          const s = useEditor.getState();
-          if (
-            s.graph &&
-            s.graph.diagram.id === diagramId &&
-            getSpatialView(s.graph).mode === '2d' &&
-            (JSON.stringify(s.graph.diagram.settings.viewport) !== JSON.stringify(viewport) ||
-              s.graph.diagram.settings.viewportDevice !== (touch ? 'touch' : 'desktop'))
-          ) {
-            useEditor.setState({
-              graph: {
-                ...s.graph,
-                diagram: {
-                  ...s.graph.diagram,
-                  settings: {
-                    ...s.graph.diagram.settings,
-                    viewport,
-                    viewportDevice: touch ? 'touch' : 'desktop',
-                  },
-                },
-              },
-              editRevision: s.editRevision + 1,
-            });
-          }
+          persistViewport(viewport);
         }}
         deleteKeyCode={null}
         selectionOnDrag={!touch}
@@ -651,6 +761,9 @@ export function Canvas() {
         edgesFocusable
         zoomOnDoubleClick={graph.diagram.type !== 'mindmap'}
       >
+        {!overview?.active && (
+          <ParticleOverlay renderGraph={renderGraph ?? undefined} visibility={particleVisibility} />
+        )}
         {overview && (
           <Panel position="top-right">
             <OverviewControls projection={overview} />
@@ -718,68 +831,14 @@ export function Canvas() {
             maskColor="var(--minimap-mask)"
           />
         )}
-        <Panel position="bottom-center">
-          <div className="canvas-toggles">
-            <button
-              className={drawingTool !== 'none' ? 'active' : ''}
-              title="Draw on diagram"
-              aria-label="Draw on diagram"
-              aria-pressed={drawingTool !== 'none'}
-              disabled={overview?.active}
-              onClick={() => {
-                const state = useEditor.getState();
-                if (state.drawingTool !== 'none') state.setDrawingTool('none');
-                else {
-                  if (getDrawingLayer(state.graph?.diagram.settings.drawing)?.visible === false)
-                    state.toggleDrawingVisibility();
-                  state.select([]);
-                  useEditor.setState({ mobilePanel: null });
-                  state.setDrawingTool('pen');
-                }
-              }}
-            >
-              <Pencil size={15} />
-            </button>
-            <button
-              className={graph.diagram.settings.grid !== false ? 'active' : ''}
-              title="Toggle grid"
-              aria-label="Toggle grid"
-              onClick={() => toggle('grid')}
-            >
-              <Grid3X3 size={15} />
-            </button>
-            <button
-              className={graph.diagram.settings.snap ? 'active' : ''}
-              title="Snap to grid"
-              aria-label="Snap to grid"
-              onClick={() => toggle('snap')}
-            >
-              <Magnet size={15} />
-            </button>
-            <button
-              className={minimap ? 'active' : ''}
-              title="Toggle minimap"
-              aria-label="Toggle minimap"
-              onClick={() => setMinimap((v) => !v)}
-            >
-              <MapIcon size={15} />
-            </button>
-            <span />
-            <button
-              title="Center selection"
-              aria-label="Center selection"
-              disabled={!selectedNodes.length}
-              onClick={() =>
-                void flow.fitView({
-                  nodes: flow.getNodes().filter((n) => selectedNodes.includes(n.id)),
-                  padding: 0.5,
-                  maxZoom: 1,
-                })
-              }
-            >
-              <Crosshair size={15} />
-            </button>
-          </div>
+        <Panel position="bottom-center" className="canvas-tools-panel">
+          <CanvasTools
+            graph={graph}
+            overview={!!overview?.active}
+            minimap={minimap}
+            setMinimap={setMinimap}
+            toggle={toggle}
+          />
         </Panel>
       </ReactFlow>
       {graph.diagram.type === 'timeline' && !overview?.active && <TimelineRuler graph={graph} />}

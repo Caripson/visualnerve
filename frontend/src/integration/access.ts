@@ -12,6 +12,8 @@ export function assertMcpAccess(access: McpAccess, path: string, method: string)
         path.replace(/^\/api\/v1/, ''),
       )) ||
     (method === 'POST' &&
+      /^\/diagrams\/[\da-f-]{36}\/simulation\/compare$/i.test(path.replace(/^\/api\/v1/, ''))) ||
+    (method === 'POST' &&
       ['/export', '/sql/preview', '/code/preview', '/diagram-files/preview'].includes(
         path.replace(/^\/api\/v1/, ''),
       ));

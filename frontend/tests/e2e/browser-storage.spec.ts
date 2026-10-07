@@ -43,7 +43,7 @@ base(
     expect(
       backup.owners.some((owner: { name: string }) => owner.name === 'Unassigned browser owner'),
     ).toBe(true);
-    expect(backup.templates).toHaveLength(9);
+    expect(backup.templates).toHaveLength(10);
     await page.getByRole('button', { name: 'Done', exact: true }).click();
     await page.evaluate(async () => {
       await navigator.serviceWorker.ready;

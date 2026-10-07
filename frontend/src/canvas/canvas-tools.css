@@ -1,0 +1,45 @@
+@media (max-width: 900px), (max-width: 1100px) and (max-height: 500px) {
+  .react-flow__panel.canvas-tools-panel {
+    left: auto !important;
+    right: 12px;
+    bottom: 12px;
+    margin: 0;
+    transform: none !important;
+    width: max-content;
+  }
+  .canvas-toggles {
+    gap: 4px;
+    padding: 4px;
+    border-radius: 14px;
+    box-shadow: 0 3px 18px #10231c12;
+  }
+  .canvas-toggles > button,
+  .canvas-toggles .toolbar-menu > button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px;
+    border-radius: 10px;
+  }
+  .canvas-shell:has(.selection-tools) .canvas-toggles {
+    margin-bottom: calc(
+      var(--selection-toolbar-height, 102px) + 12px + env(safe-area-inset-bottom)
+    );
+  }
+  .react-flow__controls {
+    margin: 0 0 16px 12px !important;
+  }
+  .react-flow__controls-button {
+    width: 44px;
+    height: 44px;
+  }
+  /* Pinch is the primary zoom gesture. Keep one large Fit control on the canvas. */
+  .react-flow__controls-button[aria-label='Zoom In'],
+  .react-flow__controls-button[aria-label='Zoom Out'] {
+    display: none;
+  }
+  .canvas-shell:has(.selection-tools) .react-flow__controls {
+    margin-bottom: calc(
+      var(--selection-toolbar-height, 102px) + 24px + env(safe-area-inset-bottom)
+    ) !important;
+  }
+}

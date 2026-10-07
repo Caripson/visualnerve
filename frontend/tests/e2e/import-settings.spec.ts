@@ -91,7 +91,7 @@ test('a real file above 50 MB is refused at the default and imports locally afte
   await modal.screenshot({ path: testInfo.outputPath('large-import-warning.png') });
   await modal.getByRole('button', { name: 'Create diagram', exact: true }).click();
   await expect(modal).toBeHidden();
-  await expect(page.locator('.document-actions .save-status')).toHaveText('Saved');
+  await expect(page.locator('.save-status')).toHaveText('Saved');
   await expect(page.locator('.canvas-shell')).toContainText('Large file object');
   const diagrams = await (await request.get('/api/v1/diagrams')).json();
   const id = diagrams.find(
@@ -116,7 +116,7 @@ test('source refresh and SQL diagnostics keep text and controls separated on a p
   expect(response.status()).toBe(201);
   await expect(page.locator('.project-title-button')).toHaveText('Spacing review');
   await page.setViewportSize({ width: 320, height: 740 });
-  await page.getByLabel('More tools', { exact: true }).click();
+  await page.getByLabel('Diagram actions', { exact: true }).click();
   await page.getByRole('button', { name: 'Refresh source', exact: true }).click();
   let modal = page.getByRole('dialog', { name: 'Refresh source', exact: true });
   await expect(modal.getByLabel('Source to refresh', { exact: true })).toBeVisible();
@@ -130,7 +130,7 @@ test('source refresh and SQL diagnostics keep text and controls separated on a p
   expect(await modal.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   await modal.screenshot({ path: testInfo.outputPath('source-refresh-phone.png') });
   await modal.getByRole('button', { name: 'Close dialog', exact: true }).click();
-  await page.getByLabel('More tools', { exact: true }).click();
+  await page.getByLabel('Diagram actions', { exact: true }).click();
   await page.getByRole('button', { name: 'Data quality', exact: true }).click();
   modal = page.getByRole('dialog', { name: 'Data quality', exact: true });
   const section = page.getByRole('region', { name: 'SQL quality checks', exact: true });

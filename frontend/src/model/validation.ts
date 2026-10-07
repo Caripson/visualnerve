@@ -21,6 +21,7 @@ import { validatePresentation } from '../presentation/types';
 import { validateStoryboard } from '../presentation/storyboard';
 import { validateOverviewConfig } from '../overview/types';
 import { validateBuildSpecification } from '../export/build-specification';
+import { validateSimulationGraph } from '../simulation/document';
 
 export { StorageError } from './errors';
 const uuid = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
@@ -213,6 +214,7 @@ export function validateGraph(graph: Graph, trustedDataset?: CsvDataset | CsvDat
   );
   try {
     validateSpatialGraph(graph);
+    validateSimulationGraph(graph);
     validateSqlQueryGraph(graph);
     validateCodeGraph(graph);
     validateDataModel(graph);

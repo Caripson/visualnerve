@@ -3,10 +3,16 @@ import { getCsvNode } from '../data/csv';
 import { graphDatasets } from '../data/model';
 import { offsetSpatialNode } from '../spatial/types';
 import { remapCopiedSqlQuery } from '../sql/copy';
+import {
+  copySimulationSelection,
+  pasteSimulationSelection,
+  type SimulationClipboard,
+} from '../simulation/clipboard';
 export interface Clip {
   format: 'visual-nerve-clipboard';
   nodes: GraphNode[];
   edges: GraphEdge[];
+  simulation?: SimulationClipboard;
 }
 export function copySelection(graph: Graph, ids: string[]): Clip {
   const set = new Set(ids);
@@ -14,19 +20,20 @@ export function copySelection(graph: Graph, ids: string[]): Clip {
     format: 'visual-nerve-clipboard' as const,
     nodes: graph.nodes.filter((n) => set.has(n.id)),
     edges: graph.edges.filter((e) => set.has(e.sourceNodeId) && set.has(e.targetNodeId)),
+    ...(graph.simulation ? { simulation: copySimulationSelection(graph, set) } : {}),
   });
 }
 export function pasteSelection(
   clip: Clip,
   target: Graph | string,
   offset = 40,
-): { nodes: GraphNode[]; edges: GraphEdge[] } {
+): { nodes: GraphNode[]; edges: GraphEdge[]; simulation?: Graph['simulation'] } {
   const diagramId = typeof target === 'string' ? target : target.diagram.id;
   const datasetIds = new Set(
     typeof target === 'string' ? [] : graphDatasets(target).map((source) => source.id),
   );
   const remap = new Map(clip.nodes.map((n) => [n.id, crypto.randomUUID()]));
-  return remapCopiedSqlQuery(
+  const result = remapCopiedSqlQuery(
     clip.nodes.map((n) => {
       const copy = offsetSpatialNode(structuredClone(n), offset / 120);
       const csv = getCsvNode(copy);
@@ -67,4 +74,14 @@ export function pasteSelection(
         : {}),
     })),
   );
+  const simulation =
+    clip.simulation && typeof target !== 'string' && target.simulation
+      ? pasteSimulationSelection(
+          clip.simulation,
+          target,
+          remap,
+          new Map(clip.edges.map((edge, index) => [edge.id, result.edges[index].id])),
+        )
+      : undefined;
+  return { ...result, ...(simulation ? { simulation } : {}) };
 }

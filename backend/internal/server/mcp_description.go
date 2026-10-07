@@ -14,6 +14,7 @@ var mcpInstructions = strings.Join([]string{
 	"Visual Nerve supports native 2D diagrams and 3D views of the same graph objects and relationships.",
 	"Use visual_nerve_api_docs first for the compact bundled API guide; request document=openapi or document=all when the full OpenAPI contract is needed. Discovery runs directly through MCP with no browser session or external documentation link.",
 	"The same documents are resources visual-nerve://docs/guide and visual-nerve://docs/openapi.",
+	mcpSimulationPolicy,
 	"Use 2D unless the user requests 3D. For a requested 3D diagram, use visual_nerve_request with POST /spatial-diagrams and {name,type?}, then add or edit graph nodes and edges using the documented commands.",
 	"Keep each node's x/y/width/height as an independent readable 2D layout for PNG/PDF; spatial coordinates live in metadata.spatial.",
 	"Workspace commands require an open Visual Nerve browser, explicit storage acceptance, and MCP access enabled in Settings. IndexedDB in that browser is authoritative and is the only database.",
@@ -32,6 +33,7 @@ var mcpInstructions = strings.Join([]string{
 var mcpToolDescription = strings.Join([]string{
 	"Read or edit native 2D diagrams and 3D views of the same graph in the open browser workspace using the Visual Nerve command contract.",
 	"First call visual_nerve_api_docs for the compact guide, including 2D/3D workflows; use document=openapi or document=all when the full OpenAPI is needed. Paths omit /api/v1. Documentation paths /api/docs and /api/openapi.yaml are not browser commands.",
+	mcpSimulationPolicy,
 	"Use 2D unless the user requests 3D. IndexedDB in the connected browser is the only database; this server stores no workspace records. Workspace commands require storage acceptance and MCP access enabled in Settings.",
 	"POST /sql/preview with {sql,name?} analyzes a SELECT/WITH query or DDL locally, returning graph/counts/warnings without saving; read-only access permits this exact endpoint.",
 	"POST /sql/diagrams with the same payload saves and opens the resulting graph and requires write access.",

@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { Edge } from '@xyflow/react';
-import { ArrowLeft, CircleHelp, Focus, Maximize, Move, RotateCcw, X } from 'lucide-react';
+import { RotateCcw, X } from 'lucide-react';
+import { SpatialNavigationTools } from './SpatialNavigationTools';
+import { useCompactLayout } from '../hooks/useCompactLayout';
 import type { Graph } from '../model/types';
 import type { CanvasNode } from '../canvas/projection';
 import { useEditor } from '../state/editor';
@@ -230,7 +232,8 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
   const [relationshipPage, setRelationshipPage] = useState(0);
   const [relationshipQuery, setRelationshipQuery] = useState('');
   const [showLabels, setShowLabels] = useState(true);
-  const [showHelp, setShowHelp] = useState(true);
+  const compact = useCompactLayout();
+  const [showHelp, setShowHelp] = useState(() => !compact);
   const [moveObjects, setMoveObjects] = useState(false);
   const moveObjectsRef = useRef(moveObjects);
   moveObjectsRef.current = moveObjects;
@@ -1403,78 +1406,25 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       />
       <div className="spatial-hud">
         <div ref={toolbar} className="spatial-toolbar" role="toolbar" aria-label="3D navigation">
-          <button className="spatial-return" onClick={returnTo2D}>
-            <ArrowLeft size={15} />
-            Return to 2D
-          </button>
-          <button
-            disabled={!ready || props.overview?.active}
-            aria-pressed={moveObjects}
-            onClick={() => {
+          <SpatialNavigationTools
+            ready={ready}
+            moving={moveObjects}
+            movementDisabled={!ready || !!props.overview?.active}
+            selected={!!selectedNodes.length}
+            labels={showLabels}
+            help={showHelp}
+            returnTo2D={returnTo2D}
+            fit={fit}
+            focus={focus}
+            toggleMovement={() => {
               runtime.current?.abortMovement();
               setMoveObjects((enabled) => !enabled);
             }}
-          >
-            <Move size={15} />
-            Move objects
-          </button>
-          <div className="spatial-orientations">
-            {(['front', 'back', 'left', 'right', 'top'] as const).map((orientation) => (
-              <button
-                key={orientation}
-                disabled={!ready}
-                onClick={() => orient(orientation)}
-                aria-label={`${orientation[0].toUpperCase()}${orientation.slice(1)} view`}
-              >
-                {orientation[0].toUpperCase()}
-                {orientation.slice(1)}
-              </button>
-            ))}
-          </div>
-          <button
-            disabled={!ready}
-            onClick={() => tilt(-Math.PI / 18)}
-            aria-label="Tilt diagram left 10 degrees"
-          >
-            −10°
-          </button>
-          <button
-            disabled={!ready}
-            onClick={() => tilt(Math.PI / 18)}
-            aria-label="Tilt diagram right 10 degrees"
-          >
-            +10°
-          </button>
-          <button onClick={fit} disabled={!ready} aria-label="Fit 3D diagram">
-            <Maximize size={15} />
-            Fit
-          </button>
-          <button
-            onClick={focus}
-            disabled={!ready || !selectedNodes.length}
-            aria-label="Focus selected object"
-          >
-            <Focus size={15} />
-            Focus
-          </button>
-          <label>
-            <input
-              type="checkbox"
-              checked={showLabels}
-              onChange={(event) => setShowLabels(event.target.checked)}
-            />
-            Labels
-          </label>
-          <button
-            aria-label="3D help"
-            aria-expanded={showHelp}
-            aria-controls="spatial-help"
-            data-spatial-help-control
-            onClick={() => setShowHelp((visible) => !visible)}
-          >
-            <CircleHelp size={15} />
-            Help
-          </button>
+            toggleHelp={() => setShowHelp((visible) => !visible)}
+            setLabels={setShowLabels}
+            orient={orient}
+            tilt={tilt}
+          />
         </div>
         <div
           className="spatial-caption"

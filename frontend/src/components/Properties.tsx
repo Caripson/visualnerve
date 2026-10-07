@@ -524,13 +524,16 @@ function PropertyPanel({
           <select
             aria-label="Diagram mode"
             value={d.type}
+            disabled={d.type === 'process-simulator'}
             onChange={(e) => change({ type: e.target.value as typeof d.type })}
           >
-            {diagramTypes.map((v) => (
-              <option key={v} value={v}>
-                {v}
-              </option>
-            ))}
+            {diagramTypes
+              .filter((v) => v !== 'process-simulator' || d.type === v)
+              .map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
           </select>
         </Field>
         <Field title="Description">

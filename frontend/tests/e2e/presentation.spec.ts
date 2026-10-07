@@ -99,7 +99,7 @@ test('numbered walkthrough plays, pauses, skips, captions and persists sequence 
       return saved.diagram.settings.viewport;
     })
     .toBeTruthy();
-  await expect(page.locator('.document-actions .save-status')).toHaveText('Saved');
+  await expect(page.locator('.save-status')).toHaveText('Saved');
   await expect
     .poll(async () => {
       const saved = await (await request.get(`/api/v1/diagrams/${graph.diagram.id}`)).json();
@@ -168,7 +168,7 @@ test('MCP player uses the same 3D diagram and transient camera with documented r
   await expect(page.getByTestId('spatial-view')).toHaveAttribute('data-renderer', 'ready', {
     timeout: 30000,
   });
-  await expect(page.locator('.document-actions .save-status')).toHaveText('Saved');
+  await expect(page.locator('.save-status')).toHaveText('Saved');
   const before = (await (
     await request.get(`/api/v1/diagrams/${graph.diagram.id}`)
   ).json()) as Graph;
@@ -225,6 +225,7 @@ test('player remains usable on a narrow screen and exposes a bounded order list'
   await request.post('/api/v1/presentation/open', { data: { diagramId: graph.diagram.id } });
   const player = page.getByRole('region', { name: 'Diagram player' });
   await expect(player).toBeVisible();
+  await player.getByRole('button', { name: 'Expand player', exact: true }).click();
   await player.getByRole('button', { name: 'Order', exact: true }).click();
   const rect = await player.boundingBox();
   expect(rect!.x).toBeGreaterThanOrEqual(0);

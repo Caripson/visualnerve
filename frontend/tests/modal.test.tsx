@@ -79,3 +79,48 @@ it('traps Tab around enabled controls and skips hidden fields', () => {
   fireEvent.keyDown(input, { key: 'Tab', shiftKey: true });
   expect(button).toHaveFocus();
 });
+
+it('keeps closed disclosures and CSS-hidden controls out of the focus loop', () => {
+  render(
+    <Modal title="Settings" close={() => undefined} dismissible={false}>
+      <button>First action</button>
+      <details>
+        <summary>Advanced</summary>
+        <button>Hidden danger action</button>
+      </details>
+      <div style={{ display: 'none' }}>
+        <input aria-label="Hidden by layout" />
+      </div>
+      <button>Last action</button>
+    </Modal>,
+  );
+  const first = screen.getByRole('button', { name: 'First action' });
+  const last = screen.getByRole('button', { name: 'Last action' });
+  last.focus();
+  fireEvent.keyDown(last, { key: 'Tab' });
+  expect(first).toHaveFocus();
+  first.focus();
+  fireEvent.keyDown(first, { key: 'Tab', shiftKey: true });
+  expect(last).toHaveFocus();
+  screen.getByText('Advanced').closest('details')!.open = true;
+  last.focus();
+  fireEvent.keyDown(last, { key: 'Tab' });
+  expect(first).toHaveFocus();
+});
+
+it('keeps keyboard focus in a busy modal when all controls are disabled or inert', () => {
+  render(
+    <Modal title="Busy import" close={() => undefined} dismissible={false}>
+      <input aria-label="Disabled" disabled />
+      <form inert>
+        <button>Import</button>
+      </form>
+    </Modal>,
+  );
+  const dialog = screen.getByRole('dialog', { name: 'Busy import' });
+  expect(dialog).toHaveFocus();
+  expect(fireEvent.keyDown(dialog, { key: 'Tab' })).toBe(false);
+  expect(dialog).toHaveFocus();
+  expect(fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true })).toBe(false);
+  expect(dialog).toHaveFocus();
+});

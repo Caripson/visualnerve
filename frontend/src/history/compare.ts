@@ -142,6 +142,11 @@ export function compareHistoryGraphs(
   );
   entities('owner', before.owners, after.owners, (owner) => owner.name);
   const diagramFields = fields(content(before.diagram), content(after.diagram));
+  diagramFields.push(
+    ...fields(before.simulation ?? {}, after.simulation ?? {}).map(
+      (field) => `simulation.${field}`,
+    ),
+  );
   if (diagramFields.length)
     add({
       entity: 'diagram',

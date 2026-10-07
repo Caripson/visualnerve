@@ -1,0 +1,373 @@
+@media (max-width: 900px), (max-width: 1100px) and (max-height: 500px) {
+  body:has(.application[data-compact-layout='true'][data-has-document='true']) {
+    overflow: hidden;
+  }
+  body:has(.application[data-compact-layout='true'][data-has-document='true']) > .site-shell {
+    display: none;
+  }
+  .application[data-compact-layout='true'] {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    min-height: 0;
+    padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
+  }
+  .application[data-compact-layout='true'][data-has-document='true'] {
+    height: 100dvh;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .application[data-compact-layout='true'] .main-workspace {
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+  .main-workspace > .compact-document-bar,
+  .main-workspace > .compact-editor-toolbar,
+  .main-workspace > .filter-bar,
+  .main-workspace > .notice {
+    flex-shrink: 0;
+  }
+  .compact-document-bar {
+    height: 56px;
+    min-height: 56px;
+    padding: 4px 8px;
+    gap: 4px;
+  }
+  .compact-document-bar button,
+  .compact-document-bar summary {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px;
+    border-radius: 8px;
+  }
+  .compact-document-bar .project-menu,
+  .compact-document-bar .compact-edit-button {
+    border: 0;
+    background: transparent;
+    flex-shrink: 0;
+  }
+  .compact-document-bar .compact-edit-button {
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .compact-document-bar .toolbar-menu > button {
+    border: 0;
+    background: transparent;
+  }
+  .compact-document-bar .document-title {
+    gap: 0;
+    overflow: hidden;
+  }
+  .compact-document-bar .document-title h1 {
+    flex: 1;
+    font-size: 14px;
+  }
+  .compact-document-bar .project-title-button {
+    display: block;
+    font-size: 14px;
+    padding-inline: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
+    width: 100%;
+    min-width: 0;
+  }
+  .compact-document-bar .project-title-button svg,
+  .compact-document-bar .project-icon-picker,
+  .compact-document-bar .mode-badge {
+    display: none;
+  }
+  .compact-document-bar .save-status {
+    font-size: 0;
+    flex-shrink: 0;
+    min-width: 14px;
+    margin-right: 2px;
+  }
+  .compact-document-bar .project-title-input {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  .compact-editor-toolbar {
+    min-height: 48px;
+    height: 48px;
+    padding: 2px 8px;
+    gap: 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+  }
+  .compact-editor-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+  .compact-editor-toolbar > button,
+  .compact-view-toggle > button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px;
+    flex-shrink: 0;
+    border-radius: 7px;
+  }
+  .compact-editor-toolbar .add-node {
+    margin-right: auto;
+  }
+  .compact-view-toggle {
+    border: 0;
+    padding: 0;
+    gap: 2px;
+    background: var(--surface-alt);
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+  .compact-view-toggle button[aria-pressed='true'] {
+    background: var(--accent);
+    color: #fff;
+  }
+  .compact-editor-toolbar .add-node span {
+    font-size: 12px;
+  }
+  .toolbar-menu-panel button,
+  .toolbar-menu-panel select,
+  .toolbar-menu-panel input {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  .toolbar-menu-panel {
+    padding: 16px;
+    border-radius: 16px;
+    gap: 8px;
+    scroll-padding-block: 12px;
+  }
+  .toolbar-menu-panel h3 {
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .compact-menu-link {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    font-size: 14px;
+    border-radius: 8px;
+  }
+  .compact-menu-link:hover {
+    background: var(--surface-alt);
+  }
+  .application[data-compact-layout='true'] .projects-shell,
+  .application[data-compact-layout='true'] .properties-shell,
+  .application[data-compact-layout='true'] .sidebar {
+    display: none;
+  }
+  .application[data-compact-layout='true'] .projects-shell[role='dialog'],
+  .application[data-compact-layout='true'] .properties-shell[role='dialog'] {
+    position: fixed;
+    display: flex;
+    flex-direction: column;
+    z-index: 90;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    scrollbar-gutter: stable;
+  }
+  .application[data-compact-layout='true'] .projects-shell[role='dialog'] {
+    inset: 0 auto 0 0;
+    width: min(360px, calc(100vw - 24px));
+    height: 100dvh;
+    border-radius: 0 18px 18px 0;
+    padding-left: env(safe-area-inset-left);
+  }
+  .application[data-compact-layout='true'] .projects-shell[role='dialog'] .sidebar {
+    position: relative;
+    display: flex;
+    inset: auto;
+    width: 100%;
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
+    box-shadow: none;
+    border: 0;
+  }
+  .projects-shell[role='dialog'] .sidebar > * {
+    flex-shrink: 0;
+  }
+  .projects-shell[role='dialog'] .diagram-list {
+    flex: 1;
+    overflow: visible;
+  }
+  .projects-shell[role='dialog'] .workspace-label {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+  .projects-shell[role='dialog'] .workspace-label b {
+    font-size: 14px;
+  }
+  .projects-shell[role='dialog'] .workspace-label small {
+    font-size: 11px;
+  }
+  .projects-shell[role='dialog'] .workspace-label .local-dot {
+    display: none;
+  }
+  .projects-shell[role='dialog'] .workspace-label button {
+    margin-left: auto;
+    min-height: 44px;
+    min-width: 44px;
+    border: 0;
+  }
+  .projects-shell[role='dialog'] button,
+  .projects-shell[role='dialog'] input,
+  .projects-shell[role='dialog'] select {
+    min-height: 44px;
+    font-size: 14px;
+  }
+  .projects-shell[role='dialog'] input,
+  .projects-shell[role='dialog'] select {
+    font-size: 16px;
+  }
+  .projects-shell[role='dialog'] .list-filters {
+    gap: 10px;
+  }
+  .projects-shell[role='dialog'] .folder-heading {
+    font-size: 12px;
+  }
+  .application[data-compact-layout='true'] .properties-shell[role='dialog'] {
+    inset: 0 0 0 auto;
+    width: min(440px, 100vw);
+    height: 100dvh;
+    border-radius: 18px 0 0 18px;
+    padding-right: env(safe-area-inset-right);
+  }
+  .application[data-compact-layout='true'] .properties-shell[role='dialog'] .properties {
+    display: block;
+    width: 100%;
+    min-height: 100%;
+    padding-bottom: 24px;
+    overflow: visible;
+    border: 0;
+  }
+  .properties-shell[role='dialog'] .panel-heading {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    min-height: 60px;
+    padding: 12px 62px 12px 20px;
+    background: var(--surface);
+    font-size: 14px;
+  }
+  .properties-shell[role='dialog'] .mobile-sheet-close {
+    position: fixed;
+    right: calc(10px + env(safe-area-inset-right));
+    top: calc(8px + env(safe-area-inset-top));
+    z-index: 2;
+    border-radius: 8px;
+  }
+  .properties-shell[role='dialog'] .property-content {
+    padding: 20px;
+  }
+  .properties-shell[role='dialog'] input:not([type='checkbox']):not([type='radio']),
+  .properties-shell[role='dialog'] select,
+  .properties-shell[role='dialog'] textarea {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  .properties-shell[role='dialog'] button {
+    min-height: 44px;
+  }
+  .properties-shell[role='dialog'] .field {
+    font-size: 13px;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .properties-shell[role='dialog'] .field-row {
+    gap: 12px;
+  }
+  .properties-shell[role='dialog'] .check-field {
+    min-height: 44px;
+    font-size: 14px;
+    gap: 12px;
+  }
+  .properties-shell[role='dialog'] input[type='checkbox'],
+  .properties-shell[role='dialog'] input[type='radio'] {
+    width: 18px;
+    height: 18px;
+  }
+  .mobile-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+    background: #10231c73;
+    backdrop-filter: blur(2px);
+  }
+  .application[data-compact-layout='true'] .canvas-statusbar {
+    display: none;
+  }
+  .application[data-compact-layout='true'] .filter-bar {
+    gap: 8px;
+    padding: 8px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+  .application[data-compact-layout='true'] .filter-bar select,
+  .application[data-compact-layout='true'] .filter-bar input {
+    min-height: 44px;
+    font-size: 16px;
+    width: 140px;
+    flex-shrink: 0;
+  }
+  .application[data-compact-layout='true'] .notice {
+    flex-wrap: wrap;
+    max-height: min(140px, 25dvh);
+    overflow-y: auto;
+    padding: 12px;
+    gap: 8px;
+  }
+  .application[data-compact-layout='true'] .notice > span {
+    overflow-wrap: anywhere;
+    font-size: 13px;
+    min-width: 0;
+  }
+  .application[data-compact-layout='true'] .notice button {
+    min-height: 44px;
+  }
+  .application[data-compact-layout='true'] .welcome {
+    min-height: 0;
+    overflow-y: auto;
+    padding: 24px;
+  }
+  .application[data-compact-layout='true'] .welcome button,
+  .application[data-compact-layout='true'] .welcome a {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 480px) {
+  .compact-document-bar .compact-edit-button span,
+  .compact-editor-toolbar .add-node span {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) and (max-height: 500px), (max-width: 1100px) and (max-height: 500px) {
+  .compact-document-bar {
+    height: 48px;
+    min-height: 48px;
+    padding-block: 2px;
+  }
+  .application[data-compact-layout='true'] .welcome h1 {
+    font-size: 25px;
+  }
+  .application[data-compact-layout='true'] .welcome-bottom {
+    display: none;
+  }
+}

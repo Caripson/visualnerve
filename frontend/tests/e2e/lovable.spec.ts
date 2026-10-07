@@ -15,10 +15,10 @@ async function importGraph(page: Page, graph: Graph) {
   await saved(page);
 }
 async function saved(page: Page) {
-  await expect(page.locator('.document-actions .save-status')).toHaveText('Saved');
+  await expect(page.locator('.save-status')).toHaveText('Saved');
 }
 async function openBrief(page: Page, mobile = false) {
-  if (mobile) await page.getByLabel('More tools', { exact: true }).click();
+  if (mobile) await page.getByLabel('Diagram actions', { exact: true }).click();
   await page.getByRole('button', { name: 'Build with Lovable', exact: true }).click();
   return page.getByRole('dialog', { name: 'Build with Lovable', exact: true });
 }

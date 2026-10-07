@@ -5,7 +5,7 @@ async function bounds(page: Page, label: string) {
   await expect(panel).toBeVisible();
   const result = await panel.evaluate((element) => {
     const rect = element.getBoundingClientRect();
-    const toolbar = document.querySelector('.editor-toolbar')!;
+    const toolbar = document.querySelector('.editor-toolbar, .compact-editor-toolbar')!;
     return {
       top: rect.top,
       bottom: rect.bottom,
@@ -80,8 +80,8 @@ test('mobile tools fit the screen, scroll within the popup and retain SELECT dia
     },
   });
   expect(created.status()).toBe(201);
-  await page.getByRole('button', { name: 'More tools', exact: true }).click();
-  const panel = await bounds(page, 'More tools');
+  await page.getByRole('button', { name: 'Diagram actions', exact: true }).click();
+  const panel = await bounds(page, 'Diagram actions');
   await expect(panel.getByRole('button', { name: 'Visualize code', exact: true })).toBeVisible();
   await expect(panel.getByRole('button', { name: 'Refresh source' })).toBeDisabled();
   await panel.getByRole('button', { name: 'Data quality', exact: true }).click();

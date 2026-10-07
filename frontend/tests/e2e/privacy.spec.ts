@@ -68,7 +68,7 @@ async function backup(page: Page) {
   expect(file.suggestedFilename()).toMatch(/^visual-nerve-backup-\d{4}-\d{2}-\d{2}\.json$/);
   const bytes = await buffer(file),
     data = JSON.parse(bytes.toString());
-  expect(data.schemaVersion).toBe(7);
+  expect(data.schemaVersion).toBe(8);
   expect(data.datasets).toEqual([]);
   expect(Number.isFinite(Date.parse(data.exportedAt))).toBe(true);
   expect(
@@ -272,7 +272,7 @@ test('full backup restores after confirmed deletion, and replacement requires it
     ).toBeVisible();
     const empty = await records(page);
     for (const store of ['diagrams', 'nodes', 'edges', 'owners']) expect(empty[store]).toEqual([]);
-    expect(empty.templates).toHaveLength(9);
+    expect(empty.templates).toHaveLength(10);
     expect(empty.templates.every((record) => record.builtin)).toBe(true);
     expect(empty.settings.map((record) => record.key)).toEqual(['workspace-id']);
     await acknowledge(page);
@@ -523,7 +523,7 @@ test('export menu separates one diagram from all data and storage retention deni
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await settings(page);
     await page.getByText('Storage details', { exact: true }).click();
-    await expect(page.getByText('IndexedDB · schema 7', { exact: true })).toBeVisible();
+    await expect(page.getByText('IndexedDB · schema 8', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Ask browser to keep local data', exact: true }).click();
     await expect(
       page.getByRole('status').filter({ hasText: 'did not grant persistent storage' }),

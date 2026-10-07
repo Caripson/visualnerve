@@ -35,7 +35,7 @@ async function stored(page: Page, name: string): Promise<Graph> {
   }, name);
 }
 async function saved(page: Page) {
-  await expect(page.locator('.document-actions .save-status')).toHaveText('Saved');
+  await expect(page.locator('.save-status')).toHaveText('Saved');
 }
 
 test('previews a multi-file source project then saves connected native objects without original source', async ({

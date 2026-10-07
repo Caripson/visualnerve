@@ -1,8 +1,11 @@
 import manifest from './manifest.json';
 import { base, type Graph } from '../model/types';
+import { createSimulationGraph } from '../simulation/document';
+import { remapSimulationModel } from '../simulation/copy';
 const files = import.meta.glob<Graph>('./*.json', { eager: true, import: 'default' });
 export const templates = manifest;
 export function instantiate(key: string, name: string, source?: Graph): Graph {
+  if (key === 'process-simulator' && !source) return createSimulationGraph(name);
   const graph = structuredClone(source ?? files[`./${key}.json`]);
   if (!graph) throw new Error('Unknown template.');
   graph.diagram = { ...graph.diagram, ...base(), name };
@@ -27,6 +30,7 @@ export function instantiate(key: string, name: string, source?: Graph): Graph {
     sourceNodeId: ids.get(e.sourceNodeId)!,
     targetNodeId: ids.get(e.targetNodeId)!,
   }));
+  if (graph.simulation) graph.simulation = remapSimulationModel(graph.simulation, ids, ids);
   if (graph.diagram.type === 'mindmap' && graph.nodes[0]) graph.nodes[0].title = name;
   if (graph.diagram.type === 'timeline') {
     const origin = Date.parse(graph.nodes[0].startDate!);

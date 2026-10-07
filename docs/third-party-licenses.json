@@ -1857,7 +1857,9 @@
     "version": "2.3.3",
     "license": "MIT",
     "scope": "transitive development",
-    "notices": []
+    "notices": [
+      "licenses/fsevents-LICENSE"
+    ]
   },
   {
     "ecosystem": "npm",

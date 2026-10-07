@@ -13,7 +13,7 @@ test('rejects malformed native JSON and MCP patches without saving a broken diag
   await request.post(`/api/v1/diagrams/${diagram.id}/nodes`, { data: { title: 'Still editable' } });
   await page.locator('.diagram-item').filter({ hasText: 'Safe native graph' }).click();
   await expect(page.locator('.canvas-shell')).toContainText('Still editable');
-  await expect(page.locator('.document-actions .save-status')).toHaveText('Saved');
+  await expect(page.locator('.save-status')).toHaveText('Saved');
   const original: Graph = await (await request.get(`/api/v1/diagrams/${diagram.id}`)).json();
   const diagrams = await (await request.get('/api/v1/diagrams')).json();
   const malformed = structuredClone(original);
@@ -71,7 +71,7 @@ for (const outcome of ['resolve', 'reject'] as const)
     ).json();
     await page.locator('.diagram-item').filter({ hasText: 'Clipboard original' }).click();
     await expect(page.locator('.canvas-shell')).toContainText('Copied source');
-    await expect(page.locator('.document-actions .save-status')).toHaveText('Saved');
+    await expect(page.locator('.save-status')).toHaveText('Saved');
     const original: Graph = await (await request.get(`/api/v1/diagrams/${first.id}`)).json();
     await page.locator('.react-flow__node').first().click();
     await page.keyboard.press('Control+c');
@@ -104,7 +104,7 @@ for (const outcome of ['resolve', 'reject'] as const)
       .toBe(true);
     await page.locator('.diagram-item').filter({ hasText: 'Clipboard other' }).click();
     await expect(page.locator('.document-title h1')).toHaveText('Clipboard other');
-    await expect(page.locator('.document-actions .save-status')).toHaveText('Saved');
+    await expect(page.locator('.save-status')).toHaveText('Saved');
     const other: Graph = await (await request.get(`/api/v1/diagrams/${second.id}`)).json();
     await page.evaluate(
       ({ outcome, clip }) => {
@@ -137,7 +137,7 @@ for (const outcome of ['resolve', 'reject'] as const)
     await expect(page.locator('.react-flow__node')).toHaveCount(0);
   });
 
-test('keeps projects and footer actions reachable in a short desktop window', async ({
+test('keeps projects and workspace actions reachable in a short window', async ({
   page,
   request,
 }) => {
@@ -148,16 +148,27 @@ test('keeps projects and footer actions reachable in a short desktop window', as
   const second = await (
     await request.post('/api/v1/diagrams', { data: { name: 'Short window second' } })
   ).json();
-  await page.locator('.diagram-item').filter({ hasText: 'Short window first' }).click();
-  await expect(page.locator('.document-title h1')).toHaveText('Short window first');
+  await page.getByRole('button', { name: 'Open projects', exact: true }).click();
   await page
-    .locator('.sidebar-footer')
+    .getByRole('dialog', { name: 'Projects', exact: true })
+    .locator('.diagram-item')
+    .filter({ hasText: 'Short window first' })
+    .click();
+  await expect(page.locator('.document-title h1')).toHaveText('Short window first');
+  await page.getByRole('button', { name: 'Diagram actions', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: 'Diagram actions menu', exact: true })
     .getByRole('button', { name: 'Settings', exact: true })
     .click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await expect(page.getByRole('dialog')).toContainText('Import file size');
   await page.getByLabel('Close dialog', { exact: true }).click();
-  await page.locator('.diagram-item').filter({ hasText: 'Short window second' }).click();
+  await page.getByRole('button', { name: 'Open projects', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: 'Projects', exact: true })
+    .locator('.diagram-item')
+    .filter({ hasText: 'Short window second' })
+    .click();
   await expect(page.locator('.document-title h1')).toHaveText('Short window second');
   expect((await (await request.get(`/api/v1/diagrams/${first.id}`)).json()).nodes).toHaveLength(0);
   expect((await (await request.get(`/api/v1/diagrams/${second.id}`)).json()).nodes).toHaveLength(0);

@@ -59,8 +59,12 @@ export function projectGraph(
   );
   const exploredIds = exploration ? new Set(exploration.nodeIds) : undefined;
   const exploredEdges = exploration ? new Set(exploration.edgeIds) : undefined;
+  const semanticNodeId = (node: GraphNode) =>
+    typeof node.metadata.simulationLogicalNodeId === 'string'
+      ? node.metadata.simulationLogicalNodeId
+      : node.id;
   const visibleNodes = graph.nodes.filter((node) =>
-    exploredIds ? exploredIds.has(node.id) : getCsvNode(node)?.visible !== false,
+    exploredIds ? exploredIds.has(semanticNodeId(node)) : getCsvNode(node)?.visible !== false,
   );
   const byId = new Map(visibleNodes.map((n) => [n.id, n]));
   const mindmap = graph.diagram.type === 'mindmap';
@@ -108,6 +112,11 @@ export function projectGraph(
   const nodes: CanvasNode[] = [...visibleNodes]
     .sort((a, b) => depth(a) - depth(b))
     .map((n) => {
+      const simulationProjected = n.metadata.simulationProjected === true;
+      const logicalSelectionId =
+        simulationProjected && typeof n.metadata.simulationLogicalNodeId === 'string'
+          ? n.metadata.simulationLogicalNodeId
+          : n.id;
       const geom = timeline?.positions.get(n.id) ?? n;
       const parent = n.parentId ? byId.get(n.parentId) : undefined;
       const grouped = !timeline && parent?.nodeType === 'group';
@@ -119,7 +128,7 @@ export function projectGraph(
         childCount: counts.get(n.id) ?? 0,
         exporting,
         mindmap: topics?.get(n.id),
-        resize,
+        resize: simulationProjected ? undefined : resize,
       };
       const previous = dataCache?.get(n.id);
       if (
@@ -128,7 +137,7 @@ export function projectGraph(
         previous.presentationNumber === data.presentationNumber &&
         previous.childCount === data.childCount &&
         previous.exporting === exporting &&
-        previous.resize === resize &&
+        previous.resize === data.resize &&
         previous.mindmap?.depth === data.mindmap?.depth &&
         previous.mindmap?.color === data.mindmap?.color &&
         previous.mindmap?.side === data.mindmap?.side &&
@@ -156,10 +165,12 @@ export function projectGraph(
           height: geom.height ?? n.height,
           opacity: match ? 1 : 0.2,
         },
-        selected: selected.has(n.id),
+        selected: selected.has(logicalSelectionId),
+        ...(simulationProjected ? { draggable: false, selectable: false, connectable: false } : {}),
         hidden: collapsed(n) || (!match && filters.mode === 'hide'),
         data,
-        ariaLabel: `${n.title}, ${n.nodeType}`,
+        ariaLabel: `${n.title}, ${n.nodeType}${simulationProjected ? '. Open shared process properties' : ''}`,
+        ...(simulationProjected ? { ariaRole: 'button' as const } : {}),
         zIndex: n.nodeType === 'group' ? -1 : 1,
       };
       const cached = renderCache?.nodes.get(n.id);
@@ -189,7 +200,13 @@ export function projectGraph(
     (edge) =>
       byId.has(edge.sourceNodeId) &&
       byId.has(edge.targetNodeId) &&
-      (exploredEdges ? exploredEdges.has(edge.id) : edge.metadata.csvModelVisible !== false),
+      (exploredEdges
+        ? exploredEdges.has(
+            typeof edge.metadata.simulationLogicalEdgeId === 'string'
+              ? edge.metadata.simulationLogicalEdgeId
+              : edge.id,
+          )
+        : edge.metadata.csvModelVisible !== false),
   );
   const represented = new Set(
     visibleEdges.flatMap((e) => [
@@ -242,6 +259,7 @@ export function projectGraph(
             : undefined
         : undefined;
     const imported = importedConnectionStyle(e);
+    const simulationProjected = e.metadata.simulationProjected === true;
     const color = branch ? topics?.get(branch.id)?.color : (imported.color ?? '#8a9694');
     const strokeWidth = branch
       ? topics?.get(branch.id)?.depth === 1
@@ -275,7 +293,7 @@ export function projectGraph(
       type: branch ? 'mindmap-branch' : mindmap ? 'default' : 'smoothstep',
       sourceHandle,
       targetHandle,
-      selected,
+      selected: simulationProjected ? false : selected,
       hidden,
       markerEnd: end ? { type: MarkerType.ArrowClosed, width: 16, height: 16 } : undefined,
       markerStart: start ? { type: MarkerType.ArrowClosed, width: 16, height: 16 } : undefined,
@@ -288,8 +306,8 @@ export function projectGraph(
       labelStyle: { fill: 'var(--text)', fontSize: 11 },
       labelBgStyle: { fill: 'var(--surface)' },
       labelBgPadding: [5, 3] as [number, number],
-      reconnectable: !branch,
-      selectable: !e.id.startsWith('hierarchy:'),
+      reconnectable: !branch && !simulationProjected,
+      selectable: !e.id.startsWith('hierarchy:') && !simulationProjected,
     };
     renderCache?.edges.set(e.id, { source: e, view, presentation });
     return view;

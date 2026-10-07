@@ -44,7 +44,7 @@ func (s *Server) mcp(w http.ResponseWriter, r *http.Request) {
 	response := map[string]any{"jsonrpc": "2.0", "id": request.ID}
 	switch request.Method {
 	case "initialize":
-		response["result"] = map[string]any{"protocolVersion": "2025-06-18", "capabilities": map[string]any{"tools": map[string]any{}, "resources": map[string]any{}}, "serverInfo": map[string]string{"name": "visual-nerve", "version": "0.2.0"}, "instructions": mcpInstructions}
+		response["result"] = map[string]any{"protocolVersion": "2025-06-18", "capabilities": map[string]any{"tools": map[string]any{}, "resources": map[string]any{}}, "serverInfo": map[string]string{"name": "visual-nerve", "version": "0.3.0"}, "instructions": mcpInstructions}
 	case "ping":
 		response["result"] = map[string]any{}
 	case "tools/list":

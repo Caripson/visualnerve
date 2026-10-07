@@ -28,6 +28,8 @@ func TestMCPWorkspaceCommandsRemainBrowserControlled(t *testing.T) {
 	}{
 		{"/spatial-diagrams", `{"name":"Requested 3D diagram","type":"mindmap"}`, `{"diagram":{"id":"diagram-from-browser","version":1,"settings":{"spatialView":{"version":1,"mode":"3d"}}},"nodes":[],"edges":[]}`, 201},
 		{"/diagrams/diagram-from-browser/bulk", `{"baseVersion":1,"upsert":true,"nodes":[{"externalId":"node-1","title":"Object","x":20,"y":40,"width":180,"height":80,"metadata":{"spatial":{"version":1,"position":{"x":1,"y":2,"z":3}}}}],"edges":[]}`, `{"error":"MCP access is Read only"}`, 403},
+		{"/diagrams/diagram-from-browser/simulation/runs", `{"seed":12345,"durationSeconds":86400,"demandMultiplier":1.5,"animated":false}`, `{"id":"run-from-browser","status":"running","diagramId":"diagram-from-browser"}`, 201},
+		{"/diagrams/diagram-from-browser/simulation/resources", `{"baseVersion":1,"value":{"id":"staff","name":"Staff","capacity":-1,"unit":"employee"}}`, `{"error":"Bad capacity","code":"SIMULATION_INVALID_MODEL","issues":[{"path":"resources.staff.capacity","code":"capacity","message":"Bad capacity"}]}`, 422},
 	}
 	for _, test := range tests {
 		t.Run(test.path, func(t *testing.T) {

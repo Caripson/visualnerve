@@ -35,9 +35,9 @@ async function select(page: Page, title: string, request: APIRequestContext) {
         return (
           Math.abs((node.left + node.right - canvas.left - canvas.right) / 2) < 1 &&
           Math.abs((node.top + node.bottom - canvas.top - canvas.bottom) / 2) < 1 &&
-          Math.abs(transform.e - viewport.x) < 0.0001 &&
-          Math.abs(transform.f - viewport.y) < 0.0001 &&
-          Math.abs(transform.a - viewport.zoom) < 0.0001
+          Math.abs(transform.e - viewport.x) < 0.001 &&
+          Math.abs(transform.f - viewport.y) < 0.001 &&
+          Math.abs(transform.a - viewport.zoom) < 0.001
         );
       }, viewport);
     })

@@ -51,6 +51,12 @@ import { remapStoryboard, pruneStoryboard } from '../presentation/storyboard';
 import { remapBuildSpecification } from '../export/build-specification';
 import { remapOverview } from '../overview/copy';
 import { importHistoryBackup } from '../history/backup';
+import { remapSimulationModel } from '../simulation/copy';
+import { reconcileSimulationGraph } from '../simulation/document';
+import { SimulationRunStore } from '../simulation/run-store';
+import { importSimulationRuns } from '../simulation/backup';
+import { simulationCommand, simulationCapabilities } from './simulation-commands';
+import { createSimulationGraph } from '../simulation/document';
 
 export type CommandOptions = AnalysisCommandOptions & {
   /** Recheck external grants after history hashing and before its first write. */
@@ -168,16 +174,20 @@ export class Repository {
     validateGraphFields(input);
     const saved = await this.db.transaction(
       'rw',
-      this.db.diagrams,
-      this.db.nodes,
-      this.db.edges,
-      this.db.owners,
-      this.db.datasets,
+      [
+        this.db.diagrams,
+        this.db.nodes,
+        this.db.edges,
+        this.db.owners,
+        this.db.datasets,
+        this.db.simulationModels,
+      ],
       async () => {
         const old = await this.db.graph(input.diagram.id);
         if (old) requireVersion(old.diagram.version, expectedVersion);
         else if (expectedVersion !== undefined && expectedVersion !== 0)
           throw new StorageError(409, 'This project was deleted by another tab.');
+        input = reconcileSimulationGraph(old, input);
         // Apply API/graph-replacement 2D moves in the same transaction as their 3D placement.
         // Editor commands that already updated both positions are unchanged by this helper.
         if (old && !canonicalPositions) input = syncSpatialPositions(old, input);
@@ -271,6 +281,13 @@ export class Repository {
           [...registry.values()].filter((owner) => !owners.some((old) => old.id === owner.id)),
         );
         await this.db.diagrams.put(graph.diagram);
+        if (graph.simulation)
+          await this.db.simulationModels.put({
+            diagramId: graph.diagram.id,
+            diagramVersion: graph.diagram.version,
+            model: graph.simulation,
+          });
+        else await this.db.simulationModels.delete(graph.diagram.id);
         const sourceIds = new Set(stamped.map((source) => source.id));
         await this.db.datasets.bulkDelete(
           [...oldSources.keys()].filter((id) => !sourceIds.has(id)),
@@ -286,13 +303,24 @@ export class Repository {
   async removeDiagram(id: string) {
     await this.db.transaction(
       'rw',
-      [this.db.diagrams, this.db.nodes, this.db.edges, this.db.datasets, ...historyTables(this.db)],
+      [
+        this.db.diagrams,
+        this.db.nodes,
+        this.db.edges,
+        this.db.datasets,
+        this.db.simulationModels,
+        this.db.simulationRuns,
+        this.db.simulationCheckpoints,
+        ...historyTables(this.db),
+      ],
       async () => {
         this.db.forgetDatasets();
         await this.db.nodes.where('diagramId').equals(id).delete();
         await this.db.edges.where('diagramId').equals(id).delete();
         await this.db.diagrams.delete(id);
         await this.db.datasets.where('diagramId').equals(id).delete();
+        await this.db.simulationModels.delete(id);
+        await new SimulationRunStore(this.db).deleteDiagram(id);
         await this.history.removeDiagram(id);
       },
     );
@@ -300,11 +328,14 @@ export class Repository {
   async importGraph(source: Graph): Promise<Graph> {
     const imported = await this.db.transaction(
       'rw',
-      this.db.diagrams,
-      this.db.nodes,
-      this.db.edges,
-      this.db.owners,
-      this.db.datasets,
+      [
+        this.db.diagrams,
+        this.db.nodes,
+        this.db.edges,
+        this.db.owners,
+        this.db.datasets,
+        this.db.simulationModels,
+      ],
       async () => {
         const graph = structuredClone(source);
         validateGraph(graph);
@@ -370,6 +401,8 @@ export class Repository {
         Object.assign(graph, remapStoryboard(graph, nodeIds, edgeIds));
         Object.assign(graph, remapBuildSpecification(graph, nodeIds, edgeIds, sourceIds));
         Object.assign(graph, remapOverview(graph, source, nodeIds));
+        if (graph.simulation)
+          graph.simulation = remapSimulationModel(graph.simulation, nodeIds, edgeIds);
         if (graph.diagram.settings.csvSuppressedRelationshipEdges)
           graph.diagram.settings.csvSuppressedRelationshipEdges =
             graph.diagram.settings.csvSuppressedRelationshipEdges.map((id) =>
@@ -401,7 +434,12 @@ export class Repository {
         backup.settings,
         backup.templates,
       ].every(Array.isArray) ||
-      (backup.datasets !== undefined && !Array.isArray(backup.datasets))
+      (backup.datasets !== undefined && !Array.isArray(backup.datasets)) ||
+      ['simulationModels', 'simulationRuns', 'simulationCheckpoints'].some(
+        (key) =>
+          backup[key as keyof WorkspaceBackup] !== undefined &&
+          !Array.isArray(backup[key as keyof WorkspaceBackup]),
+      )
     )
       throw new StorageError(422, 'Invalid workspace backup.');
     const restored = await this.db.transaction('rw', this.db.tables, async () => {
@@ -413,6 +451,7 @@ export class Repository {
       }
       const diagrams = new Set(backup.diagrams.map((diagram) => diagram.id));
       const datasets = backup.datasets ?? [];
+      const simulationModels = backup.simulationModels ?? [];
       if (
         diagrams.size !== backup.diagrams.length ||
         backup.nodes.some((node) => !diagrams.has(node.diagramId)) ||
@@ -423,7 +462,15 @@ export class Repository {
         datasets.some(
           (dataset) => !dataset || typeof dataset !== 'object' || !diagrams.has(dataset.diagramId),
         ) ||
-        new Set(datasets.map((dataset) => dataset.id)).size !== datasets.length
+        new Set(datasets.map((dataset) => dataset.id)).size !== datasets.length ||
+        simulationModels.some(
+          (record) =>
+            !record ||
+            !diagrams.has(record.diagramId) ||
+            !Number.isSafeInteger(record.diagramVersion) ||
+            record.diagramVersion < 1,
+        ) ||
+        new Set(simulationModels.map((record) => record.diagramId)).size !== simulationModels.length
       )
         throw new StorageError(422, 'Invalid or duplicate workspace references.');
       const ownerIds = new Map<string, string>();
@@ -483,6 +530,12 @@ export class Repository {
             order?.edges,
           ),
           owners,
+          ...(simulationModels.find((record) => record.diagramId === diagram.id)?.model
+            ? {
+                simulation: simulationModels.find((record) => record.diagramId === diagram.id)!
+                  .model,
+              }
+            : {}),
           ...(dataset ? { dataset } : {}),
           ...(additional.length ? { datasets: additional } : {}),
         };
@@ -491,6 +544,7 @@ export class Repository {
         historyMappings.push({ sourceGraph, importedGraph });
       }
       await importHistoryBackup(this.db, backup.history, datasets, historyMappings, ownerIds);
+      await importSimulationRuns(this.db, backup, historyMappings);
       for (const template of backup.templates) {
         if (typeof template.id !== 'string' || !template.id || typeof template.name !== 'string')
           throw new StorageError(422, 'Invalid template.');
@@ -627,6 +681,12 @@ export class Repository {
       [collection, id, action] = parts;
     const read = method === 'GET',
       remove = method === 'DELETE';
+    if (collection === 'simulation') {
+      if (parts.length !== 2 || id !== 'capabilities' || url.search || url.hash)
+        throw new StorageError(404, 'Unknown simulation discovery endpoint.');
+      if (!read) throw new StorageError(405, 'Simulation capabilities require GET.');
+      return structuredClone(simulationCapabilities) as T;
+    }
     if (method === 'POST' && ['diagram-files', 'sql', 'code', 'import'].includes(collection)) {
       const setting = await this.db.settings.get(IMPORT_LIMIT_SETTING);
       options = { ...options, byteLimit: importLimitMb(setting?.value) * 1024 * 1024 };
@@ -672,7 +732,7 @@ export class Repository {
       return (await this.saveGraph(graph, 0)) as T;
     }
     if (collection === 'health')
-      return { status: 'ok', storage: 'indexeddb', version: '0.2.0' } as T;
+      return { status: 'ok', storage: 'indexeddb', version: '0.3.0' } as T;
     if (collection === 'search' && read)
       return (await this.search(url.searchParams.get('q') ?? '')) as T;
     if (collection === 'settings') {
@@ -762,6 +822,16 @@ export class Repository {
       return (data.format === 'markdown' ? markdown(graph) : graph) as T;
     }
     if (collection === 'diagrams') {
+      if (id && action === 'simulation')
+        return (await simulationCommand(
+          this,
+          id,
+          parts,
+          url,
+          method,
+          payload,
+          options.beforeHistoryWrite,
+        )) as T;
       if (id && understandingActions.includes(action))
         return (await understandingCommand(
           this,
@@ -773,9 +843,18 @@ export class Repository {
           options.beforeHistoryWrite,
         )) as T;
       if (!id) {
-        if (read) return (await this.db.diagrams.orderBy('updatedAt').reverse().toArray()) as T;
+        if (read) {
+          const diagrams = await this.db.diagrams.orderBy('updatedAt').reverse().toArray();
+          const type = url.searchParams.get('type');
+          if (type !== null && !diagramTypes.includes(type as Diagram['type']))
+            throw new StorageError(422, 'Choose a supported diagram type.');
+          return (type ? diagrams.filter((diagram) => diagram.type === type) : diagrams) as T;
+        }
         const data = object(payload),
-          graph = blankGraph(data.name as string, (data.type ?? 'blank') as Diagram['type']);
+          graph =
+            data.type === 'process-simulator'
+              ? createSimulationGraph(data.name as string)
+              : blankGraph(data.name as string, (data.type ?? 'blank') as Diagram['type']);
         graph.diagram = { ...graph.diagram, ...data } as Diagram;
         return (await this.saveGraph(graph, 0)).diagram as T;
       }
@@ -796,11 +875,14 @@ export class Repository {
           );
         return await this.db.transaction(
           'rw',
-          this.db.diagrams,
-          this.db.nodes,
-          this.db.edges,
-          this.db.owners,
-          this.db.datasets,
+          [
+            this.db.diagrams,
+            this.db.nodes,
+            this.db.edges,
+            this.db.owners,
+            this.db.datasets,
+            this.db.simulationModels,
+          ],
           async () => {
             const graph = await this.getGraph(id);
             validatePresentation(data.presentation, graph);
@@ -829,11 +911,14 @@ export class Repository {
       if (action === 'bulk') return (await this.bulk(id, object(payload))) as T;
       return await this.db.transaction(
         'rw',
-        this.db.diagrams,
-        this.db.nodes,
-        this.db.edges,
-        this.db.owners,
-        this.db.datasets,
+        [
+          this.db.diagrams,
+          this.db.nodes,
+          this.db.edges,
+          this.db.owners,
+          this.db.datasets,
+          this.db.simulationModels,
+        ],
         async () => {
           const graph = await this.getGraph(id),
             data = object(payload),
@@ -874,11 +959,14 @@ export class Repository {
       if (read) return entity as T;
       return await this.db.transaction(
         'rw',
-        this.db.diagrams,
-        this.db.nodes,
-        this.db.edges,
-        this.db.owners,
-        this.db.datasets,
+        [
+          this.db.diagrams,
+          this.db.nodes,
+          this.db.edges,
+          this.db.owners,
+          this.db.datasets,
+          this.db.simulationModels,
+        ],
         async () => {
           const graph = await this.getGraph(entity.diagramId),
             version = graph.diagram.version;
@@ -962,11 +1050,14 @@ export class Repository {
   async bulk(id: string, data: Patch): Promise<Graph> {
     const saved = await this.db.transaction(
       'rw',
-      this.db.diagrams,
-      this.db.nodes,
-      this.db.edges,
-      this.db.owners,
-      this.db.datasets,
+      [
+        this.db.diagrams,
+        this.db.nodes,
+        this.db.edges,
+        this.db.owners,
+        this.db.datasets,
+        this.db.simulationModels,
+      ],
       async () => {
         const graph = await this.getGraph(id),
           version = graph.diagram.version;

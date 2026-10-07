@@ -13,9 +13,19 @@ export function bridgeResponseStatus(path: string, method: string): number {
   return method === 'DELETE' && path.replace(/^\/api\/v1/, '') !== '/presentation/video'
     ? 204
     : method === 'POST' &&
-        /\/(spatial-diagrams|diagrams|nodes|edges|owners|children|import)$/.test(path)
+        /\/(spatial-diagrams|diagrams|nodes|edges|owners|children|import|particle-types|resources|improvements|scenarios|runs)$/.test(
+          path,
+        )
       ? 201
       : 200;
+}
+export function bridgeError(error: unknown) {
+  const details = error as { message?: string; code?: string; issues?: unknown };
+  return {
+    error: details?.message ?? 'The command failed.',
+    ...(typeof details?.code === 'string' ? { code: details.code } : {}),
+    ...(Array.isArray(details?.issues) ? { issues: details.issues } : {}),
+  };
 }
 class Bridge {
   private socket?: WebSocket;
@@ -85,7 +95,7 @@ class Bridge {
               JSON.stringify({
                 id: command.id,
                 status: error instanceof StorageError ? error.status : 422,
-                body: { error: (error as Error).message },
+                body: bridgeError(error),
               }),
             );
         }

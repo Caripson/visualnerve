@@ -86,9 +86,12 @@ type Graph struct {
 	Nodes         []Node  `json:"nodes"`
 	Edges         []Edge  `json:"edges"`
 	Owners        []Owner `json:"owners"`
+	// Process semantics are validated by the authoritative browser model. The
+	// bridge forwards this optional document payload without a second engine.
+	Simulation Meta `json:"simulation,omitempty"`
 }
 
-var DiagramTypes = []string{"blank", "mindmap", "flowchart", "timeline", "process", "dependency", "responsibility", "freeform"}
+var DiagramTypes = []string{"blank", "mindmap", "flowchart", "timeline", "process", "dependency", "responsibility", "freeform", "process-simulator"}
 var NodeTypes = []string{"generic", "process", "decision", "start", "end", "milestone", "timeline", "person", "team", "system", "external", "input", "output", "document", "database", "note", "group"}
 var uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89aAbB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$`)
 

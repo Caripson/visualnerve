@@ -8,6 +8,7 @@ import {
   CircleCheck,
   RotateCcw,
 } from 'lucide-react';
+import { useLayoutEffect, useRef } from 'react';
 import { useEditor } from '../state/editor';
 import { colorPalette } from './colors';
 import { IconPicker, iconKey, withIcon } from './icons';
@@ -17,6 +18,24 @@ export function SelectionTools() {
   const graph = useEditor((state) => state.graph);
   const nodes = useEditor((state) => state.selectedNodes);
   const edges = useEditor((state) => state.selectedEdges);
+  const tools = useRef<HTMLDivElement>(null);
+  const visible = !!graph && (nodes.length > 0 || edges.length > 0);
+  useLayoutEffect(() => {
+    if (!visible) return;
+    const toolbar = tools.current?.closest<HTMLElement>('.context-toolbar');
+    const canvas = tools.current?.closest<HTMLElement>('.canvas-shell');
+    if (!toolbar || !canvas) return;
+    const measure = () => {
+      canvas.style.setProperty('--selection-toolbar-height', `${toolbar.offsetHeight}px`);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(toolbar);
+    return () => {
+      observer.disconnect();
+      canvas.style.removeProperty('--selection-toolbar-height');
+    };
+  }, [visible]);
   if (!graph || (!nodes.length && !edges.length)) return null;
   const selected = new Set(nodes);
   const objects = graph.nodes.filter((node) => selected.has(node.id));
@@ -40,7 +59,7 @@ export function SelectionTools() {
       nodes: g.nodes.map((node) => (selected.has(node.id) ? { ...node, status: value } : node)),
     }));
   return (
-    <div className="selection-tools" aria-label="Selection actions">
+    <div ref={tools} className="selection-tools" aria-label="Selection actions">
       <button
         aria-label="Edit selected item"
         title="Edit item"

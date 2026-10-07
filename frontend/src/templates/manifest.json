@@ -48,6 +48,12 @@
     "nodes": 5
   },
   {
+    "key": "process-simulator",
+    "name": "Process Simulator",
+    "type": "process-simulator",
+    "nodes": 8
+  },
+  {
     "key": "system-architecture",
     "name": "System Architecture",
     "type": "dependency",

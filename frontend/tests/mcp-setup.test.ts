@@ -20,6 +20,9 @@ it('keeps the production domain in website/docs/origin roles and exposes 3D via 
   expect(note).toContain('visual_nerve_api_docs');
   expect(note).toContain('POST /spatial-diagrams');
   expect(note).toContain('readable 2D layout');
+  expect(note).toContain('visualCapacity');
+  expect(note).toContain('Counter 1/2/3');
+  expect(note).toContain('not separate persistent process nodes');
 });
 
 it.each([

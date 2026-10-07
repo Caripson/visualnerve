@@ -7,12 +7,14 @@ export function Modal({
   children,
   wide = false,
   dismissible = true,
+  className = '',
 }: {
   title: string;
   close: () => void;
   children: ReactNode;
   wide?: boolean;
   dismissible?: boolean;
+  className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const options = useRef({ close, dismissible });
@@ -21,11 +23,37 @@ export function Modal({
     const previous = document.activeElement as HTMLElement;
     const focusable = () =>
       Array.from(
-        ref.current?.querySelectorAll<HTMLElement>('button,input,select,textarea,a[href]') ?? [],
-      ).filter(
-        (element) =>
-          !element.matches(':disabled') && !element.closest('[hidden], [aria-hidden="true"]'),
-      );
+        ref.current?.querySelectorAll<HTMLElement>(
+          'button,input,select,textarea,a[href],summary,[tabindex]',
+        ) ?? [],
+      ).filter((element) => {
+        if (
+          element.tabIndex < 0 ||
+          element.matches(':disabled') ||
+          element.closest('[hidden], [aria-hidden="true"], [inert]')
+        )
+          return false;
+        for (
+          let parent: HTMLElement | null = element;
+          parent && parent !== ref.current;
+          parent = parent.parentElement
+        ) {
+          const style = getComputedStyle(parent);
+          if (
+            style.display === 'none' ||
+            style.visibility === 'hidden' ||
+            style.visibility === 'collapse'
+          )
+            return false;
+          if (
+            parent instanceof HTMLDetailsElement &&
+            !parent.open &&
+            !parent.querySelector(':scope > summary')?.contains(element)
+          )
+            return false;
+        }
+        return true;
+      });
     (focusable()[0] ?? ref.current)?.focus();
     const listener = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -34,13 +62,23 @@ export function Modal({
       }
       if (e.key === 'Tab') {
         const all = focusable();
-        if (!all?.length) return;
+        if (!all.length) {
+          e.preventDefault();
+          ref.current?.focus();
+          return;
+        }
         const first = all[0],
           last = all[all.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
+        if (
+          e.shiftKey &&
+          (document.activeElement === first || !ref.current?.contains(document.activeElement))
+        ) {
           e.preventDefault();
           last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
+        } else if (
+          !e.shiftKey &&
+          (document.activeElement === last || !ref.current?.contains(document.activeElement))
+        ) {
           e.preventDefault();
           first.focus();
         }
@@ -59,7 +97,7 @@ export function Modal({
     >
       <div
         ref={ref}
-        className={`modal ${wide ? 'modal-wide' : ''}`}
+        className={`modal ${wide ? 'modal-wide' : ''} ${className}`}
         role="dialog"
         aria-modal="true"
         aria-label={title}

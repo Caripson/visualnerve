@@ -18,6 +18,11 @@ import type {
   HistorySource,
 } from '../history/types';
 import { exportHistoryBackup } from '../history/backup';
+import type {
+  SimulationModelRecord,
+  SimulationRunRecord,
+  SimulationCheckpointRecord,
+} from '../simulation/storage';
 export interface Setting {
   key: string;
   value: unknown;
@@ -41,6 +46,9 @@ export interface WorkspaceBackup {
   templates: TemplateRecord[];
   datasets?: CsvDataset[];
   history?: HistoryBackup;
+  simulationModels?: SimulationModelRecord[];
+  simulationRuns?: SimulationRunRecord[];
+  simulationCheckpoints?: SimulationCheckpointRecord[];
 }
 
 export class WorkspaceDatabase extends Dexie {
@@ -61,6 +69,9 @@ export class WorkspaceDatabase extends Dexie {
   historyContents!: EntityTable<HistoryContent, 'id'>;
   historySources!: EntityTable<HistorySource, 'id'>;
   historyRows!: EntityTable<HistoryRows, 'id'>;
+  simulationModels!: EntityTable<SimulationModelRecord, 'diagramId'>;
+  simulationRuns!: EntityTable<SimulationRunRecord, 'id'>;
+  simulationCheckpoints!: EntityTable<SimulationCheckpointRecord, 'id'>;
   constructor(name = 'visual-nerve-cache') {
     // Retain the historical database name to upgrade existing browser data in place.
     super(name);
@@ -117,6 +128,12 @@ export class WorkspaceDatabase extends Dexie {
       historyContents: 'id,diagramId,bytes',
       historySources: 'id,diagramId,&[diagramId+datasetId+datasetVersion],rowId,bytes',
       historyRows: 'id,diagramId,bytes',
+    });
+    // Additive upgrade: ordinary documents retain their original records and types.
+    this.version(8).stores({
+      simulationModels: 'diagramId,diagramVersion',
+      simulationRuns: 'id,diagramId,createdAt,status',
+      simulationCheckpoints: 'id,runId,diagramId,[runId+timeSeconds]',
     });
     this.on(
       'ready',
@@ -185,11 +202,7 @@ export class WorkspaceDatabase extends Dexie {
   async graph(id: string): Promise<Graph | undefined> {
     const graph = await this.transaction(
       'r',
-      this.diagrams,
-      this.nodes,
-      this.edges,
-      this.owners,
-      this.datasets,
+      [this.diagrams, this.nodes, this.edges, this.owners, this.datasets, this.simulationModels],
       async () => {
         const diagram = await this.diagrams.get(id);
         if (!diagram) return;
@@ -219,6 +232,7 @@ export class WorkspaceDatabase extends Dexie {
             : await this.datasets.where('diagramId').equals(id).toArray();
         sort(datasets, diagram.settings.csvDatasetOrder);
         const [dataset, ...additional] = datasets;
+        const simulation = (await this.simulationModels.get(id))?.model;
         const graph: Graph = {
           format: 'visual-nerve',
           formatVersion: 1,
@@ -226,6 +240,7 @@ export class WorkspaceDatabase extends Dexie {
           nodes: sort(nodes, order.nodes),
           edges: sort(edges, order.edges),
           owners,
+          ...(simulation ? { simulation } : {}),
           ...(dataset ? { dataset } : {}),
           ...(additional.length ? { datasets: additional } : {}),
         };
@@ -267,6 +282,9 @@ export class WorkspaceDatabase extends Dexie {
         ),
         templates: await this.templates.toArray(),
         datasets,
+        simulationModels: await this.simulationModels.toArray(),
+        simulationRuns: await this.simulationRuns.toArray(),
+        simulationCheckpoints: await this.simulationCheckpoints.toArray(),
         ...(history ? { history } : {}),
       };
     });

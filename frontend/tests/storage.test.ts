@@ -48,6 +48,9 @@ describe('authoritative IndexedDB repository', () => {
       'nodes',
       'owners',
       'settings',
+      'simulationCheckpoints',
+      'simulationModels',
+      'simulationRuns',
       'templates',
     ]);
     const templates = await db.templates.toArray();
@@ -328,7 +331,7 @@ describe('authoritative IndexedDB repository', () => {
       { key: 'privacy-acknowledged', value: true },
     ]);
     const backup = await db.backup();
-    expect(backup.schemaVersion).toBe(7);
+    expect(backup.schemaVersion).toBe(8);
     expect(Number.isFinite(Date.parse(backup.exportedAt!))).toBe(true);
     expect(backup.settings).toEqual([{ key: 'theme', value: 'dark' }]);
   });
@@ -366,7 +369,7 @@ describe('authoritative IndexedDB repository', () => {
     expect(await db.edges.count()).toBe(0);
     expect(await db.owners.count()).toBe(0);
     expect((await db.settings.toArray()).map((setting) => setting.key)).toEqual(['workspace-id']);
-    expect(await db.templates.count()).toBe(9);
+    expect(await db.templates.count()).toBe(10);
     expect(await db.templates.get('custom')).toBeUndefined();
   });
   it('upgrades version 3 without graph loss and requires new explicit MCP permission', async () => {

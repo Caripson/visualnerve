@@ -2,8 +2,8 @@ import { expect, it } from 'vitest';
 import { instantiate, templates } from '../src/templates/templates';
 import { nodeTypes } from '../src/nodes/registry';
 import { nodeKinds } from '../src/model/types';
-it('provides all nine normal canonical templates and fresh identities', () => {
-  expect(templates).toHaveLength(9);
+it('provides all ten normal canonical templates and fresh identities', () => {
+  expect(templates).toHaveLength(10);
   for (const template of templates) {
     const first = instantiate(template.key, 'A'),
       second = instantiate(template.key, 'B');

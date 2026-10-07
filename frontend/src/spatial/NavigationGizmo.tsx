@@ -3,6 +3,7 @@ import type { CSSProperties, KeyboardEvent, PointerEvent } from 'react';
 import type { SpatialCamera, SpatialPoint } from './types';
 import type { SpatialNavigationMode, SpatialNavigationAxis } from './navigation';
 import './navigation-gizmo.css';
+import { useCompactLayout } from '../hooks/useCompactLayout';
 
 export type { SpatialNavigationMode, SpatialNavigationAxis } from './navigation';
 export interface SpatialNavigationDelta {
@@ -139,6 +140,8 @@ export function NavigationGizmo({
   onGestureEnd,
 }: NavigationGizmoProps) {
   const [mode, setMode] = useState<SpatialNavigationMode>('rotate');
+  const compact = useCompactLayout();
+  const [expanded, setExpanded] = useState(false);
   const [activeAxis, setActiveAxis] = useState<SpatialNavigationAxis | null>(null);
   const instructionsId = useId();
   const drag = useRef<{
@@ -234,111 +237,132 @@ export function NavigationGizmo({
       data-mode={mode}
       aria-label="3D view controls"
       aria-disabled={disabled}
+      data-compact={compact}
+      data-expanded={expanded}
     >
-      <div className="spatial-gizmo-modes" role="toolbar" aria-label="3D control mode">
-        {(['move', 'rotate', 'scale'] as const).map((item) => (
-          <button
-            key={item}
-            type="button"
-            aria-label={`${item[0].toUpperCase()}${item.slice(1)} view`}
-            aria-pressed={mode === item}
-            disabled={disabled}
-            onClick={() => {
-              finish();
-              setMode(item);
-            }}
-          >
-            <ModeIcon mode={item} />
-            <span>
-              {item[0].toUpperCase()}
-              {item.slice(1)}
-            </span>
-          </button>
-        ))}
-      </div>
-      <svg
-        className="spatial-gizmo-space"
-        viewBox="0 0 156 126"
-        aria-label={`${mode[0].toUpperCase()}${mode.slice(1)} view handles`}
-      >
-        <path className="spatial-gizmo-ground" d="M78 89 32 68 78 47 124 68Z" />
-        {axes.map((axis, index) => {
-          const point =
-            mode === 'rotate'
-              ? project(circlePoint(axis, [Math.PI / 4, Math.PI / 4, (Math.PI * 5) / 4][index]))
-              : project(axisVectors[axis]);
-          const path =
-            mode === 'rotate'
-              ? Array.from({ length: 65 }, (_, i) => {
-                  const p = project(circlePoint(axis, (i * Math.PI) / 32));
-                  return `${i ? 'L' : 'M'}${p.x.toFixed(2)} ${p.y.toFixed(2)}`;
-                }).join(' ')
-              : `M${center.x} ${center.y}L${point.x} ${point.y}`;
-          const arrowAngle = (Math.atan2(point.y - center.y, point.x - center.x) * 180) / Math.PI;
-          return (
-            <g
-              key={axis}
-              {...events(axis)}
-              style={{ '--gizmo-axis': colors[axis] } as CSSProperties}
-            >
-              <path className="spatial-gizmo-axis" d={path} />
-              {mode === 'scale' ? (
-                <rect
-                  className="spatial-gizmo-marker"
-                  x={point.x - 5}
-                  y={point.y - 5}
-                  width="10"
-                  height="10"
-                  rx="1.5"
-                />
-              ) : mode === 'move' && Math.hypot(point.x - center.x, point.y - center.y) > 8 ? (
-                <path
-                  className="spatial-gizmo-marker"
-                  d="M-6-5 5 0-6 5Z"
-                  transform={`translate(${point.x} ${point.y}) rotate(${arrowAngle})`}
-                />
-              ) : (
-                <circle className="spatial-gizmo-marker" cx={point.x} cy={point.y} r="5" />
-              )}
-              <text
-                x={point.x + (point.x > center.x + 10 ? 12 : -12)}
-                y={point.y + (point.y > center.y + 10 ? 14 : -9)}
+      {compact && (
+        <button
+          className="spatial-gizmo-toggle"
+          aria-label={expanded ? 'Hide 3D handles' : 'Show 3D handles'}
+          aria-expanded={expanded}
+          onClick={() => {
+            finish();
+            setExpanded(!expanded);
+          }}
+        >
+          <ModeIcon mode={mode} />
+          {expanded ? 'Close' : 'Handles'}
+        </button>
+      )}
+      {(!compact || expanded) && (
+        <>
+          <div className="spatial-gizmo-modes" role="toolbar" aria-label="3D control mode">
+            {(['move', 'rotate', 'scale'] as const).map((item) => (
+              <button
+                key={item}
+                type="button"
+                aria-label={`${item[0].toUpperCase()}${item.slice(1)} view`}
+                aria-pressed={mode === item}
+                disabled={disabled}
+                onClick={() => {
+                  finish();
+                  setMode(item);
+                }}
               >
-                {axis.toUpperCase()}
-              </text>
+                <ModeIcon mode={item} />
+                <span>
+                  {item[0].toUpperCase()}
+                  {item.slice(1)}
+                </span>
+              </button>
+            ))}
+          </div>
+          <svg
+            className="spatial-gizmo-space"
+            viewBox="0 0 156 126"
+            aria-label={`${mode[0].toUpperCase()}${mode.slice(1)} view handles`}
+          >
+            <path className="spatial-gizmo-ground" d="M78 89 32 68 78 47 124 68Z" />
+            {axes.map((axis, index) => {
+              const point =
+                mode === 'rotate'
+                  ? project(circlePoint(axis, [Math.PI / 4, Math.PI / 4, (Math.PI * 5) / 4][index]))
+                  : project(axisVectors[axis]);
+              const path =
+                mode === 'rotate'
+                  ? Array.from({ length: 65 }, (_, i) => {
+                      const p = project(circlePoint(axis, (i * Math.PI) / 32));
+                      return `${i ? 'L' : 'M'}${p.x.toFixed(2)} ${p.y.toFixed(2)}`;
+                    }).join(' ')
+                  : `M${center.x} ${center.y}L${point.x} ${point.y}`;
+              const arrowAngle =
+                (Math.atan2(point.y - center.y, point.x - center.x) * 180) / Math.PI;
+              return (
+                <g
+                  key={axis}
+                  {...events(axis)}
+                  style={{ '--gizmo-axis': colors[axis] } as CSSProperties}
+                >
+                  <path className="spatial-gizmo-axis" d={path} />
+                  {mode === 'scale' ? (
+                    <rect
+                      className="spatial-gizmo-marker"
+                      x={point.x - 5}
+                      y={point.y - 5}
+                      width="10"
+                      height="10"
+                      rx="1.5"
+                    />
+                  ) : mode === 'move' && Math.hypot(point.x - center.x, point.y - center.y) > 8 ? (
+                    <path
+                      className="spatial-gizmo-marker"
+                      d="M-6-5 5 0-6 5Z"
+                      transform={`translate(${point.x} ${point.y}) rotate(${arrowAngle})`}
+                    />
+                  ) : (
+                    <circle className="spatial-gizmo-marker" cx={point.x} cy={point.y} r="5" />
+                  )}
+                  <text
+                    x={point.x + (point.x > center.x + 10 ? 12 : -12)}
+                    y={point.y + (point.y > center.y + 10 ? 14 : -9)}
+                  >
+                    {axis.toUpperCase()}
+                  </text>
+                  <circle
+                    className="spatial-gizmo-hit"
+                    data-testid={`spatial-gizmo-grab-${axis}`}
+                    cx={point.x}
+                    cy={point.y}
+                    r="12"
+                  />
+                </g>
+              );
+            })}
+            <g
+              {...events('free')}
+              className={`spatial-gizmo-control spatial-gizmo-free${activeAxis === 'free' ? ' is-active' : ''}`}
+            >
+              <circle className="spatial-gizmo-free-disc" cx="134" cy="106" r="12" />
+              <path d="M129 106h10m-5-5v10" />
               <circle
                 className="spatial-gizmo-hit"
-                data-testid={`spatial-gizmo-grab-${axis}`}
-                cx={point.x}
-                cy={point.y}
-                r="12"
+                data-testid="spatial-gizmo-grab-free"
+                cx="134"
+                cy="106"
+                r="13"
               />
             </g>
-          );
-        })}
-        <g
-          {...events('free')}
-          className={`spatial-gizmo-control spatial-gizmo-free${activeAxis === 'free' ? ' is-active' : ''}`}
-        >
-          <circle className="spatial-gizmo-free-disc" cx="134" cy="106" r="12" />
-          <path d="M129 106h10m-5-5v10" />
-          <circle
-            className="spatial-gizmo-hit"
-            data-testid="spatial-gizmo-grab-free"
-            cx="134"
-            cy="106"
-            r="13"
-          />
-        </g>
-      </svg>
-      <p id={instructionsId}>
-        {mode === 'move'
-          ? 'Drag axes to pan the view'
-          : mode === 'rotate'
-            ? 'Drag rings to rotate the view'
-            : 'Drag to zoom the view'}
-        <span>Arrow keys fine-tune · Shift speeds up</span>
-      </p>
+          </svg>
+          <p id={instructionsId}>
+            {mode === 'move'
+              ? 'Drag axes to pan the view'
+              : mode === 'rotate'
+                ? 'Drag rings to rotate the view'
+                : 'Drag to zoom the view'}
+            <span>Arrow keys fine-tune · Shift speeds up</span>
+          </p>
+        </>
+      )}
     </div>
   );
 }

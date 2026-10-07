@@ -22,7 +22,7 @@ test.use({
 });
 
 async function saved(page: Page) {
-  await expect(page.locator('.document-actions .save-status')).toHaveText('Saved');
+  await expect(page.locator('.save-status')).toHaveText('Saved');
 }
 async function stored(request: APIRequestContext, id: string): Promise<Graph> {
   return (await request.get(`/api/v1/diagrams/${id}`)).json();
@@ -891,7 +891,7 @@ test.describe('phone without WebGL', () => {
       } as typeof original;
     });
     await page.reload();
-    await page.getByLabel('More tools', { exact: true }).click();
+    await page.getByLabel('Diagram actions', { exact: true }).click();
     await page.getByRole('button', { name: 'New 3D truck lifecycle example', exact: true }).click();
     await expect(page.getByTestId('spatial-view')).toHaveAttribute('data-renderer', 'unavailable');
     const button = page.locator('.spatial-return');

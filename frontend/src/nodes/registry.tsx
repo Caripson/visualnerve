@@ -39,6 +39,7 @@ import { NodeStatus } from '../ui/NodeStatus';
 import { SqlTableSummary } from '../components/SqlTableSummary';
 import { CodeSummary } from '../components/CodeSummary';
 import { SqlQuerySummary } from '../components/SqlQuerySummary';
+import { SimulationNodeSummary } from '../simulation/NodeSummary';
 
 export const nodeRegistry: Record<NodeKind, { label: string; icon: LucideIcon; shape: string }> = {
   generic: { label: 'Generic', icon: Box, shape: 'box' },
@@ -64,6 +65,7 @@ function renderer(kind: NodeKind) {
   const Icon = config.icon;
   const Component = memo(({ id, data, selected }: NodeProps<CanvasNode>) => {
     const { node, owners, exporting } = data;
+    const projected = node.metadata.simulationProjected === true;
     const smallZoom = useStore((state) => state.transform[2] < 0.2);
     const overview = smallZoom && !exporting && !selected;
     const updateNode = useEditor((s) => s.updateNode);
@@ -75,6 +77,17 @@ function renderer(kind: NodeKind) {
         data-testid="graph-node"
         data-node-id={id}
         data-node-status={node.status || undefined}
+        data-simulation-projected={projected || undefined}
+        data-capacity-unit={
+          typeof node.metadata.simulationCapacityUnit === 'number'
+            ? node.metadata.simulationCapacityUnit
+            : undefined
+        }
+        data-simulation-logical-node={
+          typeof node.metadata.simulationLogicalNodeId === 'string'
+            ? node.metadata.simulationLogicalNodeId
+            : undefined
+        }
       >
         {data.presentationNumber && (
           <span
@@ -84,7 +97,7 @@ function renderer(kind: NodeKind) {
             {data.presentationNumber}
           </span>
         )}
-        {selected && !exporting && (
+        {selected && !exporting && !projected && (
           <NodeResizer
             minWidth={100}
             minHeight={50}
@@ -94,12 +107,17 @@ function renderer(kind: NodeKind) {
             }
           />
         )}
-        <Handle type="target" position={Position.Left} id="in" />
-        <Handle type="source" position={Position.Right} id="out" />
+        <Handle type="target" position={Position.Left} id="in" isConnectable={!projected} />
+        <Handle type="source" position={Position.Right} id="out" isConnectable={!projected} />
         {!overview && (
           <>
-            <Handle type="target" position={Position.Top} id="in-top" />
-            <Handle type="source" position={Position.Bottom} id="out-bottom" />
+            <Handle type="target" position={Position.Top} id="in-top" isConnectable={!projected} />
+            <Handle
+              type="source"
+              position={Position.Bottom}
+              id="out-bottom"
+              isConnectable={!projected}
+            />
           </>
         )}
         {!overview && (
@@ -110,6 +128,7 @@ function renderer(kind: NodeKind) {
           </div>
         )}
         <div className="node-title">{node.title}</div>
+        {!overview && <SimulationNodeSummary id={id} node={node} />}
         {overview && <NodeStatus status={node.status} overview />}
         {!overview && <MetricSummary node={node} />}
         {!overview && <SqlTableSummary node={node} />}

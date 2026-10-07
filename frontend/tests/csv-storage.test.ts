@@ -264,7 +264,7 @@ describe('diagram-owned CSV source storage', () => {
     const upgraded = new WorkspaceDatabase(name);
     try {
       await upgraded.initialize();
-      expect(upgraded.verno).toBe(7);
+      expect(upgraded.verno).toBe(8);
       expect(await upgraded.graph(graph.diagram.id)).toEqual(graph);
       expect(await upgraded.datasets.count()).toBe(0);
       expect((await upgraded.settings.get('workspace-id'))!.value).toBe('existing-workspace');

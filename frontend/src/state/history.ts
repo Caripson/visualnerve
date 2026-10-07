@@ -19,6 +19,7 @@ export interface Delta {
   nodeOrder?: OrderChange;
   edgeOrder?: OrderChange;
   diagram?: { before: Diagram; after: Diagram };
+  simulation?: { before?: Graph['simulation']; after?: Graph['simulation'] };
   /** Immutable source references; ordinary commands never clone or stringify raw cells. */
   sources?: Change<CsvDataset>[];
   sourceOrder?: OrderChange;
@@ -63,6 +64,10 @@ export function diffGraph(before: Graph, after: Graph, label: string): Delta {
     edges: changes(before.edges, after.edges),
     nodeOrder: changedOrder(before.nodes, after.nodes),
     edgeOrder: changedOrder(before.edges, after.edges),
+    ...(before.simulation !== after.simulation &&
+    JSON.stringify(before.simulation) !== JSON.stringify(after.simulation)
+      ? { simulation: { before: before.simulation, after: after.simulation } }
+      : {}),
     ...(sourceChanges.length
       ? { sources: sourceChanges, sourceOrder: { before: oldOrder, after: newOrder } }
       : {}),
@@ -111,6 +116,9 @@ export function applyDelta(graph: Graph, delta: Delta, forward: boolean): Graph 
     nodes: apply(graph.nodes, delta.nodes, forward, delta.nodeOrder),
     edges: apply(graph.edges, delta.edges, forward, delta.edgeOrder),
     diagram: delta.diagram ? (forward ? delta.diagram.after : delta.diagram.before) : graph.diagram,
+    ...(delta.simulation
+      ? { simulation: forward ? delta.simulation.after : delta.simulation.before }
+      : {}),
     ...(sources ? { dataset: sources[0], datasets: sources.slice(1) } : {}),
   };
 }
@@ -131,6 +139,12 @@ export function mergeDelta(a: Delta, b: Delta): Delta {
     diagram: b.diagram
       ? { before: a.diagram?.before ?? b.diagram.before, after: b.diagram.after }
       : a.diagram,
+    simulation: b.simulation
+      ? {
+          before: a.simulation ? a.simulation.before : b.simulation.before,
+          after: b.simulation.after,
+        }
+      : a.simulation,
     sources: a.sources || b.sources ? merge(a.sources ?? [], b.sources ?? []) : undefined,
     sourceOrder: order(a.sourceOrder, b.sourceOrder),
   };

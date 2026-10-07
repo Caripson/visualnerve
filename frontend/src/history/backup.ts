@@ -6,6 +6,7 @@ import { remapAnalysisReferences } from '../analysis/views';
 import { remapPresentation } from '../presentation/definition';
 import { getStoryboard, setStoryboard } from '../presentation/storyboard';
 import { remapBuildSpecification } from '../export/build-specification';
+import { remapSimulationModel } from '../simulation/copy';
 import { StorageError, validateGraph } from '../model/validation';
 import type { Graph } from '../model/types';
 import type { WorkspaceDatabase } from '../storage/database';
@@ -431,6 +432,8 @@ async function importHistoryBackupData(
             })),
           });
         graph = remapBuildSpecification(graph, nodeMap, edgeMap, datasetMap);
+        if (graph.simulation)
+          graph.simulation = remapSimulationModel(graph.simulation, nodeMap, edgeMap);
         graph.edges = graph.edges.map((edge) => {
           const relationship = edge.metadata.csvSourceRelationship as
             | { relationshipId?: string }

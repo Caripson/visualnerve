@@ -149,6 +149,7 @@ export function markdown(graph: Graph): string {
     `# ${escapeHeading(graph.diagram.name)}\n`,
     graph.diagram.description ? `${graph.diagram.description}\n` : '',
   ];
+  if (graph.simulation) chunks.push(queryRecord('Process Simulator model', graph.simulation));
   const codeAnalysis = codeAnalysisSummary(getCodeAnalysis(graph));
   if (codeAnalysis) chunks.push(queryRecord('Code analysis notes', codeAnalysis));
   const owners = new Map(graph.owners.map((o) => [o.id, o.name]));

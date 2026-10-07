@@ -45,7 +45,7 @@
 .toolbar-menu-panel .toolbar-menu-hint {
   margin: 4px 0 0;
 }
-@media (max-width: 720px) {
+@media (max-width: 900px), (max-width: 1100px) and (max-height: 500px) {
   .toolbar-menu-panel button,
   .toolbar-menu-panel select {
     min-height: 44px;

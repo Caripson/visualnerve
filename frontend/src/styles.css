@@ -1807,6 +1807,7 @@ kbd {
 .mobile-only {
   display: none;
 }
+.projects-shell,
 .properties-shell {
   display: contents;
 }
@@ -1998,7 +1999,7 @@ kbd {
     display: none;
   }
 }
-@media (max-width: 720px) {
+@media (max-width: 900px), (max-width: 1100px) and (max-height: 500px) {
   .mobile-only {
     display: inline-flex;
   }

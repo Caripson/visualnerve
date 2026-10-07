@@ -257,6 +257,7 @@ export class HistoryStore {
         this.db.edges,
         this.db.owners,
         this.db.datasets,
+        this.db.simulationModels,
         ...historyTables(this.db),
       ],
       async () => {

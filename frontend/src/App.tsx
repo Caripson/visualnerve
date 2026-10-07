@@ -1,4 +1,5 @@
 import { PresentationFeature } from './presentation/Player';
+import { SimulationFeature } from './simulation/SimulationFeature';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { ArrowUpRight, GitBranch, Plus, X, Menu, Database, Code2 } from 'lucide-react';
@@ -46,6 +47,9 @@ import { DataSourcesDialog } from './components/DataSourcesDialog';
 import { SourceRefreshDialog } from './components/SourceRefreshDialog';
 import { DataQualityDialog } from './components/DataQualityDialog';
 import { UnderstandingDialogs } from './components/UnderstandingDialogs';
+import { useCompactLayout } from './hooks/useCompactLayout';
+import { MobileWorkspacePanel } from './components/mobile/MobileWorkspacePanel';
+import './components/mobile/mobile-workspace.css';
 export type DialogName =
   | 'new'
   | 'export'
@@ -64,6 +68,7 @@ export type DialogName =
   | 'delete'
   | 'connect';
 export function App() {
+  const compact = useCompactLayout();
   const [dialog, setDialog] = useState<DialogName | null>(null);
   const [ready, setReady] = useState(false);
   const [backup, setBackup] = useState<WorkspaceBackup | null>(null);
@@ -128,10 +133,15 @@ export function App() {
   }, [graph, explorationResult]);
   const focusMap = useEditor((s) => s.focusMap);
   const mobilePanel = useEditor((s) => s.mobilePanel);
+  const closeMobilePanel = useCallback(() => useEditor.setState({ mobilePanel: null }), []);
+  useEffect(() => {
+    closeMobilePanel();
+  }, [graph?.diagram.id, compact, closeMobilePanel]);
   const status = useEditor((s) => s.status);
   const message = useEditor((s) => s.message);
   const file = useRef<HTMLInputElement>(null);
   const close = useCallback(() => {
+    useEditor.setState({ mobilePanel: null });
     setDialog(null);
     setSqlDraft(undefined);
     setCodeFiles(undefined);
@@ -468,17 +478,34 @@ export function App() {
     <ReactFlowProvider>
       <div
         className={`application ${focusMap && graph?.diagram.type === 'mindmap' ? 'map-focus' : ''}`}
+        data-compact-layout={compact ? 'true' : undefined}
+        data-has-document={graph ? 'true' : undefined}
         data-mobile-panel={mobilePanel ?? ''}
       >
-        {mobilePanel && (
+        {compact && mobilePanel && (
           <button
-            className="mobile-scrim mobile-only"
+            className="mobile-scrim"
             aria-label="Close panel"
-            onClick={() => useEditor.setState({ mobilePanel: null })}
+            tabIndex={-1}
+            onClick={closeMobilePanel}
           />
         )}
-        <Sidebar open={open} importFile={() => file.current?.click()} />
-        <main className="main-workspace">
+        <MobileWorkspacePanel
+          className="projects-shell"
+          label="Projects"
+          compact={compact}
+          active={compact && mobilePanel === 'projects'}
+          close={closeMobilePanel}
+        >
+          <Sidebar
+            open={open}
+            importFile={() => {
+              closeMobilePanel();
+              file.current?.click();
+            }}
+          />
+        </MobileWorkspacePanel>
+        <main className="main-workspace" inert={compact && !!mobilePanel ? true : undefined}>
           {graph ? (
             <>
               <Toolbar
@@ -534,6 +561,7 @@ export function App() {
                   <button onClick={() => open('settings')}>Settings</button>
                 </div>
               )}
+              <SimulationFeature />
               <Canvas />
               <PresentationFeature />
               <div className="canvas-statusbar">
@@ -621,7 +649,13 @@ export function App() {
             </div>
           )}
         </main>
-        <div className="properties-shell">
+        <MobileWorkspacePanel
+          className="properties-shell"
+          label="Properties"
+          compact={compact}
+          active={compact && mobilePanel === 'details'}
+          close={closeMobilePanel}
+        >
           <button
             className="mobile-only mobile-sheet-close"
             aria-label="Close properties"
@@ -636,7 +670,10 @@ export function App() {
                 graphDatasets(graph).find(
                   (source) => source.id === (datasetId ?? graph.dataset?.id),
                 );
-              if (graph && dataset) setCsvDraft({ dataset, previous: graph });
+              if (graph && dataset) {
+                closeMobilePanel();
+                setCsvDraft({ dataset, previous: graph });
+              }
             }}
             focusCsv={(path: CsvPathEntry[], datasetId) =>
               void navigateCsv({ focusPath: path, offset: 0 }, datasetId)
@@ -666,7 +703,7 @@ export function App() {
               }
             }}
           />
-        </div>
+        </MobileWorkspacePanel>
       </div>
       <input
         ref={file}

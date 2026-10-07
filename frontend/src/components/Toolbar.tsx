@@ -41,6 +41,8 @@ import { workspace } from '../storage/workspace';
 import { ToolbarMenu } from './ToolbarMenu';
 import { DataToolActions, ToolbarDataTools } from './ToolbarDataTools';
 import { UnderstandingActions, UnderstandingTools } from './UnderstandingTools';
+import { useCompactLayout } from '../hooks/useCompactLayout';
+import { CompactToolbar } from './mobile/CompactToolbar';
 export function Toolbar({
   open,
   showFilters,
@@ -56,6 +58,7 @@ export function Toolbar({
   const selectionCount = useEditor((s) => s.selectedNodes.length);
   const status = useEditor((s) => s.status);
   const focusMap = useEditor((s) => s.focusMap);
+  const compact = useCompactLayout();
   const [kind, setKind] = useState<NodeKind>('generic');
   const [direction, setDirection] = useState<Direction>('RIGHT');
   const [busy, setBusy] = useState(false);
@@ -128,6 +131,44 @@ export function Toolbar({
     conflict: CircleAlert,
   };
   const StatusIcon = icons[status];
+  const addNode = () => {
+    const rect = document.querySelector('.canvas-shell')?.getBoundingClientRect();
+    const point =
+      rect && !spatial
+        ? flow.screenToFlowPosition({
+            x: rect.left + rect.width / 2 - 100,
+            y: rect.top + rect.height / 2 - 43,
+          })
+        : undefined;
+    useEditor.getState().addNode({ nodeType: kind, ...point });
+  };
+  if (compact)
+    return (
+      <CompactToolbar
+        graph={graph}
+        spatial={spatial}
+        mindmap={mindmap}
+        kind={kind}
+        setKind={setKind}
+        direction={direction}
+        setDirection={setDirection}
+        busy={busy}
+        canUndo={!!history.length}
+        canRedo={!!future.length}
+        selectionCount={selectionCount}
+        status={status}
+        statusIcon={<StatusIcon size={14} className={status === 'saving' ? 'spin' : ''} />}
+        showFilters={showFilters}
+        toggleFilters={toggleFilters}
+        open={open}
+        switchView={switchView}
+        add={mindmap ? () => addTopic() : addNode}
+        addSibling={() => addTopic(true)}
+        fit={() => void fitDiagram(flow, graph, mindmap ? 0.14 : 0.25)}
+        runLayout={runLayout}
+        newSpatialExample={newSpatialExample}
+      />
+    );
   return (
     <>
       <div className="document-bar">
@@ -231,20 +272,7 @@ export function Toolbar({
                   </option>
                 ))}
               </select>
-              <button
-                className="add-node"
-                onClick={() => {
-                  const rect = document.querySelector('.canvas-shell')?.getBoundingClientRect();
-                  const point =
-                    rect && !spatial
-                      ? flow.screenToFlowPosition({
-                          x: rect.left + rect.width / 2 - 100,
-                          y: rect.top + rect.height / 2 - 43,
-                        })
-                      : undefined;
-                  useEditor.getState().addNode({ nodeType: kind, ...point });
-                }}
-              >
+              <button className="add-node" onClick={addNode}>
                 <Plus size={15} />
                 Add node
               </button>

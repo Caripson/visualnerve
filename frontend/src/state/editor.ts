@@ -1,5 +1,6 @@
 import { prunePresentation } from '../presentation/definition';
 import { pruneStoryboard } from '../presentation/storyboard';
+import { reconcileSimulationGraph } from '../simulation/document';
 import { create } from 'zustand';
 import type { McpAccess } from '../integration/access';
 import { applyDelta, diffGraph, mergeDelta, type Delta } from './history';
@@ -170,7 +171,15 @@ export const useEditor = create<Editor>((set, get) => ({
   command: (label, change, coalesce = false) => {
     const s = get();
     if (!s.graph) return;
-    const next = pruneStoryboard(prunePresentation(syncSpatialPositions(s.graph, change(s.graph))));
+    const changed = change(s.graph);
+    let reconciled: Graph;
+    try {
+      reconciled = reconcileSimulationGraph(s.graph, changed);
+    } catch (error) {
+      set({ status: 'error', message: (error as Error).message });
+      return;
+    }
+    const next = pruneStoryboard(prunePresentation(syncSpatialPositions(s.graph, reconciled)));
     const changedFilters =
       s.graph.diagram.settings.analysisFilters !== next.diagram.settings.analysisFilters;
     const before = changedFilters
@@ -189,6 +198,7 @@ export const useEditor = create<Editor>((set, get) => ({
       !delta.nodeOrder &&
       !delta.edgeOrder &&
       !delta.diagram &&
+      !delta.simulation &&
       !delta.sources?.length
     )
       return;
@@ -590,11 +600,18 @@ export const useEditor = create<Editor>((set, get) => ({
     const s = get();
     const c = clip ?? s.clipboard;
     if (!s.graph || !c) return;
-    const p = pasteSelection(c, s.graph);
+    let p: ReturnType<typeof pasteSelection>;
+    try {
+      p = pasteSelection(c, s.graph);
+    } catch (error) {
+      set({ status: 'error', message: (error as Error).message });
+      return;
+    }
     s.command('Paste nodes', (g) => ({
       ...g,
       nodes: [...g.nodes, ...p.nodes],
       edges: [...g.edges, ...p.edges],
+      ...(p.simulation ? { simulation: p.simulation } : {}),
     }));
     s.select(p.nodes.map((n) => n.id));
   },

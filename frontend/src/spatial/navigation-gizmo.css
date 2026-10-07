@@ -115,18 +115,30 @@
   cursor: default;
   pointer-events: none;
 }
-@media (max-width: 720px) {
+@media (max-width: 900px), (max-width: 1100px) and (max-height: 500px) {
   .spatial-navigation-gizmo {
-    right: 10px;
-    bottom: 88px;
+    right: 12px;
+    bottom: 40px;
     width: 156px;
-    padding: 5px;
+    padding: 4px;
+    max-height: calc(100% - 56px);
+    overflow: auto;
+  }
+  .spatial-navigation-gizmo[data-expanded='false'] {
+    width: auto;
+  }
+  .spatial-gizmo-toggle {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px;
+    border: 0;
+    border-radius: 9px;
   }
   .spatial-gizmo-space {
     height: 111px;
   }
   .spatial-gizmo-modes button {
-    min-height: 39px;
+    min-height: 44px;
   }
   .spatial-navigation-gizmo p span {
     display: none;

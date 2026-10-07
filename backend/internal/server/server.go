@@ -53,7 +53,7 @@ func New(config Config) *Server {
 		s.mu.Lock()
 		count := len(s.peers)
 		s.mu.Unlock()
-		send(w, 200, map[string]any{"status": "ok", "storage": "indexeddb", "version": "0.2.0", "bridge": config.Bridge, "connected": count})
+		send(w, 200, map[string]any{"status": "ok", "storage": "indexeddb", "version": "0.3.0", "bridge": config.Bridge, "connected": count})
 	})
 	mux.HandleFunc("GET /bridge", s.connect)
 	mux.HandleFunc("/mcp", s.mcp)

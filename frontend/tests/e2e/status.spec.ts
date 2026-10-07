@@ -367,12 +367,54 @@ test.describe('phone statuses', () => {
     await expect(markDone).toBeInViewport({ ratio: 0.999 });
     const draw = page.getByRole('button', { name: 'Draw on diagram', exact: true });
     const fit = page.getByRole('button', { name: 'Fit View', exact: true });
-    const zoom = page.getByRole('button', { name: 'Zoom In', exact: true });
     await clickable(draw);
     await clickable(fit);
-    await clickable(zoom);
     await fit.tap();
-    await zoom.tap();
+    const canvas = (await page.locator('.canvas-shell').boundingBox())!;
+    const zoomBefore = await page
+      .locator('.canvas-shell .react-flow__viewport')
+      .evaluate((element) => new DOMMatrixReadOnly(getComputedStyle(element).transform).a);
+    const pinch = { x: canvas.x + canvas.width / 2, y: canvas.y + canvas.height * 0.2 };
+    for (const offset of [-91, -70, 0, 70, 91]) {
+      expect(
+        await page.evaluate(
+          ({ x, y }) => {
+            const top = document.elementFromPoint(x, y);
+            return (
+              !!top?.classList.contains('react-flow__pane') &&
+              !top.closest('.react-flow__node,.nopan,.react-flow__panel,.context-toolbar')
+            );
+          },
+          { x: pinch.x + offset, y: pinch.y },
+        ),
+      ).toBe(true);
+    }
+    const touch = await page.context().newCDPSession(page);
+    await touch.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [
+        { id: 0, x: pinch.x - 70, y: pinch.y },
+        { id: 1, x: pinch.x + 70, y: pinch.y },
+      ],
+    });
+    for (const spread of [77, 84, 91]) {
+      await touch.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [
+          { id: 0, x: pinch.x - spread, y: pinch.y },
+          { id: 1, x: pinch.x + spread, y: pinch.y },
+        ],
+      });
+    }
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect
+      .poll(() =>
+        page
+          .locator('.canvas-shell .react-flow__viewport')
+          .evaluate((element) => new DOMMatrixReadOnly(getComputedStyle(element).transform).a),
+      )
+      .toBeGreaterThan(zoomBefore + 0.01);
+    await touch.detach();
     await fit.tap();
     await clickable(draw);
     await draw.tap();

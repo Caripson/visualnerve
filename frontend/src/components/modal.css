@@ -209,14 +209,38 @@
   border-radius: 7px;
   background: var(--surface-alt);
 }
-@media (max-width: 720px) {
+@media (max-width: 900px), (max-width: 1100px) and (max-height: 500px) {
   .modal-shade {
-    padding: 12px;
+    padding: max(12px, env(safe-area-inset-top)) 0 0;
+    align-items: flex-end;
+  }
+  .modal {
+    width: min(680px, 100%);
+    max-height: calc(100dvh - max(12px, env(safe-area-inset-top)));
+    padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+    border-radius: 22px 22px 0 0;
+  }
+  .modal-heading {
+    position: sticky;
+    top: -20px;
+    z-index: 2;
+    background: var(--surface);
+    min-height: 56px;
+    margin: -8px 0 16px;
+    padding-block: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-heading h2 {
+    margin: 0;
+    font-size: 18px;
   }
   .modal-content :is(input:not([type='checkbox']):not([type='radio']), select, textarea),
   .modal-content :is(.check-field, .csv-check),
   .modal-content :is(.modal-actions, .dialog-actions) > button {
     min-height: 44px;
+  }
+  .modal-content :is(input:not([type='checkbox']):not([type='radio']), select, textarea) {
+    font-size: 16px;
   }
   .modal-heading .icon-button {
     min-width: 44px;
@@ -224,15 +248,6 @@
   }
 }
 @media (max-width: 600px) {
-  .modal-shade {
-    padding: 10px;
-    align-items: flex-end;
-  }
-  .modal {
-    max-height: calc(100dvh - 24px);
-    padding: 20px;
-    border-radius: 16px;
-  }
   .modal-content .storage-facts {
     grid-template-columns: minmax(80px, 0.75fr) minmax(0, 1.6fr);
     gap: 10px 12px;

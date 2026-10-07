@@ -269,7 +269,10 @@
   font-size: 12px;
   line-height: 1.6;
 }
-@media (max-width: 720px) {
+@media (max-width: 900px), (max-width: 1100px) and (max-height: 500px) {
+  .spatial-canvas {
+    min-height: 0;
+  }
   .spatial-hud {
     top: 8px;
     left: 8px;
@@ -280,12 +283,14 @@
     margin-left: 0;
   }
   .spatial-toolbar {
-    gap: 3px;
+    gap: 4px;
+    padding: 4px;
   }
   .spatial-toolbar button {
-    min-height: 35px;
-    padding: 5px 7px;
-    font-size: 11px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px;
+    font-size: 13px;
   }
   .spatial-orientations {
     order: 4;
@@ -305,6 +310,24 @@
   .spatial-object-list {
     margin-left: 0;
     max-width: 100%;
+  }
+  .spatial-object-list > summary {
+    min-height: 44px;
+  }
+  .spatial-list-content {
+    max-height: max(110px, calc(100dvh - 220px));
+    overscroll-behavior: contain;
+  }
+  .spatial-list-content input {
+    font-size: 16px;
+    min-height: 44px;
+  }
+  .spatial-list-content [role='listitem'] > button {
+    min-height: 44px;
+  }
+  .spatial-caption-header button {
+    width: 44px;
+    height: 44px;
   }
   .spatial-canvas .canvas-statusbar span:last-child {
     display: none;

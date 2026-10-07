@@ -63,7 +63,7 @@ async function stored(page: Page, name: string): Promise<Graph> {
   }, name);
 }
 async function saved(page: Page) {
-  await expect(page.locator('.document-actions .save-status')).toHaveText('Saved');
+  await expect(page.locator('.save-status')).toHaveText('Saved');
 }
 const card = (page: Page, id: string) =>
   page.locator(`.canvas-shell [data-testid="graph-node"][data-node-id="${id}"]`);

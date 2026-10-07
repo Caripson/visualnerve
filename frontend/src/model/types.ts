@@ -6,6 +6,7 @@ import type { PresentationDefinition } from '../presentation/types';
 import type { StoryboardDefinition } from '../presentation/storyboard';
 import type { OverviewConfig } from '../overview/types';
 import type { BuildSpecificationDraft } from '../export/build-specification-draft';
+import type { SimulationModel } from '../simulation/types';
 export type { DrawingLayer, DrawingStroke } from '../drawing/types';
 
 export const diagramTypes = [
@@ -17,6 +18,7 @@ export const diagramTypes = [
   'dependency',
   'responsibility',
   'freeform',
+  'process-simulator',
 ] as const;
 export type DiagramType = (typeof diagramTypes)[number];
 export const nodeKinds = [
@@ -128,6 +130,8 @@ export interface Graph {
   nodes: GraphNode[];
   edges: GraphEdge[];
   owners: Owner[];
+  /** Typed process semantics. Only process-simulator documents may contain this payload. */
+  simulation?: SimulationModel;
   dataset?: CsvDataset;
   /** Additional immutable sources; dataset remains the primary legacy source. */
   datasets?: CsvDataset[];

@@ -4,11 +4,25 @@ title: "A guide to connected thinking"
 
 Visual Nerve saves diagrams in this browser profile. Before the workspace opens, you must accept local browser storage and offline app caching; it cannot work without this storage. Open **New diagram** and choose a blank canvas or a template. One graph can be viewed as a mind map, flowchart, timeline, process or responsibility flow; changing its mode keeps the underlying nodes and relationships.
 
+## Process Simulator
+
+Choose **Process Simulator** in New diagram for a separate simulation document. The kiosk example starts with 300 store customers and 10 package pickups during a 12-hour day. Both compete for shared staff and a counter. Its persisted assumptions include processing time, patience, revenue and paid staffing. Compare 1,000 packages/day, an extra package employee and dedicated package capacity to see consequences for the whole store.
+
+Use **Assumptions** to configure Sources, Work, Routers, shared Resources and Outcomes, particle types, queues, costs, complexity, scaling and investments. Times shown in the editor use minutes where labelled; the semantic model/API use seconds. Arrival rates and operating costs use per-hour units in the model currency. Native connections remain editable; dashed resource connections represent shared capacity rather than particle routes.
+
+**Play**, **Pause**, **Stop**, **Reset**, speed and duration control the same deterministic local worker engine. MAX runs without waiting for particle animation. The canvas shows actual work, queues, utilization and capacity units; the dashboard counts the entire population even when particle rendering is sampled. Change assumptions and run again. **New scenario** keeps Baseline intact; **Replay and compare runs** inspects earlier moments and compares throughput, waiting, TTR, revenue, costs, contribution, lost work and observed payback.
+
+In the live **2D** view, capacity becomes full cards such as **Counter 1**, **Counter 2** and **Counter 3**, keeping the object's appearance and connections. Busy/available shows actual capacity use; the shared queue appears once. Cards appear and disappear as capacity scales. They represent anonymous units of the same logical Work/Resource and are read-only. Configure capacity in Assumptions. Up to eight cards per bank and 256 extra cards across the view are shown; larger capacity has an explicit aggregate label and remains fully simulated. **3D** shows the logical model and numeric metrics; return to 2D for the live capacity cards and particles.
+
+The local REST API and MCP expose the complete semantic model, scenarios, run controls, state, metrics, bottlenecks, events and results. Discover these through **Instructions for Codex** or `visual_nerve_api_docs`, then `GET /simulation/capabilities`. UI, API and MCP share one model and engine. Headless/MAX needs no selected diagram or animation, but this browser must remain open for IndexedDB and worker execution. Models and bounded run archives stay local and are included in native JSON or complete workspace backup where applicable.
+
 ## Move around
 
 Scroll to zoom. Hold Space and drag to pan, or use the middle/right mouse button. Drag the canvas to select a box of nodes. Hold Shift, Ctrl or Cmd to extend selection. **F** fits the graph; the crosshair below the canvas centers your selection. The minimap is pannable and zoomable. Use the grid and magnet controls to toggle dots and snapping.
 
-On a phone, drag the empty canvas with one finger to pan and pinch with two fingers to zoom. Tap the menu beside the project name to open the project list. Tap the properties button or **Edit** in the selection actions to open details in a bottom panel. The **…** menu contains layout, connections, filters and settings. Tap outside a panel or its close button to return to the canvas.
+On a phone, drag the empty canvas with one finger to pan and pinch with two fingers to zoom. **Projects** opens the project drawer; choosing a diagram returns to the canvas. Tap a node, then **Edit** to open its properties sheet. **Diagram actions** contains export, the player, settings and advanced tools. Close a panel with its close button, the dimmed background or Escape. Long panels and forms scroll inside the screen. Short landscape windows use the same compact workspace.
+
+Process Simulator keeps Play, Pause and simulated time in a compact strip. **Simulation details** opens Run settings, Metrics or Replay & compare; **Settings section** navigates the Assumptions editor. **Run simulation** returns to the canvas. In 3D, use **3D tools** for the longer controls and **Show/Hide 3D handles** for the gizmo. The walkthrough player starts compact; **Expand player** opens ordering/audio/video controls and **Minimize player** clears canvas space again. All saved configuration and API/MCP behavior are shared with desktop.
 
 ## Edit your graph
 
