@@ -21,6 +21,7 @@
     "fflate": "0.8.3",
     "html-to-image": "1.11.11",
     "jspdf": "4.2.1",
+    "klaro": "0.7.21",
     "lucide-react": "^0.468.0",
     "mediabunny": "1.61.3",
     "onnxruntime-web": "1.18.0",

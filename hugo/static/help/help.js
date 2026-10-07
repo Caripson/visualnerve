@@ -4,6 +4,9 @@
   if (!input || !results) return;
   const status = results.querySelector(".help-search-status");
   const list = results.querySelector("ul");
+  const form = input.closest("form");
+  const clear = form?.querySelector(".help-search-clear");
+  const mobileTopics = document.querySelector(".help-mobile-topics");
   let index;
   let revision = 0;
   let timer;
@@ -28,6 +31,8 @@
     const query = input.value.trim().slice(0, 200);
     list.replaceChildren();
     results.hidden = !query;
+    input.setAttribute("aria-expanded", String(Boolean(query)));
+    if (clear) clear.hidden = !input.value;
     if (!query) return;
     status.textContent = "Searching help…";
     try {
@@ -75,14 +80,37 @@
   input.addEventListener("input", () => {
     revision++;
     clearTimeout(timer);
+    if (clear) clear.hidden = !input.value;
+    if (input.value.trim() && mobileTopics) mobileTopics.open = false;
     timer = setTimeout(search, 150);
+  });
+  const reset = () => {
+    input.value = "";
+    clearTimeout(timer);
+    void search();
+    input.focus();
+  };
+  const focusResult = async () => {
+    clearTimeout(timer);
+    await search();
+    if (input.value.trim()) list.querySelector("a")?.focus();
+  };
+  clear?.addEventListener("click", reset);
+  form?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void focusResult();
   });
   input.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
-      input.value = "";
-      clearTimeout(timer);
-      void search();
+      event.preventDefault();
+      reset();
+    } else if (event.key === "ArrowDown") {
+      event.preventDefault();
+      void focusResult();
     }
+  });
+  results.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") { event.preventDefault(); reset(); }
   });
   document.addEventListener("keydown", (event) => {
     if (

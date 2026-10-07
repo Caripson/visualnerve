@@ -2,6 +2,7 @@ import { readdirSync, lstatSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 const helpGuides = ['getting-started', 'editing', 'layouts', '3d', 'csv', 'connected-data', 'sql', 'code', 'diagram-import', 'understanding', 'presentations', 'simulation', 'sharing', 'settings', 'api-mcp', 'troubleshooting'];
 const helpScreenshots = ['new-diagram', 'editor', 'mobile-editor', 'layouts', 'spatial', 'csv-import', 'csv-evidence', 'connected-data', 'data-quality', 'source-refresh', 'sql-query', 'sql-schema', 'code-cobol', 'code-project', 'diagram-import', 'overview', 'history', 'player', 'player-compact', 'storyboard', 'simulation', 'simulation-assumptions', 'simulation-compare', 'export', 'lovable', 'settings', 'backup', 'mcp-settings'];
+const productPages = ['app', 'features', 'use-cases', 'process-simulator', 'mcp', 'developers', 'security'];
 export function auditStatic(directory) {
   const files = [];
   function visit(prefix = '') {
@@ -14,6 +15,10 @@ export function auditStatic(directory) {
         || ['help/help.css', 'help/help.js', 'help/index.json'].includes(path)
         || helpGuides.some(guide => path === `help/${guide}/index.html`)
         || helpScreenshots.some(name => path === `help/images/${name}.webp`)
+        || path === 'robots.txt'
+        || productPages.some(name => path === `${name}/index.html`)
+        || ['site/site.css', 'site/captures.css', 'site/site.js', 'site/mark.svg', 'site/consent.css', 'site/consent.js', 'site/vendor/klaro.js', 'site/vendor/klaro.css', 'site/vendor/klaro-LICENSE', 'site/vendor/preact-LICENSE', 'site/vendor/core-js-LICENSE', 'site/vendor/classnames-LICENSE'].includes(path)
+        || ['iphone', 'ipad', 'imac', 'macbook', 'social'].some(name => path === `site/images/${name}.webp`)
         || /^editor\/(?:app\.(?:js|css)|assets\/[\w.-]+\.(?:js|css|svg|png|woff2?))$/.test(path)
         || /^editor\/speech\/(?:ort-wasm(?:-simd)?\.wasm|piper_phonemize\.(?:wasm|data))$/.test(path)
         || /^swagger\/swagger-ui(?:-bundle\.js|\.css)$/.test(path)
@@ -27,7 +32,7 @@ export function auditStatic(directory) {
     }
   }
   visit();
-  for (const required of ['index.html', 'error.html', 'editor/app.js', 'appearance.js', 'privacy/index.html', 'sw.js']) if (!files.includes(required)) throw new Error(`Static bundle is missing ${required}`);
+  for (const required of ['index.html', 'app/index.html', 'error.html', 'editor/app.js', 'appearance.js', 'privacy/index.html', 'sw.js']) if (!files.includes(required)) throw new Error(`Static bundle is missing ${required}`);
   return files;
 }
 if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {

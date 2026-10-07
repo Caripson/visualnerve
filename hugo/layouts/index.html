@@ -1,1 +1,33 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="description" content="A local workspace for connected thinking. Mind maps, flows, timelines and systems."><title>Visual Nerve · Your local workspace</title><script src="/appearance.js"></script><link rel="stylesheet" href="/editor/app.css"></head><body>{{ partial "navigation.html" . }}<div id="visual-nerve"><noscript>Visual Nerve needs JavaScript for its interactive editor. The <a href="/help/">guide</a> and <a href="/api/docs">API documentation</a> are available separately.</noscript></div><script type="module" src="/editor/app.js"></script></body></html>
+<!doctype html>
+<html lang="en"><head>{{ partial "site-head.html" . }}</head>
+<body class="product-site home-site"><a class="site-skip" href="#main">Skip to content</a>
+{{ partial "navigation.html" . }}
+<main id="main" tabindex="-1">
+  <section class="home-hero section-width">
+    <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> A LOCAL-FIRST VISUAL WORKSPACE</p>
+    <h1>Understand<br>what <em>connects.</em></h1>
+    <p class="hero-summary">Turn a process, a dataset or a codebase into a diagram you can explore. Follow relationships. Test assumptions. Explain what you see.</p>
+    <div class="site-actions"><a class="site-button" href="/app/">Open Visual Nerve <span aria-hidden="true">↗</span></a><a class="site-text-link" href="#demo">Explore a working example <span aria-hidden="true">↓</span></a></div>
+    <p class="hero-note">No account. No mandatory backend. Saved in your browser.</p>
+    {{ partial "device-showcase.html" . }}
+    <div class="hero-capabilities"><span>Diagrams &amp; mind maps</span><span>Data &amp; code analysis</span><span>Process simulation</span><span>MCP &amp; local API</span></div>
+  </section>
+  <section id="demo" class="home-section section-width">
+    <div class="section-heading"><div><p class="eyebrow">SEE THE SYSTEM, THEN CHANGE IT</p><h2>One extra business flow.<br>A different business.</h2></div><p>A kiosk adds package pickup. What happens to the customers already waiting? Explore the example to see how shared capacity changes the answer.</p></div>
+    <div class="demo-layout">
+      {{ partial "screen-capture.html" (dict "src" "/help/images/simulation.webp" "alt" "The kiosk Process Simulator with two customer flows, shared staff and live queue metrics" "caption" "A real simulation in Visual Nerve. Queues and metrics come from the same engine." "width" 1280 "height" 900 "class" "product-screenshot") }}
+      <div class="demo-copy"><span class="demo-number">01 / EXAMPLE</span><h3>A kiosk and a package counter</h3><p>Start with 300 store customers and 10 package pickups per day. Increase packages to 1,000. Watch both flows compete for staff, then test dedicated capacity.</p><ul class="plain-checks"><li>See queues where they actually form</li><li>Compare waiting time, lost work and cost</li><li>Change assumptions without changing the baseline</li></ul><a class="site-button" href="/app/?demo=kiosk">Open the kiosk example ↗</a><a class="site-text-link" href="/process-simulator/">How the simulator works →</a><p class="demo-note">Opening the example creates an editable local diagram after you accept browser storage.</p></div>
+    </div>
+  </section>
+  <section class="home-section section-width">
+    <div class="section-heading"><div><p class="eyebrow">MORE THAN A PICTURE</p><h2>A workspace for<br>different kinds of understanding.</h2></div><a class="site-text-link" href="/features/">Explore all features →</a></div>
+    <div class="feature-grid">
+      <a class="feature-card" href="/features/#draw-a-system-you-can-keep-editing"><span class="feature-icon" aria-hidden="true">⌘</span><h3>Map how work connects</h3><p>Build diagrams and mind maps, mark responsibility and status, then walk through them in 2D or 3D.</p><span>Diagrams &amp; presentations →</span></a>
+      <a class="feature-card" href="/use-cases/#read-an-unfamiliar-codebase"><span class="feature-icon" aria-hidden="true">{ }</span><h3>Make unfamiliar data readable</h3><p>Group a CSV, trace a SQL query or inspect code structure. Keep source evidence beside the relationships.</p><span>Data &amp; code →</span></a>
+      <a class="feature-card" href="/process-simulator/"><span class="feature-icon" aria-hidden="true">⇄</span><h3>Explore what happens next</h3><p>Model shared resources, queues and economics. Run scenarios to see what a capacity change affects elsewhere.</p><span>Process Simulator →</span></a>
+      <a class="feature-card" href="/mcp/"><span class="feature-icon" aria-hidden="true">↗</span><h3>Work with your AI agent</h3><p>Give an agent explicit access through an optional local bridge. Inspect and edit the same model you see.</p><span>MCP &amp; API →</span></a>
+    </div>
+  </section>
+  <section class="trust-section section-width"><div><p class="eyebrow">YOUR WORKSPACE, YOUR BROWSER</p><h2>Local by design.<br>Clear about sharing.</h2><p>Diagrams and retained source data stay on your device. Downloads, app handoffs and agent access are explicit actions. A public website does not mean a public workspace.</p><div class="site-actions"><a class="site-text-link" href="/privacy/">Follow the data →</a><a class="site-text-link" href="/security/">Read the security model →</a></div></div><div class="data-map" aria-label="Data flow"><span>Static website</span><b aria-hidden="true">↓</b><span>Your browser <small>Diagrams · sources · scenarios</small></span><b aria-hidden="true">↓ only when you choose</b><span>Export · app handoff · local agent</span></div></section>
+  <section class="end-cta section-width"><p class="eyebrow">START WITH SOMETHING YOU WANT TO UNDERSTAND</p><h2>An idea. A process.<br>A file full of questions.</h2><a class="site-button" href="/app/">Open your workspace ↗</a><p>Need a starting point? <a href="/help/getting-started/">Follow the five-minute guide</a>.</p></section>
+</main>{{ partial "site-footer.html" . }}</body></html>

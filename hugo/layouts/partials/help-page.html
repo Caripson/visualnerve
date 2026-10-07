@@ -1,10 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="description" content="{{ .Params.summary | default .Params.description }}">
-  <title>{{ .Title }} · Visual Nerve help</title>
+  {{ partial "site-meta.html" . }}
   <script src="/appearance.js"></script>
   <link rel="stylesheet" href="/editor/app.css">
   <link rel="stylesheet" href="/help/help.css">
@@ -16,14 +13,19 @@
   <div class="help-layout">
     <aside class="help-sidebar" aria-label="Help navigation">
       <a class="help-home" href="/help/">VISUAL NERVE HELP</a>
-      <label class="help-search-label" for="help-search">Search help</label>
-      <input id="help-search" type="search" placeholder="Search topics or tasks…" autocomplete="off" aria-controls="help-search-results">
-      <p class="help-search-hint">Local search · press / to focus</p>
+      <form class="help-search-form" role="search" aria-label="Search help">
+        <label class="help-search-label" for="help-search">Search help</label>
+        <div class="help-search-field">
+          <input id="help-search" type="search" placeholder="Search topics or tasks…" autocomplete="off" aria-controls="help-search-results" aria-expanded="false" aria-describedby="help-search-hint">
+          <button class="help-search-clear" type="button" aria-label="Clear help search" hidden>×</button>
+        </div>
+        <p id="help-search-hint" class="help-search-hint">Local search · press / to focus</p>
+      </form>
+      <section id="help-search-results" class="help-search-results" aria-label="Search results" hidden><p class="help-search-status" role="status" aria-live="polite" aria-atomic="true"></p><ul></ul></section>
       <nav class="help-desktop-topics" aria-label="Guide topics">{{ partial "help-topics.html" . }}</nav>
       <details class="help-mobile-topics"><summary>Topics</summary><nav aria-label="Guide topics mobile">{{ partial "help-topics.html" . }}</nav></details>
     </aside>
     <main id="help-main" class="help-main" tabindex="-1">
-      <section id="help-search-results" class="help-search-results" aria-label="Search results" aria-live="polite" hidden><p class="help-search-status"></p><ul></ul></section>
       <header class="help-article-header">
         <p class="help-eyebrow">{{ if .IsSection }}THE GUIDE{{ else }}<a href="/help/">HELP</a> / GUIDE {{ .Weight }}{{ end }}</p>
         <h1>{{ .Title }}</h1>
@@ -47,7 +49,7 @@
         {{ end }}{{ end }}
       </nav>
       {{ end }}
-      <footer class="help-footer">Your diagrams stay in this browser. <a href="/">Return to workspace</a> · <a href="/privacy/">Privacy</a> · <a href="/api/docs/">API reference</a></footer>
+      <footer class="help-footer">Your diagrams stay in this browser. <a href="/app/">Return to workspace</a> · <a href="/privacy/">Privacy</a> · <a href="/api/docs/">API reference</a></footer>
     </main>
   </div>
 </body>

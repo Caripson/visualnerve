@@ -50,6 +50,7 @@ import { UnderstandingDialogs } from './components/UnderstandingDialogs';
 import { useCompactLayout } from './hooks/useCompactLayout';
 import { MobileWorkspacePanel } from './components/mobile/MobileWorkspacePanel';
 import { applyAppearance } from './ui/appearance';
+import { useStarterDemo } from './templates/useStarterDemo';
 import './components/mobile/mobile-workspace.css';
 export type DialogName =
   | 'new'
@@ -86,6 +87,7 @@ export function App() {
   const [importing, setImporting] = useState(false);
   const importInFlight = useRef(false);
   const acknowledged = useEditor((state) => state.privacyAcknowledged);
+  useStarterDemo(ready, acknowledged);
   const inspectBackup = (data: WorkspaceBackup) => {
     setDialog(null);
     setSqlDraft(undefined);

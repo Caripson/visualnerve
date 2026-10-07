@@ -38,7 +38,7 @@ Source paths below are relative to frontend/src or frontend/tests where appropri
 | 30. Development origins | localhost ports, IP hostname and production HTTPS own separate databases; development data does not appear in production. | DEVELOPMENT.md: Origins and privacy tests |
 | 31. Versioning | Explicit Dexie v1–v4, no reset/delete-database upgrade; legacy records and current tables retained. | database.ts; STORAGE.md |
 | 32. Migrations | Tests upgrade legacy v1 including pending edits and v3 preserving graphs/preferences while removing the obsolete boolean grant. | storage.test.ts |
-| 33. No content telemetry | No analytics, remote reporting, CDN/font runtime service or content telemetry is installed. | source/dependency/network audit below |
+| 33. No content telemetry | Editor, Help and API reference contain no analytics or remote content reporting. Optional public-page Analytics is consent-gated and excludes workspace/query/referrer content. | source/dependency/network audit below |
 | 34. Runtime network | Only same-origin app/documentation GET assets and explicitly granted loopback MCP sockets. Normal create/add/reload/backup/restore sends no persistence requests. | networkAudit in privacy.spec.ts; browser-storage.spec.ts |
 | 35. Offline | Existing service worker preserved; 16 code/assets/pages precached after acceptance. User content never enters asset caches. | service-worker.mjs; main/App; offline reload browser tests |
 | 36. Deployment docs | Static bundle build, private S3/OAC, CloudFront, canonical origins, code-only uploads, updates and local MCP setup. | docs/DEPLOYMENT.md |

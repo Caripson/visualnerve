@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { acknowledge } from './fixtures';
 
 const publicURL = 'https://public-app.test:4340';
+const publicApp = `${publicURL}/app/`;
 type Guide = { title: string; url: string; summary: string; text: string };
 async function index(page: Page): Promise<Guide[]> {
   return page.evaluate(async () => {
@@ -228,7 +229,7 @@ test('accepted local workspace caches every guide, screenshot and the help searc
   const context = await browser.newContext({ ignoreHTTPSErrors: true }),
     page = await context.newPage();
   try {
-    await page.goto(publicURL);
+    await page.goto(publicApp);
     await acknowledge(page);
     await page.evaluate(async () => {
       await navigator.serviceWorker.ready;

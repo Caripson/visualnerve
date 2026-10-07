@@ -132,7 +132,7 @@ test('semantic overview retains counts/directions, native styles, shared 2D/3D e
   request,
 }, testInfo) => {
   const created = await create(request);
-  await page.goto('/');
+  await page.goto('/app/');
   await page.locator('.diagram-item').filter({ hasText: created.diagram.name }).click();
   await expect(page.locator(`[data-node-id="${created.nodes[0].id}"]`).first()).toBeVisible();
   await saved(page);

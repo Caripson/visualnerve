@@ -14,6 +14,8 @@ it.each([
 
 it('keeps the production domain in website/docs/origin roles and exposes 3D via MCP discovery', () => {
   const note = mcpSetupNote('https://visualnerve.caripson.com', 'wss://localhost:9443/bridge');
+  expect(note).toContain('Browser workspace: https://visualnerve.caripson.com/app/');
+  expect(note).toContain('Keep this workspace open');
   expect(note).toContain('API reference: https://visualnerve.caripson.com/api/docs/');
   expect(note).toContain('Codex MCP server on this computer: https://localhost:9443/mcp');
   expect(note).toContain('--allowed-origin https://visualnerve.caripson.com');
@@ -34,4 +36,15 @@ it.each([
 ])('never turns an invalid saved connection into copyable instructions: %s', (bridge) => {
   expect(() => mcpServerUrl(bridge)).toThrow();
   expect(() => mcpSetupNote('https://visualnerve.caripson.com', bridge)).toThrow();
+});
+
+it('normalizes a workspace URL to its website origin without changing MCP authorization', () => {
+  const note = mcpSetupNote(
+    'https://visualnerve.caripson.com/app/?example=1',
+    'ws://127.0.0.1:4317/bridge',
+  );
+  expect(note).toContain('Browser workspace: https://visualnerve.caripson.com/app/');
+  expect(note).toContain('Visual Nerve website: https://visualnerve.caripson.com\n');
+  expect(note).toContain('--allowed-origin https://visualnerve.caripson.com\n');
+  expect(note).not.toContain('--allowed-origin https://visualnerve.caripson.com/app');
 });

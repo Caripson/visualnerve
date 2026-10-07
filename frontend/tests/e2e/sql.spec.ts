@@ -73,7 +73,7 @@ test('drops a SQL file into editable connected schema objects and preserves only
 }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto('/');
+  await page.goto('/app/');
   await acknowledge(page);
   const transfer = await page.evaluateHandle((text) => {
     const data = new DataTransfer();
@@ -250,7 +250,7 @@ test('pastes SQL on a 320 px phone, shows missing-definition warnings and reject
   page,
 }) => {
   await page.setViewportSize({ width: 320, height: 760 });
-  await page.goto('/');
+  await page.goto('/app/');
   await acknowledge(page);
   await page.getByRole('button', { name: 'Import SQL script', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Import SQL', exact: true });
@@ -297,7 +297,7 @@ test('reads a 100,000-row SQL dump offline in a worker and saves its schema with
   page,
   context,
 }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await acknowledge(page);
   await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
   await context.setOffline(true);

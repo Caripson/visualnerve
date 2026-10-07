@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+<head>
+  {{ partial "site-meta.html" . }}
+  <script src="/appearance.js"></script>
+  <link rel="stylesheet" href="/editor/app.css">
+</head>
+<body>
+  {{ partial "navigation.html" . }}
+  <div id="visual-nerve"><noscript>Visual Nerve needs JavaScript for its interactive editor. The <a href="/help/">guide</a> and <a href="/api/docs/">API documentation</a> are available separately.</noscript></div>
+  <script type="module" src="/editor/app.js"></script>
+</body>
+</html>

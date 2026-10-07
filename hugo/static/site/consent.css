@@ -1,0 +1,132 @@
+#visualnerve-consent {
+  --font-size: 14px;
+  --font-family: inherit;
+  --title-font-family: inherit;
+  /* Klaro uses dark1 for panels and light1 for their text in its default skin. */
+  --light1: var(--text, #17271c);
+  --light2: var(--muted, #586c60);
+  --light3: var(--muted, #586c60);
+  --dark1: var(--surface, #fff);
+  --dark2: var(--surface-alt, #f4f6f4);
+  --dark3: var(--border, #d8dfda);
+  --green1: var(--accent, #237348);
+  --green2: var(--accent-hover, #1d603d);
+  --green3: var(--accent-bg, #eaf4ed);
+}
+#visualnerve-consent .cookie-notice:not(.cookie-modal-notice) {
+  width: min(560px, calc(100vw - 32px));
+  max-width: none;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  right: 16px;
+}
+#visualnerve-consent .cn-body,
+#visualnerve-consent .cm-modal {
+  border: 1px solid var(--border, #d8dfda);
+  border-radius: 14px;
+  box-shadow: 0 12px 50px #0002;
+}
+#visualnerve-consent .cn-body {
+  padding: 20px;
+  background: var(--surface, #fff);
+  color: var(--text, #17271c);
+}
+#visualnerve-consent .cn-body h2,
+#visualnerve-consent .cn-body p { color: var(--text, #17271c); }
+#visualnerve-consent .cn-body a { color: var(--accent, #237348); }
+#visualnerve-consent .cn-body h2 { margin: 0 0 12px; font-size: 20px; }
+#visualnerve-consent .cn-ok { display: block; }
+#visualnerve-consent .cn-learn-more { display: inline-block; padding: 12px 0; }
+#visualnerve-consent .cn-body p,
+#visualnerve-consent .cm-header p { line-height: 1.7; }
+#visualnerve-consent .cn-buttons,
+#visualnerve-consent .cm-footer-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+#visualnerve-consent .cm-btn,
+#visualnerve-consent .cm-btn.cm-btn-success,
+#visualnerve-consent .cm-btn.cm-btn-danger {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #d8dfda);
+  border-radius: 7px;
+  color: var(--text, #17271c);
+  min-height: 44px;
+  padding: 10px 14px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: normal;
+}
+#visualnerve-consent .cn-buttons > .cm-btn,
+#visualnerve-consent .cm-footer-buttons > .cm-btn { flex: 1 1 145px; }
+#visualnerve-consent .cm-btn:hover { background: var(--surface-alt, #f4f6f4); }
+#visualnerve-consent button:focus-visible,
+#visualnerve-consent a:focus-visible,
+#visualnerve-consent input:focus-visible,
+#visualnerve-consent .cookie-notice:focus-visible,
+.site-cookie-info button:focus-visible {
+  outline: 2px solid var(--accent, #237348);
+  outline-offset: 3px;
+}
+#visualnerve-consent .cm-list-input:focus-visible + .cm-list-label {
+  outline: 2px solid var(--accent, #237348);
+  outline-offset: 3px;
+  border-radius: 5px;
+}
+#visualnerve-consent .cm-modal {
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  width: min(640px, calc(100vw - 32px));
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+}
+#visualnerve-consent .cm-list-description,
+#visualnerve-consent .cm-powered-by,
+#visualnerve-consent .cm-powered-by a { color: var(--muted, #586c60); }
+#visualnerve-consent .cm-header .title { font-size: 23px; line-height: 1.3; }
+#visualnerve-consent .cm-header .title { padding-right: 44px; }
+#visualnerve-consent .cm-header .hide {
+  top: 6px;
+  right: 6px;
+  min-width: 44px;
+  min-height: 44px;
+  background: transparent;
+  color: var(--text, #17271c);
+}
+#visualnerve-consent .cm-header,
+#visualnerve-consent .cm-body,
+#visualnerve-consent .cm-footer { padding: 20px; }
+#visualnerve-consent .cm-list-label { white-space: normal; }
+.site-cookie-info {
+  color: var(--text, #17271c);
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #d8dfda);
+  border-radius: 14px;
+  width: min(460px, calc(100vw - 32px));
+  padding: 24px;
+}
+.site-cookie-info::backdrop { background: #0007; }
+.site-cookie-info h2 { margin: 0 0 14px; font-size: 22px; }
+.site-cookie-info p { margin: 0 0 20px; line-height: 1.7; }
+.site-cookie-info button {
+  padding: 10px 16px;
+  min-height: 44px;
+  border: 1px solid var(--border, #d8dfda);
+  border-radius: 7px;
+  background: var(--surface-alt, #f4f6f4);
+  color: inherit;
+  cursor: pointer;
+}
+@media (max-width: 520px) {
+  #visualnerve-consent .cookie-notice:not(.cookie-modal-notice) { right: 16px; }
+  #visualnerve-consent .cn-buttons > .cm-btn,
+  #visualnerve-consent .cm-footer-buttons > .cm-btn { flex-basis: 100%; }
+  #visualnerve-consent .cn-body,
+  #visualnerve-consent .cm-header,
+  #visualnerve-consent .cm-body,
+  #visualnerve-consent .cm-footer { padding: 16px; }
+}

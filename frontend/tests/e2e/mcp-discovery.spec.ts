@@ -63,7 +63,7 @@ test('the discoverable 3D creation command opens a shared diagram through the br
 }) => {
   const guide = await rpc(request, 'tools/call', { name: 'visual_nerve_api_docs' });
   expect(guide.content[0].text).toContain('"path":"/spatial-diagrams"');
-  await page.goto('/');
+  await page.goto('/app/');
   await acknowledge(page);
   await page.getByRole('button', { name: 'Local only: storage and privacy', exact: true }).click();
   await page.getByLabel('MCP access', { exact: true }).selectOption('write');

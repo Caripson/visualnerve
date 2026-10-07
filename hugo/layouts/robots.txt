@@ -1,0 +1,8 @@
+User-agent: *
+{{ if ne site.Params.environment "production" }}Disallow: /
+{{ else }}Allow: /
+Disallow: /app/
+Disallow: /help/index.json
+Disallow: /api/v1/
+Sitemap: {{ "sitemap.xml" | absURL }}
+{{ end }}

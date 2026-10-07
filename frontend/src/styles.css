@@ -2014,7 +2014,8 @@ kbd {
   .site-shell nav {
     gap: 12px;
   }
-  .site-shell nav a[href='/api/docs'] {
+  .site-shell nav a[href='/api/docs'],
+  .site-shell nav a[href='/api/docs/'] {
     display: none;
   }
   .github-link {

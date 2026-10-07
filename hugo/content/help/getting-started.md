@@ -8,11 +8,13 @@ You do not need AI, an account or an integration to use Visual Nerve. You can cr
 
 ## Open your local workspace
 
-1. Open Visual Nerve in the browser and profile you intend to use for your work.
+1. [Open the workspace](/app/) in the browser and profile you intend to use for your work.
 2. Read the first-visit storage notice. Select the acknowledgement checkbox, then **Accept and continue**.
 3. Choose **New diagram**. On a phone, open **Projects** first.
 4. Pick a template, enter a **New diagram name**, then choose **Create diagram**.
 5. Wait for **Saved**. This confirms that the local database transaction has committed.
+
+The public home is at `/`; the editor is at `/app/`. If you previously used the editor on the home page, your saved work is available in the workspace on the same website and browser profile. The route change keeps the same local database.
 
 Acceptance is required because the editor needs local browser storage. Reading Help, Privacy, License or the API reference does not require opening or creating a workspace. [What gets stored](/help/settings/#what-saved-means).
 

@@ -1,0 +1,24 @@
+{{- $description := .Params.description | default .Params.summary | default "A local-first workspace for diagrams, data, code and process simulation. Understand what connects, then explore what changes." -}}
+{{- $private := or (eq .Type "app") (ne site.Params.environment "production") -}}
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="{{ $description }}">
+<meta name="robots" content="{{ if $private }}noindex, nofollow{{ else }}index, follow{{ end }}">
+<title>{{ if .IsHome }}Visual Nerve — Understand what connects{{ else }}{{ .Title }} · Visual Nerve{{ end }}</title>
+<link rel="canonical" href="{{ .Permalink }}">
+<link rel="icon" href="/site/mark.svg" type="image/svg+xml">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Visual Nerve">
+<meta property="og:title" content="{{ if .IsHome }}Visual Nerve — Understand what connects{{ else }}{{ .Title }}{{ end }}">
+<meta property="og:description" content="{{ $description }}">
+<meta property="og:url" content="{{ .Permalink }}">
+<meta property="og:image" content="{{ "site/images/social.webp" | absURL }}">
+<meta property="og:image:alt" content="Visual Nerve process diagram on a desktop workspace">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#23664d">
+<meta name="referrer" content="no-referrer">
+{{ if and (ne .Type "app") (ne .Section "help") }}<meta name="visualnerve-analytics-page" content="{{ .RelPermalink }}">{{ end }}
+{{ if and .IsHome (not $private) }}
+{{ $data := dict "@context" "https://schema.org" "@type" "SoftwareApplication" "name" "Visual Nerve" "url" .Permalink "applicationCategory" "BusinessApplication" "operatingSystem" "Web browser" "description" $description "featureList" (slice "Diagrams and mind maps" "CSV and code analysis" "Process simulation" "Local API and MCP integration") }}
+<script type="application/ld+json">{{ $data | jsonify | safeJS }}</script>
+{{ end }}

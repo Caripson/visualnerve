@@ -15,7 +15,7 @@ test('mind maps have colored balanced branches, direct topic editing and distinc
 }, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto('/');
+  await page.goto('/app/');
   await page.getByRole('button', { name: /New diagram/ }).click();
   await page.getByLabel('New diagram name').fill('Ideas for our next project');
   await page.getByRole('button', { name: 'Mind Map', exact: false }).click();

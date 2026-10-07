@@ -1,0 +1,7 @@
+{{ with site.Params.googleAnalyticsMeasurementId }}
+<meta name="visualnerve-google-analytics" content="{{ . }}">
+{{ end }}
+<link rel="stylesheet" href="/site/vendor/klaro.css">
+<link rel="stylesheet" href="/site/consent.css">
+<script defer src="/site/consent.js"></script>
+<script defer src="/site/vendor/klaro.js" data-klaro-config="visualNerveConsentConfig"></script>

@@ -28,6 +28,9 @@ describe('static delivery and canonical storage origin', () => {
   });
   it('serves Hugo indexes and leaves static assets intact, refusing application uploads', () => {
     expect(route('/').uri).toBe('/index.html');
+    expect(route('/app').uri).toBe('/app/index.html');
+    expect(route('/app/').uri).toBe('/app/index.html');
+    expect(route('/mcp/').uri).toBe('/mcp/index.html');
     expect(route('/help').uri).toBe('/help/index.html');
     expect(route('/privacy/').uri).toBe('/privacy/index.html');
     expect(route('/editor/app.js').uri).toBe('/editor/app.js');
@@ -65,8 +68,10 @@ describe('static delivery and canonical storage origin', () => {
     try {
       mkdirSync(join(directory, 'editor'));
       mkdirSync(join(directory, 'privacy'));
+      mkdirSync(join(directory, 'app'));
       for (const path of [
         'index.html',
+        'app/index.html',
         'error.html',
         'sw.js',
         'appearance.js',
@@ -74,7 +79,7 @@ describe('static delivery and canonical storage origin', () => {
         'editor/app.js',
       ])
         writeFileSync(join(directory, path), 'static code');
-      expect(auditStatic(directory)).toHaveLength(6);
+      expect(auditStatic(directory)).toHaveLength(7);
       rmSync(join(directory, 'error.html'));
       expect(() => auditStatic(directory)).toThrow('Static bundle is missing error.html');
       writeFileSync(join(directory, 'error.html'), 'static error page');

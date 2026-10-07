@@ -14,7 +14,8 @@ import { Field } from './Properties';
 import { useEditor } from '../state/editor';
 import { flushSpatialCamera, workspace } from '../storage/workspace';
 import { database } from '../storage/database';
-import { templates, instantiate } from '../templates/templates';
+import { templates } from '../templates/templates';
+import { createTemplateDiagram } from '../templates/create';
 import { type Owner, type Graph, ownersFor } from '../model/types';
 import { download, markdown, safeName } from '../export/semantic';
 import { DataPrivacy, StorageNotice } from './DataPrivacy';
@@ -37,8 +38,7 @@ export function NewDiagram({ close }: { close: () => void }) {
           if (!name.trim()) return;
           setBusy(true);
           try {
-            const stored = await database.templates.get(template);
-            await workspace.create(instantiate(template, name.trim(), stored?.graph));
+            await createTemplateDiagram(template, name);
             close();
           } catch (e) {
             setError((e as Error).message);

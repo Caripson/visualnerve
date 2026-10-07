@@ -1,6 +1,6 @@
 # MCP understanding and diagram presentations
 
-Connect Codex to the local HTTP(S) `/mcp` server and keep Visual Nerve open with local storage accepted. The browser stores the diagrams in IndexedDB. Enable **Settings → MCP access → Read + write** to save or control a presentation. Read only permits GET discovery/state and exact question/app-brief preview requests. The public website serves app files and documentation; the MCP bridge runs on the user's computer.
+Connect Codex to the local HTTP(S) `/mcp` server and keep the Visual Nerve workspace at `/app/` open with local storage accepted. The browser stores the diagrams in IndexedDB. Enable **Settings → MCP access → Read + write** to save or control a presentation. Read only permits GET discovery/state and exact question/app-brief preview requests. The public website serves app files and documentation; the MCP bridge runs on the user's computer.
 
 Call `visual_nerve_api_docs` first. Its default compact guide and full `{"document":"openapi"}` response describe both canonical definitions and playback. Commands use `visual_nerve_request` with paths that omit `/api/v1`.
 

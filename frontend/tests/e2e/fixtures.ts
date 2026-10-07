@@ -10,7 +10,7 @@ export async function acknowledge(page: import('@playwright/test').Page) {
 export const test = base.extend({
   request: async ({ page, playwright, baseURL }, use) => {
     const request = await playwright.request.newContext({ baseURL });
-    await page.goto('/');
+    await page.goto('/app/');
     await acknowledge(page);
     await page
       .getByRole('button', { name: 'Local only: storage and privacy', exact: true })

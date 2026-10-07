@@ -5,7 +5,7 @@ async function saved(page: Page) {
   await expect(page.getByRole('status').filter({ hasText: /^Saved$/ })).toBeVisible();
 }
 async function open(page: Page, name: string) {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.locator('.diagram-item').filter({ hasText: name }).click();
   await saved(page);
 }
@@ -401,7 +401,7 @@ test('competing IndexedDB transactions preserve both tab versions in a local cop
   ).json();
   await open(page, 'Conflict recovery');
   const other = await context.newPage();
-  await other.goto('/');
+  await other.goto('/app/');
   await other.evaluate(
     async ({ nodeId, diagramId }) => {
       const database = await new Promise<IDBDatabase>((resolve) => {

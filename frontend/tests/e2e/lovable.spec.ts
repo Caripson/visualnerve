@@ -4,7 +4,7 @@ import { base, blankGraph, newEdge, newNode, type Graph } from '../../src/model/
 import { csvGraph, defaultAnalysis, getCsvNode, parseCsv } from '../../src/data/csv';
 
 async function importGraph(page: Page, graph: Graph) {
-  await page.goto('/');
+  await page.goto('/app/');
   await acknowledge(page);
   await page.getByLabel('Import file', { exact: true }).setInputFiles({
     name: 'lovable-workflow.json',

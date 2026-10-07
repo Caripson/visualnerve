@@ -45,6 +45,7 @@ it('copies useful 2D/3D discovery instructions without the browser session token
   fireEvent.click(screen.getByRole('button', { name: 'Copy instructions for Codex' }));
   await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
   const instructions = writeText.mock.calls[0][0] as string;
+  expect(instructions).toContain('Browser workspace: https://visualnerve.caripson.com/app/');
   expect(instructions).toContain('visual_nerve_api_docs');
   expect(instructions).toContain('POST /spatial-diagrams');
   expect(instructions).toContain('https://visualnerve.caripson.com/api/docs/');

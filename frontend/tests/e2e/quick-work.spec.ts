@@ -28,7 +28,7 @@ async function graph(request: APIRequestContext, id: string): Promise<Graph> {
   return (await request.get(`/api/v1/diagrams/${id}`)).json();
 }
 async function open(page: Page, name: string, mobile = false) {
-  await page.goto('/');
+  await page.goto('/app/');
   if (mobile) await page.getByRole('button', { name: 'Open projects' }).click();
   await page.locator('.diagram-item').filter({ hasText: name }).click();
   await saved(page);
@@ -40,9 +40,9 @@ test('quick project renaming, colors, domain icons, duplication and reversible d
 }) => {
   const { diagram, root } = await newMap(request, 'Quick work');
   await open(page, 'Quick work');
-  await expect(page.getByRole('link', { name: 'Visual Nerve on GitHub' })).toHaveAttribute(
+  await expect(page.getByRole('link', { name: 'Report an issue on GitHub' })).toHaveAttribute(
     'href',
-    'https://github.com/Caripson/visualnerve',
+    'https://github.com/Caripson/visualnerve/issues',
   );
   await page.getByRole('button', { name: 'Rename project' }).click();
   await page.getByLabel('Project name', { exact: true }).fill('A clearer project name');
@@ -99,7 +99,7 @@ test('quick project renaming, colors, domain icons, duplication and reversible d
   await expect(
     page.getByRole('heading', { name: 'Mozilla Public License 2.0 (MPL-2.0)', exact: true }),
   ).toBeVisible();
-  await expect(page.locator('.help-page')).toContainText('2026 Johan Caripson');
+  await expect(page.getByRole('main')).toContainText('2026 Johan Caripson');
 });
 
 test('eight topic levels stay visible while typing and retain backgrounds, colors and hierarchy', async ({

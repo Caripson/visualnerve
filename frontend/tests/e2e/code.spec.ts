@@ -41,7 +41,7 @@ async function saved(page: Page) {
 test('previews a multi-file source project then saves connected native objects without original source', async ({
   page,
 }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await acknowledge(page);
   await page
     .locator('.sidebar-footer')
@@ -100,7 +100,7 @@ test('offers all languages and focuses a pasted diagram on a narrow phone withou
   page,
 }) => {
   await page.setViewportSize({ width: 320, height: 760 });
-  await page.goto('/');
+  await page.goto('/app/');
   await acknowledge(page);
   await page
     .locator('.welcome-actions')
@@ -134,7 +134,7 @@ test('offers all languages and focuses a pasted diagram on a narrow phone withou
 test('routes dropped source files to a preview and cancel leaves storage unchanged', async ({
   page,
 }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await acknowledge(page);
   await page.evaluate(() => {
     const dataTransfer = new DataTransfer();

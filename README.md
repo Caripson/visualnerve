@@ -94,7 +94,7 @@ This explicit handoff shares the previewed text with Lovable. Source CSV rows, r
 ./dev.sh
 ```
 
-Open http://localhost:4317. This command installs missing frontend dependencies, builds React and Hugo, compiles the Go binary and starts it. For frontend hot reload, run `./dev.sh --watch`; the editor is then at http://localhost:5173 and the optional integration server at http://localhost:4317. The watch command starts and cleans up both processes.
+Open http://localhost:4317/app/ for the editor; `/` is the public product home. Existing diagrams remain in the same origin’s IndexedDB when you open `/app/` in the same browser profile. This command installs missing frontend dependencies, builds React and Hugo, compiles the Go binary and starts it. For frontend hot reload, run `./dev.sh --watch`; the editor is then at http://localhost:5173 and the optional integration server at http://localhost:4317. The watch command starts and cleans up both processes.
 
 ## Build and run the production application
 
@@ -105,7 +105,7 @@ Open http://localhost:4317. This command installs missing frontend dependencies,
 
 `public/` is the deployable static application: serve it on S3/CloudFront or any HTTPS static host. The binary is optional, for convenient local serving and opt-in MCP. See [static deployment](docs/DEPLOYMENT.md). No Node, Hugo or Go toolchain is needed at runtime. The default listen address is `127.0.0.1:4317`.
 
-GitHub Actions runs CI on pull requests and pushes to `main`. Publishing is manual: **Actions → Deploy S3 → Run workflow** on `main` builds the static app, uploads it to S3 and waits for CloudFront cache invalidation. The deploy workflow runs no tests. See [deployment setup and required AWS secrets](docs/DEPLOYMENT.md#manual-production-deployment).
+GitHub Actions runs CI on pull requests and pushes to `main`. Publishing is manual: **Actions → Deploy S3 → Run workflow** publishes staging only after CI passes for the exact current commit, then waits for CloudFront cache invalidation. Deploy jobs run no tests. The separate production workflow also requires the same version to pass staging and explicit owner approval for its commit. See [deployment setup, approval gates and required AWS secrets](docs/DEPLOYMENT.md).
 
 ## Test
 
@@ -149,7 +149,7 @@ Use **Settings → Data & Privacy → Export all data** for a dated complete bac
 Existing browser records upgrade in place, including pending edits. The historical IndexedDB name is retained for this purpose; it now contains the canonical tables. If you have data exported by an earlier version, use Import to add it to the browser workspace.
 
 Optional integration configuration: `VISUAL_NERVE_BRIDGE_TOKEN` protects reads and writes; enter it in Settings for the browser session. `VISUAL_NERVE_ADDR` and `VISUAL_NERVE_STATIC_DIR` control serving. For a hosted app, configure its exact `--allowed-origin` and a trusted local TLS bridge; [deployment setup](docs/DEPLOYMENT.md#optional-local-mcp) explains browser requirements. Read [SECURITY.md](SECURITY.md).
-Architecture, canonical data and exchange formats are described in [ARCHITECTURE.md](ARCHITECTURE.md), [DATA_MODEL.md](DATA_MODEL.md) and [EXPORT_FORMAT.md](EXPORT_FORMAT.md). Third-party licenses are listed in [DEPENDENCIES.md](DEPENDENCIES.md).
+Architecture, canonical data and exchange formats are described in [ARCHITECTURE.md](ARCHITECTURE.md), [DATA_MODEL.md](DATA_MODEL.md) and [EXPORT_FORMAT.md](EXPORT_FORMAT.md). The [public website guide](docs/WEBSITE.md) covers product pages, real device captures, consent, SEO and the `/app/` workspace route. Third-party licenses are listed in [DEPENDENCIES.md](DEPENDENCIES.md).
 
 ## License and credit
 

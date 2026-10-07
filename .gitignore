@@ -13,6 +13,7 @@ hugo/static/editor/
 hugo/static/swagger/
 hugo/static/openapi.yaml
 hugo/static/licenses/
+hugo/static/site/vendor/
 *.tsbuildinfo
 .env
 *.log

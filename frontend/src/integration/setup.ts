@@ -10,13 +10,15 @@ export function mcpServerUrl(bridgeAddress: string): string {
 
 export function mcpSetupNote(websiteOrigin: string, bridgeAddress: string): string {
   const website = new URL(websiteOrigin).origin;
+  const workspace = new URL('/app/', website).href;
   const reference = new URL('/api/docs/', website).href;
   return [
     `Visual Nerve website: ${website}`,
+    `Browser workspace: ${workspace}`,
     `API reference: ${reference}`,
     `Codex MCP server on this computer: ${mcpServerUrl(bridgeAddress)}`,
     `The local bridge must allow this website origin: --allowed-origin ${website}`,
-    'Keep this website open and enable MCP Read only or Read + write in its Settings.',
+    'Keep this workspace open and enable MCP Read only or Read + write in its Settings.',
     'Start by calling visual_nerve_api_docs with {"document":"guide"} for the 2D/3D command guide. Read the complete OpenAPI contract with {"document":"openapi"} when you need exact schemas; no separate documentation link is needed.',
     'Use visual_nerve_request for diagram commands. Paths omit /api/v1.',
     'Process Simulator is a first-class process-simulator document with a separately typed simulation model. Discover GET /simulation/capabilities, then use /diagrams/{id}/simulation for semantic CRUD, scenarios, seeded worker runs, metrics, queues, resources, events and comparison. Headless/MAX needs no animation or selected diagram, but this browser must remain connected. UI and MCP use the same engine and authoritative IndexedDB model.',

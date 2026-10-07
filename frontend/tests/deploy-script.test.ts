@@ -38,6 +38,7 @@ function deployment() {
     copyFileSync(new URL(`../../scripts/${file}`, import.meta.url), join(scripts, file));
   for (const file of [
     'index.html',
+    'app/index.html',
     'error.html',
     'appearance.js',
     'privacy/index.html',

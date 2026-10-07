@@ -10,12 +10,15 @@ base(
     const apiRequests: string[] = [],
       errors: string[] = [];
     page.on('request', (request) => {
-      if (request.url().includes('/api/v1/') || request.url().includes('/mcp'))
+      const path = new URL(request.url()).pathname;
+      const publicMcpPage =
+        ['GET', 'HEAD'].includes(request.method()) && ['/mcp/', '/mcp/index.html'].includes(path);
+      if (!publicMcpPage && /^(?:\/api\/v1\/|\/mcp(?:\/|$))/i.test(path))
         apiRequests.push(request.url());
     });
     page.on('pageerror', (error) => errors.push(error.message));
     await page.route('**/api/**', (route) => route.abort());
-    await page.goto('/');
+    await page.goto('/app/');
     await acknowledge(page);
     await page.getByRole('button', { name: /New diagram/ }).click();
     await page.getByLabel('New diagram name').fill('Browser only');

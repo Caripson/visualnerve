@@ -1,93 +1,139 @@
 ---
-title: "How Visual Nerve stores your data"
+layout: product
+title: "Your workspace, your browser, your choices"
+description: "How Visual Nerve stores diagrams locally, handles imports and optional integrations, and separates marketing analytics from the workspace."
+eyebrow: "Privacy"
+summary: "The website delivers the application. Your browser keeps the workspace. Sharing and optional analytics have separate controls."
 ---
 
-Visual Nerve can be a public website. Your diagrams stay in your browser.
+Visual Nerve is created by **Johan Caripson**. This page explains the product's current data flows and the choices that control them. [Security boundaries](/security/) · [Storage and backup instructions](/help/settings/).
 
-The **application** is downloaded from the website. Your **content** is saved locally in this browser profile, using IndexedDB. No account is required. Visual Nerve does not upload your diagrams, node titles, owners, preferences or metadata to its host, S3, CloudFront or a cloud database. Other visitors to the same website cannot see your work.
+## The workspace is stored locally
 
-Before the workspace opens, you must explicitly accept local browser storage and offline caching. The service cannot work without this storage. If you decline, the workspace remains closed; the guide and this page are still available. Acceptance is remembered only in this browser profile and is never imported from a backup. Diagram storage and offline app caching start after acceptance. Clearing all local data removes acceptance too, so it is requested again next time.
-
-```text
-Visual Nerve website → app files → your browser → IndexedDB
-```
-
-## Returning to your work
-
-Use the same browser profile and website address. Another browser, profile, device or private window has its own separate workspace. The site address includes its scheme, hostname and port: changing the address can open a different local workspace. Nothing automatically synchronizes between them.
-
-After the first visit, the app keeps its files for offline use. You can edit and save without an internet connection. **Saved** means a local save completed.
-
-## Keep a portable copy
-
-In **Settings → Data & Privacy**, choose **Export all data**. This downloads a dated JSON backup of all your diagrams, nodes, connections, owners, portable preferences and templates. The local import-size preference is excluded. Keep the file somewhere you choose. Visual Nerve does not upload it or create an automatic backup.
-
-On another browser or computer, use **Restore backup**. **Merge with existing data** keeps current diagrams and adds the imported work. **Replace all local data** removes the current workspace before restoring the file and requires confirmation. Connection permissions are never imported. Both modes ignore any imported file-size preference and keep the destination browser's own limit.
-
-**Export diagram** is a separate option for a single diagram as PNG, PDF, Markdown or JSON. Use **Export all data** for a complete restorable workspace.
-
-Clearing this site's browser data, resetting your browser profile or uninstalling the browser may remove your work. Private or incognito browsing may use temporary storage that disappears when the session ends. Export a backup when you want a separate copy.
-
-**Storage details** shows an estimate of site storage, when your browser supports it. Once you have a diagram, you can ask the browser to keep local data. Browser decisions vary; a grant can reduce automatic eviction under storage pressure, but cannot prevent manual clearing or guarantee retention.
-
-## Import size preference
-
-Local imports default to 50 MB. **Settings → Import file size → Maximum import file size (MB)** accepts whole numbers from 50 to 1024; **Save import limit** keeps the preference only in this browser. MB here means MiB, and 1024 MB is 1 GB. Only imports up to 50 MB are supported and guaranteed. Higher limits are experimental and may be slow or fail because of browser memory or format constraints. The preference changes neither source privacy nor the 32 MiB API/MCP JSON/WebSocket envelope. [Import size and limits](/help/#import-file-size).
-
-## SQL schema import
-
-When you load or paste SQL/DDL, the script is analyzed locally in a Web Worker. SQL is never executed or sent to a database. The script is a temporary draft. DDL diagrams save recognized tables, columns, types, nullability, keys and foreign keys. SELECT/WITH diagrams save source aliases/scopes, output expressions, JOIN conditions, clauses and column lineage.
-
-**Query expressions and filter clauses retain their literal values**, including potentially sensitive strings, through local storage, JSON, backups and recognized text exports. The complete raw source script and comments are not saved. DDL INSERT/COPY rows, defaults, CHECK expressions and procedure bodies are excluded; ENUM labels in column types may remain as schema structure. The original file stays on your device. Review names, expressions, filters, types and keys before sharing. Optional API/MCP SQL analysis sends supplied SQL transiently through your loopback bridge to the browser; the bridge does not retain it. [Importing SQL queries and schemas](/help/#import-a-sql-schema).
-
-## Presentation voices
-
-Walkthrough descriptions stay on this computer and are passed only to the local speech worker. Narration does not upload node descriptions, titles or diagram content to a speech service. The ordered presentation is saved with the diagram; playback progress, subtitle visibility and generated narration WAVs are transient and are not included in backups.
-
-Audio and preload start disabled. Only explicit audio playback, video export with audio, **Preload**, or **Settings → Presentation voice → Preview voice** can download fixed voice models and configuration files, about 60–109 MiB per voice. These external downloads use fixed, versioned model addresses; their requests contain no narration text or diagram data. The model host can see ordinary download metadata such as the requested model and client IP. Model inference then runs locally, including offline when the required assets are cached.
-
-Downloaded voices use a separate browser CacheStorage cache rather than the IndexedDB diagram database. **Settings → Presentation voice → Clear downloaded voices** removes that model cache. Model binaries and generated audio are not exported with diagram JSON or workspace backups. Descriptions above 12,000 characters are rejected explicitly rather than truncated. Subtitle text shows the node description locally. Browser policies can require pressing Play directly in the app before audio begins.
-
-Walkthrough video export renders the diagram locally, and optional narration is inserted offline without screen capture or audible playback. Export buffers are temporary; the finished MP4 or WebM downloads only to the location chosen by your browser and is not stored in IndexedDB or workspace backups. API/MCP can start or cancel export with write access and read its transient state, but receives no video bytes. Video export leaves saved diagram content unchanged. The file is capped at 256 MiB and the final timeline at 30 minutes, with explicit errors and no truncation. Keep the tab visible; manual camera interaction and diagram edits cancel export.
-
-## Optional Codex / MCP access
-
-MCP is **Off** by default. In Settings you can explicitly grant **Read only** or **Read + write** access to tools through a local bridge on your computer. Visual Nerve must remain open. The bridge cannot independently read your browser's database and does not keep a second copy.
+Visual Nerve stores diagrams, objects, connections, owners, metadata, preferences, geometry, drawing layers, source analyses and related records in **IndexedDB** in your browser profile. Original CSV cells, simulation models and bounded results, named history snapshots, storyboard scenes and reviewed app specifications are included where used.
 
 ```text
-Codex → local MCP bridge → your open browser → IndexedDB
+Website → application files → your browser → IndexedDB
 ```
 
-Enabling this access lets the tools you connect read diagram content; read and write access also lets them edit it. Read only also allows supplied SQL, code and diagram files to be previewed through their exact endpoints without saving; creating a diagram requires write access. Choose tools you want to give this access to. Visual Nerve sends responses only through that local connection, and does not upload a cloud copy. Turn access **Off** to disconnect. [The guide explains setup](/help/#codex-and-mcp).
+Ordinary editing does not upload that content to the static host, S3, CloudFront or a cloud database. No account is required. Other visitors to the same website do not see your browser's workspace. **Saved** means a local transaction has committed.
+
+The browser may temporarily hold unsaved working state in memory. Keep the tab open when saving reports an error or conflict, and resolve it before closing.
+
+## Required local storage is separate from optional analytics
+
+Before the editor opens, you must explicitly acknowledge and accept local browser storage and offline app caching. These are required for the workspace to work. Without acceptance, the editor remains closed; the public pages and Help remain readable.
+
+Acceptance is kept in this browser profile, excluded from backups and removed when all local workspace data is deleted. Offline app caching starts after acceptance. The browser may independently cache ordinary downloaded HTTP files.
+
+This workspace acceptance does not grant permission for Google Analytics. Analytics has a separate optional choice on public information pages.
+
+## A different browser or domain has different data
+
+The workspace belongs to the **exact origin**—scheme, hostname and port—and browser profile where you created it. Another device, browser, private window or origin has separate storage. There is no automatic synchronization.
+
+A move to a new website domain does not transfer diagrams. Export a complete backup from the old origin, then restore it at the new one. A different path within the same origin, such as moving the editor to `/app/`, does not itself create a new browser-storage origin.
+
+Private browsing, clearing site data, resetting a profile, browser eviction or device loss can remove local work. A browser retention request may reduce automatic eviction, but does not prevent manual deletion or guarantee recovery.
+
+## Keep a recovery copy and control its location
+
+**Settings → Data & Privacy → Export all data** downloads a complete workspace backup. It includes diagrams, connections, owners, portable preferences, templates, datasets, supported simulation content and history. It excludes storage acceptance, integration tokens/grants, local identity and the browser's import-size preference.
+
+You choose where to keep or share that file. Visual Nerve does not upload it or create an automatic cloud backup. Native diagram JSON is a separate restorable copy of one diagram; PNG/PDF and Markdown serve different sharing purposes.
+
+**Restore backup** previews Merge or Replace. Replace requires confirmation and disables imported integration access; restore does not accept storage or grant tools access on your behalf. Invalid data rolls back instead of leaving a partial workspace.
+
+History snapshots may retain earlier objects and original CSV rows after they disappear from the current view. Removing the current source alone does not erase copies held by history or downloaded backups.
+
+[Backup, restore and retention procedures](/help/settings/)
+
+## What imported material retains
+
+Imports and pasted source are analyzed locally in bounded, cancellable workers. They are not executed or sent to a remote analysis service during ordinary UI import.
+
+| Material            | Saved information                                                                                                                                                                        |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CSV                 | Original cells, column identities, cleanup/filter/grouping settings, measures and source relationships.                                                                                  |
+| SQL definitions     | Recognized tables, columns, types, nullability and keys; data rows, defaults, CHECK expressions, comments and procedure bodies are excluded. ENUM labels may remain as schema structure. |
+| SELECT/WITH queries | Aliases, scope, joins, output expressions, clauses and column lineage, **including literal values** within expressions and filters.                                                      |
+| Source code         | Recognized identifiers, paths, source locations, summaries, structural relationships and confidence; complete source, comments and ordinary nonstructural literals are temporary.        |
+| draw.io / Visio     | The selected page's native objects, text, geometry, links and provenance; raw XML/ZIP, embedded image bytes and unselected pages are not retained.                                       |
+
+Imported diagram scripts, macros and external relationships are not fetched or executed. Quoted resource names, paths, SQL filter values and user-written descriptions can still be sensitive. Review recognized content and exports before sharing.
+
+Local file imports default to 50 MiB. Settings can raise the limit to 1 GiB with an experimental-use warning; structural limits still apply. This changes neither source privacy nor the bridge's separate 32 MiB transport envelope.
+
+## Narration and video are generated locally
+
+Node descriptions and scene narration are sent to the local speech worker, not uploaded to a speech service. English and Swedish voices use fixed neural model assets. Alan is the default English voice.
+
+Explicit audio playback, Preload, voice preview or video export with audio can download approximately 60–109 MiB of assets per voice from versioned external model URLs. These requests contain no narration text or diagram payload. The model host can receive ordinary request metadata, including the requested model and client IP.
+
+After loading, synthesis runs locally and can work offline with cached assets. Downloaded models use a separate CacheStorage cache. **Clear downloaded voices** removes that cache; model binaries and generated audio are excluded from diagram JSON and workspace backups.
+
+Video export renders locally and inserts optional audio without screen capture. Temporary frames, audio and video buffers are not saved in IndexedDB. The finished file downloads through your browser. API/MCP can read export state, but receives no video bytes.
+
+[Presentation, voice and video details](/help/presentations/)
+
+## Optional API and MCP access
+
+Integration is **Off** by default. Choose **Read only** or **Read + write** in Settings to grant connected tools access through a separate local bridge process. The browser must remain open.
+
+```text
+Your client → local bridge → open browser → local workspace
+```
+
+The bridge forwards commands in memory and has no second diagram database. It binds to loopback and checks trusted origins. Browser commands use the same validation and transactions as UI operations. Read only includes supported exact unsaved previews, exports, questions and comparisons; mutations and run/playback controls need write access.
+
+The tools you connect receive requested content and may handle it under their own hosting, logging or AI settings. An explicit CSV measure-evidence request can return original cells. A local bridge does not guarantee the privacy of a remote client receiving those cells.
+
+The browser keeps an optional integration token for its session, excluding it from backups and copied setup instructions. Turn access Off to disconnect. Public API documentation discovery reads bundled documentation without a browser content grant.
+
+[Local MCP architecture and setup](/mcp/) · [Exact API contract](/api/docs/)
 
 ## Optional Lovable handoff
 
-**Build with Lovable** generates an app brief locally and shows its complete text. Opening the dialog sends nothing. **Open in Lovable** opens a new tab at `lovable.dev` with the reviewed prompt; you press **Send** there to start building. This explicitly shares that text with Lovable.
+Build with Lovable creates a specification and complete prompt locally. Opening the dialog sends nothing. **Open in Lovable** opens a separate tab at `lovable.dev` with the reviewed text in a URL fragment; you then press Send there to start building.
 
-The brief includes your instructions and chosen objects, written descriptions, notes, responsibilities and relationships. CSV schema, analysis choices and calculated summaries may be included. SQL tables contribute recognized columns/types, nullability, primary/unique keys and foreign-key pairs/actions through a typed allowlist; query diagrams contribute aliases, outputs, expressions, joins and clauses, including literal values. Missing definitions and unresolved references stay explicit. Source rows, complete raw SQL scripts, arbitrary metadata, owner email addresses and bridge credentials are excluded. Written text, grouping values and schema names/type labels are included as shown, so review the preview before sharing. Draft instructions stay in IndexedDB with the diagram. [How to use the handoff](/help/#build-an-app-with-lovable).
+The brief includes your instructions, selected objects, written descriptions, notes, responsibilities, relationships and reviewed requirements. Recognized CSV schema/group summaries, SQL schema/query structure and code contracts may be included. SQL expressions and clauses retain literal values.
 
-## Remove local data
+Original CSV rows, complete source scripts, arbitrary metadata, owner email addresses and bridge credentials are excluded. Written text and group/schema identifiers can still be sensitive. Review the exact prompt before sharing; Lovable's own policies govern the copy it receives.
 
-**Delete diagram** removes one project. **Settings → Data & Privacy → Delete all local data** removes all your diagrams, owners, custom templates and settings in this browser after explicit confirmation. It cannot be undone unless you restore an exported backup. Built-in templates and the app itself remain available. This action does not delete backup files you downloaded.
+[Review the app brief and handoff](/help/sharing/#prepare-an-app-brief-for-lovable)
 
-Visual Nerve uses no analytics, advertising scripts or remote error reporting. Normal network requests download app files; they contain no diagram content. A static host may keep ordinary website access logs, such as requested file paths and IP addresses. Your graph is never sent in those requests.
+## Optional analytics on public information pages
 
-Created by **Johan Caripson**. [MPL-2.0 license](/license/) · [Project repository on GitHub](https://github.com/Caripson/visualnerve).
+When an analytics measurement ID is configured, public marketing and information pages offer a separate **Google Analytics** choice through a locally bundled **Klaro** consent manager. Analytics is optional, starts disabled and loads only after a valid, saved opt-in. Rejecting it does not prevent access to the product or documentation. Without a configured ID, no Google Analytics tag loads.
 
-## Source code import
+Analytics does **not run on `/app/`, `/help/` or `/api/docs/`**, regardless of a prior marketing-page choice. No graph, title, node description, source file, SQL/CSV payload, workspace identifier or diagram action is included in analytics events.
 
-Source files, folders and pasted scripts are analyzed locally in a cancellable worker. Nothing is executed, installed or sent to a remote analysis service. Source is a temporary draft: diagrams save recognized names, paths, line numbers, structural identifiers, bounded summaries, dependency evidence and confidence. Complete source, comments and nonstructural literal values are not saved. Quoted resource/table/import/field names can remain as structural identifiers. Identifiers and paths may still be sensitive. User-added notes/descriptions follow normal storage/export behavior.
+The implementation sends a page-view event for the public page route, using a fixed generic title, without query strings, URL fragments or referrer content. Google may receive ordinary network/device metadata and analytics-cookie identifiers when you opt in. Advertising personalization and Google signals are disabled. The site operator must also keep Enhanced Measurement disabled for this property's web stream so it does not add automatic interaction events.
 
-JSON and backups preserve this recognized structure, and Markdown/Lovable share allowlisted summaries with confidence. Review the preview before sharing. The optional local API/MCP passes supplied code transiently over the loopback bridge to the browser, without server storage. Read-only access permits exact code preview and language discovery; saving a code diagram requires write access. No source refresh runs in the background.
+The Analytics administrator must disable Enhanced Measurement and avoid Connected Site Tags or custom tags that collect page contents, automatic events or URL parameters. Visual Nerve's page integration does not provide those data sources.
 
-## Draw.io and Visio import
+### How the choice and cookies are kept
 
-`.drawio` XML and `.vsdx` ZIP files are analyzed locally in a cancellable worker. Preview retains a temporary draft with page graphs and warnings, without storing or opening a diagram. Creation saves only the selected page as ordinary editable nodes, relationships, text, geometry and safe absolute HTTP(S) links. Complete XML/ZIP source, archive entries, embedded image bytes and unselected pages are not retained. Images, macros, scripts and external relationships are never fetched or executed; legacy `.vsd` and macro-enabled `.vsdm` are unsupported.
+The explicit analytics choice is stored in localStorage under `visualnerve-site-consent-v1`, with `visualnerve-site-consent-saved-at` recording when it was saved. It is treated as valid for **30 days**, separately from workspace-storage acceptance, and is excluded from workspace backups.
 
-Recognized names, text, links and graph provenance can remain in IndexedDB, JSON/backups and normal typed text exports. Review them before sharing. Native shapes and connector routing may be simplified; import warnings describe limitations. Optional REST/MCP preview/import passes source transiently through the loopback bridge and stores nothing on the server. Exact preview permits read-only access; saving requires write access and consent/grants are checked again after analysis. Revocation cancels pending work. [Importing diagram files](/help/#import-drawio-or-visio).
+After opt-in, Google Analytics may set `_ga` and `_ga_<stream>` cookies. The configuration requests host-scoped cookies with Path `/`, a **30-day expiry** and no rolling expiry refresh. Actual browser/provider behavior can vary; the requested lifetime is not a universal browser guarantee. These cookie identifiers support analytics, not access to the diagram database.
 
-## Versions, scenes and understanding
+### Change or withdraw consent
 
-Named local versions and checkpoints retain removed objects and CSV source rows until those snapshots or their diagram/workspace are deleted. Full workspace backups include this history; removing a current source alone does not delete rows referenced by history. Scene definitions and reviewed app requirements are saved with the diagram. Playback selection, overview navigation and generated audio remain transient.
+Use **Cookie settings** on a public information page to review or change the choice. Withdrawal saves the new choice first, disables analytics, removes accessible Google Analytics cookies and reloads an active information page to unload the tag. Other open tabs observe the changed preference. A page with no configured analytics explains that no optional analytics is configured.
 
-Relationship questions inspect retained structural evidence without executing code/SQL or including raw CSV rows. An explicit CSV measure-evidence request through MCP can return original cells; app briefs exclude original rows. Exact question and app-brief previews permit Read only and do not save or send to an external service. Reviewed descriptions and requirements are included when you explicitly share the Lovable brief.
+Withdrawal stops future collection by this site; it cannot retract data already sent to Google. Browser site-data controls can also clear the locally stored choice. This choice does not control the required IndexedDB records used by the workspace.
+
+## Ordinary website requests and access logs
+
+Opening pages downloads static application, documentation and image files. The host/CDN can keep ordinary access logs, such as requested file paths and IP addresses. Those file requests do not contain your graph. Optional voice downloads, analytics and explicit external links/handoffs are the separate network flows described above.
+
+Visual Nerve does not use advertising scripts or remote error-reporting payloads containing workspace data.
+
+## Delete local workspace data
+
+**Delete diagram** removes one project and its associated local content. **Settings → Data & Privacy → Delete all local data** requires confirmation and removes workspace records, preferences and storage acceptance. Built-in templates can be reseeded; the application remains available.
+
+Deletion cannot erase backup/export files kept outside the browser, copies already shared with another service, ordinary host logs or analytics already collected. App caches, downloaded voice caches and marketing-consent preferences are separate storage mechanisms; use their respective controls or the browser's site-data controls when clearing them.
+
+[Open the workspace](/app/) · [Manage storage and backups](/help/settings/) · [Security and reporting](/security/)

@@ -19,7 +19,7 @@ export default defineConfig({
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     actionTimeout: 20000,
-    baseURL: 'http://127.0.0.1:4327',
+    baseURL: 'http://127.0.0.1:4327/app/',
     viewport: { width: 1440, height: 980 },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',

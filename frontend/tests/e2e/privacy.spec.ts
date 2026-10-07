@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import { acknowledge } from './fixtures';
 
 const publicURL = 'https://public-app.test:4340';
+const publicApp = `${publicURL}/app/`;
 async function saved(page: Page) {
   await expect(page.getByRole('status').filter({ hasText: /^Saved$/ })).toBeVisible();
 }
@@ -96,7 +97,14 @@ function networkAudit(context: BrowserContext) {
     if (!['GET', 'HEAD'].includes(request.method()))
       writes.push(`${request.method()} ${request.url()}`);
     if (new URL(request.url()).origin !== publicURL) external.push(request.url());
-    if (/\/api\/v1\/|\/mcp|\/diagrams|\/nodes|PutObject/i.test(request.url()))
+    const path = new URL(request.url()).pathname;
+    const publicMcpPage =
+      ['GET', 'HEAD'].includes(request.method()) && ['/mcp/', '/mcp/index.html'].includes(path);
+    if (
+      (!publicMcpPage &&
+        /^(?:\/api\/v1\/|\/mcp(?:\/|$)|\/diagrams(?:\/|$)|\/nodes(?:\/|$))/i.test(path)) ||
+      /PutObject/i.test(request.url())
+    )
       contentRequests.push(request.url());
   });
   return () => {
@@ -113,7 +121,7 @@ test('explicit acceptance is mandatory, cannot be dismissed, and enables storage
     page = await context.newPage();
   const audit = networkAudit(context);
   try {
-    await page.goto(publicURL);
+    await page.goto(publicApp);
     const intro = page.getByRole('dialog', { name: 'Your work stays in this browser' });
     await expect(intro).toBeVisible();
     await expect(page.getByRole('button', { name: 'Accept and continue' })).toBeDisabled();
@@ -157,7 +165,7 @@ test('same HTTPS static URL has independent Private A and Private B workspaces, 
   try {
     const pageA = await a.newPage(),
       pageB = await b.newPage();
-    await pageA.goto(publicURL);
+    await pageA.goto(publicApp);
     await acknowledge(pageA);
     await create(pageA, 'Private A');
     await pageA.locator('.mindmap-root').dblclick();
@@ -166,7 +174,7 @@ test('same HTTPS static URL has independent Private A and Private B workspaces, 
     await pageA.getByLabel('Edit topic').fill('A local child');
     await pageA.getByLabel('Edit topic').press('Enter');
     await saved(pageA);
-    await pageB.goto(publicURL);
+    await pageB.goto(publicApp);
     await acknowledge(pageB);
     await expect(pageB.locator('.diagram-item')).toHaveCount(0);
     await create(pageB, 'Private B');
@@ -208,7 +216,7 @@ test('full backup restores after confirmed deletion, and replacement requires it
     page = await context.newPage(),
     audit = networkAudit(context);
   try {
-    await page.goto(publicURL);
+    await page.goto(publicApp);
     await acknowledge(page);
     await create(page, 'My Strategy');
     await page.getByRole('button', { name: 'Owners', exact: true }).click();
@@ -334,7 +342,7 @@ test('closing and reopening the browser profile retains My Strategy on a public 
     context = await chromium.launchPersistentContext(profile, options);
     let audit = networkAudit(context);
     let page = await context.newPage();
-    await page.goto(publicURL);
+    await page.goto(publicApp);
     await acknowledge(page);
     await create(page, 'My Strategy');
     await page.locator('.mindmap-root').dblclick();
@@ -349,7 +357,7 @@ test('closing and reopening the browser profile retains My Strategy on a public 
     context = await chromium.launchPersistentContext(profile, options);
     audit = networkAudit(context);
     page = await context.newPage();
-    await page.goto(publicURL);
+    await page.goto(publicApp);
     await saved(page);
     await expect(
       page.getByRole('heading', { name: 'My Strategy', exact: true, level: 1 }),
@@ -400,7 +408,7 @@ test('public HTTPS app grants read-only or write access solely to a local TLS MC
       .poll(async () => (await (await request.get('/api/v1/health')).json()).connected)
       .toBe(count);
   try {
-    await page.goto(publicURL);
+    await page.goto(publicApp);
     await acknowledge(page);
     await create(page, 'MCP Private Strategy');
     expect(sockets).toEqual([]);
@@ -483,7 +491,7 @@ test('remote bridge addresses are rejected before any socket or content transmis
     sockets: string[] = [];
   page.on('websocket', (socket) => sockets.push(socket.url()));
   try {
-    await page.goto(publicURL);
+    await page.goto(publicApp);
     await acknowledge(page);
     await create(page, 'Keep private');
     await settings(page);
@@ -509,7 +517,7 @@ test('export menu separates one diagram from all data and storage retention deni
     await page.addInitScript(() => {
       Object.defineProperty(navigator.storage, 'persist', { value: async () => false });
     });
-    await page.goto(publicURL);
+    await page.goto(publicApp);
     await acknowledge(page);
     await create(page, 'Export choices');
     await page.getByRole('button', { name: 'Export', exact: true }).click();
@@ -543,7 +551,7 @@ test('privacy and backup controls fit a phone without horizontal overflow', asyn
     }),
     page = await context.newPage();
   try {
-    await page.goto(publicURL);
+    await page.goto(publicApp);
     await expect(
       page.getByRole('dialog', { name: 'Your work stays in this browser' }),
     ).toBeVisible();
@@ -569,7 +577,7 @@ test('substantial data gets a one-time dismissible backup reminder and public AP
     page = await context.newPage(),
     audit = networkAudit(context);
   try {
-    await page.goto(publicURL);
+    await page.goto(publicApp);
     await acknowledge(page);
     for (let index = 0; index < 10; index++) await create(page, `Local diagram ${index + 1}`);
     await expect(page.locator('.backup-nudge')).toContainText('10 local diagrams');

@@ -81,7 +81,7 @@ test('imports boolean SELECT operands and their complete column lineage through 
     'name LIKE pattern',
     'active OR verified valid_flag',
   ];
-  await page.goto('/');
+  await page.goto('/app/');
   await acknowledge(page);
   await page.getByLabel('Import file', { exact: true }).setInputFiles({
     name: 'Boolean query.sql',
@@ -144,7 +144,7 @@ test('previews and saves a complex SELECT with separate aliases, nested results,
   page.on('request', (request) => {
     if (/\/api\/v1\/|\/mcp/.test(request.url())) contentRequests.push(request.url());
   });
-  await page.goto('/');
+  await page.goto('/app/');
   await acknowledge(page);
   await page.getByLabel('Import file', { exact: true }).setInputFiles({
     name: 'Contract query.sql',
@@ -285,7 +285,7 @@ test('pastes a WITH query on a 320 px phone and inspects CASE, cast and WHERE wi
   page,
 }) => {
   await page.setViewportSize({ width: 320, height: 760 });
-  await page.goto('/');
+  await page.goto('/app/');
   await acknowledge(page);
   await page.getByRole('button', { name: 'Import SQL script', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Import SQL', exact: true });

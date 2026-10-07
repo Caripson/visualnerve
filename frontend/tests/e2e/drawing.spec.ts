@@ -41,7 +41,7 @@ function graphContent(graph: Graph) {
 }
 
 async function open(page: Page, name: string, mobile = false) {
-  await page.goto('/');
+  await page.goto('/app/');
   if (mobile) await page.getByRole('button', { name: 'Open projects', exact: true }).click();
   await page.locator('.diagram-item').filter({ hasText: name }).click();
   await saved(page);

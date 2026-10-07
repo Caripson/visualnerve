@@ -1,6 +1,7 @@
-baseURL = '/'
+baseURL = 'https://visualnerve.caripson.com/'
 defaultContentLanguage = 'en'
 title = 'Visual Nerve'
+enableRobotsTXT = true
 disableKinds = ['taxonomy', 'term', 'RSS', '404']
 [outputs]
 home = ['HTML', 'Error']
@@ -11,3 +12,6 @@ isHTML = true
 notAlternative = true
 [markup.goldmark.renderer]
 unsafe = false
+[params]
+environment = 'staging'
+googleAnalyticsMeasurementId = ''

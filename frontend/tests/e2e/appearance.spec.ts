@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { acknowledge } from './fixtures';
 
 const publicURL = 'https://public-app.test:4340';
+const publicApp = `${publicURL}/app/`;
 const referencePaths = [
   '/help/',
   '/privacy/',
@@ -88,7 +89,7 @@ test('reference pages inherit saved Settings and update live across tabs, includ
   const context = await browser.newContext({ ignoreHTTPSErrors: true, colorScheme: 'light' });
   const editor = await context.newPage();
   try {
-    await editor.goto(publicURL);
+    await editor.goto(publicApp);
     await acknowledge(editor);
     await chooseTheme(editor, 'dark');
     await appearance(editor, 'dark');

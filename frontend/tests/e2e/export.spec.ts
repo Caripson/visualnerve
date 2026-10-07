@@ -47,7 +47,7 @@ test('complete, viewport and selection PNGs contain rendered pixels; A3 portrait
       },
     })
   ).json()) as Graph;
-  await page.goto('/');
+  await page.goto('/app/');
   await page.locator('.diagram-item').filter({ hasText: 'Export areas' }).click();
   await expect(page.locator(`[data-node-id="${g.nodes[0].id}"]`)).toBeVisible();
   await page.locator(`[data-node-id="${g.nodes[0].id}"]`).click();
@@ -105,7 +105,7 @@ test('search reveals a collapsed branch and preserves metadata navigation', asyn
       },
     })
   ).json()) as Graph;
-  await page.goto('/');
+  await page.goto('/app/');
   await page.locator('.diagram-item').filter({ hasText: 'Hidden search' }).click();
   await expect(page.locator('.canvas-shell [data-testid="graph-node"]')).toHaveCount(1);
   await page.keyboard.press('Control+f');

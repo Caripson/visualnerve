@@ -29,7 +29,7 @@ test('Nordic Product Launch: editor, reload, external API, four exports and loss
 }, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.goto('/');
+  await page.goto('/app/');
   await expect(page.getByRole('heading', { name: /Give your thinking/ })).toBeVisible();
   await page.getByRole('button', { name: /New diagram/ }).click();
   await page.getByLabel('New diagram name').fill('Nordic Product Launch');

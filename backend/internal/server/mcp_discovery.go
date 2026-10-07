@@ -21,6 +21,8 @@ Start with visual_nerve_api_docs with {} (or omit arguments) for this compact gu
 
 Call visual_nerve_request for workspace commands only. Paths omit /api/v1, for example {"path":"/diagrams","method":"GET"}. /api/docs and /api/openapi.yaml are HTTP documentation routes, not browser graph commands; do not send them to visual_nerve_request.
 
+The browser editor is at /app/ on the website origin; / is the public product home. Keep /app/ open with local storage accepted and MCP access enabled in Settings. Existing diagrams use the same origin's IndexedDB across this route change. REST /api/v1 and MCP POST /mcp keep their existing endpoints; the public GET /mcp/ page is setup documentation, not the local MCP endpoint. Allowed origins omit /app/ and all other paths.
+
 ## Process Simulator
 
 Process Simulator is its own document type, process-simulator, with graph.simulation={type:"process-simulator",schemaVersion:1,...}. GET /simulation/capabilities discovers model units, operations and retention limits. Create through POST /diagrams with {name,type:"process-simulator"}; GET /diagrams includes these documents. GET /diagrams/{diagramId}/simulation returns the complete semantic topology, particle types, resource requirements, queues, scaling, improvements, economics and scenarios. PUT the exact {baseVersion,model} replaces it atomically. Semantic CRUD for nodes, edges, particle-types, resources and scenarios is under that same simulation route; POST/PATCH use {baseVersion,value}, and DELETE uses ?baseVersion=N. Node/edge changes update the native canvas in the same transaction. Read exact schemas before editing. No business semantics are inferred from canvas coordinates.

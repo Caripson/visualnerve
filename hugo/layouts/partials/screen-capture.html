@@ -1,0 +1,26 @@
+{{- /* Public screenshots only. Never constrain the screen to a device aspect ratio:
+     the native image dimensions keep every captured control visible. */ -}}
+{{- $width := .width | default 0 -}}
+{{- $height := .height | default 0 -}}
+{{- $device := .device | default "macbook" -}}
+{{- if and (not .device) (gt $width 0) (gt $height $width) -}}
+  {{- $device = "detail" -}}
+  {{- if ge $height (mul $width 1.55) -}}{{- $device = "iphone" -}}{{- end -}}
+{{- end -}}
+<figure class="site-capture site-capture--{{ $device }}{{ with .class }} {{ . }}{{ end }}"{{ if gt $width 0 }} style="--capture-width: {{ $width }}px"{{ end }}>
+  <a class="site-capture__link" href="{{ .src | safeURL }}" target="_blank" rel="noopener noreferrer" aria-label="Open screenshot: {{ .alt }}">
+    <div class="site-capture__hardware">
+      <div class="site-capture__display">
+        {{- if ne $device "detail" -}}<span class="site-capture__camera" aria-hidden="true"></span>{{- end -}}
+        <div class="site-capture__screen"><img src="{{ .src | safeURL }}" alt="{{ .alt }}" loading="lazy" decoding="async"{{ if and (gt $width 0) (gt $height 0) }} width="{{ $width }}" height="{{ $height }}"{{ end }}></div>
+        {{- if eq $device "iphone" -}}
+        <span class="site-capture__home-indicator" aria-hidden="true"></span>
+        {{- else if eq $device "macbook" -}}
+        <span class="site-capture__wordmark" aria-hidden="true">MacBook Pro</span>
+        {{- end -}}
+      </div>
+      {{- if eq $device "macbook" -}}<div class="site-capture__base" aria-hidden="true"><span></span></div>{{- end -}}
+    </div>
+  </a>
+  {{ with .caption }}<figcaption>{{ . }}</figcaption>{{ end }}
+</figure>
