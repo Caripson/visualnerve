@@ -6,7 +6,13 @@ import type { Page, Locator } from '@playwright/test';
 /** Explicit opt-in keeps CI from rewriting documentation assets. */
 export async function captureProcessGuide(
   target: Page | Locator,
-  name: 'process-setup' | 'simulation-traffic' | 'node-quick-add',
+  name:
+    | 'process-setup'
+    | 'simulation-traffic'
+    | 'node-quick-add'
+    | 'process-hierarchy'
+    | 'process-drilldown'
+    | 'process-subprocess-setup',
 ) {
   if (process.env.VN_CAPTURE_PROCESS !== '1') return;
   const output = resolve('../hugo/static/help/images');

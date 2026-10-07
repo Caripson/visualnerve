@@ -222,13 +222,18 @@ export class Workspace {
     }
   }
   async settled() {
-    await this.queue;
+    // A camera/edit event can append another save while an API read waits for
+    // the previous tail. Keep every write on that same queue: persisting pending
+    // graphs here would race their already-enqueued save with its own baseVersion.
+    while (true) {
+      const tail = this.queue;
+      await tail;
+      if (tail === this.queue) break;
+    }
     if (this.pending.size) {
       const state = useEditor.getState();
       if (state.status === 'conflict') throw new StorageError(409, state.message);
-      for (const { graph, sourcesChanged } of this.pending.values())
-        await this.persist(graph, useEditor.getState().editRevision, sourcesChanged);
-      if (this.pending.size) throw new StorageError(500, useEditor.getState().message);
+      throw new StorageError(500, state.message || 'Pending local changes could not be saved.');
     }
   }
   async refresh() {

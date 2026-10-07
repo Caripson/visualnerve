@@ -93,11 +93,19 @@ export interface OutcomeConfiguration {
   revenue: boolean;
   revenueOverride?: number;
 }
+/** Organizational scope; all execution assumptions live on its actual child nodes. */
+export interface SimulationProcess {
+  id: string;
+  name: string;
+  description?: string;
+  parentId?: string;
+}
 export type SimulationNode = {
   id: string;
   name: string;
   description?: string;
   metadata?: Record<string, unknown>;
+  processId?: string;
 } & (
   | { type: 'source'; source: SourceConfiguration }
   | { type: 'work'; work: WorkConfiguration }
@@ -149,6 +157,7 @@ export type ScenarioPatch<T> = T extends readonly unknown[]
     ? { [K in keyof T]?: ScenarioPatch<T[K]> | null }
     : T;
 export interface ScenarioOverrides {
+  processes?: Record<string, ScenarioPatch<SimulationProcess>>;
   economics?: ScenarioPatch<{ maximumBudget?: number }> | null;
   nodes?: Record<string, ScenarioPatch<SimulationNode>>;
   edges?: Record<string, ScenarioPatch<SimulationEdge>>;
@@ -168,6 +177,8 @@ export interface SimulationModel {
   schemaVersion: 1;
   currency: string;
   particleTypes: ParticleType[];
+  /** Optional for compatibility with existing schemaVersion 1 documents. */
+  processes?: SimulationProcess[];
   nodes: SimulationNode[];
   edges: SimulationEdge[];
   resources: Resource[];
@@ -245,6 +256,39 @@ export interface NodeMetrics extends EconomicMetrics {
   throughputPerHour: number;
   status: 'idle' | 'normal' | 'busy' | 'saturated' | 'blocked' | 'scaling' | 'failed';
   resourceUsage: Record<string, number>;
+}
+/** Rollup of actual work in a scope and every nested subprocess. Parent and child totals overlap. */
+export interface ProcessMetrics extends EconomicMetrics {
+  id: string;
+  name: string;
+  parentId?: string;
+  nodeIds: string[];
+  childProcessIds: string[];
+  resourceIds: string[];
+  resourceUsage: Record<string, number>;
+  entered: number;
+  /** Successful scope visits, including boundary exits and final outcomes. */
+  completed: number;
+  /** Successful visits that left this scope and continued elsewhere. */
+  exited: number;
+  /** Final successful outcomes that occurred inside this scope. */
+  terminalCompleted: number;
+  abandoned: number;
+  failed: number;
+  inSystem: number;
+  throughputPerHour: number;
+  queue: QueueMetrics;
+  cycleTime: DistributionMetrics;
+  /** Scope-entry to revenue-producing terminal outcome. */
+  ttr: DistributionMetrics;
+  processing: DistributionMetrics;
+  utilization: number;
+  currentUtilization: number;
+  status: NodeMetrics['status'];
+  currentBottleneck: string | null;
+  bottlenecks: Bottleneck[];
+  /** Only occupied shared-resource units are allocated; idle/scale/investment pool costs stay global. */
+  resourceCostAllocation: 'occupied-units';
 }
 export interface ResourceMetrics {
   id: string;
@@ -353,6 +397,8 @@ export interface SimulationState {
   nodes: Record<string, NodeMetrics>;
   resources: Record<string, ResourceMetrics>;
   particleTypes: Record<string, ParticleTypeMetrics>;
+  /** Older saved runs may omit this; current engine snapshots always provide it. */
+  processes?: Record<string, ProcessMetrics>;
   particles: ParticleSnapshot[];
   events: SimulationEvent[];
   bottlenecks: Bottleneck[];

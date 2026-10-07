@@ -10,6 +10,7 @@ import { buildSimulationParticleScene, particleTransitFraction } from './particl
 import { ObservedSimulationClock } from './render-clock';
 import { simulationTrafficColors } from './traffic';
 import type { SimulationState } from './types';
+import { projectedProcessPath } from './process-connections';
 
 export { MAX_RENDERED_PARTICLES } from './particle-scene';
 const MAX_CACHED_PATHS = 1600;
@@ -85,10 +86,13 @@ export function ParticleOverlay({
       const from = projected.nodes.get(edge.sourceNodeId),
         to = projected.nodes.get(edge.targetNodeId);
       if (!from || !to) return;
-      const coordinates = `${from.x + from.width},${from.y + from.height / 2},${to.x},${to.y + to.height / 2}`;
+      const projectedPath = projectedProcessPath(edge);
+      const coordinates =
+        projectedPath ??
+        `${from.x + from.width},${from.y + from.height / 2},${to.x},${to.y + to.height / 2}`;
       let value = paths.get(edge.id);
       if (value?.coordinates === coordinates) return value;
-      const [definition] = getSmoothStepPath({
+      const [fallback] = getSmoothStepPath({
         sourceX: from.x + from.width,
         sourceY: from.y + from.height / 2,
         sourcePosition: Position.Right,
@@ -96,6 +100,7 @@ export function ParticleOverlay({
         targetY: to.y + to.height / 2,
         targetPosition: Position.Left,
       });
+      const definition = projectedPath ?? fallback;
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       path.setAttribute('d', definition);
       value = {

@@ -4,6 +4,7 @@ import type {
   SimulationModel,
   SimulationNode,
   ScenarioPatch,
+  SimulationProcess,
 } from './types';
 
 /** Remap semantic references with the same identity map as the document shapes. */
@@ -11,12 +12,22 @@ export function remapSimulationModel(
   model: SimulationModel,
   nodeIds: ReadonlyMap<string, string>,
   edgeIds: ReadonlyMap<string, string>,
+  processIds: ReadonlyMap<string, string> = new Map(),
 ): SimulationModel {
   const nodeId = (id: string) => nodeIds.get(id) ?? id;
+  const processId = (id: string) => processIds.get(id) ?? id;
+  const process = <T extends SimulationProcess | ScenarioPatch<SimulationProcess>>(
+    input: T,
+  ): T => ({
+    ...structuredClone(input),
+    ...(input.id ? { id: processId(input.id) } : {}),
+    ...(input.parentId ? { parentId: processId(input.parentId) } : {}),
+  });
   const edgeId = (id: string) => edgeIds.get(id) ?? id;
   const node = <T extends SimulationNode | ScenarioPatch<SimulationNode>>(input: T): T => {
     const result = structuredClone(input);
     if (result.id) result.id = nodeId(result.id);
+    if (result.processId) result.processId = processId(result.processId);
     if ('work' in result && result.work?.overflowNodeId)
       result.work.overflowNodeId = nodeId(result.work.overflowNodeId);
     if ('router' in result && result.router) {
@@ -51,6 +62,7 @@ export function remapSimulationModel(
     Object.fromEntries(Object.entries(values).map(([id, value]) => [identity(id), convert(value)]));
   return {
     ...structuredClone(model),
+    ...(model.processes ? { processes: model.processes.map(process) } : {}),
     nodes: model.nodes.map(node),
     edges: model.edges.map(edge),
     improvements: model.improvements.map(improvement),
@@ -58,6 +70,9 @@ export function remapSimulationModel(
       ...structuredClone(scenario),
       overrides: {
         ...structuredClone(scenario.overrides),
+        ...(scenario.overrides.processes
+          ? { processes: record(scenario.overrides.processes, processId, process) }
+          : {}),
         ...(scenario.overrides.nodes
           ? { nodes: record(scenario.overrides.nodes, nodeId, node) }
           : {}),

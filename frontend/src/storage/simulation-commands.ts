@@ -3,6 +3,7 @@ import type { Graph } from '../model/types';
 import type { RunOptions, SimulationModel, SimulationState } from '../simulation/types';
 import { validateSimulationModel, resolveScenario } from '../simulation/schema';
 import { setSimulationModel } from '../simulation/document';
+import { ProcessHierarchy } from '../simulation/process-hierarchy';
 import {
   MAX_CAPACITY_CARDS_PER_BANK,
   MAX_ADDITIONAL_CAPACITY_CARDS,
@@ -44,6 +45,7 @@ const collections = {
   resources: 'resources',
   improvements: 'improvements',
   scenarios: 'scenarios',
+  processes: 'processes',
 } as const;
 type Collection = (typeof collections)[keyof typeof collections];
 type Entity = { id: string; [key: string]: unknown };
@@ -72,6 +74,8 @@ export const simulationCapabilities = {
   speeds: [1, 10, 100, 'max'],
   features: [
     'semantic-crud',
+    'hierarchical-processes',
+    'process-drilldown',
     'shared-resources',
     'queues',
     'abandonment',
@@ -91,6 +95,27 @@ export const simulationCapabilities = {
     'native-capacity-card-projection',
     'local-persistence',
   ],
+  hierarchy: {
+    processCollection: 'processes',
+    parentField: 'processes[].parentId',
+    nodeMembershipField: 'nodes[].processId',
+    missingProcesses: 'empty-hierarchy',
+    maximumProcesses: 50000,
+    maximumDepth: 128,
+    execution: 'same-global-engine-and-shared-resource-pools',
+    projection: 'read-only-process-cards-and-boundary-edges',
+    metrics: {
+      scope: 'direct-members-and-all-descendant-processes',
+      completed: 'successful-scope-visits-including-exits-and-terminal-outcomes',
+      terminalCompleted: 'successful-final-outcomes-inside-scope',
+      cycleTime: 'scope-entry-to-exit-or-terminal-outcome',
+      ttr: 'scope-entry-to-revenue-producing-terminal-outcome',
+      aggregation: 'parent-and-child-totals-overlap-do-not-sum',
+      distributions: 'computed-from-scope-observations-never-summed-node-quantiles',
+      resourceCostAllocation: 'occupied-units',
+      sharedResourceOverhead: 'idle-scaling-and-investment-pool-costs-remain-global',
+    },
+  },
   visualCapacity: {
     view: '2d',
     representation: 'full-native-cards',
@@ -240,7 +265,7 @@ function merged(
   return result;
 }
 function entities(model: SimulationModel, collection: Collection): Entity[] {
-  return model[collection] as unknown as Entity[];
+  return (model[collection] ?? []) as unknown as Entity[];
 }
 function readModel(graph: Graph): SimulationModel {
   if (graph.diagram.type !== 'process-simulator' || !graph.simulation)
@@ -312,6 +337,30 @@ export async function simulationCommand(
     for (const id of data.runIds) await ownedRun(service, diagramId, id);
     return service.compare(data.runIds as string[]);
   }
+  if (action === 'hierarchy') {
+    if (parts.length !== 4)
+      throw new SimulationCommandError(404, 'Unknown simulation hierarchy endpoint.');
+    query(url, []);
+    if (method !== 'GET')
+      throw new SimulationCommandError(405, 'Simulation hierarchy requires GET.');
+    const hierarchy = new ProcessHierarchy(model);
+    const directNodeIds = new Map<string, string[]>();
+    for (const node of model.nodes) {
+      if (node.processId === undefined) continue;
+      const members = directNodeIds.get(node.processId) ?? [];
+      members.push(node.id);
+      directNodeIds.set(node.processId, members);
+    }
+    return {
+      rootProcessIds: [...hierarchy.children()],
+      processes: [...hierarchy.processes.values()].map((process) => ({
+        ...structuredClone(process),
+        childProcessIds: [...hierarchy.children(process.id)],
+        nodeIds: [...hierarchy.nodeIds(process.id)],
+        directNodeIds: directNodeIds.get(process.id) ?? [],
+      })),
+    };
+  }
   if (action === 'runs')
     return runCommand(
       runtime ?? (await defaultRuntime()),
@@ -361,6 +410,17 @@ export async function simulationCommand(
     baseVersion = version(
       url.searchParams.has('baseVersion') ? Number(url.searchParams.get('baseVersion')) : undefined,
     );
+    if (
+      collection === 'processes' &&
+      (model.nodes.some((node) => node.processId === entityId) ||
+        (model.processes ?? []).some((process) => process.parentId === entityId))
+    )
+      throw new SimulationCommandError(
+        422,
+        'Reassign member nodes and child processes in an atomic model PUT before deleting this process.',
+        `processes.${entityId}`,
+        'SIMULATION_PROCESS_REFERENCED',
+      );
     nextEntities = current.filter((value) => value.id !== entityId);
   } else if (
     (method === 'POST' && entityId === undefined) ||
@@ -513,18 +573,27 @@ async function runCommand(
         resources: Object.fromEntries(
           Object.entries(state.resources).map(([id, value]) => [id, value.queue]),
         ),
+        processes: Object.fromEntries(
+          Object.entries(state.processes ?? {}).map(([id, value]) => [id, value.queue]),
+        ),
       };
     if (action === 'nodes') return state.nodes;
     if (action === 'resources') return state.resources;
     if (action === 'particle-types') return state.particleTypes;
+    if (action === 'processes') return state.processes ?? {};
   }
-  if (parts.length === 7 && ['nodes', 'resources', 'particle-types'].includes(action)) {
+  if (
+    parts.length === 7 &&
+    ['nodes', 'resources', 'particle-types', 'processes'].includes(action)
+  ) {
     const values =
-      action === 'particle-types'
-        ? state.particleTypes
-        : action === 'nodes'
-          ? state.nodes
-          : state.resources;
+      action === 'processes'
+        ? (state.processes ?? {})
+        : action === 'particle-types'
+          ? state.particleTypes
+          : action === 'nodes'
+            ? state.nodes
+            : state.resources;
     const value = Object.hasOwn(values, semanticId(parts[6]))
       ? values[semanticId(parts[6])]
       : undefined;

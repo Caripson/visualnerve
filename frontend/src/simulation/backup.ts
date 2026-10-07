@@ -35,6 +35,28 @@ function remapState<T extends SimulationState>(
         { ...metric, id: nodeId(metric.id) },
       ]),
     ),
+    ...(state.processes
+      ? {
+          processes: Object.fromEntries(
+            Object.entries(state.processes).map(([id, metric]) => [
+              id,
+              {
+                ...metric,
+                nodeIds: metric.nodeIds.map(nodeId),
+                currentBottleneck:
+                  metric.currentBottleneck &&
+                  metric.bottlenecks.find((b) => b.id === metric.currentBottleneck)?.kind === 'node'
+                    ? nodeId(metric.currentBottleneck)
+                    : metric.currentBottleneck,
+                bottlenecks: metric.bottlenecks.map((b) => ({
+                  ...b,
+                  id: b.kind === 'node' ? nodeId(b.id) : b.id,
+                })),
+              },
+            ]),
+          ),
+        }
+      : {}),
     resources: Object.fromEntries(
       Object.entries(state.resources).map(([id, metric]) => [
         id,

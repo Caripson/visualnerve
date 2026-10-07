@@ -60,6 +60,12 @@
     "nodes": 8
   },
   {
+    "key": "delivery-network-simulator",
+    "name": "Delivery network + returns",
+    "type": "process-simulator",
+    "nodes": 23
+  },
+  {
     "key": "system-architecture",
     "name": "System Architecture",
     "type": "dependency",

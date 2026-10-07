@@ -93,6 +93,22 @@ describe('Process Simulator guided setup UI', () => {
     expect(useEditor.getState().graph).toBe(graph);
     expect(useEditor.getState().history).toHaveLength(0);
   });
+  it('announces the new step and resets scroll after long subprocess configuration', () => {
+    const graph = createSimulationGraph('Accessible setup', createEmptySimulationModel());
+    useEditor.getState().setGraph(graph);
+    render(<ProcessWizard graph={graph} close={() => {}} />);
+    next();
+    const heading = screen.getByRole('heading', { name: 'Where does the work happen?' });
+    expect(heading).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: /Main process and subprocesses/ }));
+    const scrollContainer = heading.closest('.modal')!;
+    scrollContainer.scrollTop = 800;
+    next();
+    expect(screen.getByRole('heading', { name: 'What is the business impact?' })).toHaveFocus();
+    expect(scrollContainer.scrollTop).toBe(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(screen.getByRole('heading', { name: 'Where does the work happen?' })).toHaveFocus();
+  });
   it('refuses to overwrite a concurrent semantic API edit', () => {
     const graph = createSimulationGraph('Empty', createEmptySimulationModel());
     useEditor.getState().setGraph(graph);

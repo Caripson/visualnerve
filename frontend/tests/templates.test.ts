@@ -3,7 +3,7 @@ import { instantiate, templates } from '../src/templates/templates';
 import { nodeTypes } from '../src/nodes/registry';
 import { nodeKinds } from '../src/model/types';
 it('provides all canonical templates, a guided empty simulator and fresh identities', () => {
-  expect(templates).toHaveLength(11);
+  expect(templates).toHaveLength(12);
   for (const template of templates) {
     const first = instantiate(template.key, 'A'),
       second = instantiate(template.key, 'B');

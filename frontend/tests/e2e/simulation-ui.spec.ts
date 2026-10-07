@@ -159,6 +159,15 @@ test('AT-16 scenarios edit independently through normal UI and MAX produces comp
   await expect(page.locator('[data-metric="Revenue"]')).toContainText('1');
   await page.getByLabel('Simulation scenario').selectOption('');
   await page.getByRole('button', { name: 'Play simulation' }).click();
+  // Starting another run is asynchronous; the old run can still display completed.
+  await expect
+    .poll(async () => {
+      const response = await request.get(`/api/v1/diagrams/${graph.diagram.id}/simulation/runs`);
+      expect(response.ok()).toBeTruthy();
+      const runs = (await response.json()) as { status: string }[];
+      return runs.filter((run) => run.status === 'completed').length;
+    })
+    .toBe(2);
   await expect(page.locator('.simulation-run-status')).toHaveText('completed');
   await page.getByText(/Replay and compare runs/).click();
   const checkboxes = page.getByRole('checkbox', { name: /^Compare run / });

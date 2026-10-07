@@ -1,5 +1,7 @@
 import type { GraphEdge, GraphNode } from '../model/types';
 import { logicalNodeId } from './render-model';
+import { getSimulationProcessId } from './process-projection';
+import { simulationProcessTraffic } from './process-traffic';
 import {
   particleCapacityCard,
   particleTransitEdge,
@@ -80,14 +82,15 @@ export function buildSimulationParticleScene(
       const unit = slots.selectProcessingUnit(particle.nodeId, particle);
       const node =
         unit === undefined ? undefined : particleCapacityCard(view, particle.nodeId, unit);
-      if (node && inBounds(node)) processing.push({ particle, node, index: 0 });
+      if (node && !getSimulationProcessId(node) && inBounds(node))
+        processing.push({ particle, node, index: 0 });
     } else if (particle.status === 'queued' && queues.length < 80) {
       if (!state.nodes[particle.nodeId]?.queue.current) continue;
       const node = particleCapacityCard(view, particle.nodeId);
-      const count = queueCounts.get(particle.nodeId) ?? 0;
+      const count = queueCounts.get(node?.id ?? particle.nodeId) ?? 0;
       if (node && inBounds(node) && count < MAX_QUEUE_SAMPLE) {
         queues.push({ particle, node, index: count });
-        queueCounts.set(particle.nodeId, count + 1);
+        queueCounts.set(node.id, count + 1);
       }
     } else if (
       (particle.status === 'abandoned' || particle.status === 'failed') &&
@@ -103,9 +106,19 @@ export function buildSimulationParticleScene(
   for (const edge of view.flowEdges) {
     if (paths.length >= MAX_RENDERED_TRAFFIC_EDGES) break;
     const id = edge.metadata.simulationLogicalEdgeId;
-    if (!semanticEdges.has(typeof id === 'string' ? id : edge.id) || !edgeInBounds(edge)) continue;
+    const ids = Array.isArray(edge.metadata.simulationLogicalEdgeIds)
+      ? edge.metadata.simulationLogicalEdgeIds
+      : [typeof id === 'string' ? id : edge.id];
+    if (
+      !ids.some((entry) => typeof entry === 'string' && semanticEdges.has(entry)) ||
+      !edgeInBounds(edge)
+    )
+      continue;
     const target = view.nodes.get(edge.targetNodeId)!;
-    const pressure = traffic.get(logicalNodeId(target));
+    const processId = getSimulationProcessId(target);
+    const pressure = processId
+      ? simulationProcessTraffic(processId, model, state)
+      : traffic.get(logicalNodeId(target));
     if (pressure) paths.push({ edge, traffic: pressure, resource: false });
   }
   for (const edge of view.resourceEdges) {
@@ -113,13 +126,20 @@ export function buildSimulationParticleScene(
     if (!edgeInBounds(edge)) continue;
     const target = view.nodes.get(edge.targetNodeId)!;
     const source = view.nodes.get(edge.sourceNodeId)!;
-    const targetTraffic = traffic.get(logicalNodeId(target));
+    const processId = getSimulationProcessId(target);
+    const targetTraffic = processId
+      ? simulationProcessTraffic(processId, model, state)
+      : traffic.get(logicalNodeId(target));
     const resourceId = edge.metadata.simulationResourceId;
     const pool = typeof resourceId === 'string' ? state.resources[resourceId] : undefined;
     // A saturated but unrelated pool must not falsely mark every consuming flow blocked.
     const waiting =
-      pool?.waitingNodeIds.includes(logicalNodeId(target)) &&
-      targetTraffic?.waitingResources.includes(pool.name);
+      pool?.waitingNodeIds.some((nodeId) =>
+        processId
+          ? Array.isArray(target.metadata.simulationProcessRepresentedNodeIds) &&
+            target.metadata.simulationProcessRepresentedNodeIds.includes(nodeId)
+          : nodeId === logicalNodeId(target),
+      ) && targetTraffic?.waitingResources.includes(pool.name);
     const pressure = waiting ? targetTraffic : traffic.get(logicalNodeId(source));
     if (pressure) paths.push({ edge, traffic: pressure, resource: true });
   }

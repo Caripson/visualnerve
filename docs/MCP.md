@@ -1,8 +1,56 @@
-# MCP understanding and diagram presentations
+# MCP processes, understanding and diagram presentations
 
 Connect Codex to the local HTTP(S) `/mcp` server and keep the Visual Nerve workspace at `/app/` open with local storage accepted. The browser stores the diagrams in IndexedDB. Enable **Settings → MCP access → Read + write** to save or control a presentation. Read only permits GET discovery/state and exact question/app-brief preview requests. The public website serves app files and documentation; the MCP bridge runs on the user's computer.
 
 Call `visual_nerve_api_docs` first. Its default compact guide and full `{"document":"openapi"}` response describe both canonical definitions and playback. Commands use `visual_nerve_request` with paths that omit `/api/v1`.
+
+## Inspect and control hierarchical processes
+
+Start with `{path:"/simulation/capabilities"}`. The response advertises `hierarchical-processes` and `process-drilldown`, including the fields `processes[].parentId` and `nodes[].processId`. Read `GET /diagrams` to find documents whose type is `process-simulator`, then `GET /diagrams/{diagramId}/simulation` for the complete semantic model. This model, shared resources, scenarios and deterministic engine are the same ones used by the UI. MCP does not infer process structure from canvas positions or keep a shadow configuration.
+
+Discover the actual topology with:
+
+```json
+{
+  "path": "/diagrams/DIAGRAM_ID/simulation/hierarchy",
+  "method": "GET"
+}
+```
+
+It returns `{rootProcessIds,processes:[{id,name,description?,parentId?,childProcessIds,nodeIds,directNodeIds}]}`. `childProcessIds` and `directNodeIds` are immediate, while `nodeIds` includes every descendant. Process IDs are stable semantic strings; use the returned canonical node IDs to inspect or edit their Work/Source/Router/Outcome assumptions. Omitted `model.processes` means an empty hierarchy for older schema version 1 documents. Folded process cards and boundary connectors are read-only projections, not additional business nodes or extra capacity.
+
+Create a process using the latest diagram version and an existing parent ID read from that hierarchy:
+
+```json
+{
+  "path": "/diagrams/DIAGRAM_ID/simulation/processes",
+  "method": "POST",
+  "data": {
+    "baseVersion": 7,
+    "value": { "id": "new-packing", "name": "Packing", "parentId": "PARENT_ID" }
+  }
+}
+```
+
+Use version 7 only if the latest response returned it. Success returns the updated Graph; use its `diagram.version` for subsequent writes. Assign a real Work node through `PATCH .../simulation/nodes/{nodeId}` with `{baseVersion,value:{processId:"new-packing"}}`. Processes have the existing collection GET/POST and entity GET/PATCH/DELETE conventions. PATCH `{parentId:null}` removes optional parent membership, and node `{processId:null}` removes direct membership. Scenario `overrides.processes` can change names/parents and node overrides can change membership without mutating Baseline. Invalid references or cycles return structured 422 without partial writes. A referenced process cannot be deleted independently: `SIMULATION_PROCESS_REFERENCED` explains that children/member nodes must be reassigned atomically through full-model PUT.
+
+Run the persisted model without requiring an active animation:
+
+```json
+{
+  "path": "/diagrams/DIAGRAM_ID/simulation/runs",
+  "method": "POST",
+  "data": { "seed": 12345, "durationSeconds": 3600, "speed": "max", "animated": false }
+}
+```
+
+Poll the returned run ID at `GET .../runs/{runId}/state` or `/result`. Read `/processes` for every scope or `/processes/{processId}` for one; `/queues` includes process, node and resource maps. Scoped metrics include actual queues/wait distributions, utilization, bottlenecks, resource usage, throughput and economic fields. `completed` counts successful scope visits, including successful boundary exits; `exited` counts those exits, and `terminalCompleted` counts final successful outcomes inside the scope. Re-entry creates another visit. Scoped `cycleTime` measures entry to exit/outcome; scoped `ttr` measures entry to a revenue-producing terminal outcome.
+
+Parent and child rollups overlap: do not sum them or add node quantiles. Scopes receive only occupied shared-resource cost (`resourceCostAllocation:"occupied-units"`); idle pool capacity, pool scaling and pool investments remain global overhead. Use whole-system metrics for total profitability and scenario comparison, then process metrics to locate where congestion and its consequences occurred. All scopes compete for the same global resource pools. UI, animated, MAX and MCP execution share deterministic inputs/results.
+
+`GET /templates` discovers the bundled **Delivery network** example, including its complete nested process model, explicit shared pools and scenario assumptions. To reproduce it, read the returned template's `graph.simulation`, create a process-simulator document and replace `/simulation` using `{baseVersion,model}`. Creation retains the kiosk default until that atomic replacement. The connected browser must remain open with accepted storage; inspection permits Read only, while creation, editing and run controls require Read + write. See [Process Simulator](PROCESS_SIMULATOR.md) and [the complete API contract](openapi.yaml).
+
+## Present a diagram in numbered order
 
 1. Fetch `/diagrams/{diagramId}` to read current node UUIDs and `diagram.version`.
 2. Read `GET /diagrams/{diagramId}/presentation`. An absent definition returns `{version:1,nodeIds:[],secondsPerNode:8,transitionMs:1200}`.

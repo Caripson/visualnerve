@@ -8,6 +8,7 @@ import {
   starterValues,
 } from '../src/simulation/starter';
 import { validateSimulationModel } from '../src/simulation/schema';
+import { ProcessStarterAnalysis } from '../src/simulation/starter-analysis';
 
 describe('guided process setup produces executable semantic documents', () => {
   it('builds a complete finite flow with modeled transfer time and deterministic results', () => {
@@ -111,5 +112,72 @@ describe('guided process setup produces executable semantic documents', () => {
     expect(
       graph.simulation!.resources.some((resource) => resource.id === 'existing-resource'),
     ).toBe(true);
+  });
+  it('builds nested editable steps with exact processing times and no container charges', () => {
+    const draft = starterDefaults();
+    draft.structure = 'hierarchical';
+    draft.arrivalMode = 'batch';
+    draft.batchCount = '1';
+    draft.transferSeconds = '0';
+    const graph = createStarterGraph(
+      createSimulationGraph('Nested', createEmptySimulationModel()),
+      draft,
+    );
+    const model = graph.simulation!;
+    expect(model.processes).toHaveLength(4);
+    const root = model.processes!.find((process) => !process.parentId)!;
+    expect(model.processes!.filter((process) => process.parentId === root.id)).toHaveLength(3);
+    const steps = model.nodes.filter((node) => node.type === 'work');
+    expect(steps.map((node) => node.work.processingSeconds)).toEqual([120, 300, 180]);
+    expect(steps.map((node) => node.work.capacity)).toEqual([1, 2, 1]);
+    expect(new Set(steps.map((node) => node.processId)).size).toBe(3);
+    const result = runSimulation(model, { untilComplete: true });
+    expect(result.completedAtSeconds).toBe(600);
+    expect(result.metrics.cost).toBe(0);
+    expect(result.processes![root.id]).toMatchObject({
+      completed: 1,
+      terminalCompleted: 1,
+      realizedRevenue: 100,
+    });
+    expect(result.processes![root.id].cycleTime.average).toBe(600);
+  });
+  it('estimates the shared pool across all consuming steps, rather than duplicating its capacity', () => {
+    const draft = {
+      ...starterDefaults(),
+      structure: 'hierarchical' as const,
+      sharedResource: true,
+      resourceCapacity: '1',
+    };
+    const analysis = new ProcessStarterAnalysis(draft);
+    expect(analysis.throughputPerHour).toBe(6);
+    expect(analysis.hourlyOperatingCost).toBe(180);
+    const independent = {
+      ...draft,
+      steps: draft.steps.map((step, index) => ({ ...step, usesSharedResource: index !== 1 })),
+    };
+    expect(new ProcessStarterAnalysis(independent).throughputPerHour).toBe(12);
+    const graph = createStarterGraph(
+      createSimulationGraph('Pool', createEmptySimulationModel()),
+      independent,
+    );
+    expect(graph.simulation!.resources).toHaveLength(1);
+    expect(
+      graph
+        .simulation!.nodes.filter((node) => node.type === 'work')
+        .map((node) => node.work.resourceRequirements?.length ?? 0),
+    ).toEqual([1, 0, 1]);
+  });
+  it('validates subprocess names, limits and per-step assumptions before building', () => {
+    const draft = { ...starterDefaults(), structure: 'hierarchical' as const };
+    for (const patch of [
+      { mainProcessName: ' ' },
+      { steps: [] },
+      { steps: Array.from({ length: 13 }, () => draft.steps[0]) },
+      { steps: [{ ...draft.steps[0], name: ' ' }] },
+      { steps: [{ ...draft.steps[0], capacity: '0' }] },
+      { steps: [{ ...draft.steps[0], processingMinutes: '-1' }] },
+      { steps: [{ ...draft.steps[0], workCostPerHour: '-1' }] },
+    ])
+      expect(() => starterValues({ ...draft, ...patch })).toThrow();
   });
 });

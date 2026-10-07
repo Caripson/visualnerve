@@ -34,6 +34,7 @@ Acceptance is required because the editor needs local browser storage. Reading H
 | Responsibility Flow | Make responsibility part of the workflow | Show a team handover |
 | Process Simulator | Build your own simulated process with guided setup | Test order-processing capacity |
 | Kiosk + package pickup | Explore shared resources in a runnable example | Test whether package demand disrupts store customers |
+| Delivery network + returns | Open nested processes and locate a shared-resource constraint | Compare warehouse, transport, installation and return capacity |
 | System Architecture | Show components and dependencies | Explain an application stack |
 
 Ordinary diagram modes share native objects and relationships. You can change their presentation later without rebuilding the graph. **Process Simulator** is a separate document with its own simulation model; a normal flowchart does not start simulating merely because it contains arrows.

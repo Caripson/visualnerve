@@ -1,9 +1,13 @@
 import type { SimulationModel, SimulationNode } from '../types';
 import { toScenarioPatch } from '../scenario-patch';
 
-export function addDraftNode(model: SimulationModel, type: SimulationNode['type']) {
+export function addDraftNode(
+  model: SimulationModel,
+  type: SimulationNode['type'],
+  processId?: string,
+) {
   const id = crypto.randomUUID();
-  const common = { id, name: `New ${type}` };
+  const common = { id, name: `New ${type}`, ...(processId ? { processId } : {}) };
   let added: SimulationNode;
   let particleTypes = model.particleTypes;
   let resources = model.resources;
@@ -49,21 +53,22 @@ export function applyScenarioDraft(
   const overrides: typeof scenario.overrides = {};
   for (const collection of [
     'nodes',
+    'processes',
     'edges',
     'particleTypes',
     'resources',
     'improvements',
   ] as const) {
-    const previous = new Map(base[collection].map((entry) => [entry.id, entry]));
+    const previous = new Map((base[collection] ?? []).map((entry) => [entry.id, entry]));
     if (
-      draft[collection].length !== previous.size ||
-      draft[collection].some((entry) => !previous.has(entry.id))
+      (draft[collection] ?? []).length !== previous.size ||
+      (draft[collection] ?? []).some((entry) => !previous.has(entry.id))
     )
       throw new Error(
         'Scenarios change assumptions. Add or remove process objects in the baseline.',
       );
     const changes = Object.fromEntries(
-      draft[collection]
+      (draft[collection] ?? [])
         .filter((entry) => JSON.stringify(entry) !== JSON.stringify(previous.get(entry.id)))
         .map((entry) => [entry.id, toScenarioPatch(entry, previous.get(entry.id))]),
     );

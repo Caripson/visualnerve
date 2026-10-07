@@ -41,6 +41,8 @@ import { CodeSummary } from '../components/CodeSummary';
 import { getCodeObject } from '../code/schema';
 import { SqlQuerySummary } from '../components/SqlQuerySummary';
 import { SimulationNodeSummary } from '../simulation/NodeSummary';
+import { ResourcePoolCard } from '../simulation/ResourcePoolCard';
+import { ProcessCard } from '../simulation/ProcessCard';
 import { NodeQuickAdd } from './NodeQuickAdd';
 
 export const nodeRegistry: Record<NodeKind, { label: string; icon: LucideIcon; shape: string }> = {
@@ -112,7 +114,7 @@ function renderer(kind: NodeKind) {
             {data.presentationNumber}
           </span>
         )}
-        {selected && !exporting && !projected && (
+        {selected && !exporting && !projected && !node.metadata.simulationLayoutProjected && (
           <NodeResizer
             minWidth={code ? 220 : 100}
             minHeight={code ? 150 : 50}
@@ -125,6 +127,12 @@ function renderer(kind: NodeKind) {
         )}
         <Handle type="target" position={Position.Left} id="in" isConnectable={!projected} />
         <Handle type="source" position={Position.Right} id="out" isConnectable={!projected} />
+        {node.metadata.simulationLayoutProjected === true && (
+          <>
+            <Handle type="target" position={Position.Bottom} id="in-bottom" isConnectable={false} />
+            <Handle type="source" position={Position.Top} id="out-top" isConnectable={false} />
+          </>
+        )}
         {!overview && (
           <>
             <Handle type="target" position={Position.Top} id="in-top" isConnectable={!projected} />
@@ -190,4 +198,6 @@ export const nodeTypes: NodeTypes = {
     (Object.keys(nodeRegistry) as NodeKind[]).map((kind) => [kind, renderer(kind)]),
   ),
   'mindmap-topic': MindmapNode,
+  'simulation-process': ProcessCard,
+  'simulation-resource-pool': ResourcePoolCard,
 };

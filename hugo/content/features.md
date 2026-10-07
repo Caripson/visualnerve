@@ -74,6 +74,8 @@ Process Simulator is a separate template for arrivals, queues, processing, share
 
 The UI, local API and MCP use the same seeded simulation engine. An animated run and a MAX run with the same inputs produce the same business result.
 
+Organize larger models into main processes and nested subprocesses. Open a congested group to find the actual constrained step, with separate step assumptions and shared resources across process boundaries. Guided setup and the delivery-and-returns example provide editable starting points.
+
 [Explore Process Simulator](/process-simulator/)
 
 ## Keep and share the right kind of copy

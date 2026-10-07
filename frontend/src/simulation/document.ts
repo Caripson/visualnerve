@@ -64,8 +64,16 @@ export function setSimulationModel(graph: Graph, input: SimulationModel): Graph 
           externalId: uuid.test(alias) ? undefined : alias,
           x: (index % 4) * 280,
           y: Math.floor(index / 4) * 180,
-          width: 220,
-          height: node.type === 'work' || node.type === 'resource' ? 170 : 130,
+          width: model.processes?.length ? 250 : 220,
+          height: model.processes?.length
+            ? node.type === 'work'
+              ? 240
+              : node.type === 'resource'
+                ? 210
+                : 170
+            : node.type === 'work' || node.type === 'resource'
+              ? 170
+              : 130,
         })),
       title,
       description: node.description,

@@ -12,12 +12,12 @@ It is a separate **Process Simulator** template and document type. Ordinary diag
 
 1. Choose **New diagram → Process Simulator → Create diagram**. An empty process opens **Set up your process**.
 2. In **Workload**, name the work item. Choose a regular arrival rate or a finite batch, then set the simulation length.
-3. In **Process**, name the Work step, set minutes per item and parallel capacity, and choose the travel time between steps. Optionally add shared staff or equipment.
+3. In **Process**, choose **One work step** or **Main process and subprocesses**. Name the steps, set minutes per item and parallel capacity, and choose travel time between steps. Optionally add shared staff or equipment.
 4. In **Economics**, set the currency, revenue per completed item and hourly operating costs. Set a maximum queue wait if waiting work may abandon.
 5. Review the assumptions and choose **Create process**.
 6. Choose **Play**. The initial 10× speed makes movement visible; use 1× for closer inspection or MAX to calculate results quickly.
 
-The wizard creates a connected **Arrivals → Work → Completed** model. A shared resource appears as a separate capacity card with a dashed requirement link. All assumptions are saved in the same simulation model used by the API and MCP.
+The single-step wizard creates a connected **Arrivals → Work → Completed** model. The subprocess option creates a main process containing an ordered flow of individually configured steps. A shared resource appears as a separate capacity card with dashed requirement links. All assumptions are saved in the same simulation model used by the API and MCP.
 
 Choose **Set up later** to leave the canvas empty. **Start guided setup** reopens the wizard. Applying setup creates the model in one undoable operation; closing the wizard leaves the existing document unchanged.
 
@@ -28,6 +28,60 @@ Choose **Set up later** to leave the canvas empty. **Start guided setup** reopen
 Select a node and use **Add next** beside it. A new step and its connection are created together. If a Source or Work step already has one outgoing connection, adding a Work or Decision step inserts it into that path. A Decision can add an alternative branch. **Add previous** extends an Outcome; **Add work** on a Resource creates a Work step using that same shared capacity.
 
 New Work steps start with one slot and one minute of processing. New process connections have three seconds of real transfer time. Open **Assumptions** to change those values, resource requirements or routing rules. Undo removes the added node and connection together.
+
+## Main processes and subprocesses
+
+Use process groups to keep a large model understandable without hiding where work really waits. A group can contain more groups and actual Source, Work, Decision or Outcome steps. Work steps retain their own times, capacities, costs, queues, routing and shared-resource requirements. A group adds no extra processing or charge.
+
+### Create a hierarchy with guided setup
+
+1. Start an empty **Process Simulator** and complete **Workload**.
+2. In **Process**, choose **Main process and subprocesses** and name the main process.
+3. Configure each subprocess's name, Work step, minutes per item, parallel capacity and hourly slot cost. **Add subprocess** adds another ordered stage; **Remove** removes a draft stage.
+4. Enable the shared pool if needed. Choose **Use shared resource in this step** only for the stages that require that pool. These stages compete for one pool, rather than receiving separate copies of its capacity.
+5. Review each stage and its resource assignment. Choose **Create process**.
+6. Choose **Open process** on the main card, then open a subprocess to edit its real Work step. **Add step** creates work in the open group; **Add next** beside a selected step keeps its process membership.
+
+The wizard supports one to twelve sequential subprocesses. After setup, use **Assumptions → Processes** to add deeper levels or parallel groups, then configure connections and routing for the actual steps.
+
+![The subprocess setup review lists individual stage times, capacities, costs and shared-pool assignments.](/help/images/process-subprocess-setup.webp "Review the actual work in each subprocess before creating the hierarchy.")
+
+### Open, edit and navigate a process
+
+**Process overview** shows the main groups and the shared pools. Choose **Open process** or double-click a group. The navigation's **Open main process** and **Open subprocess** selectors reach a group directly, including on a phone. The breadcrumb shows your current location; choose a parent name to move up. **Show all steps** displays the complete underlying flow, and **Return to process view** restores the hierarchy.
+
+Under **Assumptions → Processes**, add a main process or subprocess, edit its name and description, choose a parent, or assign existing steps. The **Process group** field in a node's settings changes its membership. Removing a group keeps its real work and moves members to its parent or the overview. Invalid references and cyclic nesting are rejected.
+
+Hierarchy views arrange the visible cards compactly. Shared pools show actual capacity, busy units and queued work in a single summary card. On a phone, opening a group focuses a readable child card; pan to inspect its neighbours or use **Fit diagram** for the full view. Use **Show all steps** to edit the full flow's placement. 3D, presentations and exports show the complete real flow. Return to 2D for the collapsible hierarchy. Groups and capacity displays are temporary visual projections; they do not become additional simulated work.
+
+### Read congestion at both levels
+
+A group card shows its actual current queue, work in the process, completed visits, average wait, cycle time, allocated cost and named constraint. Green, yellow and red reflect observed state. Open a red group to find the constrained Work step or shared pool. Items crossing a group boundary follow their real connections; internal movement becomes visible when the group is open.
+
+Parent values include their descendants. Do not add a parent and child total together. **Completed** on a group means a successful visit that left that group or finished at an Outcome inside it; the system's **Completed** count means final successful Outcomes. Group cycle time measures entry to exit, and group TTR measures entry to a revenue Outcome. System TTR measures creation to revenue.
+
+Group costs include its Work operations and the occupied units of shared resources consumed there. Idle pool costs, shared scaling overhead and investment remain in system totals. Revenue appears in the Outcome's group and its ancestors. These rules avoid charging the same item repeatedly as it passes through stages; whole-system economics remain the comparison reference.
+
+## Explore delivery operations and returns
+
+1. Choose **New diagram → Delivery network + returns → Create diagram**.
+2. Run **Baseline** at MAX to calculate eight opening hours, or at an animated speed to inspect work movement.
+3. Open **Order fulfilment → Warehouse preparation**. Compare picking and packing queues with the shared operations pool.
+4. Return to the parent and open **Delivery and installation → Transport** or **Field service** to inspect downstream constraints.
+5. Run **10× returns, same staff**. Returns share operations staff, the loading dock and technicians with deliveries.
+6. Run **Expand warehouse capacity**, then **Expand warehouse and field delivery**, and compare completed work, wait, cost and contribution. Extra capacity is paid at the configured rates.
+
+The example has 23 real nodes, 11 process groups, three item types and five shared pools. Standard orders arrive at 18/hour, enterprise orders at 4/hour, and returns at 2/hour during an eight-hour opening day. Enterprise work has higher complexity and an additional design step. All times, revenues, patience limits, resource prices and scenarios are editable in **Assumptions**. These are illustrative assumptions, not business recommendations.
+
+![The delivery example's main process cards report live queues and named constraints beside shared resource pools.](/help/images/process-hierarchy.webp "Start with the main processes, then open the group where congestion appears.")
+
+![The warehouse subprocess shows real picking and packing steps with their observed queues and shared resource requirements.](/help/images/process-drilldown.webp "Opening a subprocess reveals the actual constrained steps without changing the simulation.")
+
+The **Assisted picking investment** scenario enables a 250,000 SEK improvement that reduces picking time to 65% and adds 20 SEK/hour operating cost. Compare it with the baseline: if the investment does not pay back within the captured period, the result says so.
+
+### Build the same hierarchy through API or MCP
+
+Create groups through `POST /diagrams/{id}/simulation/processes`, set `parentId` for nesting, and assign real nodes with `processId`. `GET .../simulation/hierarchy` returns semantic membership independently of canvas coordinates. `GET .../simulation/runs/{runId}/processes/{processId}` exposes the same queue, timing, cost and bottleneck values shown on group cards. See [API/MCP](/help/api-mcp/) and the [API reference](/api/docs/) for versioned writes, validation and runnable examples.
 
 ## Run the kiosk example
 
@@ -89,6 +143,7 @@ Compare package throughput with store waiting and lost revenue, not only package
 | **Router** | Chooses a valid outgoing route using rules or current state. |
 | **Resource** | Shared capacity such as staff, counters, machines or vehicles. Multiple Work nodes can compete for it. |
 | **Outcome** | Completes, fails or rejects work, and can realize revenue. |
+| **Process group** | A main process or subprocess containing real steps and nested groups; summarizes observed behavior without adding work. |
 | **Process connection** | A permitted flow path with a travel time. |
 | **Improvement** | An investment or operating change affecting a Work/Outcome node or resource. |
 
@@ -96,7 +151,7 @@ Dashed resource connections represent capacity requirements. They are distinct f
 
 ## Edit assumptions safely
 
-Open **Assumptions**, which opens **Process Simulator settings**. Desktop has sections for **nodes, connections, particles, resources, improvements, economics, complete model**. On a phone, use **Settings section** to select one.
+Open **Assumptions**, which opens **Process Simulator settings**. Desktop has sections for **nodes, processes, connections, particles, resources, improvements, economics, complete model**. On a phone, use **Settings section** to select one.
 
 Changes remain a draft until **Apply assumptions**. Cancel discards the draft. Invalid JSON or invalid semantic references must be corrected before applying. If the saved model changes while this editor is open, reopen it against the current version.
 

@@ -1,4 +1,5 @@
 import type { ProcessStarterDraft } from './starter';
+import { StarterProcessFields } from './StarterProcessFields';
 
 type Props = {
   draft: ProcessStarterDraft;
@@ -120,33 +121,59 @@ export function ProcessingStep(props: Props) {
       <div className="process-wizard-intro">
         <h3>Where does the work happen?</h3>
         <p>
-          Items wait in a queue when every slot is busy. The first process starts with one work
-          step; add more steps directly from its node later.
+          Start with one work step or a main process containing independently configured
+          subprocesses. Work waits when capacity or a shared resource is busy.
         </p>
       </div>
-      <StarterField
-        {...props}
-        field="workName"
-        label="Work step name"
-        help="Use an action, such as Pack order or Serve customer."
-      />
+      <div className="process-arrival-options" role="group" aria-label="Process structure">
+        <button
+          type="button"
+          aria-pressed={draft.structure === 'single'}
+          onClick={() => change({ structure: 'single' })}
+        >
+          <b>One work step</b>
+          <span>A simple starting point you can extend later.</span>
+        </button>
+        <button
+          type="button"
+          aria-pressed={draft.structure === 'hierarchical'}
+          onClick={() => change({ structure: 'hierarchical' })}
+        >
+          <b>Main process and subprocesses</b>
+          <span>Set separate capacity, time and cost for each stage.</span>
+        </button>
+      </div>
+      {draft.structure === 'hierarchical' ? (
+        <StarterProcessFields draft={draft} change={change} />
+      ) : (
+        <>
+          <StarterField
+            {...props}
+            field="workName"
+            label="Work step name"
+            help="Use an action, such as Pack order or Serve customer."
+          />
+          <div className="process-wizard-grid">
+            <StarterField
+              {...props}
+              field="processingMinutes"
+              label="Processing time (minutes/item)"
+              number
+              min={0.001}
+            />
+            <StarterField
+              {...props}
+              field="capacity"
+              label="Parallel capacity (slots)"
+              number
+              min={1}
+              step="1"
+              help="How many items this step can process at once."
+            />
+          </div>
+        </>
+      )}
       <div className="process-wizard-grid">
-        <StarterField
-          {...props}
-          field="processingMinutes"
-          label="Processing time (minutes/item)"
-          number
-          min={0.001}
-        />
-        <StarterField
-          {...props}
-          field="capacity"
-          label="Parallel capacity (slots)"
-          number
-          min={1}
-          step="1"
-          help="How many items this step can process at once."
-        />
         <StarterField
           {...props}
           field="transferSeconds"
@@ -214,13 +241,15 @@ export function EconomicsStep(props: Props) {
           label={`Revenue per completed item (${draft.currency})`}
           number
         />
-        <StarterField
-          {...props}
-          field="workCostPerHour"
-          label={`Work cost per slot/hour (${draft.currency})`}
-          number
-          help="Use this for the work step itself. Add staff costs separately below to avoid counting them twice."
-        />
+        {draft.structure === 'single' && (
+          <StarterField
+            {...props}
+            field="workCostPerHour"
+            label={`Work cost per slot/hour (${draft.currency})`}
+            number
+            help="Use this for the work step itself. Add staff costs separately below to avoid counting them twice."
+          />
+        )}
         {draft.sharedResource && (
           <StarterField
             {...props}

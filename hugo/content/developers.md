@@ -142,6 +142,14 @@ Times are simulated seconds; arrivals and operating costs are per hour. `untilCo
 
 For a stress test, run sequential `demandMultiplier` values such as 1.0, 1.1 and 1.2. Retain each run ID and its status. Compare 2–20 distinct runs using `POST /diagrams/{id}/simulation/compare` with `{ "runIds": ["RUN_A", "RUN_B"] }`. Starting or controlling runs requires write access; inspection and exact comparison permit read access. Headless runs still need the browser open and connected.
 
+## Inspect and control nested processes
+
+Process Simulator models optionally contain `processes: [{id, name, parentId?}]`; real nodes refer to their group through `processId`. Create and update groups through `/diagrams/{id}/simulation/processes` using the same versioned write envelope as other simulation entities. Groups organize real work and add no processing or cost.
+
+`GET /diagrams/{id}/simulation/hierarchy` returns roots, child groups and direct/recursive node membership. `GET /diagrams/{id}/simulation/runs/{runId}/processes/{processId}` returns observed queues, utilization, cycle time, economics and bottlenecks. These are the same values shown in the UI, independent of visual placement. Discover the complete contract through `visual_nerve_api_docs` and `/simulation/capabilities` before building a model with Codex or Claude.
+
+Parent totals include descendants. Scope completion counts successful visits, while global completion counts final Outcomes. Scope resource costs allocate occupied units; idle shared-pool costs remain global. Read the capability metadata and full schema when comparing values across levels.
+
 ## Handle versions, failures and boundaries
 
 | Status | Typical action                                                                             |

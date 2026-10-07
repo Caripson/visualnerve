@@ -77,9 +77,11 @@ export function NewDiagram({ close }: { close: () => void }) {
                   ? 'Guided setup for your own process'
                   : t.key === 'process-simulator'
                     ? 'Example · shared staff, queues and scenarios'
-                    : t.nodes
-                      ? `${t.nodes} nodes · ${t.type}`
-                      : 'An open space for your ideas'}
+                    : t.key === 'delivery-network-simulator'
+                      ? 'Example · nested processes and shared resources'
+                      : t.nodes
+                        ? `${t.nodes} nodes · ${t.type}`
+                        : 'An open space for your ideas'}
               </small>
             </button>
           ))}

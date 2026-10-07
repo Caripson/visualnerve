@@ -128,7 +128,7 @@ export function projectGraph(
         childCount: counts.get(n.id) ?? 0,
         exporting,
         mindmap: topics?.get(n.id),
-        resize: simulationProjected ? undefined : resize,
+        resize: simulationProjected || n.metadata.simulationLayoutProjected ? undefined : resize,
       };
       const previous = dataCache?.get(n.id);
       if (
@@ -152,7 +152,14 @@ export function projectGraph(
           exploration && getCsvNode(n)?.visible === false
             ? 'analysis-outside-data-view'
             : undefined,
-        type: mindmap && n.nodeType !== 'group' ? 'mindmap-topic' : n.nodeType,
+        type:
+          n.metadata.simulationPoolSummary === true
+            ? 'simulation-resource-pool'
+            : typeof n.metadata.simulationProcessId === 'string'
+              ? 'simulation-process'
+              : mindmap && n.nodeType !== 'group'
+                ? 'mindmap-topic'
+                : n.nodeType,
         position: { x: geom.x - (grouped ? parent!.x : 0), y: geom.y - (grouped ? parent!.y : 0) },
         ...(grouped ? { parentId: parent!.id } : {}),
         width: geom.width ?? n.width,
@@ -166,10 +173,11 @@ export function projectGraph(
           opacity: match ? 1 : 0.2,
         },
         selected: selected.has(logicalSelectionId),
+        ...(n.metadata.simulationLayoutProjected ? { draggable: false } : {}),
         ...(simulationProjected ? { draggable: false, selectable: false, connectable: false } : {}),
         hidden: collapsed(n) || (!match && filters.mode === 'hide'),
         data,
-        ariaLabel: `${n.title}, ${n.nodeType}${simulationProjected ? '. Open shared process properties' : ''}`,
+        ariaLabel: `${n.title}, ${typeof n.metadata.simulationProcessId === 'string' ? 'process group. Open to inspect subprocesses' : n.nodeType}${simulationProjected && !n.metadata.simulationProcessId ? '. Open shared process properties' : ''}`,
         ...(simulationProjected ? { ariaRole: 'button' as const } : {}),
         zIndex: n.nodeType === 'group' ? -1 : 1,
       };
@@ -267,10 +275,20 @@ export function projectGraph(
         : 2.5
       : (imported.width ?? 1.6);
     const right = source && target && target.x + target.width / 2 >= source.x + source.width / 2;
-    const sourceHandle =
-      mindmap && source?.nodeType !== 'group' ? `source-${right ? 'right' : 'left'}` : undefined;
-    const targetHandle =
-      mindmap && target?.nodeType !== 'group' ? `target-${right ? 'left' : 'right'}` : undefined;
+    const processPath =
+      typeof e.metadata.simulationProcessPath === 'string'
+        ? e.metadata.simulationProcessPath
+        : undefined;
+    const sourceHandle = processPath
+      ? String(e.metadata.simulationProcessSourceHandle)
+      : mindmap && source?.nodeType !== 'group'
+        ? `source-${right ? 'right' : 'left'}`
+        : undefined;
+    const targetHandle = processPath
+      ? String(e.metadata.simulationProcessTargetHandle)
+      : mindmap && target?.nodeType !== 'group'
+        ? `target-${right ? 'left' : 'right'}`
+        : undefined;
     const presentation = `${mindmap}:${!!branch}:${color}:${strokeWidth}:${sourceHandle}:${targetHandle}`;
     const cached = renderCache?.edges.get(e.id);
     if (
@@ -290,7 +308,23 @@ export function projectGraph(
         exploration && e.metadata.csvModelVisible === false
           ? `${e.label || e.edgeType} · outside current data view`
           : e.label,
-      type: branch ? 'mindmap-branch' : mindmap ? 'default' : 'smoothstep',
+      type: processPath
+        ? 'simulation-process-connection'
+        : branch
+          ? 'mindmap-branch'
+          : mindmap
+            ? 'default'
+            : 'smoothstep',
+      ...(processPath
+        ? {
+            data: {
+              path: processPath,
+              labelX: e.metadata.simulationProcessLabelX,
+              labelY: e.metadata.simulationProcessLabelY,
+              resourceRequirement: e.edgeType === 'simulation-resource',
+            },
+          }
+        : {}),
       sourceHandle,
       targetHandle,
       selected: simulationProjected ? false : selected,

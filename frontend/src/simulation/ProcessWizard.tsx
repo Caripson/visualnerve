@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, CircleCheck, Inbox, Sparkles, Workflow } from 'lucide-react';
 import { Modal } from '../components/Modal';
 import type { Graph } from '../model/types';
@@ -51,6 +51,19 @@ export function ProcessWizard({
   const [draft, setDraft] = useState(() => starterDefaults(graph.simulation?.currency));
   const [step, setStep] = useState(0);
   const [error, setError] = useState('');
+  const stepContent = useRef<HTMLDivElement>(null);
+  const previousStep = useRef(step);
+  useEffect(() => {
+    if (previousStep.current === step) return;
+    previousStep.current = step;
+    const heading = stepContent.current?.querySelector('h3');
+    if (heading) {
+      heading.tabIndex = -1;
+      heading.focus({ preventScroll: true });
+    }
+    const scrollContainer = stepContent.current?.closest('.modal');
+    if (scrollContainer) scrollContainer.scrollTop = 0;
+  }, [step]);
   const change = (patch: Partial<typeof draft>) => {
     setDraft((previous) => ({ ...previous, ...patch }));
     setError('');
@@ -108,7 +121,7 @@ export function ProcessWizard({
             </li>
           ))}
         </ol>
-        <div className="process-wizard-step" key={step}>
+        <div className="process-wizard-step" ref={stepContent} key={step}>
           {step === 0 && <WorkloadStep draft={draft} change={change} />}
           {step === 1 && <ProcessingStep draft={draft} change={change} />}
           {step === 2 && <EconomicsStep draft={draft} change={change} />}

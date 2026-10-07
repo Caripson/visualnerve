@@ -31,6 +31,16 @@ The bundled example uses an explicit 12-hour opening day, repeating schedules, e
 
 Multiple Work nodes can require the same logical resource. Adding another processing card does not automatically add another employee. Resource contention is part of the calculation.
 
+## Open the process to find the constrained step
+
+Build a main process with nested subprocesses through guided setup, or group an existing model under **Assumptions → Processes**. Each real Work step has its own time, capacity, cost and resource requirements. Group cards summarize actual queues, work in progress, cycle time and the named constraint; opening a group reveals its children.
+
+The **Delivery network + returns** example connects order acceptance, planning, warehouse preparation, transport, installation, billing and returns. Its flows share operations staff, technicians, engineers, drivers and a loading dock. Compare a returns rush or additional warehouse and delivery capacity to see how pressure travels across the business.
+
+![The delivery example shows main process groups and the shared pools they compete for.](/help/images/process-hierarchy.webp "Open a congested main process, then a subprocess, to inspect the real steps behind its queue.")
+
+Groups add no processing or charge. A parent's values include its subprocesses, so parent and child totals overlap. Full-system results remain the reference for economic comparisons. **Show all steps**, 3D and export retain the complete underlying flow.
+
 ## Observe the constraint on the canvas
 
 In 2D, particles follow valid model connections and remain queued until processing can begin. Node indicators and metrics reveal busy capacity, waiting and saturation. A bottleneck is identified from observed state and can move when you remove an earlier constraint.

@@ -3,7 +3,7 @@ package main
 func simNumber(min float64) object { return object{"type": "number", "minimum": min} }
 func simInteger(min int) object    { return object{"type": "integer", "minimum": min} }
 func simID() object {
-	return object{"type": "string", "minLength": 1, "maxLength": 300, "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings."}
+	return object{"type": "string", "minLength": 1, "maxLength": 300, "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings."}
 }
 func simArray(name string) object     { return object{"type": "array", "items": ref(name)} }
 func simMap(name string) object       { return object{"type": "object", "additionalProperties": ref(name)} }
@@ -89,7 +89,8 @@ func addSimulationSchemas(schemas object) {
 		"mode": simEnum("first-match", "weighted", "least-queue", "available-capacity"), "rules": simArray("SimulationRoutingRule"), "fallbackEdgeId": simID(),
 	})
 	schemas["SimulationOutcome"] = strictObject([]string{"status", "revenue"}, object{"status": simEnum("completed", "failed", "rejected"), "revenue": object{"type": "boolean"}, "revenueOverride": simNumber(0)})
-	nodeBase := object{"id": simID(), "name": object{"type": "string", "minLength": 1}, "description": object{"type": "string"}, "metadata": object{"type": "object", "additionalProperties": true}}
+	nodeBase := object{"id": simID(), "name": object{"type": "string", "minLength": 1}, "description": object{"type": "string"}, "processId": simID(), "metadata": object{"type": "object", "additionalProperties": true}}
+	nodeBase["processId"].(object)["description"] = "Optional direct membership in an existing SimulationProcess. Ancestors roll up this node automatically. This membership does not add processing time, costs, extra workers or a second resource pool."
 	variants := []any{}
 	for _, v := range []struct{ kind, field, schema string }{
 		{"source", "source", "SimulationSource"}, {"work", "work", "SimulationWork"},
@@ -140,14 +141,15 @@ func addSimulationSchemas(schemas object) {
 	}
 	schemas["SimulationScalingPartial"] = simPartial(schemas["SimulationScaling"].(object))
 	schemas["SimulationWorkPartial"].(object)["properties"].(object)["scaling"] = simNullable(ref("SimulationScalingPartial"))
-	for _, name := range []string{"Edge", "ParticleType", "Resource", "Improvement"} {
+	schemas["SimulationProcess"] = simulationProcessSchema()
+	for _, name := range []string{"Edge", "ParticleType", "Resource", "Improvement", "Process"} {
 		schemas["Simulation"+name+"Override"] = simPartial(schemas["Simulation"+name].(object))
 	}
 	schemas["SimulationResourceOverride"].(object)["properties"].(object)["scaling"] = simNullable(ref("SimulationScalingPartial"))
 	schemas["SimulationEconomicsOverride"] = simPartial(strictObject(nil, object{"maximumBudget": simNumber(0)}))
 	schemas["SimulationScenarioOverrides"] = strictObject(nil, object{
 		"nodes": simMap("SimulationNodeOverride"), "edges": simMap("SimulationEdgeOverride"),
-		"particleTypes": simMap("SimulationParticleTypeOverride"), "resources": simMap("SimulationResourceOverride"), "improvements": simMap("SimulationImprovementOverride"), "economics": simNullable(ref("SimulationEconomicsOverride")),
+		"particleTypes": simMap("SimulationParticleTypeOverride"), "resources": simMap("SimulationResourceOverride"), "improvements": simMap("SimulationImprovementOverride"), "processes": simMap("SimulationProcessOverride"), "economics": simNullable(ref("SimulationEconomicsOverride")),
 	})
 	schemas["SimulationScenarioOverrides"].(object)["description"] = "Typed JSON Merge Patch overrides keyed by stable semantic IDs. In entity/economics patches, null removes the inherited property and arrays replace complete values. Required properties, entity IDs and node types cannot be removed; each resolved scenario is validated. Null markers persist in native JSON, IndexedDB and API reads without mutating Baseline."
 	schemas["SimulationScenario"] = strictObject([]string{"id", "name", "overrides"}, object{
@@ -160,14 +162,16 @@ func addSimulationSchemas(schemas object) {
 	schemas["SimulationModel"] = strictObject([]string{"type", "schemaVersion", "currency", "particleTypes", "nodes", "edges", "resources", "improvements", "scenarios", "defaults"}, object{
 		"type": simEnum("process-simulator"), "schemaVersion": object{"type": "integer", "enum": []int{1}}, "currency": object{"type": "string", "pattern": "^[A-Z]{3}$"},
 		"particleTypes": simArray("SimulationParticleType"), "nodes": simArray("SimulationNode"), "edges": simArray("SimulationEdge"),
-		"resources": simArray("SimulationResource"), "improvements": simArray("SimulationImprovement"), "scenarios": simArray("SimulationScenario"),
+		"resources": simArray("SimulationResource"), "improvements": simArray("SimulationImprovement"), "scenarios": simArray("SimulationScenario"), "processes": simArray("SimulationProcess"),
 		"defaults": ref("SimulationDefaults"), "economics": ref("SimulationEconomics"), "retention": ref("SimulationRetention"), "description": object{"type": "string"},
 	})
 	schemas["SimulationModel"].(object)["description"] = "Authoritative local-first process model. Time/duration/delays use simulated seconds; rates and operating costs use per-hour units in one configurable model currency. Processing/resource dependencies are semantic, independent of canvas layout. A process-simulator Graph requires this payload; other document types must not acquire it implicitly. Empty arrays form a valid document for guided setup; a runnable process needs its particle types, connected source/work/outcome nodes and any required resources. GET /templates discovers process-simulator-blank (guided empty setup) and process-simulator (Kiosk + package pickup example). POST /diagrams preserves the kiosk default; versioned PUT /diagrams/{diagramId}/simulation replaces it with an empty or complete model. Node and edge semantic IDs are canonicalized to graph UUIDs on save; aliases are retained as native externalId."
 	schemas["SimulationModel"].(object)["properties"].(object)["nodes"].(object)["maxItems"] = 50000
 	schemas["SimulationModel"].(object)["properties"].(object)["edges"].(object)["maxItems"] = 200000
+	schemas["SimulationModel"].(object)["properties"].(object)["processes"].(object)["maxItems"] = 50000
+	schemas["SimulationModel"].(object)["properties"].(object)["processes"].(object)["description"] = "Optional hierarchy of real subprocess scopes. Omission means an empty hierarchy for existing schemaVersion 1 models. GET /diagrams/{diagramId}/simulation/hierarchy provides roots, immediate children and direct/recursive node membership. " + processHierarchyMetricsDescription
 	schemas["SimulationModelUpdate"] = versionedInput("model", "SimulationModel")
-	for _, name := range []string{"Node", "Edge", "ParticleType", "Resource", "Improvement", "Scenario", "Economics", "Defaults", "Retention"} {
+	for _, name := range []string{"Node", "Edge", "ParticleType", "Resource", "Improvement", "Scenario", "Process", "Economics", "Defaults", "Retention"} {
 		schemas["Simulation"+name+"Update"] = versionedInput("value", "Simulation"+name)
 		if name == "Node" {
 			schemas["SimulationNodePatchValue"] = clone(schemas["SimulationNodeOverride"].(object))
@@ -223,6 +227,7 @@ func addSimulationRuntimeSchemas(schemas object) {
 		"scalingCost": simNumber(0), "waitingNodeIds": stringList(),
 	})
 	schemas["SimulationNodeMetricsMap"] = simMap("SimulationNodeMetrics")
+	addProcessRuntimeSchemas(schemas, economics)
 	schemas["SimulationResourceMetricsMap"] = simMap("SimulationResourceMetrics")
 	schemas["SimulationParticleTypeMetrics"] = strictObject(nil, simProperties(economics, object{
 		"id": simID(), "name": object{"type": "string"}, "created": simInteger(0), "completed": simInteger(0), "abandoned": simInteger(0), "failed": simInteger(0), "inSystem": simInteger(0),
@@ -249,11 +254,12 @@ func addSimulationRuntimeSchemas(schemas object) {
 	})
 	stateProps := object{
 		"timeSeconds": simNumber(0), "status": simEnum("ready", "running", "paused", "stopped", "completed", "failed"), "metrics": ref("SimulationMetrics"),
-		"nodes": simMap("SimulationNodeMetrics"), "resources": simMap("SimulationResourceMetrics"), "particleTypes": simMap("SimulationParticleTypeMetrics"),
+		"nodes": simMap("SimulationNodeMetrics"), "resources": simMap("SimulationResourceMetrics"), "particleTypes": simMap("SimulationParticleTypeMetrics"), "processes": simMap("SimulationProcessMetrics"),
 		"particles": simArray("SimulationParticleSnapshot"), "events": simArray("SimulationEvent"), "bottlenecks": simArray("SimulationBottleneck"),
 		"retained": strictObject([]string{"activeParticles", "completedParticles", "events", "droppedEvents"}, object{"activeParticles": simInteger(0), "completedParticles": simInteger(0), "events": simInteger(0), "droppedEvents": simInteger(0)}), "message": object{"type": "string"},
 	}
 	schemas["SimulationState"] = strictObject(nil, stateProps)
+	schemas["SimulationState"].(object)["description"] = "Actual state from the single deterministic engine. New runs expose a processes metrics map; older retained archives may omit it and are interpreted as an empty map. " + processHierarchyMetricsDescription
 	schemas["SimulationCashPoint"] = strictObject(nil, object{
 		"timeSeconds": simNumber(0), "revenue": object{"type": "number"}, "operatingCost": simNumber(0),
 		"operatingCostFixed": object{"type": "number", "minimum": 0, "description": "Cumulative per-item operating charges, which jump at their event timestamps. Other operating costs accrue continuously; payback comparison preserves this distinction."},
@@ -298,12 +304,12 @@ func addSimulationRuntimeSchemas(schemas object) {
 	schemas["SimulationCapabilities"] = object{
 		"type": "object", "additionalProperties": true,
 		"description": "Machine-readable type/schema/API version, seconds and currency conventions, supported node/routing/queue/scaling operations, execution requirements, permissions and bounded retention/transport limits.",
-		"properties": object{"visualCapacity": ref("SimulationVisualCapacity"), "execution": strictObject([]string{"browserRequired", "activeCanvasRequired", "animationRequired", "limits", "limitBehavior"}, object{
+		"properties": object{"hierarchy": ref("SimulationHierarchyCapabilities"), "visualCapacity": ref("SimulationVisualCapacity"), "execution": strictObject([]string{"browserRequired", "activeCanvasRequired", "animationRequired", "limits", "limitBehavior"}, object{
 			"browserRequired": object{"type": "boolean"}, "activeCanvasRequired": object{"type": "boolean"}, "animationRequired": object{"type": "boolean"}, "limits": ref("SimulationExecutionLimits"),
 			"limitBehavior": strictObject([]string{"activeParticlesAndEvents", "routeVisits", "activeRuns"}, object{"activeParticlesAndEvents": object{"type": "string"}, "routeVisits": object{"type": "string"}, "activeRuns": object{"type": "string"}}),
 		})},
 	}
-	schemas["SimulationQueues"] = strictObject(nil, object{"nodes": simMap("SimulationQueueMetrics"), "resources": simMap("SimulationQueueMetrics")})
+	schemas["SimulationQueues"] = strictObject(nil, object{"nodes": simMap("SimulationQueueMetrics"), "resources": simMap("SimulationQueueMetrics"), "processes": simMap("SimulationQueueMetrics")})
 	schemas["SimulationModelRecord"] = strictObject([]string{"diagramId", "diagramVersion", "model"}, object{"diagramId": object{"type": "string", "format": "uuid"}, "diagramVersion": simInteger(1), "model": ref("SimulationModel")})
 	schemas["SimulationCheckpointRecord"] = strictObject([]string{"id", "runId", "diagramId", "timeSeconds", "state"}, object{"id": object{"type": "string"}, "runId": object{"type": "string", "format": "uuid"}, "diagramId": object{"type": "string", "format": "uuid"}, "timeSeconds": simNumber(0), "state": ref("SimulationState")})
 }
@@ -313,14 +319,15 @@ func addSimulationPaths(add func(string, string, string, string, string, string)
 	add("GET", "/simulation/capabilities", "Discover Process Simulator semantic schema, units, capabilities and execution requirements", "", "SimulationCapabilities", "200")
 	add("GET", base, "Read complete authoritative semantic simulation model", "", "SimulationModel", "200")
 	add("PUT", base, "Replace and validate semantic model atomically at baseVersion; synchronize native canvas", "SimulationModelUpdate", "Graph", "200")
-	for collection, name := range map[string]string{"nodes": "Node", "edges": "Edge", "particle-types": "ParticleType", "resources": "Resource", "improvements": "Improvement", "scenarios": "Scenario"} {
+	add("GET", base+"/hierarchy", "Read process roots, direct children and direct/recursive semantic node membership", "", "SimulationHierarchy", "200")
+	for collection, name := range map[string]string{"nodes": "Node", "edges": "Edge", "particle-types": "ParticleType", "resources": "Resource", "improvements": "Improvement", "scenarios": "Scenario", "processes": "Process"} {
 		path := base + "/" + collection
 		add("GET", path, "Read semantic "+collection, "", "Simulation"+name+"[]", "200")
 		add("POST", path, "Create semantic "+collection+" at baseVersion", "Simulation"+name+"Update", "Graph", "201")
 		entity := path + "/{entityId}"
 		add("GET", entity, "Read semantic simulation entity", "", "Simulation"+name, "200")
 		add("PATCH", entity, "JSON Merge Patch entity at baseVersion; null removes optional properties, arrays replace, scenario override null markers persist, identity stays stable", "Simulation"+name+"Patch", "Graph", "200")
-		add("DELETE", entity, "Delete semantic entity at baseVersion query; referenced-resource deletions fail validation", "", "", "204")
+		add("DELETE", entity, "Delete semantic entity at baseVersion query; referenced resources or member/parent processes return structured 422; reassign memberships/children atomically with full model PUT", "", "", "204")
 		op := paths[entity].(object)["delete"].(object)
 		parameters, _ := op["parameters"].([]any)
 		op["parameters"] = append(parameters, object{"name": "baseVersion", "in": "query", "required": true, "schema": simInteger(1)})
@@ -338,7 +345,7 @@ func addSimulationPaths(add func(string, string, string, string, string, string)
 		add("GET", run+"/"+path, "Inspect actual simulation "+path, "", "Simulation"+name, "200")
 	}
 	add("GET", run+"/bottlenecks", "Read emergent ranked node/resource constraints", "", "SimulationBottleneck[]", "200")
-	for path, name := range map[string]string{"nodes": "NodeMetrics", "resources": "ResourceMetrics", "particle-types": "ParticleTypeMetrics"} {
+	for path, name := range map[string]string{"nodes": "NodeMetrics", "resources": "ResourceMetrics", "particle-types": "ParticleTypeMetrics", "processes": "ProcessMetrics"} {
 		mapName := "Simulation" + name + "Map"
 		add("GET", run+"/"+path, "Read complete semantic "+path+" metrics map", "", mapName, "200")
 		add("GET", run+"/"+path+"/{entityId}", "Read live semantic entity metrics", "", "Simulation"+name, "200")

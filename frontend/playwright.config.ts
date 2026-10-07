@@ -21,7 +21,13 @@ export default defineConfig({
     actionTimeout: 20000,
     baseURL: 'http://127.0.0.1:4327/app/',
     viewport: { width: 1440, height: 980 },
-    trace: 'retain-on-failure',
+    // Keep DOM/network/source diagnostics, with explicit screenshots for visual assertions.
+    trace: {
+      mode: 'retain-on-failure',
+      screenshots: false,
+      snapshots: true,
+      sources: true,
+    },
     screenshot: 'only-on-failure',
     // Self-signed certificates and synthetic DNS are confined to isolated tests.
     launchOptions: browserLaunchOptions,

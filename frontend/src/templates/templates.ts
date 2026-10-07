@@ -3,12 +3,15 @@ import { base, type Graph } from '../model/types';
 import { createSimulationGraph } from '../simulation/document';
 import { remapSimulationModel } from '../simulation/copy';
 import { createEmptySimulationModel } from '../simulation/starter';
+import { DeliveryNetworkExample } from '../simulation/delivery-example';
 const files = import.meta.glob<Graph>('./*.json', { eager: true, import: 'default' });
 export const templates = manifest;
 export function instantiate(key: string, name: string, source?: Graph): Graph {
   if (key === 'process-simulator' && !source) return createSimulationGraph(name);
   if (key === 'process-simulator-blank' && !source)
     return createSimulationGraph(name, createEmptySimulationModel());
+  if (key === 'delivery-network-simulator' && !source)
+    return new DeliveryNetworkExample().graph(name);
   const graph = structuredClone(source ?? files[`./${key}.json`]);
   if (!graph) throw new Error('Unknown template.');
   graph.diagram = { ...graph.diagram, ...base(), name };

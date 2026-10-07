@@ -13,7 +13,7 @@ export function bridgeResponseStatus(path: string, method: string): number {
   return method === 'DELETE' && path.replace(/^\/api\/v1/, '') !== '/presentation/video'
     ? 204
     : method === 'POST' &&
-        /\/(spatial-diagrams|diagrams|nodes|edges|owners|children|import|particle-types|resources|improvements|scenarios|runs)$/.test(
+        /\/(spatial-diagrams|diagrams|nodes|edges|owners|children|import|particle-types|resources|improvements|scenarios|processes|runs)$/.test(
           path,
         )
       ? 201

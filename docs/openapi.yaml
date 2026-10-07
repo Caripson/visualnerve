@@ -3871,7 +3871,7 @@
             "type": "number"
           },
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -3948,6 +3948,9 @@
               "limitBehavior"
             ],
             "type": "object"
+          },
+          "hierarchy": {
+            "$ref": "#/components/schemas/SimulationHierarchyCapabilities"
           },
           "visualCapacity": {
             "$ref": "#/components/schemas/SimulationVisualCapacity"
@@ -4245,7 +4248,7 @@
         "additionalProperties": false,
         "properties": {
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -4257,13 +4260,13 @@
             "type": "array"
           },
           "sourceNodeId": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
           },
           "targetNodeId": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -4289,7 +4292,7 @@
         "additionalProperties": false,
         "properties": {
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -4314,7 +4317,7 @@
           "sourceNodeId": {
             "oneOf": [
               {
-                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
                 "maxLength": 300,
                 "minLength": 1,
                 "type": "string"
@@ -4331,7 +4334,7 @@
           "targetNodeId": {
             "oneOf": [
               {
-                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
                 "maxLength": 300,
                 "minLength": 1,
                 "type": "string"
@@ -4400,7 +4403,7 @@
         "additionalProperties": false,
         "properties": {
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -4425,7 +4428,7 @@
           "sourceNodeId": {
             "oneOf": [
               {
-                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
                 "maxLength": 300,
                 "minLength": 1,
                 "type": "string"
@@ -4442,7 +4445,7 @@
           "targetNodeId": {
             "oneOf": [
               {
-                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
                 "maxLength": 300,
                 "minLength": 1,
                 "type": "string"
@@ -4523,13 +4526,13 @@
             "type": "integer"
           },
           "edgeId": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
           },
           "nodeId": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -4539,7 +4542,7 @@
             "type": "integer"
           },
           "particleTypeId": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -4552,7 +4555,7 @@
             "type": "string"
           },
           "resourceId": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -4666,6 +4669,137 @@
         ],
         "type": "object"
       },
+      "SimulationHierarchy": {
+        "additionalProperties": false,
+        "description": "Semantic model hierarchy in persisted model order, independent of canvas positions. An older model without processes returns empty roots and records. Inspect model processes CRUD separately from run-specific process metrics.",
+        "properties": {
+          "processes": {
+            "items": {
+              "$ref": "#/components/schemas/SimulationHierarchyEntry"
+            },
+            "type": "array"
+          },
+          "rootProcessIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "rootProcessIds",
+          "processes"
+        ],
+        "type": "object"
+      },
+      "SimulationHierarchyCapabilities": {
+        "additionalProperties": false,
+        "properties": {
+          "execution": {
+            "enum": [
+              "same-global-engine-and-shared-resource-pools"
+            ],
+            "type": "string"
+          },
+          "maximumDepth": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "maximumProcesses": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "metrics": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "A process includes its direct members and every descendant. Parent/child rollups overlap and must not be summed. Distributions come from actual scope observations, never sums of node quantiles. The same global engine and shared resource pools constrain every scope. Only occupied shared-resource cost is allocated to a scope; idle resource capacity, pool scaling and pool investments remain whole-system overhead. Projected process cards and boundary connectors are read-only views, not additional processing nodes, costs or capacity.",
+            "type": "object"
+          },
+          "missingProcesses": {
+            "enum": [
+              "empty-hierarchy"
+            ],
+            "type": "string"
+          },
+          "nodeMembershipField": {
+            "enum": [
+              "nodes[].processId"
+            ],
+            "type": "string"
+          },
+          "parentField": {
+            "enum": [
+              "processes[].parentId"
+            ],
+            "type": "string"
+          },
+          "processCollection": {
+            "enum": [
+              "processes"
+            ],
+            "type": "string"
+          },
+          "projection": {
+            "enum": [
+              "read-only-process-cards-and-boundary-edges"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "SimulationHierarchyEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "childProcessIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "description": {
+            "type": "string"
+          },
+          "directNodeIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "name": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "nodeIds": {
+            "description": "Canonical semantic node IDs belonging directly to this scope or any descendant. directNodeIds includes only immediate members; childProcessIds includes only immediate children.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "parentId": {
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "childProcessIds",
+          "nodeIds",
+          "directNodeIds"
+        ],
+        "type": "object"
+      },
       "SimulationImprovement": {
         "additionalProperties": false,
         "description": "Requires a valid Work/Outcome nodeId or resourceId. Enabled capacity increments must remain within configured maximums. Outcome targets accept revenue/economic effects only, rejecting non-neutral processing/resource/cost multipliers, capacity increments and failure effects. Failure routing requires a valid outgoing particle-flow edge from every affected Work node. Resource-target capacity and cost modifiers affect only that resource; its resourceUnitsMultiplier applies only to that resource requirement on consuming Work nodes, preserving other resources such as counters.",
@@ -4684,7 +4818,7 @@
             "type": "boolean"
           },
           "failureNodeId": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -4695,7 +4829,7 @@
             "type": "number"
           },
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -4801,7 +4935,7 @@
           "failureNodeId": {
             "oneOf": [
               {
-                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
                 "maxLength": 300,
                 "minLength": 1,
                 "type": "string"
@@ -4832,7 +4966,7 @@
             ]
           },
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -5037,7 +5171,7 @@
           "failureNodeId": {
             "oneOf": [
               {
-                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
                 "maxLength": 300,
                 "minLength": 1,
                 "type": "string"
@@ -5068,7 +5202,7 @@
             ]
           },
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -5339,6 +5473,14 @@
             },
             "type": "array"
           },
+          "processes": {
+            "description": "Optional hierarchy of real subprocess scopes. Omission means an empty hierarchy for existing schemaVersion 1 models. GET /diagrams/{diagramId}/simulation/hierarchy provides roots, immediate children and direct/recursive node membership. A process includes its direct members and every descendant. Parent/child rollups overlap and must not be summed. Distributions come from actual scope observations, never sums of node quantiles. The same global engine and shared resource pools constrain every scope. Only occupied shared-resource cost is allocated to a scope; idle resource capacity, pool scaling and pool investments remain whole-system overhead. Projected process cards and boundary connectors are read-only views, not additional processing nodes, costs or capacity.",
+            "items": {
+              "$ref": "#/components/schemas/SimulationProcess"
+            },
+            "maxItems": 50000,
+            "type": "array"
+          },
           "resources": {
             "items": {
               "$ref": "#/components/schemas/SimulationResource"
@@ -5478,7 +5620,7 @@
             "type": "number"
           },
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -5579,7 +5721,7 @@
             ]
           },
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -5628,10 +5770,27 @@
               }
             ]
           },
+          "processId": {
+            "oneOf": [
+              {
+                "description": "Optional direct membership in an existing SimulationProcess. Ancestors roll up this node automatically. This membership does not add processing time, costs, extra workers or a second resource pool.",
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true,
+                "type": "object"
+              }
+            ]
+          },
           "resourceId": {
             "oneOf": [
               {
-                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
                 "maxLength": 300,
                 "minLength": 1,
                 "type": "string"
@@ -5735,7 +5894,7 @@
             ]
           },
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -5784,10 +5943,27 @@
               }
             ]
           },
+          "processId": {
+            "oneOf": [
+              {
+                "description": "Optional direct membership in an existing SimulationProcess. Ancestors roll up this node automatically. This membership does not add processing time, costs, extra workers or a second resource pool.",
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true,
+                "type": "object"
+              }
+            ]
+          },
           "resourceId": {
             "oneOf": [
               {
-                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
                 "maxLength": 300,
                 "minLength": 1,
                 "type": "string"
@@ -5905,7 +6081,7 @@
             "type": "string"
           },
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -5920,6 +6096,12 @@
           },
           "outcome": {
             "$ref": "#/components/schemas/SimulationOutcome"
+          },
+          "processId": {
+            "description": "Optional direct membership in an existing SimulationProcess. Ancestors roll up this node automatically. This membership does not add processing time, costs, extra workers or a second resource pool.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
           },
           "type": {
             "enum": [
@@ -6018,7 +6200,7 @@
             "type": "number"
           },
           "edgeId": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -6039,7 +6221,7 @@
                   "type": "number"
                 },
                 "nodeId": {
-                  "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+                  "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
                   "maxLength": 300,
                   "minLength": 1,
                   "type": "string"
@@ -6058,7 +6240,7 @@
             "type": "integer"
           },
           "nodeId": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -6105,7 +6287,7 @@
             "type": "number"
           },
           "typeId": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -6158,7 +6340,7 @@
             "type": "object"
           },
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -6237,7 +6419,7 @@
             "type": "integer"
           },
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -6385,7 +6567,7 @@
             ]
           },
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -6607,7 +6789,7 @@
             ]
           },
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -6726,6 +6908,364 @@
         ],
         "type": "object"
       },
+      "SimulationProcess": {
+        "additionalProperties": false,
+        "description": "A semantic subprocess scope. parentId references an existing process; absent means a root. Node membership uses nodes[].processId. Cycles, dangling references, unsupported fields, more than 50,000 scopes or nesting deeper than 128 are rejected with structured 422. A process includes its direct members and every descendant. Parent/child rollups overlap and must not be summed. Distributions come from actual scope observations, never sums of node quantiles. The same global engine and shared resource pools constrain every scope. Only occupied shared-resource cost is allocated to a scope; idle resource capacity, pool scaling and pool investments remain whole-system overhead. Projected process cards and boundary connectors are read-only views, not additional processing nodes, costs or capacity.",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "name": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "parentId": {
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object"
+      },
+      "SimulationProcessMetrics": {
+        "additionalProperties": false,
+        "description": "A process includes its direct members and every descendant. Parent/child rollups overlap and must not be summed. Distributions come from actual scope observations, never sums of node quantiles. The same global engine and shared resource pools constrain every scope. Only occupied shared-resource cost is allocated to a scope; idle resource capacity, pool scaling and pool investments remain whole-system overhead. Projected process cards and boundary connectors are read-only views, not additional processing nodes, costs or capacity.",
+        "properties": {
+          "abandoned": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "bottlenecks": {
+            "items": {
+              "$ref": "#/components/schemas/SimulationBottleneck"
+            },
+            "type": "array"
+          },
+          "childProcessIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "completed": {
+            "description": "Successful scope visits, including exits into another scope and successful terminal outcomes. Re-entry creates another visit. This is not the whole-system completed-particle count.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "contribution": {
+            "type": "number"
+          },
+          "cost": {
+            "type": "number"
+          },
+          "cumulativeCashImpact": {
+            "type": "number"
+          },
+          "currentBottleneck": {
+            "nullable": true,
+            "type": "string"
+          },
+          "currentUtilization": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "cycleTime": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SimulationDistributionMetrics"
+              }
+            ],
+            "description": "Simulated seconds from each scope entry to successful exit or terminal outcome."
+          },
+          "entered": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "exited": {
+            "description": "Successful visits that crossed this scope's boundary and continued elsewhere; a subset of completed.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "expectedRevenue": {
+            "type": "number"
+          },
+          "failed": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "id": {
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "inSystem": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "investmentCost": {
+            "type": "number"
+          },
+          "lostRevenue": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nodeIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "operatingCost": {
+            "type": "number"
+          },
+          "parentId": {
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "processing": {
+            "$ref": "#/components/schemas/SimulationDistributionMetrics"
+          },
+          "queue": {
+            "$ref": "#/components/schemas/SimulationQueueMetrics"
+          },
+          "realizedRevenue": {
+            "type": "number"
+          },
+          "resourceCost": {
+            "type": "number"
+          },
+          "resourceCostAllocation": {
+            "enum": [
+              "occupied-units"
+            ],
+            "type": "string"
+          },
+          "resourceIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "resourceUsage": {
+            "additionalProperties": {
+              "minimum": 0,
+              "type": "number"
+            },
+            "type": "object"
+          },
+          "scalingCost": {
+            "type": "number"
+          },
+          "status": {
+            "enum": [
+              "idle",
+              "normal",
+              "busy",
+              "saturated",
+              "blocked",
+              "scaling",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "terminalCompleted": {
+            "description": "Successful final outcomes occurring inside this scope, including descendants.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "throughputPerHour": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "ttr": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SimulationDistributionMetrics"
+              }
+            ],
+            "description": "Simulated seconds from scope entry to a revenue-producing terminal outcome inside the scope."
+          },
+          "utilization": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "SimulationProcessMetricsMap": {
+        "additionalProperties": {
+          "$ref": "#/components/schemas/SimulationProcessMetrics"
+        },
+        "type": "object"
+      },
+      "SimulationProcessOverride": {
+        "additionalProperties": false,
+        "description": "A semantic subprocess scope. parentId references an existing process; absent means a root. Node membership uses nodes[].processId. Cycles, dangling references, unsupported fields, more than 50,000 scopes or nesting deeper than 128 are rejected with structured 422. A process includes its direct members and every descendant. Parent/child rollups overlap and must not be summed. Distributions come from actual scope observations, never sums of node quantiles. The same global engine and shared resource pools constrain every scope. Only occupied shared-resource cost is allocated to a scope; idle resource capacity, pool scaling and pool investments remain whole-system overhead. Projected process cards and boundary connectors are read-only views, not additional processing nodes, costs or capacity.",
+        "properties": {
+          "description": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true,
+                "type": "object"
+              }
+            ]
+          },
+          "id": {
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "name": {
+            "oneOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true,
+                "type": "object"
+              }
+            ]
+          },
+          "parentId": {
+            "oneOf": [
+              {
+                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true,
+                "type": "object"
+              }
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "SimulationProcessPatch": {
+        "additionalProperties": false,
+        "properties": {
+          "baseVersion": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "value": {
+            "$ref": "#/components/schemas/SimulationProcessPatchValue"
+          }
+        },
+        "required": [
+          "baseVersion",
+          "value"
+        ],
+        "type": "object"
+      },
+      "SimulationProcessPatchValue": {
+        "additionalProperties": false,
+        "description": "A semantic subprocess scope. parentId references an existing process; absent means a root. Node membership uses nodes[].processId. Cycles, dangling references, unsupported fields, more than 50,000 scopes or nesting deeper than 128 are rejected with structured 422. A process includes its direct members and every descendant. Parent/child rollups overlap and must not be summed. Distributions come from actual scope observations, never sums of node quantiles. The same global engine and shared resource pools constrain every scope. Only occupied shared-resource cost is allocated to a scope; idle resource capacity, pool scaling and pool investments remain whole-system overhead. Projected process cards and boundary connectors are read-only views, not additional processing nodes, costs or capacity.",
+        "properties": {
+          "description": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true,
+                "type": "object"
+              }
+            ]
+          },
+          "id": {
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "name": {
+            "oneOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true,
+                "type": "object"
+              }
+            ]
+          },
+          "parentId": {
+            "oneOf": [
+              {
+                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true,
+                "type": "object"
+              }
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "SimulationProcessUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "baseVersion": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "value": {
+            "$ref": "#/components/schemas/SimulationProcess"
+          }
+        },
+        "required": [
+          "baseVersion",
+          "value"
+        ],
+        "type": "object"
+      },
       "SimulationQueueMetrics": {
         "additionalProperties": false,
         "properties": {
@@ -6762,6 +7302,12 @@
             },
             "type": "object"
           },
+          "processes": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SimulationQueueMetrics"
+            },
+            "type": "object"
+          },
           "resources": {
             "additionalProperties": {
               "$ref": "#/components/schemas/SimulationQueueMetrics"
@@ -6784,7 +7330,7 @@
             "type": "number"
           },
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -6847,7 +7393,7 @@
             "type": "number"
           },
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -6892,7 +7438,7 @@
             "type": "string"
           },
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -6905,8 +7451,14 @@
             "minLength": 1,
             "type": "string"
           },
+          "processId": {
+            "description": "Optional direct membership in an existing SimulationProcess. Ancestors roll up this node automatically. This membership does not add processing time, costs, extra workers or a second resource pool.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
           "resourceId": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -6961,7 +7513,7 @@
             ]
           },
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -7127,7 +7679,7 @@
             ]
           },
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -7245,7 +7797,7 @@
         "additionalProperties": false,
         "properties": {
           "resourceId": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -7344,6 +7896,12 @@
               "$ref": "#/components/schemas/SimulationParticleSnapshot"
             },
             "type": "array"
+          },
+          "processes": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SimulationProcessMetrics"
+            },
+            "type": "object"
           },
           "resources": {
             "additionalProperties": {
@@ -7486,7 +8044,7 @@
         "additionalProperties": false,
         "properties": {
           "fallbackEdgeId": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -7519,7 +8077,7 @@
             "type": "string"
           },
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -7529,6 +8087,12 @@
             "type": "object"
           },
           "name": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "processId": {
+            "description": "Optional direct membership in an existing SimulationProcess. Ancestors roll up this node automatically. This membership does not add processing time, costs, extra workers or a second resource pool.",
+            "maxLength": 300,
             "minLength": 1,
             "type": "string"
           },
@@ -7556,7 +8120,7 @@
           "fallbackEdgeId": {
             "oneOf": [
               {
-                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
                 "maxLength": 300,
                 "minLength": 1,
                 "type": "string"
@@ -7630,7 +8194,7 @@
             "type": "string"
           },
           "nodeId": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -7647,7 +8211,7 @@
             "type": "string"
           },
           "resourceId": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -7680,7 +8244,7 @@
             "$ref": "#/components/schemas/SimulationRoutingCondition"
           },
           "edgeId": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -7760,7 +8324,7 @@
             "type": "number"
           },
           "scenarioId": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -8096,7 +8660,7 @@
             "type": "string"
           },
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -8155,6 +8719,12 @@
           "particleTypes": {
             "additionalProperties": {
               "$ref": "#/components/schemas/SimulationParticleTypeOverride"
+            },
+            "type": "object"
+          },
+          "processes": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SimulationProcessOverride"
             },
             "type": "object"
           },
@@ -8217,7 +8787,7 @@
             ]
           },
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -8326,7 +8896,7 @@
             "type": "integer"
           },
           "particleTypeId": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -8358,7 +8928,7 @@
             "type": "string"
           },
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -8368,6 +8938,12 @@
             "type": "object"
           },
           "name": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "processId": {
+            "description": "Optional direct membership in an existing SimulationProcess. Ancestors roll up this node automatically. This membership does not add processing time, costs, extra workers or a second resource pool.",
+            "maxLength": 300,
             "minLength": 1,
             "type": "string"
           },
@@ -8443,7 +9019,7 @@
           "particleTypeId": {
             "oneOf": [
               {
-                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
                 "maxLength": 300,
                 "minLength": 1,
                 "type": "string"
@@ -8536,6 +9112,7 @@
       },
       "SimulationState": {
         "additionalProperties": false,
+        "description": "Actual state from the single deterministic engine. New runs expose a processes metrics map; older retained archives may omit it and are interpreted as an empty map. A process includes its direct members and every descendant. Parent/child rollups overlap and must not be summed. Distributions come from actual scope observations, never sums of node quantiles. The same global engine and shared resource pools constrain every scope. Only occupied shared-resource cost is allocated to a scope; idle resource capacity, pool scaling and pool investments remain whole-system overhead. Projected process cards and boundary connectors are read-only views, not additional processing nodes, costs or capacity.",
         "properties": {
           "bottlenecks": {
             "items": {
@@ -8572,6 +9149,12 @@
               "$ref": "#/components/schemas/SimulationParticleSnapshot"
             },
             "type": "array"
+          },
+          "processes": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SimulationProcessMetrics"
+            },
+            "type": "object"
           },
           "resources": {
             "additionalProperties": {
@@ -8747,7 +9330,7 @@
             "type": "number"
           },
           "overflowNodeId": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -8796,7 +9379,7 @@
             "type": "string"
           },
           "id": {
-            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
@@ -8806,6 +9389,12 @@
             "type": "object"
           },
           "name": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "processId": {
+            "description": "Optional direct membership in an existing SimulationProcess. Ancestors roll up this node automatically. This membership does not add processing time, costs, extra workers or a second resource pool.",
+            "maxLength": 300,
             "minLength": 1,
             "type": "string"
           },
@@ -8911,7 +9500,7 @@
           "overflowNodeId": {
             "oneOf": [
               {
-                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
                 "maxLength": 300,
                 "minLength": 1,
                 "type": "string"
@@ -14967,7 +15556,7 @@
             "name": "entityId",
             "required": true,
             "schema": {
-              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
               "maxLength": 300,
               "minLength": 1,
               "type": "string"
@@ -15024,7 +15613,7 @@
           },
           {}
         ],
-        "summary": "Delete semantic entity at baseVersion query; referenced-resource deletions fail validation"
+        "summary": "Delete semantic entity at baseVersion query; referenced resources or member/parent processes return structured 422; reassign memberships/children atomically with full model PUT"
       },
       "get": {
         "operationId": "get_diagrams_diagramId_simulation_edges_entityId",
@@ -15043,7 +15632,7 @@
             "name": "entityId",
             "required": true,
             "schema": {
-              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
               "maxLength": 300,
               "minLength": 1,
               "type": "string"
@@ -15117,7 +15706,7 @@
             "name": "entityId",
             "required": true,
             "schema": {
-              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
               "maxLength": 300,
               "minLength": 1,
               "type": "string"
@@ -15183,6 +15772,71 @@
           {}
         ],
         "summary": "JSON Merge Patch entity at baseVersion; null removes optional properties, arrays replace, scenario override null markers persist, identity stays stable"
+      }
+    },
+    "/diagrams/{diagramId}/simulation/hierarchy": {
+      "get": {
+        "operationId": "get_diagrams_diagramId_simulation_hierarchy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diagramId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationHierarchy"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "$ref": "#/components/responses/SimulationError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/SimulationError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/SimulationError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/SimulationError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/SimulationError409"
+          },
+          "422": {
+            "$ref": "#/components/responses/SimulationError422"
+          },
+          "428": {
+            "$ref": "#/components/responses/SimulationError428"
+          },
+          "500": {
+            "$ref": "#/components/responses/SimulationError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/SimulationError503"
+          },
+          "504": {
+            "$ref": "#/components/responses/SimulationError504"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Read process roots, direct children and direct/recursive semantic node membership"
       }
     },
     "/diagrams/{diagramId}/simulation/improvements": {
@@ -15344,7 +15998,7 @@
             "name": "entityId",
             "required": true,
             "schema": {
-              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
               "maxLength": 300,
               "minLength": 1,
               "type": "string"
@@ -15401,7 +16055,7 @@
           },
           {}
         ],
-        "summary": "Delete semantic entity at baseVersion query; referenced-resource deletions fail validation"
+        "summary": "Delete semantic entity at baseVersion query; referenced resources or member/parent processes return structured 422; reassign memberships/children atomically with full model PUT"
       },
       "get": {
         "operationId": "get_diagrams_diagramId_simulation_improvements_entityId",
@@ -15420,7 +16074,7 @@
             "name": "entityId",
             "required": true,
             "schema": {
-              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
               "maxLength": 300,
               "minLength": 1,
               "type": "string"
@@ -15494,7 +16148,7 @@
             "name": "entityId",
             "required": true,
             "schema": {
-              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
               "maxLength": 300,
               "minLength": 1,
               "type": "string"
@@ -15721,7 +16375,7 @@
             "name": "entityId",
             "required": true,
             "schema": {
-              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
               "maxLength": 300,
               "minLength": 1,
               "type": "string"
@@ -15778,7 +16432,7 @@
           },
           {}
         ],
-        "summary": "Delete semantic entity at baseVersion query; referenced-resource deletions fail validation"
+        "summary": "Delete semantic entity at baseVersion query; referenced resources or member/parent processes return structured 422; reassign memberships/children atomically with full model PUT"
       },
       "get": {
         "operationId": "get_diagrams_diagramId_simulation_nodes_entityId",
@@ -15797,7 +16451,7 @@
             "name": "entityId",
             "required": true,
             "schema": {
-              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
               "maxLength": 300,
               "minLength": 1,
               "type": "string"
@@ -15871,7 +16525,7 @@
             "name": "entityId",
             "required": true,
             "schema": {
-              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
               "maxLength": 300,
               "minLength": 1,
               "type": "string"
@@ -16098,7 +16752,7 @@
             "name": "entityId",
             "required": true,
             "schema": {
-              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
               "maxLength": 300,
               "minLength": 1,
               "type": "string"
@@ -16155,7 +16809,7 @@
           },
           {}
         ],
-        "summary": "Delete semantic entity at baseVersion query; referenced-resource deletions fail validation"
+        "summary": "Delete semantic entity at baseVersion query; referenced resources or member/parent processes return structured 422; reassign memberships/children atomically with full model PUT"
       },
       "get": {
         "operationId": "get_diagrams_diagramId_simulation_particle-types_entityId",
@@ -16174,7 +16828,7 @@
             "name": "entityId",
             "required": true,
             "schema": {
-              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
               "maxLength": 300,
               "minLength": 1,
               "type": "string"
@@ -16248,7 +16902,7 @@
             "name": "entityId",
             "required": true,
             "schema": {
-              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
               "maxLength": 300,
               "minLength": 1,
               "type": "string"
@@ -16260,6 +16914,383 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SimulationParticleTypePatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Graph"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "$ref": "#/components/responses/SimulationError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/SimulationError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/SimulationError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/SimulationError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/SimulationError409"
+          },
+          "422": {
+            "$ref": "#/components/responses/SimulationError422"
+          },
+          "428": {
+            "$ref": "#/components/responses/SimulationError428"
+          },
+          "500": {
+            "$ref": "#/components/responses/SimulationError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/SimulationError503"
+          },
+          "504": {
+            "$ref": "#/components/responses/SimulationError504"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "JSON Merge Patch entity at baseVersion; null removes optional properties, arrays replace, scenario override null markers persist, identity stays stable"
+      }
+    },
+    "/diagrams/{diagramId}/simulation/processes": {
+      "get": {
+        "operationId": "get_diagrams_diagramId_simulation_processes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diagramId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SimulationProcess"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "$ref": "#/components/responses/SimulationError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/SimulationError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/SimulationError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/SimulationError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/SimulationError409"
+          },
+          "422": {
+            "$ref": "#/components/responses/SimulationError422"
+          },
+          "428": {
+            "$ref": "#/components/responses/SimulationError428"
+          },
+          "500": {
+            "$ref": "#/components/responses/SimulationError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/SimulationError503"
+          },
+          "504": {
+            "$ref": "#/components/responses/SimulationError504"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Read semantic processes"
+      },
+      "post": {
+        "operationId": "post_diagrams_diagramId_simulation_processes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diagramId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulationProcessUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Graph"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "$ref": "#/components/responses/SimulationError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/SimulationError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/SimulationError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/SimulationError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/SimulationError409"
+          },
+          "422": {
+            "$ref": "#/components/responses/SimulationError422"
+          },
+          "428": {
+            "$ref": "#/components/responses/SimulationError428"
+          },
+          "500": {
+            "$ref": "#/components/responses/SimulationError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/SimulationError503"
+          },
+          "504": {
+            "$ref": "#/components/responses/SimulationError504"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Create semantic processes at baseVersion"
+      }
+    },
+    "/diagrams/{diagramId}/simulation/processes/{entityId}": {
+      "delete": {
+        "operationId": "delete_diagrams_diagramId_simulation_processes_entityId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diagramId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entityId",
+            "required": true,
+            "schema": {
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "baseVersion",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "400": {
+            "$ref": "#/components/responses/SimulationError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/SimulationError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/SimulationError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/SimulationError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/SimulationError409"
+          },
+          "422": {
+            "$ref": "#/components/responses/SimulationError422"
+          },
+          "428": {
+            "$ref": "#/components/responses/SimulationError428"
+          },
+          "500": {
+            "$ref": "#/components/responses/SimulationError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/SimulationError503"
+          },
+          "504": {
+            "$ref": "#/components/responses/SimulationError504"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Delete semantic entity at baseVersion query; referenced resources or member/parent processes return structured 422; reassign memberships/children atomically with full model PUT"
+      },
+      "get": {
+        "operationId": "get_diagrams_diagramId_simulation_processes_entityId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diagramId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entityId",
+            "required": true,
+            "schema": {
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationProcess"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "$ref": "#/components/responses/SimulationError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/SimulationError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/SimulationError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/SimulationError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/SimulationError409"
+          },
+          "422": {
+            "$ref": "#/components/responses/SimulationError422"
+          },
+          "428": {
+            "$ref": "#/components/responses/SimulationError428"
+          },
+          "500": {
+            "$ref": "#/components/responses/SimulationError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/SimulationError503"
+          },
+          "504": {
+            "$ref": "#/components/responses/SimulationError504"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Read semantic simulation entity"
+      },
+      "patch": {
+        "operationId": "patch_diagrams_diagramId_simulation_processes_entityId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diagramId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entityId",
+            "required": true,
+            "schema": {
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulationProcessPatch"
               }
             }
           },
@@ -16475,7 +17506,7 @@
             "name": "entityId",
             "required": true,
             "schema": {
-              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
               "maxLength": 300,
               "minLength": 1,
               "type": "string"
@@ -16532,7 +17563,7 @@
           },
           {}
         ],
-        "summary": "Delete semantic entity at baseVersion query; referenced-resource deletions fail validation"
+        "summary": "Delete semantic entity at baseVersion query; referenced resources or member/parent processes return structured 422; reassign memberships/children atomically with full model PUT"
       },
       "get": {
         "operationId": "get_diagrams_diagramId_simulation_resources_entityId",
@@ -16551,7 +17582,7 @@
             "name": "entityId",
             "required": true,
             "schema": {
-              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
               "maxLength": 300,
               "minLength": 1,
               "type": "string"
@@ -16625,7 +17656,7 @@
             "name": "entityId",
             "required": true,
             "schema": {
-              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
               "maxLength": 300,
               "minLength": 1,
               "type": "string"
@@ -17392,7 +18423,7 @@
             "name": "entityId",
             "required": true,
             "schema": {
-              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
               "maxLength": 300,
               "minLength": 1,
               "type": "string"
@@ -17551,7 +18582,7 @@
             "name": "entityId",
             "required": true,
             "schema": {
-              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
               "maxLength": 300,
               "minLength": 1,
               "type": "string"
@@ -17691,6 +18722,165 @@
           {}
         ],
         "summary": "Control same authoritative run: pause; reset starts a new run and preserves results"
+      }
+    },
+    "/diagrams/{diagramId}/simulation/runs/{runId}/processes": {
+      "get": {
+        "operationId": "get_diagrams_diagramId_simulation_runs_runId_processes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diagramId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "runId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationProcessMetricsMap"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "$ref": "#/components/responses/SimulationError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/SimulationError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/SimulationError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/SimulationError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/SimulationError409"
+          },
+          "422": {
+            "$ref": "#/components/responses/SimulationError422"
+          },
+          "428": {
+            "$ref": "#/components/responses/SimulationError428"
+          },
+          "500": {
+            "$ref": "#/components/responses/SimulationError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/SimulationError503"
+          },
+          "504": {
+            "$ref": "#/components/responses/SimulationError504"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Read complete semantic processes metrics map"
+      }
+    },
+    "/diagrams/{diagramId}/simulation/runs/{runId}/processes/{entityId}": {
+      "get": {
+        "operationId": "get_diagrams_diagramId_simulation_runs_runId_processes_entityId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "diagramId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "runId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entityId",
+            "required": true,
+            "schema": {
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationProcessMetrics"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "$ref": "#/components/responses/SimulationError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/SimulationError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/SimulationError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/SimulationError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/SimulationError409"
+          },
+          "422": {
+            "$ref": "#/components/responses/SimulationError422"
+          },
+          "428": {
+            "$ref": "#/components/responses/SimulationError428"
+          },
+          "500": {
+            "$ref": "#/components/responses/SimulationError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/SimulationError503"
+          },
+          "504": {
+            "$ref": "#/components/responses/SimulationError504"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Read live semantic entity metrics"
       }
     },
     "/diagrams/{diagramId}/simulation/runs/{runId}/queues": {
@@ -17952,7 +19142,7 @@
             "name": "entityId",
             "required": true,
             "schema": {
-              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
               "maxLength": 300,
               "minLength": 1,
               "type": "string"
@@ -18653,7 +19843,7 @@
             "name": "entityId",
             "required": true,
             "schema": {
-              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
               "maxLength": 300,
               "minLength": 1,
               "type": "string"
@@ -18710,7 +19900,7 @@
           },
           {}
         ],
-        "summary": "Delete semantic entity at baseVersion query; referenced-resource deletions fail validation"
+        "summary": "Delete semantic entity at baseVersion query; referenced resources or member/parent processes return structured 422; reassign memberships/children atomically with full model PUT"
       },
       "get": {
         "operationId": "get_diagrams_diagramId_simulation_scenarios_entityId",
@@ -18729,7 +19919,7 @@
             "name": "entityId",
             "required": true,
             "schema": {
-              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
               "maxLength": 300,
               "minLength": 1,
               "type": "string"
@@ -18803,7 +19993,7 @@
             "name": "entityId",
             "required": true,
             "schema": {
-              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; resource, particle type and scenario IDs may be readable strings.",
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
               "maxLength": 300,
               "minLength": 1,
               "type": "string"

@@ -137,6 +137,47 @@ export function assertArchivedState(value: unknown): asserts value is Simulation
     );
     queue(resource.queue);
   });
+  if (state.processes !== undefined)
+    values(state.processes, (process, key) => {
+      economic(process);
+      fields(process, [
+        'entered',
+        'completed',
+        'exited',
+        'terminalCompleted',
+        'abandoned',
+        'failed',
+        'inSystem',
+        'throughputPerHour',
+        'utilization',
+        'currentUtilization',
+      ]);
+      requireValue(
+        process.id === key &&
+          text(process.name) &&
+          (process.parentId === undefined || text(process.parentId)) &&
+          (process.currentBottleneck === null || text(process.currentBottleneck)) &&
+          process.resourceCostAllocation === 'occupied-units' &&
+          ['idle', 'normal', 'busy', 'saturated', 'blocked', 'scaling', 'failed'].includes(
+            process.status as string,
+          ) &&
+          object(process.resourceUsage) &&
+          Object.values(process.resourceUsage).every(finite),
+      );
+      for (const field of ['nodeIds', 'childProcessIds', 'resourceIds'])
+        requireValue(Array.isArray(process[field]) && process[field].every(text));
+      queue(process.queue);
+      for (const field of ['cycleTime', 'ttr', 'processing']) distribution(process[field]);
+      list(process.bottlenecks, (bottleneck) => {
+        fields(bottleneck, ['score', 'utilization', 'averageQueue', 'averageWaitSeconds']);
+        requireValue(
+          text(bottleneck.id) &&
+            text(bottleneck.name) &&
+            ['node', 'resource'].includes(bottleneck.kind as string) &&
+            typeof bottleneck.reason === 'string',
+        );
+      });
+    });
   values(state.particleTypes, (type, key) => {
     economic(type);
     fields(type, ['created', 'completed', 'abandoned', 'failed', 'inSystem']);

@@ -6,6 +6,7 @@ import { useEditor } from '../state/editor';
 import { setSimulationModel } from './document';
 import { assertSimulationModel, resolveScenario } from './schema';
 import { NodeEditor } from './editor/NodeEditor';
+import { ProcessEditor } from './editor/ProcessEditor';
 import { ConnectionsEditor } from './editor/ConnectionsEditor';
 import { ParticleEditor } from './editor/ParticleEditor';
 import { ResourceEditor } from './editor/ResourceEditor';
@@ -18,6 +19,7 @@ import type { SimulationModel, SimulationNode } from './types';
 const clone = <T,>(value: T): T => structuredClone(value);
 const sections = [
   'nodes',
+  'processes',
   'connections',
   'particles',
   'resources',
@@ -61,7 +63,11 @@ export function ModelEditor({
   );
 
   function addNode(type: SimulationNode['type']) {
-    const added = addDraftNode(draft, type);
+    const added = addDraftNode(
+      draft,
+      type,
+      draft.nodes.find((node) => node.id === selected)?.processId,
+    );
     setDraft(added.model);
     setSelected(added.id);
   }
@@ -141,6 +147,9 @@ export function ModelEditor({
                 setSelected={setSelected}
                 addNode={addNode}
               />
+            )}
+            {tab === 'processes' && (
+              <ProcessEditor draft={draft} setDraft={setDraft} scenarioId={scenarioId} />
             )}
             {tab === 'connections' && (
               <ConnectionsEditor draft={draft} setDraft={setDraft} scenarioId={scenarioId} />

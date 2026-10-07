@@ -1,15 +1,10 @@
 import { ArrowRight, CircleCheck, Inbox, Users, Workflow } from 'lucide-react';
-import { starterValues, type ProcessStarterDraft } from './starter';
+import type { ProcessStarterDraft } from './starter';
+import { ProcessStarterAnalysis } from './starter-analysis';
 
 export function StarterReview({ draft, seed = 42 }: { draft: ProcessStarterDraft; seed?: number }) {
-  const value = starterValues(draft);
-  const slots = draft.sharedResource
-    ? Math.min(value.capacity, value.resourceCapacity)
-    : value.capacity;
-  const throughput = (slots * 3600) / value.processingSeconds;
-  const hourlyCost =
-    value.capacity * value.workCostPerHour + value.resourceCapacity * value.resourceCostPerHour;
-  const overloaded = draft.arrivalMode === 'regular' && value.arrivalsPerHour > throughput;
+  const analysis = new ProcessStarterAnalysis(draft);
+  const value = analysis.values;
   return (
     <>
       <div className="process-wizard-intro">
@@ -25,7 +20,7 @@ export function StarterReview({ draft, seed = 42 }: { draft: ProcessStarterDraft
           <b>{value.itemName} arrivals</b>
           <small>
             {draft.arrivalMode === 'batch'
-              ? `${value.batchCount} items at the start`
+              ? `${value.batchCount} ${value.batchCount === 1 ? 'item' : 'items'} at the start`
               : `${value.arrivalsPerHour} items/hour`}
           </small>
         </div>
@@ -34,8 +29,9 @@ export function StarterReview({ draft, seed = 42 }: { draft: ProcessStarterDraft
           <Workflow size={20} />
           <b>{value.workName}</b>
           <small>
-            {value.processingSeconds / 60} min/item · {value.capacity}{' '}
-            {value.capacity === 1 ? 'slot' : 'slots'}
+            {draft.structure === 'hierarchical'
+              ? `${value.steps.length} subprocesses with independent settings`
+              : `${value.processingSeconds / 60} min/item · ${value.capacity} ${value.capacity === 1 ? 'slot' : 'slots'}`}
           </small>
         </div>
         <ArrowRight aria-hidden size={18} />
@@ -47,11 +43,38 @@ export function StarterReview({ draft, seed = 42 }: { draft: ProcessStarterDraft
           </small>
         </div>
       </div>
+      {draft.structure === 'hierarchical' && (
+        <ol className="process-starter-review-steps" aria-label="Subprocess review">
+          {value.steps.map((step, index) => (
+            <li key={index}>
+              <strong>
+                {index + 1}. {step.name}
+              </strong>
+              <span>
+                {step.workName} · {step.processingSeconds / 60} min/item · {step.capacity}{' '}
+                {step.capacity === 1 ? 'slot' : 'slots'} · {step.costPerHour} {draft.currency}
+                /slot/hour
+              </span>
+              <span>
+                {draft.sharedResource && step.usesSharedResource
+                  ? `Shared pool: ${value.resourceName}`
+                  : 'No shared pool required'}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
       {draft.sharedResource && (
         <p className="process-wizard-resource-summary">
           <Users size={17} />
           {value.resourceName}: {value.resourceCapacity}{' '}
           {value.resourceCapacity === 1 ? 'unit' : 'units'}, shared by connected work steps.
+        </p>
+      )}
+      {draft.sharedResource && !value.steps.some((step) => step.usesSharedResource) && (
+        <p className="process-wizard-warning">
+          No step uses this pool. Its available capacity still incurs the configured hourly cost. Go
+          back to assign steps or turn off the shared pool.
         </p>
       )}
       <dl className="process-wizard-facts">
@@ -60,13 +83,17 @@ export function StarterReview({ draft, seed = 42 }: { draft: ProcessStarterDraft
           <dd>{value.transferSeconds} simulated seconds per connection</dd>
         </div>
         <div>
-          <dt>Available processing capacity</dt>
-          <dd>Up to {Number(throughput.toFixed(2))} items/hour before downstream constraints</dd>
+          <dt>Estimated flow capacity</dt>
+          <dd>
+            Up to {Number(analysis.throughputPerHour.toFixed(2))} items/hour across these steps. Run
+            the model to measure waits and transfers.
+          </dd>
         </div>
         <div>
-          <dt>Hourly operating cost</dt>
+          <dt>New capacity cost per hour</dt>
           <dd>
-            {hourlyCost} {draft.currency}/hour
+            {analysis.hourlyOperatingCost} {draft.currency}/hour
+            <small>Existing model resources and improvements keep their configured costs.</small>
           </dd>
         </div>
         <div>
@@ -87,15 +114,18 @@ export function StarterReview({ draft, seed = 42 }: { draft: ProcessStarterDraft
           </dd>
         </div>
       </dl>
-      {overloaded && (
+      {analysis.overloaded && (
         <p className="process-wizard-warning" role="status">
           Demand exceeds processing capacity. A queue is expected: this is a useful starting point
           for testing extra capacity or shared resources.
         </p>
       )}
       <p className="process-wizard-note">
-        After setup, select a node to extend the process. Use Assumptions to refine it, create a
-        scenario to try a change, then compare runs. Your model and results stay in this browser.
+        {draft.structure === 'hierarchical'
+          ? 'After setup, open the main process, then a subprocess to select or add Work steps. '
+          : 'After setup, select a node to extend the process. '}
+        Use Assumptions to refine it, create a scenario to try a change, then compare runs. Your
+        model and results stay in this browser.
       </p>
     </>
   );

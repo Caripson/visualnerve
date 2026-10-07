@@ -12,6 +12,21 @@ Process Simulator is a first-class `process-simulator` diagram type with a separ
 
 Simulation entity PATCH uses JSON Merge Patch: nested objects merge, arrays replace, and `null` removes an optional property. Null markers inside scenario overrides are retained so inherited Baseline properties can be removed across save/export/reload. Complete model/configuration PUT remains strict, and every effective scenario is validated before execution.
 
+Hierarchical subprocesses are an additive schema version 1 capability, discovered as `hierarchical-processes` and `process-drilldown`. A model may contain `processes:[{id,name,description?,parentId?}]`; a real node's optional `processId` assigns direct membership. Omitted processes means an empty hierarchy for existing diagrams. The same engine and global shared-resource pools constrain every scope; folded process cards add no processing time, capacity or costs.
+
+| Method | Route under `/diagrams/{id}/simulation` | Meaning |
+| --- | --- | --- |
+| GET | `/hierarchy` | `{rootProcessIds,processes}` with immediate `childProcessIds`, `directNodeIds` and recursive `nodeIds` |
+| GET / POST | `/processes` | Read scopes / create with `{baseVersion,value}` |
+| GET / PATCH / DELETE | `/processes/{entityId}` | Read / merge-patch with `{baseVersion,value}` / delete with `?baseVersion=N` |
+| GET | `/runs/{runId}/processes` | Actual process metrics map from the selected immutable run |
+| GET | `/runs/{runId}/processes/{entityId}` | Scoped queue, throughput, utilization, bottlenecks and economics |
+| GET | `/runs/{runId}/queues` | Includes `processes` alongside node and resource queue maps |
+
+Process IDs are semantic strings; node IDs returned by hierarchy are canonical saved IDs. Every scope includes descendant nodes. Parent and child rollups overlap and must not be summed, and distributions are built from actual scope observations rather than adding node quantiles. `completed` counts successful scope visits, `exited` their boundary-exit subset, and `terminalCompleted` final successful outcomes inside the scope. Scoped `cycleTime` measures entry to exit/outcome; scoped `ttr` measures entry to a revenue-producing terminal outcome. Shared-resource `resourceCostAllocation:"occupied-units"` assigns consumed resource cost only; idle capacity, resource-pool scaling and pool investments remain whole-system overhead. Whole-system metrics remain authoritative for profitability.
+
+Referenced process deletion returns structured 422 with `code:"SIMULATION_PROCESS_REFERENCED"`. Reparent children and reassign member nodes together in a versioned full-model PUT before removing the scope. Cycles and dangling references fail validation without partial writes. `scenarios[].overrides.processes` and node membership overrides use the same validated merge-patch semantics. The bundled **Delivery network** template is discoverable through `GET /templates`; applying its complete semantic model reproduces the same nested assumptions in UI/API/MCP. `POST /diagrams` keeps its kiosk default for compatibility. See [the MCP hierarchy examples](docs/MCP.md#inspect-and-control-hierarchical-processes).
+
 Live 2D capacity uses separate full native cards such as Counter 1/2/3. They are read-only projections of one logical node/resource, with anonymous unit labels and occupancy derived from actual aggregate state. `visualCapacity` discovery describes the eight-card bank and 256-additional-card view bounds with explicit aggregation. API/MCP edits target the shared semantic ID; the projection adds no persistent business identities or simulation nodes. 3D retains the logical model.
 
 The compact phone/landscape UI changes presentation only. Simulation details and section selectors configure the same semantic properties and run controls through the existing authoritative model; no mobile-only simulation configuration or API is introduced. See [mobile use](docs/MOBILE.md).

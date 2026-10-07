@@ -56,6 +56,14 @@ import { useResponsiveCanvasViewport } from './useResponsiveCanvasViewport';
 import { DrawingOverlay } from '../drawing/DrawingOverlay';
 import { ParticleOverlay } from '../simulation/ParticleOverlay';
 import { ProcessStartPanel } from '../simulation/ProcessWizard';
+import { ProcessHierarchyNav } from '../simulation/ProcessHierarchyNav';
+import { ProcessProjection, getSimulationProcessId } from '../simulation/process-projection';
+import { ProcessViewLayout } from '../simulation/process-view-layout';
+import {
+  openSimulationProcess,
+  processOverview,
+  useProcessNavigation,
+} from '../simulation/process-navigation';
 import { useSimulation } from '../simulation/useSimulation';
 import {
   logicalNodeId,
@@ -117,9 +125,7 @@ export function Canvas() {
   const spatial = graph ? getSpatialView(graph).mode === '3d' : false;
   const simulationProjection = useMemo(
     () =>
-      graph?.simulation && simulationView
-        ? projectSimulationRenderModel(graph, simulationView.run)
-        : undefined,
+      graph?.simulation ? projectSimulationRenderModel(graph, simulationView?.run) : undefined,
     [
       graph,
       simulationView?.run.model,
@@ -131,7 +137,7 @@ export function Canvas() {
     graph && simulationProjection && !spatial
       ? projectSimulationCapacityNodes(graph, simulationProjection, simulationView?.state)
       : undefined;
-  const renderGraph = useMemo(
+  const capacityGraph = useMemo(
     () =>
       graph && capacityProjection
         ? { ...graph, nodes: capacityProjection.nodes, edges: capacityProjection.edges }
@@ -140,6 +146,32 @@ export function Canvas() {
           : graph,
     [graph, simulationProjection, capacityProjection],
   );
+  const processView = useProcessNavigation((state) =>
+    graph ? (state.views[graph.diagram.id] ?? processOverview) : processOverview,
+  );
+  const processProjector = useMemo(
+    () => simulationProjection && new ProcessProjection(simulationProjection.model),
+    [simulationProjection?.model],
+  );
+  const processProjection = useMemo(
+    () =>
+      capacityGraph &&
+      processProjector &&
+      !spatial &&
+      !presentationOpen &&
+      !(graph && getExploration(graph))
+        ? processProjector.project(capacityGraph, processView)
+        : undefined,
+    [
+      capacityGraph,
+      processProjector,
+      processView,
+      spatial,
+      presentationOpen,
+      graph?.diagram.settings.relationshipExploration,
+    ],
+  );
+  const renderGraph = processProjection?.graph ?? capacityGraph;
   const projectedIds = useMemo(
     () =>
       new Set(
@@ -149,8 +181,20 @@ export function Canvas() {
       ),
     [renderGraph?.nodes],
   );
+  const layoutOnlyIds = useRef(new Set<string>());
+  layoutOnlyIds.current = new Set(
+    renderGraph?.nodes
+      .filter(
+        (node) => node.metadata.simulationLayoutProjected && !node.metadata.simulationProjected,
+      )
+      .map((node) => node.id),
+  );
+  const readonlyEdges = useRef(new Set<string>());
+  readonlyEdges.current = new Set(
+    renderGraph?.edges.filter((edge) => edge.metadata.simulationProcessEdge).map((edge) => edge.id),
+  );
   const readonlyNodes = useRef(projectedIds);
-  readonlyNodes.current = projectedIds;
+  readonlyNodes.current = new Set([...projectedIds, ...layoutOnlyIds.current]);
   const exploration = useMemo(
     () => (graph ? getExploration(graph) : undefined),
     [graph?.diagram.settings.relationshipExploration],
@@ -189,6 +233,18 @@ export function Canvas() {
   const [minimap, setMinimap] = useState(true);
   const [touch, setTouch] = useState(
     () => matchMedia(`(pointer: coarse), ${COMPACT_LAYOUT_QUERY}`).matches,
+  );
+  const fitProcessNodes = useCallback(
+    () =>
+      new ProcessViewLayout()
+        .fitNodeIds(
+          renderGraph?.nodes ?? [],
+          processProjection?.focusNodeIds ?? [],
+          flowStore.getState(),
+          touch,
+        )
+        .map((id) => ({ id })),
+    [renderGraph?.nodes, processProjection?.focusNodeIds, flowStore, touch],
   );
   useEffect(() => {
     const media = matchMedia(`(pointer: coarse), ${COMPACT_LAYOUT_QUERY}`);
@@ -356,6 +412,35 @@ export function Canvas() {
   useEffect(() => setNodes(projected.nodes), [projected.nodes]);
   useEffect(() => setEdges(projected.edges), [projected.edges]);
   const diagramId = graph?.diagram.id;
+  const processViewKey = `${processView.mode}:${processView.processId ?? ''}`;
+  useEffect(() => {
+    if (!processProjection?.active && !processProjector?.hierarchy.processes.size) return;
+    useEditor.getState().select([]);
+    if (spatial) return;
+    const frame = requestAnimationFrame(() => {
+      if (!processProjection?.active && graph?.diagram.settings.viewport) {
+        void flow.setViewport(graph.diagram.settings.viewport, { duration: 180 });
+        return;
+      }
+      const focusNodes = fitProcessNodes();
+      void flow.fitView({
+        ...(focusNodes.length ? { nodes: focusNodes } : {}),
+        padding: 0.16,
+        minZoom: processProjection?.active ? 0.72 : 0.05,
+        maxZoom: touch ? 0.9 : 1,
+        duration: 180,
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [
+    diagramId,
+    processViewKey,
+    spatial,
+    touch,
+    !!processProjector?.hierarchy.processes.size,
+    flow,
+  ]);
+
   useEffect(() => {
     if (!diagramId) return;
     const reveal = (event: Event) => {
@@ -462,7 +547,14 @@ export function Canvas() {
       else {
         // Guided creation clears the empty canvas camera; reveal its newly rendered process.
         const frame = requestAnimationFrame(() => {
-          void flow.fitView({ padding: 0.25, maxZoom: 1, duration: 180 });
+          void flow.fitView({
+            ...(processProjection?.active && processProjection.focusNodeIds.length
+              ? { nodes: fitProcessNodes(), minZoom: 0.72 }
+              : {}),
+            padding: 0.16,
+            maxZoom: 1,
+            duration: 180,
+          });
         });
         return () => cancelAnimationFrame(frame);
       }
@@ -477,7 +569,8 @@ export function Canvas() {
       }
       const viewport = graph.diagram.settings.viewport;
       const touchView = graph.diagram.settings.viewportDevice === 'touch';
-      if (viewport && touchView === touch) void flow.setViewport(viewport);
+      if (viewport && touchView === touch && !processProjection?.active)
+        void flow.setViewport(viewport);
       else if (
         getDrawingLayer(graph.diagram.settings.drawing)?.visible &&
         getDrawingLayer(graph.diagram.settings.drawing)?.strokes.length
@@ -501,22 +594,33 @@ export function Canvas() {
         // Start at a readable process step. Fit remains available for the whole system.
         const work = graph.simulation.nodes.find((node) => node.type === 'work');
         void flow.fitView({
-          ...(work ? { nodes: [{ id: work.id }] } : {}),
+          ...(processProjection?.active
+            ? { nodes: fitProcessNodes(), minZoom: 0.72 }
+            : work
+              ? { nodes: [{ id: work.id }] }
+              : {}),
           padding: 0.25,
           maxZoom: 0.9,
         });
       } else
-        void flow.fitView({ padding: graph.diagram.type === 'mindmap' ? 0.14 : 0.3, maxZoom: 1 });
+        void flow.fitView({
+          ...(processProjection?.active && processProjection.focusNodeIds.length
+            ? { nodes: fitProcessNodes(), minZoom: 0.72 }
+            : {}),
+          padding: graph.diagram.type === 'mindmap' ? 0.14 : processProjection?.active ? 0.16 : 0.3,
+          maxZoom: 1,
+        });
     });
     return () => cancelAnimationFrame(frame);
   }, [diagramId, touch, spatial]);
   const persistViewport = useCallback(
     (viewport: { x: number; y: number; zoom: number }) => {
+      if (processProjection?.active) return;
       const state = useEditor.getState();
       const next = canvasViewportGraph(state.graph, diagramId, viewport, touch);
       if (next) useEditor.setState({ graph: next, editRevision: state.editRevision + 1 });
     },
-    [diagramId, touch],
+    [diagramId, touch, processProjection?.active],
   );
   useEffect(
     () => () => {
@@ -555,7 +659,9 @@ export function Canvas() {
   const changes = useCallback((changes: NodeChange<CanvasNode>[]) => {
     changes = changes.filter(
       (change) =>
-        !('id' in change && readonlyNodes.current.has(change.id)) || change.type === 'dimensions',
+        !('id' in change && readonlyNodes.current.has(change.id)) ||
+        change.type === 'dimensions' ||
+        (change.type === 'select' && layoutOnlyIds.current.has(change.id)),
     );
     const state = useEditor.getState();
     const selection = changes.filter((change) => change.type === 'select');
@@ -576,7 +682,7 @@ export function Canvas() {
     if (selection.length) {
       const selected = new Set(state.selectedEdges);
       for (const change of selection) {
-        if (isOverviewEdgeId(change.id)) continue;
+        if (isOverviewEdgeId(change.id) || readonlyEdges.current.has(change.id)) continue;
         if (change.selected) selected.add(change.id);
         else selected.delete(change.id);
       }
@@ -621,12 +727,27 @@ export function Canvas() {
       }
       if (e.key.toLowerCase() === 'f' && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
-        void fitDiagram(flow, s.graph, 0.2);
+        if (processProjection?.active)
+          void flow.fitView({
+            nodes: touch ? renderGraph?.nodes.map((node) => ({ id: node.id })) : fitProcessNodes(),
+            padding: 0.16,
+            minZoom: touch ? 0.05 : 0.72,
+            maxZoom: 1,
+            duration: 180,
+          });
+        else void fitDiagram(flow, s.graph, 0.2);
       }
     };
     window.addEventListener('keydown', listener, true);
     return () => window.removeEventListener('keydown', listener, true);
-  }, [flow, overview?.active]);
+  }, [
+    flow,
+    overview?.active,
+    processProjection?.active,
+    fitProcessNodes,
+    touch,
+    renderGraph?.nodes,
+  ]);
   useEffect(() => {
     if (spatial) return;
     const reset = () => {
@@ -650,7 +771,10 @@ export function Canvas() {
     return () => window.removeEventListener(OVERVIEW_RESET_VIEW, reset);
   }, [flow, spatial, overviewZoom.fit]);
   const overviewEnabled = graph ? getOverviewConfig(graph).enabled : false;
-  const cameraOwned = useCallback(() => presentationViewport.current, []);
+  const cameraOwned = useCallback(
+    () => presentationViewport.current || !!processProjection?.active,
+    [processProjection?.active],
+  );
   useResponsiveCanvasViewport(
     (touch || !!graph?.simulation) && !spatial && !overview?.active,
     diagramId,
@@ -685,24 +809,29 @@ export function Canvas() {
   if (!graph) return null;
   if (spatial)
     return (
-      <Suspense
-        fallback={
-          <div className="canvas-shell spatial-canvas">
-            <p role="status">Loading 3D view…</p>
-            <button onClick={returnTo2D}>Return to 2D</button>
-          </div>
-        }
-      >
-        <SpatialCanvas
-          graph={renderGraph ?? graph}
-          nodes={projected.nodes}
-          edges={projected.edges}
-          onReturnTo2D={returnTo2D}
-          onCameraChange={saveCamera}
-          overview={overview}
-          onPresentationReveal={revealPresentation}
-        />
-      </Suspense>
+      <div className="simulation-process-spatial-shell">
+        <div className="simulation-process-spatial-navigation">
+          <ProcessHierarchyNav graph={graph} spatial />
+        </div>
+        <Suspense
+          fallback={
+            <div className="canvas-shell spatial-canvas">
+              <p role="status">Loading 3D view…</p>
+              <button onClick={returnTo2D}>Return to 2D</button>
+            </div>
+          }
+        >
+          <SpatialCanvas
+            graph={renderGraph ?? graph}
+            nodes={projected.nodes}
+            edges={projected.edges}
+            onReturnTo2D={returnTo2D}
+            onCameraChange={saveCamera}
+            overview={overview}
+            onPresentationReveal={revealPresentation}
+          />
+        </Suspense>
+      </div>
     );
   const toggle = (key: 'grid' | 'snap') =>
     useEditor.getState().command(`Toggle ${key}`, (g) => ({
@@ -712,9 +841,10 @@ export function Canvas() {
         settings: { ...g.diagram.settings, [key]: !g.diagram.settings[key] },
       },
     }));
+  const showProcessNavigation = !presentationOpen && !!graph.simulation?.processes?.length;
   return (
     <div
-      className={`canvas-shell ${graph.diagram.type === 'mindmap' ? 'mindmap-canvas' : ''}`}
+      className={`canvas-shell ${graph.diagram.type === 'mindmap' ? 'mindmap-canvas' : ''} ${showProcessNavigation ? 'simulation-process-canvas' : ''}`}
       data-testid="canvas"
       onPointerDownCapture={() => interruptPresentation.current()}
       onWheelCapture={() => interruptPresentation.current()}
@@ -728,6 +858,13 @@ export function Canvas() {
         const card = target
           .closest('.react-flow__node')
           ?.querySelector<HTMLElement>('[data-simulation-projected="true"]');
+        const processId = card?.dataset.simulationProcessId;
+        if (processId) {
+          event.preventDefault();
+          event.stopPropagation();
+          openSimulationProcess(graph.diagram.id, processId);
+          return;
+        }
         const id = card?.dataset.simulationLogicalNode ?? card?.dataset.nodeId;
         if (id) {
           event.preventDefault();
@@ -736,7 +873,13 @@ export function Canvas() {
         }
       }}
     >
+      {showProcessNavigation && (
+        <div className="simulation-process-nav-strip">
+          <ProcessHierarchyNav graph={graph} />
+        </div>
+      )}
       <ReactFlow<CanvasNode>
+        style={showProcessNavigation ? { flex: 1, minHeight: 0, height: 'auto' } : undefined}
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
@@ -750,13 +893,27 @@ export function Canvas() {
           if (readonlyNodes.current.size) useEditor.getState().select([]);
         }}
         onNodeClick={(_, node) => {
+          if (getSimulationProcessId(node.data.node)) return;
           if (node.data.node.metadata.simulationProjected)
             useEditor.getState().select([logicalNodeId(node.data.node)]);
         }}
-        onConnect={(c) => c.source && c.target && useEditor.getState().connect(c.source, c.target)}
-        onReconnect={(edge, c) =>
+        onNodeDoubleClick={(_, node) => {
+          const processId = getSimulationProcessId(node.data.node);
+          if (processId) openSimulationProcess(graph.diagram.id, processId);
+        }}
+        onConnect={(c) =>
           c.source &&
           c.target &&
+          graph.nodes.some((node) => node.id === c.source) &&
+          graph.nodes.some((node) => node.id === c.target) &&
+          useEditor.getState().connect(c.source, c.target)
+        }
+        onReconnect={(edge, c) =>
+          !readonlyEdges.current.has(edge.id) &&
+          c.source &&
+          c.target &&
+          graph.nodes.some((node) => node.id === c.source) &&
+          graph.nodes.some((node) => node.id === c.target) &&
           useEditor
             .getState()
             .updateEdge(edge.id, { sourceNodeId: c.source, targetNodeId: c.target })
@@ -792,7 +949,7 @@ export function Canvas() {
         onlyRenderVisibleElements
         nodesFocusable
         edgesFocusable
-        zoomOnDoubleClick={graph.diagram.type !== 'mindmap'}
+        zoomOnDoubleClick={graph.diagram.type !== 'mindmap' && !processProjection?.active}
       >
         {!overview?.active && (
           <ParticleOverlay renderGraph={renderGraph ?? undefined} visibility={particleVisibility} />
@@ -815,12 +972,33 @@ export function Canvas() {
         <Controls
           showInteractive={false}
           showFitView={
-            overview?.active ||
-            !getDrawingLayer(graph.diagram.settings.drawing)?.visible ||
-            !getDrawingLayer(graph.diagram.settings.drawing)?.strokes.length
+            !processProjection?.active &&
+            (overview?.active ||
+              !getDrawingLayer(graph.diagram.settings.drawing)?.visible ||
+              !getDrawingLayer(graph.diagram.settings.drawing)?.strokes.length)
           }
         >
-          {!overview?.active &&
+          {processProjection?.active && (
+            <ControlButton
+              aria-label="Fit view"
+              title="Fit process view"
+              onClick={() =>
+                void flow.fitView({
+                  nodes: touch
+                    ? renderGraph?.nodes.map((node) => ({ id: node.id }))
+                    : fitProcessNodes(),
+                  padding: 0.16,
+                  minZoom: touch ? 0.05 : 0.72,
+                  maxZoom: touch ? 0.9 : 1,
+                  duration: 180,
+                })
+              }
+            >
+              <Maximize size={16} />
+            </ControlButton>
+          )}
+          {!processProjection?.active &&
+            !overview?.active &&
             getDrawingLayer(graph.diagram.settings.drawing)?.visible &&
             !!getDrawingLayer(graph.diagram.settings.drawing)?.strokes.length && (
               <ControlButton

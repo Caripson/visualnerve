@@ -79,6 +79,23 @@ export function NodeEditor({
               onChange={(event) => patchNode({ description: event.target.value })}
             />
           </label>
+          {(draft.processes?.length ?? 0) > 0 && (
+            <label className="simulation-field">
+              Process group
+              <select
+                aria-label="Node process group"
+                value={node.processId ?? ''}
+                onChange={(event) => patchNode({ processId: event.target.value || undefined })}
+              >
+                <option value="">Outside process groups</option>
+                {draft.processes?.map((process) => (
+                  <option key={process.id} value={process.id}>
+                    {process.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           {node.type === 'source' && (
             <SourceEditor draft={draft} node={node} patchNode={patchNode} />
           )}

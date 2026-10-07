@@ -25,6 +25,13 @@ export function indexSimulationParticleView(
     const group = cards.get(id) ?? [];
     group.push(node);
     cards.set(id, group);
+    if (Array.isArray(node.metadata.simulationProcessRepresentedNodeIds))
+      for (const represented of node.metadata.simulationProcessRepresentedNodeIds) {
+        if (typeof represented !== 'string') continue;
+        const representedCards = cards.get(represented) ?? [];
+        representedCards.push(node);
+        cards.set(represented, representedCards);
+      }
   }
   for (const edge of graph.edges) {
     if (visibility && !visibility.edgeIds.has(edge.id)) continue;
@@ -36,9 +43,16 @@ export function indexSimulationParticleView(
     flowEdges.push(edge);
     const id = edge.metadata.simulationLogicalEdgeId;
     const logicalId = typeof id === 'string' ? id : edge.id;
-    const group = edges.get(logicalId) ?? [];
-    group.push(edge);
-    edges.set(logicalId, group);
+    const ids = Array.isArray(edge.metadata.simulationLogicalEdgeIds)
+      ? edge.metadata.simulationLogicalEdgeIds.filter(
+          (entry): entry is string => typeof entry === 'string',
+        )
+      : [logicalId];
+    for (const id of ids) {
+      const group = edges.get(id) ?? [];
+      group.push(edge);
+      edges.set(id, group);
+    }
   }
   return { nodes, cards, edges, flowEdges, resourceEdges };
 }
@@ -48,7 +62,11 @@ export type SimulationParticleView = ReturnType<typeof indexSimulationParticleVi
 export function particleCapacityCard(view: SimulationParticleView, logicalId: string, unit = 1) {
   const cards = view.cards.get(logicalId) ?? [];
   return (
-    cards.find((node) => (getSimulationCapacityCard(node)?.unit ?? 1) === unit) ??
+    cards.find(
+      (node) =>
+        typeof node.metadata.simulationProcessId === 'string' ||
+        (getSimulationCapacityCard(node)?.unit ?? 1) === unit,
+    ) ??
     cards.find((node) => {
       const card = getSimulationCapacityCard(node);
       return card && card.hidden > 0 && unit >= card.unit && unit <= card.total;

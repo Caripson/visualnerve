@@ -1,0 +1,283 @@
+.simulation-process-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  max-width: min(760px, calc(100vw - 28px));
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 3px 14px #0000000d;
+  color: var(--text);
+  font-size: 12px;
+}
+.simulation-process-breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+}
+.simulation-process-breadcrumbs > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.simulation-process-navigation button {
+  font-size: 12px;
+  min-height: 32px;
+  max-width: 230px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.simulation-process-navigation button[aria-current='page'] {
+  background: var(--surface);
+  color: var(--accent);
+  font-weight: 650;
+}
+.simulation-process-all {
+  margin-left: auto;
+}
+.simulation-process-card {
+  border-width: 2px;
+  padding: 14px;
+}
+.simulation-process-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 11px;
+  min-width: 0;
+}
+.simulation-process-summary[data-traffic='clear'] {
+  --simulation-traffic: #169b65;
+}
+.simulation-process-summary[data-traffic='busy'] {
+  --simulation-traffic: #d49a16;
+}
+.simulation-process-summary[data-traffic='congested'] {
+  --simulation-traffic: #dc5055;
+}
+.simulation-process-summary[data-traffic='inactive'] {
+  --simulation-traffic: #8994a6;
+}
+.simulation-process-summary .simulation-traffic-badge {
+  align-self: flex-start;
+}
+.simulation-process-values {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.simulation-process-values > span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.simulation-process-values small,
+.simulation-process-members,
+.simulation-process-context {
+  color: var(--muted);
+}
+.simulation-process-values strong {
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+.simulation-process-summary button {
+  align-self: flex-start;
+  min-height: 34px;
+  margin-top: 2px;
+}
+.simulation-process-description {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+  max-height: 65px;
+  overflow: auto;
+}
+.simulation-process-bottleneck {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.simulation-process-spatial-navigation {
+  position: absolute;
+  z-index: 15;
+  top: 12px;
+  left: 12px;
+}
+.simulation-process-spatial-note {
+  flex-basis: 100%;
+  color: var(--muted);
+}
+.simulation-process-editor-members {
+  display: grid;
+  gap: 8px;
+}
+.simulation-process-editor-members label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.simulation-process-editor-members input {
+  width: auto;
+}
+@media (max-width: 760px) {
+  .simulation-process-navigation {
+    padding: 8px;
+    gap: 6px 8px;
+    max-width: calc(100vw - 24px);
+  }
+  .simulation-process-navigation button {
+    min-height: 44px;
+    max-width: 170px;
+  }
+  .simulation-process-all {
+    margin-left: 0;
+  }
+}
+
+.simulation-process-card .node-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.simulation-process-card:has([data-traffic='congested']) {
+  outline: 2px solid #dc5055;
+  outline-offset: 2px;
+}
+.simulation-process-card:has([data-traffic='busy']) {
+  outline: 1px solid #d49a16;
+  outline-offset: 2px;
+}
+
+.simulation-process-spatial-shell {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.simulation-pool-card {
+  padding: 9px 10px;
+  gap: 4px;
+  --node-accent: #31766c;
+}
+.simulation-pool-card .node-title {
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+.simulation-pool-card .node-topline {
+  min-height: 12px;
+}
+.simulation-pool-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 10px;
+  --simulation-traffic: #8994a6;
+}
+.simulation-pool-summary[data-traffic='clear'] {
+  --simulation-traffic: #169b65;
+}
+.simulation-pool-summary[data-traffic='busy'] {
+  --simulation-traffic: #d49a16;
+}
+.simulation-pool-summary[data-traffic='congested'] {
+  --simulation-traffic: #dc5055;
+}
+.simulation-pool-summary .simulation-traffic-badge {
+  align-self: flex-start;
+}
+.simulation-pool-values {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.simulation-pool-values > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.simulation-pool-values small {
+  color: var(--muted);
+  font-size: 8px;
+}
+.simulation-pool-values strong {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.simulation-pool-units {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 8px;
+}
+.simulation-pool-units i {
+  width: 10px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+}
+.simulation-pool-units i[data-occupied='true'] {
+  background: var(--simulation-traffic);
+  border-color: var(--simulation-traffic);
+}
+.simulation-pool-card:has([data-traffic='congested']) {
+  outline: 2px solid #dc5055;
+  outline-offset: 2px;
+}
+
+.simulation-process-choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 11px;
+}
+.simulation-process-choice select {
+  width: min(220px, 45vw);
+  min-height: 32px;
+  font-size: 12px;
+}
+@media (max-width: 760px) {
+  .simulation-process-choice {
+    flex-basis: 100%;
+  }
+  .simulation-process-choice select {
+    flex: 1;
+    width: 100%;
+    min-height: 44px;
+    max-width: 240px;
+  }
+}
+.canvas-shell.simulation-process-canvas {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.simulation-process-nav-strip {
+  flex: none;
+  min-width: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.simulation-process-nav-strip > .simulation-process-navigation {
+  max-width: 100%;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+}

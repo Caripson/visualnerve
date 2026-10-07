@@ -6,7 +6,7 @@ The public Help is a local, static Hugo documentation section at `/help/`. It ha
 
 | Guide           | Product surface                                                                                                                                    |
 | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| getting-started | Consent, all eleven templates, first workflow, desktop/mobile navigation, local saving                                                             |
+| getting-started | Consent, all twelve templates, first workflow, desktop/mobile navigation, local saving                                                             |
 | editing         | All visual object kinds, connections, properties, status/quick actions, owners/search/filters, groups, drawing, copy/undo/delete, shortcuts        |
 | layouts         | Mind map editing, Balanced/directional/radial layout, focus mode, ordinary modes, dated timelines                                                  |
 | 3d              | Styled card relief, camera gizmo/orientations, object placement, synchronized 2D moves, fallback/export/view limits                                |
@@ -17,7 +17,7 @@ The public Help is a local, static Hugo documentation section at `/help/`. It ha
 | diagram-import  | draw.io/Visio pages, previews/warnings, native conversion and format bounds                                                                        |
 | understanding   | Semantic overview, questions/evidence, graph paths, named views and safe snapshot history                                                          |
 | presentations   | Numbered order, compact player, subtitles/audio/preload, voices/cache, storyboard/camera and video                                                 |
-| simulation      | All assumption categories, queues/shared resources, routing/scaling/investments/economics, scenarios, controls/metrics/replay and execution bounds |
+| simulation      | Guided single/nested setup, process navigation and rollups, all assumption categories, queues/shared resources, routing/scaling/investments/economics, scenarios, controls/metrics/replay and execution bounds |
 | sharing         | Restorable/visual outputs, scopes/resolution/PDF tiling, Markdown/JSON imports, backups, Lovable specification/handoff                             |
 | settings        | Appearance, storage/offline, portable backup/restore, retention/import limits, speech, MCP grants, conflicts and deletion                          |
 | api-mcp         | Local process/addresses/setup, discovery, targeting/versioning, practical code/3D/simulation requests and demand stress testing                    |
@@ -48,7 +48,7 @@ VN_CAPTURE_HELP=1 npm run test:e2e -- help-screenshots.spec.ts
 The guided process setup, connected-node menu and live congestion images come from the corresponding functional tests:
 
 ```bash
-VN_CAPTURE_PROCESS=1 npm run test:e2e -- process-wizard.spec.ts process-building.spec.ts
+VN_CAPTURE_PROCESS=1 npm run test:e2e -- process-wizard.spec.ts process-building.spec.ts process-hierarchy.spec.ts
 ```
 
 The opt-in capture suite needs `cwebp` and converts genuine Playwright PNG captures to WebP. On this macOS host, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to the installed Chrome executable. Normal test runs skip capture and do not overwrite published screenshots. Review the output visually before committing; regenerate affected images after interface changes.

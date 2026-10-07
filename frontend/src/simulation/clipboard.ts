@@ -1,5 +1,6 @@
 import type { Graph } from '../model/types';
 import type { SimulationModel } from './types';
+import { ProcessHierarchy } from './process-hierarchy';
 import { remapSimulationModel } from './copy';
 import { StorageError } from '../model/errors';
 
@@ -14,6 +15,8 @@ export function copySimulationSelection(
 ): SimulationClipboard | undefined {
   if (!graph.simulation) return;
   const nodes = graph.simulation.nodes.filter((node) => ids.has(node.id));
+  const hierarchy = new ProcessHierarchy(graph.simulation);
+  const processes = new Set(nodes.flatMap((node) => [...hierarchy.forNode(node.id)]));
   const resources = new Set<string>();
   for (const node of nodes) {
     if (node.type === 'resource') resources.add(node.resourceId);
@@ -30,6 +33,9 @@ export function copySimulationSelection(
     model: {
       ...graph.simulation,
       nodes,
+      ...(graph.simulation.processes
+        ? { processes: graph.simulation.processes.filter((process) => processes.has(process.id)) }
+        : {}),
       edges: graph.simulation.edges.filter(
         (edge) => ids.has(edge.sourceNodeId) && ids.has(edge.targetNodeId),
       ),
@@ -55,7 +61,13 @@ export function pasteSimulationSelection(
   if (target.simulation.currency !== clip.model.currency)
     throw new StorageError(422, 'Copy simulation objects into a document with the same currency.');
   const sameDocument = clip.diagramId === target.diagram.id;
-  const copied = remapSimulationModel(clip.model, nodeIds, edgeIds);
+  const processIds = new Map(
+    (clip.model.processes ?? []).map((process) => [
+      process.id,
+      sameDocument ? process.id : crypto.randomUUID(),
+    ]),
+  );
+  const copied = remapSimulationModel(clip.model, nodeIds, edgeIds, processIds);
   const resourceIds = new Map(
     copied.resources.map((resource) => [
       resource.id,
@@ -140,6 +152,17 @@ export function pasteSimulationSelection(
   });
   return {
     ...target.simulation,
+    ...(target.simulation.processes || copied.processes
+      ? {
+          processes: [
+            ...(target.simulation.processes ?? []),
+            ...(copied.processes ?? []).filter(
+              (process) =>
+                !target.simulation!.processes?.some((existing) => existing.id === process.id),
+            ),
+          ],
+        }
+      : {}),
     nodes: [...target.simulation.nodes, ...copied.nodes],
     edges: [
       ...target.simulation.edges,

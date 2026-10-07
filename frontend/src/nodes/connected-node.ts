@@ -211,7 +211,11 @@ export function addConnectedNode(
     };
   }
   const model = graph.simulation;
-  const common = { id: node.id, name: node.title };
+  const common = {
+    id: node.id,
+    name: node.title,
+    ...(semantic?.processId ? { processId: semantic.processId } : {}),
+  };
   let addition: SimulationNode;
   let resources = model.resources;
   let particleTypes = model.particleTypes;

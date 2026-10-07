@@ -10,6 +10,7 @@ import type {
   QueueMetrics,
   ResourceMetrics,
   Bottleneck,
+  ProcessMetrics,
 } from './types';
 import { Distribution } from './statistics';
 import type { EventQueue } from './event-queue';
@@ -131,6 +132,10 @@ interface ProjectionInput {
   queueMetrics: (s: Meter) => QueueMetrics;
   rate: (s: Meter) => number;
   snapshot: (p: Particle) => ParticleSnapshot;
+  processMetrics: (
+    nodes: Record<string, NodeMetrics>,
+    bottlenecks: Bottleneck[],
+  ) => Record<string, ProcessMetrics>;
 }
 
 export function projectSimulationState(input: ProjectionInput): SimulationState {
@@ -316,6 +321,7 @@ export function projectSimulationState(input: ProjectionInput): SimulationState 
     nodes,
     resources,
     particleTypes,
+    processes: input.processMetrics(nodes, bottlenecks),
     particles: [
       ...samples,
       ...input.retained

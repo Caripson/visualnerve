@@ -1,3 +1,4 @@
+import { ProcessHierarchy } from './process-hierarchy';
 import { StorageError } from '../model/errors';
 import type { SimulationModel, ScalingRule, ScheduleWindow, SimulationNode } from './types';
 function requireValue(value: unknown, message: string): asserts value {
@@ -93,6 +94,7 @@ function validate(value: unknown, includeScenarios: boolean): asserts value is S
       'schemaVersion',
       'currency',
       'particleTypes',
+      'processes',
       'nodes',
       'edges',
       'resources',
@@ -144,6 +146,7 @@ function validate(value: unknown, includeScenarios: boolean): asserts value is S
     types = new Set(model.particleTypes.map((p) => p.id)),
     resources = new Map(model.resources.map((r) => [r.id, r])),
     edges = new Map(model.edges.map((e) => [e.id, e]));
+  new ProcessHierarchy(model);
   for (const type of model.particleTypes) {
     keys(
       type,
@@ -255,6 +258,7 @@ function validate(value: unknown, includeScenarios: boolean): asserts value is S
         'name',
         'description',
         'metadata',
+        'processId',
         'type',
         ...(node.type === 'source'
           ? ['source']
@@ -618,7 +622,7 @@ function validate(value: unknown, includeScenarios: boolean): asserts value is S
       keys(scenario, ['id', 'name', 'description', 'demandMultiplier', 'overrides'], 'scenario');
       keys(
         scenario.overrides,
-        ['nodes', 'edges', 'particleTypes', 'resources', 'improvements', 'economics'],
+        ['processes', 'nodes', 'edges', 'particleTypes', 'resources', 'improvements', 'economics'],
         'scenario overrides',
       );
       validate(resolveScenario(model, scenario.id), false);
@@ -657,12 +661,20 @@ export function resolveScenario(
   const scenario = scenarioId ? model.scenarios.find((s) => s.id === scenarioId) : undefined;
   requireValue(!scenarioId || scenario, 'unknown scenario.');
   if (scenario)
-    for (const key of ['nodes', 'edges', 'resources', 'particleTypes', 'improvements'] as const) {
+    for (const key of [
+      'processes',
+      'nodes',
+      'edges',
+      'resources',
+      'particleTypes',
+      'improvements',
+    ] as const) {
       const patches = scenario.overrides[key];
       if (!patches) continue;
       requireValue(object(patches), 'scenario overrides must contain ID records.');
       for (const [id, patch] of Object.entries(patches)) {
-        const index = result[key].findIndex((item) => item.id === id);
+        const entries = result[key] ?? [];
+        const index = entries.findIndex((item) => item.id === id);
         requireValue(index >= 0 && object(patch), `unknown ${key} override.`);
         requireValue(patch.id === undefined || patch.id === id, 'scenario cannot change IDs.');
         if (key === 'nodes')
@@ -670,7 +682,7 @@ export function resolveScenario(
             patch.type === undefined || patch.type === (result.nodes[index] as SimulationNode).type,
             'scenario cannot change node types.',
           );
-        (result[key] as unknown[])[index] = merge(result[key][index], patch);
+        (entries as unknown[])[index] = merge(entries[index], patch);
       }
     }
   if (scenario && scenario.overrides.economics !== undefined)

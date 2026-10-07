@@ -6,6 +6,7 @@ import {
   type Particle,
   type TypeState,
 } from './engine-state';
+import { ProcessMetricsAccumulator } from './process-metrics';
 import { zeroEconomics, finishEconomics } from './economics';
 export { compareSimulationResults } from './economics';
 import type {
@@ -79,6 +80,7 @@ export class SimulationEngine {
     Pick<RunOptions, 'durationSeconds' | 'seed' | 'demandMultiplier' | 'untilComplete'>
   > &
     RunOptions;
+  private readonly processes: ProcessMetricsAccumulator;
   private clock = 0;
   private accountedClock = 0;
   private processedEvents = 0;
@@ -150,6 +152,7 @@ export class SimulationEngine {
     validateSimulationModel(model);
     this.model = resolveScenario(model, options.scenarioId, options.demandMultiplier);
     validateSimulationModel({ ...this.model, scenarios: [] });
+    this.processes = new ProcessMetricsAccumulator(this.model);
     this.options = {
       ...options,
       durationSeconds: options.durationSeconds ?? model.defaults.durationSeconds,
@@ -324,6 +327,8 @@ export class SimulationEngine {
   }
   private touch(s: Meter) {
     const dt = this.clock - s.last;
+    if ('resource' in s)
+      this.processes.accrueResource((s as ResourceState).resource.id, dt, this.unitCostRate(s));
     s.busyArea += s.busy * dt;
     s.capacityArea += (s.scheduled ? s.capacity : Math.min(s.capacity, s.busy)) * dt;
     s.queueArea += s.queue * dt;
@@ -499,6 +504,7 @@ export class SimulationEngine {
       visits: 0,
     };
     this.active.set(particle.id, particle);
+    this.processes.enter(particle, node.id, this.clock);
     this.emit('PARTICLE_CREATED', {
       nodeId: node.id,
       particleId: particle.id,
@@ -687,6 +693,7 @@ export class SimulationEngine {
   }
   private enter(p: Particle, nodeId: string) {
     const node = this.nodes.get(nodeId)!;
+    this.processes.enter(p, nodeId, this.clock);
     this.activity.get(nodeId)!.started++;
     p.nodeId = nodeId;
     p.edgeId = undefined;
@@ -808,6 +815,7 @@ export class SimulationEngine {
         p.pendingAdmission = undefined;
         p.queueEnteredAtSeconds = sec(this.clock);
         w.queue++;
+        this.processes.queueEntered(w.node.id, this.clock);
         w.maximumQueue = Math.max(w.maximumQueue, w.queue);
         this.queueLength++;
         this.maximumQueue = Math.max(this.maximumQueue, this.queueLength);
@@ -835,6 +843,7 @@ export class SimulationEngine {
       this.queueLength--;
     }
     const wait = sec(this.clock - p.entered);
+    this.processes.queueLeft(w.node.id, this.clock, wait, queued);
     p.waitingSeconds += wait;
     w.wait.add(wait);
     this.wait.add(wait);
@@ -882,6 +891,7 @@ export class SimulationEngine {
       req.unitCostIntegralStart = r.unitCostIntegral;
       const before = this.rate(r);
       r.busy += req.units;
+      this.processes.resourceAcquired(req.resourceId, w.node.id, req.units);
       this.resourceRate += this.rate(r) - before;
       this.emit('RESOURCE_ACQUIRED', {
         particleId: p.id,
@@ -906,6 +916,7 @@ export class SimulationEngine {
     const elapsed = sec(this.clock - p.started);
     p.processingSeconds += elapsed;
     this.processing.add(elapsed);
+    this.processes.processed(id, elapsed);
     const allocated = w.unitCostIntegral - p.workCostIntegralStart;
     p.accumulatedCost += allocated;
     this.types.get(p.typeId)!.cost += allocated;
@@ -914,6 +925,7 @@ export class SimulationEngine {
       this.touch(r);
       const before = this.rate(r);
       r.busy = Math.max(0, r.busy - req.units);
+      this.processes.resourceAcquired(req.resourceId, id, -req.units);
       this.resourceRate += this.rate(r) - before;
       const cost = req.units * (r.unitCostIntegral - req.unitCostIntegralStart);
       p.accumulatedCost += cost;
@@ -938,6 +950,7 @@ export class SimulationEngine {
     const revenueChange = expected - p.expectedRevenue;
     p.expectedRevenue = expected;
     this.totals.expected += revenueChange;
+    this.processes.expectedRevenueChanged(p.id, revenueChange);
     this.types.get(p.typeId)!.expected += revenueChange;
     w.expected += revenueChange;
     const failed = this.features(id).find(
@@ -1002,6 +1015,7 @@ export class SimulationEngine {
       const revenueChange = revenue - p.expectedRevenue;
       p.expectedRevenue = revenue;
       this.totals.expected += revenueChange;
+      this.processes.expectedRevenueChanged(p.id, revenueChange);
       this.types.get(p.typeId)!.expected += revenueChange;
     }
     p.status = 'completed';
@@ -1051,6 +1065,7 @@ export class SimulationEngine {
   private retire(p: Particle) {
     p.completedAtSeconds = sec(this.clock);
     p.pendingAdmission = undefined;
+    this.processes.retire(p, this.clock);
     this.active.delete(p.id);
     if (this.particleLimit) this.retained.push(this.snapshot(p));
   }
@@ -1451,6 +1466,15 @@ export class SimulationEngine {
       queueMetrics: (s) => this.queueMetrics(s),
       rate: (s) => this.rate(s),
       snapshot: (p) => this.snapshot(p),
+      processMetrics: (nodes, bottlenecks) =>
+        this.processes.project({
+          clock: this.clock,
+          nodes,
+          bottlenecks,
+          work: this.work,
+          resources: this.resources,
+          unitCostRate: (resource) => this.unitCostRate(resource),
+        }),
     });
   }
   result(): SimulationResult {

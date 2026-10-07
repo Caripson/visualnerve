@@ -3,12 +3,14 @@ import { toScenarioPatch } from './scenario-patch';
 import type { SimulationModel, SimulationNode, Improvement, ScenarioOverrides } from './types';
 
 export type SimulationCollection =
+  | 'processes'
   | 'nodes'
   | 'edges'
   | 'resources'
   | 'particleTypes'
   | 'improvements';
 const collections: SimulationCollection[] = [
+  'processes',
   'nodes',
   'edges',
   'resources',
@@ -22,6 +24,21 @@ export function removeSimulationEntity(
   collection: SimulationCollection,
   id: string,
 ) {
+  if (collection === 'processes') {
+    const deleted = model.processes?.find((process) => process.id === id);
+    if (!deleted) return model;
+    return pruneSimulationReferences({
+      ...model,
+      processes: model
+        .processes!.filter((process) => process.id !== id)
+        .map((process) =>
+          process.parentId === id ? { ...process, parentId: deleted.parentId } : process,
+        ),
+      nodes: model.nodes.map((node) =>
+        node.processId === id ? { ...node, processId: deleted.parentId } : node,
+      ),
+    });
+  }
   return pruneSimulationReferences({
     ...model,
     [collection]: model[collection].filter((item) => item.id !== id),
@@ -29,11 +46,14 @@ export function removeSimulationEntity(
 }
 
 function pruneTopology(input: SimulationModel, fallback?: SimulationModel): SimulationModel {
+  const processIds = new Set((input.processes ?? []).map((process) => process.id));
   const particleIds = new Set(input.particleTypes.map((type) => type.id));
   const resourceIds = new Set(input.resources.map((resource) => resource.id));
   const fallbackNodes = new Map(fallback?.nodes.map((node) => [node.id, node]));
   const nodes = input.nodes.flatMap((node): SimulationNode[] => {
     const original = fallbackNodes.get(node.id);
+    if (node.processId !== undefined && !processIds.has(node.processId))
+      node = { ...node, processId: original?.processId };
     if (node.type === 'source' && !particleIds.has(node.source.particleTypeId))
       return original?.type === 'source'
         ? [{ ...node, source: { ...node.source, particleTypeId: original.source.particleTypeId } }]
@@ -124,7 +144,20 @@ function pruneTopology(input: SimulationModel, fallback?: SimulationModel): Simu
         : undefined;
     return [{ ...feature, nodeId, resourceId, failureNodeId }];
   });
-  return { ...input, nodes: cleanNodes, edges, improvements, scenarios: [] };
+  const processes = input.processes?.map((process) => {
+    const original = fallback?.processes?.find((candidate) => candidate.id === process.id);
+    return process.parentId !== undefined && !processIds.has(process.parentId)
+      ? { ...process, parentId: original?.parentId }
+      : process;
+  });
+  return {
+    ...input,
+    ...(processes ? { processes } : {}),
+    nodes: cleanNodes,
+    edges,
+    improvements,
+    scenarios: [],
+  };
 }
 
 /** Reusable by canvas topology cleanup and structured settings; layout never enters this operation. */
@@ -133,7 +166,7 @@ export function pruneSimulationReferences(input: SimulationModel): SimulationMod
   const scenarios = input.scenarios.map((scenario) => {
     const overrides: ScenarioOverrides = { ...scenario.overrides };
     for (const collection of collections) {
-      const ids = new Set(baseline[collection].map((item) => item.id));
+      const ids = new Set((baseline[collection] ?? []).map((item) => item.id));
       const changes = overrides[collection];
       if (changes)
         Object.defineProperty(overrides, collection, {
@@ -151,9 +184,9 @@ export function pruneSimulationReferences(input: SimulationModel): SimulationMod
     const cleaned = pruneTopology(resolved, baseline);
     const differences: ScenarioOverrides = {};
     for (const collection of collections) {
-      const original = new Map(baseline[collection].map((item) => [item.id, item]));
+      const original = new Map((baseline[collection] ?? []).map((item) => [item.id, item]));
       const values = Object.fromEntries(
-        cleaned[collection]
+        (cleaned[collection] ?? [])
           .filter((item) => JSON.stringify(item) !== JSON.stringify(original.get(item.id)))
           .map((item) => [item.id, toScenarioPatch(item, original.get(item.id))]),
       );
