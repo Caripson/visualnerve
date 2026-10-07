@@ -12,7 +12,11 @@ test.use({
     ],
   },
 });
-async function create(request: APIRequestContext, name: string) {
+async function create(
+  request: APIRequestContext,
+  name: string,
+  description = 'This explains the first module.',
+) {
   const response = await request.post('/api/v1/diagrams', { data: { name, type: 'process' } });
   expect(response.status()).toBe(201);
   const diagram = await response.json();
@@ -24,7 +28,7 @@ async function create(request: APIRequestContext, name: string) {
             {
               externalId: 'first',
               title: 'First module',
-              description: 'This explains the first module.',
+              description,
               x: 100,
               y: 120,
               width: 240,
@@ -124,8 +128,32 @@ test('numbered walkthrough plays, pauses, skips, captions and persists sequence 
   await expect(player.getByLabel('Walkthrough subtitles')).toHaveText(
     'This explains the first module.',
   );
+  await player.getByRole('button', { name: 'Minimize player', exact: true }).click();
+  await expect(player).toHaveAttribute('data-minimized', 'true');
+  await expect(player).toHaveAttribute('data-status', 'playing');
+  const captions = page.locator('.presentation-subtitles-overlay');
+  await expect(captions.getByLabel('Walkthrough subtitles')).toHaveText(
+    'This explains the first module.',
+  );
+  await expect(player.getByLabel('Walkthrough subtitles')).toHaveCount(0);
+  await expect(
+    player.getByRole('button', { name: 'Presentation audio', exact: true }),
+  ).toBeVisible();
+  await expect(
+    player.getByRole('button', { name: 'Presentation subtitles', exact: true }),
+  ).toBeVisible();
+  expect((await player.boundingBox())!.height).toBeLessThan(90);
+  await page.screenshot({ path: '/tmp/visual-nerve-player-desktop.png' });
+  await expect
+    .poll(async () => (await (await request.get('/api/v1/presentation')).json()).minimized)
+    .toBe(true);
   await player.getByRole('button', { name: 'Pause presentation', exact: true }).click();
   await expect(player).toHaveAttribute('data-status', 'paused');
+  await player.getByRole('button', { name: 'Expand player', exact: true }).click();
+  await expect(captions).toHaveCount(0);
+  await expect(player.getByLabel('Walkthrough subtitles')).toHaveText(
+    'This explains the first module.',
+  );
   await expect(player.locator('.presentation-current')).toHaveText('First module');
   expect(
     (await (await request.get(`/api/v1/diagrams/${graph.diagram.id}`)).json()).diagram.version,
@@ -188,6 +216,28 @@ test('MCP player uses the same 3D diagram and transient camera with documented r
   expect(response.result.structuredContent.status).toBe(200);
   const player = page.getByRole('region', { name: 'Diagram player' });
   await expect(player).toHaveAttribute('data-status', 'playing', { timeout: 15000 });
+  const minimize = await request.post('/mcp', {
+    data: {
+      jsonrpc: '2.0',
+      id: 52,
+      method: 'tools/call',
+      params: {
+        name: 'visual_nerve_request',
+        arguments: { path: '/presentation', method: 'PATCH', data: { minimized: true } },
+      },
+    },
+  });
+  const minimized = (await minimize.json()).result;
+  expect(minimized.isError).toBe(false);
+  expect(minimized.structuredContent.body).toMatchObject({ minimized: true, status: 'playing' });
+  await expect(player).toHaveAttribute('data-minimized', 'true');
+  await expect(page.locator('.presentation-subtitles-overlay')).toContainText(
+    'This explains the first module.',
+  );
+  await page.screenshot({ path: '/tmp/visual-nerve-player-3d.png' });
+  await player.getByRole('button', { name: 'Expand player', exact: true }).click();
+  await expect(player).toHaveAttribute('data-status', 'playing');
+  expect((await (await request.get('/api/v1/presentation')).json()).minimized).toBe(false);
   const spatialCanvas = page.getByTestId('spatial-canvas');
   const playbackCamera = await spatialCanvas.getAttribute('data-camera-position');
   for (const key of ['Tab', 'Shift', 'a']) {
@@ -233,4 +283,101 @@ test('player remains usable on a narrow screen and exposes a bounded order list'
   await expect(player.getByRole('listitem')).toHaveCount(3);
   await player.getByRole('button', { name: 'Move First module later', exact: true }).click();
   await expect(player.getByRole('listitem').first()).toContainText('Second module');
+});
+
+test('minimized captions and touch controls fit portrait and landscape without selection toolbar collisions', async ({
+  page,
+  request,
+}) => {
+  const narration = `${'The walkthrough explains the diagram one module at a time. '.repeat(8)}https://example.test/${'long-identifier'.repeat(12)}`;
+  const graph = await create(request, 'Compact cinema captions', narration);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('button', { name: 'Open projects', exact: true }).click();
+  await page.locator('.diagram-item').filter({ hasText: graph.diagram.name }).click();
+  const first = page.locator(`.react-flow__node[data-id="${graph.nodes[0].id}"]`);
+  await expect(first).toBeVisible();
+  await first.click();
+  await expect(page.locator('.selection-tools')).toBeVisible();
+  // Start in the already open diagram, preserving the user's selection.
+  // Passing diagramId intentionally navigates/reopens it and clears selection.
+  await request.post('/api/v1/presentation/open', { data: {} });
+  const player = page.getByRole('region', { name: 'Diagram player', exact: true });
+  const captions = page.locator('.presentation-subtitles-overlay');
+  await expect(player).toHaveAttribute('data-minimized', 'true');
+  await player.getByRole('button', { name: 'Play presentation', exact: true }).click();
+  await expect(player).toHaveAttribute('data-status', 'playing');
+  await expect(first).toHaveClass(/selected/);
+  await expect(page.locator('.selection-tools')).toHaveCount(0);
+  const cue = captions.getByLabel('Walkthrough subtitles');
+  await expect.poll(async () => Number(await cue.getAttribute('data-page'))).toBeGreaterThan(1);
+  await player.getByRole('button', { name: 'Pause presentation', exact: true }).click();
+  const pausedPage = await cue.getAttribute('data-page');
+  await page.waitForTimeout(300);
+  expect(await cue.getAttribute('data-page')).toBe(pausedPage);
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 320, height: 568 },
+    { width: 780, height: 400 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await expect(player).toHaveAttribute('data-minimized', 'true');
+    const dock = (await player.boundingBox())!;
+    const caption = (await captions.boundingBox())!;
+    const canvas = (await page.locator('.canvas-shell').boundingBox())!;
+    expect(dock.x).toBeGreaterThanOrEqual(canvas.x);
+    expect(dock.x + dock.width).toBeLessThanOrEqual(canvas.x + canvas.width + 1);
+    expect(caption.x).toBeGreaterThanOrEqual(canvas.x);
+    expect(caption.x + caption.width).toBeLessThanOrEqual(canvas.x + canvas.width + 1);
+    expect(caption.y).toBeGreaterThanOrEqual(canvas.y);
+    expect(caption.y + caption.height).toBeLessThanOrEqual(dock.y - 8);
+    for (const name of ['3D view', 'Canvas options', 'Fit View']) {
+      const canvasControl = page.getByRole('button', { name, exact: true });
+      await expect(canvasControl).toBeInViewport({ ratio: 1 });
+      expect(
+        await canvasControl.evaluate((element) => {
+          const rect = element.getBoundingClientRect();
+          return element.contains(
+            document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2),
+          );
+        }),
+      ).toBe(true);
+    }
+    for (const name of [
+      'Rewind presentation',
+      'Play presentation',
+      'Forward presentation',
+      'Presentation audio',
+      'Presentation subtitles',
+      'Expand player',
+      'Close diagram player',
+    ]) {
+      const control = player.getByRole('button', { name, exact: true });
+      await expect(control).toBeInViewport({ ratio: 1 });
+      const box = (await control.boundingBox())!;
+      expect(box.width).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      expect(
+        await control.evaluate((element) => {
+          const rect = element.getBoundingClientRect();
+          const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+          return hit !== null && element.contains(hit);
+        }),
+      ).toBe(true);
+    }
+    await page.screenshot({
+      path: `/tmp/visual-nerve-player-${viewport.width}-${viewport.height}.png`,
+    });
+  }
+  await player.getByRole('button', { name: 'Presentation subtitles', exact: true }).click();
+  await expect(captions).toHaveCount(0);
+  await expect(player).toHaveAttribute('data-status', 'paused');
+  await request.patch('/api/v1/presentation', { data: { subtitles: true, minimized: false } });
+  await expect(player).toHaveAttribute('data-minimized', 'false');
+  await expect(player.getByLabel('Walkthrough subtitles')).toHaveText(narration);
+  await request.patch('/api/v1/presentation', { data: { minimized: true } });
+  await expect(captions).toBeVisible();
+  await player.getByRole('button', { name: 'Close diagram player', exact: true }).click();
+  await expect(captions).toHaveCount(0);
+  await expect(page.locator('.selection-tools')).toBeVisible();
+  await expect(first).toHaveClass(/selected/);
 });

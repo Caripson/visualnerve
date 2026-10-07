@@ -1,4 +1,13 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import {
   applyNodeChanges,
   applyEdgeChanges,
@@ -67,6 +76,7 @@ import {
   capturePresentationView,
 } from '../presentation/camera';
 import { attachCanvasPresentationCamera } from '../presentation/canvas-camera';
+import { presentation } from '../presentation/service';
 import { VIDEO_CANVAS_INFO, type VideoCanvasInfoRequest } from '../presentation/video-frame-events';
 const SpatialCanvas = lazy(() =>
   import('../spatial/SpatialCanvas')
@@ -88,6 +98,14 @@ export function Canvas() {
   const owners = useEditor((s) => s.owners);
   const selectedNodes = useEditor((s) => s.selectedNodes);
   const selectedEdges = useEditor((s) => s.selectedEdges);
+  const presentationOpen = useSyncExternalStore(
+    presentation.subscribe,
+    () => {
+      const player = presentation.getState();
+      return player.open && player.diagramId === graph?.diagram.id;
+    },
+    () => false,
+  );
   const drawingTool = useEditor((s) => s.drawingTool);
   const filters = useEditor((s) => s.filters);
   const explorationResult = useEditor((s) => s.explorationResult);
@@ -772,7 +790,7 @@ export function Canvas() {
         {graph.diagram.settings.grid !== false && (
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="var(--grid)" />
         )}
-        {(selectedNodes.length > 0 || selectedEdges.length > 0) && (
+        {!presentationOpen && (selectedNodes.length > 0 || selectedEdges.length > 0) && (
           <Panel position="top-center" className="selection-panel">
             <div className="context-toolbar">
               <SelectionTools />

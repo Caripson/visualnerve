@@ -3351,6 +3351,10 @@
             "default": false,
             "type": "boolean"
           },
+          "minimized": {
+            "description": "Minimize or expand the same player shown in the UI. Does not pause playback or disable canvas captions. Transient; excluded from graph settings and backups.",
+            "type": "boolean"
+          },
           "preload": {
             "default": false,
             "type": "boolean"
@@ -3364,7 +3368,7 @@
       },
       "PresentationRuntime": {
         "additionalProperties": false,
-        "description": "Transient connected-browser playback state; camera navigation works in the current 2D or 3D view. Does not rewrite the canonical presentation sequence.",
+        "description": "Transient connected-browser playback state; camera navigation works in the current 2D or 3D view. The player controls can be minimized independently of video-style canvas captions when subtitles are enabled. Does not rewrite the canonical presentation sequence.",
         "properties": {
           "audio": {
             "type": "boolean"
@@ -3395,6 +3399,10 @@
           },
           "message": {
             "type": "string"
+          },
+          "minimized": {
+            "description": "Current player panel state shared by UI, REST and MCP. Opening defaults to expanded on desktop and minimized in compact layouts. PATCH can expand or minimize during playback without pausing. Not persisted in the diagram.",
+            "type": "boolean"
           },
           "narration": {
             "type": "string"
@@ -3472,6 +3480,7 @@
           "audio",
           "subtitles",
           "preload",
+          "minimized",
           "buffered",
           "progress",
           "message",
@@ -21106,7 +21115,7 @@
           },
           {}
         ],
-        "summary": "Change audio/subtitles/preload playback options; write access required"
+        "summary": "Change audio/subtitles/preload or minimize/expand the player; write access required"
       }
     },
     "/presentation/close": {

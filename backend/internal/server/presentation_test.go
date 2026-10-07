@@ -26,6 +26,10 @@ func TestPresentationValidationSharedByHTTPAndMCPTransport(t *testing.T) {
 		{"/presentation/open", "POST", `{"diagramId":"bad"}`, 422},
 		{"/presentation/pause", "POST", `{"unknown":true}`, 422},
 		{"/presentation", "PATCH", `{"audio":true}`, 503},
+		{"/presentation", "PATCH", `{"minimized":true}`, 503},
+		{"/presentation", "PATCH", `{"minimized":false}`, 503},
+		{"/presentation", "PATCH", `{"minimized":"true"}`, 422},
+		{"/presentation", "PATCH", `{"minimized":null}`, 422},
 		{"/presentation", "PATCH", `{"audio":"true"}`, 422},
 		{"/presentation/video", "GET", "", 503},
 		{"/presentation/video", "POST", `{}`, 503},
@@ -39,6 +43,44 @@ func TestPresentationValidationSharedByHTTPAndMCPTransport(t *testing.T) {
 		response, _ := server.forward(context.Background(), "", test.path, test.method, json.RawMessage(test.body))
 		if response.Status != test.status {
 			t.Fatalf("%s: got %d, want %d", test.path, response.Status, test.status)
+		}
+	}
+}
+
+func TestPresentationOptionsExactBodiesThroughHTTPAndMCP(t *testing.T) {
+	handler := New(Config{Bridge: true})
+	defer handler.Close()
+	for _, test := range []struct {
+		body   string
+		status int
+	}{
+		{`{"minimized":true}`, 503},
+		{`{"minimized":false}`, 503},
+		{`{"audio":false,"subtitles":true,"preload":false,"minimized":true}`, 503},
+		{`{"minimized":"true"}`, 422},
+		{`{"minimized":1}`, 422},
+		{`{"minimized":null}`, 422},
+		{`{"minimized":{}}`, 422},
+		{`{"minimized":true,"caption":true}`, 422},
+		{`{}`, 422},
+		{`[]`, 422},
+	} {
+		request := httptest.NewRequest("PATCH", "http://localhost/api/v1/presentation", strings.NewReader(test.body))
+		request.RemoteAddr = "127.0.0.1:12345"
+		request.Header.Set("Content-Type", "application/json")
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, request)
+		if response.Code != test.status {
+			t.Fatalf("HTTP PATCH %s: got %d, want %d: %s", test.body, response.Code, test.status, response.Body.String())
+		}
+		params, err := json.Marshal(map[string]any{"name": "visual_nerve_request", "arguments": map[string]any{"path": "/presentation", "method": "PATCH", "data": json.RawMessage(test.body)}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		result := resultMCP(t, callMCP(t, handler, "tools/call", params))
+		status := result["structuredContent"].(map[string]any)["status"]
+		if status != float64(test.status) {
+			t.Fatalf("MCP PATCH %s: got %v, want %d", test.body, status, test.status)
 		}
 	}
 }

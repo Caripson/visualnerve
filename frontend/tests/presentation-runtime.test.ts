@@ -46,6 +46,71 @@ async function settle() {
 }
 afterEach(() => vi.useRealTimers());
 describe('diagram walkthrough runtime', () => {
+  it('minimizes and expands without interrupting narration, camera or the playback clock', async () => {
+    vi.useFakeTimers();
+    const { player, deps, graph } = fixture();
+    player.options({ audio: true });
+    await player.play();
+    await settle();
+    await vi.advanceTimersByTimeAsync(1250);
+    const before = player.getState();
+    const stops = vi.mocked(deps.narration.stop).mock.calls.length;
+    const cameraStops = vi.mocked(deps.cancelCamera).mock.calls.length;
+    player.options({ minimized: true });
+    expect(player.getState()).toEqual({ ...before, minimized: true });
+    expect(player.getPlaybackTime()).toEqual({ elapsedMs: 1250, durationMs: 5000 });
+    player.options({ minimized: false });
+    expect(player.getState()).toEqual(before);
+    expect(deps.narration.stop).toHaveBeenCalledTimes(stops);
+    expect(deps.narration.pause).not.toHaveBeenCalled();
+    expect(deps.cancelCamera).toHaveBeenCalledTimes(cameraStops);
+    expect(deps.focus).toHaveBeenCalledOnce();
+    expect(deps.graph()).toBe(graph);
+    await vi.advanceTimersByTimeAsync(3750);
+    expect(player.getState()).toMatchObject({ status: 'playing', index: 1, minimized: false });
+    player.close();
+  });
+  it('uses compact layout on open, while manual expansion survives Play and step changes', async () => {
+    vi.useFakeTimers();
+    const { player, deps } = fixture();
+    expect(player.getState().minimized).toBe(false);
+    deps.minimizedDefault = () => true;
+    player.open();
+    expect(player.getState().minimized).toBe(true);
+    player.options({ minimized: false });
+    await player.play();
+    await settle();
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(player.getState()).toMatchObject({ index: 1, minimized: false });
+    player.close();
+    player.open();
+    expect(player.getState().minimized).toBe(true);
+    player.close();
+  });
+  it('freezes caption time during Pause and continues from the same point after resume', async () => {
+    vi.useFakeTimers();
+    const { player } = fixture(1);
+    expect(player.getPlaybackTime()).toEqual({ elapsedMs: 0, durationMs: 0 });
+    await player.play();
+    await settle();
+    await vi.advanceTimersByTimeAsync(600);
+    player.pause();
+    const paused = { elapsedMs: 600, durationMs: 2000 };
+    expect(player.getPlaybackTime()).toEqual(paused);
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(player.getPlaybackTime()).toEqual(paused);
+    await player.play();
+    await vi.advanceTimersByTimeAsync(400);
+    expect(player.getPlaybackTime()).toEqual({ elapsedMs: 1000, durationMs: 2000 });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(player.getState().status).toBe('ended');
+    expect(player.getPlaybackTime()).toEqual({ elapsedMs: 2000, durationMs: 2000 });
+    await player.play();
+    await settle();
+    expect(player.getPlaybackTime()).toEqual({ elapsedMs: 0, durationMs: 2000 });
+    player.close();
+    expect(player.getPlaybackTime()).toEqual({ elapsedMs: 0, durationMs: 0 });
+  });
   it('keeps repeated Pause idempotent and resumes the same audio position', async () => {
     vi.useFakeTimers();
     const { player, deps } = fixture();
@@ -73,8 +138,11 @@ describe('diagram walkthrough runtime', () => {
     player.options({ audio: true });
     await player.play();
     await settle();
-    await vi.advanceTimersByTimeAsync(5000);
+    await vi.advanceTimersByTimeAsync(4999);
+    expect(player.getPlaybackTime()).toEqual({ elapsedMs: 4999, durationMs: 5000 });
+    await vi.advanceTimersByTimeAsync(1);
     expect(player.getState().index).toBe(0);
+    expect(player.getPlaybackTime()).toEqual({ elapsedMs: 5000, durationMs: 5000 });
     deps.narration.remaining = () => 0;
     await vi.advanceTimersByTimeAsync(275);
     expect(player.getState().index).toBe(1);
@@ -254,7 +322,16 @@ describe('diagram walkthrough runtime', () => {
   it('strictly validates option payloads without modifying player state', () => {
     const { player } = fixture();
     const before = player.getState();
-    for (const value of [{}, { audio: 'true' }, { surprise: true }, null, []])
+    for (const value of [
+      {},
+      { audio: 'true' },
+      { minimized: 'true' },
+      { minimized: null },
+      { minimized: 1 },
+      { surprise: true },
+      null,
+      [],
+    ])
       expect(() => player.options(value)).toThrow();
     expect(player.getState()).toBe(before);
     player.close();

@@ -19,6 +19,22 @@ func TestPresentationSchemasAndPaths(t *testing.T) {
 	if schemas["PresentationEmptyInput"].(object)["additionalProperties"] != false {
 		t.Fatal("actions must use exact empty body")
 	}
+	options := schemas["PresentationOptions"].(object)
+	optionProperties := options["properties"].(object)
+	if options["additionalProperties"] != false || options["minProperties"] != 1 || len(optionProperties) != 4 || optionProperties["minimized"].(object)["type"] != "boolean" {
+		t.Fatal("player options must expose strict boolean minimization", options)
+	}
+	runtime := schemas["PresentationRuntime"].(object)
+	if runtime["properties"].(object)["minimized"].(object)["type"] != "boolean" {
+		t.Fatal("runtime must expose the shared panel state", runtime)
+	}
+	requiredMinimized := false
+	for _, field := range runtime["required"].([]string) {
+		requiredMinimized = requiredMinimized || field == "minimized"
+	}
+	if !requiredMinimized || definition["properties"].(object)["minimized"] != nil {
+		t.Fatal("minimized belongs to transient runtime, not the saved sequence")
+	}
 	voice := schemas["PresentationVoiceId"].(object)
 	if voice["default"] != "en_GB-alan-medium" || !reflect.DeepEqual(voice["enum"], []string{"en_GB-alan-medium", "en_US-ljspeech-high", "en_GB-cori-high", "sv_SE-nst-medium"}) {
 		t.Fatal("British male default and existing selectable voices must agree", voice)

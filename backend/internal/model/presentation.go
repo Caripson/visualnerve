@@ -139,7 +139,7 @@ func ValidatePresentationCommand(path, method string, data json.RawMessage) erro
 		return nil
 	}
 	if path == "/presentation" && method == "PATCH" {
-		fields, err := presentationObject(data, "audio", "subtitles", "preload")
+		fields, err := presentationObject(data, "audio", "subtitles", "preload", "minimized")
 		if err != nil {
 			return err
 		}

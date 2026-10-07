@@ -15,19 +15,20 @@ func addPresentationSchemas(schemas object) {
 	schemas["PresentationUpdate"] = object{"type": "object", "additionalProperties": false, "required": []string{"baseVersion", "presentation"}, "properties": object{"baseVersion": object{"type": "integer", "minimum": 1}, "presentation": ref("PresentationDefinition")}}
 	schemas["PresentationEmptyInput"] = object{"type": "object", "additionalProperties": false, "properties": object{}}
 	schemas["PresentationOpenInput"] = object{"type": "object", "additionalProperties": false, "properties": object{"diagramId": object{"type": "string", "format": "uuid", "description": "Defaults to the currently open diagram."}}}
-	schemas["PresentationOptions"] = object{"type": "object", "additionalProperties": false, "minProperties": 1, "properties": object{"audio": object{"type": "boolean", "default": false}, "subtitles": object{"type": "boolean", "default": true}, "preload": object{"type": "boolean", "default": false}}}
+	schemas["PresentationOptions"] = object{"type": "object", "additionalProperties": false, "minProperties": 1, "properties": object{"audio": object{"type": "boolean", "default": false}, "subtitles": object{"type": "boolean", "default": true}, "preload": object{"type": "boolean", "default": false}, "minimized": object{"type": "boolean", "description": "Minimize or expand the same player shown in the UI. Does not pause playback or disable canvas captions. Transient; excluded from graph settings and backups."}}}
 	schemas["PresentationRuntime"] = object{
 		"type": "object", "additionalProperties": false,
-		"required":    []string{"open", "diagramId", "status", "index", "total", "nodeId", "audio", "subtitles", "preload", "buffered", "progress", "message"},
-		"description": "Transient connected-browser playback state; camera navigation works in the current 2D or 3D view. Does not rewrite the canonical presentation sequence.",
+		"required":    []string{"open", "diagramId", "status", "index", "total", "nodeId", "audio", "subtitles", "preload", "minimized", "buffered", "progress", "message"},
+		"description": "Transient connected-browser playback state; camera navigation works in the current 2D or 3D view. The player controls can be minimized independently of video-style canvas captions when subtitles are enabled. Does not rewrite the canonical presentation sequence.",
 		"properties": object{
 			"open": object{"type": "boolean"}, "diagramId": object{"type": "string", "format": "uuid", "nullable": true},
 			"status": object{"type": "string", "enum": []string{"idle", "loading", "moving", "playing", "paused", "ended", "error"}},
 			"index":  object{"type": "integer", "minimum": -1, "description": "Zero-based active index, -1 for an empty sequence."},
 			"total":  object{"type": "integer", "minimum": 0, "maximum": 20000}, "nodeId": object{"type": "string", "format": "uuid", "nullable": true},
 			"audio": object{"type": "boolean"}, "subtitles": object{"type": "boolean"}, "preload": object{"type": "boolean"},
-			"buffered": object{"type": "integer", "minimum": 0, "description": "Prepared audio clips in the lookahead buffer."},
-			"progress": object{"type": "number", "minimum": 0, "maximum": 1, "description": "Current operation fraction. Active preload reports completed work across the voice engine and up to three narrations, monotonically reaching 1 only when ready. Message also identifies download-byte or synthesis-chunk percentage; engine initialization is indeterminate."}, "message": object{"type": "string"},
+			"minimized": object{"type": "boolean", "description": "Current player panel state shared by UI, REST and MCP. Opening defaults to expanded on desktop and minimized in compact layouts. PATCH can expand or minimize during playback without pausing. Not persisted in the diagram."},
+			"buffered":  object{"type": "integer", "minimum": 0, "description": "Prepared audio clips in the lookahead buffer."},
+			"progress":  object{"type": "number", "minimum": 0, "maximum": 1, "description": "Current operation fraction. Active preload reports completed work across the voice engine and up to three narrations, monotonically reaching 1 only when ready. Message also identifies download-byte or synthesis-chunk percentage; engine initialization is indeterminate."}, "message": object{"type": "string"},
 		},
 	}
 	schemas["PresentationVideoInput"] = object{
@@ -63,7 +64,7 @@ func addPresentationPaths(add func(string, string, string, string, string, strin
 	add("GET", "/diagrams/{diagramId}/presentation", "Read the saved ordered presentation or empty defaults", "", "PresentationDefinition", "200")
 	add("PUT", "/diagrams/{diagramId}/presentation", "Save an exact presentation definition transactionally at baseVersion; stale versions return 409; write access required", "PresentationUpdate", "Graph", "200")
 	add("GET", "/presentation", "Read transient playback state, including when closed; read-only access allowed", "", "PresentationRuntime", "200")
-	add("PATCH", "/presentation", "Change audio/subtitles/preload playback options; write access required", "PresentationOptions", "PresentationRuntime", "200")
+	add("PATCH", "/presentation", "Change audio/subtitles/preload or minimize/expand the player; write access required", "PresentationOptions", "PresentationRuntime", "200")
 	add("POST", "/presentation/open", "Open presentation for the current or requested diagram; write access required", "PresentationOpenInput", "PresentationRuntime", "200")
 	for _, action := range []string{"play", "pause", "rewind", "forward", "close", "preload"} {
 		summary := "Presentation " + action + "; exact empty object body and write access required"

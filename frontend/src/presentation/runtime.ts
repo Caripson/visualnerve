@@ -22,6 +22,7 @@ export interface Narration {
 }
 export interface PlayerDependencies {
   graph(): Graph | null;
+  minimizedDefault?(): boolean;
   voice(): Promise<string>;
   prepare(
     text: string,
@@ -54,6 +55,7 @@ const initial: PresentationRuntimeState = {
   audio: false,
   subtitles: true,
   preload: false,
+  minimized: false,
   buffered: 0,
   progress: 0,
   message: '',
@@ -70,12 +72,25 @@ export class PresentationPlayer {
   private timer?: ReturnType<typeof setTimeout>;
   private deadline = 0;
   private remaining = 0;
+  private holdDuration = 0;
+  private holdElapsed = 0;
+  private holdStartedAt = 0;
   private resumable = false;
   private needsFocus = false;
   private clips = new Map<string, Blob>();
   private sequence: string[] = [];
   constructor(private deps: PlayerDependencies) {}
   getState = () => this.state;
+  /** Caption position follows the same hold clock as playback and freezes on Pause. */
+  getPlaybackTime = () => {
+    const elapsed =
+      this.holdElapsed +
+      (this.state.status === 'playing' ? Math.max(0, Date.now() - this.holdStartedAt) : 0);
+    return {
+      durationMs: this.holdDuration,
+      elapsedMs: Math.min(this.holdDuration, elapsed),
+    };
+  };
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
     return () => {
@@ -121,6 +136,7 @@ export class PresentationPlayer {
     this.sequence = steps.map((step) => step.id);
     this.update({
       open: true,
+      minimized: this.deps.minimizedDefault?.() ?? false,
       diagramId: graph.diagram.id,
       status: 'idle',
       index: this.sequence.length ? 0 : -1,
@@ -189,6 +205,9 @@ export class PresentationPlayer {
     this.resumable = false;
     this.needsFocus = false;
     this.remaining = 0;
+    this.holdDuration = 0;
+    this.holdElapsed = 0;
+    this.holdStartedAt = 0;
   }
   pause(message = '', refocus = false) {
     if (!this.state.open) return this.state;
@@ -198,6 +217,7 @@ export class PresentationPlayer {
       return this.state;
     }
     if (this.state.status === 'playing') {
+      this.holdElapsed += Math.max(0, Date.now() - this.holdStartedAt);
       this.remaining = Math.max(0, this.deadline - Date.now());
       clearTimeout(this.timer);
       this.timer = undefined;
@@ -241,8 +261,9 @@ export class PresentationPlayer {
           this.needsFocus = false;
         }
         if (this.state.audio) this.deps.narration.resume();
-        this.update({ status: 'playing', ...(this.background ? {} : { message: '' }) });
+        this.holdStartedAt = Date.now();
         this.schedule(this.remaining);
+        this.update({ status: 'playing', ...(this.background ? {} : { message: '' }) });
         this.prefetch();
       } catch (error) {
         if (epoch === this.epoch) this.fail(error);
@@ -330,8 +351,10 @@ export class PresentationPlayer {
       }
       const seconds = blob ? await this.deps.narration.play(blob, abort.signal) : 0;
       if (epoch !== this.epoch) return;
+      this.holdDuration = Math.max(step.seconds, seconds) * 1000;
+      this.holdStartedAt = Date.now();
+      this.schedule(this.holdDuration);
       this.update({ status: 'playing', ...(this.background ? {} : { progress: 1, message: '' }) });
-      this.schedule(Math.max(step.seconds, seconds) * 1000);
       this.prefetch();
     } catch (error) {
       if (epoch !== this.epoch || abort.signal.aborted) return;
@@ -346,11 +369,16 @@ export class PresentationPlayer {
       // Wait for real WAV completion before moving to the next module.
       const audioRemaining = this.state.audio ? (this.deps.narration.remaining?.() ?? 0) : 0;
       if (audioRemaining > 0) {
-        this.schedule(audioRemaining * 1000 + 25);
+        const extra = audioRemaining * 1000 + 25;
+        // Keep the final caption while the device finishes; never move cues backwards.
+        this.schedule(extra);
         return;
       }
       if (this.state.index + 1 >= this.sequence.length) {
+        const duration = this.holdDuration;
         this.cancel();
+        this.holdDuration = duration;
+        this.holdElapsed = duration;
         this.update({ status: 'ended', message: '' });
       } else {
         this.update({ index: this.state.index + 1 });
@@ -385,12 +413,16 @@ export class PresentationPlayer {
       !entries.length ||
       entries.some(
         ([key, option]) =>
-          !['audio', 'subtitles', 'preload'].includes(key) || typeof option !== 'boolean',
+          !['audio', 'subtitles', 'preload', 'minimized'].includes(key) ||
+          typeof option !== 'boolean',
       )
     )
-      throw new StorageError(422, 'Player options must be audio, subtitles or preload booleans.');
+      throw new StorageError(
+        422,
+        'Player options must be audio, subtitles, preload or minimized booleans.',
+      );
     const patch = value as Partial<
-      Pick<PresentationRuntimeState, 'audio' | 'subtitles' | 'preload'>
+      Pick<PresentationRuntimeState, 'audio' | 'subtitles' | 'preload' | 'minimized'>
     >;
     if (
       patch.audio !== undefined &&

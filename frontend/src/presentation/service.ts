@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { matchesCompactLayout } from '../hooks/useCompactLayout';
 import { useEditor } from '../state/editor';
 import { repository } from '../storage/repository';
 import { StorageError } from '../model/errors';
@@ -157,6 +158,7 @@ const progressAdapter =
   };
 export const presentation = new PresentationPlayer({
   graph: () => useEditor.getState().graph,
+  minimizedDefault: matchesCompactLayout,
   voice: async () => normalizeVoiceId((await repository.db.settings.get(VOICE_SETTING))?.value),
   prepare: (text, voice, signal, progress, options) =>
     speechService.prepare(

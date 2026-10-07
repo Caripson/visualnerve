@@ -3,7 +3,7 @@ import { useSyncExternalStore } from 'react';
 export const COMPACT_LAYOUT_QUERY =
   '(max-width: 900px), (max-width: 1100px) and (max-height: 500px)';
 
-function matchesCompactLayout() {
+export function matchesCompactLayout() {
   if (typeof window === 'undefined') return false;
   if (typeof window.matchMedia === 'function')
     return window.matchMedia(COMPACT_LAYOUT_QUERY).matches;

@@ -38,6 +38,7 @@ export interface PresentationRuntimeState {
   audio: boolean;
   subtitles: boolean;
   preload: boolean;
+  minimized: boolean;
   buffered: number;
   progress: number;
   message: string;

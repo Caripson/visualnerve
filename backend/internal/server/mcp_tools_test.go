@@ -23,13 +23,15 @@ func TestMCPWorkspaceCommandsRemainBrowserControlled(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	tests := []struct {
-		path, data, body string
-		status           int
+		path, method, data, body string
+		status                   int
 	}{
-		{"/spatial-diagrams", `{"name":"Requested 3D diagram","type":"mindmap"}`, `{"diagram":{"id":"diagram-from-browser","version":1,"settings":{"spatialView":{"version":1,"mode":"3d"}}},"nodes":[],"edges":[]}`, 201},
-		{"/diagrams/diagram-from-browser/bulk", `{"baseVersion":1,"upsert":true,"nodes":[{"externalId":"node-1","title":"Object","x":20,"y":40,"width":180,"height":80,"metadata":{"spatial":{"version":1,"position":{"x":1,"y":2,"z":3}}}}],"edges":[]}`, `{"error":"MCP access is Read only"}`, 403},
-		{"/diagrams/diagram-from-browser/simulation/runs", `{"seed":12345,"durationSeconds":86400,"demandMultiplier":1.5,"animated":false}`, `{"id":"run-from-browser","status":"running","diagramId":"diagram-from-browser"}`, 201},
-		{"/diagrams/diagram-from-browser/simulation/resources", `{"baseVersion":1,"value":{"id":"staff","name":"Staff","capacity":-1,"unit":"employee"}}`, `{"error":"Bad capacity","code":"SIMULATION_INVALID_MODEL","issues":[{"path":"resources.staff.capacity","code":"capacity","message":"Bad capacity"}]}`, 422},
+		{"/spatial-diagrams", "POST", `{"name":"Requested 3D diagram","type":"mindmap"}`, `{"diagram":{"id":"diagram-from-browser","version":1,"settings":{"spatialView":{"version":1,"mode":"3d"}}},"nodes":[],"edges":[]}`, 201},
+		{"/diagrams/diagram-from-browser/bulk", "POST", `{"baseVersion":1,"upsert":true,"nodes":[{"externalId":"node-1","title":"Object","x":20,"y":40,"width":180,"height":80,"metadata":{"spatial":{"version":1,"position":{"x":1,"y":2,"z":3}}}}],"edges":[]}`, `{"error":"MCP access is Read only"}`, 403},
+		{"/diagrams/diagram-from-browser/simulation/runs", "POST", `{"seed":12345,"durationSeconds":86400,"demandMultiplier":1.5,"animated":false}`, `{"id":"run-from-browser","status":"running","diagramId":"diagram-from-browser"}`, 201},
+		{"/diagrams/diagram-from-browser/simulation/resources", "POST", `{"baseVersion":1,"value":{"id":"staff","name":"Staff","capacity":-1,"unit":"employee"}}`, `{"error":"Bad capacity","code":"SIMULATION_INVALID_MODEL","issues":[{"path":"resources.staff.capacity","code":"capacity","message":"Bad capacity"}]}`, 422},
+		{"/presentation", "PATCH", `{"minimized":true}`, `{"open":true,"minimized":true,"status":"playing","subtitles":true}`, 200},
+		{"/presentation", "PATCH", `{"minimized":false}`, `{"open":true,"minimized":false,"status":"playing","subtitles":true}`, 200},
 	}
 	for _, test := range tests {
 		t.Run(test.path, func(t *testing.T) {
@@ -44,7 +46,7 @@ func TestMCPWorkspaceCommandsRemainBrowserControlled(t *testing.T) {
 				commands <- command
 				done <- wsjson.Write(ctx, selected, map[string]any{"id": command["id"], "status": test.status, "body": json.RawMessage(test.body)})
 			}()
-			params, err := json.Marshal(map[string]any{"name": "visual_nerve_request", "arguments": map[string]any{"path": test.path, "method": "POST", "data": json.RawMessage(test.data), "workspaceId": workspace}})
+			params, err := json.Marshal(map[string]any{"name": "visual_nerve_request", "arguments": map[string]any{"path": test.path, "method": test.method, "data": json.RawMessage(test.data), "workspaceId": workspace}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -53,7 +55,7 @@ func TestMCPWorkspaceCommandsRemainBrowserControlled(t *testing.T) {
 				t.Fatal(err)
 			}
 			command := <-commands
-			if command["path"] != test.path || command["method"] != "POST" {
+			if command["path"] != test.path || command["method"] != test.method {
 				t.Fatal("workspace command was changed", command)
 			}
 			var wanted map[string]any

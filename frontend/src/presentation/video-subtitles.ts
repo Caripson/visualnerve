@@ -1,5 +1,12 @@
 /** Short pages keep the complete description readable without covering the diagram. */
-export function subtitlePages(text: string, measure: (text: string) => number, width: number) {
+export function subtitlePages(
+  text: string,
+  measure: (text: string) => number,
+  width: number,
+  linesPerPage = 3,
+) {
+  if (!Number.isSafeInteger(linesPerPage) || linesPerPage < 1)
+    throw new RangeError('Subtitle pages require a positive integer line count.');
   const lines: string[] = [];
   for (const paragraph of text.replace(/\r/g, '').split('\n')) {
     let line = '';
@@ -31,7 +38,8 @@ export function subtitlePages(text: string, measure: (text: string) => number, w
     if (line) lines.push(line);
   }
   const pages: string[][] = [];
-  for (let index = 0; index < lines.length; index += 3) pages.push(lines.slice(index, index + 3));
+  for (let index = 0; index < lines.length; index += linesPerPage)
+    pages.push(lines.slice(index, index + linesPerPage));
   return pages;
 }
 export function drawVideoCaption(

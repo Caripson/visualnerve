@@ -73,7 +73,7 @@ func TestMCPDiscoveryWorksWithoutConnectedBrowser(t *testing.T) {
 	if capabilities["tools"] == nil || capabilities["resources"] == nil {
 		t.Fatal("tool and resource discovery must be advertised", initialized)
 	}
-	for _, phrase := range []string{"native 2D", "3D", "visual_nerve_api_docs", "no browser session", "/spatial-diagrams", "IndexedDB", "Read + write", "independent readable 2D", "unless the user requests 3D"} {
+	for _, phrase := range []string{"native 2D", "3D", "visual_nerve_api_docs", "no browser session", "/spatial-diagrams", "IndexedDB", "Read + write", "independent readable 2D", "unless the user requests 3D", "minimized", "canvas captions"} {
 		if !strings.Contains(initialized["instructions"].(string), phrase) {
 			t.Fatal("missing initialize guidance", phrase, initialized)
 		}
