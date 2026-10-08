@@ -12,8 +12,8 @@ The bridge forwards commands to your connected browser. It has no separate diagr
 
 | Address                                                       | Purpose                                                                        |
 | ------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `https://visualnerve.caripson.com/app/`                       | Browser workspace where your diagrams and Settings live                      |
-| `https://visualnerve.caripson.com`                            | Website origin allowed by your bridge; use the origin without a path         |
+| `https://www.visualnerve.com/app/`                          | Public browser workspace where your diagrams and Settings live               |
+| `https://www.visualnerve.com`                               | Public website origin allowed by your bridge; use the origin without a path   |
 | `ws://127.0.0.1:4317/bridge` or trusted `wss://…/bridge`      | Browser-to-local-service WebSocket connection                                  |
 | `http://127.0.0.1:4317/mcp` or matching `https://…/mcp`       | Local MCP server address for a client such as Codex                            |
 | `http://127.0.0.1:4317/api/v1` or matching `https://…/api/v1` | Local REST API base                                                            |
@@ -34,13 +34,15 @@ For a locally served workspace:
 ./bin/visual-nerve --static ./public --bridge --addr 127.0.0.1:4317
 ```
 
-Open `http://127.0.0.1:4317/app/`, accept storage and configure access. The home page at `/` introduces the product; API and MCP endpoint paths keep their existing addresses. For the public HTTPS app, allow its exact origin:
+Open `http://127.0.0.1:4317/app/`, accept storage and configure access. The home page at `/` introduces the product; API and MCP endpoint paths keep their existing addresses. To connect the public workspace at `https://www.visualnerve.com/app/`, allow its exact origin:
 
 ```sh
 ./bin/visual-nerve --static ./public --bridge \
   --addr 127.0.0.1:4317 \
-  --allowed-origin https://visualnerve.caripson.com
+  --allowed-origin https://www.visualnerve.com
 ```
+
+For the separate **staging** workspace at `https://visualnerve.caripson.com/app/`, replace the final argument with `--allowed-origin https://visualnerve.caripson.com`. Copy the **Visual Nerve website** value shown in your workspace's Settings; the bridge must allow that exact origin. Staging and production have separate browser workspaces.
 
 Browser local-network and secure-connection rules vary. If your browser requires secure local WebSockets, start the process with `--tls-cert` and `--tls-key` pointing to a certificate/key trusted by that browser for the chosen loopback hostname, then use `wss://…/bridge` in Settings. The matching MCP/REST addresses use HTTPS. Grant local-network permission if the browser requests it.
 

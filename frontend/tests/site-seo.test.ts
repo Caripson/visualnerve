@@ -74,6 +74,18 @@ describe('public site discovery and private workspace indexing', () => {
       const guide = readFileSync(join(directory, 'help/getting-started/index.html'), 'utf8');
       expect(guide).toContain('class="help-figure"');
       expect(guide).not.toContain('site-capture--');
+      for (const route of ['help/api-mcp/index.html', 'mcp/index.html']) {
+        const connectionGuide = readFileSync(join(directory, route), 'utf8');
+        const shellExamples = [
+          ...connectionGuide.matchAll(/<code class="language-sh"[^>]*>([\s\S]*?)<\/code>/g),
+        ]
+          .map((match) => match[1].replace(/<[^>]*>/g, ''))
+          .join('\n');
+        expect(shellExamples, route).toContain('--allowed-origin https://www.visualnerve.com');
+        expect(shellExamples, route).not.toContain('visualnerve.caripson.com');
+        expect(connectionGuide, route).toContain('https://www.visualnerve.com/app/');
+        expect(connectionGuide, route).toMatch(/separate <strong>staging<\/strong> workspace/);
+      }
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }

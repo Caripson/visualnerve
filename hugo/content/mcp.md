@@ -41,13 +41,15 @@ Open its local `/app/` page, accept required local storage, then open **Settings
 
 When using a separately hosted app, add its exact **origin** with `--allowed-origin`. An origin consists of the scheme, host and port; it excludes `/app/` and other paths. Copy the current Visual Nerve website origin from Settings instead of assuming that a previous hostname still applies.
 
-For example, a bridge for the existing Caripson-hosted origin uses:
+For the public workspace at `https://www.visualnerve.com/app/`, start the bridge with:
 
 ```sh
 ./bin/visual-nerve --static ./public --bridge \
   --addr 127.0.0.1:4317 \
-  --allowed-origin https://visualnerve.caripson.com
+  --allowed-origin https://www.visualnerve.com
 ```
+
+For the separate **staging** workspace at `https://visualnerve.caripson.com/app/`, replace the final argument with `--allowed-origin https://visualnerve.caripson.com`. Staging and production have separate browser workspaces.
 
 Use your actual app origin in that final argument. Browser local-network rules can require permission or trusted local TLS. The bridge supports `--tls-cert` and `--tls-key`; configure matching `wss`/HTTPS addresses when required. The bridge remains loopback-only.
 
