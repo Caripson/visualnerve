@@ -50,6 +50,8 @@ function deployment() {
     'editor/app.css',
     'editor/assets/chunk-Ab123.js',
     'editor/assets/chunk-Ab123.css',
+    'licenses/esutils-LICENSE.BSD',
+    'licenses/visualnerve-LICENSE',
     'sitemap.xml',
     'sw.js',
   ]) {
@@ -57,6 +59,7 @@ function deployment() {
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, 'static application fixture');
   }
+  writeFileSync(join(publicDirectory, 'licenses/inventory.json'), '[]');
   writeFileSync(log, '');
   symlinkSync(process.execPath, join(binaries, 'node'));
   const aws = join(binaries, 'aws');
@@ -127,16 +130,16 @@ function values(args: string[], flag: string) {
 }
 
 describe('static deployment publication sequence', () => {
-  it('publishes chunks, mutable assets, HTML and then the service worker before waiting for invalidation', () => {
+  it('publishes chunks, mutable assets and licenses before HTML, service worker and invalidation', () => {
     const fixture = deployment();
     const result = fixture.run();
     expect(result.error).toBeUndefined();
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain('Static bundle audit:');
-    expect(result.calls).toHaveLength(6);
-    const [chunks, assets, html, worker, invalidate, wait] = result.calls;
-    expect(result.calls.slice(0, 4).map((call) => call.slice(0, 2))).toEqual(
-      Array.from({ length: 4 }, () => ['s3', 'cp']),
+    expect(result.calls).toHaveLength(8);
+    const [chunks, assets, licenseTexts, inventory, html, worker, invalidate, wait] = result.calls;
+    expect(result.calls.slice(0, 6).map((call) => call.slice(0, 2))).toEqual(
+      Array.from({ length: 6 }, () => ['s3', 'cp']),
     );
     expect(chunks.slice(2, 4)).toEqual([
       `${fixture.publicDirectory}/editor/assets/`,
@@ -148,19 +151,37 @@ describe('static deployment publication sequence', () => {
       expect(call.slice(2, 4)).toEqual([`${fixture.publicDirectory}/`, `s3://${bucket}/`]);
       expect(call).toContain('--recursive');
     }
-    expect(values(assets, '--exclude')).toEqual(
-      expect.arrayContaining(['editor/assets/*', '*.html', 'sw.js']),
-    );
+    expect(values(assets, '--exclude')).toEqual([
+      'editor/assets/*',
+      'licenses/*',
+      '*.html',
+      'sw.js',
+    ]);
     expect(values(assets, '--include')).toEqual([]);
+    expect(licenseTexts.slice(2, 4)).toEqual([
+      `${fixture.publicDirectory}/licenses/`,
+      `s3://${bucket}/licenses/`,
+    ]);
+    expect(licenseTexts).toContain('--recursive');
+    expect(values(licenseTexts, '--exclude')).toEqual(['inventory.json']);
+    expect(values(licenseTexts, '--include')).toEqual([]);
+    expect(values(licenseTexts, '--content-type')).toEqual(['text/plain']);
+    expect(inventory.slice(2, 4)).toEqual([
+      join(fixture.publicDirectory, 'licenses/inventory.json'),
+      `s3://${bucket}/licenses/inventory.json`,
+    ]);
+    expect(inventory).not.toContain('--recursive');
+    expect(values(inventory, '--content-type')).toEqual(['application/json']);
     expect(values(html, '--exclude')).toEqual(['*']);
     expect(values(html, '--include')).toEqual(['*.html']);
     expect(html.indexOf('--exclude')).toBeLessThan(html.indexOf('--include'));
     expect(worker[2]).toBe(join(fixture.publicDirectory, 'sw.js'));
     expect([`s3://${bucket}/`, `s3://${bucket}/sw.js`]).toContain(worker[3]);
     expect(worker).not.toContain('--recursive');
-    for (const call of [assets, html, worker])
+    for (const call of [assets, licenseTexts, inventory, html, worker])
       expect(values(call, '--cache-control')).toEqual(['no-cache']);
     expect(result.calls.flat()).not.toContain('--dryrun');
+    expect(result.calls.flat()).not.toContain('--delete');
     expect(invalidate).toEqual([
       'cloudfront',
       'create-invalidation',
@@ -188,14 +209,14 @@ describe('static deployment publication sequence', () => {
     const result = deployment().run({ dryRun: true });
     expect(result.error).toBeUndefined();
     expect(result.status, result.stderr).toBe(0);
-    expect(result.calls).toHaveLength(4);
+    expect(result.calls).toHaveLength(6);
     for (const call of result.calls) {
       expect(call.slice(0, 2)).toEqual(['s3', 'cp']);
       expect(call.filter((arg) => arg === '--dryrun')).toHaveLength(1);
     }
   });
 
-  it.each([1, 2, 3, 4])(
+  it.each([1, 2, 3, 4, 5, 6])(
     'stops after upload phase %i fails without invalidating partial content',
     (phase) => {
       const result = deployment().run({ failUpload: phase });
