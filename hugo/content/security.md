@@ -60,11 +60,11 @@ This page does not claim independent security certification, regulatory certific
 
 ## Report a suspected vulnerability privately
 
-Check the [repository Security page](https://github.com/Caripson/visualnerve/security). Once the repository is public and private reporting is enabled, use **Report a vulnerability**. That GitHub feature is unavailable during the private preview, which is limited to invited repository participants. No external private reporting address is currently published.
+GitHub private vulnerability reporting is enabled. Use **Report a vulnerability** on the [repository Security page](https://github.com/Caripson/visualnerve/security) as the primary route for a security finding. A GitHub account is required. The [repository security policy](https://github.com/Caripson/visualnerve/blob/main/SECURITY.md) describes reporting information and supported revisions.
 
-If you have repository access and the button is unavailable, open a usage question asking only for the maintainer's preferred private security contact. Do not post exploit details, real customer data, tokens, source secrets or sensitive exports. Keep vulnerability details for a private channel once established. The [repository security policy](https://github.com/Caripson/visualnerve/blob/main/SECURITY.md) describes reporting information and supported revisions.
+If GitHub private reporting is unavailable, email [hello@visualnerve.com](mailto:hello@visualnerve.com) to coordinate a report. Ordinary questions, private inquiries and sensitive conduct concerns can use the same address. Do not post exploit details, real customer data, tokens, source secrets or sensitive exports in a public issue, and keep credentials and customer data out of email.
 
-For an ordinary product bug, use the [GitHub issue chooser](https://github.com/Caripson/visualnerve/issues/new/choose) and the reproduction steps from [Troubleshooting](/help/troubleshooting/#reporting-a-reproducible-problem). Repository access may be required while the project is private. Opening the reporting link does not attach your diagram or send an automatic error report.
+For an ordinary product bug, use the [GitHub issue chooser](https://github.com/Caripson/visualnerve/issues/new/choose) and the reproduction steps from [Troubleshooting](/help/troubleshooting/#reporting-a-reproducible-problem). Issues, comments and attachments are public. Opening a reporting or email link does not attach your diagram or send an automatic error report.
 
 Reproduce the problem with a minimal sample containing invented data. Review screenshots and error messages before submitting them. Do not attach a complete workspace backup, original project archive, raw HAR/network capture or unredacted console log. These can contain customer data, source secrets or integration credentials; the local bridge's WebSocket address can include a session token. Security findings belong in a private report, not a public bug issue.
 

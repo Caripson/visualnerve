@@ -84,6 +84,8 @@ The first command runs Go tests/race checks/vet, frontend unit tests and formatt
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution workflow, [SUPPORT.md](SUPPORT.md) for questions and bug reports, [SECURITY.md](SECURITY.md) for the security boundary and reporting, and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations. Repository work follows [AGENTS.md](AGENTS.md).
 
+For ordinary questions or private inquiries, contact [hello@visualnerve.com](mailto:hello@visualnerve.com). Use [GitHub Issues](https://github.com/Caripson/visualnerve/issues/new/choose) for public product bugs and [private vulnerability reporting](SECURITY.md#reporting-a-vulnerability) for security findings.
+
 ## Documentation
 
 The [documentation index](docs/README.md) groups all guides and implementation

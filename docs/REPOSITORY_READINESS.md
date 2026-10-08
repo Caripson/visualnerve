@@ -19,10 +19,11 @@ contribution workflow.
 
 Security findings use **Report a vulnerability** on the
 [GitHub Security page](https://github.com/Caripson/visualnerve/security), following
-[SECURITY](../SECURITY.md). That private form does not handle sensitive conduct
-reports. The question form may request a private contact route without including
-allegations or sensitive details; see [private contact](../SUPPORT.md#private-contact).
-No separate email address is published.
+[SECURITY](../SECURITY.md). That private form does not handle conduct reports.
+Ordinary questions, private inquiries and sensitive conduct concerns can use
+[hello@visualnerve.com](mailto:hello@visualnerve.com); see
+[private contact](../SUPPORT.md#private-contact). Keep public bug reports in Issues
+and avoid sending credentials, customer data or full workspace backups by email.
 
 The public repository supplies source revisions alongside [LICENSE](../LICENSE),
 [NOTICE](../NOTICE) and third-party notices. Distributed builds still need matching

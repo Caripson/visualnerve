@@ -11,13 +11,12 @@ Use **Report a vulnerability** on the
 [Security page](https://github.com/Caripson/visualnerve/security) to send a private
 security report to the maintainer. A GitHub account is required.
 
-If the GitHub button is unavailable, use the
-[question form](https://github.com/Caripson/visualnerve/issues/new?template=03-question.yml)
-only to ask for a private security contact. Include no vulnerability details in
-that public request; wait until a private channel is established. No separate
-email address is published. For sensitive conduct reports, follow
-[SUPPORT.md](SUPPORT.md#private-contact); the vulnerability form is for security
-findings, not conduct concerns.
+If GitHub private reporting is unavailable, email
+[hello@visualnerve.com](mailto:hello@visualnerve.com) to coordinate a report.
+Keep credentials, real customer data and sensitive exports out of the message.
+Ordinary questions and private conduct concerns can also use that address;
+see [SUPPORT.md](SUPPORT.md#private-contact). The vulnerability form is the primary
+route for security findings and does not handle conduct concerns.
 
 In the private report, include the affected revision or site hostname,
 browser/device, impact and minimal reproduction using invented data. Redact URL

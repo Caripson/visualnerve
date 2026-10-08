@@ -80,6 +80,44 @@ describe('shared workspace branding', () => {
     expect(geometry.size).toBe(4);
   });
 
+  it('offers direct email contact while keeping public bugs and security reports separate', () => {
+    for (const route of [
+      'index.html',
+      'features/index.html',
+      'use-cases/index.html',
+      'process-simulator/index.html',
+      'mcp/index.html',
+      'developers/index.html',
+      'privacy/index.html',
+      'security/index.html',
+      'license/index.html',
+    ]) {
+      const footer = page(route).querySelector('.public-footer')!;
+      const email = footer.querySelector('a[href="mailto:hello@visualnerve.com"]')!;
+      expect(email?.textContent, route).toBe('Contact by email');
+      expect(
+        footer.querySelector('a[href="https://github.com/Caripson/visualnerve/issues/new/choose"]'),
+        route,
+      ).not.toBeNull();
+    }
+    for (const route of [
+      'privacy/index.html',
+      'security/index.html',
+      'help/troubleshooting/index.html',
+    ]) {
+      const main = page(route).querySelector('main')!;
+      expect(main.querySelector('a[href="mailto:hello@visualnerve.com"]'), route).not.toBeNull();
+      expect(main.textContent, route).not.toMatch(
+        /No external private reporting address|while the project is private/,
+      );
+    }
+    expect(
+      page('security/index.html').querySelector(
+        'main a[href="https://github.com/Caripson/visualnerve/security"]',
+      ),
+    ).not.toBeNull();
+  });
+
   it('keeps native app, help and API headers consistent and free of analytics', () => {
     const appSymbol = page('app/index.html').querySelector('.site-brand .brand-symbol')!;
     for (const route of ['app/index.html', 'help/index.html', 'api/docs/index.html']) {

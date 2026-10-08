@@ -56,9 +56,9 @@ through **Report a vulnerability** on the
 [Security page](https://github.com/Caripson/visualnerve/security), following
 [SECURITY.md](SECURITY.md). Keep exploit details out of ordinary Issues.
 
-The vulnerability form does not handle sensitive community-conduct reports or
-other private concerns. No separate email address is published. Use the
-[question form](https://github.com/Caripson/visualnerve/issues/new?template=03-question.yml)
-only to ask Johan Caripson for a private contact route. State that you need a
-private channel; include no personal allegations or sensitive details in that
-public request. Share those details only after a private channel is established.
+For ordinary questions, private inquiries or sensitive community-conduct
+reports, email [hello@visualnerve.com](mailto:hello@visualnerve.com). Include only
+the information needed to explain the matter; do not send credentials, real
+customer data or full workspace backups. Public product bugs belong in GitHub
+Issues. The vulnerability form is the primary route for security findings and
+does not handle conduct concerns.

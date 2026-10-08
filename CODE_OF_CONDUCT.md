@@ -19,8 +19,9 @@ acceptable.
 ## Reporting and enforcement
 
 Project maintainer [Johan Caripson](https://github.com/Caripson) handles reports.
-Use the [private contact route](SUPPORT.md#private-contact) for sensitive conduct
-reports. Do not publish personal information or allegations in an ordinary issue.
+Email [hello@visualnerve.com](mailto:hello@visualnerve.com) for sensitive conduct
+reports; the [support guide](SUPPORT.md#private-contact) explains private contact.
+Do not publish personal information or allegations in an ordinary issue.
 Security vulnerabilities have a separate route in [SECURITY.md](SECURITY.md).
 
 The maintainer may request a change in behavior, remove harmful content, close

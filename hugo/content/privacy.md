@@ -130,6 +130,12 @@ Opening pages downloads static application, documentation and image files. The h
 
 Visual Nerve does not use advertising scripts or remote error-reporting payloads containing workspace data.
 
+## Contact and information you send
+
+For privacy questions or other private inquiries, email [hello@visualnerve.com](mailto:hello@visualnerve.com). Your email address and message are received by Johan Caripson through the email service used to handle the inquiry. This is separate from editing a diagram: the contact link does not attach your workspace or send anything automatically.
+
+Include only the information needed for your question; avoid credentials, real customer data and full backups. Ordinary bug reports belong in [GitHub Issues](https://github.com/Caripson/visualnerve/issues/new/choose), where descriptions and attachments are public. Security findings should use [private vulnerability reporting](/security/#report-a-suspected-vulnerability-privately).
+
 ## Delete local workspace data
 
 **Delete diagram** removes one project and its associated local content. **Settings → Data & Privacy → Delete all local data** requires confirmation and removes workspace records, preferences and storage acceptance. Built-in templates can be reseeded; the application remains available.
