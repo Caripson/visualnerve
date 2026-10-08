@@ -2,11 +2,11 @@
 
 `frontend/src/model/types.ts` defines Diagram, GraphNode, GraphEdge, Owner and Graph. Integration DTOs and the generated OpenAPI contract retain the same field names. No parallel storage model changes graph identity or semantics.
 
-All entity IDs are UUIDs, with positive versions and creation/update timestamps. Exchange documents contain `format: "visual-nerve"`, `formatVersion: 1`, diagram, nodes, edges and referenced owners. Application extensions belong in metadata.
+Canonical diagram, node, edge and owner IDs are UUIDs, with positive versions and creation/update timestamps. Simulation process, particle-type, resource and scenario IDs are semantic strings within the typed simulation model. Exchange documents contain `format: "visual-nerve"`, `formatVersion: 1`, diagram, nodes, edges and referenced owners. Graphs may also carry original CSV `dataset`/`datasets` and the typed `simulation` extension; custom entity properties belong in metadata.
 
 3D shares these canonical records and IDs. `diagram.settings.spatialView` stores version 1, mode (`2d`/`3d`) and an optional position/target camera, with an optional unit `up` vector for saved roll. `node.metadata.spatial` stores version 1, optional X/Y/Z placement. Node world coordinates allow ±1,000,000 and camera coordinates ±10,000,000; both require finite numbers, camera position must differ from target and an explicit up direction must differ from the viewing axis. Reserved keys and enums are strictly validated. Camera and explicit 3D edits preserve the native 2D geometry and viewport. A movement of the node's displayed 2D geometry shifts an existing explicit 3D X/Y by the corresponding displacement and preserves Z and the placement offset. The conversion uses the previous uniform relief scale; view recentering does not count as object movement. New explicit X/Y/Z supplied in the same command takes precedence. Editor commands and repository API writes share this synchronization, including PATCH, bulk and graph replacement. No IndexedDB migration, additional table or exchange-format change is needed. See [3D contract](docs/SPATIAL_DIAGRAMS.md).
 
-- Diagram: name, description, type, folder, tags, favorite, metadata and settings. Supported types: blank, mindmap, flowchart, timeline, process, dependency, responsibility and freeform.
+- Diagram: name, description, type, folder, tags, favorite, metadata and settings. Supported types: blank, mindmap, flowchart, timeline, process, dependency, responsibility, freeform and process-simulator.
 - Node: diagramId, externalId, nodeType, title, description, notes, URL, status, color, tags, metadata, dates, parentId and collapsed. Absolute x/y/width/height describe layout. ownerIds is canonical; ownerId aliases its first member.
 - Edge: diagramId, externalId, sourceNodeId, targetNodeId, label, edgeType, direction, style, description and metadata. Endpoints must exist in the same diagram.
 - Owner: global person, team, department, system, organization or external owner, with name, email, team, role, color, externalId and metadata. Owners can be unassigned or shared across projects.
@@ -25,21 +25,40 @@ Draw.io/Visio file preview returns `DiagramImportResult={format,pages:[{id,name,
 
 ## IndexedDB schema
 
-| Table     | Key and indexes                                                                               | Contents                                                              |
-| --------- | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| diagrams  | id; name, type, updatedAt, folder, tags                                                       | Canonical Diagram                                                     |
-| nodes     | id; diagramId, unique [diagramId+externalId], updatedAt, nodeType, status, parentId, ownerIds | Canonical GraphNode                                                   |
-| edges     | id; diagramId, unique [diagramId+externalId], sourceNodeId, targetNodeId, updatedAt           | Canonical GraphEdge                                                   |
-| owners    | id; unique externalId, name, kind, team, updatedAt                                            | Canonical Owner                                                       |
-| settings  | key                                                                                           | Preferences, workspace identity, last project                         |
-| templates | id; name                                                                                      | Named canonical graph and builtin flag                                |
-| datasets  | id; diagramId, updatedAt                                                                      | Original CSV column IDs and string rows; multiple sources per diagram |
+Schema version 8 has 14 tables, defined in `frontend/src/storage/database.ts`:
 
-Dexie version 1 discovers legacy browser snapshots. Version 2 expands them into canonical records, retaining pending edits, owners and settings. Version 3 removes obsolete snapshot/state stores. Version 4 preserves the six stores and removes the historical boolean integration grant, requiring explicit MCP permissions. Version 5 adds diagram-owned CSV datasets while retaining existing records. Version 6 changes their diagramId index to nonunique, retaining all existing sources. Source analyses, matching-column relationships, entity focus and named views persist in diagram settings, with source paths/measures on node metadata; exchange graphs optionally include a primary dataset and additional datasets. Local storage acceptance is a separate preference required before the workspace opens. It and integration grants are never imported from backups. Fresh installations finish with exactly the seven tables above; built-in templates seed only after acceptance and only when absent. No history, attachments or separate metadata table is created. See [STORAGE.md](docs/STORAGE.md).
+| Table | Key and indexes | Contents |
+| --- | --- | --- |
+| diagrams | id; name, type, updatedAt, folder, tags | Canonical Diagram |
+| nodes | id; diagramId, unique [diagramId+externalId], updatedAt, nodeType, status, parentId, tags | Canonical GraphNode |
+| edges | id; diagramId, unique [diagramId+externalId], sourceNodeId, targetNodeId, updatedAt | Canonical GraphEdge |
+| owners | id; unique externalId, name, kind, team, updatedAt | Global Owner |
+| settings | key | Preferences, workspace identity, last project |
+| templates | id; name | Named canonical graph and builtin flag |
+| datasets | id; diagramId, updatedAt | Original CSV column IDs and string rows; multiple sources per diagram |
+| historySnapshots | id; diagramId, createdAt, contentId, sourceIds | Named and safety snapshot headers |
+| historyContents | id; diagramId, bytes | Deduplicated structural graph snapshots |
+| historySources | id; diagramId, unique [diagramId+datasetId+datasetVersion], rowId, bytes | Archived CSV headers referencing row content |
+| historyRows | id; diagramId, bytes | Deduplicated immutable historical CSV rows |
+| simulationModels | diagramId; diagramVersion | Typed semantic simulation model |
+| simulationRuns | id; diagramId, createdAt, status | Captured run model/options, status and result |
+| simulationCheckpoints | id; runId, diagramId, [runId+timeSeconds] | Bounded replay state snapshots |
+
+Dexie version 1 discovers legacy browser snapshots. Version 2 expands stored graphs into canonical records, retaining owners, versions, ordering and settings. Version 3 removes obsolete graph/state stores. Version 4 preserves the six canonical stores and removes the historical boolean integration grant, requiring explicit MCP permission. Version 5 adds diagram-owned CSV datasets; version 6 changes their diagramId index to nonunique. Version 7 adds four history stores, and version 8 adds three simulation stores. These additive upgrades preserve existing records; fresh accepted workspaces use all 14 tables. Built-in templates seed only after storage acceptance and only when absent. See [storage](docs/STORAGE.md).
+
+Source analyses, matching-column relationships, entity focus and named views persist in diagram settings, with source paths/measures on node metadata. Named history and pre-refresh/pre-restore checkpoints retain bounded structural snapshots and deduplicate unchanged CSV row content. They are distinct from transient undo/redo. Full workspace backups include saved history and simulation archives; a single-diagram JSON export contains current content without run archives. Storage consent and integration grants cannot be imported from a backup.
+
+## Process Simulator model
+
+Only `process-simulator` graphs carry `graph.simulation`, with model schema version 1. It references real canonical node UUIDs while giving semantic string IDs to particle types, resources, scenarios and optional nested processes. A node's optional `processId` assigns membership; `processes[].parentId` defines the hierarchy. Model/run records retain assumptions independently of visual placement. Simulation capacity-unit cards and folded process summaries are read-only projections, not extra saved nodes or business capacity. Each archived run retains its captured model and options so later document edits do not relabel its results. Replay snapshots are bounded by the configured retention. See [Process Simulator](docs/PROCESS_SIMULATOR.md) for the complete contract and engine limits.
+
+## Browser-local import settings
 
 The `settings` record `import-file-limit-mb` is a browser-local integer from 50 through 1024, default 50. UI MB means MiB; 1 GB means 1024 MiB. `PUT /settings/import-file-limit-mb` accepts `{ "value": 100 }` and invalid values return 422; absent or invalid stored values normalize to 50. The browser captures this saved byte budget for analysis; source payloads do not accept an override. It is excluded from backup and ignored by Merge/Replace, which retain the destination’s limit. No database migration is required. All local file imports default to 50 MiB and can use up to 1 GiB; only imports up to 50 MB are supported and guaranteed, with warnings for larger experimental imports. Code uses the selected limit both per file and for the total project. Diagram expanded data is capped at `min(1 GiB, max(100 MiB, 2 × selected file limit))`. Structural/deadline limits and the 32 MiB JSON/WebSocket transport envelopes remain unchanged.
 
-Parents must belong to the same graph; cycles, orphan connections, unknown owners, invalid geometry, dates and URL schemes are rejected. Nodes and edges have diagram-scoped external identities; owners have globally unique external identities. PATCH checks the current entity version. Whole-graph replacement checks the diagram baseVersion inside the same transaction. Owner changes advance referencing diagram versions. Diagram removal cascades to nodes/edges/datasets and retains global owners. Single node removal detaches children; branch or group removal removes descendants and incident connections atomically.
+Parents must belong to the same graph; cycles, orphan connections, unknown owners, invalid geometry, dates and URL schemes are rejected. Nodes and edges have diagram-scoped external identities; owners have globally unique external identities. PATCH checks the current entity version. Whole-graph replacement checks the diagram baseVersion inside the same transaction. Owner changes advance referencing diagram versions. Diagram removal cascades to its nodes, edges, CSV sources, saved history and simulation models/run archives/checkpoints, and retains global owners. Single node removal detaches children; branch or group removal removes descendants and incident connections atomically.
+
+The separate `project-source-file-limit` setting defaults to 500 analyzed ZIP source files and accepts integers from 500 through 10,000. `PUT /settings/project-source-file-limit` accepts `{ "value": 1000 }`; invalid values return 422, and invalid or absent stored values normalize to 500. Each job captures the setting before its scan. Imports above 500 analyzed sources are experimental; byte, archive-entry, line, graph and deadline bounds remain unchanged. This preference is excluded from backups and ignored by restore, preserving the destination value. See [project ZIP import](docs/CODE_IMPORT.md#import-a-complete-project-archive).
 
 ## Code analysis metadata
 

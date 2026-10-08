@@ -1,0 +1,34 @@
+name: Feature request
+description: Explain a workflow that Visual Nerve could support better.
+title: "[Feature] "
+labels: [enhancement, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check the [Guide](https://visualnerve.caripson.com/help/) and existing issues first. Explain the workflow and outcome before proposing implementation details. Keep examples synthetic and safe to publish.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Who needs this, and where does the current workflow get difficult?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired behavior
+      description: Give a concrete before/after example and how we would know the feature works.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or current workaround
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and removed sensitive information from this request.
+          required: true

@@ -42,7 +42,7 @@ test('quick project renaming, colors, domain icons, duplication and reversible d
   await open(page, 'Quick work');
   await expect(page.getByRole('link', { name: 'Report an issue on GitHub' })).toHaveAttribute(
     'href',
-    'https://github.com/Caripson/visualnerve/issues',
+    'https://github.com/Caripson/visualnerve/issues/new/choose',
   );
   await page.getByRole('button', { name: /^Rename project:/ }).click();
   await page.getByLabel('Project name', { exact: true }).fill('A clearer project name');

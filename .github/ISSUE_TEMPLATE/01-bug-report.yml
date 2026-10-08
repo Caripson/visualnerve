@@ -1,0 +1,86 @@
+name: Bug report
+description: Report a reproducible problem in Visual Nerve.
+title: "[Bug] "
+labels: [bug, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Start with the [troubleshooting guide](https://visualnerve.caripson.com/help/troubleshooting/) and [support policy](https://github.com/Caripson/visualnerve/blob/main/SUPPORT.md).
+        Issues may become public when this repository opens. Use synthetic examples and redact screenshots. Do not attach full workspace backups, real customer/source data, credentials, raw HAR files or unedited logs. A bridge URL can contain a token.
+        **Security vulnerability?** Follow [SECURITY.md](https://github.com/Caripson/visualnerve/blob/main/SECURITY.md) instead of reporting exploit details here.
+  - type: checkboxes
+    id: before_reporting
+    attributes:
+      label: Before reporting
+      options:
+        - label: I searched existing issues and this is a reproducible bug, not a private security report.
+          required: true
+        - label: My report and attachments contain only information I intend to make public, with private data and secrets removed.
+          required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Diagram editing and connections
+        - Mind maps and layouts
+        - 3D view
+        - CSV and connected data
+        - SQL visualization
+        - Code or project ZIP import
+        - draw.io or Visio import
+        - Process Simulator
+        - Player, speech or video
+        - Export (SVG, PNG, PDF, JSON or Markdown)
+        - Local saving, backup or restore
+        - API or MCP
+        - Mobile or accessibility
+        - Website or Help
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened?
+      description: Describe the visible problem and any short, redacted error message.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Start from a bundled example or a minimal synthetic diagram or file. Include counts when scale matters.
+      placeholder: |
+        1. Open the kiosk example on a phone.
+        2. Add a Work node.
+        3. Select it and choose Delete.
+        4. Describe what happens.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened?
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Browser, operating system and device
+      placeholder: "Chrome 154, Windows 11, laptop / Safari, iOS, phone"
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: Site and revision, if known
+      description: Give the hostname or local setup and commit/build if known. Remove query strings, fragments and tokens from URLs.
+      placeholder: "visualnerve.caripson.com / local build at commit …"
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Optional safe evidence
+      description: Add a redacted screenshot, short sanitized log excerpt or minimal synthetic input. If relevant, include 2D/3D, theme, online/offline and API access mode. Do not upload a full backup or raw network recording.

@@ -101,6 +101,12 @@ Open **Projects** for the diagram list, select a card and tap **Edit** for prope
 
 ## Reporting a reproducible problem
 
-Record the action, browser/version, view (2D/3D), document type, exact error and whether a fresh sample reproduces it. A screenshot of the relevant controls often helps. Review any exported diagram, screenshot, code identifier, SQL literal or CSV value before sharing it outside the browser. [Privacy](/privacy/).
+Use [Report an issue on GitHub](https://github.com/Caripson/visualnerve/issues/new/choose) for an ordinary product bug. Repository access may be required while the project is private. The link opens the issue chooser; it does not upload your diagram, source files or diagnostics automatically.
+
+Record the steps, expected result, actual result, browser/version, view (2D/3D), document type and whether a fresh sample reproduces the problem. Include the error message after removing private details. A screenshot of the relevant controls often helps when it uses invented data and contains no private content.
+
+Do not attach full workspace backups, original project archives, raw HAR/network captures or unredacted console logs. Review screenshots, identifiers, file paths, SQL literals, CSV values and URLs before sharing them. In particular, a local bridge WebSocket URL may include an integration token. Replace credentials and personal or business data with dummy values. [Privacy](/privacy/).
+
+For a suspected vulnerability, follow the [private security reporting guidance](/security/#report-a-suspected-vulnerability-privately) instead of posting exploit details in a public issue.
 
 Start again from [Help home](/help/), or use **Search help** for the specific button or format.

@@ -10,12 +10,15 @@ Hugo static shell + bundled React/TypeScript + React Flow in your browser
                  editor state
                        ↕
                Dexie / IndexedDB
-       diagrams · nodes · edges · owners · settings · templates
+       graph records · owners · settings · templates · CSV sources
+       saved history · simulation models/runs/checkpoints
 
-Nothing is uploaded. Other profiles and devices have separate databases.
+Other profiles and devices have separate databases.
 
 Optional: Codex → local MCP → loopback WebSocket bridge → active browser → IndexedDB
 ```
+
+Normal editor use does not upload workspace records. Deliberate exports, MCP responses sent to a connected client and the reviewed Lovable handoff can disclose the selected content. Downloaded voice-model assets have a separate cache; narration text remains local.
 
 ## Boundaries
 
@@ -23,11 +26,11 @@ Optional: Codex → local MCP → loopback WebSocket bridge → active browser �
 
 The canonical TypeScript model is `frontend/src/model/types.ts`. The Go model supplies matching documented integration DTOs, not persistence. The editor separates semantic models, canvas projection/rendering, layout, state/commands, storage, optional integration, and exports. Node renderers remain registered in one extensible registry.
 
-The optional 3D canvas is a lazy-loaded Three.js relief view over the same projection, canonical objects and relationships. Ordinary cards retain their 2D positions and dimensions. Their front textures come from the actual registered 2D node components, preserving text, colors, icons, status and data summaries while the complete diagram rotates. An isolated local renderer captures at most 120 nearby faces with two capture jobs and bounded texture sizes; selected objects are prioritized, and camera changes refresh the resident set. Shared relief geometries and relationship buffers, event-driven rendering and explicit disposal bound rendering work. Spatial metadata retains optional independent world coordinates and camera state; canonical 2D geometry remains the PNG/PDF export source. Context failure retains a keyboard object list and an immediate return to 2D. See [3D diagrams](docs/SPATIAL_DIAGRAMS.md).
+The optional 3D canvas is a lazy-loaded Three.js relief view over the same projection, canonical objects and relationships. Ordinary cards retain their 2D positions and dimensions. Their front textures come from the actual registered 2D node components, preserving text, colors, icons, status and data summaries while the complete diagram rotates. An isolated local renderer captures at most 120 nearby faces with two capture jobs and bounded texture sizes; selected objects are prioritized, and camera changes refresh the resident set. Shared relief geometries and relationship buffers, event-driven rendering and explicit disposal bound rendering work. Spatial metadata retains optional independent world coordinates and camera state; canonical 2D geometry remains the PNG/PDF/SVG export source. Context failure retains a keyboard object list and an immediate return to 2D. See [3D diagrams](docs/SPATIAL_DIAGRAMS.md).
 
 ## Persistence and state
 
-`storage/database.ts` defines the seven Dexie tables and upgrades existing browser data in place. `storage/repository.ts` validates and applies graph operations inside IndexedDB transactions. `storage/workspace.ts` opens IndexedDB, loads diagrams/owners/preferences and the last project, then connects editor state. UI commands update optimistically and immediately queue database transactions. Saved means the transaction committed; it does not depend on a server or internet connection. Drag and resize gestures commit at their end.
+`frontend/src/storage/database.ts` defines schema version 8 with 14 Dexie tables: six core graph/preferences/template tables, one CSV dataset table, four history tables and three simulation tables. Additive upgrades preserve existing browser records. `storage/repository.ts` validates and applies graph operations inside IndexedDB transactions. `storage/workspace.ts` opens IndexedDB, loads diagrams/owners/preferences and the last project, then connects editor state. UI commands update optimistically and immediately queue database transactions. Saved means the transaction committed; it does not depend on a server or internet connection. Drag and resize gestures commit at their end.
 
 Entity and diagram versions are checked inside transactions. Dexie live queries refresh committed changes across tabs. A stale edit retains its unsaved graph in the editing tab and offers a separate copy, the committed version, or explicit replacement. Unsaved conflict data remains in memory until resolved; export a copy before closing that tab. Normal operation has no graph HTTP requests, polling, secondary store or synchronization database.
 
@@ -39,9 +42,13 @@ Production builds precache the static shell and editor assets in a service worke
 
 Graph replacement, bulk upsert, import, complete workspace restore, subtree deletion, diagram deletion and owner reassignment are atomic. Indexed diagram queries retrieve nodes/edges; compound unique external-ID indexes scope identities by diagram. Bulk puts/deletes handle large graphs, and unchanged records retain their version and references. Validation rejects cycles, foreign references, invalid geometry/dates and unsupported URL schemes before committing.
 
-History stores bounded entity deltas, not repeated complete snapshots for pointer movement. React Flow projects parent-relative coordinates while canonical coordinates remain absolute. Group movement shifts descendants; hierarchy is expressed by parentId and edges rather than coordinates. Timelines derive placement from dates. Layout is explicit and undoable. Mind maps render curved colored branches and topic backgrounds at every depth; generic diagrams retain their registered node shapes.
+Transient undo/redo stores bounded entity deltas rather than repeated complete snapshots for pointer movement. Named history and automatic safety checkpoints persist separately in four IndexedDB tables, deduplicating structural snapshots and unchanged CSV rows. Full backups include this saved history; single-diagram JSON exports current content only. React Flow projects parent-relative coordinates while canonical coordinates remain absolute. Group movement shifts descendants; hierarchy is expressed by parentId and edges rather than coordinates. Timelines derive placement from dates. Layout is explicit and undoable. Mind maps render curved colored branches and topic backgrounds at every depth; generic diagrams retain their registered node shapes.
 
-The canvas renders visible elements and memoizes unchanged projections. Export mounts an isolated full renderer, including off-screen and collapsed branches. ELK layouts run in a worker. Unit and browser tests include 1,000 nodes/2,000 edges and 5,000 nodes.
+The canvas renders visible elements and memoizes unchanged projections. PNG/PDF/SVG export mounts an isolated canonical 2D renderer, including off-screen and collapsed branches. Export-local simulation models and compatible view state supply capacity summaries without changing or borrowing the open editor graph. SVG serializes native shapes, text, icons, connections and saved pen strokes; PNG rasterizes the scene and PDF embeds that bitmap. [Export formats](EXPORT_FORMAT.md) documents scope, clipping and limits. ELK layouts run in a worker. Unit and browser tests include 1,000 nodes/2,000 edges and 5,000 nodes.
+
+## Process Simulator
+
+A `process-simulator` graph carries a typed `graph.simulation` model with schema version 1, separate from visual geometry. IndexedDB stores the model by diagram ID and archives captured run models/options/results plus bounded replay checkpoints. Temporary capacity cards and folded process views project the logical model; they are not additional persisted business nodes. Seeded simulation runs execute in a browser worker; headless/MAX removes animation but still requires the browser. UI, API and MCP use the same model and engine. See [Process Simulator](docs/PROCESS_SIMULATOR.md).
 
 ## Optional integration
 

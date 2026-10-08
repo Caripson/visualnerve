@@ -4,7 +4,7 @@ The browser editor lives at `/app/`; `/` is the public product home. This route 
 
 IndexedDB in the browser is the only database. Start the static server with `--bridge`, open the app and explicitly choose Settings → MCP access → Read only or Read + write (default Off). REST and MCP forward commands over a local WebSocket to that browser. The browser applies IndexedDB transactions before replying. The Go server retains no application records; without a connected browser graph requests return 503.
 
-Base: `http://localhost:4317/api/v1`. Responses and request bodies are JSON unless exporting Markdown. Swagger is bundled at `/api/docs`, the generated OpenAPI 3 contract at `/api/openapi.yaml`, and its source at `docs/openapi.yaml` (JSON syntax, valid YAML 1.2). Regenerate with `cd backend && go run ./cmd/openapi`.
+Base: `http://localhost:4317/api/v1`. Request bodies and responses use JSON, including Markdown and SVG exports, which return their text as JSON strings. Swagger is bundled at `/api/docs`, the generated OpenAPI 3 contract at `/api/openapi.yaml`, and its source at `docs/openapi.yaml` (JSON syntax, valid YAML 1.2). Regenerate with `cd backend && go run ./cmd/openapi`.
 
 ## MCP discovery and connection addresses
 
@@ -304,7 +304,7 @@ When several distinct workspaces are connected, pass `workspaceId` to MCP or `X-
 
 ## Public app and permissions
 
-The public static site supplies no content API. Commands always target a user’s loopback bridge; public Swagger pages are read-only reference, while local Swagger can execute against its local origin. Read only permits GET, POST /export and exact POST /sql/preview, /code/preview, /code/project/preview or /diagram-files/preview, rejecting all mutations and permission escalation. Off closes the socket. Browser closure or disconnection returns 503 (MCP tools report isError), with no fallback storage. Both REST and MCP use the same browser repository.
+The public static site supplies no content API. Commands always target a user’s loopback bridge; public Swagger pages are read-only reference, while local Swagger can execute against its local origin. Read only permits GET and exact POST /export, /sql/preview, /code/preview, /code/project/preview and /diagram-files/preview, plus /diagrams/{id}/questions, /diagrams/{id}/build-brief and /diagrams/{id}/simulation/compare. Other mutations and permission escalation are rejected. Off closes the socket. Browser closure or disconnection returns 503 (MCP tools report isError), with no fallback storage. Both REST and MCP use the same browser repository.
 
 Hosted apps require an exact --allowed-origin and may require trusted local TLS and browser local-network permission. The bridge rejects non-loopback listen addresses and remote client peers. See [deployment setup](docs/DEPLOYMENT.md#optional-local-mcp). /workspace/import uses Merge; destructive Replace and global deletion are separately confirmed actions in the browser UI. Backup schema/date and excluded local grants/consent are described in [EXPORT_FORMAT.md](EXPORT_FORMAT.md).
 

@@ -92,12 +92,12 @@ export function CompactDiagramActions(props: CompactToolbarProps) {
       </a>
       <a
         className="compact-menu-link"
-        href="https://github.com/Caripson/visualnerve"
-        aria-label="Visual Nerve on GitHub"
+        href="https://github.com/Caripson/visualnerve/issues/new/choose"
+        aria-label="Report an issue on GitHub"
         target="_blank"
         rel="noopener noreferrer"
       >
-        GitHub
+        Report an issue
       </a>
       <button className="full danger" onClick={() => open('delete')}>
         <Trash2 size={17} />

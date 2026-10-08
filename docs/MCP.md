@@ -1,10 +1,33 @@
 # MCP processes, understanding and diagram presentations
 
-Connect Codex to the local HTTP(S) `/mcp` server and keep the Visual Nerve workspace at `/app/` open with local storage accepted. The browser stores the diagrams in IndexedDB. Enable **Settings → MCP access → Read + write** to save or control a presentation. Read only permits GET discovery/state and exact question/app-brief preview requests. The public website serves app files and documentation; the MCP bridge runs on the user's computer.
+Connect Codex to the local HTTP(S) `/mcp` server and keep the Visual Nerve workspace at `/app/` open with local storage accepted. The browser stores the diagrams in IndexedDB. Enable **Settings → MCP access → Read + write** to save or control a presentation. Read only permits GET discovery/state and the exact unsaved preview, export, question, app-brief and simulation-comparison routes below; other POST requests still require Read + write. The public website serves app files and documentation; the MCP bridge runs on the user's computer.
 
 Commands recheck access after queue waits and before document writes. If saving a lower access level fails, the current running Workspace retains that restriction through unrelated refreshes. An explicit access choice must save successfully before access can increase again. A failed preference write does not persist that choice across reloads.
 
 Call `visual_nerve_api_docs` first. Its default compact guide and full `{"document":"openapi"}` response describe both canonical definitions and playback. Commands use `visual_nerve_request` with paths that omit `/api/v1`.
+
+## Exact Read only POST routes
+
+Read only is an explicit route allowlist, not general permission for POST:
+
+| Route | Result |
+| --- | --- |
+| `/export` | Current graph JSON, Markdown or SVG export |
+| `/sql/preview` | Unsaved SQL query/schema analysis |
+| `/code/preview` | Unsaved code analysis |
+| `/code/project/preview` | Unsaved ZIP project analysis |
+| `/diagram-files/preview` | Unsaved draw.io/Visio page preview |
+| `/diagrams/{id}/questions` | Source-backed relationship question |
+| `/diagrams/{id}/build-brief` | Reviewed unsent Lovable brief |
+| `/diagrams/{id}/simulation/compare` | Comparison of saved runs |
+
+The normal command validation, structure/transport limits and connected-browser requirement still apply. Paths omit `/api/v1`. Creation, settings changes, saved-definition changes and presentation/simulation controls require Read + write.
+
+## Export a native vector diagram
+
+Call `visual_nerve_request` with `{path:"/export",method:"POST",data:{diagramId:"DIAGRAM_UUID",format:"svg"}}`. The tool returns SVG XML as a JSON string in its response body; save that string as an `.svg` file. It does not download a file or open/change the exported diagram. Optional `scope` is `complete` (default), `viewport` or `selected`; selected requires 1–20,000 unique existing node UUIDs in `nodeIds`, which is forbidden for other scopes.
+
+SVG preserves native paths, shapes, text, icons, connections and visible saved pen strokes from the canonical 2D projection, including when the diagram is in 3D. It contains no embedded raster screenshot, `foreignObject`, script or active external link. Fonts are referenced rather than embedded. Source text can retain clipped content, so review the file before sharing. Export fails beyond 100,000 rendered DOM elements, 250,000 source text characters or 16 MiB SVG XML; bridge envelope/time limits also apply. JSON and Markdown exports accept only `diagramId` and `format`. See [export formats](../EXPORT_FORMAT.md).
 
 ## Inspect and control hierarchical processes
 

@@ -557,6 +557,13 @@ export function SettingsDialog({
         <a href="/help/" target="_blank" rel="noopener noreferrer">
           Help & documentation
         </a>
+        <a
+          href="https://github.com/Caripson/visualnerve/issues/new/choose"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Report an issue
+        </a>
         <button onClick={close}>Done</button>
       </div>
       <p className="author-credit">

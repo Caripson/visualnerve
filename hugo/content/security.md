@@ -60,8 +60,12 @@ This page does not claim independent security certification, regulatory certific
 
 ## Report a suspected vulnerability privately
 
-Check the [repository Security page](https://github.com/Caripson/visualnerve/security). If **Report a vulnerability** is available, use that private reporting route. Repository access and private reporting availability may vary.
+Check the [repository Security page](https://github.com/Caripson/visualnerve/security). Once the repository is public and private reporting is enabled, use **Report a vulnerability**. That GitHub feature is unavailable during the private preview, which is limited to invited repository participants. No external private reporting address is currently published.
 
-If a private route is not offered, request a private contact route without posting exploit details, real customer data, tokens, source secrets or sensitive exports in public Issues. Include only a minimal non-sensitive description until a private channel is established. For an ordinary product bug, use a sanitized sample and the reproduction steps from [Troubleshooting](/help/troubleshooting/#reporting-a-reproducible-problem).
+If you have repository access and the button is unavailable, open a usage question asking only for the maintainer's preferred private security contact. Do not post exploit details, real customer data, tokens, source secrets or sensitive exports. Keep vulnerability details for a private channel once established. The [repository security policy](https://github.com/Caripson/visualnerve/blob/main/SECURITY.md) describes reporting information and supported revisions.
+
+For an ordinary product bug, use the [GitHub issue chooser](https://github.com/Caripson/visualnerve/issues/new/choose) and the reproduction steps from [Troubleshooting](/help/troubleshooting/#reporting-a-reproducible-problem). Repository access may be required while the project is private. Opening the reporting link does not attach your diagram or send an automatic error report.
+
+Reproduce the problem with a minimal sample containing invented data. Review screenshots and error messages before submitting them. Do not attach a complete workspace backup, original project archive, raw HAR/network capture or unredacted console log. These can contain customer data, source secrets or integration credentials; the local bridge's WebSocket address can include a session token. Security findings belong in a private report, not a public bug issue.
 
 [Open Visual Nerve](/app/) · [Understand privacy choices](/privacy/) · [Prepare a recovery copy](/help/settings/#export-all-local-data)

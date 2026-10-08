@@ -1,4 +1,40 @@
-# Local storage and integration security
+# Security policy
+
+## Reporting a vulnerability
+
+For ordinary product bugs, follow [SUPPORT.md](SUPPORT.md). Report suspected
+security vulnerabilities privately; do not put exploit details, tokens, real
+customer data, source secrets or sensitive exports in an ordinary issue.
+
+Once this repository is public and GitHub private vulnerability reporting is
+enabled, use **Report a vulnerability** on the [Security page](https://github.com/Caripson/visualnerve/security).
+That GitHub feature is unavailable during the private preview, which is limited
+to invited repository participants. No external private reporting address is
+currently published. A private route must be configured before public reporting
+is announced; see [repository preparation](docs/REPOSITORY_READINESS.md).
+
+If the GitHub button is unavailable and you have repository access, you can open
+an issue asking only for the maintainer's preferred private security contact.
+Include no vulnerability details until a private channel is established.
+
+In the private report, include the affected revision or site hostname,
+browser/device, impact and minimal reproduction using invented data. Redact URL
+queries/fragments and screenshots. Do not send complete workspace backups,
+original project archives, raw HAR/network recordings or unedited console logs;
+the bridge's WebSocket address can contain a session token.
+
+The maintainer reviews reports and coordinates any fix and disclosure. There is
+no guaranteed response deadline or bug-bounty commitment.
+
+## Supported revisions
+
+Development and security fixes target the current `main` revision. Identify the
+commit when reporting a local build, or the hostname and approximate observation
+time for a hosted build. The preview can lag behind `main` because deployments
+are manual. This project does not currently publish a tagged-release support
+matrix or promise maintenance of older revisions.
+
+## Local storage and integration boundaries
 
 IndexedDB in the current browser profile and origin contains all application data. The editor at `/app/`, Help and API reference have no accounts, analytics, content telemetry, remote fonts or CDN scripts. Libraries, icons, documentation and Swagger assets are bundled locally. The service worker caches static assets only. Downloaded backups are explicit exports, not a second persistence system.
 
@@ -6,9 +42,9 @@ Optional Google Analytics is isolated to explicitly permitted public product pag
 
 The optional **Build with Lovable** handoff generates a reviewed text brief locally. Only a user click opens `https://lovable.dev/#prompt=…` in a separate tab with `noopener noreferrer`; there is no API credential or background upload. Source CSV rows, raw SQL scripts and arbitrary metadata are excluded. Recognized SQL schema and foreign-key fields use a typed allowlist, including explicit missing/unresolved references. Written descriptions, notes and schema names/type labels remain part of the previewed content. Oversized briefs stay complete and can be copied or downloaded instead. See [Lovable handoff](docs/LOVABLE.md).
 
-SQL/DDL import runs local schema extraction in a Web Worker; it never executes SQL or connects to a database. Files are bounded to 50 MiB, 2,000 table objects including external references, and 100,000 columns; pending analysis can be cancelled and times out after 30 seconds. Source scripts are temporary drafts. Saved diagrams retain recognized schema fields without INSERT/COPY rows, default/CHECK expressions, comments or procedure bodies. ENUM labels inside data types may remain as schema structure. This extracts supported CREATE/ADD definitions; it does not apply every migration or validate a database. See [SQL import](docs/SQL_IMPORT.md).
+SQL import analyzes SELECT/WITH query structure or DDL schema locally in a Web Worker; it never executes SQL or connects to a database. Files use the selected local import limit: 50 MiB by default, with experimental increases up to 1 GiB in Settings. Schema limits remain 2,000 table objects including external references and 100,000 columns; separate query limits are documented in [SQL import](docs/SQL_IMPORT.md). Pending analysis can be cancelled and times out after 30 seconds. Raising the file limit does not change these structural limits or the bridge's 32 MiB transport envelope. Source scripts are temporary drafts. Query diagrams retain normalized expressions, JOIN conditions and clauses, **including literal values**; sensitive filters can therefore survive persistence and exports. DDL diagrams retain recognized schema fields without INSERT/COPY rows, default/CHECK expressions, comments or procedure bodies. ENUM labels inside data types may remain as schema structure. DDL extraction handles supported CREATE/ADD definitions; it does not apply every migration or validate a database.
 
-The Go server binds to 127.0.0.1:4317 by default and serves static files without application writes. Local integration is disabled unless started with --bridge and enabled in browser Settings. It requires an open browser. Integration tokens use VISUAL_NERVE_BRIDGE_TOKEN and protect all integration reads/writes, MCP and WebSocket registration. The browser keeps its token only for the session and excludes it from backups. Tokens and request payloads are not logged.
+The Go server binds to 127.0.0.1:4317 by default and serves static files without application writes. Local integration is disabled unless started with --bridge and enabled in browser Settings. It requires an open browser. Token authentication is optional; when VISUAL_NERVE_BRIDGE_TOKEN is configured, it protects all integration reads/writes, MCP and WebSocket registration. Loopback, Host/Origin checks and the browser's access grant apply with or without a configured token. The browser keeps its token only for the session and excludes it from backups. Tokens and request payloads are not logged by the bridge.
 
 Host and Origin checks protect against untrusted hosts and cross-origin integration requests. Development permits the explicit loopback Vite port 5173. There is no wildcard CORS. Requests and WebSocket messages are limited to 32 MiB; forwarded commands time out. JSON is parsed before forwarding, then the browser validates IDs, references, versions, dates, dimensions and URL schemes transactionally. Metadata is rendered as text; user URLs permit only absolute HTTP(S), with noopener noreferrer. Swagger's remote validator is disabled.
 
