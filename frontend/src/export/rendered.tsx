@@ -28,6 +28,7 @@ import { getSpatialView } from '../spatial/types';
 import { simulationService } from '../simulation/service';
 import { SimulationExportScene } from './simulation-scene';
 import { SimulationSummaryContext } from '../simulation/summary-context';
+import { assertExportActive, checkExportActive, waitForExport, type ExportGuard } from './guard';
 export interface RenderOptions {
   scope: 'complete' | 'viewport' | 'selected';
   multiplier: 1 | 2 | 4;
@@ -81,13 +82,17 @@ function canvasColor(graph: Graph) {
 async function capturePNG(
   element: HTMLElement,
   options: Parameters<typeof toSvg>[1] & { pixelRatio: number; backgroundColor: string },
+  guard?: ExportGuard,
 ) {
-  const svg = await toSvg(element, options);
+  assertExportActive(guard);
+  const svg = await waitForExport(toSvg(element, options), guard);
+  assertExportActive(guard);
   // html-to-image resolves its SVG image on load without waiting for native
   // decoding. A complex foreignObject can then paint an entirely blank canvas.
   const image = new Image();
   image.src = svg;
-  await image.decode();
+  await waitForExport(image.decode(), guard);
+  assertExportActive(guard);
   const width = image.width * options.pixelRatio;
   const height = image.height * options.pixelRatio;
   // Preserve the former rasterizer's automatic browser dimension cap.
@@ -199,30 +204,41 @@ export async function graphPNG(
   graph: Graph,
   options: RenderOptions,
   selection: string[],
+  guard?: ExportGuard,
 ): Promise<string> {
+  assertExportActive(guard);
   const spatial = getSpatialView(graph).mode === '3d';
   if (options.scope === 'viewport' && !spatial) {
     const flow = document.querySelector<HTMLElement>('.canvas-shell .react-flow');
     if (!flow) throw new Error('Open a diagram first.');
-    return capturePNG(flow, {
-      pixelRatio: options.multiplier,
-      backgroundColor: canvasColor(graph),
-      filter,
-    });
+    return capturePNG(
+      flow,
+      {
+        pixelRatio: options.multiplier,
+        backgroundColor: canvasColor(graph),
+        filter,
+      },
+      guard,
+    );
   }
   return capture2DScene(
     graph,
     options.scope,
     selection,
     (flow, width, height, backgroundColor) =>
-      capturePNG(flow, {
-        width,
-        height,
-        pixelRatio: options.multiplier,
-        backgroundColor,
-        filter,
-      }),
+      capturePNG(
+        flow,
+        {
+          width,
+          height,
+          pixelRatio: options.multiplier,
+          backgroundColor,
+          filter,
+        },
+        guard,
+      ),
     options.multiplier,
+    guard,
   );
 }
 
@@ -238,7 +254,9 @@ export async function capture2DScene<T>(
     backgroundColor: string,
   ) => Promise<T> | T,
   rasterMultiplier?: number,
+  guard?: ExportGuard,
 ): Promise<T> {
+  assertExportActive(guard);
   const { nodes, edges, strokes, bounds, summary } = renderedScene(
     graph,
     scope === 'viewport' ? 'complete' : scope,
@@ -281,14 +299,27 @@ export async function capture2DScene<T>(
       : { x: 40 - bounds.x, y: 40 - bounds.y, zoom: 1 };
   try {
     await new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(
-        () => reject(new Error('Graph rendering took too long. Try a smaller selection.')),
-        15000,
-      );
-      const done = () => {
+      const stop = () => {
+        cleanup();
+        reject(new DOMException('Diagram export cancelled.', 'AbortError'));
+      };
+      const cleanup = () => {
         clearTimeout(timer);
+        guard?.signal.removeEventListener('abort', stop);
+      };
+      const timer = setTimeout(() => {
+        cleanup();
+        reject(new Error('Graph rendering took too long. Try a smaller selection.'));
+      }, 15000);
+      const done = () => {
+        cleanup();
         resolve();
       };
+      guard?.signal.addEventListener('abort', stop, { once: true });
+      if (guard?.signal.aborted) {
+        stop();
+        return;
+      }
       root.render(
         <SimulationSummaryContext.Provider value={summary}>
           <ReactFlowProvider>
@@ -314,11 +345,16 @@ export async function capture2DScene<T>(
         </SimulationSummaryContext.Provider>,
       );
     });
-    await document.fonts.ready;
+    assertExportActive(guard);
+    await waitForExport(document.fonts.ready, guard);
+    assertExportActive(guard);
     // Capture the inner flow: the offscreen wrapper's computed logical insets
     // otherwise override physical left/top when html-to-image clones its styles.
     const flow = container.querySelector<HTMLElement>('.react-flow')!;
-    return await capture(flow, width, height, getComputedStyle(container).backgroundColor);
+    return await waitForExport(
+      Promise.resolve(capture(flow, width, height, getComputedStyle(container).backgroundColor)),
+      guard,
+    );
   } finally {
     root.unmount();
     container.remove();
@@ -337,24 +373,30 @@ export async function exportRendered(
   format: 'png' | 'pdf',
   options: RenderOptions,
   selection: string[],
+  guard?: ExportGuard,
 ) {
-  const png = await graphPNG(graph, options, selection);
+  const png = await graphPNG(graph, options, selection, guard);
+  assertExportActive(guard);
   const filename = safeName(graph.diagram.name);
   if (format === 'png') {
+    await checkExportActive(guard);
+    assertExportActive(guard);
     const link = document.createElement('a');
     link.href = png;
     link.download = `${filename}.png`;
     link.click();
     return;
   }
-  const { jsPDF } = await import('jspdf');
+  const { jsPDF } = await waitForExport(import('jspdf'), guard);
+  assertExportActive(guard);
   const pdf = new jsPDF({
     orientation: options.orientation,
     format: options.page,
     unit: 'mm',
     compress: true,
   });
-  const image = await loadImage(png);
+  const image = await waitForExport(loadImage(png), guard);
+  assertExportActive(guard);
   const margin = 10;
   const pageWidth = pdf.internal.pageSize.getWidth() - margin * 2,
     pageHeight = pdf.internal.pageSize.getHeight() - margin * 2 - (options.tiled ? 8 : 0);
@@ -420,5 +462,7 @@ export async function exportRendered(
         );
       }
   }
+  await checkExportActive(guard);
+  assertExportActive(guard);
   download(`${filename}.pdf`, pdf.output('blob'), 'application/pdf');
 }

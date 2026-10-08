@@ -1,9 +1,15 @@
 import type { Graph } from '../model/types';
 import { StorageError } from '../model/errors';
 import { markdown } from './semantic';
+import { checkExportActive, waitForExport, type ExportGuard } from './guard';
 
 /** Read-only export: SVG rendering is lazy and never opens or changes a project. */
-export async function exportCommand(graph: Graph, data: Record<string, unknown>) {
+export async function exportCommand(
+  graph: Graph,
+  data: Record<string, unknown>,
+  guard?: ExportGuard,
+) {
+  await checkExportActive(guard);
   if (typeof data.format !== 'string' || !['json', 'markdown', 'svg'].includes(data.format))
     throw new StorageError(422, 'Choose json, markdown or svg for diagram export.');
   if (data.format !== 'svg') {
@@ -28,6 +34,9 @@ export async function exportCommand(graph: Graph, data: Record<string, unknown>)
       new Set(data.nodeIds).size !== data.nodeIds.length)
   )
     throw new StorageError(422, 'Choose unique existing node UUIDs for selected SVG export.');
-  const { graphSVG } = await import('./svg');
-  return graphSVG(graph, scope, (data.nodeIds ?? []) as string[]);
+  const { graphSVG } = await waitForExport(import('./svg'), guard);
+  await checkExportActive(guard);
+  return guard
+    ? graphSVG(graph, scope, (data.nodeIds ?? []) as string[], guard)
+    : graphSVG(graph, scope, (data.nodeIds ?? []) as string[]);
 }

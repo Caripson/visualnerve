@@ -12,8 +12,17 @@ trap cleanup EXIT INT TERM
 openssl req -x509 -newkey rsa:2048 -nodes -days 1 -keyout "$VN_E2E_TLS/key.pem" -out "$VN_E2E_TLS/cert.pem" -subj '/CN=public-app.test' -addext 'subjectAltName=DNS:public-app.test,IP:127.0.0.1' 2>/dev/null
 "$VN_ROOT/bin/visual-nerve" --static "$VN_ROOT/public" --bridge --addr 127.0.0.1:4327 &
 VN_E2E_PIDS+=($!)
-"$VN_ROOT/bin/visual-nerve" --static "$VN_ROOT/public" --bridge --addr 127.0.0.1:4329 --allowed-origin https://public-app.test:4340 --tls-cert "$VN_E2E_TLS/cert.pem" --tls-key "$VN_E2E_TLS/key.pem" &
+"$VN_ROOT/bin/visual-nerve" --static "$VN_ROOT/public" --bridge --addr 127.0.0.1:4329 --allowed-origin https://public-app.test:4340 --allowed-origin https://public-app.test:4341 --tls-cert "$VN_E2E_TLS/cert.pem" --tls-key "$VN_E2E_TLS/key.pem" &
 VN_E2E_PIDS+=($!)
 python3 "$VN_ROOT/scripts/e2e-static-server.py" --directory "$VN_ROOT/public" --cert "$VN_E2E_TLS/cert.pem" --key "$VN_E2E_TLS/key.pem" &
+VN_E2E_PIDS+=($!)
+node --input-type=module - "$VN_ROOT" "$VN_E2E_TLS/isolated-app" <<'JS'
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+const [root, output] = process.argv.slice(2);
+const { buildAppSurface } = await import(pathToFileURL(resolve(root, 'scripts/build-app-surface.mjs')).href);
+await buildAppSurface(resolve(root, 'public'), output, { appOrigin: 'https://public-app.test:4341', bridgePorts: [4329] });
+JS
+python3 "$VN_ROOT/scripts/e2e-static-server.py" --directory "$VN_E2E_TLS/isolated-app" --port 4341 --app-headers --cert "$VN_E2E_TLS/cert.pem" --key "$VN_E2E_TLS/key.pem" &
 VN_E2E_PIDS+=($!)
 wait -n "${VN_E2E_PIDS[@]}"

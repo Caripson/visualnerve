@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowRight, CircleCheck, Inbox, Sparkles, Workflow } from 'lucide-react';
+import { ArrowRight, CircleCheck } from 'lucide-react';
 import { Modal } from '../components/Modal';
 import type { Graph } from '../model/types';
 import { useEditor } from '../state/editor';
@@ -8,36 +8,9 @@ import { EconomicsStep, ProcessingStep, WorkloadStep } from './StarterFields';
 import { StarterReview } from './StarterReview';
 import './wizard.css';
 
-export const simulationSetupEvent = 'visualnerve:simulation-setup';
+export { simulationSetupEvent } from './setup-event';
+export { ProcessStartPanel } from './ProcessStartPanel';
 const steps = ['Workload', 'Process', 'Economics', 'Review'];
-
-/** Empty-canvas UI requests setup; all editable assumptions belong to the authoritative model. */
-export function ProcessStartPanel() {
-  return (
-    <div className="process-start-panel">
-      <div className="process-start-symbols" aria-hidden>
-        <Inbox size={23} />
-        <ArrowRight size={17} />
-        <Workflow size={23} />
-        <ArrowRight size={17} />
-        <CircleCheck size={23} />
-      </div>
-      <h2>Build your first process</h2>
-      <p>
-        Choose what arrives, how it is handled and what completion means. Guided setup creates
-        connected steps you can run and extend.
-      </p>
-      <button
-        className="primary"
-        onClick={() => window.dispatchEvent(new Event(simulationSetupEvent))}
-      >
-        <Sparkles size={16} />
-        Start guided setup
-      </button>
-      <small>Arrivals → Work → Completed. Add shared staff or equipment when needed.</small>
-    </div>
-  );
-}
 
 export function ProcessWizard({
   graph,

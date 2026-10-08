@@ -1,6 +1,6 @@
 # MCP processes, understanding and diagram presentations
 
-Connect Codex to the local HTTP(S) `/mcp` server and keep the Visual Nerve workspace at `/app/` open with local storage accepted. The browser stores the diagrams in IndexedDB. Enable **Settings → MCP access → Read + write** to save or control a presentation. Read only permits GET discovery/state and the exact unsaved preview, export, question, app-brief and simulation-comparison routes below; other POST requests still require Read + write. The public website serves app files and documentation; the MCP bridge runs on the user's computer.
+Connect a standard MCP client to the local HTTP(S) `/mcp` server and keep the Visual Nerve workspace at `/app/` open with local storage accepted. The browser stores the diagrams in IndexedDB. Enable **Settings → MCP access → Read + write** to save or control a presentation. Read only permits GET discovery/state and the exact unsaved preview, export, question, app-brief and simulation-comparison routes below; other POST requests still require Read + write. The public website serves app files and documentation; the MCP bridge runs on the user's computer.
 
 Saved access and connection changes take effect without reloading the browser page. Temporary connection failures retry every three seconds while access is enabled; Off disconnects and cancels retries. An invalid local address must be corrected, and the bridge's allowed origin, trusted certificate, local-network permission and optional token still need to match the browser setup. See [connection setup and troubleshooting](https://www.visualnerve.com/help/api-mcp/).
 
@@ -8,20 +8,32 @@ Commands recheck access after queue waits and before document writes. If saving 
 
 Call `visual_nerve_api_docs` first. Its default compact guide and full `{"document":"openapi"}` response describe both canonical definitions and playback. Commands use `visual_nerve_request` with paths that omit `/api/v1`.
 
+## Client transports and port selection
+
+Codex, Cursor, Claude Code and Gemini CLI use the same Streamable HTTP endpoint and tools; no client name grants special permissions. Initialize negotiates `2025-03-26`, `2025-06-18` or `2025-11-25`, returning the requested version when supported or the latest supported version otherwise. Subsequent HTTP requests send the negotiated `MCP-Protocol-Version`. A missing header uses the backward-compatible `2025-03-26` subset; unsupported headers return HTTP 400. This stateless endpoint returns JSON and answers GET with 405 because it offers no SSE stream. It does not implement the deprecated separate HTTP+SSE transport, server-initiated requests or tasks. [MCP transports](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports) and [initialization](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle).
+
+Clients requiring local stdio, including Claude Desktop, can launch the absolute path to the built `visual-nerve` binary with `--mcp-stdio`. Start the shared `--bridge` server separately. The adapter forwards newline-delimited JSON-RPC to that already-running bridge; it creates no second workspace or permission model. Stdout contains only protocol messages, diagnostics use stderr, and closing the adapter does not stop the shared bridge. An initialized upstream must identify itself as a compatible Visual Nerve server before tools/resources are forwarded. This check helps detect the wrong service; it does not authenticate against malicious local software.
+
+The optional `VISUAL_NERVE_BRIDGE_TOKEN` is passed in the adapter environment and sent only as a Bearer header, never as a URL argument. `--mcp-url` accepts an explicit-port loopback HTTP(S) `/mcp` URL, defaults to `http://127.0.0.1:4317/mcp`, uses normal system TLS verification and refuses redirects. Input and output envelopes stay bounded to 32 MiB. The adapter allows eight active and eight pending requests; exceeding that bounded intake terminates it with a saturation diagnostic. EOF cancels pending transport work. Interrupted mutations can have an unknown outcome and are not retried; read the authoritative state before deciding whether to issue another mutation. Vendor configuration examples and their official references are in [the user guide](../hugo/content/help/api-mcp.md); the vendor applications themselves are not part of automated browser acceptance.
+
+Port **4317** serves `/mcp`, `/bridge` and `/api/v1` on one Visual Nerve process. A port cannot be guaranteed free: an occupied-port error stops startup instead of picking a hidden fallback. To use 4318, start `visual-nerve --bridge --addr 127.0.0.1:4318` with the required allowed app origin, save `ws://127.0.0.1:4318/bridge` in the browser, and configure `http://127.0.0.1:4318/mcp` in the HTTP client. The stdio adapter takes `--mcp-url http://127.0.0.1:4318/mcp`. Keep the hostname, TLS choice and port consistent; changing the browser workspace origin itself changes its IndexedDB storage identity.
+
+On the isolated encrypted app, the deployed Content Security Policy also restricts browser bridge connections to explicitly approved ports. A custom port must be included in that app build and its response-header policy; changing Settings alone cannot override it. The reviewed default is 4317.
+
 ## Exact Read only POST routes
 
 Read only is an explicit route allowlist, not general permission for POST:
 
-| Route | Result |
-| --- | --- |
-| `/export` | Current graph JSON, Markdown or SVG export |
-| `/sql/preview` | Unsaved SQL query/schema analysis |
-| `/code/preview` | Unsaved code analysis |
-| `/code/project/preview` | Unsaved ZIP project analysis |
-| `/diagram-files/preview` | Unsaved draw.io/Visio page preview |
-| `/diagrams/{id}/questions` | Source-backed relationship question |
-| `/diagrams/{id}/build-brief` | Reviewed unsent Lovable brief |
-| `/diagrams/{id}/simulation/compare` | Comparison of saved runs |
+| Route                               | Result                                     |
+| ----------------------------------- | ------------------------------------------ |
+| `/export`                           | Current graph JSON, Markdown or SVG export |
+| `/sql/preview`                      | Unsaved SQL query/schema analysis          |
+| `/code/preview`                     | Unsaved code analysis                      |
+| `/code/project/preview`             | Unsaved ZIP project analysis               |
+| `/diagram-files/preview`            | Unsaved draw.io/Visio page preview         |
+| `/diagrams/{id}/questions`          | Source-backed relationship question        |
+| `/diagrams/{id}/build-brief`        | Reviewed unsent Lovable brief              |
+| `/diagrams/{id}/simulation/compare` | Comparison of saved runs                   |
 
 The normal command validation, structure/transport limits and connected-browser requirement still apply. Paths omit `/api/v1`. Creation, settings changes, saved-definition changes and presentation/simulation controls require Read + write.
 
@@ -67,7 +79,12 @@ Run the persisted model without requiring an active animation:
 {
   "path": "/diagrams/DIAGRAM_ID/simulation/runs",
   "method": "POST",
-  "data": { "seed": 12345, "durationSeconds": 3600, "speed": "max", "animated": false }
+  "data": {
+    "seed": 12345,
+    "durationSeconds": 3600,
+    "speed": "max",
+    "animated": false
+  }
 }
 ```
 
@@ -103,7 +120,7 @@ All runtime mutations require write access and accepted storage, including camer
 
 Use `PATCH /presentation` with `{minimized:true}` to minimize the controls or `{minimized:false}` to expand them. GET returns the same panel state shown in the UI; opening defaults to expanded on desktop and minimized in compact layouts. This works during playback without pausing or changing audio/subtitles. Captions remain separately over the diagram when subtitles are enabled, including in 3D. The panel state is not persisted in the diagram and is not a video-export option. See the [player guide](PRESENTATION.md).
 
-Audio and preload start disabled; subtitles start enabled. `GET /presentation/voices` returns `{defaultVoiceId,voices}` with model IDs, labels, languages, sample rates, download sizes, licenses and sources. `GET /settings/presentation-voice` reads the saved selection. PUT that path with exact `{value:"en_GB-alan-medium"}`, `{value:"en_US-ljspeech-high"}`, `{value:"en_GB-cori-high"}` or `{value:"sv_SE-nst-medium"}` to choose a voice. Alan, a British male Piper voice, is the default; existing explicit voice choices are retained. Speech generation runs locally, while first use can download model assets; explicit `POST /presentation/preload` with `{}` warms the model and phonemizer and prepares up to three upcoming clips. Read `progress` (0–1) and `message` for the overall preload percentage, ready narration count and actual download/synthesis percentage; opaque initialization remains indeterminate. Generated speech and playback progress are not canonical graph data.
+Audio and preload start disabled; subtitles start enabled. `GET /presentation/voices` returns `{defaultVoiceId,voices}` with all 20 model IDs, labels, language/locale, actual quality tier, fixed speaker, sample rates, download sizes, licenses and sources. `GET /settings/presentation-voice` reads the saved selection. PUT that path with exact `{value:"<catalog voice id>"}` to select any returned voice. For example, `{value:"de_DE-thorsten-high"}` selects German Thorsten; existing English and Swedish IDs remain valid. The catalog also covers French, Spanish, Portuguese, Norwegian, Danish and Finnish. Discover choices rather than inferring IDs; Piper has medium/high tiers, not high+. Alan, a British male Piper voice, is the default; existing explicit voice choices are retained. Speech generation runs locally, while first use can download model assets; explicit `POST /presentation/preload` with `{}` warms the model and phonemizer and prepares every step in the selected sequence from its beginning, independent of the current cursor. Bounded RAM and encrypted temporary local spill retain the clips; 100% requires all steps ready. Generated audio is excluded from backups and discarded on close, content/voice changes or workspace lock. Browser-quota or 1 GiB retained-ciphertext limit (including IV/tag overhead) failures are explicit. Read `progress` (0–1) and `message` for the overall preload percentage, ready narration count and actual download/synthesis percentage; opaque initialization remains indeterminate. Generated speech and playback progress are not canonical graph data.
 
 ## Export the walkthrough as video
 
@@ -152,3 +169,13 @@ Use `POST /code/project/preview` with `{data:"<BASE64_ZIP_BYTES>",name?,mode?:"f
 Folder cards expose semantic `metadata.projectDirectory` (`version:1,path,fileCount,languages`), root `.`; combined folder dependencies retain confidence/evidence plus `occurrences`. `diagram.metadata.codeAnalysis` contains mode, optional `directoryCount` and ZIP `project` provenance. No need to infer folders or imports from coordinates. `markdown` is discoverable in `/code/languages`; supplied relative inline/reference/wiki links map documentation dependencies. Sources and archive bytes remain temporary. See [ZIP policy and examples](CODE_IMPORT.md#import-a-complete-project-archive).
 
 ZIP API language overrides use `languages:{"src/header.h":"c"}` with exact retained paths after wrapping-folder removal. Unknown/excluded paths and unsupported IDs are rejected. Preview again with these overrides if detection is inconclusive, matching the UI language selectors.
+
+## Encrypted workspace security
+
+The isolated app, API and MCP share one authoritative browser vault/session. Call `visual_nerve_request` with `{ "path": "/workspace/security", "method": "GET" }` for safe status of the connected backend: versioned `mode`, `state`, cipher/schema metadata and human-unlock capabilities. Discovery exposes no records, credentials, vault IDs, expiry timestamps or grants and grants no content access. See [the complete status contract](../API.md#encrypted-workspace-security).
+
+An already authorized live socket may remain restricted to control when locked; private commands return structured **423 WORKSPACE_LOCKED**. Cold locked startup or a lost/closed socket does not reconnect; unavailable browsers remain **503**. After human unlock, access starts **Off** and requires a fresh human Settings grant. Static `visual_nerve_api_docs` and MCP resources work without a connected/unlocked browser.
+
+With current Read + write access, `{ "path": "/workspace/lock", "method": "POST", "data": {} }` saves pending edits then intentionally locks the shared vault. Save failure preserves edits; concurrent grant/data changes return **409** without revocation. An already-locked retained connection returns idempotent safe status. There are no programmatic password, recovery, unlock or session-policy controls. Requests do not renew inactivity. A lock revokes in-flight commands permanently, including late results after a new unlock; inspect state and issue a fresh request rather than retrying an interrupted mutation automatically.
+
+Explicit authorized AI/API requests and ordinary exports expose readable content. Browser encrypted backups are separate from semantic `GET /workspace/export`, retain their original credentials, and cannot be recalled by changing the live password or rotating its key. Keep passwords/recovery keys out of prompts, tool arguments and logs. Existing www/staging workspaces remain separate until the user performs and verifies full transfer in the browser.

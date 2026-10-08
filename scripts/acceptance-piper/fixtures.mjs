@@ -1,3 +1,7 @@
+import {
+  acceptanceModelFiles,
+  acceptanceVoiceIds,
+} from "./selected-voices.mjs";
 export function createDiagramHelpers({ sleep, marker }) {
   async function diagram(
     api,
@@ -60,25 +64,32 @@ export function createDiagramHelpers({ sleep, marker }) {
       { timeout },
     );
     const state = await api("/presentation");
-    if (state.progress !== 1 || state.buffered > 3)
+    if (state.progress !== 1 || state.buffered !== state.total)
       throw new Error("Preload final state invalid " + JSON.stringify(state));
     return state;
   }
   return { diagram, waitPreload };
 }
-export async function exportModelFixtures(page) {
-  await page.evaluate(async () => {
+export async function exportModelFixtures(
+  page,
+  selected = ["en_GB-alan-medium"],
+) {
+  if (!selected.every((id) => acceptanceVoiceIds.includes(id)))
+    throw new Error("Unexpected acceptance voice fixture.");
+  const names = selected.flatMap((id) => [`${id}.onnx`, `${id}.onnx.json`]);
+  if (!names.every((name) => acceptanceModelFiles.includes(name)))
+    throw new Error("Unexpected acceptance model filename.");
+  await page.evaluate(async (names) => {
     const cache = await caches.open("visualnerve-piper-models-v1");
     const keys = await cache.keys();
-    for (const name of [
-      "en_GB-alan-medium.onnx",
-      "en_GB-alan-medium.onnx.json",
-    ]) {
+    for (const name of names) {
       const key = keys.find((key) =>
         new URL(key.url).pathname.endsWith("/" + name),
       );
       if (!key)
-        throw new Error("The browser did not persist the Alan model fixture.");
+        throw new Error(
+          `The browser did not persist the ${name} model fixture.`,
+        );
       const response = await cache.match(key);
       const reader = response.body.getReader();
       let first = true;
@@ -96,5 +107,5 @@ export async function exportModelFixtures(page) {
         }
       }
     }
-  });
+  }, names);
 }

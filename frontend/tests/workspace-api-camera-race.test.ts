@@ -8,6 +8,7 @@ import type { Graph } from '../src/model/types';
 import { canvasViewportGraph } from '../src/canvas/navigation';
 import { createSimulationGraph, setSimulationModel } from '../src/simulation/document';
 import { createBasicModel } from '../src/simulation/examples';
+import { holdRefreshRead, settingWrites } from './workspace-test-hooks';
 
 let db: WorkspaceDatabase, repo: Repository, workspace: Workspace;
 let refresh: () => Promise<void>;
@@ -69,11 +70,14 @@ function camera(x: number) {
 }
 
 function holdCommittedRequest() {
-  const original = repo.request.bind(repo);
+  const original = Repository.prototype.request;
   const committed = deferred(),
     release = deferred();
-  vi.spyOn(repo, 'request').mockImplementation(async (...args) => {
-    const result = await original(...args);
+  vi.spyOn(Repository.prototype, 'request').mockImplementation(async function (
+    this: Repository,
+    ...args
+  ) {
+    const result = await original.apply(this, args);
     committed.resolve();
     await release.promise;
     return result;
@@ -226,7 +230,7 @@ describe('one authoritative graph during API and camera writes', () => {
     const before = useEditor.getState().graph!;
     const arrived = deferred(),
       release = deferred();
-    vi.spyOn(repo, 'request').mockImplementation(async () => {
+    vi.spyOn(Repository.prototype, 'request').mockImplementation(async () => {
       arrived.resolve();
       await release.promise;
       return {
@@ -262,33 +266,26 @@ describe('one authoritative graph during API and camera writes', () => {
 
   it('ignores a stale refresh read while a newer own save remains in flight', async () => {
     const before = useEditor.getState().graph!;
-    const records = await db.diagrams.toArray();
-    const collection = db.diagrams.orderBy('updatedAt').reverse();
-    const readStarted = deferred(),
-      staleRead = deferred<typeof records>();
-    vi.spyOn(collection, 'toArray').mockImplementationOnce(() => {
-      readStarted.resolve();
-      return staleRead.promise as ReturnType<typeof collection.toArray>;
-    });
-    vi.spyOn(db.diagrams, 'orderBy').mockReturnValueOnce({
-      reverse: () => collection,
-    } as ReturnType<typeof db.diagrams.orderBy>);
+    const staleRead = holdRefreshRead(db);
     const refreshing = refresh();
-    await readStarted.promise;
+    await staleRead.entered;
     useEditor.getState().updateNode(before.nodes[1].id, { title: 'First own save' });
     await workspace.settled();
-    const original = repo.saveGraph.bind(repo);
+    const original = Repository.prototype.saveGraph;
     const saveStarted = deferred(),
       pendingSave = deferred();
-    vi.spyOn(repo, 'saveGraph').mockImplementationOnce(async (...args) => {
+    vi.spyOn(Repository.prototype, 'saveGraph').mockImplementationOnce(async function (
+      this: Repository,
+      ...args
+    ) {
       saveStarted.resolve();
       await pendingSave.promise;
-      return original(...args);
+      return original.apply(this, args);
     });
     useEditor.getState().updateNode(before.nodes[1].id, { title: 'Second own save' });
     await saveStarted.promise;
     const history = useEditor.getState().history;
-    staleRead.resolve(records);
+    staleRead.release();
     await refreshing;
     expect(useEditor.getState().status).not.toBe('conflict');
     expect(useEditor.getState().graph!.nodes[1].title).toBe('Second own save');
@@ -306,11 +303,14 @@ describe('one authoritative graph during API and camera writes', () => {
       const work = before.nodes[1];
       const saveStarted = deferred(),
         releaseSave = deferred();
-      const save = repo.saveGraph.bind(repo);
-      vi.spyOn(repo, 'saveGraph').mockImplementationOnce(async (...args) => {
+      const save = Repository.prototype.saveGraph;
+      vi.spyOn(Repository.prototype, 'saveGraph').mockImplementationOnce(async function (
+        this: Repository,
+        ...args
+      ) {
         saveStarted.resolve();
         await releaseSave.promise;
-        return save(...args);
+        return save.apply(this, args);
       });
       const settle = workspace.settled.bind(workspace);
       vi.spyOn(workspace, 'settled')
@@ -321,7 +321,7 @@ describe('one authoritative graph during API and camera writes', () => {
           camera(80);
           await settle();
         });
-      const request = vi.spyOn(repo, 'request');
+      const request = vi.spyOn(Repository.prototype, 'request');
       const patch = workspace.external(`/nodes/${work.id}`, 'PATCH', {
         version: work.version,
         title: 'Must not be written',
@@ -343,11 +343,14 @@ describe('one authoritative graph during API and camera writes', () => {
   it('honors immediate UI revocation during an awaited generic PATCH transaction read', async () => {
     const before = useEditor.getState().graph!,
       work = before.nodes[1];
-    const getGraph = repo.getGraph.bind(repo);
+    const getGraph = Repository.prototype.getGraph;
     const reading = deferred(),
       releaseRead = deferred();
-    vi.spyOn(repo, 'getGraph').mockImplementationOnce(async (id) => {
-      const graph = await getGraph(id);
+    vi.spyOn(Repository.prototype, 'getGraph').mockImplementationOnce(async function (
+      this: Repository,
+      id,
+    ) {
+      const graph = await getGraph.call(this, id);
       reading.resolve();
       // Keep the real read/write transaction open while its settings table is
       // locked, reproducing a revoke that must take effect before persistence.
@@ -412,7 +415,7 @@ describe('one authoritative graph during API and camera writes', () => {
       const path = endpoint.replace('current', before.diagram.id);
       const started = deferred(),
         release = deferred();
-      vi.spyOn(repo, 'request').mockImplementationOnce(async () => {
+      vi.spyOn(Repository.prototype, 'request').mockImplementationOnce(async () => {
         started.resolve();
         await release.promise;
         return before;
@@ -435,7 +438,7 @@ describe('one authoritative graph during API and camera writes', () => {
     'retains a failed %s downgrade through unrelated refreshes until an explicit grant succeeds',
     async (permission) => {
       const graph = useEditor.getState().graph!;
-      vi.spyOn(db.settings, 'put').mockRejectedValueOnce(
+      settingWrites(db).mockRejectedValueOnce(
         new DOMException('Storage unavailable', 'QuotaExceededError'),
       );
       await expect(workspace.setPreference('mcp-access', permission)).rejects.toMatchObject({
@@ -472,7 +475,7 @@ describe('one authoritative graph during API and camera writes', () => {
     'does not lift a prior %s restriction when an explicit upgrade also fails to persist',
     async (permission) => {
       const failure = new DOMException('Storage unavailable', 'QuotaExceededError');
-      const put = vi.spyOn(db.settings, 'put').mockRejectedValueOnce(failure);
+      const put = settingWrites(db).mockRejectedValueOnce(failure);
       await expect(workspace.setPreference('mcp-access', permission)).rejects.toMatchObject({
         name: 'QuotaExceededError',
       });
@@ -508,15 +511,15 @@ describe('one authoritative graph during API and camera writes', () => {
     await workspace.setPreference('mcp-access', 'read');
     const started = deferred(),
       release = deferred();
-    const put = db.settings.put.bind(db.settings);
-    vi.spyOn(db.settings, 'put').mockImplementation((...args) => {
-      if (args[0].key === 'mcp-access' && args[0].value === 'write') {
-        started.resolve();
-        return Dexie.Promise.resolve(release.promise).then(() => put(...args));
-      } else if (args[0].key === 'mcp-access' && args[0].value === 'off')
-        return Dexie.Promise.reject(new DOMException('Storage unavailable', 'QuotaExceededError'));
-      return put(...args);
+    const writes = settingWrites(db);
+    const put = writes.getMockImplementation()!;
+    writes.mockImplementationOnce(async (...args) => {
+      const result = await put(...args);
+      started.resolve();
+      await release.promise;
+      return result;
     });
+    writes.mockRejectedValueOnce(new DOMException('Storage unavailable', 'QuotaExceededError'));
     const olderUpgrade = workspace.setPreference('mcp-access', 'write');
     await started.promise;
     expect(useEditor.getState().mcpAccess).toBe('read');
@@ -540,13 +543,13 @@ describe('one authoritative graph during API and camera writes', () => {
     await workspace.setPreference('mcp-access', 'read');
     const consentRead = deferred(),
       releaseConsent = deferred();
-    const get = db.settings.get.bind(db.settings);
-    vi.spyOn(db.settings, 'get').mockImplementationOnce((...args) =>
-      get(...args).then((record) => {
-        consentRead.resolve();
-        return Dexie.Promise.resolve(releaseConsent.promise).then(() => record);
-      }),
-    );
+    const writes = settingWrites(db);
+    const put = writes.getMockImplementation()!;
+    writes.mockImplementationOnce(async (...args) => {
+      consentRead.resolve();
+      await releaseConsent.promise;
+      return put(...args);
+    });
     const olderUpgrade = workspace.setPreference('mcp-access', 'write');
     await consentRead.promise;
     expect(useEditor.getState().mcpAccess).toBe('read');

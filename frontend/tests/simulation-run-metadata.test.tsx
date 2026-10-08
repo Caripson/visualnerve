@@ -4,6 +4,8 @@ import { WorkspaceDatabase } from '../src/storage/database';
 import { blankGraph } from '../src/model/types';
 import { SimulationService, simulationService } from '../src/simulation/service';
 import { SimulationResults } from '../src/simulation/SimulationResults';
+import { asWorkspaceStorage } from '../src/storage/adapter';
+import { SimulationUIAction } from '../src/simulation/ui-action';
 import { createBasicModel } from '../src/simulation/examples';
 import { SimulationEngine } from '../src/simulation/engine';
 import type { WorkerCommand, WorkerUpdate } from '../src/simulation/protocol';
@@ -67,8 +69,19 @@ async function complete(scenarioId?: string) {
   return run;
 }
 
-const perform = async (action: () => Promise<unknown>) => {
-  await action();
+const perform = async (action: (job: SimulationUIAction) => Promise<unknown>) => {
+  const job = new SimulationUIAction(
+    asWorkspaceStorage(db),
+    () => true,
+    () => {},
+  );
+  try {
+    await job.check();
+    await action(job);
+    await job.check();
+  } finally {
+    job.dispose();
+  }
 };
 
 describe('captured simulation run labels and economics', () => {

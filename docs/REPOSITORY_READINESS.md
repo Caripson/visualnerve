@@ -63,6 +63,10 @@ artifacts actually supplied. Do not advertise unverified binaries.
 
 Follow [the deployment gates](DEPLOYMENT.md): successful CI for the exact revision,
 manual staging, owner review, then manual production with exact-revision approval.
-The current production setup uses existing S3 website origins and CloudFront
-resources; no CloudFormation/OAC stack was provisioned for this launch. Updating
-these documents does not authorize another deployment or change AWS resources.
+The original public website launch reused existing S3 website origins and
+CloudFront resources. The separate encrypted app now has an explicitly prepared
+private REST origin/OAC and dedicated routing/header controls; preparation does
+not establish a successful application release. Its app-only build and manual
+revision gates are documented in [app-origin deployment](APP_ORIGIN_DEPLOYMENT.md).
+Keep the legacy www workspace accessible for verified human-controlled transfer.
+Updating documents alone does not authorize deployment or change AWS resources.

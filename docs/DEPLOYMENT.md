@@ -1,6 +1,6 @@
 # Manual staging and reviewed production
 
-`public/` contains static application and documentation files. The product homepage is `/`; the editor is `/app/`. S3 and CloudFront deliver these files and do not store user diagrams. The browser owns IndexedDB content.
+`public/` contains the public website and its legacy `/app/` entry. A separately audited `public-app/` package contains the encrypted workspace for `https://app.visualnerve.com`, with the editor at `/` and a same-origin `/app/` compatibility path. S3 and CloudFront deliver static files and do not store user diagrams. The browser owns IndexedDB content.
 
 ```text
 Push main → CI tests/build
@@ -8,22 +8,31 @@ Push main → CI tests/build
 Manual Deploy S3 → staging → owner reviews the whole site
                                       ↓ explicit exact-SHA approval
 Manual Deploy production → www.visualnerve.com
+Manual Deploy isolated app → app.visualnerve.com (separate package and gates)
 ```
 
-Neither workflow automatically deploys after a push, PR, successful CI or staging run. Deploy jobs build/audit/upload; they do not run tests. Instead, their gate requires an already successful CI run for the deployed commit. CI remains the full independent Go/frontend/browser verification pipeline.
+No deployment workflow automatically runs after a push, PR, successful CI or staging run. Deploy jobs build/audit/upload; they do not run tests. Instead, their gate requires an already successful CI run for the deployed commit. CI remains the full independent Go/frontend/browser verification pipeline.
+
+## Isolated encrypted app
+
+**Deploy isolated app** (`.github/workflows/deploy-app.yml`) publishes only audited `public-app/` files to bucket `app.visualnerve.com`, distribution `E10TKGRYWGM422`, in the main-only `app-production` environment. It verifies the actual private S3 REST origin, OAC, exact LIVE routing function and security headers before upload. It preserves the existing public website and legacy workspace entry.
+
+Besides successful exact-commit CI and manual staging, the app gate requires `PRODUCTION_APPROVED_SHA`, `APP_SURFACE_APPROVED_SHA` and `APP_SURFACE_STAGING_VERIFIED_SHA` to identify the same reviewed commit. Review the encrypted app fixture and native vault/MCP/offline checks as well as ordinary staging: the www/staging app uses the legacy backend. Publication waits for CloudFront invalidation. Post-deployment checks must use real public DNS/TLS and disposable profiles. Infrastructure preparation and an application release are separate operations. Follow [the full app-origin hosting and release guide](APP_ORIGIN_DEPLOYMENT.md).
+
+Origin changes do not migrate IndexedDB. Keep `www.visualnerve.com/app/` accessible; its browser records remain available until a human exports an encrypted transfer and verifies the destination. Do not redirect that entry or delete its source data automatically. See [storage and transfer](STORAGE.md).
 
 ## Destinations and build configuration
 
-| Setting                 | Staging: Deploy S3                   | Production: Deploy production                             |
-| ----------------------- | ------------------------------------ | --------------------------------------------------------- |
-| Workflow                | `.github/workflows/deploy.yml`       | `.github/workflows/deploy-production.yml`                 |
-| Site URL                | `https://visualnerve.caripson.com`   | `https://www.visualnerve.com`                             |
-| S3 bucket               | `visualnerve.caripson.com`           | `www.visualnerve.com`                                     |
+| Setting                 | Staging: Deploy S3                   | Production: Deploy production                                |
+| ----------------------- | ------------------------------------ | ------------------------------------------------------------ |
+| Workflow                | `.github/workflows/deploy.yml`       | `.github/workflows/deploy-production.yml`                    |
+| Site URL                | `https://visualnerve.caripson.com`   | `https://www.visualnerve.com`                                |
+| S3 bucket               | `visualnerve.caripson.com`           | `www.visualnerve.com`                                        |
 | CloudFront distribution | `E3PXPDRARNVUFD`                     | `E2DFG7DKVLDNIQ` via `PRODUCTION_CLOUDFRONT_DISTRIBUTION_ID` |
-| GitHub environment      | `staging`                            | `production`, main only                                   |
-| Hugo environment        | `staging`                            | `production`                                              |
-| Search indexing         | `noindex`, disallowed staging robots | Production canonical URL/indexing                         |
-| AWS region/account      | `us-east-1` / `094904000140`         | `us-east-1` / `094904000140`                              |
+| GitHub environment      | `staging`                            | `production`, main only                                      |
+| Hugo environment        | `staging`                            | `production`                                                 |
+| Search indexing         | `noindex`, disallowed staging robots | Production canonical URL/indexing                            |
+| AWS region/account      | `us-east-1` / `094904000140`         | `us-east-1` / `094904000140`                                 |
 
 The staging hostname previously served the application directly. It now hosts the complete review site, with the application at `/app/`. No browser origin changes merely because the editor path changes. Production is a different origin; existing staging work needs export/restore there.
 
@@ -110,15 +119,15 @@ The script uses `aws s3 cp` and never deletes existing objects. A failed upload 
 
 The 2026-10-08 launch uses existing AWS resources, not a newly provisioned stack:
 
-| Resource | Current configuration |
-| --- | --- |
-| Canonical site | `https://www.visualnerve.com` |
-| Production bucket | `www.visualnerve.com`, using its S3 website endpoint as the origin |
-| www CloudFront distribution | `E2DFG7DKVLDNIQ` |
-| Apex redirect distribution | `E2772DY3FXHIJC` for `visualnerve.com` |
-| Shared viewer-request function | `visualnerve-production-canonical-site`, based on `deployment/viewer-request.js` |
-| Certificate names | `*.visualnerve.com` and `visualnerve.com` |
-| Static indexes/errors | Directory routes resolve to `index.html`; origin 403/404 serves `/error.html` with HTTP 404 |
+| Resource                       | Current configuration                                                                       |
+| ------------------------------ | ------------------------------------------------------------------------------------------- |
+| Canonical site                 | `https://www.visualnerve.com`                                                               |
+| Production bucket              | `www.visualnerve.com`, using its S3 website endpoint as the origin                          |
+| www CloudFront distribution    | `E2DFG7DKVLDNIQ`                                                                            |
+| Apex redirect distribution     | `E2772DY3FXHIJC` for `visualnerve.com`                                                      |
+| Shared viewer-request function | `visualnerve-production-canonical-site`, based on `deployment/viewer-request.js`            |
+| Certificate names              | `*.visualnerve.com` and `visualnerve.com`                                                   |
+| Static indexes/errors          | Directory routes resolve to `index.html`; origin 403/404 serves `/error.html` with HTTP 404 |
 
 The apex distribution redirects to HTTPS www with status 308 and preserves the
 path and query string before the editor opens browser storage. The shared

@@ -8,9 +8,36 @@ The website delivers app files. The browser saves diagrams, nodes, relationships
 Visual Nerve website → your browser → IndexedDB
 ```
 
+## Encrypted app release under review
+
+The separate `app.visualnerve.com` implementation encrypts all private IndexedDB
+records with AES-256-GCM, including sources, settings, history and simulation
+archives. It requires browser-only password setup and unlock before private
+access. Keys remain in memory; a shared session boundary applies to UI, storage,
+workers, API and MCP. Automated calls do not renew human inactivity, and no
+programmatic unlock or server password reset exists. The surface has no
+Analytics or marketing execution.
+
+This release is under review. The published `www.visualnerve.com/app/` still uses
+readable local records. An explicit encrypted export and fully verified transfer
+moves existing work without deleting the source or synchronizing origins. Small
+vault/session and asset-cache coordination metadata remain readable technical
+exceptions without workspace content. [Storage/session schema](ENCRYPTED_WORKSPACE_SCHEMA.md).
+
+Complete UI backups on the isolated surface are encrypted; API/MCP semantic
+exports and ordinary diagram exports intentionally provide readable copies.
+Older files keep their original credentials. A password change keeps the content
+key; a separate human-only incident operation rotates that key for current
+records but cannot recall old copies. Keep recovery material separately and
+review what you share. [Backup and incident procedures](../hugo/content/help/settings.md).
+
 ## Required acceptance
 
 A checkbox and **Accept and continue** require explicit acceptance of local storage and offline app caching before the workspace opens. Escape, backdrop clicks, declining and shortcuts cannot bypass it. Without acceptance, no diagrams load or are created and no offline cache is installed in a new profile. The app opens the empty database schema to check prior acceptance; templates and preferences are seeded afterward. Browsers may independently cache ordinary downloaded HTTP files.
+
+On the isolated app, the password gate precedes this consent screen. Opening
+technical vault metadata while locked does not seed private templates, open
+legacy records or grant connected tools access.
 
 Acceptance is saved in IndexedDB, never inferred from a visit, old informational acknowledgement or imported backup. Deleting all local data removes acceptance too. The guide and privacy page remain readable without using the workspace. The service requires local storage.
 
@@ -20,9 +47,9 @@ Another browser, profile, device or private window has independent storage even 
 
 ## Backups and moving work
 
-**Settings → Data & Privacy → Export all data** downloads `visual-nerve-backup-YYYY-MM-DD.json`: diagrams, nodes, connections, all owners, portable settings, templates, CSV datasets, schema version and export date. It excludes credentials, grants, storage acceptance, local identity and the local import-size preference. You control where the downloaded file is kept. Visual Nerve never uploads it. Share a backup only when you intend to share its content.
+**Settings → Data & Privacy → Export all data** downloads a complete workspace backup: diagrams, nodes, connections, all owners, portable settings, templates, CSV datasets, history, simulation archives, schema version and export date. On the legacy workspace, `visual-nerve-backup-YYYY-MM-DD.json` is readable JSON. On the isolated encrypted app, the download is an authenticated encrypted backup requiring its matching password or recovery key. Both exclude integration credentials/grants, storage acceptance, local identity and the browser-local import-byte and ZIP source-file limits. You control where the downloaded file is kept. Visual Nerve never uploads it. Share a backup only when you intend to share its content.
 
-**Restore backup** previews Merge (keep current projects and add imported work) or Replace (remove current data first, with explicit confirmation). Identity collisions are remapped; invalid data rolls back all tables. Replace disables MCP. Both modes ignore any imported file-size preference and retain the destination browser's own limit. Import cannot grant tools access or accept storage for you. Export diagram is separate: one diagram as PNG/PDF/Markdown/JSON.
+**Restore backup** previews Merge (keep current projects and add imported work) or Replace (remove current data first, with explicit confirmation). Identity collisions are remapped; invalid data rolls back all tables. Replace disables MCP. Both modes ignore imported browser-local import limits and retain the destination's own settings. Import cannot grant tools access or accept storage for you. Export diagram is separate: one diagram as readable PNG/PDF/SVG/Markdown/JSON.
 
 After ten diagrams, a subtle reminder appears if no complete export has been recorded. It can be dismissed permanently in that local workspace; it sends no notifications.
 
@@ -46,11 +73,13 @@ SELECT/WITH diagrams save source aliases/scopes, output expressions, JOIN condit
 
 Numbered walkthroughs save their sequence and timings in the diagram. Node descriptions remain local and are sent only to the local speech worker for neural synthesis; no narration text, title or diagram data is uploaded to a speech service. Playback progress, subtitle visibility and generated narration WAVs are transient, with no WAV persistence in IndexedDB, JSON exports or workspace backups. Descriptions exceeding 12,000 characters fail explicitly without truncation.
 
-Audio and preloading start disabled. Explicit audio playback, video export with audio, **Preload**, or **Settings → Presentation voice → Preview voice** may download fixed voice models and configuration assets, approximately 60–109 MiB per voice, from versioned external model URLs. The requests contain no diagram content, but the model host can see ordinary request metadata such as model choice and IP address. Inference runs locally after loading the model and can work offline with cached assets.
+Audio and preloading start disabled. Explicit audio playback, video export with audio, **Preload**, or **Settings → Presentation voice → Preview voice** may download fixed voice models and configuration assets, approximately 60–131 MiB per voice, from versioned external model URLs. The requests contain no diagram content, but the model host can see ordinary request metadata such as model choice and IP address. Inference runs locally after loading the model and can work offline with cached assets.
 
 Voice models use a separate versioned CacheStorage cache; **Settings → Presentation voice → Clear downloaded voices** removes it. These binaries are separate from diagram storage and excluded from backups. Runtime controls and subtitle descriptions use the same current native nodes in 2D and 3D. REST/MCP GETs permit read access; all playback, navigation, audio/subtitle/preload changes require accepted storage and write access.
 
 Walkthrough video export renders the numbered sequence locally and inserts narration offline, without screen capture or audible playback. Temporary frame, audio and encoded-video buffers are excluded from IndexedDB, JSON and workspace backups. The completed MP4 or WebM downloads in the browser; REST/MCP receives transient export state and no video bytes. Starting and cancelling video export require accepted storage and write access; GET status permits read access. Saved diagram content is unchanged. Keep the tab visible; manual camera interaction or diagram edits cancel. Files are capped at 256 MiB and final timelines at 30 minutes, with explicit errors rather than truncation.
+
+Full walkthrough preloading can retain narration beyond its 32 MiB prepared-clip RAM cache in an encrypted temporary CacheStorage cache, up to a 1 GiB aggregate ciphertext ceiling, including IV/tag overhead, subject to browser quota. Its AES-256-GCM key is held only in RAM, separate from the workspace key; persisted entries use random identifiers and contain no readable narration or key. Closing the presentation, content or voice changes and workspace lock revoke the key and clean up the cache. Reload cannot recover it. A crash may leave unusable ciphertext; Clear app cache removes those owned temporary caches. These clips are not part of IndexedDB, diagram exports or workspace backups.
 
 ## Optional MCP
 

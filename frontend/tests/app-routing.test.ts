@@ -1,10 +1,11 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, copyFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { runInNewContext } from 'node:vm';
+import { deferred } from './app-cache-fixture';
 
 const generator = readFileSync(
   new URL('../../scripts/service-worker.mjs', import.meta.url),
@@ -42,15 +43,24 @@ function worker(editor = 'editor workspace') {
     const script = join(directory, 'scripts/service-worker.mjs');
     mkdirSync(dirname(script), { recursive: true });
     writeFileSync(script, generator);
+    copyFileSync(
+      new URL('../../scripts/service-worker-runtime.js', import.meta.url),
+      join(dirname(script), 'service-worker-runtime.js'),
+    );
     execFileSync(process.execPath, [script], { stdio: 'pipe' });
     const source = readFileSync(join(directory, 'public/sw.js'), 'utf8');
     const handlers = new Map<string, (event: any) => void>();
     const cache = { addAll: vi.fn().mockResolvedValue(undefined), match: vi.fn(), put: vi.fn() };
-    const open = vi.fn().mockResolvedValue(cache);
+    const open = vi.fn(async (name: string) =>
+      name === 'visual-nerve-cache-control-v1' ? { match: async () => undefined } : cache,
+    );
     const fetch = vi.fn().mockResolvedValue(new Response('network asset'));
     const claim = vi.fn().mockResolvedValue(undefined);
+    const pending: Promise<unknown>[] = [];
     const context: any = {
       URL,
+      AbortController,
+      DOMException,
       fetch,
       caches: { open },
       self: {
@@ -68,10 +78,23 @@ function worker(editor = 'editor workspace') {
         respondWith: (value: Promise<unknown>) => {
           response = value;
         },
+        waitUntil: (value: Promise<unknown>) => {
+          pending.push(value);
+        },
       });
       return response;
     }
-    return { source, manifest: context.manifest, handlers, cache, open, fetch, claim, request };
+    return {
+      source,
+      manifest: context.manifest,
+      handlers,
+      cache,
+      open,
+      fetch,
+      claim,
+      request,
+      pending,
+    };
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -87,7 +110,8 @@ describe('public home and editor offline routing', () => {
       },
     });
     await installed;
-    expect(runtime.cache.addAll).toHaveBeenCalledWith(runtime.manifest.assets);
+    expect(runtime.fetch.mock.calls.map(([path]) => path)).toEqual(runtime.manifest.assets);
+    expect(runtime.cache.put.mock.calls.map(([path]) => path)).toEqual(runtime.manifest.assets);
     expect(runtime.manifest.assets).toEqual(
       expect.arrayContaining([
         '/',
@@ -143,5 +167,102 @@ describe('public home and editor offline routing', () => {
       after = worker('after editor');
     expect(before.manifest.cacheName).not.toBe(after.manifest.cacheName);
     expect(after.source).not.toMatch(/indexedDB|deleteDatabase|localStorage|caches\.delete/);
+  });
+
+  it('aborts lazy asset downloads and acknowledges only when all work has stopped', async () => {
+    const runtime = worker();
+    runtime.fetch.mockImplementation(
+      (_request, options) =>
+        new Promise((_resolve, reject) => {
+          options.signal.addEventListener('abort', () => reject(options.signal.reason));
+        }),
+    );
+    const response = runtime.request('/editor/speech/voice.onnx')!.catch((error) => error);
+    await vi.waitFor(() => expect(runtime.fetch).toHaveBeenCalledOnce());
+    const ready = vi.fn();
+    let stopping!: Promise<unknown>;
+    runtime.handlers.get('message')!({
+      data: { type: 'app-cache-clear', begin: true },
+      ports: [{ postMessage: ready }],
+      waitUntil: (value: Promise<unknown>) => {
+        stopping = value;
+      },
+    });
+    await stopping;
+    expect(await response).toMatchObject({ name: 'AbortError' });
+    expect(runtime.cache.put).not.toHaveBeenCalled();
+    expect(ready).toHaveBeenCalledWith({ type: 'app-cache-ready', begin: true });
+    runtime.cache.match.mockResolvedValue('cached editor');
+    const paused = await runtime.request('/app/')!.catch((error) => error);
+    expect(paused).toMatchObject({ name: 'AbortError' });
+    runtime.handlers.get('message')!({
+      data: { type: 'app-cache-clear', begin: false },
+      ports: [{ postMessage: ready }],
+      waitUntil: (value: Promise<unknown>) => {
+        stopping = value;
+      },
+    });
+    await stopping;
+    expect(await runtime.request('/app/')).toBe('cached editor');
+  });
+
+  it('waits for already-started cache writes before reporting a clear barrier ready', async () => {
+    const runtime = worker(),
+      writing = deferred(),
+      release = deferred();
+    runtime.cache.put.mockImplementation(async () => {
+      writing.resolve();
+      await release.promise;
+    });
+    const response = runtime.request('/editor/speech/voice.onnx');
+    await response;
+    await writing.promise;
+    const ready = vi.fn();
+    let stopping!: Promise<unknown>;
+    runtime.handlers.get('message')!({
+      data: { type: 'app-cache-clear', begin: true },
+      ports: [{ postMessage: ready }],
+      waitUntil: (value: Promise<unknown>) => {
+        stopping = value;
+      },
+    });
+    await Promise.resolve();
+    expect(ready).not.toHaveBeenCalled();
+    release.resolve();
+    await stopping;
+    expect(ready).toHaveBeenCalledWith({ type: 'app-cache-ready', begin: true });
+    await Promise.allSettled(runtime.pending);
+  });
+
+  it('keeps an uncached shell download abortable after its headers have arrived', async () => {
+    const runtime = worker();
+    let signal!: AbortSignal;
+    runtime.fetch.mockImplementation(async (_request, options) => {
+      signal = options.signal;
+      return new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(new Uint8Array([1]));
+            signal.addEventListener('abort', () => controller.error(signal.reason), { once: true });
+          },
+        }),
+      );
+    });
+    const response = (await runtime.request('/app/')) as Response;
+    const ready = vi.fn();
+    let stopping!: Promise<unknown>;
+    runtime.handlers.get('message')!({
+      data: { type: 'app-cache-clear', begin: true },
+      ports: [{ postMessage: ready }],
+      waitUntil: (value: Promise<unknown>) => {
+        stopping = value;
+      },
+    });
+    await stopping;
+    expect(signal.aborted).toBe(true);
+    expect(ready).toHaveBeenCalledWith({ type: 'app-cache-ready', begin: true });
+    await expect(response.arrayBuffer()).rejects.toMatchObject({ name: 'AbortError' });
+    expect(runtime.cache.put).not.toHaveBeenCalled();
+    await Promise.allSettled(runtime.pending);
   });
 });

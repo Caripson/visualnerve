@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { selectedHighVoicePreviews } from "./selected-voices.mjs";
 export async function runSpeechCases({
   context,
   setup,
@@ -18,6 +19,8 @@ export async function runSpeechCases({
   const graph = await diagram(api, 35);
   const player = page.getByRole("region", { name: "Diagram player" });
   await player.waitFor({ state: "visible" });
+  // Earlier steps must be included even when a user starts Preload in the middle.
+  await api("/presentation/seek", "POST", { index: 17 });
   if (results.remote.length)
     throw new Error("Automatic model download before explicit action");
   const coldStart = Date.now();
@@ -28,11 +31,28 @@ export async function runSpeechCases({
     document.querySelector(".presentation-message")?.textContent?.includes("%"),
   );
   await page.screenshot({ path: output("preload-progress.png") });
-  await waitPreload(page, api);
+  // This now includes all35 real syntheses, not the previous three-step window.
+  await waitPreload(page, api, 240000);
   const coldMs = Date.now() - coldStart;
   console.log(JSON.stringify({ phase: "cold-Alan-ready", coldMs }));
-  await page.waitForFunction(() => window.__speech.audio.length >= 3);
+  await page.waitForFunction(() => window.__speech.audio.length >= 35);
   const cold = await page.evaluate(() => window.__speech);
+  const prepared = await api("/presentation");
+  if (
+    prepared.index !== 17 ||
+    prepared.buffered !== 35 ||
+    prepared.total !== 35
+  )
+    throw new Error(
+      "Midpoint Preload did not prepare the entire tour: " +
+        JSON.stringify(prepared),
+    );
+  const prepareRequests = cold.requests.filter((v) => v.action === "prepare");
+  if (prepareRequests.length !== 35)
+    throw new Error(
+      "Full-tour preparation synthesized duplicate or missing clips: " +
+        prepareRequests.length,
+    );
   const loads = cold.progress.filter(
     (v) => v.stage === "download" && v.operation !== "runtime",
   );
@@ -52,7 +72,7 @@ export async function runSpeechCases({
   )
     throw new Error("UI percentage not meaningful " + JSON.stringify(global));
   if (
-    cold.audio.length !== 3 ||
+    cold.audio.length !== 35 ||
     cold.audio.some(
       (v) => v.rms < 0.001 || v.rate !== 22050 || v.duration <= 0.2,
     )
@@ -87,14 +107,34 @@ export async function runSpeechCases({
     .getByRole("button", { name: "Pause presentation", exact: true })
     .click();
   const sweepStart = Date.now();
-  for (let index = 3; index < 35; index += 3) {
+  // Replay every step, including steps before the original midpoint. Native
+  // AudioContext decoding/playback must reuse retained clips without inference.
+  for (let index = 0; index < 35; index++) {
     await api("/presentation/seek", "POST", { index });
     await api("/presentation/preload", "POST", {});
     await waitPreload(page, api);
+    await player
+      .getByRole("button", { name: "Play presentation", exact: true })
+      .click();
+    await page.waitForFunction(
+      () =>
+        document.querySelector(".presentation-player")?.dataset.status ===
+        "playing",
+    );
+    await player
+      .getByRole("button", { name: "Pause presentation", exact: true })
+      .click();
   }
   const warmSweepMs = Date.now() - sweepStart;
   console.log(JSON.stringify({ phase: "warm35-step-sweep", warmSweepMs }));
   const after = await page.evaluate(() => window.__speech);
+  if (
+    after.audio.length !== 35 ||
+    after.requests.filter((v) => v.action === "prepare").length !== 35
+  )
+    throw new Error("Playback resynthesized fully preloaded narration.");
+  if (after.requests.filter((v) => v.action === "preload").length !== 1)
+    throw new Error("Full-tour replay unnecessarily reinitialized the voice.");
   const modelRequests = results.remote.filter(
     (v) =>
       v.url.includes("/resolve/") && v.url.includes("en_GB-alan-medium.onnx"),
@@ -137,7 +177,7 @@ export async function runSpeechCases({
   }
   results.cases.push({
     phaseTimings,
-    name: "real HF cold Alan / warm reuse / >32 chunks / Pause resume / monotonic preload",
+    name: "real HF cold Alan / midpoint full35 preload / zero-inference replay / >32 chunks / Pause resume / monotonic preload",
     coldMs,
     warmPlayMs,
     warmSweepMs,
@@ -194,7 +234,15 @@ export async function runSpeechCases({
     ms: svMs,
     wave: sv,
   });
-  if (!process.env.PIPER_MODEL_FIXTURES) await exportModelFixtures(page);
+  if (process.env.PIPER_HIGH_VOICES === "1")
+    await selectedHighVoicePreviews({ page, api, results });
+  await exportModelFixtures(page, [
+    "en_GB-alan-medium",
+    "sv_SE-nst-medium",
+    ...(process.env.PIPER_HIGH_VOICES === "1"
+      ? ["en_US-libritts-high", "de_DE-thorsten-high"]
+      : []),
+  ]);
   await context.close();
   const broken = await browser.newContext({ ignoreHTTPSErrors: true });
   const test = await setup(broken, { routeModels: true });

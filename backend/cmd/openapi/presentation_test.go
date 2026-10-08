@@ -36,8 +36,8 @@ func TestPresentationSchemasAndPaths(t *testing.T) {
 		t.Fatal("minimized belongs to transient runtime, not the saved sequence")
 	}
 	voice := schemas["PresentationVoiceId"].(object)
-	if voice["default"] != "en_GB-alan-medium" || !reflect.DeepEqual(voice["enum"], []string{"en_GB-alan-medium", "en_US-ljspeech-high", "en_GB-cori-high", "sv_SE-nst-medium"}) {
-		t.Fatal("British male default and existing selectable voices must agree", voice)
+	if voice["default"] != "en_GB-alan-medium" || !reflect.DeepEqual(voice["enum"], []string{"en_GB-alan-medium", "en_US-ljspeech-high", "en_GB-cori-high", "sv_SE-nst-medium", "en_US-libritts-high", "en_US-joe-medium", "en_US-kristin-medium", "en_US-norman-medium", "en_GB-alba-medium", "en_GB-northern_english_male-medium", "en_GB-jenny_dioco-medium", "en_GB-cori-medium", "fr_FR-siwis-medium", "es_ES-davefx-medium", "pt_PT-tugão-medium", "pt_BR-faber-medium", "no_NO-talesyntese-medium", "da_DK-talesyntese-medium", "fi_FI-harri-medium", "de_DE-thorsten-high"}) {
+		t.Fatal("British male default and complete selectable catalog must agree", voice)
 	}
 	paths := map[string]string{}
 	addPresentationPaths(func(method, path, summary, input, output, status string) { paths[method+" "+path] = input })

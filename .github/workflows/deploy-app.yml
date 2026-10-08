@@ -1,0 +1,105 @@
+name: Deploy isolated app
+
+# Deliberate manual release; no push, completed workflow or schedule trigger.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: visualnerve-isolated-app-production-deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  SITE_URL: https://www.visualnerve.com
+  APP_SURFACE_ORIGIN: https://app.visualnerve.com
+  APP_WEBSITE_ORIGIN: https://www.visualnerve.com
+  APP_BRIDGE_PORTS: "4317"
+  APP_S3_BUCKET: app.visualnerve.com
+  APP_CLOUDFRONT_DISTRIBUTION_ID: E10TKGRYWGM422
+  APP_SURFACE_APPROVED_SHA: ${{ vars.APP_SURFACE_APPROVED_SHA }}
+  APP_SURFACE_STAGING_VERIFIED_SHA: ${{ vars.APP_SURFACE_STAGING_VERIFIED_SHA }}
+  PRODUCTION_APPROVED_SHA: ${{ vars.PRODUCTION_APPROVED_SHA }}
+  HUGO_PARAMS_ENVIRONMENT: production
+  HUGO_PARAMS_GOOGLEANALYTICSMEASUREMENTID: ""
+  HUGO_VERSION: "0.148.2"
+
+jobs:
+  deploy:
+    name: Publish reviewed encrypted app
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment:
+      name: app-production
+      url: https://app.visualnerve.com
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Require exact app approval, successful CI and reviewed staging
+        run: |
+          node deployment/require-app-approval.mjs
+          node scripts/require-ci.mjs production
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Install checked Hugo build tool
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="hugo_${HUGO_VERSION}_linux-amd64.tar.gz"
+          release="https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}"
+          cd "$RUNNER_TEMP"
+          curl --fail --silent --show-error --location "$release/$archive" --output "$archive"
+          curl --fail --silent --show-error --location "$release/hugo_${HUGO_VERSION}_checksums.txt" --output hugo-checksums.txt
+          grep " $archive$" hugo-checksums.txt | sha256sum --check --strict
+          mkdir -p "$RUNNER_TEMP/hugo-bin"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/hugo-bin" hugo
+          echo "$RUNNER_TEMP/hugo-bin" >> "$GITHUB_PATH"
+      - name: Install locked frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Build and audit the separate app package
+        run: |
+          ./build.sh
+          node scripts/build-app-surface.mjs public public-app
+          node deployment/verify-app-hosting.mjs --audit public-app
+      - name: Require configured deployment credentials
+        env:
+          DEPLOY_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          DEPLOY_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$DEPLOY_ACCESS_KEY_ID" || -z "$DEPLOY_SECRET_ACCESS_KEY" || "$DEPLOY_ACCESS_KEY_ID" == 'REPLACE_IN_GITHUB' || "$DEPLOY_SECRET_ACCESS_KEY" == 'REPLACE_IN_GITHUB' ]]; then
+            echo '::error::Set reviewed app deployment credentials in Actions secrets.'
+            exit 1
+          fi
+      - name: Recheck exact revision gates before AWS access
+        run: |
+          node deployment/require-app-approval.mjs
+          node scripts/require-ci.mjs production
+      - name: Configure AWS deployment credentials
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          allowed-account-ids: "094904000140"
+          mask-aws-account-id: true
+      - name: Verify private hosting, publish app-only files and wait for CDN invalidation
+        run: ./scripts/deploy-app.sh
+      - name: Report isolated app publication
+        run: echo "Published owner-approved $GITHUB_SHA to https://app.visualnerve.com from audited public-app only; private origin/policy/LIVE routes verified and invalidation completed. Legacy www workspace preserved." >> "$GITHUB_STEP_SUMMARY"

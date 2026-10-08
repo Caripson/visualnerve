@@ -43,6 +43,9 @@ function stopWorker(error: Error) {
   }
   pending.clear();
 }
+export function disposeCsvWorker() {
+  stopWorker(new DOMException('Workspace locked.', 'AbortError'));
+}
 
 function getWorker() {
   if (worker) return worker;

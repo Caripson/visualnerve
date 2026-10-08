@@ -35,7 +35,13 @@ afterEach(async () => {
 it('opens a diagram and routes transient controls only with consent and write grants', async () => {
   await workspace.external('/presentation/open', 'POST', { diagramId: graph.diagram.id });
   expect(useEditor.getState().graph?.diagram.id).toBe(graph.diagram.id);
-  expect(request).toHaveBeenCalledWith('/presentation/open', 'POST', {}, expect.any(Function));
+  expect(request).toHaveBeenCalledWith(
+    '/presentation/open',
+    'POST',
+    {},
+    expect.any(Function),
+    expect.any(AbortSignal),
+  );
   useEditor.setState({ mcpAccess: 'read' });
   await db.settings.put({ key: 'mcp-access', value: 'read' });
   await workspace.external('/presentation/voices', 'GET');
@@ -48,7 +54,7 @@ it.each(['grant', 'consent'])(
   'honors %s revoked while a graph load was pending before navigation',
   async (kind) => {
     let finish!: (graph: Graph) => void;
-    const loading = vi.spyOn(repo, 'getGraph').mockImplementation(
+    const loading = vi.spyOn(Repository.prototype, 'getGraph').mockImplementation(
       () =>
         new Promise<Graph>((resolve) => {
           finish = resolve;
@@ -72,7 +78,7 @@ it.each(['grant', 'consent'])(
   },
 );
 it('rejects malformed open payloads before loading or mutating a diagram', async () => {
-  const load = vi.spyOn(repo, 'getGraph');
+  const load = vi.spyOn(Repository.prototype, 'getGraph');
   for (const value of [null, [], { diagramId: 9 }, { diagramId: graph.diagram.id, extra: true }])
     await expect(workspace.external('/presentation/open', 'POST', value)).rejects.toMatchObject({
       status: 422,
@@ -82,7 +88,7 @@ it('rejects malformed open payloads before loading or mutating a diagram', async
 });
 it('blocks opening another diagram before navigation when video export is active', async () => {
   videoBusy.mockReturnValue(true);
-  const load = vi.spyOn(repo, 'getGraph');
+  const load = vi.spyOn(Repository.prototype, 'getGraph');
   await expect(
     workspace.external('/presentation/open', 'POST', { diagramId: graph.diagram.id }),
   ).rejects.toMatchObject({ status: 409 });

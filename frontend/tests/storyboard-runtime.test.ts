@@ -60,7 +60,7 @@ function setup() {
   };
 }
 async function settle() {
-  for (let i = 0; i < 15; i++) await Promise.resolve();
+  for (let i = 0; i < 48; i++) await Promise.resolve();
 }
 afterEach(() => vi.useRealTimers());
 it('plays authored multi-object scene narration, saved camera, and scene duration without editing descriptions', async () => {
@@ -98,11 +98,12 @@ it('plays authored multi-object scene narration, saved camera, and scene duratio
   player.close();
   expect(deps.releaseHighlight).toHaveBeenCalled();
 });
-it('preloads independent narration in a bounded three-scene window', async () => {
+it('preloads the complete authored storyboard narration', async () => {
   const { player, deps } = setup();
   player.open('storyboard');
   await player.preload();
   await settle();
+  expect(player.getState().message).toBe('Preload 100% · 2/2 steps ready.');
   expect(deps.prepare).toHaveBeenCalledTimes(2);
   expect(vi.mocked(deps.prepare).mock.calls.map((args) => args[0])).toEqual([
     'Authored scene narration',

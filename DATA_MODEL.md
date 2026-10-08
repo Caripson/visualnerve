@@ -23,28 +23,30 @@ Copying/pasting query objects within a diagram gives the pasted logical query in
 
 Draw.io/Visio file preview returns `DiagramImportResult={format,pages:[{id,name,graph,warnings}],warnings}`. Page IDs are source strings; every page graph uses native UUID nodes and edges. Creating an import stores only the selected native page using ordinary geometry, hierarchy, text, relationship styles and safe absolute HTTP(S) links. `diagram.metadata.diagramImport` records the format, imported filename/name and source page ID/name. Node/edge `metadata.diagramImport` can record source IDs/names and recognized shape/color/stroke or rotation/flip hints. This is ordinary provenance, not a source-file binding or an executable/embedded document. Conversion can simplify advanced shapes, rotations and waypoints with warnings. Source XML/ZIP, archive entries, embedded image bytes and unselected pages remain temporary. There is no new table, attachment store, source binding or schema migration. JSON/backup preserves the resulting editable graph. See [diagram file import](docs/DIAGRAM_IMPORT.md).
 
-## IndexedDB schema
+## Logical workspace schema
 
-Schema version 8 has 14 tables, defined in `frontend/src/storage/database.ts`:
+Logical schema version 8 has 14 stores. The legacy backend defines their Dexie tables in `frontend/src/storage/database.ts`; the encrypted backend implements the same semantic records and indexes through `frontend/src/storage/encrypted-database.ts`:
 
-| Table | Key and indexes | Contents |
-| --- | --- | --- |
-| diagrams | id; name, type, updatedAt, folder, tags | Canonical Diagram |
-| nodes | id; diagramId, unique [diagramId+externalId], updatedAt, nodeType, status, parentId, tags | Canonical GraphNode |
-| edges | id; diagramId, unique [diagramId+externalId], sourceNodeId, targetNodeId, updatedAt | Canonical GraphEdge |
-| owners | id; unique externalId, name, kind, team, updatedAt | Global Owner |
-| settings | key | Preferences, workspace identity, last project |
-| templates | id; name | Named canonical graph and builtin flag |
-| datasets | id; diagramId, updatedAt | Original CSV column IDs and string rows; multiple sources per diagram |
-| historySnapshots | id; diagramId, createdAt, contentId, sourceIds | Named and safety snapshot headers |
-| historyContents | id; diagramId, bytes | Deduplicated structural graph snapshots |
-| historySources | id; diagramId, unique [diagramId+datasetId+datasetVersion], rowId, bytes | Archived CSV headers referencing row content |
-| historyRows | id; diagramId, bytes | Deduplicated immutable historical CSV rows |
-| simulationModels | diagramId; diagramVersion | Typed semantic simulation model |
-| simulationRuns | id; diagramId, createdAt, status | Captured run model/options, status and result |
-| simulationCheckpoints | id; runId, diagramId, [runId+timeSeconds] | Bounded replay state snapshots |
+| Table                 | Key and indexes                                                                                     | Contents                                                              |
+| --------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| diagrams              | id; name, type, updatedAt, folder, tags                                                             | Canonical Diagram                                                     |
+| nodes                 | id; diagramId, unique [diagramId+externalId], updatedAt, nodeType, status, parentId, tags, ownerIds | Canonical GraphNode                                                   |
+| edges                 | id; diagramId, unique [diagramId+externalId], sourceNodeId, targetNodeId, updatedAt                 | Canonical GraphEdge                                                   |
+| owners                | id; unique externalId, name, kind, team, updatedAt                                                  | Global Owner                                                          |
+| settings              | key                                                                                                 | Preferences, workspace identity, last project                         |
+| templates             | id; name                                                                                            | Named canonical graph and builtin flag                                |
+| datasets              | id; diagramId, updatedAt                                                                            | Original CSV column IDs and string rows; multiple sources per diagram |
+| historySnapshots      | id; diagramId, createdAt, contentId, sourceIds                                                      | Named and safety snapshot headers                                     |
+| historyContents       | id; diagramId, bytes                                                                                | Deduplicated structural graph snapshots                               |
+| historySources        | id; diagramId, unique [diagramId+datasetId+datasetVersion], rowId, bytes                            | Archived CSV headers referencing row content                          |
+| historyRows           | id; diagramId, bytes                                                                                | Deduplicated immutable historical CSV rows                            |
+| simulationModels      | diagramId; diagramVersion                                                                           | Typed semantic simulation model                                       |
+| simulationRuns        | id; diagramId, createdAt, status                                                                    | Captured run model/options, status and result                         |
+| simulationCheckpoints | id; runId, diagramId, [runId+timeSeconds]                                                           | Bounded replay state snapshots                                        |
 
-Dexie version 1 discovers legacy browser snapshots. Version 2 expands stored graphs into canonical records, retaining owners, versions, ordering and settings. Version 3 removes obsolete graph/state stores. Version 4 preserves the six canonical stores and removes the historical boolean integration grant, requiring explicit MCP permission. Version 5 adds diagram-owned CSV datasets; version 6 changes their diagramId index to nonunique. Version 7 adds four history stores, and version 8 adds three simulation stores. These additive upgrades preserve existing records; fresh accepted workspaces use all 14 tables. Built-in templates seed only after storage acceptance and only when absent. See [storage](docs/STORAGE.md).
+Dexie version 1 discovers legacy browser snapshots. Version 2 expands stored graphs into canonical records, retaining owners, versions, ordering and settings. Version 3 removes obsolete graph/state stores. Version 4 preserves the six canonical stores and removes the historical boolean integration grant, requiring explicit MCP permission. Version 5 adds diagram-owned CSV datasets; version 6 changes their diagramId index to nonunique. Version 7 adds four history stores, and version 8 adds three simulation stores. These additive upgrades preserve existing legacy records. Built-in templates seed only after storage acceptance and only when absent.
+
+The isolated app uses separate physical vault schema **1**, with native IndexedDB stores `metadata` and `records`; all 14 logical stores above are encrypted. Authenticated root manifests/chunks and keyed query tokens preserve canonical IDs and semantics without storing readable application indexes. Existing-origin records are not automatically reinterpreted or encrypted by this schema: transfer is explicit and verifies the destination before activation. See [encrypted schema and limits](docs/ENCRYPTED_WORKSPACE_SCHEMA.md) and [storage](docs/STORAGE.md).
 
 Source analyses, matching-column relationships, entity focus and named views persist in diagram settings, with source paths/measures on node metadata. Named history and pre-refresh/pre-restore checkpoints retain bounded structural snapshots and deduplicate unchanged CSV row content. They are distinct from transient undo/redo. Full workspace backups include saved history and simulation archives; a single-diagram JSON export contains current content without run archives. Storage consent and integration grants cannot be imported from a backup.
 

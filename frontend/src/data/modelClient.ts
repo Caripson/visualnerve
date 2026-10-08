@@ -45,6 +45,9 @@ function stop(error: Error) {
   }
   pending.clear();
 }
+export function disposeDataModelWorker() {
+  stop(new DOMException('Workspace locked.', 'AbortError'));
+}
 function activeWorker() {
   if (worker) return worker;
   worker = new Worker(new URL('./modelWorker.ts', import.meta.url), { type: 'module' });

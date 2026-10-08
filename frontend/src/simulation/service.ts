@@ -1,5 +1,7 @@
-import { liveQuery } from 'dexie';
-import { database, type WorkspaceDatabase } from '../storage/database';
+import type { WorkspaceDatabase } from '../storage/database';
+import { asWorkspaceStorage } from '../storage/adapter';
+import { workspaceStorage } from '../storage/runtime';
+import type { WorkspaceStorage, WorkspaceOperation } from '../storage/contracts';
 import { StorageError } from '../model/validation';
 import { SimulationClient } from './client';
 import { SimulationRunStore, simulationRetentionLimits } from './run-store';
@@ -13,6 +15,7 @@ export type SimulationStartOptions = RunOptions & {
   animated?: boolean;
   origin?: 'ui' | 'api';
   startPaused?: boolean;
+  beforeWrite?: (scope: WorkspaceStorage) => Promise<void>;
 };
 export interface SimulationRunInfo {
   id: string;
@@ -38,6 +41,8 @@ interface LiveRun {
   replayToken?: symbol;
   origin: 'ui' | 'api';
   writes: Promise<unknown>;
+  operation: WorkspaceOperation;
+  release?: () => void;
   replayReject?: (error: Error) => void;
 }
 export const simulationRuntimeLimits = { cachedRuns: 60, activeRuns: 4 };
@@ -56,16 +61,18 @@ class SimulationCurrencyError extends StorageError {
 
 /** One authoritative runtime shared by UI and Repository/API commands. */
 export class SimulationService {
-  private store: SimulationRunStore;
   private runs = new Map<string, LiveRun>();
   private activeRuns = new Map<string, string>();
   private listeners = new Set<() => void>();
   private revision = 0;
-  private observer?: { unsubscribe(): void };
+  private observer?: () => void;
+  private permissionRefresh = 0;
+  private generation = 0;
+  private db: WorkspaceStorage;
   private selectedRunId?: string;
   private pendingWorkers = 0;
-  constructor(private db: WorkspaceDatabase = database) {
-    this.store = new SimulationRunStore(db);
+  constructor(input: WorkspaceStorage | WorkspaceDatabase = workspaceStorage) {
+    this.db = asWorkspaceStorage(input);
   }
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -111,6 +118,10 @@ export class SimulationService {
   }
   async selectRun(id: string) {
     const run = await this.get(id);
+    const live = this.runs.get(id);
+    if (!live) throw new StorageError(409, 'Simulation service was closed.');
+    await live.operation.check();
+    if (this.runs.get(id) !== live) throw new StorageError(409, 'Simulation service was closed.');
     this.activeRuns.set(run.diagramId, id);
     this.selectedRunId = id;
     this.emit();
@@ -139,45 +150,133 @@ export class SimulationService {
   }
   private watchPermissions() {
     if (this.observer) return;
-    this.observer = liveQuery(async () => ({
-      consent: (await this.db.settings.get('storage-consent'))?.value === true,
-      write: (await this.db.settings.get('mcp-access'))?.value === 'write',
-      diagrams: new Set((await this.db.diagrams.toArray()).map((diagram) => diagram.id)),
-    })).subscribe({
-      next: ({ consent, write, diagrams }) => {
-        for (const live of this.runs.values()) {
-          const unavailable = !consent || !diagrams.has(live.view.run.diagramId);
-          if (unavailable || (live.replayOrigin === 'api' && !write))
-            this.cancelReplay(
-              live,
-              new StorageError(
-                403,
-                'Replay stopped because access or local storage consent changed.',
-              ),
-            );
-          if (unavailable || (live.origin === 'api' && !write)) {
-            live.client?.dispose();
-            live.client = undefined;
-            if (['completed', 'stopped', 'failed'].includes(live.view.run.status)) continue;
-            const error = 'Simulation stopped because access or local storage consent changed.';
-            live.view = {
-              ...live.view,
-              run: { ...live.view.run, status: 'stopped', error },
-              ...(live.view.state
-                ? { state: { ...live.view.state, status: 'stopped', message: error } }
-                : {}),
-            };
-            this.emit();
+    const refresh = () => {
+      const token = ++this.permissionRefresh;
+      void this.db
+        .atomic('r', ['settings', 'diagrams'], async (scope) => ({
+          consent: (await scope.settings.get('storage-consent'))?.value === true,
+          write: (await scope.settings.get('mcp-access'))?.value === 'write',
+          diagrams: new Set((await scope.diagrams.toArray()).map((diagram) => diagram.id)),
+        }))
+        .then(({ consent, write, diagrams }) => {
+          if (!this.observer || token !== this.permissionRefresh) return;
+          for (const live of this.runs.values()) {
+            const unavailable = !consent || !diagrams.has(live.view.run.diagramId);
+            if (unavailable || (live.replayOrigin === 'api' && !write))
+              this.cancelReplay(
+                live,
+                new StorageError(
+                  403,
+                  'Replay stopped because access or local storage consent changed.',
+                ),
+              );
+            if (unavailable || (live.origin === 'api' && !write)) {
+              live.client?.dispose();
+              live.client = undefined;
+              if (['completed', 'stopped', 'failed'].includes(live.view.run.status)) continue;
+              const error = 'Simulation stopped because access or local storage consent changed.';
+              live.view = {
+                ...live.view,
+                run: { ...live.view.run, status: 'stopped', error },
+                ...(live.view.state
+                  ? { state: { ...live.view.state, status: 'stopped', message: error } }
+                  : {}),
+              };
+              this.emit();
+            }
           }
-        }
-      },
-      error: () => {},
+        })
+        .catch(() => {
+          // Originating operation signals synchronously clear locked-session caches.
+          // An unrelated transient observer failure must not authorize new work.
+        });
+    };
+    this.observer = this.db.subscribe((change) => {
+      if (change.stores.some((store) => store === 'settings' || store === 'diagrams')) refresh();
     });
+    refresh();
   }
-  async start(
+  private retained(id: string, live: LiveRun) {
+    const abort = () => {
+      if (this.runs.get(id) !== live) return;
+      this.removeLive(id, live, new StorageError(423, 'Unlock the workspace to continue.'));
+      this.emit();
+    };
+    live.operation.signal.addEventListener('abort', abort, { once: true });
+    live.release = () => {
+      live.operation.signal.removeEventListener('abort', abort);
+      live.operation.dispose();
+    };
+    if (live.operation.signal.aborted) abort();
+  }
+  private removeLive(
+    id: string,
+    live: LiveRun,
+    error = new StorageError(409, 'Simulation service was closed.'),
+  ) {
+    live.client?.dispose();
+    live.client = undefined;
+    this.cancelReplay(live, error);
+    live.release?.();
+    live.release = undefined;
+    this.runs.delete(id);
+    if (this.activeRuns.get(live.view.run.diagramId) === id)
+      this.activeRuns.delete(live.view.run.diagramId);
+    if (this.selectedRunId === id) this.selectedRunId = undefined;
+  }
+  private async withOperation<T>(work: (operation: WorkspaceOperation) => Promise<T>): Promise<T> {
+    const generation = this.generation;
+    const operation = await this.db.captureOperation();
+    try {
+      if (generation !== this.generation)
+        throw new StorageError(409, 'Simulation service was closed.');
+      const result = await work(operation);
+      await operation.check();
+      if (generation !== this.generation)
+        throw new StorageError(409, 'Simulation service was closed.');
+      return result;
+    } catch (error) {
+      await operation.check();
+      if (generation !== this.generation)
+        throw new StorageError(409, 'Simulation service was closed.');
+      throw error;
+    } finally {
+      operation.dispose();
+    }
+  }
+  private async guard(
+    live: LiveRun,
+    origin: 'api' | 'ui',
+    beforeWrite?: (scope: WorkspaceStorage) => Promise<void>,
+  ) {
+    await live.operation.storage.atomic('r', ['settings', 'diagrams'], async (scope) => {
+      if ((await scope.settings.get('storage-consent'))?.value !== true)
+        throw new StorageError(
+          403,
+          'Accept local browser storage before controlling a simulation.',
+        );
+      if (!(await scope.diagrams.get(live.view.run.diagramId)))
+        throw new StorageError(404, 'Simulation document was deleted.');
+      if (origin === 'api' && (await scope.settings.get('mcp-access'))?.value !== 'write')
+        throw new StorageError(403, 'Simulation execution requires MCP write access.');
+      await beforeWrite?.(scope);
+    });
+    await live.operation.check();
+    if (this.runs.get(live.view.run.id) !== live)
+      throw new StorageError(409, 'Simulation service was closed.');
+  }
+  start(
     diagramId: string,
     model: SimulationModel,
     input: SimulationStartOptions = {},
+  ): Promise<SimulationRunInfo> {
+    return this.startRun(diagramId, model, input);
+  }
+  private async startRun(
+    diagramId: string,
+    model: SimulationModel,
+    input: SimulationStartOptions = {},
+    originating?: WorkspaceOperation,
   ): Promise<SimulationRunInfo> {
     assertSimulationModel(model);
     assertSimulationModel({
@@ -190,12 +289,17 @@ export class SimulationService {
       if (input[key] !== undefined && typeof input[key] !== 'boolean')
         throw new StorageError(422, `${key} must be a boolean.`);
     const releaseWorker = this.reserveWorker();
+    const generation = this.generation;
+    let operation: WorkspaceOperation | undefined;
+    let retained = false;
     try {
-      if ((await this.db.settings.get('storage-consent'))?.value !== true)
+      operation = await this.db.captureOperation();
+      await originating?.check();
+      if ((await operation.storage.settings.get('storage-consent'))?.value !== true)
         throw new StorageError(403, 'Accept local browser storage before running a simulation.');
-      if (!(await this.db.diagrams.get(diagramId)))
+      if (!(await operation.storage.diagrams.get(diagramId)))
         throw new StorageError(404, 'Diagram not found.');
-      const { origin: _origin, ...executionInput } = input;
+      const { origin: _origin, beforeWrite: _beforeWrite, ...executionInput } = input;
       const options: ExecutionOptions = {
         ...executionInput,
         durationSeconds: input.durationSeconds ?? model.defaults.durationSeconds,
@@ -226,29 +330,32 @@ export class SimulationService {
         createdAt: timestamp,
         updatedAt: timestamp,
       };
-      await this.db.transaction(
+      await operation.storage.atomic(
         'rw',
-        [this.db.settings, this.db.diagrams, this.db.simulationRuns, this.db.simulationCheckpoints],
-        async () => {
-          if ((await this.db.settings.get('storage-consent'))?.value !== true)
+        ['settings', 'diagrams', 'simulationRuns', 'simulationCheckpoints'],
+        async (scope) => {
+          if ((await scope.settings.get('storage-consent'))?.value !== true)
             throw new StorageError(
               403,
               'Accept local browser storage before running a simulation.',
             );
-          if (
-            input.origin === 'api' &&
-            (await this.db.settings.get('mcp-access'))?.value !== 'write'
-          )
+          if (input.origin === 'api' && (await scope.settings.get('mcp-access'))?.value !== 'write')
             throw new StorageError(403, 'Simulation execution requires MCP write access.');
-          await this.store.put(run);
+          await new SimulationRunStore(scope).put(run, input.beforeWrite);
         },
       );
+      await operation.check();
+      if (generation !== this.generation)
+        throw new StorageError(409, 'Simulation service was closed.');
       const live: LiveRun = {
         view: { run },
         origin: input.origin ?? 'ui',
         writes: Promise.resolve(),
+        operation,
       };
       this.runs.set(run.id, live);
+      retained = true;
+      this.retained(run.id, live);
       this.activeRuns.set(diagramId, run.id);
       this.selectedRunId = run.id;
       this.watchPermissions();
@@ -264,12 +371,13 @@ export class SimulationService {
       this.emit();
       return structuredClone(run);
     } finally {
+      if (!retained) operation?.dispose();
       releaseWorker();
     }
   }
   private update(id: string, update: WorkerUpdate) {
     const live = this.runs.get(id);
-    if (!live) return;
+    if (!live || live.operation.signal.aborted) return;
     const run = { ...live.view.run, updatedAt: new Date().toISOString() };
     if (update.kind === 'error') {
       run.status = 'failed';
@@ -289,21 +397,37 @@ export class SimulationService {
     if (['completed', 'stopped', 'failed'].includes(run.status)) {
       live.writes = live.writes
         .then(async () => {
-          if ((await this.db.settings.get('storage-consent'))?.value !== true)
-            throw new StorageError(
-              403,
-              'Local storage consent was revoked before the result could be saved.',
-            );
-          if (!(await this.db.diagrams.get(run.diagramId)))
-            throw new StorageError(
-              404,
-              'Simulation document was deleted before the result could be saved.',
-            );
-          await this.store.put(run);
-          if (live.view.state)
-            await this.store.putCheckpoint(id, live.view.state.timeSeconds, live.view.state);
+          await live.operation.check();
+          if (this.runs.get(id) !== live)
+            throw new StorageError(409, 'Simulation service was closed.');
+          await live.operation.storage.atomic(
+            'rw',
+            ['settings', 'diagrams', 'simulationRuns', 'simulationCheckpoints'],
+            async (scope) => {
+              if ((await scope.settings.get('storage-consent'))?.value !== true)
+                throw new StorageError(
+                  403,
+                  'Local storage consent was revoked before the result could be saved.',
+                );
+              if (!(await scope.diagrams.get(run.diagramId)))
+                throw new StorageError(
+                  404,
+                  'Simulation document was deleted before the result could be saved.',
+                );
+              if (
+                live.origin === 'api' &&
+                (await scope.settings.get('mcp-access'))?.value !== 'write'
+              )
+                throw new StorageError(403, 'Simulation execution requires MCP write access.');
+              const store = new SimulationRunStore(scope);
+              await store.put(run);
+              if (live.view.state)
+                await store.putCheckpoint(id, live.view.state.timeSeconds, live.view.state);
+            },
+          );
         })
         .catch((error) => {
+          if (this.runs.get(id) !== live || live.operation.signal.aborted) return;
           const message = `Result could not be saved: ${(error as Error).message}`;
           live.view = {
             ...live.view,
@@ -314,6 +438,7 @@ export class SimulationService {
           };
         })
         .finally(() => {
+          if (this.runs.get(id) !== live) return;
           this.prune(id);
           this.emit();
         });
@@ -330,108 +455,145 @@ export class SimulationService {
         id !== this.selectedRunId &&
         count > simulationRetentionLimits.runsPerDiagram
       )
-        this.runs.delete(id);
+        this.removeLive(id, live);
     }
     for (const [id, live] of this.runs) {
       if (this.runs.size <= simulationRuntimeLimits.cachedRuns) break;
       if (id !== keep && id !== this.selectedRunId && !live.client && !live.replayClient)
-        this.runs.delete(id);
+        this.removeLive(id, live);
     }
   }
   async list(diagramId: string) {
-    await Promise.all(
-      [...this.runs.values()]
-        .filter((live) => live.view.run.diagramId === diagramId && !live.client)
-        .map((live) => live.writes),
-    );
-    const persisted = await this.store.list(diagramId);
-    const all = new Map(persisted.map((run) => [run.id, run]));
-    for (const live of this.runs.values())
-      if (live.view.run.diagramId === diagramId) all.set(live.view.run.id, live.view.run);
-    return [...all.values()]
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-      .map((run) => ({
-        id: run.id,
-        diagramId: run.diagramId,
-        status: run.status,
-        options: run.options,
-        currency: run.model.currency,
-        scenarioName: run.options.scenarioId
-          ? (run.model.scenarios.find((scenario) => scenario.id === run.options.scenarioId)?.name ??
-            `Scenario ${run.options.scenarioId}`)
-          : 'Baseline',
-        createdAt: run.createdAt,
-        updatedAt: run.updatedAt,
-        metrics: run.result?.metrics,
-        error: run.error,
-      }));
+    return this.withOperation(async (operation) => {
+      await Promise.all(
+        [...this.runs.values()]
+          .filter((live) => live.view.run.diagramId === diagramId && !live.client)
+          .map((live) => live.writes),
+      );
+      const persisted = await new SimulationRunStore(operation.storage).list(diagramId);
+      const all = new Map(persisted.map((run) => [run.id, run]));
+      for (const live of this.runs.values())
+        if (live.view.run.diagramId === diagramId) all.set(live.view.run.id, live.view.run);
+      return [...all.values()]
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+        .map((run) => ({
+          id: run.id,
+          diagramId: run.diagramId,
+          status: run.status,
+          options: run.options,
+          currency: run.model.currency,
+          scenarioName: run.options.scenarioId
+            ? (run.model.scenarios.find((scenario) => scenario.id === run.options.scenarioId)
+                ?.name ?? `Scenario ${run.options.scenarioId}`)
+            : 'Baseline',
+          createdAt: run.createdAt,
+          updatedAt: run.updatedAt,
+          metrics: run.result?.metrics,
+          error: run.error,
+        }));
+    });
   }
   async get(id: string): Promise<SimulationRunInfo> {
+    const generation = this.generation;
     const live = this.runs.get(id);
     if (live) {
+      await live.operation.check();
       if (['completed', 'stopped', 'failed'].includes(live.view.run.status)) await live.writes;
+      await live.operation.check();
+      if (generation !== this.generation || this.runs.get(id) !== live)
+        throw new StorageError(409, 'Simulation service was closed.');
       this.runs.delete(id);
       this.runs.set(id, live);
       return structuredClone(live.view.run);
     }
-    const stored = await this.store.get(id);
-    // Simultaneous archive reads must converge on the same LiveRun/worker owner.
-    if (this.runs.has(id)) return this.get(id);
-    if (!stored) throw new StorageError(404, 'Simulation run not found.');
-    const run = stored as SimulationRunInfo;
-    if (['running', 'paused', 'ready'].includes(run.status)) {
-      run.status = 'stopped';
-      run.error =
-        'Execution ended when this browser was closed. Start a new run or replay the saved model.';
+    const operation = await this.db.captureOperation();
+    let retained = false;
+    try {
+      const stored = await new SimulationRunStore(operation.storage).get(id);
+      await operation.check();
+      if (generation !== this.generation)
+        throw new StorageError(409, 'Simulation service was closed.');
+      // Simultaneous archive reads converge on the same LiveRun/worker owner.
+      if (this.runs.has(id)) return this.get(id);
+      const run = stored as SimulationRunInfo;
+      if (['running', 'paused', 'ready'].includes(run.status)) {
+        run.status = 'stopped';
+        run.error =
+          'Execution ended when this browser was closed. Start a new run or replay the saved model.';
+      }
+      const entry: LiveRun = {
+        view: { run, state: run.result },
+        origin: 'ui',
+        writes: Promise.resolve(),
+        operation,
+      };
+      this.runs.set(id, entry);
+      retained = true;
+      this.retained(id, entry);
+      this.prune(id);
+      this.emit();
+      return structuredClone(run);
+    } finally {
+      if (!retained) operation.dispose();
     }
-    this.runs.set(id, {
-      view: { run, state: run.result },
-      origin: 'ui',
-      writes: Promise.resolve(),
-    });
-    this.prune(id);
-    this.emit();
-    return structuredClone(run);
   }
   async state(id: string): Promise<SimulationState> {
-    const run = await this.get(id);
-    if (run.error?.startsWith('Result could not be saved:')) throw new StorageError(500, run.error);
-    const state = this.runs.get(id)?.view.state ?? run.result;
-    if (!state) throw new StorageError(409, 'Simulation is initializing; retry this read.');
-    return structuredClone(state);
+    return this.withOperation(async () => {
+      const run = await this.get(id);
+      if (run.error?.startsWith('Result could not be saved:'))
+        throw new StorageError(500, run.error);
+      const state = this.runs.get(id)?.view.state ?? run.result;
+      if (!state) throw new StorageError(409, 'Simulation is initializing; retry this read.');
+      return structuredClone(state);
+    });
   }
   async result(id: string): Promise<SimulationResult> {
-    const run = await this.get(id);
-    if (run.error?.startsWith('Result could not be saved:')) throw new StorageError(500, run.error);
-    if (!run.result) throw new StorageError(409, 'This run has no final result yet.');
-    return structuredClone(run.result);
+    return this.withOperation(async () => {
+      const run = await this.get(id);
+      if (run.error?.startsWith('Result could not be saved:'))
+        throw new StorageError(500, run.error);
+      if (!run.result) throw new StorageError(409, 'This run has no final result yet.');
+      return structuredClone(run.result);
+    });
   }
   async events(id: string, paging: { offset?: number; limit?: number } = {}) {
-    const state = await this.state(id);
-    const offset = Math.max(0, paging.offset ?? 0),
-      limit = Math.min(1000, Math.max(1, paging.limit ?? 100));
-    return {
-      events: state.events.slice(offset, offset + limit),
-      offset,
-      limit,
-      retained: state.events.length,
-      dropped: state.retained.droppedEvents,
-    };
+    return this.withOperation(async () => {
+      const state = await this.state(id);
+      const offset = Math.max(0, paging.offset ?? 0),
+        limit = Math.min(1000, Math.max(1, paging.limit ?? 100));
+      return {
+        events: state.events.slice(offset, offset + limit),
+        offset,
+        limit,
+        retained: state.events.length,
+        dropped: state.retained.droppedEvents,
+      };
+    });
   }
   async control(
     id: string,
     action: 'pause' | 'resume' | 'stop' | 'reset',
-    options: { origin?: 'api' | 'ui' } = {},
+    options: {
+      origin?: 'api' | 'ui';
+      beforeWrite?: (scope: WorkspaceStorage) => Promise<void>;
+    } = {},
   ) {
     const run = await this.get(id);
     const live = this.runs.get(id)!;
+    await this.guard(live, options.origin ?? live.origin, options.beforeWrite);
     if (action === 'reset') {
-      if (live.client) await this.control(id, 'stop');
-      return this.start(run.diagramId, run.model, {
-        ...run.options,
-        origin: options.origin ?? live.origin,
-        startPaused: true,
-      });
+      if (live.client) await this.control(id, 'stop', options);
+      return this.startRun(
+        run.diagramId,
+        run.model,
+        {
+          ...run.options,
+          origin: options.origin ?? live.origin,
+          startPaused: true,
+          beforeWrite: options.beforeWrite,
+        },
+        live.operation,
+      );
     }
     if (!live.client || ['completed', 'failed', 'stopped'].includes(run.status))
       throw new StorageError(
@@ -439,7 +601,7 @@ export class SimulationService {
         'This run has finished. Start a new run to change its execution.',
       );
     const expected = action === 'pause' ? 'paused' : action === 'stop' ? 'stopped' : 'running';
-    return new Promise<SimulationRunInfo>((resolve, reject) => {
+    const acknowledged = await new Promise<SimulationRunInfo>((resolve, reject) => {
       let unsubscribe = () => {};
       const timer = setTimeout(() => {
         unsubscribe();
@@ -464,18 +626,32 @@ export class SimulationService {
       });
       live.client!.send({ kind: action });
     });
+    await live.operation.check();
+    return acknowledged;
   }
-  async setSpeed(id: string, speed: SimulationSpeed) {
+  async setSpeed(
+    id: string,
+    speed: SimulationSpeed,
+    beforeWrite?: (scope: WorkspaceStorage) => Promise<void>,
+  ) {
     if (![1, 10, 100, 'max'].includes(speed))
       throw new StorageError(422, 'Simulation speed must be 1, 10, 100 or max.');
     const run = await this.get(id);
     const live = this.runs.get(id)!;
+    await this.guard(live, live.origin, beforeWrite);
     live.client?.send({ kind: 'speed', speed });
     live.view = { ...live.view, run: { ...run, options: { ...run.options, speed } } };
     this.emit();
     return structuredClone(live.view.run);
   }
-  async seek(id: string, timeSeconds: number, options: { origin?: 'api' | 'ui' } = {}) {
+  async seek(
+    id: string,
+    timeSeconds: number,
+    options: {
+      origin?: 'api' | 'ui';
+      beforeWrite?: (scope: WorkspaceStorage) => Promise<void>;
+    } = {},
+  ) {
     if (!Number.isFinite(timeSeconds) || timeSeconds < 0)
       throw new StorageError(422, 'Replay time must be inside the run duration.');
     const cached = this.runs.get(id);
@@ -490,17 +666,7 @@ export class SimulationService {
       if (live.client && run.status === 'running')
         throw new StorageError(409, 'Pause the run before replaying.');
       const origin = options.origin ?? live.origin;
-      await this.db.transaction('r', [this.db.settings, this.db.diagrams], async () => {
-        if ((await this.db.settings.get('storage-consent'))?.value !== true)
-          throw new StorageError(
-            403,
-            'Accept local browser storage before replaying a simulation.',
-          );
-        if (!(await this.db.diagrams.get(run.diagramId)))
-          throw new StorageError(404, 'Simulation document was deleted.');
-        if (origin === 'api' && (await this.db.settings.get('mcp-access'))?.value !== 'write')
-          throw new StorageError(403, 'Simulation replay requires MCP write access.');
-      });
+      await this.guard(live, origin, options.beforeWrite);
       if (this.runs.get(id) !== live)
         throw new StorageError(409, 'Replay run was unloaded before execution could start.');
       this.cancelReplay(live, new StorageError(409, 'Replay was replaced by another seek.'));
@@ -516,7 +682,7 @@ export class SimulationService {
             run.model,
             { ...run.options, startPaused: true },
             (update) => {
-              if (live.replayToken !== token) return;
+              if (live.replayToken !== token || live.operation.signal.aborted) return;
               if (update.kind === 'error') {
                 this.cancelReplay(live, new Error(update.message));
                 return;
@@ -535,34 +701,39 @@ export class SimulationService {
         } catch (error) {
           this.cancelReplay(live, error as Error);
         }
+      }).then(async (state) => {
+        await live.operation.check();
+        return state;
       });
     } finally {
       releaseWorker();
     }
   }
   async compare(ids: string[]) {
-    if (ids.length < 2)
-      throw new StorageError(422, 'Select a baseline and at least one scenario run.');
-    const runs = await Promise.all(ids.map((id) => this.get(id)));
-    const currencies = [...new Set(runs.map((run) => run.model.currency))];
-    if (currencies.length > 1) throw new SimulationCurrencyError(currencies);
-    const results = await Promise.all(ids.map((id) => this.result(id)));
-    return {
-      baselineRunId: ids[0],
-      currency: currencies[0],
-      comparisons: results.slice(1).map((result) => compareSimulationResults(results[0], result)),
-    };
+    return this.withOperation(async (operation) => {
+      if (ids.length < 2)
+        throw new StorageError(422, 'Select a baseline and at least one scenario run.');
+      const runs = await Promise.all(ids.map((id) => this.get(id)));
+      await operation.check();
+      const currencies = [...new Set(runs.map((run) => run.model.currency))];
+      if (currencies.length > 1) throw new SimulationCurrencyError(currencies);
+      const results = await Promise.all(ids.map((id) => this.result(id)));
+      return {
+        baselineRunId: ids[0],
+        currency: currencies[0],
+        comparisons: results.slice(1).map((result) => compareSimulationResults(results[0], result)),
+      };
+    });
   }
   dispose() {
-    for (const run of this.runs.values()) {
-      run.client?.dispose();
-      this.cancelReplay(run, new StorageError(409, 'Simulation service was closed.'));
-    }
+    this.generation++;
+    this.permissionRefresh++;
+    for (const [id, live] of this.runs) this.removeLive(id, live);
     this.runs.clear();
     this.activeRuns.clear();
     this.selectedRunId = undefined;
     this.emit();
-    this.observer?.unsubscribe();
+    this.observer?.();
     this.observer = undefined;
   }
 }

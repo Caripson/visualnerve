@@ -1,4 +1,4 @@
-import { PresentationFeature } from './presentation/Player';
+import { PresentationFeature } from './presentation/PresentationFeature';
 import { SimulationFeature } from './simulation/SimulationFeature';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
@@ -13,10 +13,12 @@ import { LocalBadge, PrivacyIntro, RestoreBackup } from './components/DataPrivac
 import { useEditor } from './state/editor';
 import { workspace } from './storage/workspace';
 import { type WorkspaceBackup } from './storage/database';
+import type { WorkspaceOperation } from './storage/contracts';
 import { parseImport } from './export/semantic';
 import type { Clip } from './state/clipboard';
 import type { Graph } from './model/types';
 import { useImportFiles } from './imports/useImportFiles';
+import { useWorkspaceBackupReader } from './security/useWorkspaceBackupReader';
 import { importFileAccept } from './imports/fileRouting';
 import { currentImportLimitBytes } from './imports/preference';
 import { analyzeCsv } from './data/client';
@@ -107,11 +109,17 @@ export type DialogName =
   | 'settings'
   | 'delete'
   | 'connect';
+type AppOperation = {
+  operation: WorkspaceOperation;
+  check: () => Promise<void>;
+  assertCurrent: () => void;
+};
 export function App() {
   const compact = useCompactLayout();
   const [dialog, setDialog] = useState<DialogName | null>(null);
   const [ready, setReady] = useState(false);
   const [backup, setBackup] = useState<WorkspaceBackup | null>(null);
+  const { readBackup, backupDialog } = useWorkspaceBackupReader();
   const [sqlDraft, setSqlDraft] = useState<{ id: string; text: string; name: string }>();
   const [codeFiles, setCodeFiles] = useState<File[]>();
   const [diagramFile, setDiagramFile] = useState<File>();
@@ -124,6 +132,50 @@ export function App() {
   } | null>(null);
   const [importing, setImporting] = useState(false);
   const importInFlight = useRef(false);
+  const active = useRef(true);
+  const lifecycle = useRef(0);
+  const operations = useRef(new Set<WorkspaceOperation>());
+  const withAppOperation = useCallback(
+    async <T,>(work: (job: AppOperation) => Promise<T>, originating?: WorkspaceOperation) => {
+      const generation = lifecycle.current;
+      const operation = originating ?? (await workspace.repo.db.captureOperation());
+      if (!originating) operations.current.add(operation);
+      const assertCurrent = () => {
+        if (!active.current || lifecycle.current !== generation || operation.signal.aborted)
+          throw new DOMException('The workspace operation was cancelled.', 'AbortError');
+      };
+      const check = async () => {
+        assertCurrent();
+        await operation.check();
+        assertCurrent();
+      };
+      try {
+        await check();
+        assertCurrent();
+        return await work({ operation, check, assertCurrent });
+      } finally {
+        if (!originating) {
+          operations.current.delete(operation);
+          operation.dispose();
+        }
+      }
+    },
+    [],
+  );
+  const reportFailure = useCallback(
+    (action: () => Promise<unknown>, status?: 'error') => {
+      void withAppOperation(async ({ check, assertCurrent }) => {
+        try {
+          await action();
+        } catch (error) {
+          await check();
+          assertCurrent();
+          useEditor.setState({ ...(status ? { status } : {}), message: (error as Error).message });
+        }
+      }).catch(() => {});
+    },
+    [withAppOperation],
+  );
   const acknowledged = useEditor((state) => state.privacyAcknowledged);
   useStarterDemo(ready, acknowledged);
   const inspectBackup = (data: WorkspaceBackup) => {
@@ -138,9 +190,7 @@ export function App() {
   const [filters, setFilters] = useState(false);
   const theme = useEditor((state) => state.theme);
   const updateTheme = (value: string) => {
-    void workspace
-      .setPreference('theme', value)
-      .catch((error) => useEditor.setState({ status: 'error', message: error.message }));
+    reportFailure(() => workspace.setPreference('theme', value), 'error');
   };
   const graph = useEditor((s) => s.graph);
   const explorationResult = useEditor((s) => s.explorationResult);
@@ -235,69 +285,100 @@ export function App() {
       }
     },
     backup: inspectBackup,
+    readBackup,
     failed: () => {
       pendingSourceFiles.current = [];
     },
   });
 
-  const createImportedDiagram = useCallback(async (generated: Graph) => {
-    if (importInFlight.current) throw new Error('Wait for the current import to finish.');
-    importInFlight.current = true;
-    setImporting(true);
-    try {
-      await workspace.create(generated);
-    } finally {
-      importInFlight.current = false;
-      setImporting(false);
-    }
-  }, []);
+  const createImportedDiagram = useCallback(
+    async (generated: Graph) => {
+      if (!active.current) throw new DOMException('The import was cancelled.', 'AbortError');
+      if (importInFlight.current) throw new Error('Wait for the current import to finish.');
+      importInFlight.current = true;
+      setImporting(true);
+      try {
+        await withAppOperation(async ({ operation, assertCurrent }) => {
+          assertCurrent();
+          await workspace.create(generated, operation);
+        });
+      } finally {
+        importInFlight.current = false;
+        if (active.current) setImporting(false);
+      }
+    },
+    [withAppOperation],
+  );
 
   const applyCsv = useCallback(
-    async (dataset: CsvDataset, analysis: CsvAnalysis, name: string, previous?: Graph) => {
+    async (
+      dataset: CsvDataset,
+      analysis: CsvAnalysis,
+      name: string,
+      previous?: Graph,
+      originating?: WorkspaceOperation,
+    ) => {
       if (importInFlight.current) throw new Error('Wait for the current data operation to finish.');
       importInFlight.current = true;
       try {
-        if (!previous) {
-          const generated = await analyzeCsv(dataset, analysis);
-          generated.diagram = { ...generated.diagram, name };
-          await workspace.create(generated);
-          if (pendingSourceFiles.current.length) {
-            setSourceFiles(pendingSourceFiles.current);
-            pendingSourceFiles.current = [];
-            open('sources');
+        await withAppOperation(async ({ operation, check, assertCurrent }) => {
+          if (!previous) {
+            const generated = await analyzeCsv(dataset, analysis);
+            await check();
+            assertCurrent();
+            generated.diagram = { ...generated.diagram, name };
+            await workspace.create(generated, operation);
+            await check();
+            assertCurrent();
+            if (pendingSourceFiles.current.length) {
+              setSourceFiles(pendingSourceFiles.current);
+              pendingSourceFiles.current = [];
+              open('sources');
+            }
+            return;
           }
-          return;
-        }
-        await workspace.settled();
-        const snapshot = useEditor.getState().graph;
-        const revision = useEditor.getState().editRevision;
-        if (!snapshot || snapshot.diagram.id !== previous.diagram.id)
-          throw new Error('Open this data diagram before changing its view.');
-        const liveDataset = graphDatasets(snapshot).find((source) => source.id === dataset.id);
-        if (!liveDataset || liveDataset.version !== dataset.version)
-          throw new Error('The source changed while its settings were open. Reopen the data view.');
-        const linked = !!snapshot.datasets?.length || !!snapshot.diagram.settings.csvSourceAnalyses;
-        const generated = linked
-          ? await reanalyzeDataModelAsync(setSourceAnalysis(snapshot, dataset.id, analysis))
-          : await analyzeCsv(liveDataset, analysis, snapshot);
-        const current = useEditor.getState();
-        if (
-          current.graph?.diagram.id !== snapshot.diagram.id ||
-          current.editRevision !== revision ||
-          current.graph?.diagram.version !== snapshot.diagram.version
-        )
-          throw new Error('The diagram changed during analysis. Apply the data view again.');
-        generated.diagram = { ...generated.diagram, name };
-        current.command('Update CSV data view', () => generated);
-        useEditor.setState({ selectedNodes: [], selectedEdges: [], focusNode: null });
-        await workspace.settled();
-        if (useEditor.getState().status === 'error' || useEditor.getState().status === 'conflict')
-          throw new Error(useEditor.getState().message || 'The data view could not be saved.');
+          await workspace.settled();
+          await check();
+          assertCurrent();
+          const snapshot = useEditor.getState().graph;
+          const revision = useEditor.getState().editRevision;
+          if (!snapshot || snapshot.diagram.id !== previous.diagram.id)
+            throw new Error('Open this data diagram before changing its view.');
+          const liveDataset = graphDatasets(snapshot).find((source) => source.id === dataset.id);
+          if (!liveDataset || liveDataset.version !== dataset.version)
+            throw new Error(
+              'The source changed while its settings were open. Reopen the data view.',
+            );
+          const linked =
+            !!snapshot.datasets?.length || !!snapshot.diagram.settings.csvSourceAnalyses;
+          const generated = linked
+            ? await reanalyzeDataModelAsync(setSourceAnalysis(snapshot, dataset.id, analysis), {
+                signal: operation.signal,
+              })
+            : await analyzeCsv(liveDataset, analysis, snapshot);
+          await check();
+          assertCurrent();
+          const current = useEditor.getState();
+          if (
+            current.graph?.diagram.id !== snapshot.diagram.id ||
+            current.editRevision !== revision ||
+            current.graph?.diagram.version !== snapshot.diagram.version
+          )
+            throw new Error('The diagram changed during analysis. Apply the data view again.');
+          generated.diagram = { ...generated.diagram, name };
+          current.command('Update CSV data view', () => generated);
+          useEditor.setState({ selectedNodes: [], selectedEdges: [], focusNode: null });
+          await workspace.settled();
+          await check();
+          assertCurrent();
+          if (useEditor.getState().status === 'error' || useEditor.getState().status === 'conflict')
+            throw new Error(useEditor.getState().message || 'The data view could not be saved.');
+        }, originating);
       } finally {
         importInFlight.current = false;
       }
     },
-    [open],
+    [open, withAppOperation],
   );
 
   const navigateCsv = useCallback(
@@ -311,46 +392,70 @@ export function App() {
       if (!current || !dataset || !analysis) return;
       setImporting(true);
       try {
-        if (current.diagram.settings.csvRelationships?.length && patch.focusPath) {
-          importInFlight.current = true;
-          await workspace.settled();
-          const snapshot = useEditor.getState().graph;
-          const revision = useEditor.getState().editRevision;
-          if (!snapshot || snapshot.diagram.id !== current.diagram.id) return;
-          const focused = patch.focusPath.length
-            ? setSourceAnalysis(snapshot, dataset.id, { ...analysis, ...patch })
-            : clearDataModelFocus(snapshot);
-          const generated = await reanalyzeDataModelAsync({
-            ...focused,
-            diagram: {
-              ...focused.diagram,
-              settings: {
-                ...focused.diagram.settings,
-                csvEntityFocus: patch.focusPath.length
-                  ? { datasetId: dataset.id, path: patch.focusPath }
-                  : undefined,
-              },
-            },
-          });
-          const live = useEditor.getState();
-          if (
-            live.graph?.diagram.id !== snapshot.diagram.id ||
-            live.graph.diagram.version !== snapshot.diagram.version ||
-            live.editRevision !== revision
-          )
-            throw new Error('The diagram changed during analysis. Explore the group again.');
-          live.command('Explore related CSV data', () => generated);
-          useEditor.setState({ selectedNodes: [], selectedEdges: [], focusNode: null });
-          await workspace.settled();
-        } else await applyCsv(dataset, { ...analysis, ...patch }, current.diagram.name, current);
-      } catch (error) {
-        useEditor.setState({ status: 'error', message: (error as Error).message });
+        await withAppOperation(async ({ operation, check, assertCurrent }) => {
+          try {
+            if (current.diagram.settings.csvRelationships?.length && patch.focusPath) {
+              importInFlight.current = true;
+              await workspace.settled();
+              await check();
+              assertCurrent();
+              const snapshot = useEditor.getState().graph;
+              const revision = useEditor.getState().editRevision;
+              if (!snapshot || snapshot.diagram.id !== current.diagram.id) return;
+              const focused = patch.focusPath.length
+                ? setSourceAnalysis(snapshot, dataset.id, { ...analysis, ...patch })
+                : clearDataModelFocus(snapshot);
+              const generated = await reanalyzeDataModelAsync(
+                {
+                  ...focused,
+                  diagram: {
+                    ...focused.diagram,
+                    settings: {
+                      ...focused.diagram.settings,
+                      csvEntityFocus: patch.focusPath.length
+                        ? { datasetId: dataset.id, path: patch.focusPath }
+                        : undefined,
+                    },
+                  },
+                },
+                { signal: operation.signal },
+              );
+              await check();
+              assertCurrent();
+              const live = useEditor.getState();
+              if (
+                live.graph?.diagram.id !== snapshot.diagram.id ||
+                live.graph.diagram.version !== snapshot.diagram.version ||
+                live.editRevision !== revision
+              )
+                throw new Error('The diagram changed during analysis. Explore the group again.');
+              live.command('Explore related CSV data', () => generated);
+              useEditor.setState({ selectedNodes: [], selectedEdges: [], focusNode: null });
+              await workspace.settled();
+              await check();
+              assertCurrent();
+            } else
+              await applyCsv(
+                dataset,
+                { ...analysis, ...patch },
+                current.diagram.name,
+                current,
+                operation,
+              );
+          } catch (error) {
+            await check();
+            assertCurrent();
+            useEditor.setState({ status: 'error', message: (error as Error).message });
+          }
+        });
+      } catch {
+        // A cancelled app or vault session must not publish into its replacement.
       } finally {
         importInFlight.current = false;
-        setImporting(false);
+        if (active.current) setImporting(false);
       }
     },
-    [applyCsv],
+    [applyCsv, withAppOperation],
   );
 
   useEffect(() => {
@@ -375,14 +480,33 @@ export function App() {
     };
   }, []);
   useEffect(() => {
+    active.current = true;
+    lifecycle.current++;
+    return () => {
+      active.current = false;
+      lifecycle.current++;
+      for (const operation of operations.current) operation.dispose();
+      operations.current.clear();
+      pendingSourceFiles.current = [];
+      importInFlight.current = false;
+    };
+  }, []);
+  useEffect(() => {
+    let active = true;
     workspace
       .start()
-      .then(() => setReady(true))
+      .then(() => {
+        if (active) setReady(true);
+      })
       .catch((e) => {
+        if (!active) return;
         setReady(true);
         useEditor.setState({ status: 'error', message: (e as Error).message });
       });
-    return () => workspace.stop();
+    return () => {
+      active = false;
+      workspace.stop();
+    };
   }, []);
   useEffect(() => {
     if (acknowledged && import.meta.env.PROD && 'serviceWorker' in navigator)
@@ -446,22 +570,24 @@ export function App() {
           );
         };
         const paste = async () => {
-          try {
-            const text = await navigator.clipboard.readText();
-            if (!canPaste()) return;
-            const clip = JSON.parse(text) as Clip;
-            if (
-              clip.format === 'visual-nerve-clipboard' &&
-              Array.isArray(clip.nodes) &&
-              Array.isArray(clip.edges)
-            ) {
-              s.paste(clip);
-              return;
-            }
-          } catch {}
-          if (canPaste()) s.paste();
+          await withAppOperation(async ({ check, assertCurrent }) => {
+            let clip: Clip | undefined;
+            try {
+              const text = await navigator.clipboard.readText();
+              const parsed = JSON.parse(text) as Clip;
+              if (
+                parsed?.format === 'visual-nerve-clipboard' &&
+                Array.isArray(parsed.nodes) &&
+                Array.isArray(parsed.edges)
+              )
+                clip = parsed;
+            } catch {}
+            await check();
+            assertCurrent();
+            if (canPaste()) useEditor.getState().paste(clip);
+          });
         };
-        void paste();
+        void paste().catch(() => {});
       } else if (modifier && key === 'd') {
         e.preventDefault();
         const clip = s.copy();
@@ -495,7 +621,7 @@ export function App() {
     };
     window.addEventListener('keydown', listener, true);
     return () => window.removeEventListener('keydown', listener, true);
-  }, [dialog, backup, csvDraft, importing, open]);
+  }, [dialog, backup, csvDraft, importing, open, withAppOperation]);
   if (!acknowledged)
     return (
       <div className="application storage-gate">
@@ -554,31 +680,13 @@ export function App() {
               {status === 'conflict' && (
                 <div className="notice conflict-notice">
                   <span>{message || 'Another tab changed this project.'}</span>
-                  <button
-                    onClick={() =>
-                      void workspace
-                        .resolve('copy')
-                        .catch((e) => useEditor.setState({ message: e.message }))
-                    }
-                  >
+                  <button onClick={() => reportFailure(() => workspace.resolve('copy'))}>
                     Save local copy
                   </button>
-                  <button
-                    onClick={() =>
-                      void workspace
-                        .resolve('discard')
-                        .catch((e) => useEditor.setState({ message: e.message }))
-                    }
-                  >
+                  <button onClick={() => reportFailure(() => workspace.resolve('discard'))}>
                     Use saved version
                   </button>
-                  <button
-                    onClick={() =>
-                      void workspace
-                        .resolve('retry')
-                        .catch((e) => useEditor.setState({ message: e.message }))
-                    }
-                  >
+                  <button onClick={() => reportFailure(() => workspace.resolve('retry'))}>
                     Replace saved version
                   </button>
                 </div>
@@ -601,13 +709,7 @@ export function App() {
                     </button>
                   ) : (
                     <>
-                      <button
-                        onClick={() =>
-                          void workspace
-                            .settled()
-                            .catch((error) => useEditor.setState({ message: error.message }))
-                        }
-                      >
+                      <button onClick={() => reportFailure(() => workspace.settled())}>
                         Retry save
                       </button>
                       <button onClick={() => open('settings')}>Settings</button>
@@ -769,7 +871,7 @@ export function App() {
           const picked = e.target.files?.[0];
           if (!picked) return;
           await importFile(picked);
-          if (file.current) file.current.value = '';
+          if (active.current && file.current) file.current.value = '';
         }}
       />
       <LazyDialogBoundary
@@ -825,11 +927,13 @@ export function App() {
             theme={theme}
             setTheme={updateTheme}
             restore={inspectBackup}
+            onReadBackup={readBackup}
           />
         )}
         {dialog === 'delete' && <DeleteDialog close={close} />}
         {dialog === 'connect' && <ConnectDialog close={close} />}
         {backup && <RestoreBackup backup={backup} close={() => setBackup(null)} />}
+        {backupDialog}
         {csvDraft && (
           <CsvImportDialog
             key={csvDraft.dataset.id}
@@ -850,12 +954,14 @@ export function App() {
             legacyImport={
               csvDraft.file
                 ? async () => {
-                    const graph = parseImport(
-                      'csv',
-                      await csvDraft.file!.text(),
-                      currentImportLimitBytes(),
-                    );
-                    await workspace.create(graph);
+                    const limit = currentImportLimitBytes();
+                    await withAppOperation(async ({ operation, check, assertCurrent }) => {
+                      const text = await csvDraft.file!.text();
+                      await check();
+                      assertCurrent();
+                      const graph = parseImport('csv', text, limit);
+                      await workspace.create(graph, operation);
+                    });
                   }
                 : undefined
             }

@@ -1,5 +1,5 @@
 import { VoiceSettings } from './VoiceSettings';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Download,
   FileText,
@@ -13,7 +13,6 @@ import { Modal } from './Modal';
 import { Field } from './Properties';
 import { useEditor } from '../state/editor';
 import { flushSpatialCamera, workspace } from '../storage/workspace';
-import { database } from '../storage/database';
 import { templates } from '../templates/templates';
 import { createTemplateDiagram } from '../templates/create';
 import { type Owner, type Graph, ownersFor } from '../model/types';
@@ -25,7 +24,18 @@ import { ProjectFileLimitSettings } from './ProjectFileLimitSettings';
 import { exportAllData } from '../storage/backup';
 import type { WorkspaceBackup } from '../storage/database';
 import type { RenderOptions } from '../export/rendered';
+import {
+  assertExportActive,
+  checkExportActive,
+  waitForExport,
+  type ExportGuard,
+} from '../export/guard';
+import type { WorkspaceOperation } from '../storage/contracts';
 import { getSpatialView } from '../spatial/types';
+import { BackupSecurityNotice } from '../security/BackupSecurityNotice';
+import { VaultSettings } from '../security/VaultSettings';
+import { vaultSession } from '../storage/runtime';
+import { isEncryptedWorkspaceSurface } from '../security/surface';
 export function NewDiagram({ close }: { close: () => void }) {
   const [name, setName] = useState('Untitled diagram');
   const [template, setTemplate] = useState('blank');
@@ -101,6 +111,19 @@ export function NewDiagram({ close }: { close: () => void }) {
   );
 }
 export function ExportDialog({ close }: { close: () => void }) {
+  const mounted = useRef(true);
+  const exporting = useRef<AbortController | undefined>(undefined);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      exporting.current?.abort();
+    };
+  }, []);
+  const cancel = () => {
+    exporting.current?.abort();
+    close();
+  };
   const spatial = useEditor((state) =>
     state.graph ? getSpatialView(state.graph).mode === '3d' : false,
   );
@@ -136,6 +159,7 @@ export function ExportDialog({ close }: { close: () => void }) {
           One portable Visual Nerve backup contains all diagrams, owners, preferences and templates.
         </p>
         <StorageNotice />
+        <BackupSecurityNotice encrypted={isEncryptedWorkspaceSurface()} />
         {error && <p className="form-error">{error}</p>}
         <div className="modal-actions">
           <button onClick={close}>Cancel</button>
@@ -160,7 +184,7 @@ export function ExportDialog({ close }: { close: () => void }) {
       </Modal>
     );
   return (
-    <Modal title="Export diagram" close={close}>
+    <Modal title="Export diagram" close={cancel}>
       {targetField}
       <Field title="Format">
         <select
@@ -175,6 +199,9 @@ export function ExportDialog({ close }: { close: () => void }) {
           <option value="pdf">PDF · printable diagram</option>
         </select>
       </Field>
+      {(format === 'json' || format === 'markdown') && (
+        <BackupSecurityNotice encrypted={isEncryptedWorkspaceSurface()} />
+      )}
       {(format === 'svg' || format === 'png' || format === 'pdf') && (
         <>
           <Field title="Area">
@@ -258,34 +285,70 @@ export function ExportDialog({ close }: { close: () => void }) {
       <StorageNotice />
       {error && <p className="form-error">{error}</p>}
       <div className="modal-actions">
-        <button onClick={close}>Cancel</button>
+        <button onClick={cancel}>Cancel</button>
         <button
           className="primary"
           disabled={busy}
           onClick={async () => {
+            if (exporting.current) return;
+            const controller = new AbortController();
+            exporting.current = controller;
+            let operation: WorkspaceOperation | undefined;
+            let guard: ExportGuard | undefined;
+            // Capture before settled/import/render awaits; a later unlock must not
+            // authorize this original dialog or change which graph it exports.
+            const captured = workspace.repo.db.captureOperation();
             setBusy(true);
             setError('');
             try {
+              useEditor.getState().finishEditing();
               flushSpatialCamera();
-              await workspace.settled();
               const state = useEditor.getState();
-              if (!state.graph) return;
-              const g = ownersFor(state.graph, state.owners);
+              const g = state.graph
+                ? structuredClone(ownersFor(state.graph, state.owners))
+                : undefined;
+              const selection = [...state.selectedNodes];
+              operation = await captured;
+              guard = {
+                signal: AbortSignal.any([operation.signal, controller.signal]),
+                check: () => operation!.check(),
+                assertCurrent: () => {
+                  if (
+                    !mounted.current ||
+                    exporting.current !== controller ||
+                    controller.signal.aborted
+                  )
+                    throw new DOMException('Diagram export cancelled.', 'AbortError');
+                },
+              };
+              await checkExportActive(guard);
+              assertExportActive(guard);
+              if (!g) return;
+              await waitForExport(workspace.settled(), guard);
+              await checkExportActive(guard);
+              assertExportActive(guard);
               const name = safeName(g.diagram.name);
               if (format === 'json') download(`${name}.json`, JSON.stringify(g, null, 2));
               else if (format === 'markdown') download(`${name}.md`, markdown(g), 'text/markdown');
               else if (format === 'svg') {
-                const { exportSVG } = await import('../export/svg');
-                await exportSVG(g, options.scope, state.selectedNodes);
+                const { exportSVG } = await waitForExport(import('../export/svg'), guard);
+                assertExportActive(guard);
+                await exportSVG(g, options.scope, selection, guard);
               } else {
-                const { exportRendered } = await import('../export/rendered');
-                await exportRendered(g, format, options, state.selectedNodes);
+                const { exportRendered } = await waitForExport(import('../export/rendered'), guard);
+                assertExportActive(guard);
+                await exportRendered(g, format, options, selection, guard);
               }
+              assertExportActive(guard);
               close();
             } catch (e) {
-              setError((e as Error).message);
+              if (mounted.current && !controller.signal.aborted && !operation?.signal.aborted)
+                setError((e as Error).message);
             } finally {
-              setBusy(false);
+              // A synchronous snapshot error may occur before capture resolves.
+              (operation ?? (await captured.catch(() => undefined)))?.dispose();
+              if (exporting.current === controller) exporting.current = undefined;
+              if (mounted.current) setBusy(false);
             }
           }}
         >
@@ -511,11 +574,13 @@ export function SettingsDialog({
   theme,
   setTheme,
   restore,
+  onReadBackup,
 }: {
   close: () => void;
   theme: string;
   setTheme: (value: string) => void;
   restore: (backup: WorkspaceBackup) => void;
+  onReadBackup?: (file: File) => Promise<WorkspaceBackup>;
 }) {
   return (
     <Modal title="Settings" close={close}>
@@ -526,7 +591,8 @@ export function SettingsDialog({
           <option value="system">System</option>
         </select>
       </Field>
-      <DataPrivacy restore={restore} deleted={close} />
+      <DataPrivacy restore={restore} deleted={close} onReadBackup={onReadBackup} />
+      {vaultSession && <VaultSettings session={vaultSession} />}
       <ImportSettings />
       <ProjectFileLimitSettings />
       <VoiceSettings />

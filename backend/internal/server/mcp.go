@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"unicode/utf8"
 )
 
 // Stateless Streamable HTTP endpoint. Workspace commands use the browser bridge;
@@ -23,6 +24,10 @@ func (s *Server) mcp(w http.ResponseWriter, r *http.Request) {
 		failure(w, 400, err.Error())
 		return
 	}
+	if !utf8.Valid(data) {
+		failure(w, 400, "MCP JSON must be valid UTF-8")
+		return
+	}
 	var request struct {
 		JSONRPC string          `json:"jsonrpc"`
 		ID      json.RawMessage `json:"id"`
@@ -33,6 +38,17 @@ func (s *Server) mcp(w http.ResponseWriter, r *http.Request) {
 		failure(w, 400, "invalid JSON-RPC request")
 		return
 	}
+	// Sessions are stateless. Missing headers use the backwards-compatible
+	// 2025-03-26 subset. Reject unsupported headers before dispatch, preserving
+	// a valid request's ID in a self-contained JSON-RPC transport error.
+	if version := r.Header.Get("MCP-Protocol-Version"); version != "" && !supportedMCPProtocol(version) {
+		response := map[string]any{"jsonrpc": "2.0", "error": &mcpError{Code: -32600, Message: "unsupported MCP-Protocol-Version"}}
+		if validMCPRequestID(request.ID) {
+			response["id"] = request.ID
+		}
+		send(w, 400, response)
+		return
+	}
 	if len(request.ID) == 0 {
 		if strings.HasPrefix(request.Method, "notifications/") {
 			w.WriteHeader(202)
@@ -41,10 +57,19 @@ func (s *Server) mcp(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	if !validMCPRequestID(request.ID) {
+		failure(w, 400, "MCP request id must be a string or number")
+		return
+	}
 	response := map[string]any{"jsonrpc": "2.0", "id": request.ID}
 	switch request.Method {
 	case "initialize":
-		response["result"] = map[string]any{"protocolVersion": "2025-06-18", "capabilities": map[string]any{"tools": map[string]any{}, "resources": map[string]any{}}, "serverInfo": map[string]string{"name": "visual-nerve", "version": "0.3.0"}, "instructions": mcpInstructions}
+		result, err := mcpInitialize(request.Params)
+		if err != nil {
+			response["error"] = err
+		} else {
+			response["result"] = result
+		}
 	case "ping":
 		response["result"] = map[string]any{}
 	case "tools/list":

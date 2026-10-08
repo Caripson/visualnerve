@@ -1,6 +1,8 @@
 import type { Graph } from '../model/types';
 import { StorageError } from '../model/errors';
 import type { WorkspaceDatabase, WorkspaceBackup } from '../storage/database';
+import { asWorkspaceStorage } from '../storage/adapter';
+import type { WorkspaceStorage } from '../storage/contracts';
 import { historyJsonBytes } from '../history/codec';
 import { remapSimulationModel } from './copy';
 import { validateSimulationModel, resolveScenario } from './schema';
@@ -81,14 +83,85 @@ function remapState<T extends SimulationState>(
   };
 }
 
+/** Validate every original archive before migration or collision remapping writes anything. */
+export function prepareSimulationBackup(backup: WorkspaceBackup, graphs: Graph[]) {
+  const runs = backup.simulationRuns ?? [];
+  const checkpoints = backup.simulationCheckpoints ?? [];
+  if (!Array.isArray(runs) || !Array.isArray(checkpoints))
+    throw new StorageError(422, 'Invalid workspace simulation archives.');
+  const byDiagram = new Map(graphs.map((graph) => [graph.diagram.id, graph]));
+  const byRun = new Map<string, (typeof runs)[number]>();
+  for (const run of runs) {
+    if (!object(run)) throw new StorageError(422, 'Invalid workspace simulation run.');
+    const graph = byDiagram.get(run.diagramId);
+    if (
+      !graph ||
+      graph.diagram.type !== 'process-simulator' ||
+      typeof run.id !== 'string' ||
+      !run.id ||
+      byRun.has(run.id) ||
+      !Number.isFinite(Date.parse(run.createdAt)) ||
+      !Number.isFinite(Date.parse(run.updatedAt)) ||
+      !object(run.options)
+    )
+      throw new StorageError(422, 'Invalid workspace simulation run.');
+    validateSimulationModel(run.model);
+    const scenarioId =
+      typeof run.options.scenarioId === 'string' ? run.options.scenarioId : undefined;
+    const demandMultiplier =
+      typeof run.options.demandMultiplier === 'number' ? run.options.demandMultiplier : undefined;
+    if (
+      (run.options.scenarioId !== undefined && scenarioId === undefined) ||
+      (run.options.demandMultiplier !== undefined &&
+        (!Number.isFinite(demandMultiplier) || demandMultiplier! < 0))
+    )
+      throw new StorageError(422, 'Invalid archived simulation options.');
+    historyJsonBytes(run, 48 * 1024 * 1024);
+    if (run.result) assertArchivedResult(run.result);
+    byRun.set(run.id, run);
+  }
+  const ids = new Set<string>();
+  for (const checkpoint of checkpoints) {
+    if (!object(checkpoint))
+      throw new StorageError(422, 'Invalid workspace simulation checkpoint.');
+    const run = byRun.get(checkpoint.runId);
+    if (
+      !run ||
+      !byDiagram.has(checkpoint.diagramId) ||
+      run.diagramId !== checkpoint.diagramId ||
+      ids.has(checkpoint.id) ||
+      !Number.isFinite(checkpoint.timeSeconds) ||
+      checkpoint.timeSeconds < 0 ||
+      checkpoint.state?.timeSeconds !== checkpoint.timeSeconds
+    )
+      throw new StorageError(422, 'Invalid workspace simulation checkpoint.');
+    ids.add(checkpoint.id);
+    assertArchivedState(checkpoint.state);
+  }
+  return { runs, checkpoints };
+}
+
 /** Restore immutable run snapshots under the same collision maps as their documents. */
 export async function importSimulationRuns(
-  db: WorkspaceDatabase,
+  input: WorkspaceStorage | WorkspaceDatabase,
   backup: WorkspaceBackup,
   mappings: SimulationImportMapping[],
 ) {
-  const runs = backup.simulationRuns ?? [];
-  const checkpoints = backup.simulationCheckpoints ?? [];
+  return asWorkspaceStorage(input).atomic(
+    'rw',
+    ['simulationRuns', 'simulationCheckpoints'],
+    (scope) => importSimulationRunsScoped(scope, backup, mappings),
+  );
+}
+async function importSimulationRunsScoped(
+  db: WorkspaceStorage,
+  backup: WorkspaceBackup,
+  mappings: SimulationImportMapping[],
+) {
+  const { runs, checkpoints } = prepareSimulationBackup(
+    backup,
+    mappings.map((mapping) => mapping.sourceGraph),
+  );
   const byDiagram = new Map(mappings.map((mapping) => [mapping.sourceGraph.diagram.id, mapping]));
   const runIds = new Map<string, string>();
   const identities = new Map<string, { nodes: Map<string, string>; edges: Map<string, string> }>();
@@ -108,32 +181,11 @@ export async function importSimulationRuns(
       ),
     });
   for (const run of runs) {
-    if (!object(run)) throw new StorageError(422, 'Invalid workspace simulation run.');
-    const mapping = byDiagram.get(run.diagramId);
-    if (
-      !object(run) ||
-      !mapping ||
-      mapping.importedGraph.diagram.type !== 'process-simulator' ||
-      typeof run.id !== 'string' ||
-      !run.id ||
-      runIds.has(run.id) ||
-      !Number.isFinite(Date.parse(run.createdAt)) ||
-      !Number.isFinite(Date.parse(run.updatedAt)) ||
-      !object(run.options)
-    )
-      throw new StorageError(422, 'Invalid workspace simulation run.');
-    validateSimulationModel(run.model);
+    const mapping = byDiagram.get(run.diagramId)!;
     const scenarioId =
       typeof run.options.scenarioId === 'string' ? run.options.scenarioId : undefined;
     const demandMultiplier =
       typeof run.options.demandMultiplier === 'number' ? run.options.demandMultiplier : undefined;
-    if (
-      (run.options.scenarioId !== undefined && scenarioId === undefined) ||
-      (run.options.demandMultiplier !== undefined &&
-        (!Number.isFinite(demandMultiplier) || demandMultiplier! < 0))
-    )
-      throw new StorageError(422, 'Invalid archived simulation options.');
-    historyJsonBytes(run, 48 * 1024 * 1024);
     const identity = identities.get(run.diagramId)!;
     for (const node of run.model.nodes)
       if (!identity.nodes.has(node.id)) identity.nodes.set(node.id, crypto.randomUUID());

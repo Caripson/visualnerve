@@ -27,8 +27,8 @@ func addPresentationSchemas(schemas object) {
 			"total":  object{"type": "integer", "minimum": 0, "maximum": 20000}, "nodeId": object{"type": "string", "format": "uuid", "nullable": true},
 			"audio": object{"type": "boolean"}, "subtitles": object{"type": "boolean"}, "preload": object{"type": "boolean"},
 			"minimized": object{"type": "boolean", "description": "Current player panel state shared by UI, REST and MCP. Opening defaults to expanded on desktop and minimized in compact layouts. PATCH can expand or minimize during playback without pausing. Not persisted in the diagram."},
-			"buffered":  object{"type": "integer", "minimum": 0, "description": "Prepared audio clips in the lookahead buffer."},
-			"progress":  object{"type": "number", "minimum": 0, "maximum": 1, "description": "Current operation fraction. Active preload reports completed work across the voice engine and up to three narrations, monotonically reaching 1 only when ready. Message also identifies download-byte or synthesis-chunk percentage; engine initialization is indeterminate."}, "message": object{"type": "string"},
+			"buffered":  object{"type": "integer", "minimum": 0, "description": "Prepared narration clips retained for this presentation; deduplicated text may share a clip."},
+			"progress":  object{"type": "number", "minimum": 0, "maximum": 1, "description": "Current operation fraction. Explicit preload prepares the entire selected sequence from its first step, regardless of the cursor. Progress reaches 1 only when all required narration for every step is ready; failures do not report completion. Message identifies overall ready count and download-byte or synthesis-chunk percentage; initialization is indeterminate. Prepared audio uses a 32 MiB RAM cache and encrypted temporary local spill capped at 1 GiB of ciphertext including IV/tag overhead, subject to browser quota. One synthesized/decrypted clip can temporarily add up to 32 MiB; total browser/inference memory is separate. Audio is excluded from backups."}, "message": object{"type": "string"},
 		},
 	}
 	schemas["PresentationVideoInput"] = object{
@@ -50,11 +50,14 @@ func addPresentationSchemas(schemas object) {
 			"fileName":  object{"type": "string", "nullable": true},
 		},
 	}
-	voice := object{"type": "string", "enum": []string{"en_GB-alan-medium", "en_US-ljspeech-high", "en_GB-cori-high", "sv_SE-nst-medium"}, "default": "en_GB-alan-medium"}
+	voice := object{"type": "string", "enum": []string{"en_GB-alan-medium", "en_US-ljspeech-high", "en_GB-cori-high", "sv_SE-nst-medium", "en_US-libritts-high", "en_US-joe-medium", "en_US-kristin-medium", "en_US-norman-medium", "en_GB-alba-medium", "en_GB-northern_english_male-medium", "en_GB-jenny_dioco-medium", "en_GB-cori-medium", "fr_FR-siwis-medium", "es_ES-davefx-medium", "pt_PT-tugão-medium", "pt_BR-faber-medium", "no_NO-talesyntese-medium", "da_DK-talesyntese-medium", "fi_FI-harri-medium", "de_DE-thorsten-high"}, "default": "en_GB-alan-medium"}
 	schemas["PresentationVoiceId"] = voice
 	schemas["PresentationVoiceSetting"] = object{"type": "object", "additionalProperties": false, "required": []string{"value"}, "properties": object{"value": ref("PresentationVoiceId")}}
-	schemas["PresentationVoice"] = object{"type": "object", "additionalProperties": false, "required": []string{"id", "label", "language", "sampleRate", "modelBytes", "license", "source"}, "properties": object{
-		"id": ref("PresentationVoiceId"), "label": object{"type": "string"}, "language": object{"type": "string", "enum": []string{"en", "sv"}},
+	schemas["PresentationVoice"] = object{"type": "object", "additionalProperties": false, "required": []string{"id", "label", "language", "locale", "quality", "speakerCount", "speakerId", "sampleRate", "modelBytes", "license", "source"}, "properties": object{
+		"id": ref("PresentationVoiceId"), "label": object{"type": "string"}, "language": object{"type": "string", "enum": []string{"en", "sv", "fr", "es", "pt", "no", "da", "fi", "de"}},
+		"locale":       object{"type": "string", "enum": []string{"en-GB", "en-US", "sv-SE", "fr-FR", "es-ES", "pt-PT", "pt-BR", "no-NO", "da-DK", "fi-FI", "de-DE"}},
+		"quality":      object{"type": "string", "enum": []string{"medium", "high"}, "description": "Actual upstream Piper tier; no high+ tier exists."},
+		"speakerCount": object{"type": "integer", "minimum": 1}, "speakerId": object{"type": "integer", "minimum": 0, "description": "Fixed selected model speaker; LibriTTS uses speaker 0. Changing it is not currently supported."},
 		"sampleRate": object{"type": "integer", "minimum": 1}, "modelBytes": object{"type": "integer", "minimum": 1}, "license": object{"type": "string"}, "source": object{"type": "string", "format": "uri"},
 	}}
 	schemas["PresentationVoices"] = object{"type": "object", "additionalProperties": false, "required": []string{"defaultVoiceId", "voices"}, "properties": object{"defaultVoiceId": ref("PresentationVoiceId"), "voices": object{"type": "array", "items": ref("PresentationVoice")}}}
@@ -75,7 +78,7 @@ func addPresentationPaths(add func(string, string, string, string, string, strin
 		}
 		add("POST", "/presentation/"+action, summary, "PresentationEmptyInput", "PresentationRuntime", "200")
 	}
-	add("GET", "/presentation/voices", "Discover English and Swedish local neural voice models, sizes, licenses and sources", "", "PresentationVoices", "200")
+	add("GET", "/presentation/voices", "Discover the complete local neural voice catalog with locales, quality, fixed speaker, sizes, licenses and sources", "", "PresentationVoices", "200")
 	add("GET", "/presentation/video", "Read transient browser-local video export state; read-only access allowed", "", "PresentationVideoState", "200")
 	add("POST", "/presentation/video", "Start asynchronous 720p30 export of the complete numbered sequence in the current view; browser downloads MP4 or supported WebM, no video bytes in response; write access and storage acceptance required", "PresentationVideoInput", "PresentationVideoState", "200")
 	add("DELETE", "/presentation/video", "Cancel video export; exact empty object body, write access and storage acceptance required", "PresentationEmptyInput", "PresentationVideoState", "200")

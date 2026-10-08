@@ -1,0 +1,346 @@
+{
+  "revision": "c10ece1aade47bb51c153c893d14e5bf8e5b7117",
+  "repositoryLicense": "MIT",
+  "voices": {
+    "en_GB-alan-medium": {
+      "quality": "medium",
+      "language": "en-GB",
+      "model": {
+        "path": "en/en_GB/alan/medium/en_GB-alan-medium.onnx",
+        "bytes": 63201294,
+        "lfsSha256": "0a309668932205e762801f1efc2736cd4b0120329622adf62be09e56339d3330"
+      },
+      "config": {
+        "path": "en/en_GB/alan/medium/en_GB-alan-medium.onnx.json",
+        "bytes": 4888
+      },
+      "modelCard": {
+        "path": "en/en_GB/alan/medium/MODEL_CARD",
+        "sha256": "abcbc3e961124398911436acd9eaaa0ab167cdf221d5a24146aa08732c52630f"
+      }
+    },
+    "en_US-ljspeech-high": {
+      "quality": "high",
+      "language": "en-US",
+      "model": {
+        "path": "en/en_US/ljspeech/high/en_US-ljspeech-high.onnx",
+        "bytes": 114199011,
+        "lfsSha256": "5d4f08ba6a2a48c44592eed3ce56bf85e9de3dd4e20df90541ae68a8310c029a"
+      },
+      "config": {
+        "path": "en/en_US/ljspeech/high/en_US-ljspeech-high.onnx.json",
+        "bytes": 4970
+      },
+      "modelCard": {
+        "path": "en/en_US/ljspeech/high/MODEL_CARD",
+        "sha256": "289f7421072d689a3d91f6c632f486af46f9b8b04417536104a4ea667b8a394b"
+      }
+    },
+    "en_GB-cori-high": {
+      "quality": "high",
+      "language": "en-GB",
+      "model": {
+        "path": "en/en_GB/cori/high/en_GB-cori-high.onnx",
+        "bytes": 114219352,
+        "lfsSha256": "470b4dd634c98f8a4850d7626ffc3dfc90774628eeef6605a6dd8f88f30a5903"
+      },
+      "config": {
+        "path": "en/en_GB/cori/high/en_GB-cori-high.onnx.json",
+        "bytes": 4963
+      },
+      "modelCard": {
+        "path": "en/en_GB/cori/high/MODEL_CARD",
+        "sha256": "136e7bd168b6c35b4a5df01a0253297e5773b5775ceae0af5160f264aa58208f"
+      }
+    },
+    "sv_SE-nst-medium": {
+      "quality": "medium",
+      "language": "sv-SE",
+      "model": {
+        "path": "sv/sv_SE/nst/medium/sv_SE-nst-medium.onnx",
+        "bytes": 63104526,
+        "lfsSha256": "df011f56825a59dd1efc080c38a65a1ef70407e60f63050e9246f43a3d7e471e"
+      },
+      "config": {
+        "path": "sv/sv_SE/nst/medium/sv_SE-nst-medium.onnx.json",
+        "bytes": 4157
+      },
+      "modelCard": {
+        "path": "sv/sv_SE/nst/medium/MODEL_CARD",
+        "sha256": "c85d3e26e47d93e9d9b8572d3c89537c3f8ff212595cb9a3fbd2e07c19432317"
+      }
+    },
+    "en_US-libritts-high": {
+      "quality": "high",
+      "language": "en-US",
+      "model": {
+        "path": "en/en_US/libritts/high/en_US-libritts-high.onnx",
+        "bytes": 136673811,
+        "lfsSha256": "9127a559e11603f10b366d1a20ac7426826081dbc521de4c2420c57728d73f0f"
+      },
+      "config": {
+        "path": "en/en_US/libritts/high/en_US-libritts-high.onnx.json",
+        "bytes": 20163
+      },
+      "modelCard": {
+        "path": "en/en_US/libritts/high/MODEL_CARD",
+        "sha256": "c478d826aae8a6332f69509271a56083b9ece014a993e16fc79cb94968106a5f"
+      }
+    },
+    "en_US-joe-medium": {
+      "quality": "medium",
+      "language": "en-US",
+      "model": {
+        "path": "en/en_US/joe/medium/en_US-joe-medium.onnx",
+        "bytes": 63201294,
+        "lfsSha256": "58afce0321b8d9c46d7cdf9c16500cc55a793b4220212dba6b70fb788b3baf06"
+      },
+      "config": {
+        "path": "en/en_US/joe/medium/en_US-joe-medium.onnx.json",
+        "bytes": 4794
+      },
+      "modelCard": {
+        "path": "en/en_US/joe/medium/MODEL_CARD",
+        "sha256": "d2caa63aca0fccb155105e959e393e5c0c0f03a1f388ef5ba217b83ef860c760"
+      }
+    },
+    "en_US-kristin-medium": {
+      "quality": "medium",
+      "language": "en-US",
+      "model": {
+        "path": "en/en_US/kristin/medium/en_US-kristin-medium.onnx",
+        "bytes": 63531379,
+        "lfsSha256": "5849957f929cbf720c258f8458692d6103fff2f0e3d3b19c8259474bb06a18d4"
+      },
+      "config": {
+        "path": "en/en_US/kristin/medium/en_US-kristin-medium.onnx.json",
+        "bytes": 4968
+      },
+      "modelCard": {
+        "path": "en/en_US/kristin/medium/MODEL_CARD",
+        "sha256": "8c181b1d5f7d8152b914faab941fcbe6b8f0495e63e5189d6f27b8c68c8393fc"
+      }
+    },
+    "en_US-norman-medium": {
+      "quality": "medium",
+      "language": "en-US",
+      "model": {
+        "path": "en/en_US/norman/medium/en_US-norman-medium.onnx",
+        "bytes": 63531379,
+        "lfsSha256": "b9739443232a80a59c7d18810dd856899bf16a7964725f5ab81ea49b1351cb71"
+      },
+      "config": {
+        "path": "en/en_US/norman/medium/en_US-norman-medium.onnx.json",
+        "bytes": 4968
+      },
+      "modelCard": {
+        "path": "en/en_US/norman/medium/MODEL_CARD",
+        "sha256": "60eaf4d10009d1bd4a1aa555d337dae00f60421d72fee415b9139a021e7cb5d0"
+      }
+    },
+    "en_GB-alba-medium": {
+      "quality": "medium",
+      "language": "en-GB",
+      "model": {
+        "path": "en/en_GB/alba/medium/en_GB-alba-medium.onnx",
+        "bytes": 63201294,
+        "lfsSha256": "401369c4a81d09fdd86c32c5c864440811dbdcc66466cde2d64f7133a66ad03b"
+      },
+      "config": {
+        "path": "en/en_GB/alba/medium/en_GB-alba-medium.onnx.json",
+        "bytes": 4888
+      },
+      "modelCard": {
+        "path": "en/en_GB/alba/medium/MODEL_CARD",
+        "sha256": "fa166b1779404c470b0b6b4ba0238bc4a35bf89d2cd130c6788f697188b737d6"
+      }
+    },
+    "en_GB-northern_english_male-medium": {
+      "quality": "medium",
+      "language": "en-GB",
+      "model": {
+        "path": "en/en_GB/northern_english_male/medium/en_GB-northern_english_male-medium.onnx",
+        "bytes": 63201294,
+        "lfsSha256": "57a219ae8e638873db7d18893304be5069c42868f392bb95c3ff17f0690d0689"
+      },
+      "config": {
+        "path": "en/en_GB/northern_english_male/medium/en_GB-northern_english_male-medium.onnx.json",
+        "bytes": 4847
+      },
+      "modelCard": {
+        "path": "en/en_GB/northern_english_male/medium/MODEL_CARD",
+        "sha256": "75661c3a50c0ba82b32b3a438e54103d8dfe5bbe8fbb864ac687a040e79948bb"
+      }
+    },
+    "en_GB-jenny_dioco-medium": {
+      "quality": "medium",
+      "language": "en-GB",
+      "model": {
+        "path": "en/en_GB/jenny_dioco/medium/en_GB-jenny_dioco-medium.onnx",
+        "bytes": 63201294,
+        "lfsSha256": "469c630d209e139dd392a66bf4abde4ab86390a0269c1e47b4e5d7ce81526b01"
+      },
+      "config": {
+        "path": "en/en_GB/jenny_dioco/medium/en_GB-jenny_dioco-medium.onnx.json",
+        "bytes": 4895
+      },
+      "modelCard": {
+        "path": "en/en_GB/jenny_dioco/medium/MODEL_CARD",
+        "sha256": "bc8aec32196ab14f46260ab6e002cf004b0793ddd7886011145fe00106e20d45"
+      }
+    },
+    "en_GB-cori-medium": {
+      "quality": "medium",
+      "language": "en-GB",
+      "model": {
+        "path": "en/en_GB/cori/medium/en_GB-cori-medium.onnx",
+        "bytes": 63531379,
+        "lfsSha256": "1899f98e5fb8310154f3c2973f4b8a929ba7245e722b3d3a85680b833d95f10d"
+      },
+      "config": {
+        "path": "en/en_GB/cori/medium/en_GB-cori-medium.onnx.json",
+        "bytes": 4966
+      },
+      "modelCard": {
+        "path": "en/en_GB/cori/medium/MODEL_CARD",
+        "sha256": "38d76dfde845837b184668f8bab1c6426ad740b1af0fcebc349037822739e536"
+      }
+    },
+    "fr_FR-siwis-medium": {
+      "quality": "medium",
+      "language": "fr-FR",
+      "model": {
+        "path": "fr/fr_FR/siwis/medium/fr_FR-siwis-medium.onnx",
+        "bytes": 63201294,
+        "lfsSha256": "641d1ab097da2b81128c076810edb052b385decc8be3381814802a64a73baf99"
+      },
+      "config": {
+        "path": "fr/fr_FR/siwis/medium/fr_FR-siwis-medium.onnx.json",
+        "bytes": 4875
+      },
+      "modelCard": {
+        "path": "fr/fr_FR/siwis/medium/MODEL_CARD",
+        "sha256": "bd8b8d079d4d3d2c4cc20345889bbcd586d72f021a132f93357a763eb5232cce"
+      }
+    },
+    "es_ES-davefx-medium": {
+      "quality": "medium",
+      "language": "es-ES",
+      "model": {
+        "path": "es/es_ES/davefx/medium/es_ES-davefx-medium.onnx",
+        "bytes": 63201294,
+        "lfsSha256": "6658b03b1a6c316ee4c265a9896abc1393353c2d9e1bca7d66c2c442e222a917"
+      },
+      "config": {
+        "path": "es/es_ES/davefx/medium/es_ES-davefx-medium.onnx.json",
+        "bytes": 4817
+      },
+      "modelCard": {
+        "path": "es/es_ES/davefx/medium/MODEL_CARD",
+        "sha256": "420703b5d8ea239b729f13d83f31eea9bae5fcb89447de23ebc94aa8a4768f95"
+      }
+    },
+    "pt_PT-tugão-medium": {
+      "quality": "medium",
+      "language": "pt-PT",
+      "model": {
+        "path": "pt/pt_PT/tugão/medium/pt_PT-tugão-medium.onnx",
+        "bytes": 63201294,
+        "lfsSha256": "223a7aaca69a155c61897e8ada7c3b13bc306e16c72dbb9c2fed733e2b0927d4"
+      },
+      "config": {
+        "path": "pt/pt_PT/tugão/medium/pt_PT-tugão-medium.onnx.json",
+        "bytes": 5026
+      },
+      "modelCard": {
+        "path": "pt/pt_PT/tugão/medium/MODEL_CARD",
+        "sha256": "1d6c23095980c0c58a044f1cb23e26fdc1d27bd95b68db0b5b0c548788b99d50"
+      }
+    },
+    "pt_BR-faber-medium": {
+      "quality": "medium",
+      "language": "pt-BR",
+      "model": {
+        "path": "pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx",
+        "bytes": 63201294,
+        "lfsSha256": "858555e3a064209c57088fe6bd70c4c3dc54d03eaa00c45d5ecaf43a33f95aa7"
+      },
+      "config": {
+        "path": "pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx.json",
+        "bytes": 4855
+      },
+      "modelCard": {
+        "path": "pt/pt_BR/faber/medium/MODEL_CARD",
+        "sha256": "01f1a5bcfd0538782726059ae407eae9c2dd1b5b35f7298fd53a68de91afe563"
+      }
+    },
+    "no_NO-talesyntese-medium": {
+      "quality": "medium",
+      "language": "no-NO",
+      "model": {
+        "path": "no/no_NO/talesyntese/medium/no_NO-talesyntese-medium.onnx",
+        "bytes": 63201294,
+        "lfsSha256": "b763aebe02e72c4628c4074c4b8b448f05ffe523b975bfcd58e2c5d531270c13"
+      },
+      "config": {
+        "path": "no/no_NO/talesyntese/medium/no_NO-talesyntese-medium.onnx.json",
+        "bytes": 4880
+      },
+      "modelCard": {
+        "path": "no/no_NO/talesyntese/medium/MODEL_CARD",
+        "sha256": "0a03b201db00e1bdc384e2dee4f8710075ef8d32ca3c64ed16782b04d2605f6c"
+      }
+    },
+    "da_DK-talesyntese-medium": {
+      "quality": "medium",
+      "language": "da-DK",
+      "model": {
+        "path": "da/da_DK/talesyntese/medium/da_DK-talesyntese-medium.onnx",
+        "bytes": 63201294,
+        "lfsSha256": "b9271efd25f7b8494bbd28d48dd675c8c119daa284f3ee488008935f515f1241"
+      },
+      "config": {
+        "path": "da/da_DK/talesyntese/medium/da_DK-talesyntese-medium.onnx.json",
+        "bytes": 4878
+      },
+      "modelCard": {
+        "path": "da/da_DK/talesyntese/medium/MODEL_CARD",
+        "sha256": "b5b7a51d4d815a307594619a519eb389b2e17839b30c0eb69a39d3ade5b1ed65"
+      }
+    },
+    "fi_FI-harri-medium": {
+      "quality": "medium",
+      "language": "fi-FI",
+      "model": {
+        "path": "fi/fi_FI/harri/medium/fi_FI-harri-medium.onnx",
+        "bytes": 63201294,
+        "lfsSha256": "a44167faa34caed940e4fcad139fcc35922266b2593bcebe77701774c0fb2389"
+      },
+      "config": {
+        "path": "fi/fi_FI/harri/medium/fi_FI-harri-medium.onnx.json",
+        "bytes": 4873
+      },
+      "modelCard": {
+        "path": "fi/fi_FI/harri/medium/MODEL_CARD",
+        "sha256": "a0a7fa3f046f1e582689db76f93099735530343a3126f3f40ed64380c419a0b2"
+      }
+    },
+    "de_DE-thorsten-high": {
+      "quality": "high",
+      "language": "de-DE",
+      "model": {
+        "path": "de/de_DE/thorsten/high/de_DE-thorsten-high.onnx",
+        "bytes": 113895201,
+        "lfsSha256": "9df1c43c61149ef9b39e618e2b861fbe41e1fcea9390b2dac62e8761573ea4f1"
+      },
+      "config": {
+        "path": "de/de_DE/thorsten/high/de_DE-thorsten-high.onnx.json",
+        "bytes": 4875
+      },
+      "modelCard": {
+        "path": "de/de_DE/thorsten/high/MODEL_CARD",
+        "sha256": "a49334fc36286c9d67f007605969a33f416cc4e35eb770c9c7f716d44711fc3a"
+      }
+    }
+  }
+}

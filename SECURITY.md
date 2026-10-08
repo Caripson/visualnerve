@@ -38,6 +38,25 @@ matrix or promise maintenance of older revisions.
 
 ## Local storage and integration boundaries
 
+The separate encrypted app implementation at `app.visualnerve.com` is under
+release review; it has not replaced the published plaintext workspace at
+`www.visualnerve.com/app/`. Its browser-only password and recovery material
+protect all 14 private IndexedDB record groups with AES-256-GCM and keyed lookup
+metadata. A shared revocable session fences UI, storage, API/MCP and background
+work. No API submits unlock credentials or renews human inactivity. An explicit
+verified transfer preserves the original workspace on the other origin. See
+[the storage/session schema](docs/ENCRYPTED_WORKSPACE_SCHEMA.md) and
+[release acceptance plan](docs/ENCRYPTED_WORKSPACE_PLAN.md).
+
+Normal password/recovery changes preserve the content key. Old backups and key
+envelopes still use their original credentials and can expose that older key.
+The human-only incident rotation authenticates and reencrypts all current
+records, verifies the replacement and activates it atomically before locking
+the tabs. It cannot recall old files or content already shared. A compromised
+device, extension or unlocked application remains outside at-rest protection.
+These controls do not establish certification, regulatory compliance or an
+independent security assessment.
+
 IndexedDB in the current browser profile and origin contains all application data. The editor at `/app/`, Help and API reference have no accounts, analytics, content telemetry, remote fonts or CDN scripts. Libraries, icons, documentation and Swagger assets are bundled locally. The service worker caches static assets only. Downloaded backups are explicit exports, not a second persistence system.
 
 Optional Google Analytics is isolated to explicitly permitted public product pages and gated by default-off Klaro consent. No Google script or denied-mode ping loads before acceptance; the integration supplies only a public route and fixed title, excluding query strings, fragments, referrers and workspace contents. Configure the Analytics property with Enhanced Measurement disabled and no Connected Site Tags or custom automatic events reading URLs or page content. These account settings cannot be verified from a Measurement ID alone. Advertising consent remains denied. Website choices are separate from the editor's required browser-storage acceptance. See [website configuration](docs/WEBSITE.md) and the [privacy policy](hugo/content/privacy.md).
@@ -47,6 +66,14 @@ The optional **Build with Lovable** handoff generates a reviewed text brief loca
 SQL import analyzes SELECT/WITH query structure or DDL schema locally in a Web Worker; it never executes SQL or connects to a database. Files use the selected local import limit: 50 MiB by default, with experimental increases up to 1 GiB in Settings. Schema limits remain 2,000 table objects including external references and 100,000 columns; separate query limits are documented in [SQL import](docs/SQL_IMPORT.md). Pending analysis can be cancelled and times out after 30 seconds. Raising the file limit does not change these structural limits or the bridge's 32 MiB transport envelope. Source scripts are temporary drafts. Query diagrams retain normalized expressions, JOIN conditions and clauses, **including literal values**; sensitive filters can therefore survive persistence and exports. DDL diagrams retain recognized schema fields without INSERT/COPY rows, default/CHECK expressions, comments or procedure bodies. ENUM labels inside data types may remain as schema structure. DDL extraction handles supported CREATE/ADD definitions; it does not apply every migration or validate a database.
 
 The Go server binds to 127.0.0.1:4317 by default and serves static files without application writes. Local integration is disabled unless started with --bridge and enabled in browser Settings. It requires an open browser. Token authentication is optional; when VISUAL_NERVE_BRIDGE_TOKEN is configured, it protects all integration reads/writes, MCP and WebSocket registration. Loopback, Host/Origin checks and the browser's access grant apply with or without a configured token. The browser keeps its token only for the session and excludes it from backups. Tokens and request payloads are not logged by the bridge.
+
+All MCP clients use the same grants. The local `--mcp-stdio` adapter forwards to
+an already-running loopback bridge, validates the upstream initialization,
+refuses URL credentials/redirects/remote hosts and uses system TLS trust.
+`VISUAL_NERVE_BRIDGE_TOKEN` may be supplied in its environment for header-only
+authentication. It does not start a server, expose a new port or create a shadow
+workspace. If port 4317 is occupied, startup stops; an explicitly selected port
+must match the app and client configuration. [Client setup](docs/MCP.md).
 
 Host and Origin checks protect against untrusted hosts and cross-origin integration requests. Development permits the explicit loopback Vite port 5173. There is no wildcard CORS. Requests and WebSocket messages are limited to 32 MiB; forwarded commands time out. JSON is parsed before forwarding, then the browser validates IDs, references, versions, dates, dimensions and URL schemes transactionally. Metadata is rendered as text; user URLs permit only absolute HTTP(S), with noopener noreferrer. Swagger's remote validator is disabled.
 

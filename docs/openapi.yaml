@@ -2326,6 +2326,7 @@
         "type": "object"
       },
       "Health": {
+        "description": "Static bridge health does not read browser security state. A direct browser/MCP health response may additionally include workspaceSecurity; use GET /workspace/security for authoritative safe browser metadata.",
         "properties": {
           "bridge": {
             "type": "boolean"
@@ -2344,6 +2345,9 @@
           },
           "version": {
             "type": "string"
+          },
+          "workspaceSecurity": {
+            "$ref": "#/components/schemas/WorkspaceSecurityStatus"
           }
         },
         "type": "object"
@@ -3767,7 +3771,7 @@
             "type": "boolean"
           },
           "buffered": {
-            "description": "Prepared audio clips in the lookahead buffer.",
+            "description": "Prepared narration clips retained for this presentation; deduplicated text may share a clip.",
             "minimum": 0,
             "type": "integer"
           },
@@ -3821,7 +3825,7 @@
             "type": "boolean"
           },
           "progress": {
-            "description": "Current operation fraction. Active preload reports completed work across the voice engine and up to three narrations, monotonically reaching 1 only when ready. Message also identifies download-byte or synthesis-chunk percentage; engine initialization is indeterminate.",
+            "description": "Current operation fraction. Explicit preload prepares the entire selected sequence from its first step, regardless of the cursor. Progress reaches 1 only when all required narration for every step is ready; failures do not report completion. Message identifies overall ready count and download-byte or synthesis-chunk percentage; initialization is indeterminate. Prepared audio uses a 32 MiB RAM cache and encrypted temporary local spill capped at 1 GiB of ciphertext including IV/tag overhead, subject to browser quota. One synthesized/decrypted clip can temporarily add up to 32 MiB; total browser/inference memory is separate. Audio is excluded from backups.",
             "maximum": 1,
             "minimum": 0,
             "type": "number"
@@ -4018,16 +4022,47 @@
           "language": {
             "enum": [
               "en",
-              "sv"
+              "sv",
+              "fr",
+              "es",
+              "pt",
+              "no",
+              "da",
+              "fi",
+              "de"
             ],
             "type": "string"
           },
           "license": {
             "type": "string"
           },
+          "locale": {
+            "enum": [
+              "en-GB",
+              "en-US",
+              "sv-SE",
+              "fr-FR",
+              "es-ES",
+              "pt-PT",
+              "pt-BR",
+              "no-NO",
+              "da-DK",
+              "fi-FI",
+              "de-DE"
+            ],
+            "type": "string"
+          },
           "modelBytes": {
             "minimum": 1,
             "type": "integer"
+          },
+          "quality": {
+            "description": "Actual upstream Piper tier; no high+ tier exists.",
+            "enum": [
+              "medium",
+              "high"
+            ],
+            "type": "string"
           },
           "sampleRate": {
             "minimum": 1,
@@ -4036,12 +4071,25 @@
           "source": {
             "format": "uri",
             "type": "string"
+          },
+          "speakerCount": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "speakerId": {
+            "description": "Fixed selected model speaker; LibriTTS uses speaker 0. Changing it is not currently supported.",
+            "minimum": 0,
+            "type": "integer"
           }
         },
         "required": [
           "id",
           "label",
           "language",
+          "locale",
+          "quality",
+          "speakerCount",
+          "speakerId",
           "sampleRate",
           "modelBytes",
           "license",
@@ -4055,7 +4103,23 @@
           "en_GB-alan-medium",
           "en_US-ljspeech-high",
           "en_GB-cori-high",
-          "sv_SE-nst-medium"
+          "sv_SE-nst-medium",
+          "en_US-libritts-high",
+          "en_US-joe-medium",
+          "en_US-kristin-medium",
+          "en_US-norman-medium",
+          "en_GB-alba-medium",
+          "en_GB-northern_english_male-medium",
+          "en_GB-jenny_dioco-medium",
+          "en_GB-cori-medium",
+          "fr_FR-siwis-medium",
+          "es_ES-davefx-medium",
+          "pt_PT-tugão-medium",
+          "pt_BR-faber-medium",
+          "no_NO-talesyntese-medium",
+          "da_DK-talesyntese-medium",
+          "fi_FI-harri-medium",
+          "de_DE-thorsten-high"
         ],
         "type": "string"
       },
@@ -11005,6 +11069,128 @@
           "templates"
         ],
         "type": "object"
+      },
+      "WorkspaceLockInput": {
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "WorkspaceLockedError": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "enum": [
+              "WORKSPACE_LOCKED"
+            ],
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "code"
+        ],
+        "type": "object"
+      },
+      "WorkspaceSecurityStatus": {
+        "additionalProperties": false,
+        "description": "GET /workspace/security reports safe versioned metadata for the connected browser's actual storage backend without reading private records or unlocking it. Encrypted app workspaces use AES-256-GCM in IndexedDB and require a human password/recovery action in the browser; existing legacy workspaces are explicitly mode:legacy. Logical workspace schemaVersion 8 is separate from vault schemaVersion 1. Private UI/API/MCP operations share the same revocable unlocked-session storage boundary. An already authorized live socket remains restricted to safe status while locked; it is not reconnected after closure. Cold locked startup creates no connection. Connected locked content requests return 423 WORKSPACE_LOCKED; an absent/disconnected browser remains 503. API/MCP requests do not renew idle timeout. Lock cancels jobs and invalidates originating requests, even after a later unlock. POST /workspace/lock accepts only an empty object or no arguments. It requires current fresh Read + write access while unlocked, waits for pending saves, and returns safe status after revocation; save failure does not silently discard edits. A durable revision fence rejects concurrent grant or saved-data changes with 409 without invalidating local keys; inspect current state before a fresh request. A locked retained connection returns idempotent status without revoking again; after unlock a fresh human grant is required. There are no password, recovery, unlock or session-policy control endpoints; /settings/vault-* writes are rejected. Documentation discovery through visual_nerve_api_docs and MCP resources needs no connected/unlocked browser. Explicit authorized API/AI requests and diagram exports return readable content; GET /workspace/export is a readable semantic WorkspaceBackup, not the browser's encrypted backup download. Downloaded encrypted backups retain their own credentials after the live workspace password changes. After each encrypted-session unlock access starts Off; the human must choose a fresh Read only or Read + write grant in Settings.",
+        "properties": {
+          "cipher": {
+            "description": "Present only for the encrypted backend.",
+            "enum": [
+              "AES-256-GCM"
+            ],
+            "type": "string"
+          },
+          "contentRequiresUnlock": {
+            "description": "Encrypted content also requires the existing browser storage acceptance and external access grant. This response never grants content access.",
+            "type": "boolean"
+          },
+          "logicalSchemaVersion": {
+            "description": "Shared logical workspace schema; currently 8, independently of vault physical format.",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "mode": {
+            "enum": [
+              "encrypted",
+              "legacy"
+            ],
+            "type": "string"
+          },
+          "programmaticLock": {
+            "description": "Encrypted backends support explicit POST /workspace/lock, with a fresh Read + write grant while unlocked.",
+            "type": "boolean"
+          },
+          "programmaticUnlock": {
+            "enum": [
+              false
+            ],
+            "type": "boolean"
+          },
+          "requestsRenewIdleTimeout": {
+            "enum": [
+              false
+            ],
+            "type": "boolean"
+          },
+          "requiresHumanUnlock": {
+            "type": "boolean"
+          },
+          "schemaVersion": {
+            "enum": [
+              1
+            ],
+            "type": "integer"
+          },
+          "state": {
+            "description": "Current in-memory browser session state. Uninitialized means this session has not yet initialized its vault; it does not identify a missing persisted vault.",
+            "enum": [
+              "uninitialized",
+              "locked",
+              "unlocking",
+              "unlocked",
+              "legacy"
+            ],
+            "type": "string"
+          },
+          "storage": {
+            "enum": [
+              "indexeddb"
+            ],
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "workspace-security"
+            ],
+            "type": "string"
+          },
+          "vaultSchemaVersion": {
+            "description": "Present only for the encrypted backend.",
+            "enum": [
+              1
+            ],
+            "type": "integer"
+          }
+        },
+        "required": [
+          "type",
+          "schemaVersion",
+          "mode",
+          "state",
+          "storage",
+          "logicalSchemaVersion",
+          "requiresHumanUnlock",
+          "programmaticUnlock",
+          "programmaticLock",
+          "requestsRenewIdleTimeout",
+          "contentRequiresUnlock"
+        ],
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -11016,7 +11202,7 @@
     }
   },
   "info": {
-    "description": "IndexedDB in the browser is authoritative and is the only database. This optional API forwards commands through a WebSocket bridge to an open browser with explicit storage acceptance and MCP access set to Read only or Read + write (default Off). Read-only access permits GET, POST /export, exact POST /sql/preview, /code/preview, /code/project/preview or /diagram-files/preview and exact diagram questions/build-brief previews, rejecting mutations with 403. Semantic overview, evidence-backed multi-level questions, local version history, editable storyboard scenes and reviewed app specifications share the same canonical graph and browser-local persistence. Draw.io XML and base64 Visio .vsdx ZIP files are analyzed locally without executing or fetching embedded content; POST /import saves only a selected native page and requires write access. Multipage imports require pageId from preview. Original XML/ZIP is transient. SQL SELECT/WITH visualization retains scoped aliases, expressions, joins and clauses locally; it never executes SQL or connects to a database. POST /sql/diagrams and POST /code/diagrams save and open validated graphs and require write access. GET /code/languages discovers 50 code languages plus Markdown. POST /code/project/preview and /code/project/diagrams accept strict base64 ZIP projects and files/symbols/folders modes, using the same local analysis engine. Project preview permits read-only access; saving requires write access. Code diagrams retain identifiers, paths, source lines and confidence; original source and nonstructural string values are discarded. The public static host provides no content API; endpoints target a loopback bridge only. Start the static server with --bridge. No application records are stored in the server. PATCH requires version; graph replacement requires baseVersion. Optional VISUAL_NERVE_BRIDGE_TOKEN protects all integration requests. PNG/PDF render in the browser. MCP is available at /mcp. Its initialize instructions advertise Process Simulator, native 2D and opt-in 3D. Process Simulator is a first-class local document with separately typed schemaVersion 1 semantics and the same deterministic worker engine for UI, API and MCP. Seeded runs return asynchronous IDs; headless execution needs no active canvas or animation but still requires a connected browser. Shared resources, queues, scaling, economics, replay and scenario results are semantically inspectable.  visual_nerve_api_docs provides a compact guide by default and the full bundled OpenAPI with document=openapi; the same documents are MCP resources. Documentation discovery requires no connected browser. The browser workspace is at /app/; / is the public product home. Both editor routes use the same origin's IndexedDB without a data migration. The website domain without a path is the allowed app origin; Settings shows a separate local MCP HTTP URL for Codex and WebSocket URL for the browser. Public GET /mcp/ is setup documentation; local MCP POST /mcp and REST /api/v1 endpoints remain unchanged.",
+    "description": "IndexedDB in the browser is authoritative and is the only database. This optional API forwards commands through a WebSocket bridge to an open browser with explicit storage acceptance and MCP access set to Read only or Read + write (default Off). Read-only access permits GET, POST /export, exact POST /sql/preview, /code/preview, /code/project/preview or /diagram-files/preview and exact diagram questions/build-brief previews, rejecting mutations with 403. Semantic overview, evidence-backed multi-level questions, local version history, editable storyboard scenes and reviewed app specifications share the same canonical graph and browser-local persistence. Draw.io XML and base64 Visio .vsdx ZIP files are analyzed locally without executing or fetching embedded content; POST /import saves only a selected native page and requires write access. Multipage imports require pageId from preview. Original XML/ZIP is transient. SQL SELECT/WITH visualization retains scoped aliases, expressions, joins and clauses locally; it never executes SQL or connects to a database. POST /sql/diagrams and POST /code/diagrams save and open validated graphs and require write access. GET /code/languages discovers 50 code languages plus Markdown. POST /code/project/preview and /code/project/diagrams accept strict base64 ZIP projects and files/symbols/folders modes, using the same local analysis engine. Project preview permits read-only access; saving requires write access. Code diagrams retain identifiers, paths, source lines and confidence; original source and nonstructural string values are discarded. The public static host provides no content API; endpoints target a loopback bridge only. Start the static server with --bridge. No application records are stored in the server. PATCH requires version; graph replacement requires baseVersion. Optional VISUAL_NERVE_BRIDGE_TOKEN protects all integration requests. PNG/PDF render in the browser. MCP is available at /mcp. Its initialize instructions advertise Process Simulator, native 2D and opt-in 3D. Process Simulator is a first-class local document with separately typed schemaVersion 1 semantics and the same deterministic worker engine for UI, API and MCP. Seeded runs return asynchronous IDs; headless execution needs no active canvas or animation but still requires a connected browser. Shared resources, queues, scaling, economics, replay and scenario results are semantically inspectable.  visual_nerve_api_docs provides a compact guide by default and the full bundled OpenAPI with document=openapi; the same documents are MCP resources. Documentation discovery requires no connected browser. The browser workspace is at /app/; / is the public product home. Both editor routes use the same origin's IndexedDB without a data migration. The website domain without a path is the allowed app origin; Settings shows a separate local MCP HTTP URL for Codex and WebSocket URL for the browser. Public GET /mcp/ is setup documentation; local MCP POST /mcp and REST /api/v1 endpoints remain unchanged. GET /workspace/security reports safe versioned metadata for the connected browser's actual storage backend without reading private records or unlocking it. Encrypted app workspaces use AES-256-GCM in IndexedDB and require a human password/recovery action in the browser; existing legacy workspaces are explicitly mode:legacy. Logical workspace schemaVersion 8 is separate from vault schemaVersion 1. Private UI/API/MCP operations share the same revocable unlocked-session storage boundary. An already authorized live socket remains restricted to safe status while locked; it is not reconnected after closure. Cold locked startup creates no connection. Connected locked content requests return 423 WORKSPACE_LOCKED; an absent/disconnected browser remains 503. API/MCP requests do not renew idle timeout. Lock cancels jobs and invalidates originating requests, even after a later unlock. POST /workspace/lock accepts only an empty object or no arguments. It requires current fresh Read + write access while unlocked, waits for pending saves, and returns safe status after revocation; save failure does not silently discard edits. A durable revision fence rejects concurrent grant or saved-data changes with 409 without invalidating local keys; inspect current state before a fresh request. A locked retained connection returns idempotent status without revoking again; after unlock a fresh human grant is required. There are no password, recovery, unlock or session-policy control endpoints; /settings/vault-* writes are rejected. Documentation discovery through visual_nerve_api_docs and MCP resources needs no connected/unlocked browser. Explicit authorized API/AI requests and diagram exports return readable content; GET /workspace/export is a readable semantic WorkspaceBackup, not the browser's encrypted backup download. Downloaded encrypted backups retain their own credentials after the live workspace password changes. After each encrypted-session unlock access starts Off; the human must choose a fresh Read only or Read + write grant in Settings.",
     "title": "Visual Nerve local API",
     "version": "0.3.0"
   },
@@ -11095,6 +11281,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -11230,6 +11426,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -11356,6 +11562,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -11491,6 +11707,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -11624,6 +11850,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -11759,6 +11995,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -11892,6 +12138,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -12041,6 +12297,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -12173,6 +12439,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -12300,6 +12576,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -12433,6 +12719,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -12576,6 +12872,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -12722,6 +13028,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -12856,6 +13172,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -12999,6 +13325,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -13145,6 +13481,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -13282,6 +13628,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -13425,6 +13781,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -13602,6 +13968,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -13747,6 +14123,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -13884,6 +14270,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -14028,6 +14424,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -14164,6 +14570,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -14306,6 +14722,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -14461,6 +14887,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -14615,6 +15051,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -14752,6 +15198,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -14896,6 +15352,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -15030,6 +15496,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -15173,6 +15649,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -15321,6 +15807,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -15455,6 +15951,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -15598,6 +16104,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -15744,6 +16260,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -15837,6 +16363,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -15909,6 +16445,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -15985,6 +16531,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -16049,6 +16605,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -16123,6 +16689,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -16187,6 +16763,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -16261,6 +16847,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -16328,6 +16924,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -16401,6 +17007,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -16480,6 +17096,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -16553,6 +17179,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -16638,6 +17274,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -16702,6 +17348,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -16770,6 +17426,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -16843,6 +17509,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -16922,6 +17598,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -16995,6 +17681,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -17080,6 +17776,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -17147,6 +17853,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -17220,6 +17936,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -17299,6 +18025,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -17372,6 +18108,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -17457,6 +18203,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -17524,6 +18280,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -17597,6 +18363,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -17676,6 +18452,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -17749,6 +18535,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -17834,6 +18630,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -17901,6 +18707,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -17974,6 +18790,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -18053,6 +18879,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -18126,6 +18962,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -18211,6 +19057,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -18278,6 +19134,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -18351,6 +19217,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -18430,6 +19306,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -18503,6 +19389,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -18588,6 +19484,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -18652,6 +19558,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -18726,6 +19642,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -18793,6 +19719,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -18867,6 +19803,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -18940,6 +19886,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -19017,6 +19973,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -19112,6 +20078,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -19186,6 +20162,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -19259,6 +20245,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -19345,6 +20341,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -19418,6 +20424,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -19504,6 +20520,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -19588,6 +20614,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -19661,6 +20697,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -19747,6 +20793,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -19820,6 +20876,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -19905,6 +20971,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -19978,6 +21054,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -20064,6 +21150,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -20137,6 +21233,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -20222,6 +21328,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -20305,6 +21421,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -20390,6 +21516,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -20463,6 +21599,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -20548,6 +21694,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -20615,6 +21771,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -20688,6 +21854,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -20767,6 +21943,16 @@
           "422": {
             "$ref": "#/components/responses/SimulationError422"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
           },
@@ -20840,6 +22026,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -20924,6 +22120,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -21031,6 +22237,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -21175,6 +22391,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -21302,6 +22528,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -21446,6 +22682,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -21587,6 +22833,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -21710,6 +22966,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -21839,6 +23105,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -21966,6 +23242,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -22099,6 +23385,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -22242,6 +23538,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -22388,6 +23694,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -22514,6 +23830,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -22647,6 +23973,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -22774,6 +24110,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -22918,6 +24264,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -23041,6 +24397,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -23173,6 +24539,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -23308,6 +24684,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -23441,6 +24827,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -23576,6 +24972,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -23709,6 +25115,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -23844,6 +25260,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -23977,6 +25403,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -24112,6 +25548,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -24245,6 +25691,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -24380,6 +25836,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -24501,6 +25967,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -24634,6 +26110,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -24758,6 +26244,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -24805,7 +26301,7 @@
           },
           {}
         ],
-        "summary": "Discover English and Swedish local neural voice models, sizes, licenses and sources"
+        "summary": "Discover the complete local neural voice catalog with locales, quality, fixed speaker, sizes, licenses and sources"
       }
     },
     "/search": {
@@ -24894,6 +26390,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -25018,6 +26524,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -25144,6 +26660,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -25267,6 +26793,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -25393,6 +26929,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -25516,6 +27062,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -25642,6 +27198,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -25723,6 +27289,16 @@
           },
           "422": {
             "$ref": "#/components/responses/SimulationError422"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "$ref": "#/components/responses/SimulationError428"
@@ -25829,6 +27405,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -25964,6 +27550,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -26098,6 +27694,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -26224,6 +27830,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -26360,6 +27976,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -26483,6 +28109,16 @@
               }
             },
             "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
           },
           "428": {
             "content": {
@@ -26621,6 +28257,16 @@
             },
             "description": "Input or graph validation failed; no partial writes"
           },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
           "428": {
             "content": {
               "application/json": {
@@ -26669,6 +28315,286 @@
           {}
         ],
         "summary": "Restore a workspace atomically without overwriting projects"
+      }
+    },
+    "/workspace/lock": {
+      "post": {
+        "description": "GET /workspace/security reports safe versioned metadata for the connected browser's actual storage backend without reading private records or unlocking it. Encrypted app workspaces use AES-256-GCM in IndexedDB and require a human password/recovery action in the browser; existing legacy workspaces are explicitly mode:legacy. Logical workspace schemaVersion 8 is separate from vault schemaVersion 1. Private UI/API/MCP operations share the same revocable unlocked-session storage boundary. An already authorized live socket remains restricted to safe status while locked; it is not reconnected after closure. Cold locked startup creates no connection. Connected locked content requests return 423 WORKSPACE_LOCKED; an absent/disconnected browser remains 503. API/MCP requests do not renew idle timeout. Lock cancels jobs and invalidates originating requests, even after a later unlock. POST /workspace/lock accepts only an empty object or no arguments. It requires current fresh Read + write access while unlocked, waits for pending saves, and returns safe status after revocation; save failure does not silently discard edits. A durable revision fence rejects concurrent grant or saved-data changes with 409 without invalidating local keys; inspect current state before a fresh request. A locked retained connection returns idempotent status without revoking again; after unlock a fresh human grant is required. There are no password, recovery, unlock or session-policy control endpoints; /settings/vault-* writes are rejected. Documentation discovery through visual_nerve_api_docs and MCP resources needs no connected/unlocked browser. Explicit authorized API/AI requests and diagram exports return readable content; GET /workspace/export is a readable semantic WorkspaceBackup, not the browser's encrypted backup download. Downloaded encrypted backups retain their own credentials after the live workspace password changes. After each encrypted-session unlock access starts Off; the human must choose a fresh Read only or Read + write grant in Settings.",
+        "operationId": "post_workspace_lock",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceLockInput"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceSecurityStatus"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Explicitly lock the encrypted browser workspace; never unlock or accept credentials"
+      }
+    },
+    "/workspace/security": {
+      "get": {
+        "description": "GET /workspace/security reports safe versioned metadata for the connected browser's actual storage backend without reading private records or unlocking it. Encrypted app workspaces use AES-256-GCM in IndexedDB and require a human password/recovery action in the browser; existing legacy workspaces are explicitly mode:legacy. Logical workspace schemaVersion 8 is separate from vault schemaVersion 1. Private UI/API/MCP operations share the same revocable unlocked-session storage boundary. An already authorized live socket remains restricted to safe status while locked; it is not reconnected after closure. Cold locked startup creates no connection. Connected locked content requests return 423 WORKSPACE_LOCKED; an absent/disconnected browser remains 503. API/MCP requests do not renew idle timeout. Lock cancels jobs and invalidates originating requests, even after a later unlock. POST /workspace/lock accepts only an empty object or no arguments. It requires current fresh Read + write access while unlocked, waits for pending saves, and returns safe status after revocation; save failure does not silently discard edits. A durable revision fence rejects concurrent grant or saved-data changes with 409 without invalidating local keys; inspect current state before a fresh request. A locked retained connection returns idempotent status without revoking again; after unlock a fresh human grant is required. There are no password, recovery, unlock or session-policy control endpoints; /settings/vault-* writes are rejected. Documentation discovery through visual_nerve_api_docs and MCP resources needs no connected/unlocked browser. Explicit authorized API/AI requests and diagram exports return readable content; GET /workspace/export is a readable semantic WorkspaceBackup, not the browser's encrypted backup download. Downloaded encrypted backups retain their own credentials after the live workspace password changes. After each encrypted-session unlock access starts Off; the human must choose a fresh Read only or Read + write grant in Settings.",
+        "operationId": "get_workspace_security",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceSecurityStatus"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Inspect safe versioned browser security status without unlocking or reading workspace records"
       }
     }
   },

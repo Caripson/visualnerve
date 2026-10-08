@@ -1,16 +1,20 @@
-import Dexie, { type EntityTable, type ObservabilitySet } from 'dexie';
+import Dexie, {
+  type Collection,
+  type EntityTable,
+  type IndexableType,
+  type ObservabilitySet,
+  type Table,
+  type Transaction,
+  type UpdateSpec,
+} from 'dexie';
 import type { CsvDataset } from '../data/types';
 import {
-  base,
   type Diagram,
   type Graph,
   type GraphEdge,
   type GraphNode,
   type Owner,
 } from '../model/types';
-import { instantiate, templates } from '../templates/templates';
-import { IMPORT_LIMIT_SETTING } from '../imports/limits';
-import { PROJECT_SOURCE_FILE_LIMIT_SETTING } from '../code/project/limits';
 import type {
   HistoryBackup,
   HistoryContent,
@@ -18,12 +22,35 @@ import type {
   HistorySnapshot,
   HistorySource,
 } from '../history/types';
-import { exportHistoryBackup } from '../history/backup';
+import {
+  graphStoreNames,
+  initializeWorkspace,
+  readWorkspaceGraph,
+  readWorkspaceBackup,
+} from './operations';
 import type {
   SimulationModelRecord,
   SimulationRunRecord,
   SimulationCheckpointRecord,
 } from '../simulation/storage';
+import { StorageError } from '../model/errors';
+import {
+  WORKSPACE_SCHEMA_VERSION,
+  workspaceStoreDefinitions,
+  workspaceStoreNames,
+  type WorkspaceChange,
+  type WorkspaceIndexKey,
+  type WorkspaceMetadata,
+  type WorkspaceQuery,
+  type WorkspaceRecordMap,
+  type WorkspaceScope,
+  type WorkspaceStorage,
+  type WorkspaceStoreName,
+  type WorkspaceTable,
+  type WorkspaceTables,
+  type WorkspaceWhere,
+  type WorkspaceOperation,
+} from './contracts';
 export interface Setting {
   key: string;
   value: unknown;
@@ -53,6 +80,7 @@ export interface WorkspaceBackup {
 }
 
 export class WorkspaceDatabase extends Dexie {
+  private storageAdapter?: LegacyWorkspaceStorage;
   private datasetCache = new Map<string, { diagramVersion: number; datasets: CsvDataset[] }>();
   private immutableDatasets = new WeakSet<CsvDataset>();
   private datasetMutation = (parts: ObservabilitySet) => {
@@ -73,6 +101,23 @@ export class WorkspaceDatabase extends Dexie {
   simulationModels!: EntityTable<SimulationModelRecord, 'diagramId'>;
   simulationRuns!: EntityTable<SimulationRunRecord, 'id'>;
   simulationCheckpoints!: EntityTable<SimulationCheckpointRecord, 'id'>;
+  get schemaVersion() {
+    return WORKSPACE_SCHEMA_VERSION;
+  }
+  /** Explicit adapter; inherited Dexie tables/transaction remain available for legacy callers. */
+  asStorage(): WorkspaceStorage {
+    return (this.storageAdapter ??= new LegacyWorkspaceStorage(this));
+  }
+  atomic<T>(
+    mode: 'r' | 'rw',
+    stores: readonly WorkspaceStoreName[],
+    work: (scope: WorkspaceScope) => Promise<T>,
+  ): Promise<T> {
+    return this.asStorage().atomic(mode, stores, work);
+  }
+  subscribe(listener: (change: WorkspaceChange) => void) {
+    return this.asStorage().subscribe(listener);
+  }
   constructor(name = 'visual-nerve-cache') {
     // Retain the historical database name to upgrade existing browser data in place.
     super(name);
@@ -182,120 +227,414 @@ export class WorkspaceDatabase extends Dexie {
     if (transaction) transaction.on('complete', remember);
     else remember();
   }
-  async initialize() {
-    await this.open();
-    await this.transaction('rw', this.settings, this.templates, async () => {
-      if (!(await this.settings.get('workspace-id')))
-        await this.settings.put({ key: 'workspace-id', value: base().id });
-      const existing = await this.templates.bulkGet(templates.map((entry) => entry.key));
-      await this.templates.bulkPut(
-        templates
-          .filter((entry, index) => !existing[index])
-          .map((entry) => ({
-            id: entry.key,
-            name: entry.name,
-            graph: instantiate(entry.key, entry.name),
-            builtin: true,
-          })),
-      );
-      // Built-in labels can evolve without replacing stored example graphs or custom templates.
-      for (const [index, entry] of templates.entries()) {
-        const previous = existing[index];
-        if (previous?.builtin && previous.name !== entry.name)
-          await this.templates.update(entry.key, { name: entry.name });
-      }
-    });
+  cachedDatasets(diagram: Diagram) {
+    const cached = this.datasetCache.get(diagram.id);
+    return cached?.diagramVersion === diagram.version ? cached.datasets : undefined;
   }
-  async graph(id: string): Promise<Graph | undefined> {
-    const graph = await this.transaction(
-      'r',
-      [this.diagrams, this.nodes, this.edges, this.owners, this.datasets, this.simulationModels],
-      async () => {
-        const diagram = await this.diagrams.get(id);
-        if (!diagram) return;
-        const nodes = await this.nodes.where('diagramId').equals(id).toArray();
-        const edges = await this.edges.where('diagramId').equals(id).toArray();
-        // Entity order is part of the saved graph, including branch order and owner aliases.
-        const order = (diagram.settings.entityOrder ?? {}) as {
-          nodes?: string[];
-          edges?: string[];
-        };
-        const sort = <T extends { id: string }>(items: T[], ids?: string[]) => {
-          const index = new Map(ids?.map((id, position) => [id, position]) ?? []);
-          return items.sort(
-            (a, b) =>
-              (index.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
-              (index.get(b.id) ?? Number.MAX_SAFE_INTEGER),
-          );
-        };
-        const ownerIds = [...new Set(nodes.flatMap((node) => node.ownerIds))];
-        const owners = (await this.owners.bulkGet(ownerIds)).filter(
-          (owner): owner is Owner => !!owner,
+  initialize() {
+    return this.asStorage().initialize();
+  }
+  graph(id: string): Promise<Graph | undefined> {
+    return this.asStorage().graph(id);
+  }
+  backup(): Promise<WorkspaceBackup> {
+    return this.asStorage().backup();
+  }
+}
+
+function indexKey(value: IndexableType): WorkspaceIndexKey {
+  if (typeof value === 'string' || typeof value === 'number') return value;
+  if (
+    Array.isArray(value) &&
+    value.every((part) => typeof part === 'string' || typeof part === 'number')
+  )
+    return value as (string | number)[];
+  throw new StorageError(422, 'Unsupported workspace index value.');
+}
+class LegacyWorkspaceQuery<T> implements WorkspaceQuery<T> {
+  constructor(
+    private collection: Collection<T, string, T>,
+    private check: (write?: boolean) => void,
+  ) {}
+  toArray() {
+    this.check();
+    return this.collection.toArray();
+  }
+  first() {
+    this.check();
+    return this.collection.first();
+  }
+  count() {
+    this.check();
+    return this.collection.count();
+  }
+  async keys() {
+    this.check();
+    return (await this.collection.keys()).map(indexKey);
+  }
+  primaryKeys() {
+    this.check();
+    return this.collection.primaryKeys();
+  }
+  eachKey(callback: (value: WorkspaceIndexKey, cursor: { primaryKey: string }) => void) {
+    this.check();
+    return this.collection.eachKey((value, cursor) =>
+      callback(indexKey(value), { primaryKey: cursor.primaryKey }),
+    );
+  }
+  filter(predicate: (record: T) => boolean) {
+    this.check();
+    return new LegacyWorkspaceQuery(this.collection.clone().filter(predicate), this.check);
+  }
+  limit(count: number) {
+    this.check();
+    return new LegacyWorkspaceQuery(this.collection.clone().limit(count), this.check);
+  }
+  reverse() {
+    this.check();
+    return new LegacyWorkspaceQuery(this.collection.clone().reverse(), this.check);
+  }
+  delete() {
+    this.check(true);
+    return this.collection.delete();
+  }
+}
+class LegacyWorkspaceTable<T> implements WorkspaceTable<T> {
+  constructor(
+    readonly name: WorkspaceStoreName,
+    private native: Table<T, string, T>,
+    private check: (write?: boolean) => void,
+  ) {}
+  get(id: string) {
+    this.check();
+    return this.native.get(id);
+  }
+  bulkGet(ids: readonly string[]) {
+    this.check();
+    return this.native.bulkGet([...ids]);
+  }
+  toArray() {
+    this.check();
+    return this.native.toArray();
+  }
+  count() {
+    this.check();
+    return this.native.count();
+  }
+  put(record: T) {
+    this.check(true);
+    return this.native.put(record);
+  }
+  add(record: T) {
+    this.check(true);
+    return this.native.add(record);
+  }
+  bulkPut(records: readonly T[]) {
+    this.check(true);
+    return this.native.bulkPut(records);
+  }
+  bulkDelete(ids: readonly string[]) {
+    this.check(true);
+    return this.native.bulkDelete([...ids]);
+  }
+  update(id: string, changes: Partial<T>) {
+    this.check(true);
+    return this.native.update(id, changes as UpdateSpec<T>);
+  }
+  delete(id: string) {
+    this.check(true);
+    return this.native.delete(id);
+  }
+  clear() {
+    this.check(true);
+    return this.native.clear();
+  }
+  private indexed(index: string) {
+    this.check();
+    const schema = workspaceStoreDefinitions[this.name];
+    if (index !== schema.primaryKey && !Object.hasOwn(schema.indexes, index))
+      throw new StorageError(422, 'Unknown workspace query index.');
+  }
+  where(index: string): WorkspaceWhere<T> {
+    this.indexed(index);
+    const clause = this.native.where(index);
+    return {
+      equals: (value) => {
+        this.check();
+        return new LegacyWorkspaceQuery(clause.equals(value), this.check);
+      },
+      notEqual: (value) => {
+        this.check();
+        return new LegacyWorkspaceQuery(clause.notEqual(value), this.check);
+      },
+    };
+  }
+  orderBy(index: string) {
+    this.indexed(index);
+    return new LegacyWorkspaceQuery(this.native.orderBy(index), this.check);
+  }
+  filter(predicate: (record: T) => boolean) {
+    this.check();
+    return new LegacyWorkspaceQuery(this.native.filter(predicate), this.check);
+  }
+  async metadata(index: string): Promise<WorkspaceMetadata[]> {
+    const result: WorkspaceMetadata[] = [];
+    await this.orderBy(index).eachKey((value, cursor) =>
+      result.push({ id: cursor.primaryKey, value }),
+    );
+    return result;
+  }
+}
+interface LegacyScopeContext {
+  transaction: Transaction;
+  stores: ReadonlySet<WorkspaceStoreName>;
+  mode: 'r' | 'rw';
+  state: { failed: boolean; error?: unknown; callbacks: Array<() => void> };
+}
+interface LegacyOperationContext {
+  signal: AbortSignal;
+  check: () => void;
+}
+
+/** Actual legacy Dexie transactions, with explicitly bound scopes and no crypto or shadow database. */
+export class LegacyWorkspaceStorage implements WorkspaceScope {
+  declare diagrams: WorkspaceTables['diagrams'];
+  declare nodes: WorkspaceTables['nodes'];
+  declare edges: WorkspaceTables['edges'];
+  declare owners: WorkspaceTables['owners'];
+  declare settings: WorkspaceTables['settings'];
+  declare templates: WorkspaceTables['templates'];
+  declare datasets: WorkspaceTables['datasets'];
+  declare historySnapshots: WorkspaceTables['historySnapshots'];
+  declare historyContents: WorkspaceTables['historyContents'];
+  declare historySources: WorkspaceTables['historySources'];
+  declare historyRows: WorkspaceTables['historyRows'];
+  declare simulationModels: WorkspaceTables['simulationModels'];
+  declare simulationRuns: WorkspaceTables['simulationRuns'];
+  declare simulationCheckpoints: WorkspaceTables['simulationCheckpoints'];
+  private listeners = new Set<(change: WorkspaceChange) => void>();
+  private watched = false;
+  private root: LegacyWorkspaceStorage;
+  private handles = new Map<WorkspaceStoreName, WorkspaceTable<unknown>>();
+  private operationAbort = new AbortController();
+  constructor(
+    private db: WorkspaceDatabase,
+    private context?: LegacyScopeContext,
+    root?: LegacyWorkspaceStorage,
+    private operation?: LegacyOperationContext,
+  ) {
+    this.root = root ?? this;
+    for (const name of workspaceStoreNames)
+      Object.defineProperty(this, name, { enumerable: true, get: () => this.table(name) });
+  }
+  get name() {
+    return this.db.name;
+  }
+  get inTransaction() {
+    return !!this.context;
+  }
+  get schemaVersion() {
+    return WORKSPACE_SCHEMA_VERSION;
+  }
+  get verno() {
+    return WORKSPACE_SCHEMA_VERSION;
+  }
+  get tables() {
+    return workspaceStoreNames
+      .filter((name) => !this.context || this.context.stores.has(name))
+      .map((name) => this.table(name));
+  }
+  private check(name?: WorkspaceStoreName, write = false) {
+    this.operation?.check();
+    if (!this.context) return;
+    if (this.context.state.failed) throw this.context.state.error;
+    if (!this.context.transaction.active)
+      throw new StorageError(409, 'The workspace transaction has ended.');
+    if (name && !this.context.stores.has(name))
+      throw new StorageError(422, 'Store is outside the workspace transaction.');
+    if (write && this.context.mode !== 'rw')
+      throw new StorageError(403, 'The workspace transaction is read-only.');
+  }
+  private table<K extends WorkspaceStoreName>(name: K): WorkspaceTable<WorkspaceRecordMap[K]> {
+    this.check(name);
+    let table = this.handles.get(name);
+    if (!table) {
+      const native = this.context
+        ? this.context.transaction.table<WorkspaceRecordMap[K], string, WorkspaceRecordMap[K]>(name)
+        : this.db.table<WorkspaceRecordMap[K], string, WorkspaceRecordMap[K]>(name);
+      table = new LegacyWorkspaceTable(name, native, (write) => this.check(name, write));
+      this.handles.set(name, table);
+    }
+    return table as WorkspaceTable<WorkspaceRecordMap[K]>;
+  }
+  open() {
+    this.check();
+    return this.db.open();
+  }
+  close() {
+    this.check();
+    if (this.context) throw new StorageError(422, 'Close the workspace outside its transaction.');
+    this.root.operationAbort.abort();
+    this.root.operationAbort = new AbortController();
+    this.db.close();
+    if (this.watched) Dexie.on.storagemutated.unsubscribe(this.changed);
+    this.watched = false;
+    this.listeners.clear();
+  }
+  async atomic<T>(
+    mode: 'r' | 'rw',
+    stores: readonly WorkspaceStoreName[],
+    work: (scope: WorkspaceScope) => Promise<T>,
+  ): Promise<T> {
+    this.check(undefined, mode === 'rw');
+    if (
+      !['r', 'rw'].includes(mode) ||
+      !stores.length ||
+      stores.some((name) => !workspaceStoreNames.includes(name))
+    )
+      throw new StorageError(422, 'Invalid workspace transaction scope.');
+    for (const name of stores) this.check(name);
+    const selected = new Set(stores);
+    if (this.context) {
+      try {
+        return await work(
+          new LegacyWorkspaceStorage(
+            this.db,
+            { ...this.context, stores: selected, mode },
+            this.root,
+            this.operation,
+          ),
         );
-        const cached = this.datasetCache.get(id);
-        const datasets =
-          cached?.diagramVersion === diagram.version
-            ? cached.datasets
-            : await this.datasets.where('diagramId').equals(id).toArray();
-        sort(datasets, diagram.settings.csvDatasetOrder);
-        const [dataset, ...additional] = datasets;
-        const simulation = (await this.simulationModels.get(id))?.model;
-        const graph: Graph = {
-          format: 'visual-nerve',
-          formatVersion: 1,
-          diagram,
-          nodes: sort(nodes, order.nodes),
-          edges: sort(edges, order.edges),
-          owners,
-          ...(simulation ? { simulation } : {}),
-          ...(dataset ? { dataset } : {}),
-          ...(additional.length ? { datasets: additional } : {}),
-        };
-        return graph;
+      } catch (error) {
+        // A caller may catch an inner error; its partial writes still cannot commit.
+        this.context.state.failed = true;
+        this.context.state.error = error;
+        throw error;
+      }
+    }
+    const outer = Dexie.currentTransaction;
+    const state = {
+      failed: false,
+      error: undefined as unknown,
+      callbacks: [] as Array<() => void>,
+    };
+    const result = await this.db.transaction(
+      mode,
+      [...selected].map((name) => this.db.table(name)),
+      (transaction) => {
+        return Dexie.waitFor(
+          (async () => {
+            const result = await work(
+              new LegacyWorkspaceStorage(
+                this.db,
+                { transaction, stores: selected, mode, state },
+                this.root,
+                this.operation,
+              ),
+            );
+            if (state.failed) throw state.error;
+            return result;
+          })(),
+        );
       },
     );
-    // Outside a top-level transaction its mutation event has already fired.
-    // Nested graph reads register against the outer commit instead.
-    if (graph) this.rememberDataset(graph.diagram, graph.dataset, graph.datasets);
-    return graph;
+    const publish = () => {
+      for (const callback of state.callbacks) callback();
+      state.callbacks.length = 0;
+    };
+    if (outer) {
+      let parent = outer;
+      while (parent.parent) parent = parent.parent;
+      // Dexie's mutation event follows its complete event. Publish cached source
+      // identities after invalidation and only after the real outer commit.
+      parent.on('complete', () => queueMicrotask(publish));
+    } else publish();
+    return result;
   }
-  async backup(): Promise<WorkspaceBackup> {
-    return this.transaction('r', this.tables, async () => {
-      const datasets = await this.datasets.toArray();
-      const history = await exportHistoryBackup(this, datasets);
-      return {
-        format: 'visual-nerve-workspace',
-        formatVersion: 1,
-        schemaVersion: this.verno,
-        exportedAt: new Date().toISOString(),
-        diagrams: await this.diagrams.toArray(),
-        nodes: await this.nodes.toArray(),
-        edges: await this.edges.toArray(),
-        owners: await this.owners.toArray(),
-        settings: (await this.settings.toArray()).filter(
-          (setting) =>
-            ![
-              'workspace-id',
-              'last-diagram',
-              'integration-enabled',
-              'mcp-access',
-              'bridge-url',
-              'privacy-acknowledged',
-              'storage-consent',
-              'last-export',
-              'backup-nudge-dismissed',
-              IMPORT_LIMIT_SETTING,
-              PROJECT_SOURCE_FILE_LIMIT_SETTING,
-            ].includes(setting.key),
-        ),
-        templates: await this.templates.toArray(),
-        datasets,
-        simulationModels: await this.simulationModels.toArray(),
-        simulationRuns: await this.simulationRuns.toArray(),
-        simulationCheckpoints: await this.simulationCheckpoints.toArray(),
-        ...(history ? { history } : {}),
-      };
+  afterCommit(action: () => void) {
+    this.check();
+    if (!this.context)
+      throw new StorageError(422, 'A commit hook requires a workspace transaction.');
+    this.context.state.callbacks.push(action);
+  }
+  private changed = (parts: ObservabilitySet) => {
+    const paths = Object.keys(parts);
+    const stores = workspaceStoreNames.filter((name) =>
+      paths.some((path) => path.startsWith(`idb://${this.name}/${name}/`)),
+    );
+    if (!stores.length) return;
+    const change = Object.freeze({ stores: Object.freeze(stores) });
+    for (const listener of this.listeners) listener(change);
+  };
+  subscribe(listener: (change: WorkspaceChange) => void): () => void {
+    this.check();
+    if (this !== this.root) return this.root.subscribe(listener);
+    this.listeners.add(listener);
+    if (!this.watched) {
+      this.watched = true;
+      Dexie.on.storagemutated.subscribe(this.changed);
+    }
+    return () => {
+      this.listeners.delete(listener);
+      if (!this.listeners.size && this.watched) {
+        this.watched = false;
+        Dexie.on.storagemutated.unsubscribe(this.changed);
+      }
+    };
+  }
+  private domain(stores: readonly WorkspaceStoreName[], write = false) {
+    this.check(undefined, write);
+    for (const name of stores) this.check(name);
+  }
+  async initialize() {
+    this.domain(['settings', 'templates'], true);
+    if (!this.context) await this.open();
+    await this.atomic('rw', ['settings', 'templates'], initializeWorkspace);
+  }
+  graph(id: string) {
+    this.domain(graphStoreNames);
+    return this.atomic('r', graphStoreNames, async (scope) => {
+      const graph = await readWorkspaceGraph(scope, id, (diagram) =>
+        this.db.cachedDatasets(diagram),
+      );
+      if (graph) scope.rememberDataset(graph.diagram, graph.dataset, graph.datasets);
+      return graph;
     });
+  }
+  backup() {
+    this.domain(workspaceStoreNames);
+    return this.atomic('r', workspaceStoreNames, readWorkspaceBackup);
+  }
+  forgetDatasets() {
+    this.check();
+    if (this.context) this.afterCommit(() => this.db.forgetDatasets());
+    else this.db.forgetDatasets();
+  }
+  async captureOperation(): Promise<WorkspaceOperation> {
+    this.check();
+    if (this.context) throw new StorageError(422, 'Start long-running work outside a transaction.');
+    const signal = this.root.operationAbort.signal;
+    let disposed = false;
+    const check = () => {
+      this.operation?.check();
+      if (disposed || signal.aborted)
+        throw new StorageError(423, 'This workspace operation has ended.');
+    };
+    const storage = new LegacyWorkspaceStorage(this.db, undefined, this.root, { signal, check });
+    return {
+      signal,
+      storage,
+      check: async () => check(),
+      dispose: () => {
+        disposed = true;
+      },
+    };
+  }
+  rememberDataset(diagram: Diagram, dataset?: CsvDataset, additional: CsvDataset[] = []) {
+    this.check();
+    if (this.context) this.afterCommit(() => this.db.rememberDataset(diagram, dataset, additional));
+    else this.db.rememberDataset(diagram, dataset, additional);
   }
 }
 export const database = new WorkspaceDatabase();
+export const legacyStorage = database.asStorage();

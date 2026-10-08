@@ -20,6 +20,28 @@ Ordinary editing does not upload that content to the static host, S3, CloudFront
 
 The browser may temporarily hold unsaved working state in memory. Keep the tab open when saving reports an error or conflict, and resolve it before closing.
 
+## Encryption on the dedicated app surface
+
+**Workspace addresses:** `app.visualnerve.com` is the dedicated encrypted workspace. The existing
+`www.visualnerve.com/app/` remains available with readable local records and a transfer entry.
+The controls below do not retroactively protect the old origin.
+
+The dedicated app surface at `app.visualnerve.com` requires a password and stores workspace records in an **AES-256-GCM encrypted IndexedDB backend**. This includes source rows, history, preferences and simulation archives, with protected lookup metadata. UI, API and MCP operations use the same revocable unlocked session; no readable persistent workspace shadow is created.
+
+A small vault header and session-control record retain cryptographic setup and revocation metadata, without readable work, passwords or recovery keys. App/voice caches hold ordinary static assets. Their small coordination marker contains no workspace content and lets the app clear its own caches safely; clearing app cache preserves the vault and does not erase the entire browser HTTP cache.
+
+Password setup, unlock, recovery and session-limit changes happen in the browser. No server reset, mandatory account, backend or SSO receives these credentials. Store the recovery key separately. An API/MCP client cannot unlock or change the security policy; it can receive safe versioned `GET /workspace/security` status while connected, explicitly lock through `POST /workspace/lock` with fresh Read + write authorization, and receive content permitted after human unlock and a separate grant. An existing connection retained during lock carries only restricted control, not private records; cold locked pages do not connect automatically, and explicit Off closes the transport.
+
+After an encrypted-session unlock, access starts Off. The human must choose a new Read only or Read + write grant; a previous tool grant is not restored automatically.
+
+Only human app interaction renews the inactivity session. Requests and background work do not. Lock revokes in-flight operations, cancels jobs and clears working plaintext; old requests remain revoked after another unlock. Tabs sharing the vault observe lock, and each tab needs its own unlock.
+
+This encrypted origin is separate from existing legacy, staging and local origins. Their old records and readable backups do not become encrypted or move automatically. Use **Export encrypted transfer** on the source, then **Transfer existing workspace** on the encrypted destination. This preserves identifiers and archives, disables API/MCP access and verifies the complete saved copy before reopening the editor. The original workspace stays in place. Manage remaining readable copies yourself. [Transfer steps](/help/settings/#transfer-an-existing-workspace).
+
+The encrypted app's downloaded workspace backup is encrypted. Changing its live password does not rewrite old backup files, which retain their original password/recovery credentials. Authorized API/MCP reads—including the readable semantic `GET /workspace/export`—and ordinary diagram exports intentionally release readable content. Encryption cannot control the receiving client or protect an already-unlocked app from malicious browser code or a compromised device. [Security and recovery details](/security/).
+
+Password changes preserve the content key. If an encryption key or an older backup with its credential may have been exposed, the browser's separate [content-key rotation](/help/settings/#rotate-an-exposed-content-key) replaces the key protecting all current records after full verification. It does not upload those records or recall older files.
+
 ## Required local storage is separate from optional analytics
 
 Before the editor opens, you must explicitly acknowledge and accept local browser storage and offline app caching. These are required for the workspace to work. Without acceptance, the editor remains closed; the public pages and Help remain readable.
@@ -32,7 +54,7 @@ This workspace acceptance does not grant permission for Google Analytics. Analyt
 
 The workspace belongs to the **exact origin**—scheme, hostname and port—and browser profile where you created it. Another device, browser, private window or origin has separate storage. There is no automatic synchronization.
 
-A move to a new website domain does not transfer diagrams. Export a complete backup from the old origin, then restore it at the new one. A different path within the same origin, such as moving the editor to `/app/`, does not itself create a new browser-storage origin.
+A move to a new website domain does not transfer diagrams. For the dedicated encrypted app, use the complete, verified transfer described above. Other browser-to-browser backup imports still use the reviewed Restore backup flow. A different path within the same origin, such as moving the editor to `/app/`, does not itself create a new browser-storage origin.
 
 Private browsing, clearing site data, resetting a profile, browser eviction or device loss can remove local work. A browser retention request may reduce automatic eviction, but does not prevent manual deletion or guarantee recovery.
 
@@ -41,6 +63,10 @@ Private browsing, clearing site data, resetting a profile, browser eviction or d
 **Settings → Data & Privacy → Export all data** downloads a complete workspace backup. It includes diagrams, connections, owners, portable preferences, templates, datasets, supported simulation content and history. It excludes storage acceptance, integration tokens/grants, local identity and the browser's import-size preference.
 
 You choose where to keep or share that file. Visual Nerve does not upload it or create an automatic cloud backup. Native diagram JSON is a separate restorable copy of one diagram; PNG/PDF/SVG and Markdown serve different sharing purposes.
+
+The legacy workspace also offers **Export encrypted transfer** with a separate file password and
+recovery key. Encrypting that download leaves the legacy working database readable. The file
+does not acquire later password changes or revoke any earlier copies.
 
 **Restore backup** previews Merge or Replace. Replace requires confirmation and disables imported integration access; restore does not accept storage or grant tools access on your behalf. Invalid data rolls back instead of leaving a partial workspace.
 
@@ -66,15 +92,17 @@ Local file imports default to 50 MiB. Settings can raise the limit to 1 GiB with
 
 ## Narration and video are generated locally
 
-Node descriptions and scene narration are sent to the local speech worker, not uploaded to a speech service. English and Swedish voices use fixed neural model assets. Alan is the default English voice.
+Node descriptions and scene narration are sent to the local speech worker, not uploaded to a speech service. The catalog’s 20 voices use fixed neural model assets across English, Swedish, French, Spanish, Portuguese, Norwegian, Danish, Finnish and German. Alan is the default English voice.
 
-Explicit audio playback, Preload, voice preview or video export with audio can download approximately 60–109 MiB of assets per voice from versioned external model URLs. These requests contain no narration text or diagram payload. The model host can receive ordinary request metadata, including the requested model and client IP.
+Explicit audio playback, Preload, voice preview or video export with audio can download approximately 60–131 MiB of assets per voice from versioned external model URLs. These requests contain no narration text or diagram payload. The model host can receive ordinary request metadata, including the requested model and client IP.
 
 After loading, synthesis runs locally and can work offline with cached assets. Downloaded models use a separate CacheStorage cache. **Clear downloaded voices** removes that cache; model binaries and generated audio are excluded from diagram JSON and workspace backups.
 
 Video export renders locally and inserts optional audio without screen capture. Temporary frames, audio and video buffers are not saved in IndexedDB. The finished file downloads through your browser. API/MCP can read export state, but receives no video bytes.
 
 [Presentation, voice and video details](/help/presentations/)
+
+Full walkthrough preloading can retain narration beyond its 32 MiB prepared-clip RAM cache in an encrypted temporary CacheStorage cache, up to a 1 GiB aggregate ciphertext ceiling, including IV/tag overhead, subject to browser quota. Its AES-256-GCM key is held only in RAM, separate from the workspace key; persisted entries use random identifiers and contain no readable narration or key. Closing the presentation, content or voice changes and workspace lock revoke the key and clean up the cache. Reload cannot recover it. A crash may leave unusable ciphertext; Clear app cache removes those owned temporary caches. These clips are not part of IndexedDB, diagram exports or workspace backups.
 
 ## Optional API and MCP access
 

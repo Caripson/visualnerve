@@ -8,6 +8,8 @@ Visual Nerve saves locally. Export creates a file you control; it does not autom
 
 Open **Export** on desktop or **Diagram actions → Export** on a phone.
 
+The existing `www.visualnerve.com/app/` workspace stores readable records and exports. A separate encrypted workspace at `app.visualnerve.com` is being prepared for release review. On that isolated address, only **Export all data / backup** produces an encrypted workspace file. Individual diagram JSON/Markdown, images, SVG, PDF, video and copied text remain readable. Review them before sharing, even if the workspace itself is password protected.
+
 ## Choose the right output
 
 | Output                          | Use it for                                 | What it preserves                                                                                                          |
@@ -21,7 +23,7 @@ Open **Export** on desktop or **Diagram actions → Export** on a phone.
 | **Export video** in Player      | Share a narrated walkthrough               | A film of the saved numbered sequence or storyboard                                                                        |
 | **Build with Lovable**          | Turn a workflow into an app-building brief | Reviewed text describing the chosen diagram scope and requirements                                                         |
 
-An image, PDF or video is not a restorable graph. Keep JSON or a full backup when you need an editable copy.
+An image, PDF or video is not a restorable graph. Keep JSON or a full backup when you need an editable copy. Locking the app later does not encrypt or recall any downloaded file.
 
 ## Export one diagram
 
@@ -83,6 +85,17 @@ Choose **Export → Export all data / backup → Export all data**, or use **Set
 It includes all diagrams, owners including unassigned ones, custom templates, portable settings, CSV sources, named views, history and applicable simulation models/results/checkpoints. It excludes credentials, integration tokens and grants, storage acceptance, local identity, last selection and the browser's import-size and ZIP source-file preferences. Cached app files and voice models are separate from the backup.
 
 Nothing is uploaded. Keep the downloaded file somewhere independent of this browser if you want a recovery copy. [Settings and local data](/help/settings/#restore-a-backup) explains Merge, Replace, moving to another device and retention.
+
+| Backup source | File protection | Reading it later |
+| --- | --- | --- |
+| Existing plaintext workspace | Readable `visual-nerve-workspace` JSON, format version 1 | Review the restore preview; no backup password is required |
+| Isolated encrypted workspace, under release review | Authenticated `visualnerve-backup` container, version 1 | Unlock the destination workspace, then use this file's original export password or recovery key in **Unlock encrypted backup** |
+
+Both use a `.json` filename. Your current workspace password is not automatically tried on an old encrypted backup. Choose **Original export password** or **Original export recovery key**, then **Read backup**. The complete container is verified before its contents become a restore preview; cancelling or a workspace lock cancels the reader. Keep the original credential securely and verify a backup before depending on it.
+
+Restoring a readable old backup into the isolated workspace encrypts the destination records. It does not alter the original file or transfer browser data automatically between `www.visualnerve.com` and `app.visualnerve.com`.
+
+Downloaded copies keep their own protection. Changing a workspace password does not re-encrypt or revoke an older encrypted backup, and it does not encrypt a plaintext export. [Protecting old backups](/help/settings/#downloaded-copies-and-password-changes) explains what to replace, retain and verify after a credential change.
 
 ## Prepare an app brief for Lovable
 

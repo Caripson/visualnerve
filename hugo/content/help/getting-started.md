@@ -8,34 +8,52 @@ You do not need AI, an account or an integration to use Visual Nerve. You can cr
 
 ## Open your local workspace
 
-1. [Open the workspace](/app/) in the browser and profile you intend to use for your work.
+1. [Open the encrypted workspace](https://app.visualnerve.com/) in the browser and profile you intend to use for your work. On first use, complete the password and recovery steps below before accepting storage.
 2. Read the first-visit storage notice. Select the acknowledgement checkbox, then **Accept and continue**.
 3. Choose **New diagram**. On a phone, open **Projects** first.
 4. Pick a template, enter a **New diagram name**, then choose **Create diagram**.
 5. Wait for **Saved**. This confirms that the local database transaction has committed.
 
-The public home is at `/`; the editor is at `/app/`. If you previously used the editor on the home page, your saved work is available in the workspace on the same website and browser profile. The route change keeps the same local database.
+The public website is at `www.visualnerve.com`; the encrypted editor is at `app.visualnerve.com`. Existing work on the public website remains available at its `/app/` path in the same browser profile. A path change within one origin keeps its database; a different hostname does not.
+
+**Workspace addresses:** `app.visualnerve.com` is the separate encrypted workspace. `www.visualnerve.com/app/` is the existing plaintext workspace: local-only storage does not mean that its records or ordinary JSON backups are encrypted. The two addresses have separate browser storage. Moving to the new address requires an explicit **Export encrypted transfer** on the original address and **Transfer existing workspace** on the destination. The destination cannot discover or automatically encrypt work saved on the old address. [Complete transfer steps](/help/settings/#transfer-an-existing-workspace).
 
 Acceptance is required because the editor needs local browser storage. Reading Help, Privacy, License or the API reference does not require opening or creating a workspace. [What gets stored](/help/settings/#what-saved-means).
+
+### First use of the isolated encrypted workspace
+
+On the isolated address, the first visit starts with **Protect your local workspace**:
+
+1. Choose a unique passphrase of at least 12 characters and enter it twice.
+2. Choose **Create encrypted workspace**.
+3. Save the displayed recovery key in a trusted password manager or another protected location. Keep it private and separate from your backup files.
+4. Confirm **I have saved my recovery key in a protected location**, then choose **Continue**.
+5. Accept local storage and create a diagram. To bring your complete existing workspace from the old address, open **Settings → Data & Privacy → Transfer existing workspace** and follow the [transfer guide](/help/settings/#transfer-an-existing-workspace).
+
+The password and recovery key are used in the browser. There is no server password reset; losing both means the saved encrypted records cannot be recovered. The API, MCP and an AI agent cannot unlock the workspace for you. [Password, recovery and session steps](/help/settings/#protect-the-isolated-workspace).
+
+![First-visit password setup, including the warning that downloaded backups keep their original protection.](/help/images/vault-setup.webp "Choose a strong password locally and read the downloaded-copy warning before creating the workspace.")
+
+The default session locks after 15 minutes without your interaction or after 8 hours from unlock, whichever comes first. Agent requests and background work do not extend it. Save pending edits before leaving, and unlock in the browser when you return. Grant an agent fresh access through Settings after every unlock if you want to reconnect it.
 
 ![New diagram dialog showing the template choices and a name field.](/help/images/new-diagram.webp "Choose a starting structure and give this particular diagram a meaningful name. Templates create editable objects, rather than a fixed image.")
 
 ## Choose a template for the question
 
-| Template | Useful when you want to… | Example |
-| --- | --- | --- |
-| Blank | Arrange your own objects without a starting structure | Sketch an unfamiliar system |
-| Mind Map | Expand a central idea into connected topics | Explore a product launch |
-| Basic Flowchart | Explain steps and decisions | Describe an approval workflow |
-| Project Timeline | Show work against dates | Plan a delivery in phases |
-| Customer Journey | Show the stages someone experiences | Explain onboarding |
-| Decision Tree | Compare branches from successive choices | Classify support cases |
-| Process Map | Describe how work passes between stages | Map order fulfilment |
-| Responsibility Flow | Make responsibility part of the workflow | Show a team handover |
-| Process Simulator | Build your own simulated process with guided setup | Test order-processing capacity |
-| Kiosk + package pickup | Explore shared resources in a runnable example | Test whether package demand disrupts store customers |
+| Template                   | Useful when you want to…                                      | Example                                                        |
+| -------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------- |
+| Blank                      | Arrange your own objects without a starting structure         | Sketch an unfamiliar system                                    |
+| Mind Map                   | Expand a central idea into connected topics                   | Explore a product launch                                       |
+| Basic Flowchart            | Explain steps and decisions                                   | Describe an approval workflow                                  |
+| Project Timeline           | Show work against dates                                       | Plan a delivery in phases                                      |
+| Customer Journey           | Show the stages someone experiences                           | Explain onboarding                                             |
+| Decision Tree              | Compare branches from successive choices                      | Classify support cases                                         |
+| Process Map                | Describe how work passes between stages                       | Map order fulfilment                                           |
+| Responsibility Flow        | Make responsibility part of the workflow                      | Show a team handover                                           |
+| Process Simulator          | Build your own simulated process with guided setup            | Test order-processing capacity                                 |
+| Kiosk + package pickup     | Explore shared resources in a runnable example                | Test whether package demand disrupts store customers           |
 | Delivery network + returns | Open nested processes and locate a shared-resource constraint | Compare warehouse, transport, installation and return capacity |
-| System Architecture | Show components and dependencies | Explain an application stack |
+| System Architecture        | Show components and dependencies                              | Explain an application stack                                   |
 
 Ordinary diagram modes share native objects and relationships. You can change their presentation later without rebuilding the graph. **Process Simulator** is a separate document with its own simulation model; a normal flowchart does not start simulating merely because it contains arrows.
 
@@ -59,15 +77,15 @@ If your process has uncertain times, staffing or demand, build it in [Process Si
 
 ![A diagram on the desktop canvas with the project list, editing toolbar and selected-object properties.](/help/images/editor.webp "Projects are on the left, the diagram is in the centre and the selected object's details are on the right. Toolbars act on the current diagram or selection.")
 
-| Area | What it controls |
-| --- | --- |
-| Projects | Open diagrams; narrow by name, folder, tag, recent changes or favourite |
-| Document bar | Current diagram, save status, player and export |
-| Editing tools | Add/connect objects, layout, undo, filters and analysis |
-| Canvas | Move, select, connect, zoom and draw |
-| Properties | Object or connection details; diagram settings when nothing is selected |
-| Bottom controls | Fit/focus, minimap, grid/snapping and the pen layer |
-| Settings / Local only badge | Appearance, imports, storage, backup, voices and integration access |
+| Area                        | What it controls                                                        |
+| --------------------------- | ----------------------------------------------------------------------- |
+| Projects                    | Open diagrams; narrow by name, folder, tag, recent changes or favourite |
+| Document bar                | Current diagram, save status, player and export                         |
+| Editing tools               | Add/connect objects, layout, undo, filters and analysis                 |
+| Canvas                      | Move, select, connect, zoom and draw                                    |
+| Properties                  | Object or connection details; diagram settings when nothing is selected |
+| Bottom controls             | Fit/focus, minimap, grid/snapping and the pen layer                     |
+| Settings / Local only badge | Appearance, imports, storage, backup, voices and integration access     |
 
 ![Mobile workspace showing the compact diagram controls and a selected object.](/help/images/mobile-editor.webp "On a phone the canvas stays central. Projects and Edit open temporary panels, while Diagram actions contains the longer tool menu.")
 
@@ -79,7 +97,11 @@ Use **Projects** to choose a diagram, then return to the canvas. Drag empty spac
 
 There is no manual Save button. Editing saves locally; **Saving…** means a write is pending, **Saved** means it committed, and **Error** or **Conflict** needs attention. Give the browser time to show Saved before closing it.
 
-Return using the **same browser profile and website address**. Another device, private window, browser profile or origin has its own workspace. Nothing automatically transfers between them. In Settings, **Export all data** creates a complete workspace backup; use **Restore backup** to move it to another browser. [Backup and restore steps](/help/settings/#export-all-local-data).
+Return using the **same browser profile and website address**. Another device, private window, browser profile or origin has its own workspace. Nothing automatically transfers between them. In Settings, **Export all data** creates a complete workspace backup; **Restore backup** imports one through a reviewed Merge or Replace flow. Ordinary backups from the existing workspace are readable JSON; backups from the isolated workspace are encrypted and need the password or recovery key valid when exported. [Backup and restore steps](/help/settings/#export-all-local-data).
+
+For the complete move from `www.visualnerve.com/app/` to the isolated encrypted app, use **Export encrypted transfer**, then **Transfer existing workspace**. This separate flow preserves original identifiers, source data, history and simulation archives, verifies the saved encrypted destination, and leaves the source unchanged. Its transfer file has its own password and recovery key. Keep the original until you have checked the destination and made a new backup there; the two copies do not synchronize. [Transfer steps](/help/settings/#transfer-an-existing-workspace).
+
+**Lock now** on the isolated address tries to finish pending saves first. If saving fails, **Lock and discard unsaved changes** lets you choose to lose those drafts. Automatic session expiry preserves only the last durable saved version. A later password change cannot change a backup already downloaded; [protect older copies](/help/settings/#downloaded-copies-and-password-changes) separately.
 
 ## Next steps
 

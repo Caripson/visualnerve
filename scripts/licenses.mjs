@@ -32,6 +32,7 @@ for (const [path, entry] of Object.entries(lock.packages)) {
 // The local speech adapter retains attribution for the MIT Piper Web reference
 // implementation even though the upstream wrapper is no longer a dependency.
 inventory.push({ ecosystem: 'source', name: 'Piper Web reference', version: '1.0.5 (adapted)', license: 'MIT', scope: 'upstream MIT material retained in speech adapter', notices: copyNotices(resolve(root, 'third_party/licenses/piper-tts-web'), 'piper-tts-web') });
+inventory.push({ ecosystem: 'model', name: 'Piper voice catalog', version: 'c10ece1aade47bb51c153c893d14e5bf8e5b7117', license: 'MIT models / individual training-source terms', scope: 'optional local narration models, downloaded on request', notices: copyNotices(resolve(root, 'third_party/licenses/piper-voices'), 'piper-voices') });
 // Klaro's published UMD includes these upstream components even though its npm
 // consumer dependency list contains build tooling. Versions are from its v0.7.21 lock.
 for (const [name, version] of [['preact', '10.19.6'], ['core-js', '3.36.0'], ['classnames', '2.5.1']])

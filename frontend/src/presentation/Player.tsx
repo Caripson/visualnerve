@@ -16,7 +16,6 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { useEditor } from '../state/editor';
-import { getSpatialView } from '../spatial/types';
 import {
   autoNumber,
   assignPresentationNumber,
@@ -26,15 +25,16 @@ import {
 import { presentation, usePresentation } from './service';
 import { VideoControls } from './VideoControls';
 import { useVideoExport, videoExport, isVideoExporting } from './video-service';
-import { getStoryboard } from './storyboard';
 import { presentationSteps } from './sequence';
 import { StoryboardEditor } from './StoryboardEditor';
 import { PlayerSubtitles } from './PlayerSubtitles';
 import './presentation.css';
 import { useCompactLayout } from '../hooks/useCompactLayout';
 
-/** Kept outside App: watches graph revisions and renders a compact canvas overlay. */
-export function PresentationFeature() {
+export { PresentationFeature } from './PresentationFeature';
+
+/** Optional player UI; graph and privacy lifecycle belong to its always-mounted controller. */
+export function PresentationPlayerView() {
   const graph = useEditor((state) => state.graph);
   const player = usePresentation();
   const video = useVideoExport();
@@ -76,61 +76,7 @@ export function PresentationFeature() {
     () => setPage((previous) => Math.min(previous, Math.max(0, Math.ceil(player.total / 25) - 1))),
     [player.total],
   );
-  useEffect(() => {
-    const fingerprint = () => {
-      const state = useEditor.getState();
-      const graph = state.graph;
-      return graph
-        ? JSON.stringify([
-            graph.diagram.id,
-            getPresentation(graph),
-            getStoryboard(graph),
-            graph.edges.map((edge) => [edge.id, edge.sourceNodeId, edge.targetNodeId, edge.label]),
-            getSpatialView(graph).mode,
-            graph.nodes.map((node) => [
-              node.id,
-              node.title,
-              node.description,
-              node.x,
-              node.y,
-              node.width,
-              node.height,
-              node.parentId,
-              node.collapsed,
-              node.metadata.spatial,
-            ]),
-          ])
-        : '';
-    };
-    let previous = fingerprint();
-    let previousGraph = useEditor.getState().graph;
-    const unsubscribe = useEditor.subscribe((state) => {
-      if (!state.privacyAcknowledged) {
-        presentation.close();
-        return;
-      }
-      if (state.graph === previousGraph) return;
-      previousGraph = state.graph;
-      const next = fingerprint();
-      if (next !== previous) {
-        previous = next;
-        presentation.changed();
-      }
-    });
-    const interrupt = () => presentation.pause('Camera taken over. Press Play to continue.', true);
-    const hidden = () => {
-      if (document.hidden) presentation.pause('Playback paused while this tab is hidden.');
-    };
-    window.addEventListener('visualnerve:presentation-interrupted', interrupt);
-    document.addEventListener('visibilitychange', hidden);
-    return () => {
-      unsubscribe();
-      window.removeEventListener('visualnerve:presentation-interrupted', interrupt);
-      document.removeEventListener('visibilitychange', hidden);
-      presentation.close();
-      videoExport.cancel();
-    };
-  }, []);
+
   if (!graph || !player.open || graph.diagram.id !== player.diagramId) return null;
   const definition = getPresentation(graph);
   const byId = new Map(graph.nodes.map((node) => [node.id, node]));
@@ -283,7 +229,7 @@ export function PresentationFeature() {
             <button
               className="presentation-secondary"
               aria-label="Preload presentation"
-              title="Prepare the selected voice and next three descriptions"
+              title="Prepare narration for every step, starting at the first"
               aria-pressed={player.preload}
               disabled={!player.total}
               onClick={() =>
@@ -309,8 +255,8 @@ export function PresentationFeature() {
         <VideoControls disabled={!player.total} />
         {(player.audio || player.preload) && (
           <small className="muted presentation-secondary">
-            Local neural voice · choose English or Swedish in Settings. First use downloads 60–109
-            MiB.
+            Local neural voice · choose a language and voice in Settings. First use downloads about
+            60–131 MiB.
           </small>
         )}
         {(player.message.startsWith('Preload ') ||

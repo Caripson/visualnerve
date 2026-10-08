@@ -18,17 +18,17 @@ The screenshot shows the actual desktop workspace with illustrative data. Light 
 
 ## What you can do
 
-| Workflow | Capabilities |
-| --- | --- |
-| Map a system | Mind maps, flowcharts, timelines, groups, directed relationships, owners, status and a saved pen layer. |
-| Inspect large diagrams | Semantic overview, relationship questions, source evidence, saved analysis views and named local history. |
-| Explore data | Worker-based CSV cleanup, filters, grouping and aggregates; connect and refresh sources while retaining annotations. |
-| Understand code | Visualize SQL SELECT/WITH and DDL, analyze 50 code languages plus Markdown, or inspect a ZIP project by file, declaration or folder. |
-| Import existing diagrams | Preview and convert a selected draw.io or Visio `.vsdx` page into editable native objects. |
-| Rotate the same diagram | Styled 3D card relief with readable front/back text and editable placement; return to the canonical 2D layout. |
-| Explain and share | Numbered/storyboard walkthroughs, local English/Swedish narration, video, PNG, PDF, native vector SVG, Markdown and lossless JSON. |
-| Simulate a process | Seeded worker runs with queues, shared resources, nested processes, scenarios, metrics, economics and bounded replay archives. |
-| Connect other tools | Optional local REST/MCP for the same validated model; review a workflow brief before opening it in Lovable. |
+| Workflow                 | Capabilities                                                                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Map a system             | Mind maps, flowcharts, timelines, groups, directed relationships, owners, status and a saved pen layer.                               |
+| Inspect large diagrams   | Semantic overview, relationship questions, source evidence, saved analysis views and named local history.                             |
+| Explore data             | Worker-based CSV cleanup, filters, grouping and aggregates; connect and refresh sources while retaining annotations.                  |
+| Understand code          | Visualize SQL SELECT/WITH and DDL, analyze 50 code languages plus Markdown, or inspect a ZIP project by file, declaration or folder.  |
+| Import existing diagrams | Preview and convert a selected draw.io or Visio `.vsdx` page into editable native objects.                                            |
+| Rotate the same diagram  | Styled 3D card relief with readable front/back text and editable placement; return to the canonical 2D layout.                        |
+| Explain and share        | Numbered/storyboard walkthroughs, local multilingual Piper narration, video, PNG, PDF, native vector SVG, Markdown and lossless JSON. |
+| Simulate a process       | Seeded worker runs with queues, shared resources, nested processes, scenarios, metrics, economics and bounded replay archives.        |
+| Connect other tools      | Optional local REST/MCP for the same validated model; review a workflow brief before opening it in Lovable.                           |
 
 Code/SQL imports analyze structure without executing the source. Import previews report unsupported or uncertain constructs. File imports default to 50 MiB; larger configured imports are experimental. ZIP projects default to 500 analyzed source files, with a separate browser-local setting up to 10,000. See the [import guides](docs/CODE_IMPORT.md) for the byte, count and time limits.
 
@@ -67,9 +67,21 @@ For a static build:
 ./dev.sh --bridge
 ```
 
-Keep the intended browser workspace open and select **Settings → Codex / MCP integration → Read only** or **Read + write**; access defaults to Off. A local client uses `http://localhost:4317/mcp` or REST under `http://localhost:4317/api/v1`. The separate browser connection uses `/bridge` over WebSocket. The Go process forwards commands to the browser and stores no workspace data.
+Keep the intended browser workspace open and select **Settings → MCP / API integration → Read only** or **Read + write**; access defaults to Off. A local client uses `http://localhost:4317/mcp` or REST under `http://localhost:4317/api/v1`. The separate browser connection uses `/bridge` over WebSocket. The Go process forwards commands to the browser and stores no workspace data.
 
 For MCP, call `visual_nerve_api_docs` before `visual_nerve_request`; the guide and OpenAPI contract are bundled. A separately hosted app may need an exact allowed origin, trusted local TLS and browser local-network permission. Read [connection setup](docs/MCP.md) and the [API contract](API.md) before configuring that connection.
+
+The integration follows standard MCP rather than a Codex-specific protocol. Codex, Cursor, Claude Code and Gemini CLI can use the HTTP endpoint. A local stdio adapter supports clients such as Claude Desktop: configure an absolute path to `visual-nerve` with `args: ["--mcp-stdio"]` while the shared bridge is already running. Cloud connectors cannot reach a laptop's loopback address. See the [client configuration guide](hugo/content/help/api-mcp.md) for complete examples.
+
+Port **4317** is Visual Nerve's dedicated default for `/mcp`, `/bridge` and local REST. If another process uses it, the server reports the conflict; it does not choose another port silently. Start with `--addr 127.0.0.1:4318`, save `ws://127.0.0.1:4318/bridge` in the app, and use `http://127.0.0.1:4318/mcp` in the client. Stdio uses `--mcp-url http://127.0.0.1:4318/mcp` for that same bridge.
+
+### Encrypted app release under review
+
+The separate `app.visualnerve.com` implementation uses a browser-only password, AES-256-GCM encrypted IndexedDB, bounded sessions and one revocable UI/API/MCP storage boundary. It has no programmatic unlock or mandatory backend. The existing `www.visualnerve.com/app/` remains a plaintext local workspace and a transfer entry; the dedicated encrypted address has separate browser storage. Moving existing work requires an explicit encrypted export and verified complete transfer; the source is kept intact. See the [release plan](docs/ENCRYPTED_WORKSPACE_PLAN.md), [storage/session schema](docs/ENCRYPTED_WORKSPACE_SCHEMA.md) and [app-origin deployment review](docs/APP_ORIGIN_DEPLOYMENT.md).
+
+Changing a password cannot revoke old backups. Normal password changes preserve the content key; a separate human-only incident flow rotates that key for current records. Older copies keep their original credentials. [Backup and incident procedures](hugo/content/help/settings.md).
+
+On the isolated encrypted app, the deployed Content Security Policy also restricts browser bridge connections to explicitly approved ports. A custom port must be included in that app build and its response-header policy; changing Settings alone cannot override it. The reviewed default is 4317.
 
 ## Test and contribute
 
@@ -92,15 +104,15 @@ The [documentation index](docs/README.md) groups all guides and implementation
 contracts. [Repository launch and maintenance](docs/REPOSITORY_READINESS.md) records the
 public reporting routes and release checks.
 
-| Start here | Reference |
-| --- | --- |
-| Use the workspace | [Task-oriented user help](https://www.visualnerve.com/help/) and [help maintenance](docs/HELP.md) |
-| Understand the implementation | [Architecture](ARCHITECTURE.md), [data model](DATA_MODEL.md), [storage](docs/STORAGE.md), [development](DEVELOPMENT.md) |
-| Integrate a client | [REST API](API.md), [MCP](docs/MCP.md), [OpenAPI](docs/openapi.yaml) |
-| Analyze sources | [CSV](docs/CSV_EXPLORER.md), [connected analysis](docs/ANALYSIS_WORKFLOWS.md), [SQL](docs/SQL_IMPORT.md), [code/ZIP](docs/CODE_IMPORT.md), [draw.io/Visio](docs/DIAGRAM_IMPORT.md) |
-| Explore and explain | [Understanding/history](docs/UNDERSTANDING.md), [3D](docs/SPATIAL_DIAGRAMS.md), [drawing](docs/DRAWING.md), [presentations](docs/PRESENTATION.md), [speech](docs/SPEECH.md) |
-| Simulate and share | [Process Simulator](docs/PROCESS_SIMULATOR.md), [export formats](EXPORT_FORMAT.md), [Lovable handoff](docs/LOVABLE.md) |
-| Operate and verify | [Deployment](docs/DEPLOYMENT.md), [website configuration](docs/WEBSITE.md), [requirements](docs/REQUIREMENTS.md), [acceptance](docs/ACCEPTANCE.md) |
+| Start here                    | Reference                                                                                                                                                                          |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Use the workspace             | [Task-oriented user help](https://www.visualnerve.com/help/) and [help maintenance](docs/HELP.md)                                                                                  |
+| Understand the implementation | [Architecture](ARCHITECTURE.md), [data model](DATA_MODEL.md), [storage](docs/STORAGE.md), [development](DEVELOPMENT.md)                                                            |
+| Integrate a client            | [REST API](API.md), [MCP](docs/MCP.md), [OpenAPI](docs/openapi.yaml)                                                                                                               |
+| Analyze sources               | [CSV](docs/CSV_EXPLORER.md), [connected analysis](docs/ANALYSIS_WORKFLOWS.md), [SQL](docs/SQL_IMPORT.md), [code/ZIP](docs/CODE_IMPORT.md), [draw.io/Visio](docs/DIAGRAM_IMPORT.md) |
+| Explore and explain           | [Understanding/history](docs/UNDERSTANDING.md), [3D](docs/SPATIAL_DIAGRAMS.md), [drawing](docs/DRAWING.md), [presentations](docs/PRESENTATION.md), [speech](docs/SPEECH.md)        |
+| Simulate and share            | [Process Simulator](docs/PROCESS_SIMULATOR.md), [export formats](EXPORT_FORMAT.md), [Lovable handoff](docs/LOVABLE.md)                                                             |
+| Operate and verify            | [Deployment](docs/DEPLOYMENT.md), [website configuration](docs/WEBSITE.md), [requirements](docs/REQUIREMENTS.md), [acceptance](docs/ACCEPTANCE.md)                                 |
 
 ## License
 

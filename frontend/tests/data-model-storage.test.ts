@@ -11,7 +11,8 @@ import {
 } from '../src/data/model';
 import { base, type Graph } from '../src/model/types';
 import { Repository } from '../src/storage/repository';
-import { WorkspaceDatabase } from '../src/storage/database';
+import { LegacyWorkspaceStorage, WorkspaceDatabase } from '../src/storage/database';
+import type { WorkspaceScope, WorkspaceStoreName } from '../src/storage/contracts';
 import { Workspace } from '../src/storage/workspace';
 import { useEditor } from '../src/state/editor';
 import { copySelection, pasteSelection } from '../src/state/clipboard';
@@ -57,6 +58,36 @@ function fixture(): Graph {
 function light(graph: Graph) {
   const { dataset: _primary, datasets: _secondary, ...result } = graph;
   return result;
+}
+function observeDatasetIO() {
+  const read = vi.fn(),
+    write = vi.fn();
+  const atomic = LegacyWorkspaceStorage.prototype.atomic;
+  vi.spyOn(LegacyWorkspaceStorage.prototype, 'atomic').mockImplementation(function <T>(
+    this: LegacyWorkspaceStorage,
+    mode: 'r' | 'rw',
+    stores: readonly WorkspaceStoreName[],
+    work: (scope: WorkspaceScope) => Promise<T>,
+  ): Promise<T> {
+    return atomic.call(this, mode, stores, async (scope) => {
+      if (stores.includes('datasets')) {
+        // Repository reads and writes through transaction-bound handles, not
+        // the root Dexie table. Observe nested graph reads as well as writes.
+        const where = scope.datasets.where.bind(scope.datasets),
+          put = scope.datasets.put.bind(scope.datasets);
+        vi.spyOn(scope.datasets, 'where').mockImplementation((index) => {
+          read(index);
+          return where(index);
+        });
+        vi.spyOn(scope.datasets, 'put').mockImplementation((source) => {
+          write(source);
+          return put(source);
+        });
+      }
+      return work(scope);
+    }) as Promise<T>;
+  });
+  return { read, write };
 }
 it('upgrades version 5 in place, preserving the source while removing the unique diagram index', async () => {
   const name = `model-migration-${crypto.randomUUID()}`,
@@ -148,8 +179,7 @@ it('roundtrips all sources, source analyses, entity focus and real relationships
 });
 it('preserves source cache identities on light saves and commits only an explicitly changed source', async () => {
   const graph = await repo.importGraph(fixture()),
-    read = vi.spyOn(db.datasets, 'where'),
-    write = vi.spyOn(db.datasets, 'put');
+    { read, write } = observeDatasetIO();
   const edited = { ...light(graph), nodes: graph.nodes.map((n) => ({ ...n, x: n.x + 20 })) };
   const saved = await repo.saveGraph(edited, graph.diagram.version);
   expect(saved.dataset).toBe(graph.dataset);
@@ -170,6 +200,12 @@ it('preserves source cache identities on light saves and commits only an explici
   };
   const updated = await repo.saveGraph(reanalyzeDataModel(refreshed), saved.diagram.version);
   expect(write).toHaveBeenCalledTimes(1);
+  expect(write.mock.calls[0][0]).toMatchObject({
+    id: graph.datasets![0].id,
+    version: graph.datasets![0].version + 1,
+    rows: refreshed.datasets[0].rows,
+  });
+  expect(read).not.toHaveBeenCalled();
   expect(updated.dataset).toBe(graph.dataset);
   expect(updated.datasets![0].rows).toEqual(refreshed.datasets[0].rows);
   expect(updated.datasets![0].version).toBe(graph.datasets![0].version + 1);
@@ -220,7 +256,7 @@ it('atomically autosaves refreshed raw rows with source-only history and undo/re
   useEditor.getState().redo();
   await workspace.settled();
   expect((await repo.getGraph(saved.diagram.id)).datasets![0].rows[1]).toEqual(['B', '888']);
-  const write = vi.spyOn(db.datasets, 'put');
+  const { write } = observeDatasetIO();
   useEditor.getState().updateNode(useEditor.getState().graph!.nodes[0].id, { status: 'done' });
   await workspace.settled();
   expect(write).not.toHaveBeenCalled();
@@ -265,8 +301,7 @@ it('preserves an additional 100,000-row source on ordinary movement without raw 
   graph.diagram.settings.csvRelationships = [];
   graph = reanalyzeDataModel(graph);
   const saved = await repo.importGraph(graph);
-  const read = vi.spyOn(db.datasets, 'where'),
-    write = vi.spyOn(db.datasets, 'put');
+  const { read, write } = observeDatasetIO();
   const stored = await repo.saveGraph(
     { ...light(saved), nodes: saved.nodes.map((n) => ({ ...n, x: n.x + 10 })) },
     saved.diagram.version,

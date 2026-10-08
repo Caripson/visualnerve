@@ -424,7 +424,7 @@ test('public HTTPS app grants read-only or write access solely to a local TLS MC
     await page.getByText('Local connection details', { exact: true }).click();
     await page.getByLabel('Local bridge address').fill('wss://127.0.0.1:4329/bridge');
     await page.getByRole('button', { name: 'Save connection', exact: true }).click();
-    await expect(page.getByLabel('MCP server URL for Codex', { exact: true })).toHaveValue(
+    await expect(page.getByLabel('MCP server URL', { exact: true })).toHaveValue(
       'https://127.0.0.1:4329/mcp',
     );
     await page.getByLabel('MCP access', { exact: true }).selectOption('read');

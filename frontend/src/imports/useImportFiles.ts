@@ -8,6 +8,7 @@ import { workspace } from '../storage/workspace';
 import { useEditor } from '../state/editor';
 import type { WorkspaceBackup } from '../storage/database';
 import type { CsvDataset } from '../data/types';
+import type { WorkspaceOperation } from '../storage/contracts';
 
 interface ImportFilesOptions {
   busy: MutableRefObject<boolean>;
@@ -18,6 +19,7 @@ interface ImportFilesOptions {
   csv: (dataset: CsvDataset, file: File) => void;
   csvFiles: (files: File[]) => void;
   backup: (backup: WorkspaceBackup) => void;
+  readBackup?: (file: File) => Promise<WorkspaceBackup>;
   failed: () => void;
 }
 /** File routing and browser drop lifecycle stay separate from the workspace UI. */
@@ -26,12 +28,31 @@ export function useImportFiles(options: ImportFilesOptions) {
   latest.current = options;
   const [draggingFile, setDraggingFile] = useState(false);
   const depth = useRef(0);
+  const lifecycle = useRef(0);
+  const operations = useRef(new Set<WorkspaceOperation>());
+  useEffect(
+    () => () => {
+      lifecycle.current++;
+      for (const operation of operations.current) operation.dispose();
+      operations.current.clear();
+    },
+    [],
+  );
   const importFile = useCallback(async (picked: File) => {
     const handlers = latest.current;
     if (!useEditor.getState().privacyAcknowledged || handlers.busy.current) return;
     handlers.busy.current = true;
     handlers.setImporting(true);
+    const origin = lifecycle.current;
+    let operation: WorkspaceOperation | undefined;
     try {
+      operation = await workspace.repo.db.captureOperation();
+      operations.current.add(operation);
+      const check = async () => {
+        if (origin !== lifecycle.current) throw new DOMException('Import cancelled.', 'AbortError');
+        await operation!.check();
+      };
+      await check();
       const byteLimit = currentImportLimitBytes();
       assertImportBytes(picked.size, byteLimit, 'Import file');
       switch (importKind(picked.name)) {
@@ -40,6 +61,7 @@ export function useImportFiles(options: ImportFilesOptions) {
           break;
         case 'sql': {
           const text = await picked.text();
+          await check();
           handlers.sql({
             id: crypto.randomUUID(),
             text,
@@ -50,26 +72,40 @@ export function useImportFiles(options: ImportFilesOptions) {
         case 'code':
           handlers.code([picked]);
           break;
-        case 'csv':
-          handlers.csv(await openCsvFile(picked, byteLimit), picked);
+        case 'csv': {
+          const dataset = await openCsvFile(picked, byteLimit);
+          await check();
+          handlers.csv(dataset, picked);
           break;
+        }
         default: {
           const format = /\.json$/i.test(picked.name) ? 'json' : 'markdown';
           const text = await picked.text();
+          await check();
           const json = format === 'json' ? JSON.parse(text) : undefined;
-          if (json?.format === 'visual-nerve-workspace') handlers.backup(json as WorkspaceBackup);
-          else await workspace.create(parseImport(format, text, byteLimit));
+          if (json?.format === 'visualnerve-backup') {
+            if (!handlers.readBackup)
+              throw new Error('Use Restore backup to unlock this encrypted backup.');
+            const backup = await handlers.readBackup(picked);
+            await check();
+            handlers.backup(backup);
+          } else if (json?.format === 'visual-nerve-workspace')
+            handlers.backup(json as WorkspaceBackup);
+          else await workspace.create(parseImport(format, text, byteLimit), operation);
         }
       }
     } catch (error) {
+      if (origin !== lifecycle.current || operation?.signal.aborted) return;
       handlers.failed();
       useEditor.setState({
         status: 'error',
         message: `Import failed: ${(error as Error).message}`,
       });
     } finally {
+      operation?.dispose();
+      if (operation) operations.current.delete(operation);
       handlers.busy.current = false;
-      handlers.setImporting(false);
+      if (origin === lifecycle.current) handlers.setImporting(false);
     }
   }, []);
   useEffect(() => {

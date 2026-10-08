@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Graph } from '../src/model/types';
+import type { WorkspaceStorage } from '../src/storage/contracts';
 import { StorageError } from '../src/model/errors';
 import { createSimulationGraph } from '../src/simulation/document';
 import { createBasicModel } from '../src/simulation/examples';
@@ -20,19 +21,32 @@ import { bridgeError, bridgeResponseStatus } from '../src/integration/bridge';
 import { assertMcpAccess } from '../src/integration/access';
 
 function fixture() {
+  // API dispatch uses a fake write scope here; encrypted integration separately
+  // verifies that real runtime guards share its authoritative storage snapshot.
+  const writeScope = {} as WorkspaceStorage;
   let graph = createSimulationGraph('API model', createBasicModel());
   const repo = {
     getGraph: vi.fn(async () => graph),
-    saveGraph: vi.fn(async (value: Graph, version: number) => {
-      if (version !== graph.diagram.version) throw new StorageError(409, 'Stale model.');
-      graph = { ...value, diagram: { ...value.diagram, version: version + 1 } };
-      return graph;
-    }),
+    saveGraph: vi.fn(
+      async (
+        value: Graph,
+        version: number,
+        beforeWrite?: (scope: WorkspaceStorage) => Promise<void>,
+      ) => {
+        if (version !== graph.diagram.version) throw new StorageError(409, 'Stale model.');
+        await beforeWrite?.(writeScope);
+        graph = { ...value, diagram: { ...value.diagram, version: version + 1 } };
+        return graph;
+      },
+    ),
   };
   const state = runSimulation(graph.simulation!);
   const run = { id: 'run-a', diagramId: graph.diagram.id };
   const runtime: SimulationRuntime = {
-    start: vi.fn(async () => run),
+    start: vi.fn(async (_diagramId, _model, options) => {
+      await options.beforeWrite?.(writeScope);
+      return run;
+    }),
     list: vi.fn(async () => [run]),
     get: vi.fn(async () => run),
     state: vi.fn(async () => state),
@@ -40,9 +54,18 @@ function fixture() {
     events: vi.fn(async (_id, paging) => ({
       events: state.events.slice(paging.offset, paging.offset + paging.limit),
     })),
-    control: vi.fn(async () => run),
-    setSpeed: vi.fn(async () => run),
-    seek: vi.fn(async () => state),
+    control: vi.fn(async (_runId, _action, options) => {
+      await options?.beforeWrite?.(writeScope);
+      return run;
+    }),
+    setSpeed: vi.fn(async (_runId, _speed, beforeWrite) => {
+      await beforeWrite?.(writeScope);
+      return run;
+    }),
+    seek: vi.fn(async (_runId, _time, options) => {
+      await options?.beforeWrite?.(writeScope);
+      return state;
+    }),
     compare: vi.fn(async () => ({ comparisons: [] })),
   };
   const beforeWrite = vi.fn(async () => {});
@@ -308,6 +331,7 @@ describe('authoritative Process Simulator API', () => {
     expect(f.runtime.start).toHaveBeenCalledWith(f.graph().diagram.id, f.graph().simulation, {
       ...options,
       origin: 'api',
+      beforeWrite: f.beforeWrite,
     });
     expect(f.beforeWrite).toHaveBeenCalledOnce();
     expect(await f.request('/runs')).toMatchObject([{ id: 'run-a' }]);
@@ -357,9 +381,15 @@ describe('authoritative Process Simulator API', () => {
     await f.request('/runs/run-a/pause', 'POST', {});
     await f.request('/runs/run-a/speed', 'POST', { speed: 10 });
     await f.request('/runs/run-a/seek', 'POST', { timeSeconds: 600 });
-    expect(f.runtime.control).toHaveBeenCalledWith('run-a', 'pause');
-    expect(f.runtime.setSpeed).toHaveBeenCalledWith('run-a', 10);
-    expect(f.runtime.seek).toHaveBeenCalledWith('run-a', 600, { origin: 'api' });
+    expect(f.runtime.control).toHaveBeenCalledWith('run-a', 'pause', {
+      origin: 'api',
+      beforeWrite: f.beforeWrite,
+    });
+    expect(f.runtime.setSpeed).toHaveBeenCalledWith('run-a', 10, f.beforeWrite);
+    expect(f.runtime.seek).toHaveBeenCalledWith('run-a', 600, {
+      origin: 'api',
+      beforeWrite: f.beforeWrite,
+    });
     await f.request('/compare', 'POST', { runIds: ['run-a', 'run-b'] });
     expect(f.runtime.compare).toHaveBeenCalledWith(['run-a', 'run-b']);
     expect(f.repo.saveGraph).not.toHaveBeenCalled();
@@ -367,7 +397,10 @@ describe('authoritative Process Simulator API', () => {
   it('marks an externally reset run as API-origin regardless of the archived source origin', async () => {
     const f = fixture();
     await f.request('/runs/run-a/reset', 'POST', {});
-    expect(f.runtime.control).toHaveBeenCalledWith('run-a', 'reset', { origin: 'api' });
+    expect(f.runtime.control).toHaveBeenCalledWith('run-a', 'reset', {
+      origin: 'api',
+      beforeWrite: f.beforeWrite,
+    });
     expect(f.beforeWrite).toHaveBeenCalledOnce();
   });
   it('preserves structured errors and consistent HTTP create statuses through the bridge', () => {

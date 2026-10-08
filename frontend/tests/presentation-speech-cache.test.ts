@@ -8,6 +8,8 @@ import {
 } from '../src/presentation/speech/model-cache';
 import { SPEECH_MODEL_CACHE } from '../src/presentation/speech/protocol';
 import { modelUrl, VOICES, type PresentationVoice } from '../src/presentation/speech/voices';
+import { appCacheManager } from '../src/security/app-cache';
+import { CacheTestLocks, CacheTestChannel, cacheStorageFixture } from './app-cache-fixture';
 
 const bytes = new TextEncoder().encode('tiny neural test model');
 const voice = {
@@ -16,28 +18,49 @@ const voice = {
   modelSha256: createHash('sha256').update(bytes).digest('hex'),
 } as unknown as PresentationVoice;
 let stored: Map<string, Response>;
-let put: ReturnType<typeof vi.fn>;
+let put: ReturnType<typeof vi.fn<(request: RequestInfo | URL, value: Response) => Promise<void>>>;
 let fetcher: ReturnType<typeof vi.fn>;
 beforeEach(() => {
-  stored = new Map();
-  put = vi.fn(async (url: string, value: Response) => {
-    stored.set(url, value);
+  const fixture = cacheStorageFixture();
+  fixture.cache(SPEECH_MODEL_CACHE);
+  stored = fixture.stores.get(SPEECH_MODEL_CACHE)!;
+  put = vi.fn(async (request: RequestInfo | URL, value: Response) => {
+    const key =
+      typeof request === 'string' ? request : request instanceof URL ? request.href : request.url;
+    stored.set(key, value);
   });
   vi.stubGlobal('Blob', NodeBlob);
   vi.stubGlobal('crypto', webcrypto);
-  vi.stubGlobal('caches', {
-    open: vi.fn(async () => ({ match: async (url: string) => stored.get(url)?.clone(), put })),
-    delete: vi.fn(async () => {
-      stored.clear();
-      return true;
-    }),
-  });
+  fixture.caches.open.mockImplementation(async (name) =>
+    name === SPEECH_MODEL_CACHE
+      ? {
+          match: vi.fn(async (request: RequestInfo | URL) =>
+            stored
+              .get(
+                typeof request === 'string'
+                  ? request
+                  : request instanceof URL
+                    ? request.href
+                    : request.url,
+              )
+              ?.clone(),
+          ),
+          put,
+        }
+      : fixture.cache(name),
+  );
+  vi.stubGlobal('caches', fixture.caches);
+  vi.stubGlobal('navigator', { locks: new CacheTestLocks() });
+  vi.stubGlobal('BroadcastChannel', CacheTestChannel);
   fetcher = vi.fn(
     async () => new Response(bytes, { headers: { 'Content-Length': String(bytes.length) } }),
   );
   vi.stubGlobal('fetch', fetcher);
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  appCacheManager.dispose();
+  vi.unstubAllGlobals();
+});
 
 it('downloads only the pinned static model, verifies bytes and persists no description or audio', async () => {
   const progress = vi.fn();
@@ -46,6 +69,7 @@ it('downloads only the pinned static model, verifies bytes and persists no descr
   expect(fetcher).toHaveBeenCalledWith(modelUrl(voice), {
     credentials: 'omit',
     referrerPolicy: 'no-referrer',
+    signal: expect.any(AbortSignal),
   });
   expect(put).toHaveBeenCalledOnce();
   expect([...stored.keys()]).toEqual([modelUrl(voice)]);
@@ -109,8 +133,9 @@ it('forwards abort to static-file fetch and discards cancelled body reads', asyn
   });
   expect(fetcher).toHaveBeenCalledWith(
     modelUrl(voice),
-    expect.objectContaining({ signal: controller.signal }),
+    expect.objectContaining({ signal: expect.any(AbortSignal) }),
   );
+  expect(fetcher.mock.calls[0][1].signal.aborted).toBe(true);
   expect(put).not.toHaveBeenCalled();
 });
 it('aggregates model and config byte progress monotonically including cached model hits', async () => {

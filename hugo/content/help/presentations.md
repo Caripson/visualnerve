@@ -42,7 +42,7 @@ Make hidden or collapsed numbered objects visible before playing. A node without
 | **Forward**              | Go to the next object or scene                                          |
 | **Audio**                | Read the current description or scene narration with the selected voice |
 | **Subtitles**            | Show that text without requiring audio                                  |
-| **Preload**              | Prepare the selected voice and a bounded window of upcoming narration   |
+| **Preload**              | Prepare the selected voice and every step in the chosen walkthrough     |
 | **Order**                | Edit the sequence and timing                                            |
 | **Close diagram player** | End the presentation and return to ordinary editing                     |
 
@@ -62,21 +62,23 @@ With subtitles on, compact playback shows separate video-style captions in both 
 
 Captions follow the configured step duration and any longer narration duration. They are paged narration text, not word-level speech timing or a transcription of microphone audio.
 
-## Choose a local English or Swedish voice
+## Choose a narration voice {#choose-a-local-english-or-swedish-voice}
 
-Open **Settings → Presentation voice**, choose **Narration voice**, then **Save voice**. **Alan**, a British male Piper voice, is the default; English is the default language. The available voices are UK English Alan, US English LJ Speech, UK English Cori and Swedish NST. Existing explicit saved choices stay selected.
+This section also covers the additional local narration languages.
 
-Use **Preview voice** to hear a sample and **Cancel voice preview** to stop its preparation or playback. Choose a Swedish voice for Swedish narration rather than expecting automatic language detection or translation.
+Open **Settings → Presentation voice**, choose **Narration voice**, then **Save voice**. **Alan**, a British male Piper voice, is the default; English is the default language. The catalog contains 20 choices: several US/UK voices, plus Swedish, French, Spanish, Portuguese (Portugal and Brazil), Norwegian, Danish, Finnish and German. Medium/high labels reflect Piper’s actual tiers; there is no high+ tier. High options include US LJ Speech and LibriTTS, UK Cori, and German Thorsten. LibriTTS currently uses fixed speaker 0. Existing explicit saved choices stay selected.
 
-Speech is generated locally in your browser. Descriptions are not sent to a speech service. On first explicit audio playback, Preload, voice preview, or video export with audio, the selected model may download from the fixed model host. Voice assets are approximately **60–109 MiB per voice**. They use a separate browser cache; cached voices can work offline. **Clear downloaded voices** removes these model assets without deleting the diagram.
+Use **Preview voice** to hear a sample and **Cancel voice preview** to stop its preparation or playback. Choose a voice matching the narration language. A French voice reads French text; selecting it does not translate an English description.
 
-Generated narration clips remain temporary and are excluded from JSON and backups. Each description or scene narration supports up to **12,000 characters**; longer text produces an explicit error rather than silent truncation.
+Speech is generated locally in your browser. Descriptions are not sent to a speech service. On first explicit audio playback, Preload, voice preview, or video export with audio, the selected model may download from the fixed model host. Voice assets are approximately **60–131 MiB per voice**. They use a separate browser cache; cached voices can work offline. **Clear downloaded voices** removes these model assets without deleting the diagram.
+
+Generated narration clips remain temporary and are excluded from JSON and backups. Large preloads use encrypted temporary local storage beyond the 32 MiB prepared-clip RAM cache, with a 1 GiB ciphertext ceiling (including IV/tag overhead) and browser-quota limits. One clip during synthesis/decryption can temporarily add up to 32 MiB; this does not bound total browser or inference memory. The temporary key stays in RAM; closing the tour, changing its voice/content, or locking removes the clips. After a crash, Clear app cache can remove unusable ciphertext remnants. Each description or scene narration supports up to **12,000 characters**; longer text produces an explicit error rather than silent truncation.
 
 ## Use Preload and read its progress
 
-Audio and Preload start off; subtitles start on. Enable **Preload** before a narrated presentation to prepare the engine and up to three upcoming descriptions.
+Audio and Preload start off; subtitles start on. Enable **Preload** before a narrated presentation to prepare narration for **every step in the selected numbered sequence or storyboard**, starting at its beginning even if you are currently viewing a later step.
 
-The preparation area reports overall percentage, ready narration count and download or synthesis progress. Engine initialization is labelled separately because it does not always expose a measurable percentage. **100%** means the engine and upcoming narration window are ready, not that every step in a long film has already been synthesized.
+The preparation area reports overall percentage, ready narration count and download or synthesis progress. Engine initialization is labelled separately because it does not always expose a measurable percentage. **100%** means all required narration in this walkthrough is ready. Blank descriptions need no audio; already prepared clips can be reused without warming the voice engine again. The displayed ready/total count includes the whole sequence; repeated narration can share one audio clip. An error or storage-limit failure never reports a completed preload.
 
 If first preparation takes time, keep the tab open and watch the phase message. Repeated use should benefit from cached models. If a download failed or a voice cannot initialize, cancel preparation, check the connection and browser storage, then try Preview voice or Preload again. Clearing downloaded voices forces a fresh download. Shorter narration also reduces synthesis work.
 

@@ -12,6 +12,10 @@ import (
 
 func callMCP(t *testing.T, handler *Server, method string, params json.RawMessage) map[string]any {
 	t.Helper()
+	if method == "initialize" && params == nil {
+		// Discovery fixtures use the standard required initialization contract.
+		params = json.RawMessage(`{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"test","version":"1"}}`)
+	}
 	envelope := map[string]any{"jsonrpc": "2.0", "id": 7, "method": method}
 	if params != nil {
 		envelope["params"] = params
@@ -65,7 +69,7 @@ func bundledMCPServer(t *testing.T) (*Server, string) {
 
 func TestMCPDiscoveryWorksWithoutConnectedBrowser(t *testing.T) {
 	handler, openapi := bundledMCPServer(t)
-	initialized := resultMCP(t, callMCP(t, handler, "initialize", nil))
+	initialized := resultMCP(t, callMCP(t, handler, "initialize", json.RawMessage(`{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"test","version":"1"}}`)))
 	if initialized["protocolVersion"] != "2025-06-18" {
 		t.Fatal(initialized)
 	}

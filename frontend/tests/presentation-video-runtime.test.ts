@@ -149,6 +149,69 @@ describe('local walkthrough movie export', () => {
     await exporter.settled();
     expect(exporter.isBusy()).toBe(false);
   });
+  it('reset forgets completed state and allows a later independent export', async () => {
+    const { exporter, deps } = fixture(1);
+    exporter.start({ audio: false, subtitles: false });
+    await exporter.settled();
+    expect(exporter.getState().fileName).not.toBeNull();
+    exporter.reset();
+    expect(exporter.getState()).toMatchObject({
+      status: 'idle',
+      progress: 0,
+      nodeIndex: -1,
+      total: 0,
+      message: '',
+      fileName: null,
+      format: null,
+    });
+    exporter.start({ audio: false, subtitles: false });
+    await exporter.settled();
+    expect(deps.ready).toHaveBeenCalledTimes(2);
+  });
+  it('reset clears active metadata immediately but does not release the encoder cleanup fence', async () => {
+    const { exporter, deps, encoder } = fixture(1);
+    let release!: () => void;
+    encoder.cancel = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    );
+    deps.nextFrame = vi.fn(async (signal) => {
+      exporter.reset();
+      signal.throwIfAborted();
+    });
+    exporter.start({ audio: false, subtitles: false });
+    for (let index = 0; index < 30; index++) await Promise.resolve();
+    expect(exporter.getState()).toMatchObject({ status: 'idle', total: 0, fileName: null });
+    expect(exporter.isBusy()).toBe(true);
+    expect(() => exporter.start({ audio: false, subtitles: false })).toThrow(/cancelled/);
+    release();
+    await exporter.settled();
+    expect(exporter.isBusy()).toBe(false);
+    expect(exporter.getState().status).toBe('idle');
+    expect(deps.ready).not.toHaveBeenCalled();
+  });
+  it('checks synchronous origin revocation after the last asynchronous publication check', async () => {
+    const { exporter, deps, encoder } = fixture(1);
+    const controller = new AbortController();
+    let checks = 0;
+    exporter.start(
+      { audio: false, subtitles: false },
+      {
+        signal: controller.signal,
+        assertCurrent: () => controller.signal.throwIfAborted(),
+        check: async () => {
+          if (++checks === 2) queueMicrotask(() => controller.abort());
+        },
+      },
+    );
+    await exporter.settled();
+    expect(encoder.finish).toHaveBeenCalledOnce();
+    expect(deps.ready).not.toHaveBeenCalled();
+    expect(encoder.cancel).toHaveBeenCalledOnce();
+    expect(exporter.getState().status).toBe('cancelled');
+  });
   it('rejects narration that takes the final movie over the duration limit without saving a partial movie', async () => {
     const { exporter, encoder, deps } = fixture(1);
     encoder.addAudio = vi.fn(async () => 1801);

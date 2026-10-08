@@ -4,6 +4,7 @@ import { Repository } from '../src/storage/repository';
 import { Workspace } from '../src/storage/workspace';
 import { useEditor } from '../src/state/editor';
 import { blankGraph, newNode } from '../src/model/types';
+import { holdRefreshRead } from './workspace-test-hooks';
 
 let db: WorkspaceDatabase, repo: Repository, workspace: Workspace;
 beforeEach(async () => {
@@ -31,7 +32,7 @@ afterEach(async () => {
 
 it('serializes an editor save appended after an MCP read begins waiting for the old queue', async () => {
   const graph = useEditor.getState().graph!;
-  const save = vi.spyOn(repo, 'saveGraph');
+  const save = vi.spyOn(Repository.prototype, 'saveGraph');
   const reading = workspace.external(`/diagrams/${graph.diagram.id}`, 'GET');
   // Resize/viewport/title edits can arrive before the first await resumes.
   useEditor.getState().updateNode(graph.nodes[0].id, { title: 'Saved during inspection' });
@@ -44,14 +45,17 @@ it('serializes an editor save appended after an MCP read begins waiting for the 
 
 it('drains a new revision appended while a prior transaction is in flight without a second writer', async () => {
   const graph = useEditor.getState().graph!;
-  const originalSave = repo.saveGraph.bind(repo);
+  const originalSave = Repository.prototype.saveGraph;
   let release!: () => void;
   const gate = new Promise<void>((resolve) => {
     release = resolve;
   });
-  const save = vi.spyOn(repo, 'saveGraph').mockImplementation(async (...args) => {
+  const save = vi.spyOn(Repository.prototype, 'saveGraph').mockImplementation(async function (
+    this: Repository,
+    ...args
+  ) {
     if (save.mock.calls.length === 1) await gate;
-    return originalSave(...args);
+    return originalSave.apply(this, args);
   });
   useEditor.getState().updateNode(graph.nodes[0].id, { title: 'First revision' });
   const reading = workspace.external(`/diagrams/${graph.diagram.id}`, 'GET');
@@ -80,25 +84,14 @@ it('retains real cross-tab conflict detection and preserves unsaved local edits'
 
 it('does not treat a delayed refresh snapshot from before its own save as another tab', async () => {
   const graph = useEditor.getState().graph!;
-  const staleRecords = await db.diagrams.toArray();
-  const collection = db.diagrams.orderBy('updatedAt').reverse();
-  let release!: (records: typeof staleRecords) => void;
-  const snapshot = new Promise<typeof staleRecords>((resolve) => {
-    release = resolve;
-  });
-  const read = vi
-    .spyOn(collection, 'toArray')
-    .mockImplementationOnce(() => snapshot as ReturnType<typeof collection.toArray>);
-  vi.spyOn(db.diagrams, 'orderBy').mockReturnValueOnce({ reverse: () => collection } as ReturnType<
-    typeof db.diagrams.orderBy
-  >);
+  const snapshot = holdRefreshRead(db);
   const refreshing = workspace.refresh();
-  await vi.waitFor(() => expect(read).toHaveBeenCalled());
+  await snapshot.entered;
   useEditor.getState().updateNode(graph.nodes[0].id, { title: 'First saved revision' });
   await workspace.settled();
   useEditor.getState().updateNode(graph.nodes[0].id, { title: 'Newer local revision' });
   const history = useEditor.getState().history;
-  release(staleRecords);
+  snapshot.release();
   await refreshing;
   await workspace.settled();
   expect(useEditor.getState().status).toBe('saved');

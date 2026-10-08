@@ -6,6 +6,8 @@ type Props = {
   close(): void;
   beforeReload(): Promise<void>;
   reload?(): void;
+  /** Retained tools can close while their first chunk is still loading. */
+  active?: boolean;
 };
 
 /** A missing lazy tool must not blank the editor or discard unsaved work. */
@@ -31,6 +33,7 @@ export class LazyDialogBoundary extends Component<
     }
   };
   render() {
+    if (this.state.failed && this.props.active === false) return null;
     if (this.state.failed)
       return (
         <Modal title="Tool could not open" close={this.props.close}>
@@ -47,9 +50,11 @@ export class LazyDialogBoundary extends Component<
     return (
       <Suspense
         fallback={
-          <Modal title="Opening tools" close={this.props.close}>
-            <p role="status">Opening tools…</p>
-          </Modal>
+          this.props.active === false ? null : (
+            <Modal title="Opening tools" close={this.props.close}>
+              <p role="status">Opening tools…</p>
+            </Modal>
+          )
         }
       >
         {this.props.children}

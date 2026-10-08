@@ -6,6 +6,8 @@ import { createBasicModel } from '../src/simulation/examples';
 import { SimulationEngine } from '../src/simulation/engine';
 import { SimulationService, simulationService } from '../src/simulation/service';
 import { SimulationResults } from '../src/simulation/SimulationResults';
+import { asWorkspaceStorage } from '../src/storage/adapter';
+import { SimulationUIAction } from '../src/simulation/ui-action';
 import type { WorkerCommand, WorkerUpdate } from '../src/simulation/protocol';
 import type { SimulationModel } from '../src/simulation/types';
 
@@ -79,8 +81,19 @@ async function completed(durationSeconds: number) {
   await waitFor(() => expect(service.view(started.id)?.run.status).toBe('completed'));
   return service.get(started.id);
 }
-const perform = async (action: () => Promise<unknown>) => {
-  await action();
+const perform = async (action: (job: SimulationUIAction) => Promise<unknown>) => {
+  const job = new SimulationUIAction(
+    asWorkspaceStorage(db),
+    () => true,
+    () => {},
+  );
+  try {
+    await job.check();
+    await action(job);
+    await job.check();
+  } finally {
+    job.dispose();
+  }
 };
 
 describe('fractional replay controls', () => {
@@ -105,7 +118,9 @@ describe('fractional replay controls', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Inspect this moment' })),
     );
     await waitFor(() => expect(service.view(run.id)?.replayTimeSeconds).toBe(0.425));
-    expect(simulationService.seek).toHaveBeenCalledWith(run.id, 0.425);
+    expect(simulationService.seek).toHaveBeenCalledWith(run.id, 0.425, {
+      beforeWrite: expect.any(Function),
+    });
     const replay = await service.state(run.id);
     expect(replay.timeSeconds).toBe(0.425);
     expect(replay.nodes.work.busy).toBe(1);
@@ -135,7 +150,9 @@ describe('fractional replay controls', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Inspect this moment' })),
     );
     await waitFor(() => expect(service.view(short.id)?.replayTimeSeconds).toBe(0.675));
-    expect(simulationService.seek).toHaveBeenCalledWith(short.id, 0.675);
+    expect(simulationService.seek).toHaveBeenCalledWith(short.id, 0.675, {
+      beforeWrite: expect.any(Function),
+    });
     expect((await service.state(short.id)).timeSeconds).toBe(0.675);
     expect(await service.result(short.id)).toEqual(original);
     // Invalid programmatic timestamps still return an error; only the UI selection is bounded.

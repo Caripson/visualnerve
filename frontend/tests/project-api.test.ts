@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { zipSync, strToU8 } from 'fflate';
-import { WorkspaceDatabase } from '../src/storage/database';
+import { LegacyWorkspaceStorage, WorkspaceDatabase } from '../src/storage/database';
+import type { WorkspaceScope, WorkspaceStoreName } from '../src/storage/contracts';
 import { Repository } from '../src/storage/repository';
 import { Workspace } from '../src/storage/workspace';
 import { useEditor } from '../src/state/editor';
@@ -138,17 +139,37 @@ it('revocation cancels the archive stage and prevents a late result from writing
 
 it('checks live authorization inside the final import transaction after collision reads', async () => {
   await controller.setPreference('mcp-access', 'write');
-  const original = db.nodes.bulkGet.bind(db.nodes);
-  const lookup = vi.spyOn(db.nodes, 'bulkGet').mockImplementation((keys) =>
-    original(keys).then((nodes) => {
-      useEditor.setState({ mcpAccess: 'read' });
-      return nodes;
-    }),
-  );
+  const atomic = LegacyWorkspaceStorage.prototype.atomic,
+    lookup = vi.fn();
+  vi.spyOn(LegacyWorkspaceStorage.prototype, 'atomic').mockImplementation(function <T>(
+    this: LegacyWorkspaceStorage,
+    mode: 'r' | 'rw',
+    stores: readonly WorkspaceStoreName[],
+    work: (scope: WorkspaceScope) => Promise<T>,
+  ): Promise<T> {
+    return atomic.call(this, mode, stores, async (scope) => {
+      if (mode === 'rw' && stores.includes('nodes')) {
+        const bulkGet = scope.nodes.bulkGet.bind(scope.nodes);
+        vi.spyOn(scope.nodes, 'bulkGet').mockImplementation((keys) =>
+          bulkGet(keys).then((nodes) => {
+            expect(scope.inTransaction).toBe(true);
+            expect(keys.length).toBeGreaterThan(0);
+            lookup(keys);
+            // Revoke only after the real collision lookup has resolved, while
+            // still inside the transaction that would publish the import.
+            useEditor.setState({ mcpAccess: 'read' });
+            return nodes;
+          }),
+        );
+      }
+      return work(scope);
+    }) as Promise<T>;
+  });
   await expect(controller.external('/code/project/diagrams', 'POST', input)).rejects.toThrow(
     /read-only/,
   );
   expect(lookup).toHaveBeenCalled();
+  expect(useEditor.getState().mcpAccess).toBe('read');
   expect(await db.diagrams.count()).toBe(0);
   expect(await db.nodes.count()).toBe(0);
   expect(useEditor.getState().graph).toBeNull();

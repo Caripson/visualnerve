@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { WorkspaceDatabase } from '../src/storage/database';
 import { Repository } from '../src/storage/repository';
 import { Workspace } from '../src/storage/workspace';
+import { settingWrites } from './workspace-test-hooks';
 import { IMPORT_LIMIT_SETTING } from '../src/imports/limits';
 import { useEditor } from '../src/state/editor';
 
@@ -59,7 +60,7 @@ it('rejects invalid preference writes without changing the active or stored limi
 
 it('keeps the committed active limit if the preference cannot be stored', async () => {
   await workspace.setPreference(IMPORT_LIMIT_SETTING, 100);
-  vi.spyOn(db.settings, 'put').mockRejectedValueOnce(new Error('Browser storage is full.'));
+  settingWrites(db).mockRejectedValueOnce(new Error('Browser storage is full.'));
   await expect(workspace.setPreference(IMPORT_LIMIT_SETTING, 200)).rejects.toThrow(
     'Browser storage is full.',
   );

@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -39,6 +40,8 @@ func main() {
 	static := flag.String("static", env("VISUAL_NERVE_STATIC_DIR", "public"), "built site directory")
 	dev := flag.Bool("dev", false, "allow loopback Vite origin")
 	bridge := flag.Bool("bridge", false, "enable optional browser communication bridge and MCP")
+	mcpStdio := flag.Bool("mcp-stdio", false, "adapt newline-delimited MCP stdio to an already-running local bridge")
+	mcpURL := flag.String("mcp-url", server.DefaultMCPURL, "HTTP(S) loopback /mcp endpoint for --mcp-stdio")
 	var allowed origins
 	for _, value := range strings.Split(os.Getenv("VISUAL_NERVE_ALLOWED_ORIGINS"), ",") {
 		if strings.TrimSpace(value) != "" {
@@ -51,12 +54,26 @@ func main() {
 	cert := flag.String("tls-cert", os.Getenv("VISUAL_NERVE_TLS_CERT"), "optional trusted local TLS certificate")
 	key := flag.String("tls-key", os.Getenv("VISUAL_NERVE_TLS_KEY"), "optional local TLS private key")
 	flag.Parse()
+	if *mcpStdio {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		if err := server.RunMCPStdio(ctx, os.Stdin, os.Stdout, *mcpURL, os.Getenv("VISUAL_NERVE_BRIDGE_TOKEN")); err != nil {
+			log.Fatal("MCP stdio adapter: ", err)
+		}
+		return
+	}
 	if (*cert == "") != (*key == "") {
 		log.Fatal("provide both --tls-cert and --tls-key")
 	}
-	host, _, err := net.SplitHostPort(*addr)
+	host, port, err := net.SplitHostPort(*addr)
 	if err != nil {
 		log.Fatal(err)
+	}
+	if *bridge {
+		portNumber, err := strconv.Atoi(port)
+		if err != nil || portNumber < 1 || portNumber > 65535 {
+			log.Fatal("local MCP integration requires an explicit numeric --addr port between 1 and 65535; no automatic or ephemeral port is selected")
+		}
 	}
 	token := os.Getenv("VISUAL_NERVE_BRIDGE_TOKEN")
 	remote := host != "127.0.0.1" && host != "localhost" && host != "::1"
@@ -87,6 +104,6 @@ func main() {
 		err = httpServer.ListenAndServe()
 	}
 	if err != nil && err != http.ErrServerClosed {
-		log.Fatal(err)
+		log.Fatal(listenError(*addr, scheme, err))
 	}
 }

@@ -1,5 +1,4 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import Dexie from 'dexie';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BackupNudge } from '../src/components/DataPrivacy';
 import { PreferenceSaveNotice } from '../src/components/PreferenceSaveNotice';
@@ -8,6 +7,7 @@ import { useEditor } from '../src/state/editor';
 import { WorkspaceDatabase } from '../src/storage/database';
 import { Repository } from '../src/storage/repository';
 import { Workspace, workspace as applicationWorkspace } from '../src/storage/workspace';
+import { settingWrites } from './workspace-test-hooks';
 
 let db: WorkspaceDatabase, workspace: Workspace;
 
@@ -49,16 +49,16 @@ afterEach(async () => {
 
 describe('backup reminder persistence acknowledgement', () => {
   it('disables duplicate retries while saving and keeps a newer preference failure retryable', async () => {
-    vi.spyOn(db.settings, 'put').mockRejectedValueOnce(new Error('Backup preference failed'));
+    settingWrites(db).mockRejectedValueOnce(new Error('Backup preference failed'));
     await expect(workspace.setPreference('backup-nudge-dismissed', true)).rejects.toThrow(
       'Backup preference failed',
     );
     const writing = deferred(),
       release = deferred();
-    const put = db.settings.put.bind(db.settings);
-    const writes = vi.spyOn(db.settings, 'put').mockImplementationOnce((...args) => {
+    const put = settingWrites(db).getMockImplementation()!;
+    const writes = settingWrites(db).mockImplementationOnce((...args) => {
       writing.resolve();
-      return Dexie.Promise.resolve(release.promise).then(() => put(...args));
+      return release.promise.then(() => put(...args));
     });
     const retries = vi.spyOn(workspace, 'retryPreference');
     render(<PreferenceSaveNotice settings={() => {}} controller={workspace} />);
@@ -88,10 +88,10 @@ describe('backup reminder persistence acknowledgement', () => {
   it('stays visible until dismissal is stored, then remains dismissed in a reopened workspace', async () => {
     const writing = deferred(),
       release = deferred();
-    const put = db.settings.put.bind(db.settings);
-    vi.spyOn(db.settings, 'put').mockImplementationOnce((...args) => {
+    const put = settingWrites(db).getMockImplementation()!;
+    settingWrites(db).mockImplementationOnce((...args) => {
       writing.resolve();
-      return Dexie.Promise.resolve(release.promise).then(() => put(...args));
+      return release.promise.then(() => put(...args));
     });
     render(<BackupNudge settings={() => {}} />);
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss backup reminder' }));
@@ -115,7 +115,7 @@ describe('backup reminder persistence acknowledgement', () => {
   });
 
   it('keeps a failed dismissal visible and retryable without an unhandled rejection', async () => {
-    vi.spyOn(db.settings, 'put').mockRejectedValueOnce(
+    settingWrites(db).mockRejectedValueOnce(
       new DOMException('Local storage is full', 'QuotaExceededError'),
     );
     render(

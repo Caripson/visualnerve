@@ -1,23 +1,25 @@
 import { simulationService } from '../simulation/service';
 import { StorageError } from '../model/errors';
 import type { Graph } from '../model/types';
+import type { WorkspaceStorage } from './contracts';
 import type { RunOptions, SimulationModel, SimulationState } from '../simulation/types';
 import { validateSimulationModel, resolveScenario } from '../simulation/schema';
 import { setSimulationModel } from '../simulation/document';
 import { ProcessHierarchy } from '../simulation/process-hierarchy';
-import {
-  MAX_CAPACITY_CARDS_PER_BANK,
-  MAX_ADDITIONAL_CAPACITY_CARDS,
-} from '../simulation/capacity-projection';
 
 export interface SimulationRepository {
   getGraph(id: string): Promise<Graph>;
-  saveGraph(graph: Graph, baseVersion: number): Promise<Graph>;
+  saveGraph(
+    graph: Graph,
+    baseVersion: number,
+    beforeWrite?: (scope: WorkspaceStorage) => Promise<void>,
+  ): Promise<Graph>;
 }
 export type SimulationStartOptions = RunOptions & {
   speed?: 1 | 10 | 100 | 'max';
   animated?: boolean;
   origin?: 'api' | 'ui';
+  beforeWrite?: (scope: WorkspaceStorage) => Promise<void>;
 };
 export interface SimulationRuntime {
   start(
@@ -33,10 +35,18 @@ export interface SimulationRuntime {
   control(
     runId: string,
     action: 'pause' | 'resume' | 'stop' | 'reset',
-    options?: { origin?: 'api' | 'ui' },
+    options?: { origin?: 'api' | 'ui'; beforeWrite?: (scope: WorkspaceStorage) => Promise<void> },
   ): Promise<unknown>;
-  setSpeed(runId: string, speed: 1 | 10 | 100 | 'max'): Promise<unknown>;
-  seek(runId: string, timeSeconds: number, options?: { origin?: 'api' | 'ui' }): Promise<unknown>;
+  setSpeed(
+    runId: string,
+    speed: 1 | 10 | 100 | 'max',
+    beforeWrite?: (scope: WorkspaceStorage) => Promise<void>,
+  ): Promise<unknown>;
+  seek(
+    runId: string,
+    timeSeconds: number,
+    options?: { origin?: 'api' | 'ui'; beforeWrite?: (scope: WorkspaceStorage) => Promise<void> },
+  ): Promise<unknown>;
   compare(runIds: string[]): Promise<unknown>;
 }
 const collections = {
@@ -61,108 +71,7 @@ export class SimulationCommandError extends StorageError {
     this.issues = [{ path, code, message }];
   }
 }
-export const simulationCapabilities = {
-  type: 'process-simulator',
-  schemaVersion: 1,
-  apiVersion: '0.3.0',
-  engine: 'deterministic-discrete-event',
-  timeUnit: 'second',
-  currency: 'one configurable currency per model',
-  nodeTypes: ['source', 'work', 'router', 'resource', 'outcome'],
-  queueDisciplines: ['fifo', 'priority'],
-  arrivalDistributions: ['regular', 'poisson'],
-  routingModes: ['first-match', 'weighted', 'least-queue', 'available-capacity'],
-  speeds: [1, 10, 100, 'max'],
-  features: [
-    'semantic-crud',
-    'hierarchical-processes',
-    'process-drilldown',
-    'shared-resources',
-    'queues',
-    'abandonment',
-    'complexity',
-    'scaling',
-    'schedules',
-    'improvements',
-    'economics',
-    'time-to-revenue',
-    'scenarios',
-    'comparison',
-    'payback',
-    'seeded-random',
-    'replay',
-    'headless',
-    'bounded-particle-rendering',
-    'native-capacity-card-projection',
-    'local-persistence',
-  ],
-  hierarchy: {
-    processCollection: 'processes',
-    parentField: 'processes[].parentId',
-    nodeMembershipField: 'nodes[].processId',
-    missingProcesses: 'empty-hierarchy',
-    maximumProcesses: 50000,
-    maximumDepth: 128,
-    execution: 'same-global-engine-and-shared-resource-pools',
-    projection: 'read-only-process-cards-and-boundary-edges',
-    metrics: {
-      scope: 'direct-members-and-all-descendant-processes',
-      completed: 'successful-scope-visits-including-exits-and-terminal-outcomes',
-      terminalCompleted: 'successful-final-outcomes-inside-scope',
-      cycleTime: 'scope-entry-to-exit-or-terminal-outcome',
-      ttr: 'scope-entry-to-revenue-producing-terminal-outcome',
-      aggregation: 'parent-and-child-totals-overlap-do-not-sum',
-      distributions: 'computed-from-scope-observations-never-summed-node-quantiles',
-      resourceCostAllocation: 'occupied-units',
-      sharedResourceOverhead: 'idle-scaling-and-investment-pool-costs-remain-global',
-    },
-  },
-  visualCapacity: {
-    view: '2d',
-    representation: 'full-native-cards',
-    /** @deprecated Scoped to additional/compact projections; use the explicit editability flags. */
-    readOnly: true,
-    primaryEditable: true,
-    additionalCardsReadOnly: true,
-    compactHierarchyReadOnly: true,
-    sharedLogicalModel: true,
-    persistentUnitIdentity: false,
-    occupancy: 'actual-aggregate-busy',
-    queueDisplay: 'shared-at-first-card',
-    limits: {
-      cardsPerBank: MAX_CAPACITY_CARDS_PER_BANK,
-      additionalCards: MAX_ADDITIONAL_CAPACITY_CARDS,
-    },
-    overflow: 'explicit-aggregate-label',
-    spatialView: 'logical-model',
-  },
-  execution: {
-    browserRequired: true,
-    activeCanvasRequired: false,
-    animationRequired: false,
-    limits: {
-      activeParticles: 200000,
-      semanticEvents: 50000000,
-      routeVisits: 10000,
-      activeRuns: 4,
-      cachedRuns: 60,
-    },
-    limitBehavior: {
-      activeParticlesAndEvents: 'failed run with an explicit message and partial metrics',
-      routeVisits: 'failed particle with a semantic event',
-      activeRuns:
-        '409 rejection before starting another execution or replay worker; paused resident workers and startup reservations count',
-    },
-  },
-  permissions: { inspection: 'read', comparison: 'read', mutationsAndRuns: 'write' },
-  transport: { envelopeBytes: 32 * 1024 * 1024, asynchronousRuns: true, eventPageMaximum: 1000 },
-  retention: {
-    configurable: true,
-    completedParticlesBounded: true,
-    eventsBounded: true,
-    metricsIncludeAllParticles: true,
-  },
-};
+export { simulationCapabilities } from './simulation-capabilities';
 
 function object(value: unknown, keys?: readonly string[]): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value))
@@ -308,7 +217,7 @@ export async function simulationCommand(
   url: URL,
   method: string,
   payload?: unknown,
-  beforeWrite?: () => Promise<void>,
+  beforeWrite?: (scope: WorkspaceStorage) => Promise<void>,
   runtime?: SimulationRuntime,
 ): Promise<unknown> {
   const graph = await repo.getGraph(diagramId);
@@ -322,8 +231,7 @@ export async function simulationCommand(
     const data = object(payload, ['baseVersion', 'model']);
     const baseVersion = version(data.baseVersion);
     assertModel(data.model);
-    await beforeWrite?.();
-    return repo.saveGraph(setSimulationModel(graph, data.model), baseVersion);
+    return repo.saveGraph(setSimulationModel(graph, data.model), baseVersion, beforeWrite);
   }
   if (action === 'compare' && parts.length === 4) {
     query(url, []);
@@ -387,8 +295,7 @@ export async function simulationCommand(
     const baseVersion = version(data.baseVersion);
     const next = { ...model, [action]: object(data.value) };
     assertModel(next);
-    await beforeWrite?.();
-    return repo.saveGraph(setSimulationModel(graph, next), baseVersion);
+    return repo.saveGraph(setSimulationModel(graph, next), baseVersion, beforeWrite);
   }
   if (!Object.hasOwn(collections, action) || parts.length > 5)
     throw new SimulationCommandError(404, 'Unknown simulation endpoint.');
@@ -467,8 +374,7 @@ export async function simulationCommand(
       (edge) => edge.sourceNodeId !== entityId && edge.targetNodeId !== entityId,
     );
   assertModel(next);
-  await beforeWrite?.();
-  const saved = await repo.saveGraph(setSimulationModel(graph, next), baseVersion);
+  const saved = await repo.saveGraph(setSimulationModel(graph, next), baseVersion, beforeWrite);
   return method === 'DELETE' ? undefined : saved;
 }
 async function ownedRun(service: SimulationRuntime, diagramId: string, id: string) {
@@ -497,7 +403,7 @@ async function runCommand(
   url: URL,
   method: string,
   payload: unknown,
-  beforeWrite?: () => Promise<void>,
+  beforeWrite?: (scope: WorkspaceStorage) => Promise<void>,
 ) {
   if (parts.length === 4) {
     query(url, []);
@@ -519,8 +425,11 @@ async function runCommand(
         'SIMULATION_INVALID_MODEL',
       );
     }
-    await beforeWrite?.();
-    return service.start(graph.diagram.id, structuredClone(model), { ...options, origin: 'api' });
+    return service.start(graph.diagram.id, structuredClone(model), {
+      ...options,
+      origin: 'api',
+      ...(beforeWrite ? { beforeWrite } : {}),
+    });
   }
   const runId = semanticId(parts[4]);
   await ownedRun(service, graph.diagram.id, runId);
@@ -535,22 +444,23 @@ async function runCommand(
       const data = object(payload, ['speed']);
       if (![1, 10, 100, 'max'].includes(data.speed as 1 | 10 | 100 | 'max'))
         throw new SimulationCommandError(422, 'Choose speed 1, 10, 100 or max.', 'speed');
-      await beforeWrite?.();
-      return service.setSpeed(runId, data.speed as 1 | 10 | 100 | 'max');
+      return service.setSpeed(runId, data.speed as 1 | 10 | 100 | 'max', beforeWrite);
     }
     if (action === 'seek') {
       const data = object(payload, ['timeSeconds']);
       const timeSeconds = nonnegative(data.timeSeconds, 'timeSeconds');
-      await beforeWrite?.();
-      return service.seek(runId, timeSeconds, { origin: 'api' });
+      return service.seek(runId, timeSeconds, {
+        origin: 'api',
+        ...(beforeWrite ? { beforeWrite } : {}),
+      });
     }
     if (!['pause', 'resume', 'stop', 'reset'].includes(action))
       throw new SimulationCommandError(404, 'Unknown simulation control.');
     object(payload, []);
-    await beforeWrite?.();
-    return action === 'reset'
-      ? service.control(runId, 'reset', { origin: 'api' })
-      : service.control(runId, action as 'pause' | 'resume' | 'stop');
+    return service.control(runId, action as 'pause' | 'resume' | 'stop' | 'reset', {
+      origin: 'api',
+      ...(beforeWrite ? { beforeWrite } : {}),
+    });
   }
   if (method !== 'GET')
     throw new SimulationCommandError(405, 'Simulation inspection requires GET.');

@@ -3,6 +3,7 @@ import type { SimulationModel, SimulationComparison } from './types';
 import type { SimulationView } from './service';
 import { simulationService } from './service';
 import { simulationTime } from './SimulationControls';
+import type { SimulationUIAction } from './ui-action';
 
 type SavedRuns = Awaited<ReturnType<typeof simulationService.list>>;
 export function SimulationResults({
@@ -16,7 +17,7 @@ export function SimulationResults({
   view?: SimulationView;
   runs: SavedRuns;
   busy: boolean;
-  perform: (action: () => Promise<unknown>) => Promise<void>;
+  perform: (action: (job: SimulationUIAction) => Promise<unknown>) => Promise<void>;
   compact?: boolean;
 }) {
   const [selectedRuns, setSelectedRuns] = useState<string[]>([]);
@@ -34,7 +35,10 @@ export function SimulationResults({
           <select
             aria-label="Replay run"
             value={view?.run.id ?? ''}
-            onChange={(event) => perform(() => simulationService.selectRun(event.target.value))}
+            onChange={(event) => {
+              const runId = event.target.value;
+              void perform(() => simulationService.selectRun(runId));
+            }}
           >
             <option value="">Choose a run…</option>
             {runs.map((run) => (
@@ -61,7 +65,11 @@ export function SimulationResults({
             <span>{simulationTime(replayMoment)}</span>
             <button
               disabled={busy || view.run.status === 'running'}
-              onClick={() => perform(() => simulationService.seek(view.run.id, replayMoment))}
+              onClick={() =>
+                perform((job) =>
+                  simulationService.seek(view.run.id, replayMoment, { beforeWrite: job.check }),
+                )
+              }
             >
               Inspect this moment
             </button>
@@ -70,8 +78,9 @@ export function SimulationResults({
         <button
           disabled={busy || selectedRuns.length < 2}
           onClick={() =>
-            perform(async () => {
+            perform(async (job) => {
               const result = await simulationService.compare(selectedRuns);
+              await job.check();
               setComparisons(
                 result.comparisons.map((comparison) => ({
                   ...comparison,

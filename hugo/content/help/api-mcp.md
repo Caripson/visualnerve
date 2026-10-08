@@ -6,21 +6,61 @@ weight: 15
 
 You can use every normal Visual Nerve workflow through the UI without AI, MCP or a backend. The optional local bridge lets an external client read and edit the same workspace, create diagrams, analyze supplied input, control presentations and run simulations.
 
-The bridge forwards commands to your connected browser. It has no separate diagram database, cloud copy or simulation engine. Browser-owned IndexedDB and the shared validated model remain authoritative.
+The bridge forwards commands to your connected browser. It has no separate diagram database, cloud copy or simulation engine. Browser-owned IndexedDB and the shared validated model remain authoritative. MCP is a standard protocol: Codex, Claude Code, Cursor, Gemini CLI and other compatible local clients share the same tools, resources and permissions.
+
+## Unlocking and tool access are separate permissions
+
+The dedicated encrypted app surface at `https://app.visualnerve.com/` is under release review. It requires a password in the browser before its workspace opens. On the first visit, create the password and keep the recovery key separately. Later visits unlock that browser's local vault. No account, SSO service or mandatory backend performs this step.
+
+Unlocking does not enable MCP or restore a previous tool grant. After each encrypted-session unlock, choose **Read only** or **Read + write** again in Settings. An agent cannot supply a password, use a recovery key, unlock the vault, change its password or change session limits through API/MCP. Never paste those credentials into an agent prompt or tool request.
+
+The encrypted app origin is separate from an existing legacy workspace at `www.visualnerve.com` or a staging origin. An old origin's diagrams do not move or become encrypted automatically. For a complete move, use [Export encrypted transfer and Transfer existing workspace](/help/settings/#transfer-an-existing-workspace); review any readable legacy backup before sharing it. When connecting this app, use its exact `https://app.visualnerve.com` origin in the bridge's `--allowed-origin` argument.
+
+### Discover security state safely
+
+Use the existing **visual_nerve_request** tool:
+
+```json
+{ "path": "/workspace/security", "method": "GET" }
+```
+
+The corresponding REST route is `GET /api/v1/workspace/security`. It returns safe metadata from the connected browser, including `type: "workspace-security"`, `schemaVersion: 1`, `mode: "encrypted"` or `"legacy"`, and the current session `state`. An encrypted response identifies `vaultSchemaVersion: 1` and `cipher: "AES-256-GCM"`; the logical workspace schema remains independently versioned at 8. It contains no records, vault ID, keys, credentials, expiration timestamps or integration grants, and grants no content access. `uninitialized` describes a session that has not initialized its vault, rather than proving that no vault is saved.
+
+| Situation                                             | Response and next step                                                                                                           |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Connected encrypted browser is locked                 | Content requests return **423** with `code: "WORKSPACE_LOCKED"`. Unlock in the browser, check access and submit a fresh request. |
+| Browser is disconnected or integration is unavailable | **503** keeps its existing meaning. Open/reconnect the browser; a disconnected bridge cannot determine vault state.              |
+| You only need the contract                            | **visual_nerve_api_docs** and documentation resources work without a connected or unlocked browser.                              |
+
+Static bridge `/api/v1/health` reports connectivity, not the browser's lock state. The security-status route still needs a browser connection even though it can safely report a locked state.
+
+A connection that was already authorized and open can remain as a **restricted control connection** when the workspace locks. It exposes safe status and returns `423 WORKSPACE_LOCKED` for content. It does not reconnect after a network loss, and a fresh locked page never connects automatically. Explicit Off closes it. After human unlock, the retained connection still has no content or lock permission until a fresh Settings grant.
+
+An authorized tool with **Read + write** can explicitly lock the encrypted workspace through the same request tool:
+
+```json
+{ "path": "/workspace/lock", "method": "POST", "data": {} }
+```
+
+`POST /api/v1/workspace/lock` accepts only an empty object or no arguments. It waits for pending saves, checks the current grant again, locks the shared vault session and returns safe security metadata. If saving fails, it does not silently discard edits. Calling it on an already-locked retained connection only reports that local locked status; it does not revoke again. A concurrent grant or saved-data change produces **409**, rather than locking from a stale authorization snapshot; the current session remains available. Inspect the saved state and grant before issuing a new request. Read-only access cannot lock an unlocked workspace. No tool can unlock it. If several tabs share a workspace, the local bridge prefers a content-enabled tab and never retries a dispatched write against another tab.
+
+**Settings → Workspace security** controls inactivity and maximum-session limits in the browser. Only human interaction with the app renews inactivity; API/MCP requests, particle animation and background jobs do not keep it unlocked. Locking cancels jobs and invalidates in-flight requests, including requests whose results arrive after a later unlock. Other tabs sharing the vault observe revocation; each tab must obtain its own human-unlocked session. Do not assume that a simulation or export continued after lock.
+
+Encryption protects saved records while locked. An authorized API/MCP request, diagram export or AI handoff releases readable information intentionally. `GET /workspace/export` is a readable semantic backup for authorized tools; the browser's encrypted backup download and its reviewed restore flow are separate actions. Changing the live password does not update downloaded backup files: older copies retain their own password and recovery credentials. [Security and recovery boundaries](/security/).
 
 ## Understand the addresses
 
-| Address                                                       | Purpose                                                                        |
-| ------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `https://www.visualnerve.com/app/`                          | Public browser workspace where your diagrams and Settings live               |
-| `https://www.visualnerve.com`                               | Public website origin allowed by your bridge; use the origin without a path   |
-| `ws://127.0.0.1:4317/bridge` or trusted `wss://…/bridge`      | Browser-to-local-service WebSocket connection                                  |
-| `http://127.0.0.1:4317/mcp` or matching `https://…/mcp`       | Local MCP server address for a client such as Codex                            |
-| `http://127.0.0.1:4317/api/v1` or matching `https://…/api/v1` | Local REST API base                                                            |
+| Address                                                       | Purpose                                                                     |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `https://www.visualnerve.com/app/`                            | Public browser workspace where your diagrams and Settings live              |
+| `https://www.visualnerve.com`                                 | Public website origin allowed by your bridge; use the origin without a path |
+| `ws://127.0.0.1:4317/bridge` or trusted `wss://…/bridge`      | Browser-to-local-service WebSocket connection                               |
+| `http://127.0.0.1:4317/mcp` or matching `https://…/mcp`       | Local MCP server address for any compatible client                          |
+| `http://127.0.0.1:4317/api/v1` or matching `https://…/api/v1` | Local REST API base                                                         |
 
 `127.0.0.1` means the computer where the connecting software runs. It remains local even when the app was downloaded from a public domain. JavaScript opens a connection to the bridge; it does not install or create that native process. A client on another machine does not reach your computer by using its own `127.0.0.1`.
 
-Settings displays **Visual Nerve website**, API reference and **MCP server URL for Codex** separately. Its saved WebSocket connection determines the matching HTTP(S) MCP address. Do not substitute the public website domain for the local service.
+Settings displays the **Visual Nerve website**, API reference and local **MCP server URL** separately. Its saved WebSocket connection determines the matching HTTP(S) MCP address. Use that MCP URL for your client; it is shared across vendors. Do not substitute the public website domain or the browser WebSocket `/bridge` for this service.
 
 ![Local connection settings separating the public website, local MCP server, browser WebSocket address and optional token.](/help/images/mcp-settings.webp "The website identifies the app; the local service connects your tools to the open browser workspace.")
 
@@ -50,24 +90,148 @@ The bridge only accepts loopback integration connections. Its allowed-origin mus
 
 On mobile, the normal UI remains usable locally. Integration still needs a compatible bridge/client on the device making that local connection; a phone's loopback address does not automatically refer to a laptop.
 
+### Choose a dedicated local port
+
+Visual Nerve uses **4317** by default. One bridge listener serves the MCP `/mcp` endpoint, the browser WebSocket `/bridge` and the REST `/api/v1` routes. MCP does not need a second listener or a vendor-specific port.
+
+If another plugin or process already uses 4317, choose an available port explicitly. For example, to connect the public workspace through 4318:
+
+```sh
+./bin/visual-nerve --static ./public --bridge \
+  --addr 127.0.0.1:4318 \
+  --allowed-origin https://www.visualnerve.com
+```
+
+Then save `ws://127.0.0.1:4318/bridge` under **Local connection details** in the app, and set your MCP client's URL to `http://127.0.0.1:4318/mcp`. REST requests use `http://127.0.0.1:4318/api/v1`. With trusted local TLS, use the matching `wss` and `https` schemes. Change the port in the client examples below to match your chosen listener.
+
+For the stdio adapter, select the existing listener with `--mcp-url`, rather than the bridge's `--addr` flag. Its client configuration would use these arguments:
+
+```json
+["--mcp-stdio", "--mcp-url", "http://127.0.0.1:4318/mcp"]
+```
+
+Neither 4317 nor 4318 is guaranteed to be free. If the chosen address is occupied, the bridge reports a bind error; it does not silently switch to a random port. Stop the conflicting process or choose another available port, then update the saved browser connection and client URLs together.
+
+On the isolated encrypted app, the deployed Content Security Policy also restricts browser bridge connections to explicitly approved ports. A custom port must be included in that app build and its response-header policy; changing Settings alone cannot override it. The reviewed default is 4317.
+
 ## Enable the browser connection
 
 1. Keep the intended Visual Nerve workspace open and accept local storage.
-2. Open **Settings → Codex / MCP integration**. On mobile, start from **Diagram actions → Settings**.
+2. Open **Settings → MCP / API integration**. On mobile, start from **Diagram actions → Settings**.
 3. Select **Read only** for inspection, or **Read + write** for editing and run/playback controls.
 4. Check **MCP connection: Connected**.
 5. If needed, expand **Local connection details**, enter the local WebSocket address and optional token, then choose **Save connection**.
-6. Copy **Instructions for Codex** and use the displayed **MCP server URL for Codex** in your MCP client.
+6. Use the displayed **MCP server URL** in your chosen client. Expand **Instructions for your MCP client** and choose **Copy MCP instructions** for a setup note describing the same API and tools for any compatible agent.
 
 Access is **Off** by default. Read only permits GET inspection and supported exact unsaved previews, exports and comparisons. It does not grant general permission to POST or edit. Read + write additionally permits mutations, saving models and controlling simulations/presentations. Turning access Off closes the browser connection.
 
 Access changes and **Save connection** take effect in the open workspace without a page reload. If the local process is unavailable or the browser temporarily blocks a connection, Visual Nerve retries every few seconds while access remains enabled. Start the bridge and grant any requested local-network permission, then watch for **Connected**. If it stays on **Error**, check the exact allowed origin, trusted local certificate and address; an invalid address must be corrected and saved. Turning access Off also cancels connection retries.
 
-If the bridge uses `VISUAL_NERVE_BRIDGE_TOKEN`, the browser's **Integration token** must match it. That token lasts for the browser session and is excluded from backups and copied setup instructions. REST clients send `Authorization: Bearer YOUR_LOCAL_TOKEN` when a token is configured; configure the corresponding header in your MCP client. Choose the tools you grant access to, since they receive the content you ask them to inspect.
+If the bridge uses `VISUAL_NERVE_BRIDGE_TOKEN`, the browser's **Integration token** must match it. That token lasts for the browser session and is excluded from backups and copied setup instructions. Configure the client's matching Authorization header through protected local settings or supported environment-variable references. Do not put real tokens in shared configuration files or prompts. Choose the tools you grant access to, since they receive the content you ask them to inspect.
+
+## Configure your MCP client
+
+The following direct HTTP examples connect to an **already running bridge on this computer**. They do not start it, grant browser access or unlock an encrypted workspace. Replace the URL if your saved connection uses a different loopback hostname, port or trusted HTTPS. Merge settings into the client's existing configuration rather than replacing other servers.
+
+These examples follow current official client documentation. They do not claim that every client version, account policy or vendor GUI has been tested. Keep normal tool confirmations enabled. On a remote host or inside a container, loopback identifies that host or container, not automatically the computer running Visual Nerve.
+
+### Codex
+
+Register the HTTP bridge and inspect the configured entry:
+
+```sh
+codex mcp add visual-nerve --url http://127.0.0.1:4317/mcp
+codex mcp list
+```
+
+Alternatively, add or edit its entry in `~/.codex/config.toml`. A longer tool timeout accommodates the project's bounded ZIP scan:
+
+```toml
+[mcp_servers.visual-nerve]
+url = "http://127.0.0.1:4317/mcp"
+tool_timeout_sec = 180
+```
+
+The URL selects Streamable HTTP; a command entry selects stdio. Use the configuration for the host running Codex. [Official Codex MCP configuration](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
+
+### Claude Code
+
+Use the local Claude Code CLI, selecting HTTP explicitly:
+
+```sh
+claude mcp add --transport http --scope user visual-nerve http://127.0.0.1:4317/mcp
+claude mcp get visual-nerve
+```
+
+Check `/mcp` in the Claude Code session before asking it to use the tools. [Official Claude Code MCP setup](https://code.claude.com/docs/en/mcp).
+
+### Cursor
+
+For the local Cursor IDE, add this entry to `~/.cursor/mcp.json` or the project's `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "visual-nerve": {
+      "url": "http://127.0.0.1:4317/mcp"
+    }
+  }
+}
+```
+
+Review the server and tools in Cursor's MCP settings. This URL entry selects the HTTP connection. Launching the bridge with `--bridge` as a command is not a stdio configuration. [Official Cursor MCP configuration](https://cursor.com/docs/mcp).
+
+### Gemini CLI
+
+Use **Gemini CLI**, running locally, with HTTP selected explicitly:
+
+```sh
+gemini mcp add --transport http --scope user visual-nerve http://127.0.0.1:4317/mcp
+gemini mcp list
+```
+
+Alternatively, merge this entry into `~/.gemini/settings.json` or the project's `.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "visual-nerve": {
+      "httpUrl": "http://127.0.0.1:4317/mcp",
+      "timeout": 180000,
+      "trust": false
+    }
+  }
+}
+```
+
+Use **`httpUrl`**, not `url`: Gemini CLI uses `url` for the older SSE transport. Keep `trust: false` so its tool confirmations remain enabled. Check `/mcp` in the session. This configuration does not add a connector to the Gemini website or a cloud-hosted agent. [Official Gemini CLI MCP configuration](https://geminicli.com/docs/tools/mcp-server/).
+
+### Claude Desktop
+
+The release under review includes a native **stdio adapter** for local clients. It forwards newline-delimited MCP messages to the same already-running HTTP bridge; it does not start a bridge, open a browser, store diagrams or grant access. Start the bridge and enable the browser connection first.
+
+In Claude Desktop's local developer configuration, merge an entry like this into `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "visual-nerve": {
+      "command": "/ABSOLUTE/PATH/visual-nerve",
+      "args": ["--mcp-stdio"]
+    }
+  }
+}
+```
+
+Replace the command with the absolute path to your newly built executable. The usual configuration locations are `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS and `%APPDATA%\Claude\claude_desktop_config.json` on Windows; use a binary for the OS running Desktop and escape Windows backslashes in JSON. Restart Desktop after updating the entry. [Official local MCP configuration guide](https://modelcontextprotocol.io/docs/develop/connect-local-servers), [Claude Desktop local setup](https://support.claude.com/en/articles/10949351-getting-started-with-local-mcp-servers-on-claude-desktop).
+
+The adapter defaults to `http://127.0.0.1:4317/mcp`. For another local port or trusted HTTPS, add `"--mcp-url"` and its exact URL as separate arguments. It accepts only loopback HTTP(S) URLs with an explicit port and `/mcp` path. TLS uses normal system trust; the adapter does not bypass certificate validation. If the bridge requires a token, supply its matching `VISUAL_NERVE_BRIDGE_TOKEN` through the adapter's protected local environment, not the URL or shared example. Closing Desktop ends its adapter, not the shared bridge. Frames are limited to 32 MiB, with eight active and eight pending requests. Saturation stops the adapter rather than buffering indefinitely. Interrupted mutations can have an unknown outcome and are not automatically retried; inspect saved state before repeating them. No vendor GUI compatibility test is claimed here.
+
+Claude Desktop's local setup is separate from its **remote custom connectors**. A remote connector connects from Anthropic's infrastructure even when configured through Desktop, so it cannot reach this loopback-only bridge. Do not substitute a remote connector for the local command above. [Claude's remote-connector network requirements](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
 
 ## Discover documentation before sending commands
 
-Call the **visual_nerve_api_docs** MCP tool first:
+Every client discovers the same standard MCP tools and resources. The connection uses JSON-RPC 2.0; clients perform initialization, then `tools/list` and `resources/list`. Visual Nerve exposes **visual_nerve_request** for semantic commands and **visual_nerve_api_docs** for the bundled contract. Ask the client to call **visual_nerve_api_docs** first:
 
 ```json
 { "document": "guide" }
@@ -151,7 +315,11 @@ Use `/code/project/preview` with strict base64 ZIP bytes. Read only can inspect 
 {
   "path": "/code/project/preview",
   "method": "POST",
-  "data": {"name": "Service project", "data": "<BASE64_ZIP_BYTES>", "mode": "folders"}
+  "data": {
+    "name": "Service project",
+    "data": "<BASE64_ZIP_BYTES>",
+    "mode": "folders"
+  }
 }
 ```
 

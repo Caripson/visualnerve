@@ -1,6 +1,6 @@
 import { localBridgeUrl } from './access';
 
-/** Codex uses HTTP /mcp; the browser uses WebSocket /bridge on the same local service. */
+/** MCP clients use HTTP /mcp; the browser uses WebSocket /bridge on the same local service. */
 export function mcpServerUrl(bridgeAddress: string): string {
   const url = localBridgeUrl(bridgeAddress);
   url.protocol = url.protocol === 'wss:' ? 'https:' : 'http:';
@@ -16,9 +16,11 @@ export function mcpSetupNote(websiteOrigin: string, bridgeAddress: string): stri
     `Visual Nerve website: ${website}`,
     `Browser workspace: ${workspace}`,
     `API reference: ${reference}`,
-    `Codex MCP server on this computer: ${mcpServerUrl(bridgeAddress)}`,
+    `MCP server on this computer: ${mcpServerUrl(bridgeAddress)}`,
     `The local bridge must allow this website origin: --allowed-origin ${website}`,
     'Keep this workspace open and enable MCP Read only or Read + write in its Settings.',
+    'This is a standard MCP service, independent of the client vendor. The browser /bridge WebSocket is not the MCP endpoint.',
+    'For an encrypted workspace, unlock locally in the browser and explicitly grant tool access. GET /workspace/security exposes safe state; connected locked content requests return 423 WORKSPACE_LOCKED. Never submit a password or recovery key through MCP. Unlocking requires a fresh human grant before a tool can read content again.',
     'Start by calling visual_nerve_api_docs with {"document":"guide"} for the 2D/3D command guide. Read the complete OpenAPI contract with {"document":"openapi"} when you need exact schemas; no separate documentation link is needed.',
     'Use visual_nerve_request for diagram commands. Paths omit /api/v1.',
     'Process Simulator is a first-class process-simulator document with a separately typed simulation model. Discover GET /simulation/capabilities, then use /diagrams/{id}/simulation for semantic CRUD, scenarios, seeded worker runs, metrics, queues, resources, events and comparison. Headless/MAX needs no animation or selected diagram, but this browser must remain connected. UI and MCP use the same engine and authoritative IndexedDB model.',

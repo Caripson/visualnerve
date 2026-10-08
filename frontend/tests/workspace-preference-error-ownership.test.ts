@@ -1,4 +1,3 @@
-import Dexie from 'dexie';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { blankGraph, newNode } from '../src/model/types';
 import { StorageError } from '../src/model/validation';
@@ -7,6 +6,7 @@ import { useEditor } from '../src/state/editor';
 import { WorkspaceDatabase } from '../src/storage/database';
 import { Repository } from '../src/storage/repository';
 import { Workspace } from '../src/storage/workspace';
+import { settingWrites } from './workspace-test-hooks';
 
 let db: WorkspaceDatabase, repo: Repository, workspace: Workspace;
 let refresh: MockInstance<Workspace['refresh']>;
@@ -47,9 +47,7 @@ afterEach(async () => {
 });
 
 async function failPreference(key = 'backup-nudge-dismissed', message = 'Local storage is full') {
-  vi.spyOn(db.settings, 'put').mockRejectedValueOnce(
-    new DOMException(message, 'QuotaExceededError'),
-  );
+  settingWrites(db).mockRejectedValueOnce(new DOMException(message, 'QuotaExceededError'));
   await expect(workspace.setPreference(key, true)).rejects.toThrow(message);
   expect(useEditor.getState().preferenceError).toEqual({ key, message });
 }
@@ -57,10 +55,10 @@ async function failPreference(key = 'backup-nudge-dismissed', message = 'Local s
 function holdPreferenceWrite() {
   const entered = deferred(),
     release = deferred();
-  const put = db.settings.put.bind(db.settings);
-  vi.spyOn(db.settings, 'put').mockImplementationOnce((...args) => {
+  const put = settingWrites(db).getMockImplementation()!;
+  settingWrites(db).mockImplementationOnce((...args) => {
     entered.resolve();
-    return Dexie.Promise.resolve(release.promise).then(() => put(...args));
+    return release.promise.then(() => put(...args));
   });
   return { entered, release };
 }
@@ -75,11 +73,14 @@ describe('preference failures are independent of document saves and acknowledge 
   it('keeps an unresolved preference failure after an already-inflight graph save finishes', async () => {
     const entered = deferred(),
       release = deferred();
-    const save = repo.saveGraph.bind(repo);
-    vi.spyOn(repo, 'saveGraph').mockImplementationOnce(async (...args) => {
+    const save = Repository.prototype.saveGraph;
+    vi.spyOn(Repository.prototype, 'saveGraph').mockImplementationOnce(async function (
+      this: Repository,
+      ...args
+    ) {
       entered.resolve();
       await release.promise;
-      return save(...args);
+      return save.apply(this, args);
     });
     const graph = useEditor.getState().graph!;
     useEditor.getState().updateNode(graph.nodes[0].id, { title: 'Committed document change' });
@@ -253,11 +254,14 @@ describe('preference failures are independent of document saves and acknowledge 
   it('acknowledges a preference retry without acknowledging a pending document save', async () => {
     const entered = deferred(),
       release = deferred();
-    const save = repo.saveGraph.bind(repo);
-    vi.spyOn(repo, 'saveGraph').mockImplementationOnce(async (...args) => {
+    const save = Repository.prototype.saveGraph;
+    vi.spyOn(Repository.prototype, 'saveGraph').mockImplementationOnce(async function (
+      this: Repository,
+      ...args
+    ) {
       entered.resolve();
       await release.promise;
-      return save(...args);
+      return save.apply(this, args);
     });
     const graph = useEditor.getState().graph!;
     useEditor.getState().updateNode(graph.nodes[0].id, { title: 'Unsaved work' });
@@ -283,11 +287,14 @@ describe('preference failures are independent of document saves and acknowledge 
     await gate.entered.promise;
     const entered = deferred(),
       release = deferred();
-    const save = repo.saveGraph.bind(repo);
-    vi.spyOn(repo, 'saveGraph').mockImplementationOnce(async (...args) => {
+    const save = Repository.prototype.saveGraph;
+    vi.spyOn(Repository.prototype, 'saveGraph').mockImplementationOnce(async function (
+      this: Repository,
+      ...args
+    ) {
       entered.resolve();
       await release.promise;
-      return save(...args);
+      return save.apply(this, args);
     });
     const state = useEditor.getState();
     useEditor.setState({

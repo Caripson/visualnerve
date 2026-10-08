@@ -13,7 +13,7 @@
     {{ range slice (dict "url" "/features/" "label" "Features") (dict "url" "/use-cases/" "label" "Use cases") (dict "url" "/process-simulator/" "label" "Simulator") (dict "url" "/mcp/" "label" "MCP") (dict "url" "/developers/" "label" "Developers") (dict "url" "/help/" "label" "Help") }}
     <a href="{{ .url }}"{{ if eq $.RelPermalink .url }} aria-current="page"{{ end }}>{{ .label }}</a>
     {{ end }}
-    <a class="site-button site-button-small" href="/app/">Open the app <span aria-hidden="true">↗</span></a>
+    <a class="site-button site-button-small" href="{{ partial "workspace-url.html" . }}">Open the app <span aria-hidden="true">↗</span></a>
   </nav>
 </header>
 </div>

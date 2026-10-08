@@ -1,5 +1,12 @@
-import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import {
+  appendFileSync,
+  existsSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
+import { basename, join } from "node:path";
+import { randomBytes } from "node:crypto";
+import { acceptanceModelFiles } from "./selected-voices.mjs";
 export function createBrowserProbes({
   fixtures,
   output,
@@ -9,14 +16,15 @@ export function createBrowserProbes({
   sleep,
   savedVoices,
 }) {
+  if (process.env.DEBUG || process.env.PWDEBUG)
+    throw new Error(
+      "Disable DEBUG/PWDEBUG for Piper acceptance; disposable credential actions must not be logged.",
+    );
   async function setup(context, { routeModels = false } = {}) {
     const page = await context.newPage();
+    let credential = "";
     await page.exposeFunction("__modelChunk", (name, base64, first) => {
-      if (
-        !["en_GB-alan-medium.onnx", "en_GB-alan-medium.onnx.json"].includes(
-          name,
-        )
-      )
+      if (!acceptanceModelFiles.includes(name))
         throw new Error("Unexpected fixture filename.");
       if (first) writeFileSync(output(name), Buffer.alloc(0));
       appendFileSync(output(name), Buffer.from(base64, "base64"));
@@ -31,13 +39,12 @@ export function createBrowserProbes({
         "https://huggingface.co/rhasspy/piper-voices/resolve/**",
         async (route) => {
           const path = new URL(route.request().url()).pathname;
-          let file;
-          if (path.endsWith("en_GB-alan-medium.onnx.json"))
-            file = join(fixtures, "en_GB-alan-medium.onnx.json");
-          else if (path.endsWith("en_GB-alan-medium.onnx"))
-            file = join(fixtures, "en_GB-alan-medium.onnx");
+          const name = basename(path);
+          const file = acceptanceModelFiles.includes(name)
+            ? join(fixtures, name)
+            : undefined;
 
-          if (file)
+          if (file && existsSync(file))
             await route.fulfill({
               status: 200,
               body: readFileSync(file),
@@ -51,9 +58,24 @@ export function createBrowserProbes({
           else await route.continue();
         },
       );
-    page.on("pageerror", (e) => results.errors.push(e.message));
+    page.on("pageerror", (e) =>
+      results.errors.push(
+        credential
+          ? "Browser error during disposable credential setup"
+          : e.message,
+      ),
+    );
     page.on("request", (request) => {
       const url = new URL(request.url());
+      if (
+        credential &&
+        (request.url().includes(credential) ||
+          (request.postData() || "").includes(credential))
+      ) {
+        // Do not retain a credential-bearing URL/body even in failure evidence.
+        results.leaks.push("disposable credential network attempt");
+        return;
+      }
       if (url.origin !== origin) {
         results.remote.push({ url: request.url(), method: request.method() });
         if (
@@ -186,7 +208,66 @@ export function createBrowserProbes({
         attributes: true,
       });
     });
-    await page.goto(origin + "/");
+    // The public homepage is product documentation; the legacy test workspace
+    // remains at /app/. This harness never opens a personal browser profile.
+    await page.goto(origin + "/app/");
+    const vaultMarker = page.locator('meta[name="visualnerve-vault-required"]');
+    const encrypted =
+      (await vaultMarker.count()) > 0 &&
+      (await vaultMarker.getAttribute("content")) === "true";
+    if (encrypted) {
+      const policy = await page
+        .locator('meta[http-equiv="Content-Security-Policy"]')
+        .getAttribute("content");
+      const bridge =
+        origin.replace(/^http:/, "ws:").replace(/^https:/, "wss:") + "/bridge";
+      if (!policy?.includes("default-src 'none'") || !policy.includes(bridge))
+        throw new Error(
+          "The isolated acceptance build must retain its CSP and explicitly permit this PIPER_ACCEPTANCE_PORT bridge. Rebuild only the preview surface with the matching APP_BRIDGE_PORTS.",
+        );
+      // Create only this fresh context's disposable vault through the normal UI.
+      // No recovery text is read, no setup screenshots are taken, and native
+      // Playwright tracing is never enabled by this standalone harness.
+      credential = "Disposable-Piper-" + randomBytes(32).toString("base64url");
+      try {
+        await page
+          .getByRole("dialog", {
+            name: "Protect your local workspace",
+            exact: true,
+          })
+          .waitFor({ state: "visible" });
+        await page
+          .getByLabel("New workspace password", { exact: true })
+          .fill(credential);
+        await page
+          .getByLabel("Confirm new password", { exact: true })
+          .fill(credential);
+        await page
+          .getByRole("button", {
+            name: "Create encrypted workspace",
+            exact: true,
+          })
+          .click();
+        await page
+          .getByLabel("I have saved my recovery key in a protected location.")
+          .check();
+        await page
+          .getByRole("button", { name: "Continue", exact: true })
+          .click();
+      } catch {
+        // A fill/action failure can include its value in the original call log.
+        throw new Error(
+          "Disposable encrypted Piper setup failed; credential diagnostics suppressed.",
+        );
+      } finally {
+        credential = "";
+      }
+      results.cases.push({
+        name: "fresh encrypted Piper workspace setup",
+        surface: "encrypted",
+        recoveryAcknowledged: true,
+      });
+    }
     await page
       .getByLabel("I accept local storage and offline caching", { exact: true })
       .check();

@@ -57,7 +57,7 @@ import { useResponsiveCanvasViewport } from './useResponsiveCanvasViewport';
 import { CanvasTouchViewportGesture, canvasZoomRange } from './touch-viewport-gesture';
 import { DrawingOverlay } from '../drawing/DrawingOverlay';
 import { ParticleOverlay } from '../simulation/ParticleOverlay';
-import { ProcessStartPanel } from '../simulation/ProcessWizard';
+import { ProcessStartPanel } from '../simulation/ProcessStartPanel';
 import { ProcessHierarchyNav } from '../simulation/ProcessHierarchyNav';
 import { ProcessProjection, getSimulationProcessId } from '../simulation/process-projection';
 import { ProcessViewLayout } from '../simulation/process-view-layout';

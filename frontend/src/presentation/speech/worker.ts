@@ -6,6 +6,7 @@ import {
   type SpeechProgress,
 } from './protocol';
 import { voiceInfo, modelUrl, type VoiceId } from './voices';
+import { fetchAppAsset } from '../../security/app-cache';
 
 const scope = self as unknown as {
   onmessage: (event: MessageEvent<SpeechRequest>) => void;
@@ -26,7 +27,7 @@ globalThis.fetch = async (input, init) => {
   const local = url.origin === location.origin;
   if (!local && (!voice || ![modelUrl(voice), modelUrl(voice, true)].includes(url.href)))
     throw new Error('The voice engine only loads its local runtime and fixed voice model.');
-  const response = await networkFetch(input, init);
+  const response = await fetchAppAsset(networkFetch, input, init);
   if (local && !response.ok)
     throw new Error(
       `A local voice runtime file could not load (${response.status}). Reload or check the website deployment.`,

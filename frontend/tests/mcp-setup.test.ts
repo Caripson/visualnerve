@@ -5,19 +5,16 @@ it.each([
   ['ws://127.0.0.1:4317/bridge', 'http://127.0.0.1:4317/mcp'],
   ['wss://localhost:9443/bridge', 'https://localhost:9443/mcp'],
   ['wss://[::1]:4329/bridge', 'https://[::1]:4329/mcp'],
-])(
-  'derives the Codex endpoint from the validated local browser connection %s',
-  (bridge, server) => {
-    expect(mcpServerUrl(bridge)).toBe(server);
-  },
-);
+])('derives the MCP endpoint from the validated local browser connection %s', (bridge, server) => {
+  expect(mcpServerUrl(bridge)).toBe(server);
+});
 
 it('keeps the production domain in website/docs/origin roles and exposes 3D via MCP discovery', () => {
   const note = mcpSetupNote('https://visualnerve.caripson.com', 'wss://localhost:9443/bridge');
   expect(note).toContain('Browser workspace: https://visualnerve.caripson.com/app/');
   expect(note).toContain('Keep this workspace open');
   expect(note).toContain('API reference: https://visualnerve.caripson.com/api/docs/');
-  expect(note).toContain('Codex MCP server on this computer: https://localhost:9443/mcp');
+  expect(note).toContain('MCP server on this computer: https://localhost:9443/mcp');
   expect(note).toContain('--allowed-origin https://visualnerve.caripson.com');
   expect(note).toContain('visual_nerve_api_docs');
   expect(note).toContain('POST /spatial-diagrams');

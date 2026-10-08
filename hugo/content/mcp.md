@@ -1,12 +1,14 @@
 ---
 layout: product
 title: "Connect tools to the workspace on your computer"
-description: "Understand Visual Nerve's optional local MCP bridge, browser permissions, documentation discovery and shared UI/API model."
+description: "Connect Codex, Claude Code, Cursor or Gemini CLI through Visual Nerve's standard local MCP bridge and explicit browser permissions."
 eyebrow: "Local MCP integration"
 summary: "External tools can inspect and control the same diagram you edit, with access you explicitly grant."
 ---
 
 [Open the workspace](/app/) · [Detailed setup guide](/help/api-mcp/) · [API reference](/api/docs/)
+
+Visual Nerve uses the **Model Context Protocol**, rather than a vendor-specific agent integration. Codex, Claude Code, Cursor, Gemini CLI and other compatible local clients discover the same tools, documentation and semantic workspace model. Choosing a different client does not create a separate diagram or simulation engine.
 
 ## The website and the MCP service have different jobs
 
@@ -37,7 +39,7 @@ With a built source checkout, start the local executable:
 ./bin/visual-nerve --static ./public --bridge --addr 127.0.0.1:4317
 ```
 
-Open its local `/app/` page, accept required local storage, then open **Settings → Codex / MCP integration**. Choose an access level and check that the connection is Connected.
+Open its local `/app/` page, accept required local storage, then open **Settings → MCP / API integration**. Choose an access level and check that the connection is Connected.
 
 When using a separately hosted app, add its exact **origin** with `--allowed-origin`. An origin consists of the scheme, host and port; it excludes `/app/` and other paths. Copy the current Visual Nerve website origin from Settings instead of assuming that a previous hostname still applies.
 
@@ -53,6 +55,28 @@ For the separate **staging** workspace at `https://visualnerve.caripson.com/app/
 
 Use your actual app origin in that final argument. Browser local-network rules can require permission or trusted local TLS. The bridge supports `--tls-cert` and `--tls-key`; configure matching `wss`/HTTPS addresses when required. The bridge remains loopback-only.
 
+The dedicated encrypted app at `app.visualnerve.com` is under release review. When using that surface, allow `https://app.visualnerve.com` instead, unlock in the browser and grant access there. It does not share the old website's browser storage; [transfer the existing workspace explicitly](/help/settings/#transfer-an-existing-workspace).
+
+## Choose your local MCP client
+
+Start the bridge first. Configure the client with its local **HTTP(S) `/mcp` address**, using the same hostname, port and TLS choice as the browser's saved connection. The browser's WebSocket `/bridge` address is not an MCP client endpoint.
+
+The default **4317** listener serves MCP, the browser connection and REST together. If another plugin already uses it, select an available port with `--addr 127.0.0.1:4318`, then update the app's saved `/bridge` URL and the client's `/mcp` URL to 4318. A stdio adapter targets that listener with `--mcp-url http://127.0.0.1:4318/mcp`. Ports are not guaranteed to be free, and the bridge does not switch ports automatically. [Choose a dedicated local port](/help/api-mcp/#choose-a-dedicated-local-port).
+
+| Client         | Local connection example                                                   |
+| -------------- | -------------------------------------------------------------------------- |
+| Codex          | [HTTP command and TOML settings](/help/api-mcp/#codex)                     |
+| Claude Code    | [HTTP command](/help/api-mcp/#claude-code)                                 |
+| Cursor         | [Local IDE `mcp.json`](/help/api-mcp/#cursor)                              |
+| Gemini CLI     | [HTTP command and `settings.json`](/help/api-mcp/#gemini-cli)              |
+| Claude Desktop | [Local stdio adapter, under release review](/help/api-mcp/#claude-desktop) |
+
+These examples follow each client's official configuration documentation. They are not a claim that every installed version or vendor interface has been tested. A cloud agent runs on a different computer and cannot reach your laptop through its own `127.0.0.1`. **Gemini CLI** is the local command-line client; these instructions do not describe the Gemini website.
+
+The release under review also offers `visual-nerve --mcp-stdio` for a client that launches local stdio processes. It forwards to the same existing loopback HTTP bridge; it does not start another browser service or create a vendor-specific implementation. Stop that adapter without stopping the shared bridge. The browser's `/bridge` WebSocket and older SSE transports are not MCP alternatives exposed by this server.
+
+On the isolated encrypted app, the deployed Content Security Policy also restricts browser bridge connections to explicitly approved ports. A custom port must be included in that app build and its response-header policy; changing Settings alone cannot override it. The reviewed default is 4317.
+
 ## Choose what a connected tool may do
 
 | Access       | Capabilities                                                                               |
@@ -63,11 +87,13 @@ Use your actual app origin in that final argument. Browser local-network rules c
 
 Turn access Off to disconnect. Tokens and grants are not imported from backups. If the executable uses `VISUAL_NERVE_BRIDGE_TOKEN`, enter the same token for the browser session and configure the client's authorization header. Keep it out of copied prompts and issue reports.
 
+On the encrypted app, every client needs the same human unlock and a fresh Settings grant. Unlock does not reactivate a prior grant, and agent requests do not extend session time. An already-authorized live connection may retain safe control status while locked; content returns **423 `WORKSPACE_LOCKED`**. A cold locked page does not connect, and a lost connection remains **503**. Explicit Off closes the transport. No client can submit a workspace password, recovery key or programmatic unlock. [Exact lock and access behavior](/help/api-mcp/#discover-security-state-safely).
+
 Tools receive the content returned by their authorized requests. Their own hosting, logging and AI settings govern what they do with that content afterward. A local bridge does not make a remote AI client private.
 
 ## Let the client discover the contract
 
-Configure a client that supports Streamable HTTP with the displayed MCP server URL. Codex and Claude-based clients can use the same protocol when their installed client supports the necessary local connection and authorization configuration. Client setup varies; use its own documentation for those settings.
+The bridge exposes standard MCP tools and resources through JSON-RPC 2.0. Your client handles initialization and discovery; the browser applies the same permissions and validation regardless of the client vendor.
 
 Ask it to call **visual_nerve_api_docs** first:
 
@@ -76,6 +102,8 @@ Ask it to call **visual_nerve_api_docs** first:
 ```
 
 Use `{ "document": "openapi" }` for the complete contract. These bundled documents are discoverable without a browser content grant. Workspace requests need the connected browser and the appropriate access.
+
+Clients can also read the standard MCP resources `visual-nerve://docs/guide` and `visual-nerve://docs/openapi`. They do not need to infer capabilities from screenshots or canvas coordinates.
 
 Then use **visual_nerve_request** for a command:
 

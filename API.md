@@ -1,6 +1,6 @@
 # Optional local REST and MCP integration
 
-The browser editor lives at `/app/`; `/` is the public product home. This route change preserves the same origin’s IndexedDB workspace. API/MCP endpoint paths and allowed origins remain unchanged.
+The public website has its product home at `/`; its existing `/app/` workspace remains accessible for user-controlled transfer. The isolated encrypted app package opens the workspace at `https://app.visualnerve.com/`, with `/app/` as a same-origin compatibility entry. IndexedDB is origin-bound: these workspaces are separate and are never silently moved or synchronized. API/MCP command paths remain the same; configure the exact app origin when starting the local bridge.
 
 IndexedDB in the browser is the only database. Start the static server with `--bridge`, open the app and explicitly choose Settings → MCP access → Read only or Read + write (default Off). REST and MCP forward commands over a local WebSocket to that browser. The browser applies IndexedDB transactions before replying. The Go server retains no application records; without a connected browser graph requests return 503.
 
@@ -24,14 +24,14 @@ Simulation entity PATCH uses JSON Merge Patch: nested objects merge, arrays repl
 
 Hierarchical subprocesses are an additive schema version 1 capability, discovered as `hierarchical-processes` and `process-drilldown`. A model may contain `processes:[{id,name,description?,parentId?}]`; a real node's optional `processId` assigns direct membership. Omitted processes means an empty hierarchy for existing diagrams. The same engine and global shared-resource pools constrain every scope; folded process cards add no processing time, capacity or costs.
 
-| Method | Route under `/diagrams/{id}/simulation` | Meaning |
-| --- | --- | --- |
-| GET | `/hierarchy` | `{rootProcessIds,processes}` with immediate `childProcessIds`, `directNodeIds` and recursive `nodeIds` |
-| GET / POST | `/processes` | Read scopes / create with `{baseVersion,value}` |
-| GET / PATCH / DELETE | `/processes/{entityId}` | Read / merge-patch with `{baseVersion,value}` / delete with `?baseVersion=N` |
-| GET | `/runs/{runId}/processes` | Actual process metrics map from the selected immutable run |
-| GET | `/runs/{runId}/processes/{entityId}` | Scoped queue, throughput, utilization, bottlenecks and economics |
-| GET | `/runs/{runId}/queues` | Includes `processes` alongside node and resource queue maps |
+| Method               | Route under `/diagrams/{id}/simulation` | Meaning                                                                                                |
+| -------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| GET                  | `/hierarchy`                            | `{rootProcessIds,processes}` with immediate `childProcessIds`, `directNodeIds` and recursive `nodeIds` |
+| GET / POST           | `/processes`                            | Read scopes / create with `{baseVersion,value}`                                                        |
+| GET / PATCH / DELETE | `/processes/{entityId}`                 | Read / merge-patch with `{baseVersion,value}` / delete with `?baseVersion=N`                           |
+| GET                  | `/runs/{runId}/processes`               | Actual process metrics map from the selected immutable run                                             |
+| GET                  | `/runs/{runId}/processes/{entityId}`    | Scoped queue, throughput, utilization, bottlenecks and economics                                       |
+| GET                  | `/runs/{runId}/queues`                  | Includes `processes` alongside node and resource queue maps                                            |
 
 Process IDs are semantic strings; node IDs returned by hierarchy are canonical saved IDs. Every scope includes descendant nodes. Parent and child rollups overlap and must not be summed, and distributions are built from actual scope observations rather than adding node quantiles. `completed` counts successful scope visits, `exited` their boundary-exit subset, and `terminalCompleted` final successful outcomes inside the scope. Scoped `cycleTime` measures entry to exit/outcome; scoped `ttr` measures entry to a revenue-producing terminal outcome. Shared-resource `resourceCostAllocation:"occupied-units"` assigns consumed resource cost only; idle capacity, resource-pool scaling and pool investments remain whole-system overhead. Whole-system metrics remain authoritative for profitability.
 
@@ -41,51 +41,68 @@ Live 2D capacity uses separate full native cards such as Counter 1/2/3, with ano
 
 The compact phone/landscape UI changes presentation only. Simulation details and section selectors configure the same semantic properties and run controls through the existing authoritative model; no mobile-only simulation configuration or API is introduced. See [mobile use](docs/MOBILE.md).
 
-Settings shows **Visual Nerve website**, an API documentation link on that website's domain, and a separate **MCP server URL for Codex**. The website's exact origin belongs in `--allowed-origin`. The MCP server runs on the user's computer; Codex connects to its HTTP(S) `/mcp`, while the browser connects to its WebSocket `/bridge`. The Codex URL is derived from the saved, validated local connection, preserving the hostname, port and TLS choice. Editing an unsaved connection does not change it. The public S3/CloudFront website serves app files and documentation, with no remote content API or MCP process.
+Settings shows **Visual Nerve website**, an API documentation link on that website's domain, and a separate **MCP server URL**. The website's exact origin belongs in `--allowed-origin`. The MCP server runs on the user's computer; An MCP client connects to its HTTP(S) `/mcp`, while the browser connects to its WebSocket `/bridge`. The MCP URL is derived from the saved, validated local connection, preserving the hostname, port and TLS choice. Editing an unsaved connection does not change it. The public S3/CloudFront website serves app files and documentation, with no remote content API or MCP process.
 
 `initialize` instructions and `tools/list` announce both native 2D and opt-in 3D. Start with the read-only tool `visual_nerve_api_docs`: `{}` or omitted arguments returns a compact command guide, `{"document":"openapi"}` returns the complete bundled OpenAPI, and `{"document":"all"}` returns both. This works without a connected browser and never reads workspace records. A separate web-documentation link is optional. Normal token/origin/loopback rules still apply.
 
 The same documents are MCP resources: `visual-nerve://docs/guide` (`text/markdown`) and `visual-nerve://docs/openapi` (`application/yaml`), discoverable with `resources/list` and readable with `resources/read`. Unknown resource URIs return `-32002`; malformed/unknown arguments return `-32602`. A missing bundled OpenAPI produces a clear tool error or resource `-32603`.
 
-Use `visual_nerve_request` for graph commands. HTTP documentation paths `/api/docs` and `/api/openapi.yaml` are not browser graph-command paths. For a requested 3D diagram, create through `POST /spatial-diagrams`, then populate its native nodes and edges. Keep the same readable 2D layout for view switching and PNG/PDF; discovering 3D support does not switch ordinary requests to 3D. **Instructions for Codex** in Settings provides a copyable setup note with these capabilities and addresses, excluding the integration token.
+Use `visual_nerve_request` for graph commands. HTTP documentation paths `/api/docs` and `/api/openapi.yaml` are not browser graph-command paths. For a requested 3D diagram, create through `POST /spatial-diagrams`, then populate its native nodes and edges. Keep the same readable 2D layout for view switching and PNG/PDF; discovering 3D support does not switch ordinary requests to 3D. **Instructions for your MCP client** in Settings provides a copyable setup note with these capabilities and addresses, excluding the integration token.
+
+## Encrypted workspace security
+
+UI, REST and MCP use the same encrypted storage and revocable browser session. A human creates or unlocks the app workspace in the browser; agents never receive its password or recovery key. After each unlock, integration access starts **Off** until the human selects a fresh **Read only** or **Read + write** grant.
+
+| Method | Route                 | Behavior                                                                                                                         |
+| ------ | --------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/workspace/security` | Safe versioned status for the actual connected backend, including an already retained locked control connection                  |
+| POST   | `/workspace/lock`     | Empty object or no arguments; current Read + write grant required while unlocked; save pending edits and lock the shared session |
+
+Security discovery returns `type: "workspace-security"`, `schemaVersion: 1`, `mode: "encrypted"` or `"legacy"`, `state`, `storage: "indexeddb"`, `logicalSchemaVersion`, `requiresHumanUnlock`, `programmaticUnlock: false`, `programmaticLock`, `requestsRenewIdleTimeout: false` and `contentRequiresUnlock`. The encrypted backend also returns `vaultSchemaVersion: 1` and `cipher: "AES-256-GCM"`. Logical workspace schema 8 and physical vault schema 1 are independent. `uninitialized` describes this session, not proof that no vault is saved. The response contains no records, vault ID, keys, salts, credentials, expiration timestamps or grants; it does not grant content access.
+
+An authorized, already-open socket may remain as restricted control after locking. Content commands then return **423** with `{ "error": "…", "code": "WORKSPACE_LOCKED" }`. A fresh locked page never connects, and a closed control connection never reconnects while locked; unavailable/disconnected browsers return **503**. Explicit Off closes the socket. Unlock in the browser, grant access again, and submit a fresh command. Locking cancels originating jobs and responses even if another session subsequently unlocks. API/MCP traffic, simulations and audio do not renew the human inactivity timer.
+
+`POST /workspace/lock` waits for pending saves and rechecks the grant. Save failure does not silently discard edits. Concurrent grant or saved-data changes return **409** without revoking the current session; inspect state before issuing a fresh request. An already-locked retained control connection returns idempotent safe status without another revocation. Read-only access cannot lock an unlocked workspace. No password, recovery, unlock or session-policy endpoint exists; `/settings/vault-*` writes are rejected. Static MCP documentation discovery requires no connected or unlocked browser.
+
+Authorized content requests and ordinary diagram exports return readable semantic information. `GET /workspace/export` is a readable `WorkspaceBackup`, not the encrypted backup downloaded through the browser UI. Downloaded encrypted backups keep their own credentials after live password changes; even content-key rotation cannot recall old copies. Full origin transfer is a separate, verified human workflow that preserves the source. See [workspace security and transfer](hugo/content/help/settings.md#workspace-security), [the storage schema](docs/ENCRYPTED_WORKSPACE_SCHEMA.md) and [MCP permissions](docs/MCP.md#encrypted-workspace-security).
 
 ## CRUD and graph operations
 
-| Method               | Route                          | Behavior                                                                                          |
-| -------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------- |
-| GET                  | /health                        | Static server, indexeddb storage, bridge enabled/connected and version                            |
-| GET / POST           | /diagrams                      | List / create diagram                                                                             |
-| POST                 | /spatial-diagrams              | Create and open a 3D diagram; return complete Graph                                               |
-| POST                 | /sql/preview                   | Analyze SELECT/WITH or DDL locally; return graph/counts/warnings without saving                   |
-| POST                 | /sql/diagrams                  | Analyze SQL, save transactionally and open the diagram; return complete Graph                     |
-| GET                  | /code/languages                | List 50 code language IDs plus Markdown, extensions and capabilities                                             |
-| GET                  | /code/capabilities             | Discover independent source-file, archive, byte, graph and analysis limits                                      |
-| POST                 | /code/preview                  | Analyze source files locally; return structural graph/counts/warnings without saving              |
-| POST                 | /code/project/preview          | Scan base64 ZIP and preview file/folder relationships; no save                                     |
-| POST                 | /code/project/diagrams         | Save/open the same project analysis with write access                                              |
-| POST                 | /code/diagrams                 | Save and open a code dependency diagram; write access required                                    |
-| POST                 | /diagram-files/preview         | Preview draw.io XML or base64 Visio ZIP pages without saving; read-only allowed                   |
-| GET / PATCH / DELETE | /diagrams/{id}                 | Complete canonical graph / diagram properties / cascading deletion                                |
-| GET / POST           | /diagrams/{id}/nodes           | List / create node                                                                                |
-| GET / PATCH / DELETE | /nodes/{id}                    | Read / update / delete and detach children                                                        |
-| POST                 | /nodes/{id}/children           | Add child plus hierarchy edge and default position                                                |
-| GET / POST           | /diagrams/{id}/edges           | List / create relationship                                                                        |
-| PATCH / DELETE       | /edges/{id}                    | Update/reconnect / delete                                                                         |
-| GET / POST           | /owners                        | List / create global owner                                                                        |
-| PATCH / DELETE       | /owners/{id}                   | Update / remove owner; advance referencing diagram versions                                       |
-| POST                 | /diagrams/{id}/bulk            | Transactional population and external-ID upsert                                                   |
-| PUT                  | /diagrams/{id}/graph           | Atomic full graph replacement using baseVersion                                                   |
-| POST                 | /import                        | JSON, Markdown, CSV or one selected draw.io/Visio page, one transaction                           |
-| POST                 | /export                        | Complete JSON, semantic Markdown or native vector SVG                                              |
-| GET                  | /search?q=...                  | Global results with diagramId and optional nodeId                                                 |
-| GET                  | /workspace/export              | Complete IndexedDB workspace snapshot                                                             |
-| POST                 | /workspace/import              | Restore all workspace tables in one transaction                                                   |
-| GET                  | /settings/import-file-limit-mb | Read the effective local import limit; missing/invalid stored values return 50; read-only allowed |
-| PUT                  | /settings/import-file-limit-mb | Save this browser’s import limit as an integer from 50 to 1024 MiB; write access required         |
-| GET                  | /settings/project-source-file-limit | Read the effective ZIP source-file limit, default 500; read-only allowed                                    |
-| PUT                  | /settings/project-source-file-limit | Save this browser's ZIP source-file limit from 500 to 10,000; write access required                           |
+| Method               | Route                               | Behavior                                                                                          |
+| -------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------- |
+| GET                  | /health                             | Static server, indexeddb storage, bridge enabled/connected and version                            |
+| GET / POST           | /diagrams                           | List / create diagram                                                                             |
+| POST                 | /spatial-diagrams                   | Create and open a 3D diagram; return complete Graph                                               |
+| POST                 | /sql/preview                        | Analyze SELECT/WITH or DDL locally; return graph/counts/warnings without saving                   |
+| POST                 | /sql/diagrams                       | Analyze SQL, save transactionally and open the diagram; return complete Graph                     |
+| GET                  | /code/languages                     | List 50 code language IDs plus Markdown, extensions and capabilities                              |
+| GET                  | /code/capabilities                  | Discover independent source-file, archive, byte, graph and analysis limits                        |
+| POST                 | /code/preview                       | Analyze source files locally; return structural graph/counts/warnings without saving              |
+| POST                 | /code/project/preview               | Scan base64 ZIP and preview file/folder relationships; no save                                    |
+| POST                 | /code/project/diagrams              | Save/open the same project analysis with write access                                             |
+| POST                 | /code/diagrams                      | Save and open a code dependency diagram; write access required                                    |
+| POST                 | /diagram-files/preview              | Preview draw.io XML or base64 Visio ZIP pages without saving; read-only allowed                   |
+| GET / PATCH / DELETE | /diagrams/{id}                      | Complete canonical graph / diagram properties / cascading deletion                                |
+| GET / POST           | /diagrams/{id}/nodes                | List / create node                                                                                |
+| GET / PATCH / DELETE | /nodes/{id}                         | Read / update / delete and detach children                                                        |
+| POST                 | /nodes/{id}/children                | Add child plus hierarchy edge and default position                                                |
+| GET / POST           | /diagrams/{id}/edges                | List / create relationship                                                                        |
+| PATCH / DELETE       | /edges/{id}                         | Update/reconnect / delete                                                                         |
+| GET / POST           | /owners                             | List / create global owner                                                                        |
+| PATCH / DELETE       | /owners/{id}                        | Update / remove owner; advance referencing diagram versions                                       |
+| POST                 | /diagrams/{id}/bulk                 | Transactional population and external-ID upsert                                                   |
+| PUT                  | /diagrams/{id}/graph                | Atomic full graph replacement using baseVersion                                                   |
+| POST                 | /import                             | JSON, Markdown, CSV or one selected draw.io/Visio page, one transaction                           |
+| POST                 | /export                             | Complete JSON, semantic Markdown or native vector SVG                                             |
+| GET                  | /search?q=...                       | Global results with diagramId and optional nodeId                                                 |
+| GET                  | /workspace/export                   | Complete IndexedDB workspace snapshot                                                             |
+| POST                 | /workspace/import                   | Restore all workspace tables in one transaction                                                   |
+| GET                  | /settings/import-file-limit-mb      | Read the effective local import limit; missing/invalid stored values return 50; read-only allowed |
+| PUT                  | /settings/import-file-limit-mb      | Save this browser’s import limit as an integer from 50 to 1024 MiB; write access required         |
+| GET                  | /settings/project-source-file-limit | Read the effective ZIP source-file limit, default 500; read-only allowed                          |
+| PUT                  | /settings/project-source-file-limit | Save this browser's ZIP source-file limit from 500 to 10,000; write access required               |
 
-Creates return 201 and an entity (import returns Graph). Bulk/replacement return 200 and Graph. Deletes return 204. Errors are `{ "error": "message" }`: 400 malformed JSON, 401 token missing/wrong, 403 origin/host rejected, storage not accepted or read-only mutation denied, 404 missing entity, 409 stale version or duplicate identity, 413 local history capacity/quota, 422 validation, 428 missing update version, 503 no connected browser and 504 browser timeout. No partially committed graph remains after validation fails. Requests are limited to 32 MiB. All integration requests with a configured VISUAL_NERVE_BRIDGE_TOKEN need `Authorization: Bearer TOKEN`.
+Creates return 201 and an entity (import returns Graph). Bulk/replacement return 200 and Graph. Deletes return 204. Errors retain `{ "error": "message" }` and may add structured `code`/`issues`: 400 malformed JSON, 401 token missing/wrong, 403 origin/host rejected, storage not accepted or read-only mutation denied, 404 missing entity, 423 locked workspace, 409 stale version or duplicate identity, 413 local history capacity/quota, 422 validation, 428 missing update version, 503 no connected browser and 504 browser timeout. No partially committed graph remains after validation fails. Requests are limited to 32 MiB. All integration requests with a configured VISUAL_NERVE_BRIDGE_TOKEN need `Authorization: Bearer TOKEN`.
 
 ## Local import size preference
 
@@ -122,35 +139,35 @@ Array position is the contiguous presentation number starting at 1. IDs must be 
 
 Playback is transient state in the connected browser, using its current 2D or 3D view:
 
-| Method    | Route                          | Body and result                                                                      |
-| --------- | ------------------------------ | ------------------------------------------------------------------------------------ |
-| GET       | `/presentation`                | Current playback state, including while closed                                       |
-| POST      | `/presentation/open`           | Exact optional `diagramId` and `source:"nodes"|"storyboard"`; source defaults to nodes                     |
-| POST      | `/presentation/play`           | Exact `{}`                                                                           |
-| POST      | `/presentation/pause`          | Exact `{}`                                                                           |
-| POST      | `/presentation/rewind`         | Exact `{}`                                                                           |
-| POST      | `/presentation/forward`        | Exact `{}`                                                                           |
-| POST      | `/presentation/close`          | Exact `{}`                                                                           |
-| POST      | `/presentation/preload`        | Exact `{}`; explicitly prepare upcoming speech                                       |
-| PATCH     | `/presentation`                | At least one of boolean `audio`, `subtitles`, `preload`, `minimized`; no other keys               |
-| GET       | `/presentation/voices`         | `{defaultVoiceId,voices:[{id,label,language,sampleRate,modelBytes,license,source}]}` |
-| GET / PUT | `/settings/presentation-voice` | Read selected voice; PUT exact `{ "value": "VOICE_ID" }`                             |
+| Method    | Route                          | Body and result                                                                                                            |
+| --------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| GET       | `/presentation`                | Current playback state, including while closed                                                                             |
+| POST      | `/presentation/open`           | Optional `diagramId`; `source` is `"nodes"` or `"storyboard"` (default `"nodes"`)                                          |
+| POST      | `/presentation/play`           | Exact `{}`                                                                                                                 |
+| POST      | `/presentation/pause`          | Exact `{}`                                                                                                                 |
+| POST      | `/presentation/rewind`         | Exact `{}`                                                                                                                 |
+| POST      | `/presentation/forward`        | Exact `{}`                                                                                                                 |
+| POST      | `/presentation/close`          | Exact `{}`                                                                                                                 |
+| POST      | `/presentation/preload`        | Exact `{}`; explicitly prepare every step, starting at the first                                                           |
+| PATCH     | `/presentation`                | At least one of boolean `audio`, `subtitles`, `preload`, `minimized`; no other keys                                        |
+| GET       | `/presentation/voices`         | `{defaultVoiceId,voices:[{id,label,language,locale,quality,speakerCount,speakerId,sampleRate,modelBytes,license,source}]}` |
+| GET / PUT | `/settings/presentation-voice` | Read selected voice; PUT exact `{ "value": "VOICE_ID" }`                                                                   |
 
-Runtime commands return `{open,diagramId,status,index,total,nodeId,audio,subtitles,preload,minimized,buffered,progress,message,source,sceneId,nodeIds,edgeIds,title,narration}`. `diagramId` and `nodeId` may be null. `index` is zero-based, or -1 for an empty sequence; `progress` is from 0 to 1 and `buffered` counts prepared speech clips. Status is `idle`, `loading`, `moving`, `playing`, `paused`, `ended` or `error`. All runtime POST/PATCH commands require accepted local storage and **Read + write**, including navigation and preloading; GET permits **Read only**. They do not rewrite the saved sequence or node geometry.
+Runtime commands return `{open,diagramId,status,index,total,nodeId,audio,subtitles,preload,minimized,buffered,progress,message,source,sceneId,nodeIds,edgeIds,title,narration}`. `diagramId` and `nodeId` may be null. `index` is zero-based, or -1 for an empty sequence; `progress` is from 0 to 1 and `buffered` counts unique prepared nonblank speech clips; blank or duplicate narration still counts toward step readiness. Status is `idle`, `loading`, `moving`, `playing`, `paused`, `ended` or `error`. All runtime POST/PATCH commands require accepted local storage and **Read + write**, including navigation and preloading; GET permits **Read only**. They do not rewrite the saved sequence or node geometry.
 
 `minimized` reflects the same panel state used by **Minimize player** and **Expand player** in the UI. Opening defaults to expanded on desktop and minimized in compact layouts. `PATCH /presentation` with `{ "minimized": true }` minimizes the controls, and `{ "minimized": false }` expands them, including during playback. Neither changes playback status, audio or subtitle options. Video-style captions appear separately over the diagram when subtitles are enabled, so minimizing controls keeps narration text visible in 2D and 3D. Panel state is transient and excluded from the saved presentation, export and backup. The video-export input remains unchanged. See the [player guide](docs/PRESENTATION.md).
 
-Audio and preload default to false, subtitles to true. Voice IDs are `en_GB-alan-medium` (default, British male narrator), `en_US-ljspeech-high`, `en_GB-cori-high` and `sv_SE-nst-medium`. Voice selection is a browser-local setting, editable with a preview in Settings → Presentation voice. Explicit saved choices remain selected when the default changes. Speech is generated locally; enabling speech or explicit preloading can download model assets. Discover the model sizes, licenses and sources through the voice catalog. GET `/presentation` exposes preload `progress` from 0 to 1, with overall percentage, ready narration count and the actual download/synthesis phase in `message`. Initialization is indeterminate; 100% means the engine and its bounded upcoming narration window are ready. Runtime state, generated audio and playback progress are not graph data. See [MCP presentation workflow](docs/MCP.md).
+Audio and preload default to false, subtitles to true. Discover all 20 supported voice IDs through GET `/presentation/voices`; `en_GB-alan-medium` remains default. The catalog includes several US/UK choices plus Swedish, French, Spanish, Portuguese, Norwegian, Danish, Finnish and German, with actual medium/high tier, locale and fixed-speaker metadata. Existing IDs remain valid; no high+ tier is invented. Voice selection is a browser-local setting, editable with a preview in Settings → Presentation voice. Explicit saved choices remain selected when the default changes. Speech is generated locally; enabling speech or explicit preloading can download model assets. Discover the model sizes, licenses and sources through the voice catalog. GET `/presentation` exposes preload `progress` from 0 to 1, with overall percentage, ready narration count and the actual download/synthesis phase in `message`. Initialization is indeterminate; 100% means all required narration for every step in the selected numbered sequence or storyboard are ready, starting from its first step regardless of the cursor. Prepared clips use a 32 MiB RAM cache and encrypted temporary local spill capped at 1 GiB of ciphertext, including IV/tag overhead, subject to browser quota. One clip during synthesis/decryption can temporarily add up to 32 MiB beyond the prepared cache; this is not a bound on total browser or inference memory. Clips are discarded on close, voice/content change or workspace lock and excluded from backups. Runtime state, generated audio and playback progress are not graph data. See [MCP presentation workflow](docs/MCP.md).
 
 ### Walkthrough video export
 
 Video export renders the entire selected numbered sequence or storyboard from its first step in the current 2D or 3D view, at fixed 1280 × 720 and 30 fps. It uses the saved transition and dwell timings and lets narration finish before advancing. Long subtitle descriptions use pages; a node's dwell extends to at least 3 seconds per subtitle page. The graph and saved sequence are unchanged. Keep the browser tab visible; manual camera interaction, diagram edits or closing the player cancel the export.
 
-| Method | Route                 | Body and result                                                                                         |
-| ------ | --------------------- | ------------------------------------------------------------------------------------------------------- |
-| GET    | `/presentation/video` | Current transient video export state; **Read only** is sufficient                                       |
-| POST   | `/presentation/video` | Exact optional boolean `audio`/`subtitles` and `source:"nodes"|"storyboard"`, including `{}`; starts asynchronously and returns state |
-| DELETE | `/presentation/video` | Exact `{}`; cancels the active export and returns state                                                 |
+| Method | Route                 | Body and result                                                   |
+| ------ | --------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| GET    | `/presentation/video` | Current transient video export state; **Read only** is sufficient |
+| POST   | `/presentation/video` | Exact optional boolean `audio`/`subtitles` and `source:"nodes"    | "storyboard"`, including `{}`; starts asynchronously and returns state |
+| DELETE | `/presentation/video` | Exact `{}`; cancels the active export and returns state           |
 
 Omitted POST options use the current player options and source, initially audio off and subtitles on. POST can start while the player is closed; it opens the player for progress. POST and DELETE require accepted local storage and **Read + write**. Unknown fields, nulls and nonboolean options return 422.
 
@@ -164,20 +181,20 @@ Narration WAVs are synthesized locally and inserted into the exported timeline o
 
 All routes below use the same browser-local canonical graph and are discoverable through `visual_nerve_api_docs`. Read [understanding workflows](docs/UNDERSTANDING.md) for exact nested definitions, privacy and capacity bounds; the generated OpenAPI contains complete schemas.
 
-| Method | Route | Contract |
-| --- | --- | --- |
-| GET / PUT | `/diagrams/{id}/overview` | Read config / save exact `{baseVersion,overview}` |
-| GET | `/diagrams/{id}/overview/projection?zoom=0.1` | View-only summaries, typed directed aggregates and original-ID mappings; zoom `(0,10]` |
-| POST | `/diagrams/{id}/questions` | Read-only `{startId,kind,targetId?,maxDepth?,edgeTypes?,includeHidden?,includeUncertain?,offset?,limit?}`; `kind` downstream/upstream/path |
-| GET | `/diagrams/{id}/evidence?nodeId=UUID` | Retained source metadata; adding `metricId` explicitly requests paged original CSV measure cells |
-| GET / POST | `/diagrams/{id}/history` | List / save named snapshot with exact `{baseVersion,name}` |
-| GET / DELETE | `/diagrams/{id}/history/{snapshotId}` | Read / delete archive, preserving current work |
-| GET | `/diagrams/{id}/history/{snapshotId}/compare?to=current` | Semantic diff with modeled affected dependencies; `to` may be another snapshot UUID |
-| POST | `/diagrams/{id}/history/{snapshotId}/restore` | Exact `{baseVersion}`; atomic safety copy then restore, stale version 409 |
-| GET / PUT | `/diagrams/{id}/storyboard` | Read / save exact `{baseVersion,storyboard}` |
-| POST | `/presentation/seek` | Exact `{index}`; zero-based existing step, previews paused |
-| GET / PUT | `/diagrams/{id}/build-specification` | Read / save reviewed additions and answers using exact `{baseVersion,specification}` |
-| POST | `/diagrams/{id}/build-brief` | Read-only optional `{scope,selectedIds,instructions}`; full unsent brief and structured specification |
+| Method       | Route                                                    | Contract                                                                                                                                   |
+| ------------ | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| GET / PUT    | `/diagrams/{id}/overview`                                | Read config / save exact `{baseVersion,overview}`                                                                                          |
+| GET          | `/diagrams/{id}/overview/projection?zoom=0.1`            | View-only summaries, typed directed aggregates and original-ID mappings; zoom `(0,10]`                                                     |
+| POST         | `/diagrams/{id}/questions`                               | Read-only `{startId,kind,targetId?,maxDepth?,edgeTypes?,includeHidden?,includeUncertain?,offset?,limit?}`; `kind` downstream/upstream/path |
+| GET          | `/diagrams/{id}/evidence?nodeId=UUID`                    | Retained source metadata; adding `metricId` explicitly requests paged original CSV measure cells                                           |
+| GET / POST   | `/diagrams/{id}/history`                                 | List / save named snapshot with exact `{baseVersion,name}`                                                                                 |
+| GET / DELETE | `/diagrams/{id}/history/{snapshotId}`                    | Read / delete archive, preserving current work                                                                                             |
+| GET          | `/diagrams/{id}/history/{snapshotId}/compare?to=current` | Semantic diff with modeled affected dependencies; `to` may be another snapshot UUID                                                        |
+| POST         | `/diagrams/{id}/history/{snapshotId}/restore`            | Exact `{baseVersion}`; atomic safety copy then restore, stale version 409                                                                  |
+| GET / PUT    | `/diagrams/{id}/storyboard`                              | Read / save exact `{baseVersion,storyboard}`                                                                                               |
+| POST         | `/presentation/seek`                                     | Exact `{index}`; zero-based existing step, previews paused                                                                                 |
+| GET / PUT    | `/diagrams/{id}/build-specification`                     | Read / save reviewed additions and answers using exact `{baseVersion,specification}`                                                       |
+| POST         | `/diagrams/{id}/build-brief`                             | Read-only optional `{scope,selectedIds,instructions}`; full unsent brief and structured specification                                      |
 
 Question paths follow modeled directions, exclude unarrowed associations, handle cycles and label uncertainty; they do not establish runtime impact. Traversal is bounded at 50,000 objects, 200,000 relationships and depth 64, with pages up to 100 answers. Compact overview shows at most 2,000 cards without removing original content. Summary IDs cannot be patched as graph UUIDs.
 
@@ -290,7 +307,7 @@ Node coordinates must be finite and within ±1,000,000; camera coordinates allow
 
 The 3D UI renders readable fronts and unmirrored backs from the same native 2D capture. Detailed faces are bounded at 120 logical cards, with each front/back pair sharing its texture, material and geometry. Its separate **Move objects** toggle moves the selected objects in world X/Y at retained depth; groups include descendants once. Release commits one undoable command and Escape cancels without partial writes. The **Move**, **Rotate** and **Scale** gizmo controls operate the camera. See [spatial diagrams](docs/SPATIAL_DIAGRAMS.md).
 
-The same optional server exposes Streamable HTTP POST at `/mcp`. Supported protocol: 2025-06-18. Clients initialize, send notifications/initialized, then use tools/list or tools/call. The `visual_nerve_request` tool accepts:
+The same optional server exposes Streamable HTTP POST at `/mcp`. Initialize negotiates `2025-03-26`, `2025-06-18` or `2025-11-25`; supported requests retain their version, otherwise the server offers the latest supported version. Clients initialize with `protocolVersion`, `capabilities` and `clientInfo` (name and version), send `notifications/initialized`, then use `tools/list`, `tools/call` or resources. Subsequent HTTP calls send the negotiated `MCP-Protocol-Version`; unsupported headers return 400. Missing headers use the backward-compatible `2025-03-26` subset. This stateless JSON server offers no SSE stream (GET returns 405), deprecated HTTP+SSE endpoint or server-initiated requests. The `visual_nerve_request` tool accepts:
 
 ```json
 {
@@ -302,7 +319,13 @@ The same optional server exposes Streamable HTTP POST at `/mcp`. Supported proto
 
 Paths omit /api/v1. The tool's structuredContent contains status and body; isError reports failed commands. MCP dispatch follows MCP → WebSocket bridge → browser command repository → IndexedDB. It cannot access IndexedDB directly. The browser must remain open, and integration must be enabled on both sides.
 
+All standard clients use the same tools and grants. Codex, Cursor, Claude Code and Gemini CLI can use HTTP; local stdio clients such as Claude Desktop can launch `visual-nerve --mcp-stdio` to forward to an already-running bridge. This creates no separate command engine. `--mcp-url` selects its exact loopback HTTP(S) endpoint and preserves system TLS verification. Use `VISUAL_NERVE_BRIDGE_TOKEN` in the adapter environment if authentication is configured. Stdout is protocol-only; frames are bounded to 32 MiB, with eight active and eight pending requests. Saturation terminates the adapter, and EOF cancels pending transport work. Interrupted mutations have an unknown outcome and are never automatically retried. [Client configuration and transport details](docs/MCP.md#client-transports-and-port-selection).
+
+Visual Nerve defaults to dedicated port **4317**, shared by `/mcp`, browser `/bridge` and REST. If occupied, startup fails with instructions; no automatic fallback occurs. A custom `--addr 127.0.0.1:4318` needs matching saved browser WebSocket and HTTP client URLs; stdio takes `--mcp-url http://127.0.0.1:4318/mcp`.
+
 When several distinct workspaces are connected, pass `workspaceId` to MCP or `X-Visual-Nerve-Workspace` to REST. The workspace ID is available under Settings → Storage details; each browser profile/origin owns its own identity. Multiple tabs for the same workspace share its IndexedDB and use transactional version checks.
+
+On the isolated encrypted app, the deployed Content Security Policy also restricts browser bridge connections to explicitly approved ports. A custom port must be included in that app build and its response-header policy; changing Settings alone cannot override it. The reviewed default is 4317.
 
 ## Public app and permissions
 

@@ -28,14 +28,20 @@ import {
 } from '../data/model';
 import { reconnectedAnalysisEdge } from '../model/relationships';
 import { parseImport } from '../export/semantic';
-import { diagramFileCommand } from './diagram-file-commands';
+import { checkExportActive, waitForExport, type ExportGuard } from '../export/guard';
+import { loadOptionalCommand } from './optional-command';
 import { IMPORT_LIMIT_SETTING, importLimitMb, assertImportLimitMb } from '../imports/limits';
 import {
   PROJECT_SOURCE_FILE_LIMIT_SETTING,
   projectSourceFileLimit,
   assertProjectSourceFileLimit,
 } from '../code/project/limits';
-import { database, type WorkspaceBackup, type WorkspaceDatabase } from './database';
+import type { WorkspaceBackup, WorkspaceDatabase } from './database';
+import type { WorkspaceStorage } from './contracts';
+import { workspaceStoreNames } from './contracts';
+import { asWorkspaceStorage } from './adapter';
+import { workspaceStorage } from './runtime';
+import { isWorkspaceSecurityDiscovery, workspaceSecurityStatus } from './security-status';
 import { setSpatialView } from '../spatial/types';
 import { syncSpatialPositions } from '../spatial/movement';
 import {
@@ -49,9 +55,11 @@ import {
   defaultPresentationVoiceId,
   isPresentationVoiceId,
 } from '../presentation/types';
-import { analysisCommand, type AnalysisCommandOptions } from './analysis-commands';
-import { HistoryStore, historyTables } from '../history/store';
-import { understandingActions, understandingCommand } from './understanding-commands';
+import type { AnalysisCommandOptions } from './analysis-commands';
+import { codeCapabilities } from '../code/capabilities';
+import { codeLanguages } from '../code/catalog';
+import { HistoryStore, historyStoreNames } from '../history/store';
+import { understandingActions } from './understanding-actions';
 import { remapStoryboard, pruneStoryboard } from '../presentation/storyboard';
 import { remapBuildSpecification } from '../export/build-specification';
 import { remapOverview } from '../overview/copy';
@@ -60,19 +68,28 @@ import { remapSimulationModel } from '../simulation/copy';
 import { reconcileSimulationGraph } from '../simulation/document';
 import { SimulationRunStore } from '../simulation/run-store';
 import { importSimulationRuns } from '../simulation/backup';
-import { simulationCommand, simulationCapabilities } from './simulation-commands';
+import { simulationCapabilities } from './simulation-capabilities';
 import { createSimulationGraph } from '../simulation/document';
 
 export type CommandOptions = AnalysisCommandOptions & {
   /** Recheck external grants after queue waits and immediately before dispatch. */
   beforeRequest?: () => Promise<void>;
   /** Recheck external grants inside document transactions before their first write. */
-  beforeWrite?: () => Promise<void>;
+  beforeWrite?: (scope: WorkspaceStorage) => Promise<void>;
   /** Recheck external grants after history hashing and before its first write. */
-  beforeHistoryWrite?: () => Promise<void>;
+  beforeHistoryWrite?: (scope: WorkspaceStorage) => Promise<void>;
 };
 
 type Patch = Record<string, unknown>;
+type WriteGuard = (scope: WorkspaceStorage) => Promise<void>;
+function writeGuards(...guards: Array<WriteGuard | undefined>): WriteGuard | undefined {
+  const selected = [...new Set(guards.filter((guard): guard is WriteGuard => !!guard))];
+  return selected.length
+    ? async (scope) => {
+        for (const guard of selected) await guard(scope);
+      }
+    : undefined;
+}
 export interface SearchResult {
   diagramId: string;
   nodeId?: string;
@@ -162,9 +179,11 @@ function object(data: unknown): Patch {
 
 export class Repository {
   history: HistoryStore;
-  constructor(public db: WorkspaceDatabase = database) {
-    this.history = new HistoryStore(db, (graph, baseVersion) =>
-      this.persistGraph(graph, baseVersion, true),
+  public db: WorkspaceStorage;
+  constructor(db: WorkspaceStorage | WorkspaceDatabase = workspaceStorage) {
+    this.db = asWorkspaceStorage(db);
+    this.history = new HistoryStore(this.db, (graph, baseVersion, scope) =>
+      new Repository(scope).persistGraph(graph, baseVersion, true),
     );
   }
   async getGraph(id: string): Promise<Graph> {
@@ -175,7 +194,7 @@ export class Repository {
   async saveGraph(
     input: Graph,
     expectedVersion?: number,
-    beforeWrite?: () => Promise<void>,
+    beforeWrite?: (scope: WorkspaceStorage) => Promise<void>,
   ): Promise<Graph> {
     return this.persistGraph(input, expectedVersion, false, beforeWrite);
   }
@@ -183,22 +202,22 @@ export class Repository {
     input: Graph,
     expectedVersion?: number,
     canonicalPositions = false,
-    beforeWrite?: () => Promise<void>,
+    beforeWrite?: (scope: WorkspaceStorage) => Promise<void>,
   ): Promise<Graph> {
     validateGraphFields(input);
-    const saved = await this.db.transaction(
+    const saved = await this.db.atomic(
       'rw',
       [
-        this.db.diagrams,
-        this.db.nodes,
-        this.db.edges,
-        this.db.owners,
-        this.db.datasets,
-        this.db.simulationModels,
-        ...(beforeWrite ? [this.db.settings] : []),
+        'diagrams',
+        'nodes',
+        'edges',
+        'owners',
+        'datasets',
+        'simulationModels',
+        ...(beforeWrite ? ['settings' as const] : []),
       ],
-      async () => {
-        const old = await this.db.graph(input.diagram.id);
+      async (scope) => {
+        const old = await scope.graph(input.diagram.id);
         if (old) requireVersion(old.diagram.version, expectedVersion);
         else if (expectedVersion !== undefined && expectedVersion !== 0)
           throw new StorageError(409, 'This project was deleted by another tab.');
@@ -206,7 +225,7 @@ export class Repository {
         // Apply API/graph-replacement 2D moves in the same transaction as their 3D placement.
         // Editor commands that already updated both positions are unchanged by this helper.
         if (old && !canonicalPositions) input = syncSpatialPositions(old, input);
-        const owners = await this.db.owners.toArray();
+        const owners = await scope.owners.toArray();
         const registry = new Map(owners.map((owner) => [owner.id, owner]));
         for (const owner of input.owners) {
           validateOwner(owner);
@@ -235,7 +254,7 @@ export class Repository {
         const stamped = [] as typeof sources;
         for (const source of sources) {
           if (!oldSources.has(source.id)) {
-            const record = await this.db.datasets.get(source.id);
+            const record = await scope.datasets.get(source.id);
             if (record && record.diagramId !== graph.diagram.id)
               throw new StorageError(409, 'Dataset id belongs to another project.');
           }
@@ -253,8 +272,8 @@ export class Repository {
         graph.dataset = stamped[0];
         graph.datasets =
           stamped.length > 1 || input.datasets !== undefined ? stamped.slice(1) : undefined;
-        const otherNodes = await this.db.nodes.bulkGet(graph.nodes.map((node) => node.id));
-        const otherEdges = await this.db.edges.bulkGet(graph.edges.map((edge) => edge.id));
+        const otherNodes = await scope.nodes.bulkGet(graph.nodes.map((node) => node.id));
+        const otherEdges = await scope.edges.bulkGet(graph.edges.map((edge) => edge.id));
         if (
           [...otherNodes, ...otherEdges].some(
             (entity) => entity && entity.diagramId !== graph.diagram.id,
@@ -284,81 +303,84 @@ export class Repository {
         };
         const ids = new Set(graph.nodes.map((node) => node.id)),
           edges = new Set(graph.edges.map((edge) => edge.id));
-        await beforeWrite?.();
-        await this.db.nodes.bulkDelete(
+        await beforeWrite?.(scope);
+        await scope.nodes.bulkDelete(
           old?.nodes.filter((node) => !ids.has(node.id)).map((node) => node.id) ?? [],
         );
-        await this.db.edges.bulkDelete(
+        await scope.edges.bulkDelete(
           old?.edges.filter((edge) => !edges.has(edge.id)).map((edge) => edge.id) ?? [],
         );
-        await this.db.nodes.bulkPut(graph.nodes.filter((node) => node !== nodeIndex.get(node.id)));
-        await this.db.edges.bulkPut(graph.edges.filter((edge) => edge !== edgeIndex.get(edge.id)));
-        await this.db.owners.bulkPut(
+        await scope.nodes.bulkPut(graph.nodes.filter((node) => node !== nodeIndex.get(node.id)));
+        await scope.edges.bulkPut(graph.edges.filter((edge) => edge !== edgeIndex.get(edge.id)));
+        await scope.owners.bulkPut(
           [...registry.values()].filter((owner) => !owners.some((old) => old.id === owner.id)),
         );
-        await this.db.diagrams.put(graph.diagram);
+        await scope.diagrams.put(graph.diagram);
         if (graph.simulation)
-          await this.db.simulationModels.put({
+          await scope.simulationModels.put({
             diagramId: graph.diagram.id,
             diagramVersion: graph.diagram.version,
             model: graph.simulation,
           });
-        else await this.db.simulationModels.delete(graph.diagram.id);
+        else await scope.simulationModels.delete(graph.diagram.id);
         const sourceIds = new Set(stamped.map((source) => source.id));
-        await this.db.datasets.bulkDelete(
-          [...oldSources.keys()].filter((id) => !sourceIds.has(id)),
-        );
+        await scope.datasets.bulkDelete([...oldSources.keys()].filter((id) => !sourceIds.has(id)));
         for (const source of stamped)
-          if (source !== oldSources.get(source.id)) await this.db.datasets.put(source);
+          if (source !== oldSources.get(source.id)) await scope.datasets.put(source);
+        scope.rememberDataset(graph.diagram, graph.dataset, graph.datasets);
         return graph;
       },
     );
-    this.db.rememberDataset(saved.diagram, saved.dataset, saved.datasets);
     return saved;
   }
-  async removeDiagram(id: string, beforeWrite?: () => Promise<void>) {
-    await this.db.transaction(
+  async removeDiagram(id: string, beforeWrite?: (scope: WorkspaceStorage) => Promise<void>) {
+    await this.db.atomic(
       'rw',
       [
-        this.db.diagrams,
-        this.db.nodes,
-        this.db.edges,
-        this.db.datasets,
-        this.db.simulationModels,
-        this.db.simulationRuns,
-        this.db.simulationCheckpoints,
-        ...historyTables(this.db),
-        ...(beforeWrite ? [this.db.settings] : []),
+        'diagrams',
+        'nodes',
+        'edges',
+        'datasets',
+        'simulationModels',
+        'simulationRuns',
+        'simulationCheckpoints',
+        ...historyStoreNames,
+        ...(beforeWrite ? ['settings' as const] : []),
       ],
-      async () => {
-        await beforeWrite?.();
-        this.db.forgetDatasets();
-        await this.db.nodes.where('diagramId').equals(id).delete();
-        await this.db.edges.where('diagramId').equals(id).delete();
-        await this.db.diagrams.delete(id);
-        await this.db.datasets.where('diagramId').equals(id).delete();
-        await this.db.simulationModels.delete(id);
-        await new SimulationRunStore(this.db).deleteDiagram(id);
-        await this.history.removeDiagram(id);
+      async (scope) => {
+        const scoped = new Repository(scope);
+        await beforeWrite?.(scope);
+        scope.forgetDatasets();
+        await scope.nodes.where('diagramId').equals(id).delete();
+        await scope.edges.where('diagramId').equals(id).delete();
+        await scope.diagrams.delete(id);
+        await scope.datasets.where('diagramId').equals(id).delete();
+        await scope.simulationModels.delete(id);
+        await new SimulationRunStore(scope).deleteDiagram(id);
+        await scoped.history.removeDiagram(id);
       },
     );
   }
-  async importGraph(source: Graph, beforeWrite?: () => Promise<void>): Promise<Graph> {
-    const imported = await this.db.transaction(
+  async importGraph(
+    source: Graph,
+    beforeWrite?: (scope: WorkspaceStorage) => Promise<void>,
+  ): Promise<Graph> {
+    const imported = await this.db.atomic(
       'rw',
       [
-        this.db.diagrams,
-        this.db.nodes,
-        this.db.edges,
-        this.db.owners,
-        this.db.datasets,
-        this.db.simulationModels,
-        ...(beforeWrite ? [this.db.settings] : []),
+        'diagrams',
+        'nodes',
+        'edges',
+        'owners',
+        'datasets',
+        'simulationModels',
+        ...(beforeWrite ? ['settings' as const] : []),
       ],
-      async () => {
+      async (scope) => {
+        const scoped = new Repository(scope);
         const graph = structuredClone(source);
         validateGraph(graph);
-        const oldOwners = await this.db.owners.bulkGet(graph.owners.map((owner) => owner.id));
+        const oldOwners = await scope.owners.bulkGet(graph.owners.map((owner) => owner.id));
         const ownerIds = new Map<string, string>();
         graph.owners = graph.owners.map((owner, index) => {
           const old = oldOwners[index];
@@ -369,26 +391,23 @@ export class Repository {
         });
         for (const owner of graph.owners) {
           if (!owner.externalId) continue;
-          const external = await this.db.owners
-            .where('externalId')
-            .equals(owner.externalId)
-            .first();
+          const external = await scope.owners.where('externalId').equals(owner.externalId).first();
           if (external && external.id !== owner.id) {
             owner.metadata = { ...owner.metadata, importedExternalId: owner.externalId };
             delete owner.externalId;
           }
         }
         const collision =
-          !!(await this.db.diagrams.get(graph.diagram.id)) ||
-          (await this.db.nodes.bulkGet(graph.nodes.map((node) => node.id))).some(Boolean) ||
-          (await this.db.edges.bulkGet(graph.edges.map((edge) => edge.id))).some(Boolean);
+          !!(await scope.diagrams.get(graph.diagram.id)) ||
+          (await scope.nodes.bulkGet(graph.nodes.map((node) => node.id))).some(Boolean) ||
+          (await scope.edges.bulkGet(graph.edges.map((edge) => edge.id))).some(Boolean);
         const nodeIds = new Map(
           graph.nodes.map((node) => [node.id, collision ? crypto.randomUUID() : node.id]),
         );
         if (collision) graph.diagram.id = crypto.randomUUID();
         const sourceIds = new Map<string, string>();
         for (const source of graphDatasets(graph)) {
-          const datasetCollision = !!(await this.db.datasets.get(source.id));
+          const datasetCollision = !!(await scope.datasets.get(source.id));
           sourceIds.set(source.id, collision || datasetCollision ? crypto.randomUUID() : source.id);
         }
         Object.assign(graph, remapDataModelSources(graph, sourceIds));
@@ -431,13 +450,16 @@ export class Repository {
                   `csv-rel:${relationship}:${nodeIds.get(source) ?? source}:${nodeIds.get(target) ?? target}`,
               ),
             );
-        return this.saveGraph(graph, 0, beforeWrite);
+        return scoped.saveGraph(graph, 0, beforeWrite);
       },
     );
-    this.db.rememberDataset(imported.diagram, imported.dataset, imported.datasets);
     return imported;
   }
-  async restore(backup: WorkspaceBackup, mode: 'merge' | 'replace' = 'merge'): Promise<Graph[]> {
+  async restore(
+    backup: WorkspaceBackup,
+    mode: 'merge' | 'replace' = 'merge',
+    beforeWrite?: (scope: WorkspaceStorage) => Promise<void>,
+  ): Promise<Graph[]> {
     if (
       backup?.format !== 'visual-nerve-workspace' ||
       backup.formatVersion !== 1 ||
@@ -461,15 +483,17 @@ export class Repository {
       )
     )
       throw new StorageError(422, 'Invalid workspace backup.');
-    const restored = await this.db.transaction('rw', this.db.tables, async () => {
-      const acknowledgement = await this.db.settings.get('storage-consent');
-      const importLimitPreference = await this.db.settings.get(IMPORT_LIMIT_SETTING);
-      const projectFileLimitPreference = await this.db.settings.get(
+    const restored = await this.db.atomic('rw', workspaceStoreNames, async (scope) => {
+      const scoped = new Repository(scope);
+      const acknowledgement = await scope.settings.get('storage-consent');
+      const importLimitPreference = await scope.settings.get(IMPORT_LIMIT_SETTING);
+      const projectFileLimitPreference = await scope.settings.get(
         PROJECT_SOURCE_FILE_LIMIT_SETTING,
       );
+      await beforeWrite?.(scope);
       if (mode === 'replace') {
-        this.db.forgetDatasets();
-        for (const table of this.db.tables) await table.clear();
+        scope.forgetDatasets();
+        for (const table of scope.tables) await table.clear();
       }
       const diagrams = new Set(backup.diagrams.map((diagram) => diagram.id));
       const datasets = backup.datasets ?? [];
@@ -499,13 +523,13 @@ export class Repository {
       const owners: Owner[] = [];
       for (const input of backup.owners) {
         validateOwner(input);
-        const previous = await this.db.owners.get(input.id);
+        const previous = await scope.owners.get(input.id);
         const owner =
           previous && sameContent(previous, input)
             ? { ...previous }
             : { ...input, id: previous ? crypto.randomUUID() : input.id };
         const external = owner.externalId
-          ? await this.db.owners.where('externalId').equals(owner.externalId).first()
+          ? await scope.owners.where('externalId').equals(owner.externalId).first()
           : undefined;
         if (external && external.id !== owner.id) {
           owner.metadata = { ...owner.metadata, importedExternalId: owner.externalId };
@@ -514,7 +538,7 @@ export class Repository {
         ownerIds.set(input.id, owner.id);
         owners.push(owner);
       }
-      await this.db.owners.bulkPut(owners);
+      await scope.owners.bulkPut(owners);
       const graphs: Graph[] = [];
       const historyMappings: { sourceGraph: Graph; importedGraph: Graph }[] = [];
       for (const diagram of backup.diagrams) {
@@ -561,12 +585,12 @@ export class Repository {
           ...(dataset ? { dataset } : {}),
           ...(additional.length ? { datasets: additional } : {}),
         };
-        const importedGraph = await this.importGraph(sourceGraph);
+        const importedGraph = await scoped.importGraph(sourceGraph);
         graphs.push(importedGraph);
         historyMappings.push({ sourceGraph, importedGraph });
       }
-      await importHistoryBackup(this.db, backup.history, datasets, historyMappings, ownerIds);
-      await importSimulationRuns(this.db, backup, historyMappings);
+      await importHistoryBackup(scope, backup.history, datasets, historyMappings, ownerIds);
+      await importSimulationRuns(scope, backup, historyMappings);
       for (const template of backup.templates) {
         if (typeof template.id !== 'string' || !template.id || typeof template.name !== 'string')
           throw new StorageError(422, 'Invalid template.');
@@ -575,9 +599,10 @@ export class Repository {
       for (const setting of backup.settings)
         if (typeof setting.key !== 'string' || !setting.key)
           throw new StorageError(422, 'Invalid setting.');
-      await this.db.settings.bulkPut(
+      await scope.settings.bulkPut(
         backup.settings.filter(
           (setting) =>
+            !setting.key.startsWith('vault-') &&
             ![
               'workspace-id',
               'last-diagram',
@@ -593,34 +618,32 @@ export class Repository {
             ].includes(setting.key),
         ),
       );
-      await this.db.templates.bulkPut(backup.templates);
-      if (acknowledgement) await this.db.settings.put(acknowledgement);
-      if (importLimitPreference) await this.db.settings.put(importLimitPreference);
-      if (projectFileLimitPreference) await this.db.settings.put(projectFileLimitPreference);
-      await this.db.initialize();
+      await scope.templates.bulkPut(backup.templates);
+      if (acknowledgement) await scope.settings.put(acknowledgement);
+      if (importLimitPreference) await scope.settings.put(importLimitPreference);
+      if (projectFileLimitPreference) await scope.settings.put(projectFileLimitPreference);
+      await scope.initialize();
       return graphs;
     });
-    for (const graph of restored)
-      this.db.rememberDataset(graph.diagram, graph.dataset, graph.datasets);
     return restored;
   }
   async clearAll() {
-    await this.db.transaction('rw', this.db.tables, async () => {
-      this.db.forgetDatasets();
-      for (const table of this.db.tables) await table.clear();
-      await this.db.initialize();
+    await this.db.atomic('rw', workspaceStoreNames, async (scope) => {
+      scope.forgetDatasets();
+      for (const table of scope.tables) await table.clear();
+      await scope.initialize();
     });
   }
   async search(query: string): Promise<SearchResult[]> {
     const q = query.trim().toLocaleLowerCase();
     if (!q) return [];
-    return this.db.transaction('r', this.db.diagrams, this.db.nodes, this.db.owners, async () => {
-      const owners = new Map((await this.db.owners.toArray()).map((owner) => [owner.id, owner]));
-      const diagrams = await this.db.diagrams
+    return this.db.atomic('r', ['diagrams', 'nodes', 'owners'], async (scope) => {
+      const owners = new Map((await scope.owners.toArray()).map((owner) => [owner.id, owner]));
+      const diagrams = await scope.diagrams
         .filter((diagram) => JSON.stringify(diagram).toLocaleLowerCase().includes(q))
         .limit(100)
         .toArray();
-      const nodes = await this.db.nodes
+      const nodes = await scope.nodes
         .filter((node) =>
           `${JSON.stringify(node)} ${node.ownerIds.map((id) => JSON.stringify(owners.get(id))).join(' ')}`
             .toLocaleLowerCase()
@@ -647,12 +670,16 @@ export class Repository {
       ];
     });
   }
-  async owner(data: Patch, id?: string, beforeWrite?: () => Promise<void>): Promise<Owner> {
-    return this.db.transaction(
+  async owner(
+    data: Patch,
+    id?: string,
+    beforeWrite?: (scope: WorkspaceStorage) => Promise<void>,
+  ): Promise<Owner> {
+    return this.db.atomic(
       'rw',
-      [this.db.owners, this.db.nodes, this.db.diagrams, ...(beforeWrite ? [this.db.settings] : [])],
-      async () => {
-        const old = id ? await this.db.owners.get(id) : undefined;
+      ['owners', 'nodes', 'diagrams', ...(beforeWrite ? ['settings' as const] : [])],
+      async (scope) => {
+        const old = id ? await scope.owners.get(id) : undefined;
         if (id && !old) throw new StorageError(404, 'Owner does not exist.');
         if (old) requireVersion(old.version, data.version);
         const input = old
@@ -665,32 +692,29 @@ export class Repository {
               metadata: {},
               ...data,
             } as Owner);
-        if (!old && (await this.db.owners.get(input.id)))
+        if (!old && (await scope.owners.get(input.id)))
           throw new StorageError(409, 'Owner id already exists.');
         if (input.externalId) {
-          const external = await this.db.owners
-            .where('externalId')
-            .equals(input.externalId)
-            .first();
+          const external = await scope.owners.where('externalId').equals(input.externalId).first();
           if (external && external.id !== input.id)
             throw new StorageError(409, 'External owner id already exists.');
         }
         validateOwner(input);
         const owner = stamp(input, old);
-        await beforeWrite?.();
-        await this.db.owners.put(owner);
+        await beforeWrite?.(scope);
+        await scope.owners.put(owner);
         if (old) {
           const ids = [
             ...new Set(
-              (await this.db.nodes.where('ownerIds').equals(old.id).toArray()).map(
+              (await scope.nodes.where('ownerIds').equals(old.id).toArray()).map(
                 (node) => node.diagramId,
               ),
             ),
           ];
-          const diagrams = (await this.db.diagrams.bulkGet(ids)).filter(
+          const diagrams = (await scope.diagrams.bulkGet(ids)).filter(
             (diagram): diagram is Diagram => !!diagram,
           );
-          await this.db.diagrams.bulkPut(
+          await scope.diagrams.bulkPut(
             diagrams.map((diagram) => ({
               ...diagram,
               version: diagram.version + 1,
@@ -708,11 +732,80 @@ export class Repository {
     payload?: unknown,
     options: CommandOptions = {},
   ): Promise<T> {
+    const endpoint = path.replace(/^\/api\/v1/, '');
+    if (
+      ['/health', '/simulation/capabilities', '/code/capabilities', '/code/languages'].includes(
+        endpoint,
+      ) ||
+      isWorkspaceSecurityDiscovery(path, method)
+    )
+      return this.dispatchRequest(path, method, payload, options);
+    const operation = await this.db.captureOperation();
+    const controller = new AbortController();
+    const removeListeners: Array<() => void> = [];
+    for (const signal of [operation.signal, options.signal]) {
+      if (!signal) continue;
+      if (signal.aborted) controller.abort(signal.reason);
+      else {
+        const abort = () => controller.abort(signal.reason);
+        signal.addEventListener('abort', abort, { once: true });
+        removeListeners.push(() => signal.removeEventListener('abort', abort));
+      }
+    }
+    try {
+      await options.beforeRequest?.();
+      await operation.check();
+      const result = await new Repository(operation.storage).dispatchRequest<T>(
+        path,
+        method,
+        payload,
+        { ...options, signal: controller.signal },
+        {
+          signal: controller.signal,
+          assertCurrent: () => controller.signal.throwIfAborted(),
+          check: async () => {
+            await operation.check();
+            await options.beforeRequest?.();
+            controller.signal.throwIfAborted();
+          },
+        },
+      );
+      await operation.check();
+      return result;
+    } catch (error) {
+      // A late worker error after lock must report the revoked capability, not
+      // publish private diagnostics or restart the request in a later session.
+      await operation.check();
+      throw error;
+    } finally {
+      for (const remove of removeListeners) remove();
+      operation.dispose();
+    }
+  }
+  /** Module loading is outside native transactions; authorization may change while it waits. */
+  private async commandReady(options: CommandOptions) {
+    options.signal?.throwIfAborted();
+    await options.beforeRequest?.();
+    options.signal?.throwIfAborted();
+  }
+  private async dispatchRequest<T>(
+    path: string,
+    method: string,
+    payload: unknown,
+    options: CommandOptions,
+    exportGuard?: ExportGuard,
+  ): Promise<T> {
     const url = new URL(path.replace(/^\/api\/v1/, ''), 'http://browser.local');
     const parts = url.pathname.split('/').filter(Boolean),
       [collection, id, action] = parts;
     const read = method === 'GET',
       remove = method === 'DELETE';
+    if (collection === 'workspace' && id === 'security') {
+      if (parts.length !== 2 || url.search || url.hash)
+        throw new StorageError(404, 'Unknown workspace security discovery endpoint.');
+      if (!read) throw new StorageError(405, 'Workspace security discovery accepts GET only.');
+      return workspaceSecurityStatus(this.db) as T;
+    }
     if (collection === 'simulation') {
       if (parts.length !== 2 || id !== 'capabilities' || url.search || url.hash)
         throw new StorageError(404, 'Unknown simulation discovery endpoint.');
@@ -720,24 +813,50 @@ export class Repository {
       return structuredClone(simulationCapabilities) as T;
     }
     if (method === 'POST' && ['diagram-files', 'sql', 'code', 'import'].includes(collection)) {
-      const setting = await this.db.settings.get(IMPORT_LIMIT_SETTING);
-      options = { ...options, byteLimit: importLimitMb(setting?.value) * 1024 * 1024 };
-      if (
-        ['/code/project/preview', '/code/project/diagrams'].includes(path.replace(/^\/api\/v1/, ''))
-      ) {
-        const sourceFiles = await this.db.settings.get(PROJECT_SOURCE_FILE_LIMIT_SETTING);
-        options = { ...options, projectFileLimit: projectSourceFileLimit(sourceFiles?.value) };
-      }
+      const limits = await this.db.atomic('r', ['settings'], async (scope) => {
+        const setting = await scope.settings.get(IMPORT_LIMIT_SETTING);
+        const sourceFiles = await scope.settings.get(PROJECT_SOURCE_FILE_LIMIT_SETTING);
+        return {
+          byteLimit: importLimitMb(setting?.value) * 1024 * 1024,
+          ...(['/code/project/preview', '/code/project/diagrams'].includes(
+            path.replace(/^\/api\/v1/, ''),
+          )
+            ? { projectFileLimit: projectSourceFileLimit(sourceFiles?.value) }
+            : {}),
+        };
+      });
+      options = { ...options, ...limits };
     }
     if (collection === 'diagram-files') {
       if (path.replace(/^\/api\/v1/, '') !== '/diagram-files/preview')
         throw new StorageError(404, 'Unknown diagram file endpoint.');
       if (method !== 'POST') throw new StorageError(405, 'Diagram file preview requires POST.');
+      const { diagramFileCommand } = await loadOptionalCommand('diagram-file');
+      await this.commandReady(options);
       return (await diagramFileCommand(payload, false, options, (graph) =>
         this.importGraph(graph, options.beforeWrite),
       )) as T;
     }
-    if (collection === 'sql' || collection === 'code')
+    if (collection === 'code' && ['capabilities', 'languages'].includes(id)) {
+      if (
+        !['/code/capabilities', '/code/languages'].includes(path.replace(/^\/api\/v1/, '')) ||
+        parts.length !== 2 ||
+        url.search ||
+        url.hash
+      )
+        throw new StorageError(404, 'Unknown analysis endpoint.');
+      if (!read)
+        throw new StorageError(
+          405,
+          id === 'capabilities'
+            ? 'Code capabilities require GET.'
+            : 'Language discovery requires GET.',
+        );
+      return structuredClone(id === 'capabilities' ? codeCapabilities : codeLanguages) as T;
+    }
+    if (collection === 'sql' || collection === 'code') {
+      const { analysisCommand } = await loadOptionalCommand('analysis');
+      await this.commandReady(options);
       return (await analysisCommand(
         path.replace(/^\/api\/v1/, ''),
         method,
@@ -745,6 +864,7 @@ export class Repository {
         options,
         (graph) => this.importGraph(graph, options.beforeWrite),
       )) as T;
+    }
     if (collection === 'spatial-diagrams') {
       if (
         !['/spatial-diagrams', '/api/v1/spatial-diagrams'].includes(path) ||
@@ -767,10 +887,15 @@ export class Repository {
         blankGraph(data.name, (data.type ?? 'mindmap') as Diagram['type']),
         { mode: '3d' },
       );
-      return (await this.saveGraph(graph, 0)) as T;
+      return (await this.saveGraph(graph, 0, options.beforeWrite)) as T;
     }
     if (collection === 'health')
-      return { status: 'ok', storage: 'indexeddb', version: '0.3.0' } as T;
+      return {
+        status: 'ok',
+        storage: 'indexeddb',
+        version: '0.3.0',
+        workspaceSecurity: workspaceSecurityStatus(this.db),
+      } as T;
     if (collection === 'search' && read)
       return (await this.search(url.searchParams.get('q') ?? '')) as T;
     if (collection === 'settings') {
@@ -793,6 +918,11 @@ export class Repository {
           id ? (await this.db.settings.get(id))?.value : await this.db.settings.toArray()
         ) as T;
       if (!id) throw new StorageError(400, 'Setting key is required.');
+      if (id.startsWith('vault-'))
+        throw new StorageError(
+          422,
+          'Workspace security controls are available only in the browser.',
+        );
       if (id === 'presentation-voice') {
         const setting = object(payload);
         if (
@@ -812,52 +942,53 @@ export class Repository {
         if (Object.keys(setting).some((key) => key !== 'value'))
           throw new StorageError(422, 'ZIP project source-file limit setting accepts only value.');
         assertProjectSourceFileLimit(setting.value);
-        return await this.db.transaction('rw', this.db.settings, async () => {
+        return await this.db.atomic('rw', ['settings'], async (scope) => {
           // An external grant can change while this write waits for IndexedDB.
           // Check it inside the transaction, immediately before its first write.
-          await options.beforeWrite?.();
-          await this.db.settings.put({ key: id, value: setting.value });
+          await options.beforeWrite?.(scope);
+          await scope.settings.put({ key: id, value: setting.value });
           return undefined as T;
         });
       }
-      await this.db.settings.put({ key: id, value: object(payload).value });
-      return undefined as T;
+      const value = object(payload).value;
+      return this.db.atomic('rw', ['settings'], async (scope) => {
+        await options.beforeWrite?.(scope);
+        await scope.settings.put({ key: id, value });
+        return undefined as T;
+      });
     }
     if (collection === 'templates' && read)
       return (id ? await this.db.templates.get(id) : await this.db.templates.toArray()) as T;
     if (collection === 'workspace' && action === undefined && id === 'export' && read)
       return (await this.db.backup()) as T;
     if (collection === 'workspace' && id === 'import' && method === 'POST')
-      return (await this.restore(payload as WorkspaceBackup)) as T;
+      return (await this.restore(payload as WorkspaceBackup, 'merge', options.beforeWrite)) as T;
     if (collection === 'owners') {
       if (read) return (id ? await this.db.owners.get(id) : await this.db.owners.toArray()) as T;
       if (!remove) return (await this.owner(object(payload), id, options.beforeWrite)) as T;
-      return await this.db.transaction(
+      return await this.db.atomic(
         'rw',
-        this.db.owners,
-        this.db.nodes,
-        this.db.diagrams,
-        this.db.settings,
-        async () => {
-          const nodes = await this.db.nodes.where('ownerIds').equals(id).toArray();
-          await options.beforeWrite?.();
-          await this.db.nodes.bulkPut(
+        ['owners', 'nodes', 'diagrams', 'settings'],
+        async (scope) => {
+          const nodes = await scope.nodes.where('ownerIds').equals(id).toArray();
+          await options.beforeWrite?.(scope);
+          await scope.nodes.bulkPut(
             nodes.map((node) => {
               const ownerIds = node.ownerIds.filter((owner) => owner !== id);
               return stamp({ ...node, ownerIds, ownerId: ownerIds[0] }, node);
             }),
           );
           const diagrams = (
-            await this.db.diagrams.bulkGet([...new Set(nodes.map((node) => node.diagramId))])
+            await scope.diagrams.bulkGet([...new Set(nodes.map((node) => node.diagramId))])
           ).filter((diagram): diagram is Diagram => !!diagram);
-          await this.db.diagrams.bulkPut(
+          await scope.diagrams.bulkPut(
             diagrams.map((diagram) => ({
               ...diagram,
               version: diagram.version + 1,
               updatedAt: new Date().toISOString(),
             })),
           );
-          await this.db.owners.delete(id);
+          await scope.owners.delete(id);
           return undefined as T;
         },
       );
@@ -867,6 +998,8 @@ export class Repository {
       if (data.format === 'drawio' || data.format === 'vsdx') {
         if (path.replace(/^\/api\/v1/, '') !== '/import')
           throw new StorageError(404, 'Unknown diagram import endpoint.');
+        const { diagramFileCommand } = await loadOptionalCommand('diagram-file');
+        await this.commandReady(options);
         return (await diagramFileCommand(data, true, options, (graph) =>
           this.importGraph(graph, options.beforeWrite),
         )) as T;
@@ -881,15 +1014,20 @@ export class Repository {
     if (collection === 'export' && method === 'POST') {
       const data = object(payload),
         graph = await this.getGraph(data.diagramId as string);
-      const { exportCommand } = await import('../export/command');
-      return (await exportCommand(graph, data)) as T;
+      const { exportCommand } = await waitForExport(import('../export/command'), exportGuard);
+      await this.commandReady(options);
+      await checkExportActive(exportGuard);
+      return (await exportCommand(graph, data, exportGuard)) as T;
     }
     if (collection === 'diagrams') {
-      if (id && action === 'simulation')
+      if (id && action === 'simulation') {
+        const { simulationCommand } = await loadOptionalCommand('simulation');
+        await this.commandReady(options);
         return (await simulationCommand(
           {
             getGraph: (id) => this.getGraph(id),
-            saveGraph: (graph, version) => this.saveGraph(graph, version, options.beforeWrite),
+            saveGraph: (graph, version, beforeWrite) =>
+              this.saveGraph(graph, version, writeGuards(options.beforeWrite, beforeWrite)),
           },
           id,
           parts,
@@ -898,7 +1036,10 @@ export class Repository {
           payload,
           options.beforeHistoryWrite,
         )) as T;
-      if (id && understandingActions.includes(action))
+      }
+      if (id && understandingActions.includes(action)) {
+        const { understandingCommand } = await loadOptionalCommand('understanding');
+        await this.commandReady(options);
         return (await understandingCommand(
           {
             getGraph: (id) => this.getGraph(id),
@@ -912,6 +1053,7 @@ export class Repository {
           payload,
           options.beforeHistoryWrite,
         )) as T;
+      }
       if (!id) {
         if (read) {
           const diagrams = await this.db.diagrams.orderBy('updatedAt').reverse().toArray();
@@ -943,21 +1085,14 @@ export class Repository {
             422,
             'Presentation update requires baseVersion and presentation only.',
           );
-        return await this.db.transaction(
+        return await this.db.atomic(
           'rw',
-          [
-            this.db.diagrams,
-            this.db.nodes,
-            this.db.edges,
-            this.db.owners,
-            this.db.datasets,
-            this.db.simulationModels,
-            this.db.settings,
-          ],
-          async () => {
-            const graph = await this.getGraph(id);
+          ['diagrams', 'nodes', 'edges', 'owners', 'datasets', 'simulationModels', 'settings'],
+          async (scope) => {
+            const scoped = new Repository(scope);
+            const graph = await scoped.getGraph(id);
             validatePresentation(data.presentation, graph);
-            return (await this.saveGraph(
+            return (await scoped.saveGraph(
               setPresentation(graph, data.presentation),
               data.baseVersion as number,
               options.beforeWrite,
@@ -982,19 +1117,12 @@ export class Repository {
       }
       if (action === 'bulk')
         return (await this.bulk(id, object(payload), options.beforeWrite)) as T;
-      return await this.db.transaction(
+      return await this.db.atomic(
         'rw',
-        [
-          this.db.diagrams,
-          this.db.nodes,
-          this.db.edges,
-          this.db.owners,
-          this.db.datasets,
-          this.db.simulationModels,
-          this.db.settings,
-        ],
-        async () => {
-          const graph = await this.getGraph(id),
+        ['diagrams', 'nodes', 'edges', 'owners', 'datasets', 'simulationModels', 'settings'],
+        async (scope) => {
+          const scoped = new Repository(scope);
+          const graph = await scoped.getGraph(id),
             data = object(payload),
             version = graph.diagram.version;
           if (action === 'nodes') {
@@ -1006,7 +1134,7 @@ export class Repository {
             if (data.ownerId !== undefined && data.ownerIds === undefined)
               node.ownerIds = data.ownerId ? [data.ownerId as string] : [];
             graph.nodes.push(node);
-            const saved = await this.saveGraph(graph, version, options.beforeWrite);
+            const saved = await scoped.saveGraph(graph, version, options.beforeWrite);
             return saved.nodes.find((value) => value.id === node.id) as T;
           }
           if (action === 'edges') {
@@ -1017,33 +1145,31 @@ export class Repository {
               data as Partial<GraphEdge>,
             );
             graph.edges.push(edge);
-            const saved = await this.saveGraph(graph, version, options.beforeWrite);
+            const saved = await scoped.saveGraph(graph, version, options.beforeWrite);
             return saved.edges.find((value) => value.id === edge.id) as T;
           }
           requireVersion(version, data.version);
           graph.diagram = patch(graph.diagram, data);
-          return (await this.saveGraph(graph, version, options.beforeWrite)).diagram as T;
+          return (await scoped.saveGraph(graph, version, options.beforeWrite)).diagram as T;
         },
       );
     }
     if (collection === 'nodes' || collection === 'edges') {
-      const table = collection === 'nodes' ? this.db.nodes : this.db.edges;
-      const entity = await table.get(id);
-      if (!entity) throw new StorageError(404, 'Object does not exist.');
-      if (read) return entity as T;
-      return await this.db.transaction(
+      if (read) {
+        const table = collection === 'nodes' ? this.db.nodes : this.db.edges;
+        const entity = await table.get(id);
+        if (!entity) throw new StorageError(404, 'Object does not exist.');
+        return entity as T;
+      }
+      return await this.db.atomic(
         'rw',
-        [
-          this.db.diagrams,
-          this.db.nodes,
-          this.db.edges,
-          this.db.owners,
-          this.db.datasets,
-          this.db.simulationModels,
-          this.db.settings,
-        ],
-        async () => {
-          const graph = await this.getGraph(entity.diagramId),
+        ['diagrams', 'nodes', 'edges', 'owners', 'datasets', 'simulationModels', 'settings'],
+        async (scope) => {
+          const scoped = new Repository(scope);
+          const table = collection === 'nodes' ? scope.nodes : scope.edges;
+          const entity = await table.get(id);
+          if (!entity) throw new StorageError(404, 'Object does not exist.');
+          const graph = await scoped.getGraph(entity.diagramId),
             version = graph.diagram.version;
           const data = remove ? {} : object(payload);
           if (action === 'children' && collection === 'nodes') {
@@ -1059,7 +1185,7 @@ export class Repository {
               child.ownerIds = data.ownerId ? [data.ownerId as string] : [];
             graph.nodes.push(child);
             graph.edges.push(newEdge(graph.diagram.id, id, child.id, { edgeType: 'hierarchy' }));
-            const stored = await this.saveGraph(graph, version, options.beforeWrite);
+            const stored = await scoped.saveGraph(graph, version, options.beforeWrite);
             return stored.nodes.find((node) => node.id === child.id) as T;
           }
           const currentEntity =
@@ -1109,7 +1235,7 @@ export class Repository {
               graph.edges = graph.edges.map((edge) => (edge.id === id ? next : edge));
             }
           }
-          const stored = await this.saveGraph(graph, version, options.beforeWrite);
+          const stored = await scoped.saveGraph(graph, version, options.beforeWrite);
           return (
             remove
               ? undefined
@@ -1122,24 +1248,29 @@ export class Repository {
     }
     throw new StorageError(404, 'Unknown browser command.');
   }
-  async bulk(id: string, data: Patch, beforeWrite?: () => Promise<void>): Promise<Graph> {
-    const saved = await this.db.transaction(
+  async bulk(
+    id: string,
+    data: Patch,
+    beforeWrite?: (scope: WorkspaceStorage) => Promise<void>,
+  ): Promise<Graph> {
+    const saved = await this.db.atomic(
       'rw',
       [
-        this.db.diagrams,
-        this.db.nodes,
-        this.db.edges,
-        this.db.owners,
-        this.db.datasets,
-        this.db.simulationModels,
-        ...(beforeWrite ? [this.db.settings] : []),
+        'diagrams',
+        'nodes',
+        'edges',
+        'owners',
+        'datasets',
+        'simulationModels',
+        ...(beforeWrite ? ['settings' as const] : []),
       ],
-      async () => {
-        const graph = await this.getGraph(id),
+      async (scope) => {
+        const scoped = new Repository(scope);
+        const graph = await scoped.getGraph(id),
           version = graph.diagram.version;
         if (data.baseVersion !== undefined) requireVersion(version, data.baseVersion);
         const ownerExternal = new Map(
-          (await this.db.owners.toArray())
+          (await scope.owners.toArray())
             .filter((owner) => owner.externalId)
             .map((owner) => [owner.externalId!, owner]),
         );
@@ -1149,7 +1280,7 @@ export class Repository {
             : undefined;
           if (previous && !data.upsert)
             throw new StorageError(409, 'External owner id already exists.');
-          const owner = await this.owner(
+          const owner = await scoped.owner(
             { ...values, ...(previous ? { version: previous.version } : {}) },
             previous?.id,
             beforeWrite,
@@ -1246,11 +1377,10 @@ export class Repository {
           if (edge.externalId) edgeExternal.set(edge.externalId, edge);
         }
         // Owner updates may have advanced the diagram version inside this same transaction.
-        const current = (await this.db.diagrams.get(id))!;
-        return this.saveGraph(graph, current.version, beforeWrite);
+        const current = (await scope.diagrams.get(id))!;
+        return scoped.saveGraph(graph, current.version, beforeWrite);
       },
     );
-    this.db.rememberDataset(saved.diagram, saved.dataset, saved.datasets);
     return saved;
   }
 }

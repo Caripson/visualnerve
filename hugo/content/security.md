@@ -16,6 +16,38 @@ There is no account-based synchronization, mandatory cloud database or server-si
 
 Local storage is not a guarantee of confidentiality or recovery. A person or process with access to the browser profile, a powerful extension, or compromised same-origin application code may be able to access its contents. Protect the device and profile using controls appropriate to your data.
 
+## The dedicated encrypted app surface
+
+**Workspace addresses:** the password-protected workspace uses `app.visualnerve.com`. The existing
+`www.visualnerve.com/app/` still stores readable local records and provides a transfer entry.
+The controls below apply to the dedicated app; moving addresses does not encrypt old copies.
+
+The dedicated app surface at `app.visualnerve.com` requires browser-local password setup on first use and human unlock on later visits. Its IndexedDB workspace records—including diagrams, owners, preferences, CSV sources, history, simulation models and archived results—use **AES-256-GCM**. Lookup metadata is protected within the same encrypted backend. The UI, API and MCP share this storage boundary; there is no persistent readable shadow database or separate MCP simulation model.
+
+A small vault header and session-control record contain cryptographic setup and revocation metadata needed before unlock. They do not contain readable diagrams, source cells, passwords or recovery keys. Full narration preloads can use encrypted temporary local spill with a separate RAM-only AES-256-GCM key; no readable narration is persisted there, and locking revokes that key. Crashes can leave unusable ciphertext until Clear app cache removes it. Static app files and downloaded voice models are ordinary cacheable assets; a separate small cache-control marker coordinates clearing those assets and contains no workspace content. Clearing the app cache preserves the vault and does not claim to clear the browser's entire HTTP cache.
+
+This surface is isolated from legacy workspaces on other origins. It does not automatically read, migrate or encrypt a workspace stored under `www.visualnerve.com`, staging, another browser or another device. Use the source's **Export encrypted transfer**, then the destination's **Transfer existing workspace**. The full transfer preserves identifiers and archives, stops integrations and runtime work, and re-reads all saved encrypted content before the editor reopens. The source stays intact; keep it until you have checked the new workspace and its backup. Encrypting a transfer file does not encrypt the legacy working database or revoke earlier files. [Complete transfer procedure](/help/settings/#transfer-an-existing-workspace).
+
+The password and recovery key are used locally. There is no server password reset, mandatory account, backend or SSO. Keep the recovery key separately from the device and backup. If both usable credentials and recovery material are lost, the service cannot restore access to the encrypted data.
+
+### Session expiration and connected tools
+
+**Workspace security** in Settings controls inactivity and maximum-session limits. Only human interaction with the app renews inactivity. API/MCP requests and background work do not renew it. Locking clears working plaintext, cancels jobs and invalidates their originating session; a later unlock does not make an old request valid again. Tabs sharing the vault observe revocation, while each tab obtains its own unlock session.
+
+There is no API/MCP operation to unlock, submit passwords or recovery keys, change credentials or change timeout policy. `GET /workspace/security` exposes only safe versioned state/capabilities while a browser connection exists. Only a previously authorized, already-open connection is retained as restricted control; cold locked startup never connects, and a closed control connection is not reconnected. Explicit Off closes it. `POST /workspace/lock` accepts only an empty body or no arguments and requires a fresh Read + write grant while unlocked. It waits for pending saves and refuses to silently discard failed edits, then revokes the shared vault session and returns safe status. A concurrent permission or saved-data change returns **409** instead of applying a stale lock. Already-locked control only reports local status without another revocation. Content requests from a connected locked workspace return **423 `WORKSPACE_LOCKED`**; a disconnected or unavailable workspace remains **503**. Public documentation discovery needs no browser unlock.
+
+Unlocking an encrypted session does not reactivate a previous integration grant. Choose Read only or Read + write again in Settings before reconnecting tools.
+
+Encryption protects saved data while locked. It cannot protect content from malicious code, a compromised browser extension or a device attacker while the human has unlocked the app. Authorized API/AI requests and explicit diagram exports expose readable data; review those releases and the receiving service's policies. Do not send the vault password or recovery key to an agent.
+
+### Backups have their own lifetime
+
+The encrypted app's downloaded workspace backup is encrypted and can be restored through the browser's reviewed flow. API/MCP `GET /workspace/export` is a readable semantic export to a granted client, not that encrypted file download. Ordinary diagram JSON, Markdown, SVG, PDF, images and video are also readable copies.
+
+Changing the live workspace password or recovery material does not rewrite files you already downloaded. Old encrypted backups retain their original password/recovery credentials. Retain the matching credentials for each copy and decide when to replace or destroy old copies; deleting local records cannot delete files held elsewhere.
+
+A normal password change keeps the content key. An older backup plus its credential can expose a key still used by the current workspace. If that key may have been exposed, **Workspace security → Suspected content-key exposure** prepares a new content key and recovery material, authenticates and reencrypts every current record, then atomically activates the verified replacement and locks the workspace tabs. This human-only incident operation needs temporary memory and storage headroom. It protects the current saved workspace; old backups and already shared content remain outside its protection. [Incident procedure](/help/settings/#rotate-an-exposed-content-key).
+
 ## What is implemented
 
 | Boundary             | Current behavior                                                                                                 |
@@ -26,7 +58,7 @@ Local storage is not a guarantee of confidentiality or recovery. A person or pro
 | Writes               | Browser validation, reference checks and versioned transactions; invalid mutations do not become partial writes. |
 | User links           | Validated absolute HTTP(S) links; external links use isolated new tabs.                                          |
 | Imported source      | Bounded local analysis without code, SQL, macro or imported-script execution.                                    |
-| Recovery             | Explicit complete backups, reviewed Merge/Replace restore and confirmed deletion.                                |
+| Recovery             | Explicit complete backups, verified complete transfer, reviewed Merge/Replace restore and confirmed deletion.    |
 
 The optional Go bridge accepts local integration peers only. Publicly hosting the app does not expose a public MCP endpoint. An allowed app origin is exact; wildcard CORS is not used. Trusted local TLS can be configured for browser requirements.
 
@@ -48,13 +80,13 @@ Optional marketing analytics is separately opt-in and excluded from the workspac
 
 ## Plan for deletion and recovery
 
-Export a complete backup before clearing site data, replacing a workspace or changing devices. Use the same browser profile and origin to return to existing work. A new domain opens a separate workspace; move work by export and restore.
+Export a complete backup before clearing site data, replacing a workspace or changing devices. Use the same browser profile and origin to return to existing work. A new domain opens a separate workspace. Use the verified complete transfer for the encrypted app; normal Restore backup remains available for merging or replacing diagrams in other workflows.
 
 Browser quota, private browsing, eviction, profile reset or device loss can remove local records. A browser retention grant may reduce automatic eviction, but it is not a backup. Delete all local data requires confirmation and removes workspace records and storage acceptance; files already downloaded elsewhere remain your responsibility.
 
 ## What the product does not currently provide
 
-Visual Nerve has no built-in enterprise identity provider, SSO, role-based team tenancy, shared live workspace, central audit log, managed retention policy or application-level end-to-end encryption of local records and exports. It does not provide an unattended cloud simulation service.
+Visual Nerve has no built-in enterprise identity provider, SSO, role-based team tenancy, shared live workspace, central audit log or managed retention policy. Browser-local vault encryption is not a hosted collaboration or end-to-end messaging service, and ordinary exports are not automatically encrypted. It does not provide an unattended cloud simulation service.
 
 This page does not claim independent security certification, regulatory certification or a completed external penetration test. Evaluate the implemented boundary against your organization’s data classification and device policies rather than assuming that “local” meets every requirement.
 

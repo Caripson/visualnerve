@@ -30,9 +30,7 @@ it('shows the website domain and a separate Codex endpoint even while content ac
     'href',
     'https://visualnerve.caripson.com/api/docs/',
   );
-  expect(screen.getByLabelText('MCP server URL for Codex')).toHaveValue(
-    'https://127.0.0.1:4317/mcp',
-  );
+  expect(screen.getByLabelText('MCP server URL')).toHaveValue('https://127.0.0.1:4317/mcp');
   expect(bridge.reconnect).not.toHaveBeenCalled();
 });
 
@@ -41,8 +39,8 @@ it('copies useful 2D/3D discovery instructions without the browser session token
   vi.stubGlobal('navigator', { clipboard: { writeText } });
   sessionStorage.setItem('vn-token', 'PRIVATE-INTEGRATION-TOKEN');
   render(<McpSettings />);
-  fireEvent.click(screen.getByText('Instructions for Codex', { exact: true }));
-  fireEvent.click(screen.getByRole('button', { name: 'Copy instructions for Codex' }));
+  fireEvent.click(screen.getByText('Instructions for your MCP client', { exact: true }));
+  fireEvent.click(screen.getByRole('button', { name: 'Copy MCP instructions' }));
   await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
   const instructions = writeText.mock.calls[0][0] as string;
   expect(instructions).toContain('Browser workspace: https://visualnerve.caripson.com/app/');
@@ -61,14 +59,10 @@ it('only changes the Codex address after a successful save, not while editing th
   fireEvent.change(screen.getByLabelText('Local bridge address'), {
     target: { value: 'wss://localhost:9443/bridge' },
   });
-  expect(screen.getByLabelText('MCP server URL for Codex')).toHaveValue(
-    'https://127.0.0.1:4317/mcp',
-  );
+  expect(screen.getByLabelText('MCP server URL')).toHaveValue('https://127.0.0.1:4317/mcp');
   fireEvent.click(screen.getByRole('button', { name: 'Save connection' }));
   await waitFor(() =>
-    expect(screen.getByLabelText('MCP server URL for Codex')).toHaveValue(
-      'https://localhost:9443/mcp',
-    ),
+    expect(screen.getByLabelText('MCP server URL')).toHaveValue('https://localhost:9443/mcp'),
   );
   expect(bridge.reconnect).toHaveBeenCalledOnce();
 });
@@ -84,23 +78,21 @@ it('keeps the saved Codex address when saving a rejected connection', async () =
   });
   fireEvent.click(screen.getByRole('button', { name: 'Save connection' }));
   await screen.findByText('Only local connections are allowed.');
-  expect(screen.getByLabelText('MCP server URL for Codex')).toHaveValue(
-    'https://127.0.0.1:4317/mcp',
-  );
+  expect(screen.getByLabelText('MCP server URL')).toHaveValue('https://127.0.0.1:4317/mcp');
   expect(bridge.reconnect).not.toHaveBeenCalled();
 });
 
 it('hides copyable instructions for an invalid persisted destination', () => {
   render(<McpConnectionInfo endpoint="wss://untrusted.example/bridge" />);
-  expect(screen.getByLabelText('MCP server URL for Codex')).toHaveValue('');
-  expect(screen.queryByRole('button', { name: 'Copy instructions for Codex' })).toBeNull();
+  expect(screen.getByLabelText('MCP server URL')).toHaveValue('');
+  expect(screen.queryByRole('button', { name: 'Copy MCP instructions' })).toBeNull();
 });
 
 it('selects the full instructions when clipboard access is unavailable', async () => {
   vi.stubGlobal('navigator', {});
   render(<McpConnectionInfo endpoint="ws://localhost:4317/bridge" />);
-  fireEvent.click(screen.getByText('Instructions for Codex', { exact: true }));
-  fireEvent.click(screen.getByRole('button', { name: 'Copy instructions for Codex' }));
+  fireEvent.click(screen.getByText('Instructions for your MCP client', { exact: true }));
+  fireEvent.click(screen.getByRole('button', { name: 'Copy MCP instructions' }));
   const preview = screen.getByLabelText('Connection instructions') as HTMLTextAreaElement;
   await waitFor(() => expect(preview).toHaveFocus());
   expect(preview.selectionStart).toBe(0);

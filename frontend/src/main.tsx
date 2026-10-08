@@ -1,5 +1,19 @@
 import { createRoot } from 'react-dom/client';
 import '@xyflow/react/dist/style.css';
 import './styles.css';
-import { App } from './App';
-createRoot(document.getElementById('visual-nerve')!).render(<App />);
+import { VaultGate } from './security/VaultGate';
+import { vaultSession, workspaceStorage } from './storage/runtime';
+import { WorkspaceLoader } from './security/WorkspaceLoader';
+import { openWorkspaceSurface } from './security/open-workspace';
+const loadWorkspace = () =>
+  import('./security/WorkspaceSurface').then((module) => ({ default: module.WorkspaceSurface }));
+const openWorkspace = () => openWorkspaceSurface(workspaceStorage);
+createRoot(document.getElementById('visual-nerve')!).render(
+  vaultSession ? (
+    <VaultGate session={vaultSession} openWorkspace={openWorkspace}>
+      <WorkspaceLoader session={vaultSession} load={loadWorkspace} />
+    </VaultGate>
+  ) : (
+    <WorkspaceLoader load={loadWorkspace} />
+  ),
+);

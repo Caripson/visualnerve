@@ -42,7 +42,8 @@ function fixture(count = 3) {
   };
 }
 async function settle() {
-  for (let index = 0; index < 12; index++) await Promise.resolve();
+  // The protected clip store adds async publication and cleanup fences.
+  for (let index = 0; index < 48; index++) await Promise.resolve();
 }
 afterEach(() => vi.useRealTimers());
 describe('diagram walkthrough runtime', () => {
@@ -265,13 +266,14 @@ describe('diagram walkthrough runtime', () => {
     expect(deps.focus).not.toHaveBeenCalled();
     player.close();
   });
-  it('preloads a bounded three-step window for a thousand-node diagram', async () => {
+  it('preloads all thousand nodes without moving the camera or starting playback', async () => {
     const { player, deps } = fixture(1000);
     await player.preload();
-    await settle();
+    await vi.waitFor(() => expect(player.getState().progress).toBe(1));
     expect(deps.preloadVoice).toHaveBeenCalledOnce();
-    expect(deps.prepare).toHaveBeenCalledTimes(3);
-    expect(player.getState().buffered).toBe(3);
+    expect(deps.prepare).toHaveBeenCalledTimes(1000);
+    expect(player.getState().buffered).toBe(1000);
+    expect(player.getState().message).toBe('Preload 100% · 1000/1000 steps ready.');
     expect(deps.narration.play).not.toHaveBeenCalled();
     player.close();
     expect(player.getState().buffered).toBe(0);
@@ -387,21 +389,21 @@ it('reports a monotonic overall preload percentage separate from download and co
   expect(player.getState().message).toContain('download 80%');
   initialized();
   await settle();
-  expect(player.getState().progress).toBeCloseTo(1 / 3);
+  expect(player.getState().progress).toBe(0);
   synths[0].progress(0.5, 'Narration chunks 50%', 'synthesis');
-  expect(player.getState().progress).toBe(0.5);
+  expect(player.getState().progress).toBe(0.25);
   synths[0].progress(0, 'Beginning another phase', 'loading');
-  expect(player.getState().progress).toBe(0.5);
+  expect(player.getState().progress).toBe(0.25);
   synths[0].finish(new Blob(['wav']));
   await settle();
-  expect(player.getState().progress).toBeCloseTo(2 / 3);
+  expect(player.getState().progress).toBe(0.5);
   synths[1].progress(1, 'Chunks done', 'synthesis');
   expect(player.getState().progress).toBeLessThan(1);
   synths[1].finish(new Blob(['wav']));
   await settle();
   expect(player.getState()).toMatchObject({
     progress: 1,
-    message: 'Preload 100% · Voice and next steps ready.',
+    message: 'Preload 100% · 2/2 steps ready.',
     buffered: 2,
   });
   player.close();
@@ -425,7 +427,7 @@ it('cancels background preparation immediately when preload is switched off and 
   player.close();
 });
 
-it('retries the enabled preload window after a failed attempt when playback resumes', async () => {
+it('retries the enabled full preload after a failed attempt when playback resumes', async () => {
   const { player, deps } = fixture();
   vi.mocked(deps.preloadVoice)
     .mockRejectedValueOnce(new Error('Voice download interrupted.'))
@@ -438,10 +440,11 @@ it('retries the enabled preload window after a failed attempt when playback resu
   await player.play();
   await settle();
   expect(player.getState().status).toBe('playing');
+  await vi.waitFor(() => expect(player.getState().progress).toBe(1));
   expect(deps.preloadVoice).toHaveBeenCalledTimes(2);
   expect(player.getState()).toMatchObject({
     progress: 1,
-    message: 'Preload 100% · Voice and next steps ready.',
+    message: 'Preload 100% · 3/3 steps ready.',
     buffered: 3,
   });
   player.close();

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, useEffect, useState } from 'react';
 import type { Graph, GraphNode } from '../model/types';
 import type { CsvAnalysis, CsvNodeData, CsvPathEntry } from '../data/types';
 import { getCsvAnalysis, getCsvNode } from '../data/csv';
@@ -6,8 +6,15 @@ import { previewCsvRows } from '../data/client';
 import { useEditor } from '../state/editor';
 import { formatCsvMeasure } from './MetricSummary';
 import './csv-properties.css';
-import { MeasureExplanationDialog } from './MeasureExplanationDialog';
+import { LazyDialogBoundary } from './LazyDialogBoundary';
+import { settleWorkspaceBeforeReload } from '../ui/settle-workspace-reload';
 import { analysisForDataset, datasetForNode } from '../data/model';
+
+const MeasureExplanationDialog = lazy(() =>
+  import('./MeasureExplanationDialog').then((module) => ({
+    default: module.MeasureExplanationDialog,
+  })),
+);
 
 export function CsvProperties({
   graph,
@@ -301,14 +308,19 @@ export function CsvProperties({
         <p className="muted">The CSV source is unavailable for this object.</p>
       )}
       {explainId && dataset && analysis && (
-        <MeasureExplanationDialog
-          model={graph}
-          dataset={dataset}
-          analysis={analysis}
-          path={data!.path}
-          metricId={explainId}
-          onClose={() => setExplainId(undefined)}
-        />
+        <LazyDialogBoundary
+          close={() => setExplainId(undefined)}
+          beforeReload={settleWorkspaceBeforeReload}
+        >
+          <MeasureExplanationDialog
+            model={graph}
+            dataset={dataset}
+            analysis={analysis}
+            path={data!.path}
+            metricId={explainId}
+            onClose={() => setExplainId(undefined)}
+          />
+        </LazyDialogBoundary>
       )}
     </section>
   );

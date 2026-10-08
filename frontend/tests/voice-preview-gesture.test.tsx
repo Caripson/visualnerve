@@ -5,8 +5,11 @@ import { VoiceSettings } from '../src/components/VoiceSettings';
 import { Narrator } from '../src/presentation/narrator';
 import { speechService } from '../src/presentation/speech/service';
 
-vi.mock('../src/storage/database', () => ({
-  database: { settings: { get: vi.fn(async () => undefined) } },
+vi.mock('../src/storage/runtime', () => ({
+  workspaceStorage: {
+    settings: { get: vi.fn(async () => undefined) },
+    subscribe: vi.fn(() => () => undefined),
+  },
 }));
 vi.mock('../src/storage/workspace', () => ({ workspace: { setPreference: vi.fn() } }));
 vi.mock('../src/presentation/speech/service', () => ({

@@ -1,5 +1,10 @@
 import { SPEECH_MODEL_CACHE, type SpeechProgress } from './protocol';
 import { modelUrl, VOICES, type PresentationVoice } from './voices';
+import {
+  withAppAssetDownload,
+  clearVoiceAssetCache,
+  type AppAssetLease,
+} from '../../security/app-cache';
 
 type Progress = (value: SpeechProgress) => void;
 
@@ -10,6 +15,15 @@ export async function loadVoiceFile(
   progress?: Progress,
   signal?: AbortSignal,
 ): Promise<Response> {
+  return withAppAssetDownload((lease) => readVoiceFile(voice, config, lease, progress), signal);
+}
+async function readVoiceFile(
+  voice: PresentationVoice,
+  config: boolean,
+  lease: AppAssetLease,
+  progress?: Progress,
+): Promise<Response> {
+  const signal = lease.signal;
   signal?.throwIfAborted();
   const url = modelUrl(voice, config);
   const size = config ? voice.configBytes : voice.modelBytes;
@@ -48,6 +62,10 @@ export async function loadVoiceFile(
   const parts: Uint8Array<ArrayBuffer>[] = [];
   const reader = response.body?.getReader();
   if (!reader) throw new Error('This browser cannot stream voice downloads.');
+  const abort = () => {
+    void reader.cancel().catch(() => undefined);
+  };
+  signal.addEventListener('abort', abort, { once: true });
   let loaded = 0;
   try {
     while (true) {
@@ -62,6 +80,8 @@ export async function loadVoiceFile(
   } catch (error) {
     await reader.cancel().catch(() => undefined);
     throw error;
+  } finally {
+    signal.removeEventListener('abort', abort);
   }
   signal?.throwIfAborted();
   if (loaded !== size) throw new Error('The voice download was incomplete. Try again.');
@@ -78,8 +98,9 @@ export async function loadVoiceFile(
     headers: { 'Content-Type': blob.type, 'Content-Length': String(size) },
   });
   try {
-    await cache?.put(url, result.clone());
-  } catch {
+    if (cache) await lease.put(cache, url, result.clone());
+  } catch (error) {
+    if (signal.aborted || (error as Error).name === 'AbortError') throw error;
     /* Optional cache, never a synthesis failure. */
   }
   return result;
@@ -87,6 +108,7 @@ export async function loadVoiceFile(
 
 export async function cachedVoices(): Promise<string[]> {
   try {
+    if (!(await caches.keys()).includes(SPEECH_MODEL_CACHE)) return [];
     const cache = await caches.open(SPEECH_MODEL_CACHE);
     const cached = await Promise.all(
       VOICES.map(async (voice) => {
@@ -101,7 +123,7 @@ export async function cachedVoices(): Promise<string[]> {
   }
 }
 export async function clearVoiceCache() {
-  if (typeof caches !== 'undefined') await caches.delete(SPEECH_MODEL_CACHE);
+  await clearVoiceAssetCache();
 }
 
 /** Aggregate decoded model and config bytes, including cache hits, without phase resets. */

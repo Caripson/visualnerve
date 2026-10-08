@@ -14,6 +14,8 @@ import {
 } from './camera';
 import type { PresentationStep } from './sequence';
 import { assertStoryboardViewCompatible } from './view-compatibility';
+import type { PresentationVoice, PresentationVoiceCatalog } from './types';
+import { VOICE_CHANGED } from './speech/voice-events';
 
 let requestId = 0;
 let selectionBefore: { diagramId: string; nodes: string[]; edges: string[] } | undefined;
@@ -178,13 +180,17 @@ export const presentation = new PresentationPlayer({
 export function usePresentation() {
   return useSyncExternalStore(presentation.subscribe, presentation.getState, presentation.getState);
 }
-export function voiceCatalog() {
+export function voiceCatalog(): PresentationVoiceCatalog {
   return {
     defaultVoiceId: DEFAULT_VOICE_ID,
     voices: VOICES.map((voice) => ({
       id: voice.id,
       label: voice.label,
-      language: voice.language.startsWith('sv') ? 'sv' : 'en',
+      language: voice.language.split('-')[0] as PresentationVoice['language'],
+      locale: voice.language,
+      quality: voice.quality,
+      speakerCount: voice.speakerCount,
+      speakerId: voice.speakerId,
       sampleRate: voice.sampleRate,
       modelBytes: voice.modelBytes,
       license: voice.license,
@@ -192,3 +198,5 @@ export function voiceCatalog() {
     })),
   };
 }
+if (typeof window !== 'undefined')
+  window.addEventListener(VOICE_CHANGED, () => presentation.changed());

@@ -37,6 +37,7 @@ type reply struct {
 type peer struct {
 	conn      *websocket.Conn
 	workspace string
+	mode      string
 	pending   map[string]chan reply
 }
 type Server struct {
@@ -156,14 +157,15 @@ func (s *Server) connect(w http.ResponseWriter, r *http.Request) {
 	conn.SetReadLimit(32 << 20)
 	var hello struct {
 		WorkspaceID string `json:"workspaceId"`
+		PeerMode    string `json:"peerMode"`
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	err = wsjson.Read(ctx, conn, &hello)
 	cancel()
-	if err != nil || len(hello.WorkspaceID) != 36 {
+	if err != nil || len(hello.WorkspaceID) != 36 || !validPeerMode(hello.PeerMode) {
 		return
 	}
-	p := &peer{conn: conn, workspace: hello.WorkspaceID, pending: make(map[string]chan reply)}
+	p := &peer{conn: conn, workspace: hello.WorkspaceID, mode: hello.PeerMode, pending: make(map[string]chan reply)}
 	s.mu.Lock()
 	s.peers[p] = true
 	s.mu.Unlock()
@@ -177,19 +179,35 @@ func (s *Server) connect(w http.ResponseWriter, r *http.Request) {
 		s.mu.Unlock()
 	}()
 	for {
-		var response reply
+		var response struct {
+			reply
+			PeerMode string `json:"peerMode"`
+		}
 		if err = wsjson.Read(r.Context(), conn, &response); err != nil {
 			return
 		}
 		s.mu.Lock()
+		if response.ID == "" && response.PeerMode != "" {
+			if !validPeerMode(response.PeerMode) {
+				s.mu.Unlock()
+				return
+			}
+			p.mode = response.PeerMode
+			s.mu.Unlock()
+			continue
+		}
 		ch := p.pending[response.ID]
 		delete(p.pending, response.ID)
 		s.mu.Unlock()
 		if ch != nil {
-			ch <- response
+			ch <- response.reply
 		}
 	}
 }
+
+// A routing hint only: browser-side leases and grants remain authoritative.
+// Omitted modes preserve the existing legacy client protocol.
+func validPeerMode(mode string) bool { return mode == "" || mode == "content" || mode == "control" }
 func (s *Server) forward(ctx context.Context, workspace, path, method string, data json.RawMessage) (reply, error) {
 	if !s.config.Bridge {
 		return reply{Status: 503}, errors.New("local integration is disabled")
@@ -221,7 +239,9 @@ func (s *Server) forward(ctx context.Context, workspace, path, method string, da
 			s.mu.Unlock()
 			return reply{Status: 409}, errors.New("multiple workspaces are connected; provide X-Visual-Nerve-Workspace")
 		}
-		selected = p
+		if selected == nil || (selected.mode == "control" && p.mode != "control") {
+			selected = p
+		}
 	}
 	if selected == nil {
 		s.mu.Unlock()
@@ -231,7 +251,11 @@ func (s *Server) forward(ctx context.Context, workspace, path, method string, da
 	selected.pending[id] = ch
 	s.mu.Unlock()
 	defer func() { s.mu.Lock(); delete(selected.pending, id); s.mu.Unlock() }()
-	if err := wsjson.Write(ctx, selected.conn, map[string]any{"id": id, "path": path, "method": method, "data": data}); err != nil {
+	command := map[string]any{"id": id, "path": path, "method": method, "data": data}
+	if path == "/workspace/lock" && method == "POST" && len(data) == 0 {
+		delete(command, "data")
+	}
+	if err := wsjson.Write(ctx, selected.conn, command); err != nil {
 		return reply{Status: 503}, err
 	}
 	select {
@@ -252,6 +276,21 @@ func readJSON(w http.ResponseWriter, r *http.Request) (json.RawMessage, error) {
 	bytes, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 32<<20))
 	if err != nil {
 		return nil, err
+	}
+	if !json.Valid(bytes) {
+		return nil, errors.New("invalid JSON")
+	}
+	return bytes, nil
+}
+
+func readLockJSON(w http.ResponseWriter, r *http.Request) (json.RawMessage, error) {
+	bytes, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 32<<20))
+	if err != nil || len(bytes) == 0 {
+		return nil, err
+	}
+	media, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil || media != "application/json" {
+		return nil, errors.New("Content-Type must be application/json")
 	}
 	if !json.Valid(bytes) {
 		return nil, errors.New("invalid JSON")
@@ -281,7 +320,11 @@ func (s *Server) forwardHTTP(w http.ResponseWriter, r *http.Request) {
 	// Existing DELETE commands are bodyless; video cancellation has an exact {} contract.
 	if r.Method != "GET" && (r.Method != "DELETE" || path == "/presentation/video") {
 		var err error
-		data, err = readJSON(w, r)
+		if path == "/workspace/lock" && r.Method == "POST" {
+			data, err = readLockJSON(w, r)
+		} else {
+			data, err = readJSON(w, r)
+		}
 		if err != nil {
 			failure(w, 400, err.Error())
 			return

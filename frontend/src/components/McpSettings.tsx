@@ -12,11 +12,12 @@ export function McpSettings() {
   const [token, setToken] = useState(sessionStorage.getItem('vn-token') ?? '');
   const [message, setMessage] = useState('');
   return (
-    <section aria-label="Codex and MCP integration">
-      <div className="property-section">Codex / MCP integration</div>
+    <section aria-label="MCP and API integration">
+      <div className="property-section">MCP / API integration</div>
       <p className="muted">
-        Optionally let Codex or other local tools read or edit diagrams in your active browser
-        session. Your work stays in this browser; this does not create a cloud copy.
+        Optionally let an MCP client such as Codex, Cursor, Claude or Gemini CLI read or edit
+        diagrams in your active browser session. Your work stays in this browser; connected tools
+        receive the content you authorize and may use their own hosted services.
       </p>
       <label className="field">
         <span>Access</span>
@@ -55,8 +56,8 @@ export function McpSettings() {
       <details className="storage-details">
         <summary>Local connection details</summary>
         <p className="muted">
-          This WebSocket connects the browser to the local service. Codex uses the MCP server URL
-          shown above. The website domain is configured as an allowed origin when starting the
+          This WebSocket connects the browser to the local service. Your MCP client uses the server
+          URL shown above. The website domain is configured as an allowed origin when starting the
           bridge.
         </p>
         <label className="field">
@@ -96,7 +97,7 @@ export function McpSettings() {
         <p className="muted">
           Connections are restricted to this computer. A publicly hosted app needs its exact address
           allowed by your local bridge.{' '}
-          <a href="/help/#codex-and-mcp" target="_blank" rel="noopener noreferrer">
+          <a href="/help/api-mcp/" target="_blank" rel="noopener noreferrer">
             Setup guide
           </a>
         </p>

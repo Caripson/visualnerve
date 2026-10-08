@@ -38,21 +38,21 @@ export function McpConnectionInfo({ endpoint }: { endpoint: string }) {
         </a>
       </p>
       <label className="field">
-        <span>MCP server URL for Codex</span>
-        <input aria-label="MCP server URL for Codex" readOnly value={server} />
+        <span>MCP server URL</span>
+        <input aria-label="MCP server URL" readOnly value={server} />
       </label>
       <p className="muted">
-        Codex connects to this service on your computer. The website address identifies the app;
-        this local address connects the tools to it.
+        Your MCP client connects to this service on your computer. The website address identifies
+        the app; this local address connects the tools to it.
       </p>
       {!server && (
         <p className="muted">Save a valid local bridge address below to show the MCP server URL.</p>
       )}
       {server && (
         <details className="storage-details">
-          <summary>Instructions for Codex</summary>
+          <summary>Instructions for your MCP client</summary>
           <p className="muted">
-            Ask Codex to call visual_nerve_api_docs first for the 2D/3D guide. The same tool
+            Ask your client to call visual_nerve_api_docs first for the 2D/3D guide. The same tool
             provides the complete API contract when needed.
           </p>
           <label className="field">
@@ -65,7 +65,7 @@ export function McpConnectionInfo({ endpoint }: { endpoint: string }) {
               value={instructions}
             />
           </label>
-          <button onClick={() => void copy()}>Copy instructions for Codex</button>
+          <button onClick={() => void copy()}>Copy MCP instructions</button>
           {message && <p role="status">{message}</p>}
         </details>
       )}

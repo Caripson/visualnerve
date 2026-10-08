@@ -1,4 +1,3 @@
-import Dexie from 'dexie';
 import type { CsvDataset } from '../data/types';
 import { csvLimits, validateDataset } from '../data/csv';
 import { dataModelLimits, graphDatasets, remapDataModelSources } from '../data/model';
@@ -10,11 +9,22 @@ import { remapSimulationModel } from '../simulation/copy';
 import { StorageError, validateGraph } from '../model/validation';
 import type { Graph } from '../model/types';
 import type { WorkspaceDatabase } from '../storage/database';
+import { asWorkspaceStorage } from '../storage/adapter';
+import type { WorkspaceStorage } from '../storage/contracts';
+import { historyStoreNames } from './store';
 import { historyDigest, historyJsonBytes, historyGraph, historyStorageFailure } from './codec';
 import { historyLimits, type HistoryBackup, type HistoryRows, type HistorySource } from './types';
 
 export async function exportHistoryBackup(
-  db: WorkspaceDatabase,
+  input: WorkspaceStorage | WorkspaceDatabase,
+  datasets: CsvDataset[],
+): Promise<HistoryBackup | undefined> {
+  return asWorkspaceStorage(input).atomic('r', historyStoreNames, (scope) =>
+    exportHistoryBackupScoped(scope, datasets),
+  );
+}
+async function exportHistoryBackupScoped(
+  db: WorkspaceStorage,
   datasets: CsvDataset[],
 ): Promise<HistoryBackup | undefined> {
   const snapshots = await db.historySnapshots.toArray();
@@ -32,11 +42,11 @@ export async function exportHistoryBackup(
       return dataset ? [[source.rowId, { id: dataset.id, version: dataset.version }] as const] : [];
     }),
   );
-  const metadata: { id: string; bytes: number }[] = [];
-  // The index avoids loading a second large row array when it already exists in datasets.
-  await db.historyRows.orderBy('bytes').eachKey((bytes, cursor) => {
-    metadata.push({ id: String(cursor.primaryKey), bytes: Number(bytes) });
-  });
+  // Encrypted backends read only the root's authenticated byte-count projection.
+  const metadata = (await db.historyRows.metadata('bytes')).map(({ id, value }) => ({
+    id,
+    bytes: Number(value),
+  }));
   const rows = await Promise.all(
     metadata.map(async ({ id, bytes }) => {
       const datasetRef = references.get(id);
@@ -69,23 +79,25 @@ const invalidDataset = (value: CsvDataset) => {
   }
 };
 export async function importHistoryBackup(
-  db: WorkspaceDatabase,
+  input: WorkspaceStorage | WorkspaceDatabase,
   history: HistoryBackup | undefined,
   datasets: CsvDataset[],
   mappings: HistoryImportMapping[],
   existingOwnerIds: Map<string, string> = new Map(),
 ): Promise<void> {
-  return importHistoryBackupData(db, history, datasets, mappings, existingOwnerIds).catch(
-    historyStorageFailure,
-  );
+  return asWorkspaceStorage(input)
+    .atomic('rw', ['nodes', 'edges', 'datasets', ...historyStoreNames], (scope) =>
+      importHistoryBackupData(scope, history, datasets, mappings, existingOwnerIds),
+    )
+    .catch(historyStorageFailure);
 }
-async function importHistoryBackupData(
-  db: WorkspaceDatabase,
+/** Pure, complete validation; compact active-row references are materialized without remapping. */
+export async function prepareHistoryBackup(
   history: HistoryBackup | undefined,
   datasets: CsvDataset[],
-  mappings: HistoryImportMapping[],
-  existingOwnerIds: Map<string, string>,
-): Promise<void> {
+  graphs: Graph[],
+  previous: { bytes?: number; snapshots?: number } = {},
+) {
   if (history === undefined) return;
   if (
     !history ||
@@ -130,18 +142,10 @@ async function importHistoryBackupData(
     'edges',
     'rows',
   ]);
-  const byDiagram = new Map(mappings.map((item) => [item.sourceGraph.diagram.id, item]));
+  const byDiagram = new Map(graphs.map((graph) => [graph.diagram.id, graph]));
   const rawRows = new Map<string, HistoryRows>();
   const active = new Map(datasets.map((source) => [source.id, source]));
-  const previousBytes = (
-    await Promise.all([
-      db.historyContents.orderBy('bytes').keys(),
-      db.historySources.orderBy('bytes').keys(),
-      db.historyRows.orderBy('bytes').keys(),
-    ])
-  )
-    .flat()
-    .reduce<number>((sum, value) => sum + Number(value), 0);
+  const previousBytes = previous.bytes ?? 0;
   let payloadBytes = 0;
   const capacity = (bytes: number) => {
     payloadBytes += bytes;
@@ -151,7 +155,7 @@ async function importHistoryBackupData(
         'Imported history exceeds the workspace history capacity. Nothing was restored.',
       );
   };
-  if (history.snapshots.length + (await db.historySnapshots.count()) > historyLimits.snapshots)
+  if (history.snapshots.length + (previous.snapshots ?? 0) > historyLimits.snapshots)
     throw new StorageError(
       413,
       'Imported history exceeds the workspace snapshot limit. Nothing was restored.',
@@ -186,7 +190,7 @@ async function importHistoryBackupData(
     }
     const bytes = historyJsonBytes(values, historyLimits.bytes);
     capacity(bytes);
-    if (bytes !== row.bytes || (await Dexie.waitFor(historyDigest(values))) !== row.digest) bad();
+    if (bytes !== row.bytes || (await historyDigest(values)) !== row.digest) bad();
     rawRows.set(row.id, {
       id: row.id,
       diagramId: row.diagramId,
@@ -243,7 +247,7 @@ async function importHistoryBackupData(
       item.id !== `${item.diagramId}:${item.digest}` ||
       !/^[a-f0-9]{64}$/.test(item.digest) ||
       bytes !== item.bytes ||
-      (await Dexie.waitFor(historyDigest(item.graph))) !== item.digest ||
+      (await historyDigest(item.graph)) !== item.digest ||
       'dataset' in item.graph ||
       'datasets' in item.graph
     )
@@ -304,6 +308,32 @@ async function importHistoryBackupData(
     referenced.rows.size !== rows.size
   )
     bad();
+  return { contents, sources, rawRows, data };
+}
+async function importHistoryBackupData(
+  db: WorkspaceStorage,
+  history: HistoryBackup | undefined,
+  datasets: CsvDataset[],
+  mappings: HistoryImportMapping[],
+  existingOwnerIds: Map<string, string>,
+): Promise<void> {
+  if (history === undefined) return;
+  const previousBytes = (
+    await Promise.all([
+      db.historyContents.metadata('bytes'),
+      db.historySources.metadata('bytes'),
+      db.historyRows.metadata('bytes'),
+    ])
+  )
+    .flat()
+    .reduce<number>((sum, entry) => sum + Number(entry.value), 0);
+  const prepared = (await prepareHistoryBackup(
+    history,
+    datasets,
+    mappings.map((mapping) => mapping.sourceGraph),
+    { bytes: previousBytes, snapshots: await db.historySnapshots.count() },
+  ))!;
+  const { contents, sources, rawRows } = prepared;
   for (const mapping of mappings) {
     const oldId = mapping.sourceGraph.diagram.id,
       diagramId = mapping.importedGraph.diagram.id;
@@ -464,7 +494,7 @@ async function importHistoryBackupData(
           },
         };
         const content = historyGraph(graph),
-          digest = await Dexie.waitFor(historyDigest(content)),
+          digest = await historyDigest(content),
           id = `${diagramId}:${digest}`;
         contentIds.set(item.id, id);
         await db.historyContents.put({
@@ -486,13 +516,13 @@ async function importHistoryBackupData(
   }
   const finalBytes = (
     await Promise.all([
-      db.historyContents.orderBy('bytes').keys(),
-      db.historySources.orderBy('bytes').keys(),
-      db.historyRows.orderBy('bytes').keys(),
+      db.historyContents.metadata('bytes'),
+      db.historySources.metadata('bytes'),
+      db.historyRows.metadata('bytes'),
     ])
   )
     .flat()
-    .reduce<number>((sum, value) => sum + Number(value), 0);
+    .reduce<number>((sum, entry) => sum + Number(entry.value), 0);
   if (finalBytes > historyLimits.bytes)
     throw new StorageError(
       413,

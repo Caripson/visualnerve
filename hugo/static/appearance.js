@@ -1,5 +1,8 @@
 // All pages share the workspace's committed preference; reference pages never create storage.
 (() => {
+  const isolated = window.location?.hostname === 'app.visualnerve.com' ||
+    document.querySelector?.('meta[name="visualnerve-vault-required"]')?.content === 'true';
+  const appearanceKey = 'visualnerve-app-appearance';
   const media = window.matchMedia('(prefers-color-scheme: dark)');
   let preference = 'system';
   let revision = 0;
@@ -21,6 +24,9 @@
   const setPreference = value => {
     revision++;
     preference = normalize(value);
+    // The only unencrypted app preference is a harmless appearance choice.
+    // Reference pages never open the private vault or a plaintext workspace.
+    if (isolated) { try { window.localStorage.setItem(appearanceKey, preference); } catch {} }
     paint();
   };
   const refresh = () => {
@@ -37,6 +43,10 @@
         resolve();
       };
       let request;
+      if (isolated) {
+        try { finish(window.localStorage.getItem(appearanceKey)); } catch { finish('system'); }
+        return;
+      }
       try { request = window.indexedDB.open('visual-nerve-cache'); }
       catch { finish('system'); return; }
       // Opening a missing database would create it. Abort instead, including old databases
@@ -72,6 +82,9 @@
   media.addEventListener('change', paint);
   window.addEventListener('pageshow', refresh);
   window.addEventListener('focus', refresh);
+  if (isolated) window.addEventListener('storage', event => {
+    if (event.key === appearanceKey) void refresh();
+  });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') void refresh();
   });

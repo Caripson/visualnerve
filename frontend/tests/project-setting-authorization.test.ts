@@ -34,7 +34,7 @@ afterEach(async () => {
 it.each(['read', 'off', 'storage'] as const)(
   'rechecks authorization inside the setting transaction after %s revocation while queued',
   async (revocation) => {
-    const original = workspace.repo.request.bind(workspace.repo);
+    const original = Repository.prototype.request;
     let release!: () => void;
     const gate = new Promise<void>((done) => {
       release = done;
@@ -44,24 +44,31 @@ it.each(['read', 'off', 'storage'] as const)(
       entered = done;
     });
     const checked = vi.fn();
-    vi.spyOn(workspace.repo, 'request').mockImplementation(
-      async (path, method, payload, options) => {
-        if (path !== `/settings/${PROJECT_SOURCE_FILE_LIMIT_SETTING}` || method !== 'PUT')
-          return original(path, method, payload, options);
-        // The external command passed initial authorization, but has not entered
-        // its IndexedDB transaction yet. Another task can revoke its live grant.
-        entered();
-        await gate;
-        return original(path, method, payload, {
-          ...options,
-          beforeWrite: async () => {
-            expect(Dexie.currentTransaction?.mode).toBe('readwrite');
-            checked();
-            await options?.beforeWrite?.();
-          },
-        });
-      },
-    );
+    vi.spyOn(Repository.prototype, 'request').mockImplementation(async function (
+      this: Repository,
+      path,
+      method,
+      payload,
+      options,
+    ) {
+      if (path !== `/settings/${PROJECT_SOURCE_FILE_LIMIT_SETTING}` || method !== 'PUT')
+        return original.call(this, path, method, payload, options);
+      return original.call(this, path, method, payload, {
+        ...options,
+        beforeRequest: async () => {
+          await options?.beforeRequest?.();
+          // The external command passed request authorization, but has not
+          // entered its write transaction. Another task can revoke its grant.
+          entered();
+          await gate;
+        },
+        beforeWrite: async (scope) => {
+          expect(Dexie.currentTransaction?.mode).toBe('readwrite');
+          checked();
+          await options?.beforeWrite?.(scope);
+        },
+      });
+    });
     const pending = workspace.external(`/settings/${PROJECT_SOURCE_FILE_LIMIT_SETTING}`, 'PUT', {
       value: 1000,
     });

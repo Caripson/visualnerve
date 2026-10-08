@@ -1,12 +1,26 @@
-import { useEffect, useRef, useState } from 'react';
-import { Download, Upload, HardDrive, X } from 'lucide-react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { Download, Upload, HardDrive, Eraser, X } from 'lucide-react';
 import { useEditor } from '../state/editor';
 import { workspace } from '../storage/workspace';
-import { database, type WorkspaceBackup } from '../storage/database';
+import type { WorkspaceBackup } from '../storage/database';
+import { workspaceStorage } from '../storage/runtime';
 import { exportAllData } from '../storage/backup';
 import { Modal } from './Modal';
 import { assertImportBytes } from '../imports/limits';
 import { currentImportLimitBytes } from '../imports/preference';
+import { BackupSecurityNotice } from '../security/BackupSecurityNotice';
+import { isEncryptedWorkspaceSurface } from '../security/surface';
+import { clearAppCache } from '../security/app-cache';
+import { speechService } from '../presentation/speech/service';
+import { presentation } from '../presentation/service';
+import { disposeVideoExport } from '../presentation/video-service';
+import { useWorkspaceTransfer } from '../security/workspace-maintenance-context';
+
+const LegacyEncryptedBackup = lazy(() =>
+  import('../security/LegacyEncryptedBackup').then((module) => ({
+    default: module.LegacyEncryptedBackup,
+  })),
+);
 
 export function StorageNotice() {
   return (
@@ -63,6 +77,7 @@ export function PrivacyIntro() {
         saved using IndexedDB; app files are cached so you can work offline. The service cannot work
         without this storage.
       </p>
+      <BackupSecurityNotice encrypted={isEncryptedWorkspaceSurface()} />
       <label className="check-field">
         <input
           type="checkbox"
@@ -123,9 +138,11 @@ export function BackupNudge({ settings }: { settings: () => void }) {
 export function DataPrivacy({
   restore,
   deleted,
+  onReadBackup,
 }: {
   restore: (data: WorkspaceBackup) => void;
   deleted: () => void;
+  onReadBackup?: (file: File) => Promise<WorkspaceBackup>;
 }) {
   const [message, setMessage] = useState('');
   const [usage, setUsage] = useState<number>();
@@ -133,6 +150,10 @@ export function DataPrivacy({
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const file = useRef<HTMLInputElement>(null);
+  const backupRead = useRef(0);
+  const transferRead = useRef(false);
+  const transfer = useWorkspaceTransfer();
+  const [encryptedTransfer, setEncryptedTransfer] = useState(false);
   const count = useEditor((state) => state.diagrams.length);
   const permission = useEditor((state) => state.mcpAccess);
   const workspaceId = useEditor((state) => state.workspaceId);
@@ -153,6 +174,7 @@ export function DataPrivacy({
       .catch(() => {});
     return () => {
       active = false;
+      backupRead.current++;
     };
   }, []);
   const run = async (action: () => Promise<void>) => {
@@ -190,24 +212,91 @@ export function DataPrivacy({
         The same website in another browser, profile or device opens a separate workspace. Export
         and import to move your work.
       </p>
+      <BackupSecurityNotice encrypted={isEncryptedWorkspaceSurface()} />
       <div className="storage-actions">
         <button
           disabled={busy}
           onClick={() => {
             void run(async () => {
               await exportAllData();
-              setMessage('Backup downloaded. Use Restore backup to import it.');
+              setMessage(
+                isEncryptedWorkspaceSurface()
+                  ? 'Encrypted backup downloaded. Use the password or recovery key from this export to restore it.'
+                  : 'Backup downloaded. Use Restore backup to import it.',
+              );
             });
           }}
         >
           <Download size={15} />
           Export all data
         </button>
-        <button disabled={busy} onClick={() => file.current?.click()}>
+        <button
+          disabled={busy}
+          onClick={() => {
+            transferRead.current = false;
+            file.current?.click();
+          }}
+        >
           <Upload size={15} />
           Restore backup
         </button>
+        {transfer ? (
+          <button
+            disabled={busy}
+            onClick={() => {
+              transferRead.current = true;
+              file.current?.click();
+            }}
+          >
+            <Upload size={15} />
+            Transfer existing workspace
+          </button>
+        ) : !isEncryptedWorkspaceSurface() ? (
+          <button disabled={busy} onClick={() => setEncryptedTransfer(true)}>
+            <Download size={15} />
+            Export encrypted transfer
+          </button>
+        ) : null}
+        <button
+          disabled={busy}
+          onClick={() => {
+            void run(async () => {
+              presentation.close();
+              const stoppedVideo = disposeVideoExport();
+              speechService.dispose();
+              await Promise.all([stoppedVideo, presentation.settled()]);
+              const result = await clearAppCache();
+              setMessage(
+                result.available
+                  ? 'App cache cleared. Your diagrams and settings are preserved. Offline files and voices download again when needed.'
+                  : 'This browser does not provide an app cache to clear. Your workspace data was not changed.',
+              );
+            });
+          }}
+        >
+          <Eraser size={15} />
+          Clear app cache
+        </button>
       </div>
+      {transfer ? (
+        <p className="muted">
+          Moving from www.visualnerve.com/app/? Export an encrypted transfer there, keep the
+          original, then use Transfer existing workspace here. The complete transfer preserves
+          identifiers, source rows and archives, turns API/MCP Off, and verifies the saved copy
+          before reopening the editor. A normal Restore backup can still merge diagrams.
+        </p>
+      ) : !isEncryptedWorkspaceSurface() ? (
+        <p className="muted">
+          To move to app.visualnerve.com, create an encrypted transfer and keep its password and
+          recovery key. Nothing is removed here. Set up the encrypted app separately, then use
+          Transfer existing workspace in its Settings. The two origins have independent storage.
+        </p>
+      ) : null}
+      <p className="muted">
+        Clear app cache removes downloaded app files and voice models, and stops playback or video
+        export. It preserves your workspace data and settings. An internet connection may be needed
+        to download those files again.
+      </p>
       <p className="muted">
         {count} local diagram{count === 1 ? '' : 's'}
         {lastExport ? ` · Last export: ${new Date(lastExport).toLocaleDateString()}` : ''}
@@ -220,7 +309,7 @@ export function DataPrivacy({
         <summary>Storage details</summary>
         <dl className="storage-facts">
           <dt>Database</dt>
-          <dd>IndexedDB · schema {database.verno}</dd>
+          <dd>IndexedDB · schema {workspaceStorage.schemaVersion}</dd>
           <dt>Site address</dt>
           <dd>{location.origin}</dd>
           <dt>Workspace ID</dt>
@@ -275,6 +364,12 @@ export function DataPrivacy({
           This permanently removes all Visual Nerve diagrams, owners, custom templates and settings
           in this browser. It cannot be undone unless you have an exported backup.
         </p>
+        {isEncryptedWorkspaceSurface() && (
+          <p>
+            This clears workspace content. Your vault password, recovery key and session policy
+            remain. Downloaded backups and app or voice caches are separate.
+          </p>
+        )}
         <label className="check-field">
           <input
             type="checkbox"
@@ -311,19 +406,43 @@ export function DataPrivacy({
         onChange={async (event) => {
           const selected = event.target.files?.[0];
           if (!selected) return;
+          const requested = ++backupRead.current;
+          const moving = transferRead.current;
+          transferRead.current = false;
+          setBusy(true);
+          setMessage('');
           try {
             assertImportBytes(selected.size, currentImportLimitBytes(), 'Backup file');
-            const data = JSON.parse(await selected.text()) as WorkspaceBackup;
-            if (data.format !== 'visual-nerve-workspace' || !Array.isArray(data.diagrams))
+            const data = onReadBackup
+              ? await onReadBackup(selected)
+              : (JSON.parse(await selected.text()) as WorkspaceBackup);
+            if (requested !== backupRead.current) return;
+            if (!data || data.format !== 'visual-nerve-workspace' || !Array.isArray(data.diagrams))
               throw new Error('Choose a Visual Nerve backup file.');
-            restore(data);
+            if (moving && transfer) await transfer(data);
+            else restore(data);
           } catch (error) {
-            setMessage((error as Error).message);
+            if (requested === backupRead.current) setMessage((error as Error).message);
           } finally {
-            if (file.current) file.current.value = '';
+            if (requested === backupRead.current) {
+              setBusy(false);
+              if (file.current) file.current.value = '';
+            }
           }
         }}
       />
+      {encryptedTransfer && (
+        <Suspense fallback={<p role="status">Opening encrypted transfer…</p>}>
+          <LegacyEncryptedBackup
+            close={() => setEncryptedTransfer(false)}
+            complete={() => {
+              setMessage(
+                'Encrypted transfer downloaded. Keep its original password and recovery key, and keep this workspace until the destination has been verified.',
+              );
+            }}
+          />
+        </Suspense>
+      )}
     </section>
   );
 }
@@ -333,7 +452,7 @@ export function RestoreBackup({ backup, close }: { backup: WorkspaceBackup; clos
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   return (
-    <Modal title="Import Visual Nerve backup" close={close}>
+    <Modal title="Import Visual Nerve backup" close={close} dismissible={!busy}>
       <p>
         This file contains {backup.diagrams.length}{' '}
         {backup.diagrams.length === 1 ? 'diagram' : 'diagrams'}

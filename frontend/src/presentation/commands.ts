@@ -3,14 +3,24 @@ import { presentation, voiceCatalog } from './service';
 import * as video from './video-service';
 export { isVideoExporting } from './video-service';
 import type { PresentationSource } from './storyboard';
+import { VaultStorageError } from '../security/vault-storage';
 
 export async function presentationRequest(
   path: string,
   method: string,
   value?: unknown,
   authorize?: () => Promise<void>,
+  originatingSignal?: AbortSignal,
 ) {
   await authorize?.();
+  // Authorization can resolve just before its caller is revoked. Never acquire
+  // a fresh playback/video capability from that older command's continuation.
+  if (originatingSignal?.aborted)
+    throw new VaultStorageError(
+      423,
+      'WORKSPACE_LOCKED',
+      'The originating workspace operation has ended.',
+    );
   if (path === '/presentation/video') {
     if (method === 'GET') return video.videoExport.getState();
     if (method === 'POST') return video.startVideo(value, true);

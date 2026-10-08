@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { App } from '../src/App';
 import { blankGraph, newNode } from '../src/model/types';
@@ -7,7 +7,22 @@ import { copySelection } from '../src/state/clipboard';
 import { useEditor } from '../src/state/editor';
 
 vi.mock('../src/storage/workspace', () => ({
-  workspace: { start: async () => {}, stop: () => {} },
+  workspace: {
+    start: async () => {},
+    stop: () => {},
+    repo: {
+      db: {
+        captureOperation: async () => {
+          const controller = new AbortController();
+          return {
+            signal: controller.signal,
+            check: async () => {},
+            dispose: () => controller.abort(),
+          };
+        },
+      },
+    },
+  },
 }));
 vi.mock('../src/components/Sidebar', () => ({ Sidebar: () => null }));
 vi.mock('../src/components/Toolbar', () => ({ Toolbar: () => null, FilterBar: () => null }));
@@ -20,7 +35,7 @@ vi.mock('../src/canvas/Canvas', () => ({
       createElement('span', null, 'Readable declarations'),
     ),
 }));
-vi.mock('../src/presentation/Player', () => ({ PresentationFeature: () => null }));
+vi.mock('../src/presentation/PresentationFeature', () => ({ PresentationFeature: () => null }));
 vi.mock('../src/components/UnderstandingDialogs', () => ({ UnderstandingDialogs: () => null }));
 vi.mock('../src/components/DataPrivacy', () => ({
   LocalBadge: () => null,
@@ -75,7 +90,7 @@ async function pendingPaste() {
     render(createElement(App));
   });
   fireEvent.keyDown(document.body, { key: 'v', ctrlKey: true });
-  expect(readText).toHaveBeenCalledOnce();
+  await waitFor(() => expect(readText).toHaveBeenCalledOnce());
   const complete = async (outcome: 'resolve' | 'reject') => {
     await act(async () => {
       if (outcome === 'resolve') resolve(JSON.stringify(clip));

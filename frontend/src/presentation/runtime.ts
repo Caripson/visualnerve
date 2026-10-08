@@ -5,6 +5,7 @@ import type { PresentationSource } from './storyboard';
 import type { PresentationRuntimeState } from './types';
 import type { SpeechProgress } from './speech/protocol';
 import type { SpeechPriority } from './speech/service';
+import { NarrationClipStore } from './speech/clip-store';
 type PreparationProgress = (
   value: number,
   message: string,
@@ -23,7 +24,8 @@ export interface Narration {
 export interface PlayerDependencies {
   graph(): Graph | null;
   minimizedDefault?(): boolean;
-  voice(): Promise<string>;
+  voice(signal?: AbortSignal): Promise<string>;
+  clipStore?(onInvalidated: () => void): NarrationClipStore;
   prepare(
     text: string,
     voice: string,
@@ -68,7 +70,11 @@ export class PresentationPlayer {
   private epoch = 0;
   private abort?: AbortController;
   private background?: AbortController;
-  private backgroundIndex = -1;
+  private fullReady = false;
+  private retainAll = false;
+  private capacityLimited = false;
+  private clipVoice?: string;
+  private cleanup: Promise<void> = Promise.resolve();
   private timer?: ReturnType<typeof setTimeout>;
   private deadline = 0;
   private remaining = 0;
@@ -77,9 +83,58 @@ export class PresentationPlayer {
   private holdStartedAt = 0;
   private resumable = false;
   private needsFocus = false;
-  private clips = new Map<string, Blob>();
+  private clips: NarrationClipStore;
   private sequence: string[] = [];
-  constructor(private deps: PlayerDependencies) {}
+  constructor(private deps: PlayerDependencies) {
+    this.clips = this.newClipStore();
+  }
+  private newClipStore() {
+    const onInvalidated = () => {
+      if (this.clips !== store) return;
+      const wasActive = active.has(this.state.status);
+      this.cancel();
+      this.clearClips();
+      this.deps.releaseHighlight?.();
+      if (this.state.open)
+        this.update({
+          status: wasActive ? 'paused' : 'idle',
+          buffered: 0,
+          progress: 0,
+          message: 'Preload cleared. Prepare this tour again.',
+        });
+    };
+    const store = this.deps.clipStore?.(onInvalidated) ?? new NarrationClipStore({ onInvalidated });
+    return store;
+  }
+  private clearClips() {
+    const previous = this.clips;
+    const cleaning = previous.dispose();
+    this.clips = this.newClipStore();
+    this.clipVoice = undefined;
+    this.fullReady = false;
+    this.retainAll = false;
+    this.capacityLimited = false;
+    this.cleanup = Promise.all([this.cleanup, cleaning]).then(() => undefined);
+  }
+  /** Lock/transfer/cache boundaries await old encrypted clip puts and deletion. */
+  async settled() {
+    await this.cleanup;
+    await this.clips.settled();
+  }
+  private preloadMessage() {
+    return this.state.preload && !!(this.background || this.fullReady || this.capacityLimited);
+  }
+  private selectVoice(voice: string, background?: AbortController) {
+    if (this.clipVoice !== undefined && this.clipVoice !== voice) {
+      if (this.background && this.background !== background) {
+        this.background.abort();
+        this.background = undefined;
+      }
+      this.clearClips();
+      this.update({ buffered: 0, progress: 0, message: '' });
+    }
+    this.clipVoice = voice;
+  }
   getState = () => this.state;
   /** Caption position follows the same hold clock as playback and freezes on Pause. */
   getPlaybackTime = () => {
@@ -129,7 +184,7 @@ export class PresentationPlayer {
     const graph = this.deps.graph();
     if (!graph) throw new StorageError(409, 'Open a diagram first.');
     this.cancel();
-    this.clips.clear();
+    this.clearClips();
     this.deps.releaseHighlight?.();
     this.update({ source });
     const steps = this.steps(graph);
@@ -150,7 +205,7 @@ export class PresentationPlayer {
   }
   close() {
     this.cancel();
-    this.clips.clear();
+    this.clearClips();
     this.deps.narration.dispose();
     this.deps.release?.();
     this.deps.releaseHighlight?.();
@@ -174,7 +229,7 @@ export class PresentationPlayer {
     const wasActive = active.has(this.state.status);
     const previous = this.state.sceneId ?? this.state.nodeId;
     this.cancel();
-    this.clips.clear();
+    this.clearClips();
     this.deps.releaseHighlight?.();
     const steps = this.steps(graph);
     this.sequence = steps.map((step) => step.id);
@@ -195,7 +250,7 @@ export class PresentationPlayer {
     if (background) {
       this.background?.abort();
       this.background = undefined;
-      this.backgroundIndex = -1;
+      if (!this.fullReady) this.retainAll = false;
     }
     this.abort = undefined;
     clearTimeout(this.timer);
@@ -226,7 +281,7 @@ export class PresentationPlayer {
       this.needsFocus = refocus;
       this.deps.cancelCamera();
     } else this.cancel(false);
-    this.update({ status: 'paused', ...(message || !this.background ? { message } : {}) });
+    this.update({ status: 'paused', ...(message || !this.preloadMessage() ? { message } : {}) });
     return this.state;
   }
   async play() {
@@ -263,7 +318,7 @@ export class PresentationPlayer {
         if (this.state.audio) this.deps.narration.resume();
         this.holdStartedAt = Date.now();
         this.schedule(this.remaining);
-        this.update({ status: 'playing', ...(this.background ? {} : { message: '' }) });
+        this.update({ status: 'playing', ...(this.preloadMessage() ? {} : { message: '' }) });
         this.prefetch();
       } catch (error) {
         if (epoch === this.epoch) this.fail(error);
@@ -299,25 +354,27 @@ export class PresentationPlayer {
     epoch: number,
     progress: PreparationProgress = this.progress(epoch),
     priority: SpeechPriority = 'foreground',
+    current?: () => void,
   ) {
+    signal.throwIfAborted();
+    current?.();
+    this.selectVoice(voice, priority === 'background' ? this.background : undefined);
+    const store = this.clips;
+    const check = () => {
+      signal.throwIfAborted();
+      current?.();
+      if (store !== this.clips) throw new DOMException('Cancelled', 'AbortError');
+    };
+    await this.cleanup;
+    check();
     const key = this.key(voice, text);
-    let blob = this.clips.get(key);
+    let blob = await store.get(key, signal);
+    check();
     if (!blob) {
       blob = await this.deps.prepare(text, voice, signal, progress, { priority });
-      if (signal.aborted) throw new DOMException('Cancelled', 'AbortError');
-      // Another consumer may have completed this same clip while we awaited inference.
-      if (this.clips.has(key)) return this.clips.get(key)!;
-      // Three clips/32 MiB bound narration memory, independent of node count.
-      while (
-        this.clips.size >= 3 ||
-        [...this.clips.values()].reduce((sum, value) => sum + value.size, 0) + blob.size >
-          32 * 1024 * 1024
-      ) {
-        const first = this.clips.keys().next().value;
-        if (first === undefined) break;
-        this.clips.delete(first);
-      }
-      if (blob.size <= 32 * 1024 * 1024) this.clips.set(key, blob);
+      check();
+      await store.put(key, blob, signal, this.retainAll);
+      check();
     }
     this.update({ buffered: this.clips.size });
     return blob;
@@ -336,13 +393,21 @@ export class PresentationPlayer {
       this.update({
         ...this.fields(step),
         status: 'loading',
-        ...(this.background ? {} : { progress: 0, message: '' }),
+        ...(this.preloadMessage() ? {} : { progress: 0, message: '' }),
       });
       let blob: Blob | undefined;
       if (continuePlaying && this.state.audio && step.narration.trim())
-        blob = await this.clip(step.narration, await this.deps.voice(), abort.signal, epoch);
+        blob = await this.clip(
+          step.narration,
+          await this.deps.voice(abort.signal),
+          abort.signal,
+          epoch,
+        );
       if (epoch !== this.epoch) return;
-      this.update({ status: 'moving', ...(this.background ? {} : { progress: 0, message: '' }) });
+      this.update({
+        status: 'moving',
+        ...(this.preloadMessage() ? {} : { progress: 0, message: '' }),
+      });
       await this.focus(step, abort.signal);
       if (epoch !== this.epoch) return;
       if (!continuePlaying) {
@@ -354,7 +419,10 @@ export class PresentationPlayer {
       this.holdDuration = Math.max(step.seconds, seconds) * 1000;
       this.holdStartedAt = Date.now();
       this.schedule(this.holdDuration);
-      this.update({ status: 'playing', ...(this.background ? {} : { progress: 1, message: '' }) });
+      this.update({
+        status: 'playing',
+        ...(this.preloadMessage() ? {} : { progress: 1, message: '' }),
+      });
       this.prefetch();
     } catch (error) {
       if (epoch !== this.epoch || abort.signal.aborted) return;
@@ -437,7 +505,9 @@ export class PresentationPlayer {
     if (patch.preload === false) {
       this.background?.abort();
       this.background = undefined;
-      this.backgroundIndex = -1;
+      this.fullReady = false;
+      this.retainAll = false;
+      this.capacityLimited = false;
       this.update({ progress: 0, message: '' });
     }
     this.update(patch);
@@ -453,16 +523,25 @@ export class PresentationPlayer {
   }
   private prefetch(explicit = false) {
     if (!this.state.preload || (!this.state.audio && !explicit)) return;
-    // Keep useful bounded work alive across Pause/Next; shared foreground requests can join it.
-    if (this.background || (!explicit && this.backgroundIndex === this.state.index)) return;
+    // A full-tour preparation survives cursor changes; foreground requests can
+    // join the same serial inference. It always includes earlier and later steps.
+    if (this.background || (!explicit && (this.fullReady || this.capacityLimited))) return;
+    const graph = this.snapshot();
+    const steps = this.steps(graph);
     const abort = new AbortController();
     this.background = abort;
-    this.backgroundIndex = this.state.index;
-    const startIndex = this.state.index;
+    this.capacityLimited = false;
     let completed = 0,
-      total = 1,
+      total = steps.length,
       previous = 0;
-    const active = () => this.background === abort && !abort.signal.aborted && this.state.open;
+    const active = () =>
+      this.background === abort &&
+      !abort.signal.aborted &&
+      this.state.open &&
+      this.deps.graph() === graph;
+    const check = () => {
+      if (!active()) throw new DOMException('Cancelled', 'AbortError');
+    };
     const report = (detail: string, fraction = 0) => {
       if (!active()) return;
       previous = Math.max(previous, Math.min(0.99, (completed + fraction) / total));
@@ -471,54 +550,67 @@ export class PresentationPlayer {
         message: `Preload ${Math.floor(previous * 100)}% · ${completed}/${total} steps ready · ${detail}`,
       });
     };
-    report('Preparing voice and upcoming narrations…');
+    report('Preparing the entire presentation…');
     void (async () => {
-      const graph = this.snapshot();
-      const voice = await this.deps.voice();
-      if (!active()) return;
-      const steps = this.steps(graph)
-        .slice(startIndex, startIndex + 3)
-        .filter((step) => step.narration.trim());
-      total = steps.length + 1;
-      await this.deps.preloadVoice(voice, abort.signal, (_value, message) => report(message));
-      if (!active()) return;
-      completed++;
-      report('Voice engine ready.');
-      for (const step of steps) {
-        if (!active()) return;
-        await this.clip(
-          step.narration,
-          voice,
-          abort.signal,
-          this.epoch,
-          (value, message, stage) =>
-            report(message, stage === 'synthesis' ? Math.min(0.99, value) : 0),
-          'background',
-        );
-        if (!active()) return;
-        completed++;
-        report('Narration ready.');
+      check();
+      await this.cleanup;
+      check();
+      const voice = await this.deps.voice(abort.signal);
+      check();
+      this.selectVoice(voice, abort);
+      this.retainAll = true;
+      this.fullReady = false;
+      if (
+        steps.some((step) => step.narration.trim()) &&
+        !steps.every(
+          (step) => !step.narration.trim() || this.clips.has(this.key(voice, step.narration)),
+        )
+      ) {
+        await this.deps.preloadVoice(voice, abort.signal, (_value, message) => report(message));
+        check();
+        report('Voice engine ready.');
       }
-      if (active())
-        this.update({ progress: 1, message: 'Preload 100% · Voice and next steps ready.' });
+      for (const step of steps) {
+        check();
+        if (step.narration.trim())
+          await this.clip(
+            step.narration,
+            voice,
+            abort.signal,
+            this.epoch,
+            (value, message, stage) =>
+              report(message, stage === 'synthesis' ? Math.min(0.99, value) : 0),
+            'background',
+            check,
+          );
+        check();
+        completed++;
+        report(step.narration.trim() ? 'Narration ready.' : 'No narration needed.');
+      }
+      if (active()) {
+        this.fullReady = true;
+        this.update({ progress: 1, message: `Preload 100% · ${total}/${total} steps ready.` });
+      }
     })()
       .catch((error) => {
         if (active()) {
-          // A failed window is not prepared. Play may retry it after a transient error.
-          this.backgroundIndex = -1;
+          this.fullReady = false;
+          this.retainAll = false;
+          this.capacityLimited = /limit|storage|quota|space/i.test(error.message);
           this.update({ message: `Preload failed: ${error.message}`, progress: previous });
         }
       })
       .finally(() => {
         if (this.background !== abort) return;
         this.background = undefined;
-        // The cursor can advance while the bounded window is being prepared.
-        if (
-          !abort.signal.aborted &&
-          this.state.status === 'playing' &&
-          startIndex !== this.state.index
-        )
-          this.prefetch();
+        if (this.deps.graph() !== graph) {
+          this.clearClips();
+          this.update({
+            progress: 0,
+            buffered: 0,
+            message: 'Diagram changed. Prepare this tour again.',
+          });
+        }
       });
   }
 }

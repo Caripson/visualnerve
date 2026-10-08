@@ -171,7 +171,7 @@ for (const origin of [
           await page.getByText('Local connection details', { exact: true }).click();
           await page.getByLabel('Local bridge address', { exact: true }).fill(origin.socket);
           await page.getByRole('button', { name: 'Save connection', exact: true }).click();
-          await expect(page.getByLabel('MCP server URL for Codex', { exact: true })).toHaveValue(
+          await expect(page.getByLabel('MCP server URL', { exact: true })).toHaveValue(
             `${origin.service}/mcp`,
           );
         }

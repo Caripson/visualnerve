@@ -1,0 +1,185 @@
+Piper voice model notices
+=========================
+
+Upstream repository: https://huggingface.co/rhasspy/piper-voices/tree/c10ece1aade47bb51c153c893d14e5bf8e5b7117
+Revision: c10ece1aade47bb51c153c893d14e5bf8e5b7117
+The upstream repository declares the MIT model license. Dataset terms and
+attribution remain separate and are summarized below; no model weights or
+training audio are redistributed with Visual Nerve. Selected weights are
+downloaded only at an explicit user request from these pinned source URLs.
+Visual Nerve does not retrain or modify these voice models.
+
+LibriTTS uses only its fixed upstream speaker ID 0 (p3922). The underlying
+model contains 904 speakers; this catalog does not offer arbitrary selection.
+Jenny (Dioco) is Irish. The upstream model is categorized as en_GB; this
+regional catalog code is not a claim that the voice has a British accent.
+
+en_GB-alan-medium
+  Model card: https://huggingface.co/rhasspy/piper-voices/resolve/c10ece1aade47bb51c153c893d14e5bf8e5b7117/en/en_GB/alan/medium/MODEL_CARD
+  Model SHA-256: 0a309668932205e762801f1efc2736cd4b0120329622adf62be09e56339d3330
+  Config SHA-256: c0f0d124e5895c00e7c03b35dcc8287f319a6998a365b182deb5c8e752ee8c1e
+  MIT model · Mycroft AI training source (see model card)
+  * URL: https://github.com/MycroftAI/mimic3-voices/blob/master/voices/en_UK/apope_low
+  * License: See URL
+
+en_US-ljspeech-high
+  Model card: https://huggingface.co/rhasspy/piper-voices/resolve/c10ece1aade47bb51c153c893d14e5bf8e5b7117/en/en_US/ljspeech/high/MODEL_CARD
+  Model SHA-256: 5d4f08ba6a2a48c44592eed3ce56bf85e9de3dd4e20df90541ae68a8310c029a
+  Config SHA-256: 7e1f4634af596d83cca997fb7a931ba80b70f8a316a2655ee69c55365e0ace14
+  MIT model · public-domain training data
+  * URL: https://keithito.com/LJ-Speech-Dataset/
+  * License: public domain
+
+en_GB-cori-high
+  Model card: https://huggingface.co/rhasspy/piper-voices/resolve/c10ece1aade47bb51c153c893d14e5bf8e5b7117/en/en_GB/cori/high/MODEL_CARD
+  Model SHA-256: 470b4dd634c98f8a4850d7626ffc3dfc90774628eeef6605a6dd8f88f30a5903
+  Config SHA-256: 9e7fb5b5671612c22f3c81cbe46c1ae87b031a4632bcb509e499dad6f1e2adec
+  MIT model · public-domain training data
+  * URL: https://librivox.org
+  * License: public domain
+
+sv_SE-nst-medium
+  Model card: https://huggingface.co/rhasspy/piper-voices/resolve/c10ece1aade47bb51c153c893d14e5bf8e5b7117/sv/sv_SE/nst/medium/MODEL_CARD
+  Model SHA-256: df011f56825a59dd1efc080c38a65a1ef70407e60f63050e9246f43a3d7e471e
+  Config SHA-256: d45dd74cbb4eca58694bf04a97e243044092476f28a55ae26424f0653086980a
+  MIT model · CC0 training data
+  * URL: https://www.nb.no/sprakbanken/en/resource-catalogue/oai-nb-no-sbr-17/
+  * License: CC0
+
+en_US-libritts-high
+  Model card: https://huggingface.co/rhasspy/piper-voices/resolve/c10ece1aade47bb51c153c893d14e5bf8e5b7117/en/en_US/libritts/high/MODEL_CARD
+  Model SHA-256: 9127a559e11603f10b366d1a20ac7426826081dbc521de4c2420c57728d73f0f
+  Config SHA-256: 2efdc6d7f954588b8180132cbd9b8001933fdd00932c92bc92fd0d2028a9eb3d
+  MIT model · CC BY 4.0 training data
+  * URL: http://www.openslr.org/60/
+  * License: CC BY 4.0
+
+en_US-joe-medium
+  Model card: https://huggingface.co/rhasspy/piper-voices/resolve/c10ece1aade47bb51c153c893d14e5bf8e5b7117/en/en_US/joe/medium/MODEL_CARD
+  Model SHA-256: 58afce0321b8d9c46d7cdf9c16500cc55a793b4220212dba6b70fb788b3baf06
+  Config SHA-256: 3d6d5410b3795cb1950595247ef8f06190719e6fdbfa3a2356d8ec368e1aad33
+  MIT model · CC0 training data
+  * URL: https://github.com/OHF-Voice/voice-datasets
+  * License: CC0
+
+en_US-kristin-medium
+  Model card: https://huggingface.co/rhasspy/piper-voices/resolve/c10ece1aade47bb51c153c893d14e5bf8e5b7117/en/en_US/kristin/medium/MODEL_CARD
+  Model SHA-256: 5849957f929cbf720c258f8458692d6103fff2f0e3d3b19c8259474bb06a18d4
+  Config SHA-256: 5681426d4aead22195de70531eeeeddb46493cfaffc5764b2ea3db73428b651c
+  MIT model · public-domain training data
+  * URL: https://librivox.org
+  * License: public domain
+
+en_US-norman-medium
+  Model card: https://huggingface.co/rhasspy/piper-voices/resolve/c10ece1aade47bb51c153c893d14e5bf8e5b7117/en/en_US/norman/medium/MODEL_CARD
+  Model SHA-256: b9739443232a80a59c7d18810dd856899bf16a7964725f5ab81ea49b1351cb71
+  Config SHA-256: 6c2db7f558a4a8deb9fe822583c1c5105f6c4e834dd0f9de8ad17a888ee9fe1d
+  MIT model · public-domain training data
+  * URL: https://librivox.org
+  * License: public domain
+
+en_GB-alba-medium
+  Model card: https://huggingface.co/rhasspy/piper-voices/resolve/c10ece1aade47bb51c153c893d14e5bf8e5b7117/en/en_GB/alba/medium/MODEL_CARD
+  Model SHA-256: 401369c4a81d09fdd86c32c5c864440811dbdcc66466cde2d64f7133a66ad03b
+  Config SHA-256: aa965a2f02ecced632c2694e1fc72bbff6d65f265fab567ca945918c73dd89f4
+  MIT model · CC BY 4.0 training data
+  * URL: https://datashare.ed.ac.uk/handle/10283/3270
+  * License: https://creativecommons.org/licenses/by/4.0/
+
+en_GB-northern_english_male-medium
+  Model card: https://huggingface.co/rhasspy/piper-voices/resolve/c10ece1aade47bb51c153c893d14e5bf8e5b7117/en/en_GB/northern_english_male/medium/MODEL_CARD
+  Model SHA-256: 57a219ae8e638873db7d18893304be5069c42868f392bb95c3ff17f0690d0689
+  Config SHA-256: 69557ed3d974463453e9b0c09dd99a7ed0e52b8b87b64b357dbeeb2540a97d47
+  MIT model · CC BY-SA 4.0 training data
+  * URL: http://www.openslr.org/83/
+  * License: CC-BY-SA 4.0 International
+
+en_GB-jenny_dioco-medium
+  Model card: https://huggingface.co/rhasspy/piper-voices/resolve/c10ece1aade47bb51c153c893d14e5bf8e5b7117/en/en_GB/jenny_dioco/medium/MODEL_CARD
+  Model SHA-256: 469c630d209e139dd392a66bf4abde4ab86390a0269c1e47b4e5d7ce81526b01
+  Config SHA-256: a9a7a93a317c9a3cb6563e37eb057df9ef09c06188a8a4341b0fcb58cba54dd4
+  MIT model · Dioco attribution-required training data; commercial use permitted
+  * URL: https://github.com/dioco-group/jenny-tts-dataset
+  * License: See URL
+
+en_GB-cori-medium
+  Model card: https://huggingface.co/rhasspy/piper-voices/resolve/c10ece1aade47bb51c153c893d14e5bf8e5b7117/en/en_GB/cori/medium/MODEL_CARD
+  Model SHA-256: 1899f98e5fb8310154f3c2973f4b8a929ba7245e722b3d3a85680b833d95f10d
+  Config SHA-256: e262c16d7f192f69d4edd6b4ef8a5915379e67495fcc402f1ab15eeb33da3d36
+  MIT model · public-domain training data
+  * URL: https://librivox.org
+  * License: public domain
+
+fr_FR-siwis-medium
+  Model card: https://huggingface.co/rhasspy/piper-voices/resolve/c10ece1aade47bb51c153c893d14e5bf8e5b7117/fr/fr_FR/siwis/medium/MODEL_CARD
+  Model SHA-256: 641d1ab097da2b81128c076810edb052b385decc8be3381814802a64a73baf99
+  Config SHA-256: 39479916c2db192b5ac9764daddd0c744d83e023ad890c6976c0633ae4df8959
+  MIT model · CC BY 4.0 training data
+  * URL: https://datashare.is.ed.ac.uk/handle/10283/2353
+  * License: CC-BY 4.0
+
+es_ES-davefx-medium
+  Model card: https://huggingface.co/rhasspy/piper-voices/resolve/c10ece1aade47bb51c153c893d14e5bf8e5b7117/es/es_ES/davefx/medium/MODEL_CARD
+  Model SHA-256: 6658b03b1a6c316ee4c265a9896abc1393353c2d9e1bca7d66c2c442e222a917
+  Config SHA-256: 0e0dda87c732f6f38771ff274a6380d9252f327dca77aa2963d5fbdf9ec54842
+  MIT model · CC0 training data
+  * URL: https://github.com/OHF-Voice/voice-datasets
+  * License: CC0
+
+pt_PT-tugão-medium
+  Model card: https://huggingface.co/rhasspy/piper-voices/resolve/c10ece1aade47bb51c153c893d14e5bf8e5b7117/pt/pt_PT/tug%C3%A3o/medium/MODEL_CARD
+  Model SHA-256: 223a7aaca69a155c61897e8ada7c3b13bc306e16c72dbb9c2fed733e2b0927d4
+  Config SHA-256: fe0918dfc0f1a89264a6eea4afe8e95d8e9fed3cc6c81b5c2f87fcb2b50c7320
+  MIT model · CC0 training data
+  * URL: https://github.com/OHF-Voice/voice-datasets
+  * License: CC0
+
+pt_BR-faber-medium
+  Model card: https://huggingface.co/rhasspy/piper-voices/resolve/c10ece1aade47bb51c153c893d14e5bf8e5b7117/pt/pt_BR/faber/medium/MODEL_CARD
+  Model SHA-256: 858555e3a064209c57088fe6bd70c4c3dc54d03eaa00c45d5ecaf43a33f95aa7
+  Config SHA-256: 7e694de195ae3fc36dd732c445eb04fb49b649854893cb5506b978f0d50a1d6f
+  MIT model · CC0 training data
+  * URL: https://github.com/OHF-Voice/voice-datasets
+  * License: CC0
+
+no_NO-talesyntese-medium
+  Model card: https://huggingface.co/rhasspy/piper-voices/resolve/c10ece1aade47bb51c153c893d14e5bf8e5b7117/no/no_NO/talesyntese/medium/MODEL_CARD
+  Model SHA-256: b763aebe02e72c4628c4074c4b8b448f05ffe523b975bfcd58e2c5d531270c13
+  Config SHA-256: b0eb0491fc8bf9843d2beac8acf8773b6cf59274316406b36ff579ae8a1909d5
+  MIT model · CC0 training data
+  * URL: https://www.nb.no/sprakbanken/en/resource-catalogue/oai-nb-no-sbr-15/
+  * License:  CC0
+
+da_DK-talesyntese-medium
+  Model card: https://huggingface.co/rhasspy/piper-voices/resolve/c10ece1aade47bb51c153c893d14e5bf8e5b7117/da/da_DK/talesyntese/medium/MODEL_CARD
+  Model SHA-256: b9271efd25f7b8494bbd28d48dd675c8c119daa284f3ee488008935f515f1241
+  Config SHA-256: 89fe13bd251406cc0088570d103ea7ac35823211d8466faf913268ab8506f41b
+  MIT model · CC0 training data
+  * URL: https://www.nb.no/sprakbanken/en/resource-catalogue/oai-nb-no-sbr-21/
+  * License: CC0
+
+fi_FI-harri-medium
+  Model card: https://huggingface.co/rhasspy/piper-voices/resolve/c10ece1aade47bb51c153c893d14e5bf8e5b7117/fi/fi_FI/harri/medium/MODEL_CARD
+  Model SHA-256: a44167faa34caed940e4fcad139fcc35922266b2593bcebe77701774c0fb2389
+  Config SHA-256: 3f9c9f76f74adf1fbe7279e41eea17d6610757e45effd6808bbea6be74b8916d
+  MIT model · CC0 training data
+  * URL: https://www.kaggle.com/bryanpark/finnish-single-speaker-speech-dataset
+  * License: CC0
+
+de_DE-thorsten-high
+  Model card: https://huggingface.co/rhasspy/piper-voices/resolve/c10ece1aade47bb51c153c893d14e5bf8e5b7117/de/de_DE/thorsten/high/MODEL_CARD
+  Model SHA-256: 9df1c43c61149ef9b39e618e2b861fbe41e1fcea9390b2dac62e8761573ea4f1
+  Config SHA-256: 6de734444e4c3f9e33b7ebe2746dbc19b71e85f613e79c65acf623200b99a76a
+  MIT model · CC0 training data
+  * URL: https://github.com/thorstenMueller/Thorsten-Voice
+  * License: CC0
+
+Additional Jenny (Dioco) attribution source:
+https://github.com/dioco-group/jenny-tts-dataset/blob/ad714a8d15fa010b4ccc024df678822695238070/README.md
+The author requires the name Jenny, and where practical Jenny (Dioco),
+in software/interfaces that generate audio from this dataset. Commercial
+use is permitted; attribution is not required for distributing generated
+clips. The voice catalog retains Jenny (Dioco).
+
+Source changes: these notices are collected from the pinned upstream model
+cards; the model/config binaries remain unmodified.

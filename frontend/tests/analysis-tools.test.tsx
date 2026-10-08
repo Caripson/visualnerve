@@ -17,10 +17,11 @@ beforeEach(() => {
   useEditor.getState().setGraph(graph);
   useEditor.getState().select([graph.nodes[0].id]);
 });
-it('configures directed/undirected paths and resets without changing canonical objects', () => {
+it('configures directed/undirected paths and resets without changing canonical objects', async () => {
   const graph = useEditor.getState().graph!;
   render(<AnalysisTools />);
   fireEvent.click(screen.getByRole('button', { name: 'Explore relationships and views' }));
+  await screen.findByRole('dialog', { name: 'Relationships and analysis views' });
   fireEvent.change(screen.getByLabelText('Relationship exploration mode'), {
     target: { value: 'path' },
   });
@@ -44,6 +45,7 @@ it('saves and loads a named layout, keeps current notes, and restores focus afte
   const open = screen.getByRole('button', { name: 'Explore relationships and views' });
   open.focus();
   fireEvent.click(open);
+  await screen.findByRole('dialog', { name: 'Relationships and analysis views' });
   fireEvent.change(screen.getByLabelText('Analysis view name'), {
     target: { value: 'Customer dependencies' },
   });
@@ -71,6 +73,7 @@ it('keeps the Properties dialog and successful load feedback mounted when loadin
   render(<Properties />);
   expect(screen.getByLabelText('Node title')).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'Explore relationships and views' }));
+  await screen.findByRole('dialog', { name: 'Relationships and analysis views' });
   const dialog = screen.getByRole('dialog', { name: 'Relationships and analysis views' });
   fireEvent.change(screen.getByLabelText('Saved analysis view'), { target: { value: id } });
   fireEvent.click(screen.getByRole('button', { name: 'Load view' }));

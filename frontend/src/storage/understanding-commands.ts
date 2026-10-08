@@ -8,21 +8,14 @@ import { getBuildSpecification, setBuildSpecification } from '../export/build-sp
 import { getOverviewConfig, setOverviewConfig } from '../overview/types';
 import { getStoryboard, setStoryboard } from '../presentation/storyboard';
 import type { HistoryStore } from '../history/store';
+import type { WorkspaceStorage } from './contracts';
 
 export interface UnderstandingRepository {
   getGraph(id: string): Promise<Graph>;
   saveGraph(graph: Graph, baseVersion: number): Promise<Graph>;
   history: HistoryStore;
 }
-export const understandingActions = [
-  'overview',
-  'questions',
-  'evidence',
-  'build-specification',
-  'build-brief',
-  'storyboard',
-  'history',
-];
+export { understandingActions } from './understanding-actions';
 const object = (value: unknown, keys: string[]) => {
   if (
     !value ||
@@ -45,7 +38,7 @@ export async function understandingCommand(
   url: URL,
   method: string,
   payload: unknown,
-  beforeHistoryWrite?: () => Promise<void>,
+  beforeHistoryWrite?: (scope: WorkspaceStorage) => Promise<void>,
 ): Promise<unknown> {
   const action = parts[2];
   if (action === 'history')
@@ -135,7 +128,7 @@ async function historyCommand(
   url: URL,
   method: string,
   payload: unknown,
-  beforeWrite?: () => Promise<void>,
+  beforeWrite?: (scope: WorkspaceStorage) => Promise<void>,
 ) {
   if (parts.length === 3) {
     if (method === 'GET') return repo.history.list(id);
@@ -149,7 +142,7 @@ async function historyCommand(
   }
   if (parts.length === 4) {
     if (method === 'GET') return repo.history.read(id, parts[3]);
-    if (method === 'DELETE') return repo.history.remove(id, parts[3]);
+    if (method === 'DELETE') return repo.history.remove(id, parts[3], beforeWrite);
   }
   if (parts.length === 5 && parts[4] === 'compare' && method === 'GET') {
     if (

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorkspaceDatabase } from '../src/storage/database';
 import { blankGraph } from '../src/model/types';
 import { SimulationService, simulationRuntimeLimits } from '../src/simulation/service';
+import { SimulationRunStore } from '../src/simulation/run-store';
 import { createBasicModel } from '../src/simulation/examples';
 import { SimulationEngine } from '../src/simulation/engine';
 import type { WorkerCommand, WorkerUpdate } from '../src/simulation/protocol';
@@ -66,6 +67,7 @@ beforeEach(async () => {
 afterEach(async () => {
   service.dispose();
   await db.delete();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 const latest = () => MockWorker.instances[MockWorker.instances.length - 1];
@@ -200,9 +202,9 @@ describe('Process Simulator shared runtime', () => {
     } else if (failure === 'options')
       attempt = service.start(diagramId, model, { durationSeconds: -1 });
     else if (failure === 'storage failure') {
-      const store = (service as unknown as { store: { put: (run: unknown) => Promise<unknown> } })
-        .store;
-      vi.spyOn(store, 'put').mockRejectedValueOnce(new Error('Storage unavailable.'));
+      vi.spyOn(SimulationRunStore.prototype, 'put').mockRejectedValueOnce(
+        new Error('Storage unavailable.'),
+      );
       attempt = service.start(diagramId, model);
     } else if (failure === 'worker failure') {
       vi.stubGlobal(
@@ -401,16 +403,18 @@ describe('Process Simulator shared runtime', () => {
   );
   it('final results are durably saved before completion is published or returned', async () => {
     const run = await service.start(diagramId, model);
-    const store = (service as unknown as { store: { put: (value: unknown) => Promise<unknown> } })
-      .store;
-    const original = store.put.bind(store);
+    const original = SimulationRunStore.prototype.put;
     let release = () => {};
     const gate = new Promise<void>((resolve) => {
       release = resolve;
     });
-    vi.spyOn(store, 'put').mockImplementationOnce(async (value) => {
+    vi.spyOn(SimulationRunStore.prototype, 'put').mockImplementationOnce(async function (
+      this: SimulationRunStore,
+      value,
+      beforeWrite,
+    ) {
       await gate;
-      return original(value);
+      return original.call(this, value, beforeWrite);
     });
     let published = false;
     service.subscribe(() => {

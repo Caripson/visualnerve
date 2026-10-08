@@ -31,5 +31,10 @@ export default defineConfig(({ command }) => ({
     include: ['tests/**/*.test.{ts,tsx}'],
     setupFiles: ['tests/setup.ts'],
     maxWorkers: 2,
+    // Native 600k-iteration password KDFs remain real in the security suites.
+    // Allow their multi-operation scenarios to finish on shared CI/mobile-class CPUs;
+    // production deadlines and explicit performance-test ceilings are independent.
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
   },
 }));

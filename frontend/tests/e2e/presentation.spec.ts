@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext } from './fixtures';
 import type { Graph } from '../../src/model/types';
+import type { PresentationVoiceCatalog } from '../../src/presentation/types';
 import { browserLaunchOptions } from '../../playwright.config';
 test.use({
   launchOptions: {
@@ -259,14 +260,44 @@ test('MCP player uses the same 3D diagram and transient camera with documented r
   expect(after.diagram.version).toBe(before.diagram.version);
   expect(after.diagram.settings.spatialView).toEqual(before.diagram.settings.spatialView);
   expect(after.nodes).toEqual(before.nodes);
-  const voices = await (await request.get('/api/v1/presentation/voices')).json();
+  const voices = (await (
+    await request.get('/api/v1/presentation/voices')
+  ).json()) as PresentationVoiceCatalog;
   expect(voices.defaultVoiceId).toBe('en_GB-alan-medium');
-  expect(voices.voices.map((voice: { language: string }) => voice.language)).toEqual([
-    'en',
-    'en',
-    'en',
-    'sv',
+  // Verify the documented selectable catalog, including real upstream quality
+  // tiers and fixed multi-speaker selection, without downloading voice weights.
+  expect(
+    voices.voices.map((voice) => [voice.id, voice.locale, voice.quality, voice.speakerCount]),
+  ).toEqual([
+    ['en_GB-alan-medium', 'en-GB', 'medium', 1],
+    ['en_US-ljspeech-high', 'en-US', 'high', 1],
+    ['en_GB-cori-high', 'en-GB', 'high', 1],
+    ['sv_SE-nst-medium', 'sv-SE', 'medium', 1],
+    ['en_US-libritts-high', 'en-US', 'high', 904],
+    ['en_US-joe-medium', 'en-US', 'medium', 1],
+    ['en_US-kristin-medium', 'en-US', 'medium', 1],
+    ['en_US-norman-medium', 'en-US', 'medium', 1],
+    ['en_GB-alba-medium', 'en-GB', 'medium', 1],
+    ['en_GB-northern_english_male-medium', 'en-GB', 'medium', 1],
+    ['en_GB-jenny_dioco-medium', 'en-GB', 'medium', 1],
+    ['en_GB-cori-medium', 'en-GB', 'medium', 1],
+    ['fr_FR-siwis-medium', 'fr-FR', 'medium', 1],
+    ['es_ES-davefx-medium', 'es-ES', 'medium', 1],
+    ['pt_PT-tugão-medium', 'pt-PT', 'medium', 1],
+    ['pt_BR-faber-medium', 'pt-BR', 'medium', 1],
+    ['no_NO-talesyntese-medium', 'no-NO', 'medium', 1],
+    ['da_DK-talesyntese-medium', 'da-DK', 'medium', 1],
+    ['fi_FI-harri-medium', 'fi-FI', 'medium', 1],
+    ['de_DE-thorsten-high', 'de-DE', 'high', 1],
   ]);
+  expect(new Set(voices.voices.map((voice) => voice.language))).toEqual(
+    new Set(['en', 'sv', 'fr', 'es', 'pt', 'no', 'da', 'fi', 'de']),
+  );
+  for (const voice of voices.voices) {
+    expect(voice.language).toBe(voice.locale.split('-')[0]);
+    expect(voice.speakerId).toBe(0);
+    expect(voice.sampleRate).toBe(22050);
+  }
   await page.getByRole('button', { name: '2D view', exact: true }).click();
   await expect(page.getByTestId('spatial-view')).toBeHidden();
   await expect(page.locator('.presentation-node-number')).toHaveCount(3);

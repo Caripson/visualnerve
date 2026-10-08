@@ -69,3 +69,25 @@ it('keeps failed saves recoverable and a different dialog can still open', async
   expect(screen.getByText('SQL editor')).toBeInTheDocument();
   expect(screen.queryByRole('dialog', { name: 'Tool could not open' })).toBeNull();
 });
+
+it('hides a retained failed tool while closed and can show its recovery controls again', () => {
+  const props = { close: vi.fn(), beforeReload: async () => undefined };
+  const { rerender } = render(
+    <LazyDialogBoundary {...props} active>
+      <FailedTool />
+    </LazyDialogBoundary>,
+  );
+  expect(screen.getByRole('dialog', { name: 'Tool could not open' })).toBeInTheDocument();
+  rerender(
+    <LazyDialogBoundary {...props} active={false}>
+      <FailedTool />
+    </LazyDialogBoundary>,
+  );
+  expect(screen.queryByRole('dialog')).toBeNull();
+  rerender(
+    <LazyDialogBoundary {...props} active>
+      <FailedTool />
+    </LazyDialogBoundary>,
+  );
+  expect(screen.getByRole('button', { name: 'Save and reload' })).toBeInTheDocument();
+});

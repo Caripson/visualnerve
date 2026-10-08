@@ -1,6 +1,5 @@
-import { liveQuery } from 'dexie';
 import { useEffect, useRef, useState } from 'react';
-import { database } from '../storage/database';
+import { workspaceStorage } from '../storage/runtime';
 import { workspace } from '../storage/workspace';
 import { speechService } from '../presentation/speech/service';
 import { Narrator } from '../presentation/narrator';
@@ -41,20 +40,36 @@ export function VoiceSettings() {
   }
   useEffect(() => {
     mounted.current = true;
-    const subscription = liveQuery(() => database.settings.get(VOICE_SETTING)).subscribe({
-      next: (record) => {
+    let disposed = false;
+    let revision = 0;
+    const refresh = async () => {
+      const requested = ++revision;
+      try {
+        const record = await workspaceStorage.settings.get(VOICE_SETTING);
+        if (disposed || requested !== revision) return;
         const value = normalizeVoiceId(record?.value);
         setActive(value);
         if (!dirty.current) setDraft(value);
-      },
-      error: () => undefined,
+      } catch (error) {
+        if (!disposed && requested === revision) setError((error as Error).message);
+      }
+    };
+    const unsubscribe = workspaceStorage.subscribe((change) => {
+      if (change.stores.includes('settings')) void refresh();
     });
-    void speechService.cachedVoices().then((value) => {
-      if (mounted.current) setCached(value);
-    });
+    void refresh();
+    void speechService
+      .cachedVoices()
+      .then((value) => {
+        if (!disposed) setCached(value);
+      })
+      .catch((error: Error) => {
+        if (!disposed) setError(error.message);
+      });
     return () => {
+      disposed = true;
       mounted.current = false;
-      subscription.unsubscribe();
+      unsubscribe();
       stopPreview();
     };
   }, []);
@@ -153,6 +168,10 @@ export function VoiceSettings() {
       <p className="muted">
         Alan, a British male voice, is the default. Neural speech runs locally in your browser;
         descriptions are never sent to a speech service.
+      </p>
+      <p className="muted">
+        Model quality: {voice.quality}. Medium and high are the available Piper tiers; there is no
+        high+ tier. A voice reads your text; it does not translate it.
       </p>
       <p className="muted">
         {cached.includes(draft)

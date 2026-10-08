@@ -1,6 +1,7 @@
 import type { Graph } from '../model/types';
 import { StorageError } from '../model/errors';
 import type { PresentationSource } from './storyboard';
+import { VOICES, DEFAULT_VOICE_ID } from './speech/voice-models';
 
 export interface PresentationDefinition {
   version: 1;
@@ -10,13 +11,8 @@ export interface PresentationDefinition {
 }
 export const presentationDefaults = { secondsPerNode: 8, transitionMs: 1200 } as const;
 export const presentationNodeLimit = 20_000;
-export const presentationVoiceIds = [
-  'en_GB-alan-medium',
-  'en_US-ljspeech-high',
-  'en_GB-cori-high',
-  'sv_SE-nst-medium',
-] as const;
-export const defaultPresentationVoiceId = presentationVoiceIds[0];
+export const presentationVoiceIds = VOICES.map((voice) => voice.id);
+export const defaultPresentationVoiceId = DEFAULT_VOICE_ID;
 export function isPresentationVoiceId(
   value: unknown,
 ): value is (typeof presentationVoiceIds)[number] {
@@ -46,7 +42,11 @@ export interface PresentationRuntimeState {
 export interface PresentationVoice {
   id: (typeof presentationVoiceIds)[number];
   label: string;
-  language: 'en' | 'sv';
+  language: 'en' | 'sv' | 'fr' | 'es' | 'pt' | 'no' | 'da' | 'fi' | 'de';
+  locale: (typeof VOICES)[number]['language'];
+  quality: (typeof VOICES)[number]['quality'];
+  speakerCount: number;
+  speakerId: number;
   sampleRate: number;
   modelBytes: number;
   license: string;

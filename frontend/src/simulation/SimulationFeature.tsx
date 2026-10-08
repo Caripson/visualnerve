@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useCompactLayout } from '../hooks/useCompactLayout';
 import { useEditor } from '../state/editor';
 import { workspace } from '../storage/workspace';
@@ -6,7 +6,7 @@ import { getSpatialView } from '../spatial/types';
 import { setSimulationModel } from './document';
 import { simulationService } from './service';
 import { useSimulationCanvasLifecycle } from './useSimulationCanvasLifecycle';
-import { ModelEditor } from './ModelEditor';
+import { SimulationModelDialogs } from './SimulationModelDialogs';
 import { MetricsDashboard } from './MetricsDashboard';
 import { ScenarioControls } from './ScenarioControls';
 import { cloneScenario } from './scenario-patch';
@@ -18,10 +18,14 @@ import {
   SimulationStopActions,
   simulationTime,
 } from './SimulationControls';
-import { SimulationResults } from './SimulationResults';
 import { SimulationWorkbench } from './SimulationWorkbench';
-import { ProcessWizard, simulationSetupEvent } from './ProcessWizard';
+import { simulationSetupEvent } from './setup-event';
+import { SimulationUIActions, type SimulationUIAction } from './ui-action';
 import './simulation.css';
+
+const SimulationResults = lazy(() =>
+  import('./SimulationResults').then((module) => ({ default: module.SimulationResults })),
+);
 
 export { simulationTime } from './SimulationControls';
 export function SimulationFeature() {
@@ -48,7 +52,29 @@ export function SimulationFeature() {
   const [untilComplete, setUntilComplete] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [, setControlsRevision] = useState(0);
   const [runs, setRuns] = useState<Awaited<ReturnType<typeof simulationService.list>>>([]);
+  const uiActions = useMemo(
+    () =>
+      new SimulationUIActions(
+        () => workspace.repo.db,
+        () => useEditor.getState().graph?.diagram.id,
+      ),
+    [],
+  );
+  useLayoutEffect(() => {
+    const unmount = uiActions.mount();
+    // Observe intermediate navigation/lock states even if React batches a same-ID reopen.
+    const unsubscribe = useEditor.subscribe(() => {
+      const previous = uiActions.revision;
+      uiActions.observeDiagram();
+      if (uiActions.revision !== previous) setControlsRevision(uiActions.revision);
+    });
+    return () => {
+      unsubscribe();
+      unmount();
+    };
+  }, [uiActions]);
   const sameModel = useMemo(
     () => !view || JSON.stringify(graph?.simulation) === JSON.stringify(view.run.model),
     [graph?.simulation, view?.run.model],
@@ -57,6 +83,8 @@ export function SimulationFeature() {
     setSettings(false);
     setScenarioId('');
     setError('');
+    setBusy(false);
+    setRuns([]);
     setDetails(false);
     setMetricsOpen(true);
     setSetup(false);
@@ -67,7 +95,7 @@ export function SimulationFeature() {
     }
   }, [graph?.diagram.id]);
   useEffect(() => {
-    if (!graph?.simulation) return;
+    if (!graph?.simulation || !uiActions.isCurrent(graph.diagram.id)) return;
     const empty = graph.simulation.nodes.length === 0;
     if (empty && !offeredSetup.current.has(graph.diagram.id)) {
       offeredSetup.current.add(graph.diagram.id);
@@ -80,13 +108,22 @@ export function SimulationFeature() {
     return () => window.removeEventListener(simulationSetupEvent, openSetup);
   }, [graph?.diagram.id, graph?.simulation?.nodes.length]);
   useEffect(() => {
-    if (graph?.simulation)
-      void simulationService
-        .list(graph.diagram.id)
-        .then(setRuns)
-        .catch((failure) => setError(failure.message));
+    if (!graph?.simulation || !uiActions.isCurrent(graph.diagram.id)) return;
+    const action = uiActions.begin(graph.diagram.id, false);
+    void (async () => {
+      await action.check();
+      const saved = await simulationService.list(graph.diagram.id);
+      await action.check();
+      setRuns(saved);
+    })()
+      .catch((failure) => {
+        if (action.isCurrent()) setError((failure as Error).message);
+      })
+      .finally(action.dispose);
+    return action.dispose;
   }, [graph?.diagram.id, resultsView?.run.status, resultsView?.run.id]);
   if (!graph?.simulation || graph.diagram.type !== 'process-simulator') return null;
+  const diagramId = graph.diagram.id;
   const model = graph.simulation;
   const visibleError = error || topologyError;
   const active = view?.run.status === 'running' || view?.run.status === 'paused';
@@ -98,29 +135,56 @@ export function SimulationFeature() {
       view.run.options.durationSeconds === duration &&
       !!view.run.options.untilComplete === untilComplete);
   const canResume = paused && view?.replayTimeSeconds === undefined && sameModel && sameRunSettings;
-  async function perform(action: () => Promise<unknown>) {
+  const revision = uiActions.revision;
+  const changeControls = (change: () => void) => {
+    if (!uiActions.isCurrent(graph.diagram.id, revision)) return false;
+    uiActions.cancelPending();
+    // Selecting the same value can make every assumption setter a React no-op.
+    // The rendered callbacks must still receive the newly invalidated revision.
+    setControlsRevision(uiActions.revision);
+    setBusy(false);
+    change();
+    return true;
+  };
+  async function perform(
+    action: (job: SimulationUIAction) => Promise<unknown>,
+    actionRevision = revision,
+  ) {
+    if (!uiActions.isCurrent(diagramId, actionRevision)) return;
+    const job = uiActions.begin(diagramId);
     setError('');
     setBusy(true);
     try {
-      await action();
+      await job.check();
+      await action(job);
+      await job.check();
     } catch (failure) {
-      setError((failure as Error).message);
+      if (job.isCurrent()) setError((failure as Error).message);
     } finally {
-      setBusy(false);
+      if (job.isCurrent()) setBusy(false);
+      job.dispose();
     }
   }
   const play = () =>
-    perform(async () => {
+    perform(async (job) => {
       if (!useEditor.getState().graph?.simulation?.nodes.length) {
         setSetup(true);
         return;
       }
       await workspace.settled();
-      if (canResume && view) {
-        await simulationService.control(view.run.id, 'resume');
+      await job.check();
+      if (
+        canResume &&
+        view &&
+        JSON.stringify(useEditor.getState().graph?.simulation) === JSON.stringify(view.run.model)
+      ) {
+        await simulationService.control(view.run.id, 'resume', { beforeWrite: job.check });
         return;
       }
-      if (active && view) await simulationService.control(view.run.id, 'stop');
+      if (active && view) {
+        await simulationService.control(view.run.id, 'stop', { beforeWrite: job.check });
+        await job.check();
+      }
       const saved = useEditor.getState().graph!;
       await simulationService.start(saved.diagram.id, saved.simulation!, {
         durationSeconds: duration,
@@ -130,9 +194,11 @@ export function SimulationFeature() {
         speed,
         animated: speed !== 'max',
         origin: 'ui',
+        beforeWrite: job.check,
       });
     });
   const createScenario = () => {
+    if (!changeControls(() => {})) return;
     const name = window
       .prompt('Scenario name', `Scenario ${String.fromCharCode(65 + model.scenarios.length)}`)
       ?.trim();
@@ -156,30 +222,48 @@ export function SimulationFeature() {
     canResume,
     hasRun: !!view,
     play,
-    pause: () => view && void perform(() => simulationService.control(view.run.id, 'pause')),
-    stop: () => view && void perform(() => simulationService.control(view.run.id, 'stop')),
-    reset: () => view && void perform(() => simulationService.control(view.run.id, 'reset')),
+    pause: () =>
+      view &&
+      void perform((job) =>
+        simulationService.control(view.run.id, 'pause', { beforeWrite: job.check }),
+      ),
+    stop: () =>
+      view &&
+      void perform((job) =>
+        simulationService.control(view.run.id, 'stop', { beforeWrite: job.check }),
+      ),
+    reset: () =>
+      view &&
+      void perform((job) =>
+        simulationService.control(view.run.id, 'reset', { beforeWrite: job.check }),
+      ),
   };
   const runSettings = (
     <SimulationRunSettings
       model={model}
       speed={speed}
       setSpeed={(next) => {
-        setSpeed(next);
-        if (view && active) void perform(() => simulationService.setSpeed(view.run.id, next));
+        if (!changeControls(() => setSpeed(next))) return;
+        if (view && active)
+          void perform(
+            (job) => simulationService.setSpeed(view.run.id, next, job.check),
+            uiActions.revision,
+          );
       }}
       duration={duration}
-      setDuration={setDuration}
+      setDuration={(next) => changeControls(() => setDuration(next))}
       seed={seed}
-      setSeed={setSeed}
+      setSeed={(next) => changeControls(() => setSeed(next))}
       untilComplete={untilComplete}
-      setUntilComplete={setUntilComplete}
+      setUntilComplete={(next) => changeControls(() => setUntilComplete(next))}
       scenarioId={scenarioId}
-      setScenarioId={setScenarioId}
+      setScenarioId={(next) => changeControls(() => setScenarioId(next))}
       createScenario={createScenario}
       configure={() => {
-        setDetails(false);
-        setSettings(true);
+        changeControls(() => {
+          setDetails(false);
+          setSettings(true);
+        });
       }}
     />
   );
@@ -213,15 +297,23 @@ export function SimulationFeature() {
     <MetricsDashboard state={view.state} currency={view.run.model.currency} compact={compact} />
   );
   const results = (
-    <SimulationResults
-      key={graph.diagram.id}
-      model={model}
-      view={resultsView}
-      runs={runs}
-      busy={busy}
-      perform={perform}
-      compact={compact}
-    />
+    <Suspense
+      fallback={
+        <p className="simulation-notice" role="status">
+          Loading replay and comparison controls…
+        </p>
+      }
+    >
+      <SimulationResults
+        key={graph.diagram.id}
+        model={model}
+        view={resultsView}
+        runs={runs}
+        busy={busy}
+        perform={perform}
+        compact={compact}
+      />
+    </Suspense>
   );
   return (
     <section
@@ -234,7 +326,7 @@ export function SimulationFeature() {
             {...actions}
             seconds={view?.state?.timeSeconds ?? 0}
             status={view?.run.status ?? 'ready'}
-            openDetails={() => setDetails(true)}
+            openDetails={() => changeControls(() => setDetails(true))}
           />
           {!details && topologyChanged && (
             <p className="simulation-notice" role="status">
@@ -249,13 +341,17 @@ export function SimulationFeature() {
           )}
           {details && (
             <SimulationWorkbench
-              close={() => setDetails(false)}
+              close={() => changeControls(() => setDetails(false))}
               busy={busy}
               play={play}
               runSettings={
                 <>
                   <div className="simulation-run-settings">{runSettings}</div>
-                  <ScenarioControls graph={graph} id={scenarioId} select={setScenarioId} />
+                  <ScenarioControls
+                    graph={graph}
+                    id={scenarioId}
+                    select={(next) => changeControls(() => setScenarioId(next))}
+                  />
                 </>
               }
               metrics={metrics}
@@ -294,23 +390,29 @@ export function SimulationFeature() {
             </div>
             <div className="simulation-desktop-settings">{runSettings}</div>
           </div>
-          <ScenarioControls graph={graph} id={scenarioId} select={setScenarioId} />
+          <ScenarioControls
+            graph={graph}
+            id={scenarioId}
+            select={(next) => changeControls(() => setScenarioId(next))}
+          />
           {notices}
           {metricsOpen && metrics}
           {results}
         </>
       )}
       {settings && (
-        <ModelEditor
+        <SimulationModelDialogs
+          kind="settings"
           graph={graph}
           scenarioId={scenarioId || undefined}
-          close={() => setSettings(false)}
+          close={() => changeControls(() => setSettings(false))}
         />
       )}
       {setup && graph.simulation.nodes.length === 0 && (
-        <ProcessWizard
+        <SimulationModelDialogs
+          kind="setup"
           graph={graph}
-          close={() => setSetup(false)}
+          close={() => changeControls(() => setSetup(false))}
           created={(options) => {
             setDuration(options.durationSeconds);
             setSeed(graph.simulation!.defaults.seed);

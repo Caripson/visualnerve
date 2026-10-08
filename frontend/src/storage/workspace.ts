@@ -1,5 +1,6 @@
-import { assertVoiceId, VOICE_SETTING } from '../presentation/speech/voices';
-import { liveQuery, type Subscription } from 'dexie';
+import { assertVoiceId, normalizeVoiceId, VOICE_SETTING } from '../presentation/speech/voices';
+import { VOICE_CHANGED } from '../presentation/speech/voice-events';
+import { workspaceStoreNames, type WorkspaceOperation, type WorkspaceStorage } from './contracts';
 import { useEditor } from '../state/editor';
 import { diffGraph } from '../state/history';
 import { ownersFor, type Graph } from '../model/types';
@@ -26,6 +27,10 @@ import {
   appearanceSettingsChanged,
   type AppearancePreference,
 } from '../ui/appearance';
+import { bridge } from '../integration/bridge';
+import { isWorkspaceLockCommand, workspaceSecurityStatus } from './security-status';
+import type { VaultSession } from '../security/vault-session';
+import { VaultStorageError } from '../security/vault-storage';
 
 /** Commit a pending local camera before a user-requested snapshot or navigation. */
 export function flushSpatialCamera() {
@@ -95,10 +100,17 @@ function acknowledged(local: Graph, saved: Graph): Graph {
 }
 
 interface QueuedSave {
-  graph: Graph;
+  graph?: Graph;
   revision: number;
   sourcesChanged: boolean;
   cancelled?: boolean;
+  operation?: Promise<WorkspaceOperation>;
+}
+interface WorkspaceJob {
+  operation: WorkspaceOperation;
+  repo: Repository;
+  lifecycle: number;
+  check(): Promise<void>;
 }
 interface PreferenceFailure {
   message: string;
@@ -170,9 +182,11 @@ function cameraRebased(before: Graph, local: Graph, committed: Graph): Graph {
 
 /** Optimistic editor state backed exclusively by committed IndexedDB transactions. */
 export class Workspace {
+  private voiceSelection?: string;
   private queue: Promise<void> = Promise.resolve();
   private unsubscribe?: () => void;
-  private observer?: Subscription;
+  private observer?: () => void;
+  private lifecycle = 0;
   private versions = new Map<string, number>();
   private pending = new Map<string, QueuedSave>();
   private queuedSaves = new Set<QueuedSave>();
@@ -186,91 +200,158 @@ export class Workspace {
   private stopped = false;
   private analysisCommands = new Set<AbortController>();
   constructor(public repo: Repository = repository) {}
-  async start() {
-    this.stopped = false;
-    this.publishPreferenceError();
-    await this.repo.db.open();
-    if ((await this.repo.db.settings.get('storage-consent'))?.value !== true) {
-      useEditor.setState({
-        privacyAcknowledged: false,
-        graph: null,
-        diagrams: [],
-        owners: [],
-        mcpAccess: 'off',
-        importFileLimitMb: 50,
-        projectSourceFileLimit: 500,
-        workspaceId: '',
-        theme: 'system',
-      });
-      this.syncAppearance('system');
-      return;
+  private assertLifecycle(lifecycle: number) {
+    if (lifecycle !== this.lifecycle || this.stopped)
+      throw new StorageError(409, 'This workspace operation was cancelled.');
+  }
+  private async withOperation<T>(
+    work: (job: WorkspaceJob) => Promise<T>,
+    existing?: WorkspaceJob,
+    originatingOperation?: WorkspaceOperation,
+  ): Promise<T> {
+    if (existing) {
+      await existing.check();
+      const result = await work(existing);
+      await existing.check();
+      return result;
     }
-    await this.repo.db.initialize();
-    const theme = await this.repo.db.settings.get('theme');
-    const legacyTheme = localStorage.getItem('vn-theme');
-    if (!theme && legacyTheme)
-      await this.repo.db.settings.put({ key: 'theme', value: legacyTheme });
-    localStorage.removeItem('vn-theme');
-    this.unsubscribe = useEditor.subscribe((state, previous) => {
-      if (state.editRevision === previous.editRevision || !state.graph) return;
-      const graph = ownersFor(state.graph, state.owners);
-      const revision = state.editRevision;
-      const oldSources = previous.graph ? graphDatasets(previous.graph) : [];
-      const sources = graphDatasets(graph);
-      const sourcesChanged =
-        this.pending.get(graph.diagram.id)?.sourcesChanged === true ||
-        oldSources.length !== sources.length ||
-        sources.some((source, index) => source !== oldSources[index]);
-      const save = { graph, revision, sourcesChanged };
-      this.pending.set(graph.diagram.id, save);
-      this.queuedSaves.add(save);
-      this.queue = this.queue.then(() => this.persist(save));
-    });
-    await this.refresh();
-    const last = await this.repo.db.settings.get('last-diagram');
-    if (
-      typeof last?.value === 'string' &&
-      useEditor.getState().diagrams.some((diagram) => diagram.id === last.value)
-    )
-      await this.open(last.value);
-    this.observer = liveQuery(() =>
-      this.repo.db.transaction(
-        'r',
-        this.repo.db.diagrams,
-        this.repo.db.owners,
-        this.repo.db.settings,
-        async () => {
-          await this.repo.db.diagrams.toArray();
-          await this.repo.db.owners.toArray();
-          await this.repo.db.settings.toArray();
-          return true;
-        },
-      ),
-    ).subscribe({
-      next: () => {
-        void this.refresh().catch((error) => this.error(error));
+    const lifecycle = this.lifecycle;
+    const operation = originatingOperation ?? (await this.repo.db.captureOperation());
+    const job: WorkspaceJob = {
+      operation,
+      repo: new Repository(operation.storage),
+      lifecycle,
+      check: async () => {
+        await operation.check();
+        this.assertLifecycle(lifecycle);
       },
-      error: (error) => this.error(error),
-    });
-    if (this.repo === repository) {
-      const { bridge } = await import('../integration/bridge');
-      bridge.start();
+    };
+    try {
+      await job.check();
+      const result = await work(job);
+      await job.check();
+      return result;
+    } catch (error) {
+      await job.check();
+      throw error;
+    } finally {
+      if (!originatingOperation) operation.dispose();
     }
   }
+  async start() {
+    this.lifecycle++;
+    this.stopped = false;
+    this.unsubscribe?.();
+    this.observer?.();
+    this.unsubscribe = undefined;
+    this.observer = undefined;
+    // Unlocking is not authorization to revive an earlier agent's content access.
+    if ('session' in this.repo.db) this.accessCeiling = 'off';
+    this.publishPreferenceError();
+    await this.withOperation(async (job) => {
+      const db = job.operation.storage;
+      await db.open();
+      await job.check();
+      if ((await db.settings.get('storage-consent'))?.value !== true) {
+        await job.check();
+        useEditor.setState({
+          privacyAcknowledged: false,
+          graph: null,
+          diagrams: [],
+          owners: [],
+          mcpAccess: 'off',
+          importFileLimitMb: 50,
+          projectSourceFileLimit: 500,
+          workspaceId: '',
+          theme: 'system',
+        });
+        this.syncAppearance('system');
+        return;
+      }
+      await db.initialize();
+      await job.check();
+      const theme = await db.settings.get('theme');
+      await job.check();
+      const legacyTheme = localStorage.getItem('vn-theme');
+      if (!theme && legacyTheme) await db.settings.put({ key: 'theme', value: legacyTheme });
+      await job.check();
+      localStorage.removeItem('vn-theme');
+      const lifecycle = job.lifecycle;
+      this.unsubscribe = useEditor.subscribe((state, previous) => {
+        if (
+          lifecycle !== this.lifecycle ||
+          this.stopped ||
+          state.editRevision === previous.editRevision ||
+          !state.graph
+        )
+          return;
+        const graph = ownersFor(state.graph, state.owners);
+        const revision = state.editRevision;
+        const oldSources = previous.graph ? graphDatasets(previous.graph) : [];
+        const sources = graphDatasets(graph);
+        const sourcesChanged =
+          this.pending.get(graph.diagram.id)?.sourcesChanged === true ||
+          oldSources.length !== sources.length ||
+          sources.some((source, index) => source !== oldSources[index]);
+        const save = {
+          graph,
+          revision,
+          sourcesChanged,
+          operation: this.repo.db.captureOperation(),
+        };
+        // Attach a rejection handler while the job waits behind older saves.
+        void save.operation.catch(() => undefined);
+        this.pending.set(graph.diagram.id, save);
+        this.queuedSaves.add(save);
+        this.queue = this.queue.then(() => this.persist(save));
+      });
+      await this.refresh(job);
+      await job.check();
+      const last = await db.settings.get('last-diagram');
+      await job.check();
+      if (
+        typeof last?.value === 'string' &&
+        useEditor.getState().diagrams.some((diagram) => diagram.id === last.value)
+      )
+        await this.openCaptured(job, last.value, ++this.navigation);
+      await job.check();
+      this.observer = db.subscribe((change) => {
+        if (lifecycle !== this.lifecycle || this.stopped) return;
+        if (change.stores.some((store) => ['diagrams', 'owners', 'settings'].includes(store))) {
+          void this.refresh().catch((error) => {
+            if (lifecycle === this.lifecycle && !this.stopped) this.error(error);
+          });
+        }
+      });
+      if (this.repo === repository) {
+        await job.check();
+        bridge.start();
+      }
+    });
+  }
   stop() {
+    this.lifecycle++;
+    this.navigation++;
     this.stopped = true;
+    this.preferenceWrites = 0;
     for (const controller of this.analysisCommands) controller.abort();
     this.analysisCommands.clear();
     this.unsubscribe?.();
-    this.observer?.unsubscribe();
+    this.observer?.();
+    this.unsubscribe = undefined;
+    this.observer = undefined;
+    for (const save of this.queuedSaves) save.cancelled = true;
   }
   async acceptStorage() {
-    await this.repo.db.settings.put({ key: 'storage-consent', value: true });
+    await this.withOperation(async (job) => {
+      await job.operation.storage.settings.put({ key: 'storage-consent', value: true });
+      await job.check();
+    });
     this.stop();
     await this.start();
   }
-  private async requireStorageConsent() {
-    if ((await this.repo.db.settings.get('storage-consent'))?.value !== true)
+  private async requireStorageConsent(db: WorkspaceStorage = this.repo.db) {
+    if ((await db.settings.get('storage-consent'))?.value !== true)
       throw new StorageError(403, 'Accept local browser storage before using the workspace.');
   }
   private mcpGrant(value: unknown): McpAccess {
@@ -310,19 +391,25 @@ export class Workspace {
   }
   private async persist(save: QueuedSave) {
     const { graph, revision, sourcesChanged } = save;
-    const id = graph.diagram.id;
-    if (save.cancelled || useEditor.getState().status === 'conflict') {
+    let operation: WorkspaceOperation | undefined;
+    if (!graph || save.cancelled || useEditor.getState().status === 'conflict') {
+      void save.operation?.then((operation) => operation.dispose()).catch(() => undefined);
       this.queuedSaves.delete(save);
       return;
     }
+    const id = graph.diagram.id;
     try {
-      await this.requireStorageConsent();
+      operation = await (save.operation ?? this.repo.db.captureOperation());
+      const repo = new Repository(operation.storage);
+      await this.requireStorageConsent(operation.storage);
       // Editor commands change the drawing/configuration, not the original CSV cells.
       const { dataset: _dataset, datasets: _datasets, ...drawing } = graph;
-      const stored = await this.repo.saveGraph(
+      const stored = await repo.saveGraph(
         sourcesChanged ? { ...graph, datasets: graph.datasets ?? [] } : drawing,
         this.versions.get(id) ?? graph.diagram.version,
       );
+      await operation.check();
+      if (save.cancelled || this.stopped) return;
       this.versions.set(id, stored.diagram.version);
       const state = useEditor.getState();
       if (state.graph?.diagram.id === id) {
@@ -340,8 +427,9 @@ export class Workspace {
       }
       if (this.pending.get(id)?.graph === graph) this.pending.delete(id);
     } catch (error) {
-      this.error(error);
+      if (!save.cancelled && !this.stopped) this.error(error);
     } finally {
+      operation?.dispose();
       this.queuedSaves.delete(save);
     }
   }
@@ -360,23 +448,34 @@ export class Workspace {
       throw new StorageError(500, state.message || 'Pending local changes could not be saved.');
     }
   }
-  async refresh() {
+  async refresh(existing?: WorkspaceJob) {
     if (this.stopped) return;
+    return this.withOperation((job) => this.refreshCaptured(job), existing);
+  }
+  private async refreshCaptured(job: WorkspaceJob) {
+    const lifecycle = job.lifecycle;
     const queue = this.queue;
     await queue;
     if (queue !== this.queue || this.stopped) return;
     const settingsRevision = this.settingsRevision;
-    const [diagrams, owners, settings] = await Promise.all([
-      this.repo.db.diagrams.orderBy('updatedAt').reverse().toArray(),
-      this.repo.db.owners.toArray(),
-      this.repo.db.settings.toArray(),
-    ]);
+    const [diagrams, owners, settings] = await job.operation.storage.atomic(
+      'r',
+      ['diagrams', 'owners', 'settings'],
+      async (scope) =>
+        Promise.all([
+          scope.diagrams.orderBy('updatedAt').reverse().toArray(),
+          scope.owners.toArray(),
+          scope.settings.toArray(),
+        ]),
+    );
+    await job.check();
     const preferences = new Map(settings.map((setting) => [setting.key, setting.value]));
     if (
       settingsRevision !== this.settingsRevision ||
       this.preferenceWrites ||
       queue !== this.queue ||
-      this.stopped
+      this.stopped ||
+      lifecycle !== this.lifecycle
     )
       return;
     const theme =
@@ -402,6 +501,7 @@ export class Workspace {
       backupNudgeDismissed: preferences.get('backup-nudge-dismissed') === true,
     });
     this.syncAppearance(theme);
+    this.publishVoiceSelection(preferences.get(VOICE_SETTING));
     if (preferences.get('storage-consent') !== true) {
       useEditor.getState().setGraph(null);
       return;
@@ -430,11 +530,14 @@ export class Workspace {
       state.setGraph(null);
       return;
     }
-    const graph = await this.repo.getGraph(record.id);
+    const graph = await job.repo.getGraph(record.id);
+    await job.check();
     if (
       queue !== this.queue ||
       useEditor.getState().graph !== current ||
-      this.pending.has(record.id)
+      this.pending.has(record.id) ||
+      lifecycle !== this.lifecycle ||
+      this.stopped
     )
       return;
     if (graph.diagram.version < (this.versions.get(record.id) ?? 0)) return;
@@ -446,19 +549,47 @@ export class Workspace {
     this.appearanceTheme = theme;
     appearanceSettingsChanged();
   }
+  private publishVoiceSelection(value: unknown, explicit = false) {
+    const selected = normalizeVoiceId(value);
+    const changed = selected !== this.voiceSelection;
+    const initialized = this.voiceSelection !== undefined;
+    this.voiceSelection = selected;
+    if (changed && (initialized || explicit)) window.dispatchEvent(new Event(VOICE_CHANGED));
+  }
   async open(id: string, nodeId?: string, beforeOpen?: () => Promise<void>) {
-    await this.requireStorageConsent();
+    const navigation = ++this.navigation;
+    return this.withOperation((job) => this.openCaptured(job, id, navigation, nodeId, beforeOpen));
+  }
+  private async openCaptured(
+    job: WorkspaceJob,
+    id: string,
+    navigation: number,
+    nodeId?: string,
+    beforeOpen?: () => Promise<void>,
+  ) {
+    await this.requireStorageConsent(job.operation.storage);
+    await job.check();
+    if (navigation !== this.navigation) return;
     useEditor.getState().finishEditing();
     flushSpatialCamera();
     await this.settled();
-    const navigation = ++this.navigation;
-    const graph = await this.repo.getGraph(id);
-    await beforeOpen?.();
+    await job.check();
     if (navigation !== this.navigation) return;
+    const graph = await job.repo.getGraph(id);
+    await beforeOpen?.();
+    await job.check();
+    if (navigation !== this.navigation) return;
+    await job.operation.storage.atomic('rw', ['settings'], async (scope) => {
+      await this.requireStorageConsent(scope);
+      await scope.settings.put({ key: 'last-diagram', value: id });
+    });
+    await job.check();
+    if (navigation !== this.navigation) return;
+    // Mounting the canvas can immediately enqueue a viewport save. Persist its
+    // navigation preference first so that initialization has one write order.
     this.versions.set(id, graph.diagram.version);
     useEditor.getState().setGraph(graph);
     useEditor.setState({ status: 'saved', message: '' });
-    await this.repo.db.settings.put({ key: 'last-diagram', value: id });
     if (nodeId) {
       const nodes = new Map(graph.nodes.map((node) => [node.id, node])),
         ancestors = new Set<string>();
@@ -476,26 +607,74 @@ export class Workspace {
       useEditor.setState({ selectedNodes: [nodeId], focusNode: nodeId });
     }
   }
-  async create(graph: Graph) {
-    await this.requireStorageConsent();
-    useEditor.getState().finishEditing();
-    await this.settled();
-    const stored = await this.repo.importGraph(graph);
-    await this.refresh();
-    await this.open(stored.diagram.id);
+  async create(graph: Graph, originatingOperation?: WorkspaceOperation) {
+    const navigation = ++this.navigation;
+    await this.withOperation(
+      async (job) => {
+        await this.requireStorageConsent(job.operation.storage);
+        await job.check();
+        useEditor.getState().finishEditing();
+        await this.settled();
+        await job.check();
+        const stored = await job.repo.importGraph(graph, (scope) =>
+          this.requireStorageConsent(scope),
+        );
+        await job.check();
+        await this.refresh(job);
+        await this.openCaptured(job, stored.diagram.id, navigation);
+      },
+      undefined,
+      originatingOperation,
+    );
   }
   async execute<T>(
     path: string,
     method = 'GET',
     data?: unknown,
     options: CommandOptions = {},
+    originatingOperation?: WorkspaceOperation,
   ): Promise<T> {
-    await this.requireStorageConsent();
+    return this.withOperation(
+      async (job) => {
+        const { operation } = job;
+        const guarded: CommandOptions = {
+          ...options,
+          signal: options.signal
+            ? AbortSignal.any([options.signal, operation.signal])
+            : operation.signal,
+          beforeRequest: async () => {
+            await job.check();
+            await options.beforeRequest?.();
+          },
+          beforeWrite: async (scope) => {
+            await job.check();
+            await options.beforeWrite?.(scope);
+          },
+          beforeHistoryWrite: async (scope) => {
+            await job.check();
+            await options.beforeHistoryWrite?.(scope);
+          },
+        };
+        return this.executeCaptured<T>(job.repo, path, method, data, guarded, job);
+      },
+      undefined,
+      originatingOperation,
+    );
+  }
+  private async executeCaptured<T>(
+    repo: Repository,
+    path: string,
+    method: string,
+    data: unknown,
+    options: CommandOptions,
+    job: WorkspaceJob,
+  ): Promise<T> {
+    await this.requireStorageConsent(repo.db);
     await this.settled();
     if (!mutatesDocument(path, method)) {
       await options.beforeRequest?.();
-      const result = await this.repo.request<T>(path, method, data, options);
-      await this.refresh();
+      const result = await repo.request<T>(path, method, data, options);
+      await this.refresh(job);
       return result;
     }
     // External writes and autosaves have one ordering. Camera completions can still
@@ -504,9 +683,10 @@ export class Workspace {
       const state = useEditor.getState();
       const before = state.graph ? ownersFor(state.graph, state.owners) : undefined;
       await options.beforeRequest?.();
-      const result = await this.repo.request<T>(path, method, data, options);
+      const result = await repo.request<T>(path, method, data, options);
       if (before) {
-        const committed = await this.apiCommittedGraph(before, path, method, result);
+        const committed = await this.apiCommittedGraph(before, path, method, result, repo);
+        await job.check();
         if (committed !== undefined) this.acknowledgeApi(before, committed);
       }
       return result;
@@ -516,10 +696,16 @@ export class Workspace {
       () => {},
     );
     const result = await operation;
-    await this.refresh();
+    await this.refresh(job);
     return result;
   }
-  private async apiCommittedGraph(before: Graph, path: string, method: string, result: unknown) {
+  private async apiCommittedGraph(
+    before: Graph,
+    path: string,
+    method: string,
+    result: unknown,
+    repo: Repository = this.repo,
+  ) {
     const parts = new URL(path.replace(/^\/api\/v1/, ''), 'http://browser.local').pathname
       .split('/')
       .filter(Boolean);
@@ -565,7 +751,7 @@ export class Workspace {
         (parts[0] === 'nodes' && before.nodes.some((node) => node.id === parts[1])) ||
         (parts[0] === 'edges' && before.edges.some((edge) => edge.id === parts[1])));
     if (!ownEntity && !ownDiagram && !ownOwner && !deletion) return undefined;
-    const committed = await this.repo.db.graph(before.diagram.id);
+    const committed = await repo.db.graph(before.diagram.id);
     if (!committed)
       return deletion && parts.length === 2 && parts[0] === 'diagrams' ? null : undefined;
     const expected = ownDiagram ? value.version! : before.diagram.version + 1;
@@ -575,13 +761,13 @@ export class Workspace {
   }
   private acknowledgeApi(before: Graph, committed: Graph | null) {
     const id = before.diagram.id;
-    const saves = [...this.queuedSaves].filter((save) => save.graph.diagram.id === id);
+    const saves = [...this.queuedSaves].filter((save) => save.graph?.diagram.id === id);
     const state = useEditor.getState();
     const current =
       state.graph?.diagram.id === id ? ownersFor(state.graph, state.owners) : undefined;
     if (committed) this.versions.set(id, committed.diagram.version);
     if (
-      saves.some((save) => !cameraOnly(before, save.graph)) ||
+      saves.some((save) => save.graph && !cameraOnly(before, save.graph)) ||
       (current && !cameraOnly(before, current))
     ) {
       this.error(
@@ -593,7 +779,7 @@ export class Workspace {
       return;
     }
     for (const save of saves) {
-      if (committed) save.graph = cameraRebased(before, save.graph, committed);
+      if (committed && save.graph) save.graph = cameraRebased(before, save.graph, committed);
       else save.cancelled = true;
     }
     if (!committed) {
@@ -616,12 +802,12 @@ export class Workspace {
     if (key === IMPORT_LIMIT_SETTING) assertImportLimitMb(value);
     if (key === PROJECT_SOURCE_FILE_LIMIT_SETTING) assertProjectSourceFileLimit(value);
     if (key === VOICE_SETTING) assertVoiceId(value);
+    const lifecycle = this.lifecycle;
     this.settingsRevision++;
     this.preferenceWrites++;
     const retryingFailure = this.preferenceFailures.get(key);
     let accessChoice: number | undefined;
-    // Revocation closes the live grant before the settings read/write can wait
-    // on an API transaction. Upgrades still require accepted persisted storage.
+    // Revocation closes the live grant before a persisted write can wait on IDB.
     if (key === 'mcp-access') {
       accessChoice = ++this.accessChoice;
       const current = this.mcpGrant(useEditor.getState().mcpAccess);
@@ -633,63 +819,155 @@ export class Workspace {
             ? 'read'
             : 'write';
       useEditor.setState({ mcpAccess: this.accessCeiling });
+      if (value === 'off' && this.repo === repository) bridge.disconnect();
     }
     try {
-      await this.requireStorageConsent();
-      // A newer choice can finish while this consent read is waiting. There is
-      // no await between this fence and put; started IDB writes are ordered.
-      if (key === 'mcp-access' && accessChoice !== this.accessChoice) return;
-      if (key === 'theme') useEditor.setState({ theme: String(value) });
-      if (key === 'mcp-access') useEditor.setState({ mcpAccess: this.mcpGrant(value) });
-      if (key === 'bridge-url') useEditor.setState({ bridgeUrl: String(value) });
-      await this.repo.db.settings.put({ key, value });
-      if (key === 'mcp-access' && accessChoice === this.accessChoice) {
-        // Only a successfully saved explicit choice can lift a local restriction.
-        // Failed writes and unrelated refreshes must never resurrect an old grant.
-        this.accessCeiling = mcpAccess(value);
-        useEditor.setState({ mcpAccess: this.accessCeiling });
-      }
-      // Disappearance acknowledges persistence, so an immediate reload cannot
-      // restore a reminder that looked successfully dismissed.
-      if (key === 'backup-nudge-dismissed')
-        useEditor.setState({ backupNudgeDismissed: value === true });
-      if (key === IMPORT_LIMIT_SETTING) useEditor.setState({ importFileLimitMb: value as number });
-      if (key === PROJECT_SOURCE_FILE_LIMIT_SETTING)
-        useEditor.setState({ projectSourceFileLimit: value as number });
-      if (key === 'theme') this.syncAppearance(appearancePreference(value));
-      this.acknowledgePreference(key, retryingFailure);
-      // Preferences, especially access revocation, must not wait for the work
-      // they cancel or an unrelated camera/document save to leave its queue.
+      await this.withOperation(async (job) => {
+        const saved = await job.operation.storage.atomic('rw', ['settings'], async (scope) => {
+          await this.requireStorageConsent(scope);
+          await job.check();
+          if (key === 'mcp-access' && accessChoice !== this.accessChoice) return false;
+          if (key === 'theme') useEditor.setState({ theme: String(value) });
+          if (key === 'mcp-access') useEditor.setState({ mcpAccess: this.mcpGrant(value) });
+          if (key === 'bridge-url') useEditor.setState({ bridgeUrl: String(value) });
+          await scope.settings.put({ key, value });
+          return true;
+        });
+        await job.check();
+        if (!saved) return;
+        if (key === 'mcp-access' && accessChoice === this.accessChoice) {
+          // Only a successfully persisted explicit choice can lift a local restriction.
+          this.accessCeiling = mcpAccess(value);
+          useEditor.setState({ mcpAccess: this.accessCeiling });
+          if (value !== 'off' && this.repo === repository) bridge.authorizeContent();
+        }
+        // The reminder disappears only after persistence, including immediate reloads.
+        if (key === 'backup-nudge-dismissed')
+          useEditor.setState({ backupNudgeDismissed: value === true });
+        if (key === IMPORT_LIMIT_SETTING)
+          useEditor.setState({ importFileLimitMb: value as number });
+        if (key === PROJECT_SOURCE_FILE_LIMIT_SETTING)
+          useEditor.setState({ projectSourceFileLimit: value as number });
+        if (key === 'theme') this.syncAppearance(appearancePreference(value));
+        if (key === VOICE_SETTING) this.publishVoiceSelection(value, true);
+        this.acknowledgePreference(key, retryingFailure);
+      });
     } catch (error) {
-      this.preferenceError(key, value, error);
+      if (
+        lifecycle === this.lifecycle &&
+        !this.stopped &&
+        !(error instanceof StorageError && error.status === 423)
+      )
+        this.preferenceError(key, value, error);
       throw error;
     } finally {
-      this.preferenceWrites--;
+      if (lifecycle === this.lifecycle) this.preferenceWrites--;
     }
-    void this.refresh().catch((error) => this.error(error));
+    // Do not delay access revocation on the graph queue it cancels.
+    void this.refresh().catch((error) => {
+      if (lifecycle === this.lifecycle && !this.stopped) this.error(error);
+    });
   }
-  async external<T>(path: string, method: string, data?: unknown): Promise<T> {
+  async external<T>(
+    path: string,
+    method: string,
+    data?: unknown,
+    originatingOperation?: WorkspaceOperation,
+  ): Promise<T> {
+    if (method === 'GET' && path.replace(/^\/api\/v1/, '') === '/workspace/security')
+      return this.repo.request<T>(path, method, data);
+    if (isWorkspaceLockCommand(path, method))
+      return this.lockExternal(data, originatingOperation) as Promise<T>;
+    return this.withOperation(
+      (job) => this.externalCaptured<T>(path, method, data, job),
+      undefined,
+      originatingOperation,
+    );
+  }
+  private async lockExternal(data: unknown, originatingOperation?: WorkspaceOperation) {
+    if (
+      data !== undefined &&
+      (!data ||
+        typeof data !== 'object' ||
+        (Object.getPrototypeOf(data) !== Object.prototype &&
+          Object.getPrototypeOf(data) !== null) ||
+        Reflect.ownKeys(data).length !== 0)
+    )
+      throw new StorageError(422, 'Lock expects an empty object or no arguments.');
+    const session = (this.repo.db as WorkspaceStorage & { session?: VaultSession }).session;
+    if (!session) throw new StorageError(422, 'This workspace does not support encrypted locking.');
+    if (session.getSnapshot().status === 'locked') return workspaceSecurityStatus(this.repo.db);
+    const lifecycle = this.lifecycle;
+    const operation = originatingOperation ?? (await this.repo.db.captureOperation());
+    const authorize = async () => {
+      await operation.check();
+      this.assertLifecycle(lifecycle);
+      await operation.storage.atomic('r', ['settings'], async (scope) => {
+        await this.requireStorageConsent(scope);
+        const permission = await scope.settings.get('mcp-access');
+        assertMcpAccess(this.mcpGrant(useEditor.getState().mcpAccess), '/workspace/lock', 'POST');
+        assertMcpAccess(mcpAccess(permission?.value), '/workspace/lock', 'POST');
+        if (!useEditor.getState().privacyAcknowledged)
+          throw new StorageError(403, 'Accept local storage before using the workspace.');
+      });
+      await operation.check();
+      this.assertLifecycle(lifecycle);
+      assertMcpAccess(this.mcpGrant(useEditor.getState().mcpAccess), '/workspace/lock', 'POST');
+    };
+    try {
+      await authorize();
+      useEditor.getState().finishEditing();
+      flushSpatialCamera();
+      await this.settled();
+      // Capture before the authorization snapshot. Never replace this revision
+      // with a later verify result: concurrent grants or content writes must conflict.
+      const control = await session.verify();
+      await authorize();
+      // No await between the final generation/grant fence and intentional key revocation.
+      await session.lockAuthorized(control.revision, operation.signal, () => {
+        if (operation.signal.aborted)
+          throw new VaultStorageError(
+            423,
+            'WORKSPACE_LOCKED',
+            'Unlock the workspace in the browser to continue.',
+          );
+        this.assertLifecycle(lifecycle);
+        assertMcpAccess(this.mcpGrant(useEditor.getState().mcpAccess), '/workspace/lock', 'POST');
+      });
+      return workspaceSecurityStatus(this.repo.db);
+    } finally {
+      if (!originatingOperation) operation.dispose();
+    }
+  }
+  private async externalCaptured<T>(
+    path: string,
+    method: string,
+    data: unknown,
+    job: WorkspaceJob,
+  ): Promise<T> {
+    const { operation } = job;
     assertMcpAccess(this.mcpGrant(useEditor.getState().mcpAccess), path, method);
     await this.settled();
-    const permission = await this.repo.db.settings.get('mcp-access');
+    const permission = await operation.storage.settings.get('mcp-access');
     assertMcpAccess(mcpAccess(permission?.value), path, method);
-    const authorize = async () => {
-      await this.requireStorageConsent();
-      const permission = await this.repo.db.settings.get('mcp-access');
+    const authorize = async (scope: WorkspaceStorage = operation.storage) => {
+      await operation.check();
+      await this.requireStorageConsent(scope);
+      const permission = await scope.settings.get('mcp-access');
       if (!useEditor.getState().privacyAcknowledged)
         throw new StorageError(403, 'Accept local storage before using the workspace.');
       assertMcpAccess(this.mcpGrant(useEditor.getState().mcpAccess), path, method);
       assertMcpAccess(mcpAccess(permission?.value), path, method);
     };
     if (spatialNavigation(useEditor.getState().graph, path, method, data)) {
-      await this.requireStorageConsent();
+      await this.requireStorageConsent(operation.storage);
       window.dispatchEvent(new Event('visualnerve:spatial-camera-flush'));
       const state = useEditor.getState();
       state.finishEditing();
       state.setDrawingTool('none');
       await this.settled();
       // A camera/title commit can yield; honor grants revoked while it was being saved.
-      const latest = await this.repo.db.settings.get('mcp-access');
+      const latest = await operation.storage.settings.get('mcp-access');
       assertMcpAccess(this.mcpGrant(useEditor.getState().mcpAccess), path, method);
       assertMcpAccess(mcpAccess(latest?.value), path, method);
     }
@@ -718,12 +996,24 @@ export class Workspace {
         };
         await authorizeOpen();
         if ('diagramId' in payload)
-          await this.open(payload.diagramId as string, undefined, authorizeOpen);
+          await this.openCaptured(
+            job,
+            payload.diagramId as string,
+            ++this.navigation,
+            undefined,
+            authorizeOpen,
+          );
         payload = 'source' in payload ? { source: payload.source } : {};
       }
       const { presentationRequest } = await import('../presentation/commands');
       await authorize();
-      return (await presentationRequest(endpoint, method, payload, authorize)) as T;
+      return (await presentationRequest(
+        endpoint,
+        method,
+        payload,
+        authorize,
+        operation.signal,
+      )) as T;
     }
     const diagramFile =
       method === 'POST' &&
@@ -758,20 +1048,26 @@ export class Workspace {
         })
       : undefined;
     try {
-      const result = await this.execute<T>(path, method, data, {
-        signal: controller?.signal,
-        beforeRequest: authorize,
-        beforeWrite: authorize,
-        beforeHistoryWrite: authorize,
-        beforeAnalysisSave: analysis
-          ? async () => {
-              await this.requireStorageConsent();
-              const current = await this.repo.db.settings.get('mcp-access');
-              assertMcpAccess(this.mcpGrant(useEditor.getState().mcpAccess), path, method);
-              assertMcpAccess(mcpAccess(current?.value), path, method);
-            }
-          : undefined,
-      });
+      const result = await this.execute<T>(
+        path,
+        method,
+        data,
+        {
+          signal: controller?.signal,
+          beforeRequest: authorize,
+          beforeWrite: authorize,
+          beforeHistoryWrite: authorize,
+          beforeAnalysisSave: analysis
+            ? async () => {
+                await this.requireStorageConsent(operation.storage);
+                const current = await operation.storage.settings.get('mcp-access');
+                assertMcpAccess(this.mcpGrant(useEditor.getState().mcpAccess), path, method);
+                assertMcpAccess(mcpAccess(current?.value), path, method);
+              }
+            : undefined,
+        },
+        operation,
+      );
       if (
         method === 'POST' &&
         ([
@@ -782,7 +1078,7 @@ export class Workspace {
         ].includes(endpoint) ||
           diagramFile)
       )
-        await this.open((result as Graph).diagram.id);
+        await this.openCaptured(job, (result as Graph).diagram.id, ++this.navigation);
       return result;
     } finally {
       unsubscribe?.();
@@ -790,70 +1086,136 @@ export class Workspace {
     }
   }
   async backup() {
-    await this.requireStorageConsent();
-    useEditor.getState().finishEditing();
-    flushSpatialCamera();
-    await this.settled();
-    return this.repo.db.backup();
+    return this.withOperation(async (job) => {
+      await this.requireStorageConsent(job.operation.storage);
+      await job.check();
+      useEditor.getState().finishEditing();
+      flushSpatialCamera();
+      await this.settled();
+      return job.operation.storage.backup();
+    });
   }
-  async restoreBackup(backup: WorkspaceBackup, mode: 'merge' | 'replace') {
-    await this.requireStorageConsent();
-    flushSpatialCamera();
-    await this.settled();
-    const graphs = await this.repo.restore(backup, mode);
-    this.versions.clear();
-    useEditor.getState().setGraph(null);
-    sessionStorage.removeItem('vn-token');
-    await this.refresh();
-    if (graphs[0]) await this.open(graphs[0].diagram.id);
-  }
-  async deleteAll() {
-    await this.queue;
+  /** Called after key revocation; wait for cancelled jobs before allowing another unlock. */
+  async clearUnlockedState() {
+    this.stop();
+    const lifecycle = this.lifecycle;
+    for (const save of this.queuedSaves) save.graph = undefined;
     this.pending.clear();
     this.versions.clear();
-    await this.repo.clearAll();
     this.preferenceFailures.clear();
-    this.publishPreferenceError();
+    this.accessCeiling = 'off';
+    this.accessChoice++;
+    this.settingsRevision++;
+    this.repo.db.forgetDatasets();
     useEditor.getState().setGraph(null);
-    useEditor.setState({ status: 'saved', message: '' });
-    sessionStorage.removeItem('vn-token');
-    await this.refresh();
+    useEditor.setState({
+      diagrams: [],
+      owners: [],
+      clipboard: null,
+      workspaceId: '',
+      mcpAccess: 'off',
+      privacyAcknowledged: false,
+      lastExport: '',
+      preferenceError: null,
+      message: '',
+      status: 'saved',
+    });
+    await this.queue;
+    // Only clean this stopped lifecycle: an obsolete cleanup cannot reset a new app.
+    if (lifecycle === this.lifecycle && this.stopped) {
+      this.queue = Promise.resolve();
+      this.queuedSaves.clear();
+    }
+  }
+  async restoreBackup(backup: WorkspaceBackup, mode: 'merge' | 'replace') {
+    const navigation = ++this.navigation;
+    await this.withOperation(async (job) => {
+      await this.requireStorageConsent(job.operation.storage);
+      await job.check();
+      flushSpatialCamera();
+      await this.settled();
+      await job.check();
+      const graphs = await job.repo.restore(backup, mode, (scope) =>
+        this.requireStorageConsent(scope),
+      );
+      await job.check();
+      this.versions.clear();
+      if (navigation === this.navigation) useEditor.getState().setGraph(null);
+      sessionStorage.removeItem('vn-token');
+      await this.refresh(job);
+      if (graphs[0]) await this.openCaptured(job, graphs[0].diagram.id, navigation);
+    });
+  }
+  async deleteAll() {
+    const navigation = ++this.navigation;
+    await this.withOperation(async (job) => {
+      await this.queue;
+      await job.check();
+      await job.repo.clearAll();
+      await job.check();
+      this.pending.clear();
+      this.versions.clear();
+      this.preferenceFailures.clear();
+      this.publishPreferenceError();
+      if (navigation === this.navigation) useEditor.getState().setGraph(null);
+      useEditor.setState({ status: 'saved', message: '' });
+      sessionStorage.removeItem('vn-token');
+      await this.refresh(job);
+    });
   }
   async remove(id: string) {
-    await this.requireStorageConsent();
-    await this.settled();
-    await this.repo.removeDiagram(id);
-    this.versions.delete(id);
-    await this.refresh();
+    await this.withOperation(async (job) => {
+      await this.requireStorageConsent(job.operation.storage);
+      await this.settled();
+      await job.check();
+      await job.repo.removeDiagram(id, (scope) => this.requireStorageConsent(scope));
+      await job.check();
+      this.versions.delete(id);
+      await this.refresh(job);
+    });
   }
   async resolve(strategy: 'copy' | 'discard' | 'retry') {
-    await this.requireStorageConsent();
-    await this.queue;
-    const local = useEditor.getState().graph;
-    if (!local) return;
-    if (strategy === 'copy') {
-      const copy = structuredClone(local);
-      copy.diagram.name += ' (local copy)';
-      const stored = await this.repo.importGraph(copy);
-      this.pending.delete(local.diagram.id);
-      useEditor.setState({ status: 'saved', message: '' });
-      await this.open(stored.diagram.id);
-    } else if (strategy === 'discard') {
-      this.pending.delete(local.diagram.id);
-      const current = await this.repo.db.graph(local.diagram.id);
-      if (current) {
-        this.versions.set(current.diagram.id, current.diagram.version);
-        useEditor.getState().setGraph(current);
-      } else useEditor.getState().setGraph(null);
-      useEditor.setState({ status: 'saved', message: '' });
-    } else {
-      const current = await this.repo.db.graph(local.diagram.id);
-      const stored = await this.repo.saveGraph(local, current?.diagram.version ?? 0);
-      this.pending.delete(local.diagram.id);
-      this.versions.set(stored.diagram.id, stored.diagram.version);
-      useEditor.setState({ graph: stored, status: 'saved', message: '' });
-    }
-    await this.refresh();
+    const navigation = ++this.navigation;
+    await this.withOperation(async (job) => {
+      await this.requireStorageConsent(job.operation.storage);
+      await this.queue;
+      await job.check();
+      if (navigation !== this.navigation) return;
+      const local = useEditor.getState().graph;
+      if (!local) return;
+      if (strategy === 'copy') {
+        const copy = structuredClone(local);
+        copy.diagram.name += ' (local copy)';
+        const stored = await job.repo.importGraph(copy, (scope) =>
+          this.requireStorageConsent(scope),
+        );
+        await job.check();
+        this.pending.delete(local.diagram.id);
+        if (navigation === this.navigation) useEditor.setState({ status: 'saved', message: '' });
+        await this.openCaptured(job, stored.diagram.id, navigation);
+      } else if (strategy === 'discard') {
+        const current = await job.operation.storage.graph(local.diagram.id);
+        await job.check();
+        if (navigation !== this.navigation) return;
+        this.pending.delete(local.diagram.id);
+        if (current) {
+          this.versions.set(current.diagram.id, current.diagram.version);
+          useEditor.getState().setGraph(current);
+        } else useEditor.getState().setGraph(null);
+        useEditor.setState({ status: 'saved', message: '' });
+      } else {
+        const current = await job.operation.storage.graph(local.diagram.id);
+        const stored = await job.repo.saveGraph(local, current?.diagram.version ?? 0, (scope) =>
+          this.requireStorageConsent(scope),
+        );
+        await job.check();
+        this.pending.delete(local.diagram.id);
+        this.versions.set(stored.diagram.id, stored.diagram.version);
+        if (navigation === this.navigation)
+          useEditor.setState({ graph: stored, status: 'saved', message: '' });
+      }
+      await this.refresh(job);
+    });
   }
 }
 export const workspace = new Workspace();

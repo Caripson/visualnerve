@@ -1,6 +1,12 @@
 import type { Graph } from '../model/types';
 import { StorageError } from '../model/errors';
 import { safeName } from '../export/semantic';
+import {
+  assertExportActive,
+  checkExportActive,
+  waitForExport,
+  type ExportGuard,
+} from '../export/guard';
 import { presentationSteps, type PresentationStep } from './sequence';
 import {
   VIDEO_FPS,
@@ -72,9 +78,10 @@ export class VideoExporter {
     this.state = { ...this.state, ...value };
     this.listeners.forEach((listener) => listener());
   }
-  start(options: VideoOptions) {
+  start(options: VideoOptions, guard?: ExportGuard) {
     if (videoActive(this.state) || this.task)
       throw new StorageError(409, 'A video export is already running or being cancelled.');
+    assertExportActive(guard);
     const graph = this.deps.graph();
     if (!graph) throw new StorageError(422, 'Open a diagram before exporting video.');
     const source = options.source ?? 'nodes';
@@ -96,6 +103,8 @@ export class VideoExporter {
       );
     this.deps.stop();
     const abort = (this.abort = new AbortController());
+    const revoked = () => this.cancel();
+    guard?.signal.addEventListener('abort', revoked, { once: true });
     this.set({
       ...initial(),
       status: 'preparing',
@@ -103,17 +112,23 @@ export class VideoExporter {
       total: steps.length,
       message: 'Preparing local video export…',
     });
-    this.task = this.run(graph, options, abort.signal)
+    this.task = this.run(graph, options, abort.signal, guard)
       .catch((error) => {
         if (!abort.signal.aborted) this.set({ status: 'error', message: (error as Error).message });
       })
       .finally(() => {
+        guard?.signal.removeEventListener('abort', revoked);
         this.deps.stop();
         this.task = undefined;
         this.abort = undefined;
         this.set({});
       });
     return this.state;
+  }
+  /** Forget all completed metadata immediately, while retaining the pending cleanup fence. */
+  reset() {
+    this.cancel();
+    this.set(initial());
   }
   cancel(message = 'Video export cancelled.') {
     if (this.abort && !this.abort.signal.aborted) {
@@ -126,10 +141,13 @@ export class VideoExporter {
   async settled() {
     await this.task;
   }
-  private async run(graph: Graph, options: VideoOptions, signal: AbortSignal) {
+  private async run(graph: Graph, options: VideoOptions, signal: AbortSignal, guard?: ExportGuard) {
     const check = () => {
       signal.throwIfAborted();
+      assertExportActive(guard);
     };
+    await checkExportActive(guard);
+    check();
     const steps = presentationSteps(graph, options.source ?? 'nodes');
     const nodes = new Set(graph.nodes.map((node) => node.id));
     const canvas = document.createElement('canvas');
@@ -242,7 +260,9 @@ export class VideoExporter {
         }
       }
       this.set({ message: 'Finishing video file…' });
-      const blob = await encoder.finish();
+      const blob = await waitForExport(encoder.finish(), guard);
+      check();
+      await checkExportActive(guard);
       check();
       const name = `${safeName(graph.diagram.name)}-walkthrough.${encoder.format}`;
       this.deps.ready(blob, name);

@@ -1,64 +1,10 @@
 import { StorageError } from '../../model/errors';
+import { DEFAULT_VOICE_ID, MODEL_REVISION, VOICES } from './voice-models';
+
+export { DEFAULT_VOICE_ID, MODEL_REVISION, VOICES } from './voice-models';
 
 export const VOICE_SETTING = 'presentation-voice';
-export const DEFAULT_VOICE_ID = 'en_GB-alan-medium';
-export const MODEL_REVISION = 'c10ece1aade47bb51c153c893d14e5bf8e5b7117';
 const source = `https://huggingface.co/rhasspy/piper-voices/resolve/${MODEL_REVISION}`;
-
-export const VOICES = [
-  {
-    id: DEFAULT_VOICE_ID,
-    label: 'English (UK) · Alan · male narrator (default)',
-    language: 'en-GB',
-    sampleRate: 22050,
-    modelBytes: 63201294,
-    modelSha256: '0a309668932205e762801f1efc2736cd4b0120329622adf62be09e56339d3330',
-    configBytes: 4888,
-    configSha256: 'c0f0d124e5895c00e7c03b35dcc8287f319a6998a365b182deb5c8e752ee8c1e',
-    path: 'en/en_GB/alan/medium/en_GB-alan-medium.onnx',
-    license: 'MIT model · Mycroft AI training source (see model card)',
-    source: `${source}/en/en_GB/alan/medium/MODEL_CARD`,
-  },
-  {
-    id: 'en_US-ljspeech-high',
-    label: 'English (US) · LJ Speech · high quality',
-    language: 'en-US',
-    sampleRate: 22050,
-    modelBytes: 114199011,
-    modelSha256: '5d4f08ba6a2a48c44592eed3ce56bf85e9de3dd4e20df90541ae68a8310c029a',
-    configBytes: 4970,
-    configSha256: '7e1f4634af596d83cca997fb7a931ba80b70f8a316a2655ee69c55365e0ace14',
-    path: 'en/en_US/ljspeech/high/en_US-ljspeech-high.onnx',
-    license: 'MIT model · public-domain training data',
-    source: `${source}/en/en_US/ljspeech/high/MODEL_CARD`,
-  },
-  {
-    id: 'en_GB-cori-high',
-    label: 'English (UK) · Cori · high quality',
-    language: 'en-GB',
-    sampleRate: 22050,
-    modelBytes: 114219352,
-    modelSha256: '470b4dd634c98f8a4850d7626ffc3dfc90774628eeef6605a6dd8f88f30a5903',
-    configBytes: 4963,
-    configSha256: '9e7fb5b5671612c22f3c81cbe46c1ae87b031a4632bcb509e499dad6f1e2adec',
-    path: 'en/en_GB/cori/high/en_GB-cori-high.onnx',
-    license: 'MIT model · public-domain training data',
-    source: `${source}/en/en_GB/cori/high/MODEL_CARD`,
-  },
-  {
-    id: 'sv_SE-nst-medium',
-    label: 'Svenska · NST · medium quality',
-    language: 'sv-SE',
-    sampleRate: 22050,
-    modelBytes: 63104526,
-    modelSha256: 'df011f56825a59dd1efc080c38a65a1ef70407e60f63050e9246f43a3d7e471e',
-    configBytes: 4157,
-    configSha256: 'd45dd74cbb4eca58694bf04a97e243044092476f28a55ae26424f0653086980a',
-    path: 'sv/sv_SE/nst/medium/sv_SE-nst-medium.onnx',
-    license: 'MIT model · CC0 training data',
-    source: `${source}/sv/sv_SE/nst/medium/MODEL_CARD`,
-  },
-] as const;
 
 export type VoiceId = (typeof VOICES)[number]['id'];
 export type PresentationVoice = (typeof VOICES)[number];
@@ -67,17 +13,28 @@ export function normalizeVoiceId(value: unknown): VoiceId {
 }
 export function assertVoiceId(value: unknown): asserts value is VoiceId {
   if (!VOICES.some((voice) => voice.id === value))
-    throw new StorageError(422, 'Select a supported English or Swedish presentation voice.');
+    throw new StorageError(422, 'Select a supported presentation voice from the catalog.');
 }
 export function voiceInfo(id: VoiceId): PresentationVoice {
   assertVoiceId(id);
   return VOICES.find((voice) => voice.id === id)!;
 }
 export function modelUrl(voice: PresentationVoice, config = false) {
-  return `${source}/${voice.path}${config ? '.json' : ''}`;
+  return new URL(`${voice.path}${config ? '.json' : ''}`, source + '/').href;
 }
+const samples: Record<PresentationVoice['language'], string> = {
+  'en-GB': 'Welcome. Let us walk through the diagram, one step at a time.',
+  'en-US': 'Welcome. Let us walk through the diagram, one step at a time.',
+  'sv-SE': 'Välkommen. Vi går igenom diagrammet, ett steg i taget.',
+  'fr-FR': 'Bienvenue. Parcourons le diagramme, étape par étape.',
+  'es-ES': 'Bienvenido. Vamos a recorrer el diagrama, paso a paso.',
+  'pt-PT': 'Bem-vindo. Vamos percorrer o diagrama, passo a passo.',
+  'pt-BR': 'Bem-vindo. Vamos percorrer o diagrama, passo a passo.',
+  'no-NO': 'Velkommen. Vi går gjennom diagrammet, ett trinn om gangen.',
+  'da-DK': 'Velkommen. Vi gennemgår diagrammet, ét trin ad gangen.',
+  'fi-FI': 'Tervetuloa. Käydään kaavio läpi vaihe vaiheelta.',
+  'de-DE': 'Willkommen. Gehen wir das Diagramm Schritt für Schritt durch.',
+};
 export function voiceSample(id: VoiceId) {
-  return voiceInfo(id).language === 'sv-SE'
-    ? 'Välkommen. Vi går igenom diagrammet, ett steg i taget.'
-    : 'Welcome. Let us walk through the diagram, one step at a time.';
+  return samples[voiceInfo(id).language];
 }
