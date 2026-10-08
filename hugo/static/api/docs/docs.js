@@ -2,6 +2,36 @@
 (async function () {
   const local = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
   const status = document.getElementById("api-load-status");
+  let serverObserver;
+  let serverDeadline;
+  const stopServerLabels = () => {
+    serverObserver?.disconnect();
+    clearTimeout(serverDeadline);
+    window.removeEventListener("pagehide", stopServerLabels);
+  };
+  const labelServers = () => {
+    const root = document.getElementById("swagger-ui");
+    const selectors =
+      root?.querySelectorAll('select[id="servers"], .servers select') ?? [];
+    for (const select of selectors) {
+      // A wrapping vendor label may contain only the select. Its option text
+      // describes the value, not the control, so it cannot supply the name.
+      const hasLabelText = [...(select.labels ?? [])].some((label) => {
+        const text = label.cloneNode(true);
+        text.querySelectorAll("select, input, textarea").forEach((control) => {
+          control.remove();
+        });
+        return Boolean(text.textContent?.trim());
+      });
+      if (
+        !hasLabelText &&
+        !select.getAttribute("aria-label")?.trim() &&
+        !select.getAttribute("aria-labelledby")?.trim()
+      )
+        select.setAttribute("aria-label", "API server");
+    }
+    if (selectors.length) stopServerLabels();
+  };
   if (local) {
     document.getElementById("api-mode").textContent = "Local bridge";
     document.getElementById("api-connection-note").textContent =
@@ -24,6 +54,15 @@
         { url: location.origin + "/api/v1", description: "Local bridge" },
       ];
     }
+    // Swagger's completion callback can precede React's DOM commit. Observe only
+    // its root until the server picker arrives, with a deadline and page cleanup.
+    const swaggerRoot = document.getElementById("swagger-ui");
+    if (swaggerRoot) {
+      serverObserver = new MutationObserver(labelServers);
+      serverObserver.observe(swaggerRoot, { childList: true, subtree: true });
+      serverDeadline = setTimeout(stopServerLabels, 10000);
+      window.addEventListener("pagehide", stopServerLabels, { once: true });
+    }
     SwaggerUIBundle({
       spec,
       dom_id: "#swagger-ui",
@@ -37,9 +76,11 @@
       displayRequestDuration: true,
       onComplete: function () {
         status.hidden = true;
+        labelServers();
       },
     });
   } catch (error) {
+    stopServerLabels();
     status.textContent =
       "The API reference could not be loaded. Reload this page to try again, or use the OpenAPI download above.";
     status.setAttribute("role", "alert");

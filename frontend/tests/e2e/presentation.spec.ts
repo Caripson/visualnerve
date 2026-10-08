@@ -337,7 +337,7 @@ test('minimized captions and touch controls fit portrait and landscape without s
     expect(caption.x + caption.width).toBeLessThanOrEqual(canvas.x + canvas.width + 1);
     expect(caption.y).toBeGreaterThanOrEqual(canvas.y);
     expect(caption.y + caption.height).toBeLessThanOrEqual(dock.y - 8);
-    for (const name of ['3D view', 'Canvas options', 'Fit View']) {
+    for (const name of ['3D view', 'Canvas options', 'Fit view']) {
       const canvasControl = page.getByRole('button', { name, exact: true });
       await expect(canvasControl).toBeInViewport({ ratio: 1 });
       expect(

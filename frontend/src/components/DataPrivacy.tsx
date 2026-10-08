@@ -112,7 +112,7 @@ export function BackupNudge({ settings }: { settings: () => void }) {
         className="icon-button"
         aria-label="Dismiss backup reminder"
         onClick={() => {
-          void workspace.setPreference('backup-nudge-dismissed', true);
+          void workspace.setPreference('backup-nudge-dismissed', true).catch(() => {});
         }}
       >
         <X size={12} />

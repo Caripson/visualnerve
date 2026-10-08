@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { database } from '../storage/database';
 import { workspace } from '../storage/workspace';
 import { speechService } from '../presentation/speech/service';
+import { Narrator } from '../presentation/narrator';
 import type { SpeechProgress } from '../presentation/speech/protocol';
 import {
   DEFAULT_VOICE_ID,
@@ -23,9 +24,7 @@ export function VoiceSettings() {
   const [cached, setCached] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const preview = useRef<{ controller: AbortController; audio?: HTMLAudioElement; url?: string }>(
-    undefined,
-  );
+  const preview = useRef<{ controller: AbortController; player: Narrator }>(undefined);
   const mounted = useRef(true);
   const dirty = useRef(false);
   const voice = voiceInfo(draft);
@@ -34,8 +33,7 @@ export function VoiceSettings() {
     const current = preview.current;
     preview.current = undefined;
     current?.controller.abort();
-    current?.audio?.pause();
-    if (current?.url) URL.revokeObjectURL(current.url);
+    current?.player.dispose();
     if (mounted.current) {
       setPreviewing(false);
       setProgress(undefined);
@@ -83,9 +81,13 @@ export function VoiceSettings() {
     setError('');
     setMessage('');
     setPreviewing(true);
-    const current = { controller: new AbortController() } as NonNullable<typeof preview.current>;
+    const current = { controller: new AbortController(), player: new Narrator() };
     preview.current = current;
+    // Start resume synchronously in the click gesture, before a cold model download can await.
+    const unlocked = current.player.unlock();
     try {
+      await unlocked;
+      if (preview.current !== current) return;
       const blob = await speechService.prepare(
         voiceSample(draft),
         draft,
@@ -95,15 +97,13 @@ export function VoiceSettings() {
         },
       );
       if (preview.current !== current) return;
-      current.url = URL.createObjectURL(blob);
-      current.audio = new Audio(current.url);
-      current.audio.onended = () => {
+      await current.player.play(blob, current.controller.signal, () => {
         if (preview.current === current) stopPreview();
-      };
-      await current.audio.play();
+      });
       if (mounted.current && preview.current === current) {
         setProgress(undefined);
-        setCached(await speechService.cachedVoices());
+        const voices = await speechService.cachedVoices();
+        if (mounted.current && preview.current === current) setCached(voices);
       }
     } catch (error) {
       if (preview.current !== current) return;

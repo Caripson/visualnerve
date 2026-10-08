@@ -13,6 +13,8 @@ import { mindmapTopics, type MindmapTopic } from '../mindmap/tree';
 import { getCsvNode } from '../data/csv';
 import type { ExplorationResult } from '../analysis/types';
 import { importedConnectionStyle } from '../imports/diagram/presentation';
+import { isReadonlyCanvasNode } from './logical-geometry';
+import { SimulationCardSizing } from '../simulation/card-sizing';
 export type NodeData = {
   node: GraphNode;
   owners: Owner[];
@@ -21,6 +23,7 @@ export type NodeData = {
   exporting: boolean;
   mindmap?: MindmapTopic;
   resize?: (id: string, geometry: Geometry) => void;
+  minimumHeight?: number;
 };
 export type CanvasNode = Node<NodeData>;
 export interface RenderCache {
@@ -77,6 +80,8 @@ export function projectGraph(
     : undefined;
   const ownerById = new Map(owners.map((o) => [o.id, o]));
   const selected = new Set(selectedNodes);
+  const simulationNodes = new Map(graph.simulation?.nodes.map((node) => [node.id, node]));
+  const sizing = new SimulationCardSizing();
   const edgeSelected = new Set(selectedEdges);
   const counts = new Map<string, number>();
   for (const n of visibleNodes)
@@ -85,9 +90,23 @@ export function projectGraph(
   const collapsed = (n: GraphNode): boolean => {
     if (exporting || exploration) return false;
     if (hidden.has(n.id)) return hidden.get(n.id)!;
-    const p = n.parentId ? byId.get(n.parentId) : undefined;
-    const value = !!p && (p.collapsed || collapsed(p));
-    hidden.set(n.id, value);
+    const path = new Set<string>();
+    let current = n;
+    let value = false;
+    while (!path.has(current.id)) {
+      if (hidden.has(current.id)) {
+        value = hidden.get(current.id)!;
+        break;
+      }
+      path.add(current.id);
+      const parent = current.parentId ? byId.get(current.parentId) : undefined;
+      if (!parent || parent.collapsed) {
+        value = !!parent?.collapsed;
+        break;
+      }
+      current = parent;
+    }
+    for (const id of path) hidden.set(id, value);
     return value;
   };
   const timeline =
@@ -104,20 +123,33 @@ export function projectGraph(
   const depths = new Map<string, number>();
   const depth = (n: GraphNode): number => {
     if (depths.has(n.id)) return depths.get(n.id)!;
-    const p = n.parentId ? byId.get(n.parentId) : undefined;
-    const value = p?.nodeType === 'group' ? depth(p) + 1 : 0;
-    depths.set(n.id, value);
-    return value;
+    const path: string[] = [];
+    const seen = new Set<string>();
+    let current = n;
+    while (!depths.has(current.id)) {
+      if (seen.has(current.id)) break;
+      seen.add(current.id);
+      const parent = current.parentId ? byId.get(current.parentId) : undefined;
+      if (parent?.nodeType !== 'group') break;
+      path.push(current.id);
+      current = parent;
+    }
+    let value = depths.get(current.id) ?? 0;
+    depths.set(current.id, value);
+    for (let index = path.length - 1; index >= 0; index--) depths.set(path[index], ++value);
+    return depths.get(n.id)!;
   };
   const nodes: CanvasNode[] = [...visibleNodes]
     .sort((a, b) => depth(a) - depth(b))
     .map((n) => {
       const simulationProjected = n.metadata.simulationProjected === true;
+      const readonly = isReadonlyCanvasNode(n);
       const logicalSelectionId =
         simulationProjected && typeof n.metadata.simulationLogicalNodeId === 'string'
           ? n.metadata.simulationLogicalNodeId
           : n.id;
       const geom = timeline?.positions.get(n.id) ?? n;
+      const semantic = simulationNodes.get(semanticNodeId(n));
       const parent = n.parentId ? byId.get(n.parentId) : undefined;
       const grouped = !timeline && parent?.nodeType === 'group';
       const match = exporting || !!exploration || matches(n);
@@ -128,7 +160,8 @@ export function projectGraph(
         childCount: counts.get(n.id) ?? 0,
         exporting,
         mindmap: topics?.get(n.id),
-        resize: simulationProjected || n.metadata.simulationLayoutProjected ? undefined : resize,
+        resize: readonly ? undefined : resize,
+        minimumHeight: semantic ? sizing.minimumHeight(semantic) : undefined,
       };
       const previous = dataCache?.get(n.id);
       if (
@@ -138,6 +171,7 @@ export function projectGraph(
         previous.childCount === data.childCount &&
         previous.exporting === exporting &&
         previous.resize === data.resize &&
+        previous.minimumHeight === data.minimumHeight &&
         previous.mindmap?.depth === data.mindmap?.depth &&
         previous.mindmap?.color === data.mindmap?.color &&
         previous.mindmap?.side === data.mindmap?.side &&
@@ -173,12 +207,13 @@ export function projectGraph(
           opacity: match ? 1 : 0.2,
         },
         selected: selected.has(logicalSelectionId),
-        ...(n.metadata.simulationLayoutProjected ? { draggable: false } : {}),
-        ...(simulationProjected ? { draggable: false, selectable: false, connectable: false } : {}),
+        ...(readonly ? { draggable: false, connectable: false } : {}),
+        ...(readonly && simulationProjected ? { selectable: false } : {}),
         hidden: collapsed(n) || (!match && filters.mode === 'hide'),
         data,
         ariaLabel: `${n.title}, ${typeof n.metadata.simulationProcessId === 'string' ? 'process group. Open to inspect subprocesses' : n.nodeType}${simulationProjected && !n.metadata.simulationProcessId ? '. Open shared process properties' : ''}`,
-        ...(simulationProjected ? { ariaRole: 'button' as const } : {}),
+        // A card contains its own focusable details and actions; the wrapper is a group.
+        ariaRole: 'group',
         zIndex: n.nodeType === 'group' ? -1 : 1,
       };
       const cached = renderCache?.nodes.get(n.id);

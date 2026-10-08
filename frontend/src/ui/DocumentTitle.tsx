@@ -90,7 +90,7 @@ export function DocumentTitle() {
         <h1 aria-label={graph.diagram.name}>
           <button
             className="project-title-button"
-            aria-label="Rename project"
+            aria-label={`Rename project: ${graph.diagram.name}`}
             title="Rename project (F2)"
             onClick={begin}
           >

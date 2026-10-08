@@ -44,7 +44,7 @@ test('quick project renaming, colors, domain icons, duplication and reversible d
     'href',
     'https://github.com/Caripson/visualnerve/issues',
   );
-  await page.getByRole('button', { name: 'Rename project' }).click();
+  await page.getByRole('button', { name: /^Rename project:/ }).click();
   await page.getByLabel('Project name', { exact: true }).fill('A clearer project name');
   await page.getByLabel('Project name', { exact: true }).press('Enter');
   await saved(page);
@@ -207,7 +207,7 @@ test.describe('phone workspace', () => {
     await page.screenshot({ path: '../docs/acceptance/mobile-properties.png' });
     await page.getByRole('button', { name: 'Close properties', exact: true }).tap();
     await expect(page.locator('.properties-shell')).toBeHidden();
-    await page.getByRole('button', { name: 'Rename project', exact: true }).tap();
+    await page.getByRole('button', { name: /^Rename project:/ }).tap();
     await page.getByLabel('Project name', { exact: true }).fill('My phone workspace');
     await page.getByLabel('Project name', { exact: true }).press('Enter');
     await saved(page);

@@ -3,6 +3,7 @@ import { pruneStoryboard } from '../presentation/storyboard';
 import { reconcileSimulationGraph } from '../simulation/document';
 import { addConnectedNode, type ConnectedNodeType } from '../nodes/connected-node';
 import { create } from 'zustand';
+import { GroupMembership } from './group-membership';
 import type { McpAccess } from '../integration/access';
 import { applyDelta, diffGraph, mergeDelta, type Delta } from './history';
 import { copySelection, pasteSelection, type Clip } from './clipboard';
@@ -59,6 +60,7 @@ interface Editor {
   editRevision: number;
   status: SaveStatus;
   message: string;
+  commandError: string;
   theme: string;
   importFileLimitMb: number;
   mcpAccess: McpAccess;
@@ -130,6 +132,7 @@ export const useEditor = create<Editor>((set, get) => ({
   editRevision: 0,
   status: 'saved',
   message: '',
+  commandError: '',
   theme: 'system',
   importFileLimitMb: 50,
   mcpAccess: 'off',
@@ -169,6 +172,7 @@ export const useEditor = create<Editor>((set, get) => ({
       editingTitle: '',
       mobilePanel: null,
       drawingTool: 'none',
+      commandError: '',
     }),
   command: (label, change, coalesce = false) => {
     const s = get();
@@ -178,7 +182,11 @@ export const useEditor = create<Editor>((set, get) => ({
     try {
       reconciled = reconcileSimulationGraph(s.graph, changed);
     } catch (error) {
-      set({ status: 'error', message: (error as Error).message });
+      set({
+        status: 'error',
+        message: (error as Error).message,
+        commandError: (error as Error).message,
+      });
       return;
     }
     const next = pruneStoryboard(prunePresentation(syncSpatialPositions(s.graph, reconciled)));
@@ -214,6 +222,14 @@ export const useEditor = create<Editor>((set, get) => ({
       editRevision: s.editRevision + 1,
       status: 'saving',
       message: '',
+      // Viewport persistence must not dismiss a rejected edit while the user reads it.
+      ...(delta.nodes.length ||
+      delta.edges.length ||
+      delta.nodeOrder ||
+      delta.edgeOrder ||
+      delta.simulation
+        ? { commandError: '' }
+        : {}),
       ...(changedFilters ? { filters: analysisFilters(next) } : {}),
     });
   },
@@ -371,7 +387,11 @@ export const useEditor = create<Editor>((set, get) => ({
       set({ focusNode: added.nodeId });
       return added.nodeId;
     } catch (error) {
-      set({ status: 'error', message: (error as Error).message });
+      set({
+        status: 'error',
+        message: (error as Error).message,
+        commandError: (error as Error).message,
+      });
     }
   },
   beginEditing: (id) => {
@@ -536,7 +556,9 @@ export const useEditor = create<Editor>((set, get) => ({
         (e) => !ids.has(e.sourceNodeId) && !ids.has(e.targetNodeId) && !edges.has(e.id),
       ),
     }));
-    s.select([]);
+    // A rejected command leaves the model unchanged. Keep its selection so the
+    // user can inspect the reason and correct dependencies before trying again.
+    if (get().graph !== s.graph) s.select([]);
   },
   undo: () => {
     const s = get();
@@ -553,6 +575,7 @@ export const useEditor = create<Editor>((set, get) => ({
         selectedEdges: [],
         editingNode: null,
         editingTitle: '',
+        commandError: '',
         ...(delta.diagram &&
         delta.diagram.before.settings.analysisFilters !==
           delta.diagram.after.settings.analysisFilters
@@ -585,6 +608,7 @@ export const useEditor = create<Editor>((set, get) => ({
         selectedEdges: [],
         editingNode: null,
         editingTitle: '',
+        commandError: '',
         ...(delta.diagram &&
         delta.diagram.before.settings.analysisFilters !==
           delta.diagram.after.settings.analysisFilters
@@ -621,7 +645,11 @@ export const useEditor = create<Editor>((set, get) => ({
     try {
       p = pasteSelection(c, s.graph);
     } catch (error) {
-      set({ status: 'error', message: (error as Error).message });
+      set({
+        status: 'error',
+        message: (error as Error).message,
+        commandError: (error as Error).message,
+      });
       return;
     }
     s.command('Paste nodes', (g) => ({
@@ -630,7 +658,7 @@ export const useEditor = create<Editor>((set, get) => ({
       edges: [...g.edges, ...p.edges],
       ...(p.simulation ? { simulation: p.simulation } : {}),
     }));
-    s.select(p.nodes.map((n) => n.id));
+    if (get().graph !== s.graph) s.select(p.nodes.map((n) => n.id));
   },
   group: () => {
     const s = get();
@@ -667,9 +695,7 @@ export const useEditor = create<Editor>((set, get) => ({
     );
     s.command('Ungroup nodes', (g) => ({
       ...g,
-      nodes: g.nodes
-        .filter((n) => !selected.has(n.id))
-        .map((n) => (n.parentId && selected.has(n.parentId) ? { ...n, parentId: undefined } : n)),
+      nodes: new GroupMembership(g.nodes, selected).ungroup(),
       edges: g.edges.filter((e) => !selected.has(e.sourceNodeId) && !selected.has(e.targetNodeId)),
     }));
     s.select([]);

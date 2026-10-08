@@ -209,17 +209,30 @@ export function markdown(graph: Graph): string {
   };
   if (graph.diagram.type === 'mindmap') {
     const children = new Map<string, GraphNode[]>();
-    for (const n of graph.nodes)
-      children.set(n.parentId ?? '', [...(children.get(n.parentId ?? '') ?? []), n]);
+    for (const n of graph.nodes) {
+      const parent = n.parentId ?? '';
+      const siblings = children.get(parent);
+      if (siblings) siblings.push(n);
+      else children.set(parent, [n]);
+    }
     const visited = new Set<string>();
     const walk = (parent: string, depth: number) => {
-      for (const n of children.get(parent) ?? []) {
+      const pending = [{ nodes: children.get(parent) ?? [], index: 0, depth }];
+      while (pending.length) {
+        const frame = pending[pending.length - 1];
+        if (frame.index === frame.nodes.length) {
+          pending.pop();
+          continue;
+        }
+        const n = frame.nodes[frame.index++];
         if (visited.has(n.id)) continue;
         visited.add(n.id);
-        chunks.push(`${'#'.repeat(Math.min(6, depth))} ${escapeHeading(n.title)}\n`);
+        chunks.push(`${'#'.repeat(Math.min(6, frame.depth))} ${escapeHeading(n.title)}\n`);
         details(n);
         relationships(n, true);
-        walk(n.id, depth + 1);
+        const descendants = children.get(n.id);
+        if (descendants?.length)
+          pending.push({ nodes: descendants, index: 0, depth: frame.depth + 1 });
       }
     };
     const roots = children.get('') ?? [];

@@ -5,7 +5,7 @@ import { workspace } from '../storage/workspace';
 import { getSpatialView } from '../spatial/types';
 import { setSimulationModel } from './document';
 import { simulationService } from './service';
-import { useSimulation } from './useSimulation';
+import { useSimulationCanvasLifecycle } from './useSimulationCanvasLifecycle';
 import { ModelEditor } from './ModelEditor';
 import { MetricsDashboard } from './MetricsDashboard';
 import { ScenarioControls } from './ScenarioControls';
@@ -26,7 +26,15 @@ import './simulation.css';
 export { simulationTime } from './SimulationControls';
 export function SimulationFeature() {
   const graph = useEditor((state) => state.graph);
-  const view = useSimulation(graph?.simulation ? graph.diagram.id : undefined);
+  const {
+    view,
+    resultsView,
+    topologyChanged,
+    error: topologyError,
+  } = useSimulationCanvasLifecycle(
+    graph?.simulation ? graph.diagram.id : undefined,
+    graph?.simulation,
+  );
   const compact = useCompactLayout();
   const [settings, setSettings] = useState(false);
   const [details, setDetails] = useState(false);
@@ -77,9 +85,10 @@ export function SimulationFeature() {
         .list(graph.diagram.id)
         .then(setRuns)
         .catch((failure) => setError(failure.message));
-  }, [graph?.diagram.id, view?.run.status, view?.run.id]);
+  }, [graph?.diagram.id, resultsView?.run.status, resultsView?.run.id]);
   if (!graph?.simulation || graph.diagram.type !== 'process-simulator') return null;
   const model = graph.simulation;
+  const visibleError = error || topologyError;
   const active = view?.run.status === 'running' || view?.run.status === 'paused';
   const paused = view?.run.status === 'paused';
   const sameRunSettings =
@@ -181,27 +190,33 @@ export function SimulationFeature() {
           Use 2D view to see live particles, queues and capacity units. Metrics remain live in 3D.
         </p>
       )}
+      {topologyChanged && (
+        <p className="simulation-notice" role="status">
+          The process structure has changed. The previous run is kept in Results and is no longer
+          overlaid on this diagram. Play starts a run with the new structure.
+        </p>
+      )}
       {view && (!sameModel || !sameRunSettings) && (
         <p className="simulation-notice">
           The assumptions have changed. Play starts a new run; the displayed metrics belong to the
           original run.
         </p>
       )}
-      {(error || view?.run.error || view?.state?.message) && (
+      {(visibleError || view?.run.error || view?.state?.message) && (
         <p role="alert" className="error-notice">
-          {error || view?.run.error || view?.state?.message}
+          {visibleError || view?.run.error || view?.state?.message}
         </p>
       )}
     </>
   );
   const metrics = view?.state && (
-    <MetricsDashboard state={view.state} currency={model.currency} compact={compact} />
+    <MetricsDashboard state={view.state} currency={view.run.model.currency} compact={compact} />
   );
   const results = (
     <SimulationResults
       key={graph.diagram.id}
       model={model}
-      view={view}
+      view={resultsView}
       runs={runs}
       busy={busy}
       perform={perform}
@@ -221,9 +236,15 @@ export function SimulationFeature() {
             status={view?.run.status ?? 'ready'}
             openDetails={() => setDetails(true)}
           />
-          {!details && (error || view?.run.error || view?.state?.message) && (
+          {!details && topologyChanged && (
+            <p className="simulation-notice" role="status">
+              Process structure changed. Previous run kept in Results. Play to run the new
+              structure.
+            </p>
+          )}
+          {!details && (visibleError || view?.run.error || view?.state?.message) && (
             <p role="alert" className="simulation-dock-error">
-              {error || view?.run.error || view?.state?.message}
+              {visibleError || view?.run.error || view?.state?.message}
             </p>
           )}
           {details && (

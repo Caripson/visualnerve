@@ -2,6 +2,8 @@
 
 Connect Codex to the local HTTP(S) `/mcp` server and keep the Visual Nerve workspace at `/app/` open with local storage accepted. The browser stores the diagrams in IndexedDB. Enable **Settings → MCP access → Read + write** to save or control a presentation. Read only permits GET discovery/state and exact question/app-brief preview requests. The public website serves app files and documentation; the MCP bridge runs on the user's computer.
 
+Commands recheck access after queue waits and before document writes. If saving a lower access level fails, the current running Workspace retains that restriction through unrelated refreshes. An explicit access choice must save successfully before access can increase again. A failed preference write does not persist that choice across reloads.
+
 Call `visual_nerve_api_docs` first. Its default compact guide and full `{"document":"openapi"}` response describe both canonical definitions and playback. Commands use `visual_nerve_request` with paths that omit `/api/v1`.
 
 ## Inspect and control hierarchical processes
@@ -47,6 +49,8 @@ Run the persisted model without requiring an active animation:
 Poll the returned run ID at `GET .../runs/{runId}/state` or `/result`. Read `/processes` for every scope or `/processes/{processId}` for one; `/queues` includes process, node and resource maps. Scoped metrics include actual queues/wait distributions, utilization, bottlenecks, resource usage, throughput and economic fields. `completed` counts successful scope visits, including successful boundary exits; `exited` counts those exits, and `terminalCompleted` counts final successful outcomes inside the scope. Re-entry creates another visit. Scoped `cycleTime` measures entry to exit/outcome; scoped `ttr` measures entry to a revenue-producing terminal outcome.
 
 Parent and child rollups overlap: do not sum them or add node quantiles. Scopes receive only occupied shared-resource cost (`resourceCostAllocation:"occupied-units"`); idle pool capacity, pool scaling and pool investments remain global overhead. Use whole-system metrics for total profitability and scenario comparison, then process metrics to locate where congestion and its consequences occurred. All scopes compete for the same global resource pools. UI, animated, MAX and MCP execution share deterministic inputs/results.
+
+`GET .../simulation/runs` includes the captured `scenarioName` and `currency` alongside every run's metrics. Read these labels rather than looking up names or currency in the current edited document. Comparison returns its common captured `currency`; mixed-currency run IDs return structured 422 `SIMULATION_CURRENCY_MISMATCH`. Visual Nerve does not convert exchange rates.
 
 `GET /templates` discovers the bundled **Delivery network** example, including its complete nested process model, explicit shared pools and scenario assumptions. To reproduce it, read the returned template's `graph.simulation`, create a process-simulator document and replace `/simulation` using `{baseVersion,model}`. Creation retains the kiosk default until that atomic replacement. The connected browser must remain open with accepted storage; inspection permits Read only, while creation, editing and run controls require Read + write. See [Process Simulator](PROCESS_SIMULATOR.md) and [the complete API contract](openapi.yaml).
 

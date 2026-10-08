@@ -219,6 +219,20 @@
   font-size: 11px;
   text-shadow: none;
 }
+.api-reference .swagger-ui .opblock {
+  --api-method-bg: #43516a;
+}
+.api-reference .swagger-ui .opblock-get { --api-method-bg: #1d5e9e; }
+.api-reference .swagger-ui .opblock-post { --api-method-bg: #237348; }
+.api-reference .swagger-ui .opblock-put { --api-method-bg: #a85600; }
+.api-reference .swagger-ui .opblock-patch { --api-method-bg: #15685a; }
+.api-reference .swagger-ui .opblock-delete { --api-method-bg: #b72c37; }
+.api-reference .swagger-ui .opblock-head,
+.api-reference .swagger-ui .opblock-options { --api-method-bg: #5a468c; }
+.api-reference .swagger-ui .opblock .opblock-summary-method {
+  color: #ffffff;
+  background: var(--api-method-bg);
+}
 .swagger-ui .opblock .opblock-summary-path,
 .swagger-ui .opblock .opblock-summary-path__deprecated {
   color: var(--text);
@@ -384,7 +398,7 @@
 }
 .swagger-ui .btn,
 .swagger-ui .btn.cancel,
-.swagger-ui .btn.authorize {
+.api-reference .swagger-ui .btn.authorize {
   min-height: 36px;
   padding: 7px 12px;
   border-width: 1px;
@@ -402,6 +416,12 @@
   margin: 0;
   border-color: var(--accent);
   color: var(--accent);
+  background: var(--surface);
+}
+.api-reference .swagger-ui .btn.authorize:disabled {
+  opacity: 1;
+  color: var(--muted);
+  background: var(--surface-alt);
 }
 .swagger-ui .btn.execute {
   border-color: var(--accent);

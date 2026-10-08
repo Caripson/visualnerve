@@ -101,7 +101,27 @@ describe('first-class Process Simulator documents', () => {
     useEditor.getState().remove();
     expect(useEditor.getState().graph).toBe(graph);
     expect(useEditor.getState().message).toContain('Disconnect this shared resource');
+    expect(useEditor.getState().selectedNodes).toEqual([resource.id]);
+    expect(useEditor.getState().status).toBe('error');
     expect(useEditor.getState().history).toHaveLength(0);
+  });
+  it('deletes a newly added Work node from both models and restores it through Undo/Redo', () => {
+    const graph = createSimulationGraph('Kiosk');
+    useEditor.getState().setGraph(graph);
+    const id = useEditor.getState().addNode({ title: 'Added work' })!;
+    expect(useEditor.getState().selectedNodes).toEqual([id]);
+    expect(useEditor.getState().graph!.simulation!.nodes.some((node) => node.id === id)).toBe(true);
+    useEditor.getState().remove();
+    const deleted = useEditor.getState().graph!;
+    expect(deleted.nodes.some((node) => node.id === id)).toBe(false);
+    expect(deleted.simulation!.nodes.some((node) => node.id === id)).toBe(false);
+    expect(useEditor.getState().selectedNodes).toEqual([]);
+    validateGraph(deleted);
+    useEditor.getState().undo();
+    expect(useEditor.getState().graph!.nodes.some((node) => node.id === id)).toBe(true);
+    expect(useEditor.getState().graph!.simulation!.nodes.some((node) => node.id === id)).toBe(true);
+    useEditor.getState().redo();
+    expect(useEditor.getState().graph!.simulation).toEqual(deleted.simulation);
   });
   it('explicit allocation connections consume one shared logical resource and disconnect cleanly', () => {
     const graph = createSimulationGraph('Kiosk');

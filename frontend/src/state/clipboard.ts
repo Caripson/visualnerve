@@ -8,6 +8,7 @@ import {
   pasteSimulationSelection,
   type SimulationClipboard,
 } from '../simulation/clipboard';
+import { validateClipboardTopology } from './clipboard-validation';
 export interface Clip {
   format: 'visual-nerve-clipboard';
   nodes: GraphNode[];
@@ -16,9 +17,33 @@ export interface Clip {
 }
 export function copySelection(graph: Graph, ids: string[]): Clip {
   const set = new Set(ids);
+  const children = new Map<string, string[]>();
+  for (const node of graph.nodes)
+    if (node.parentId) {
+      const members = children.get(node.parentId) ?? [];
+      members.push(node.id);
+      children.set(node.parentId, members);
+    }
+  const pending = graph.nodes
+    .filter((node) => set.has(node.id) && node.nodeType === 'group')
+    .map((node) => node.id);
+  const expanded = new Set<string>();
+  for (let index = 0; index < pending.length; index++) {
+    const id = pending[index];
+    if (expanded.has(id)) continue;
+    expanded.add(id);
+    for (const child of children.get(id) ?? []) {
+      set.add(child);
+      pending.push(child);
+    }
+  }
   return structuredClone({
     format: 'visual-nerve-clipboard' as const,
-    nodes: graph.nodes.filter((n) => set.has(n.id)),
+    nodes: graph.nodes
+      .filter((n) => set.has(n.id))
+      .map((node) =>
+        node.parentId && !set.has(node.parentId) ? { ...node, parentId: undefined } : node,
+      ),
     edges: graph.edges.filter((e) => set.has(e.sourceNodeId) && set.has(e.targetNodeId)),
     ...(graph.simulation ? { simulation: copySimulationSelection(graph, set) } : {}),
   });
@@ -28,6 +53,7 @@ export function pasteSelection(
   target: Graph | string,
   offset = 40,
 ): { nodes: GraphNode[]; edges: GraphEdge[]; simulation?: Graph['simulation'] } {
+  validateClipboardTopology(clip);
   const diagramId = typeof target === 'string' ? target : target.diagram.id;
   const datasetIds = new Set(
     typeof target === 'string' ? [] : graphDatasets(target).map((source) => source.id),

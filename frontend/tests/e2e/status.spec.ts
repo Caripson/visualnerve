@@ -366,7 +366,7 @@ test.describe('phone statuses', () => {
     await expect(choose).toBeInViewport({ ratio: 0.999 });
     await expect(markDone).toBeInViewport({ ratio: 0.999 });
     const draw = page.getByRole('button', { name: 'Draw on diagram', exact: true });
-    const fit = page.getByRole('button', { name: 'Fit View', exact: true });
+    const fit = page.getByRole('button', { name: 'Fit view', exact: true });
     await clickable(draw);
     await clickable(fit);
     await fit.tap();

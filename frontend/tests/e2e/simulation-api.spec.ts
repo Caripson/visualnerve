@@ -181,10 +181,23 @@ test('AT-18,21,22: MCP discovery and headless/UI runs share the complete seeded 
     type: string;
     schemaVersion: number;
     execution: { animationRequired: boolean };
+    visualCapacity: {
+      primaryEditable: boolean;
+      additionalCardsReadOnly: boolean;
+      compactHierarchyReadOnly: boolean;
+    };
   }>(request, '/simulation/capabilities');
   expect(capabilities.type).toBe('process-simulator');
   expect(capabilities.schemaVersion).toBe(1);
   expect(capabilities.execution.animationRequired).toBe(false);
+  expect(capabilities.visualCapacity).toMatchObject({
+    primaryEditable: true,
+    additionalCardsReadOnly: true,
+    compactHierarchyReadOnly: true,
+  });
+  const restCapabilities = await request.get('/api/v1/simulation/capabilities');
+  expect(restCapabilities.ok()).toBe(true);
+  expect(await restCapabilities.json()).toEqual(capabilities);
   const graph = await create(request, 'Seeded UI and MCP parity', basicModel(100));
   const documents = await mcp<{ id: string; type: string }[]>(
     request,
@@ -328,7 +341,9 @@ test('AT-19,20: MCP inspects actual queue/resource state, pause freezes it and c
   );
   await expect(page.locator('.simulation-run-status')).toHaveText('paused');
   // Read after actual UI interactions, with no fixed sleep and no advancing clock.
-  await page.getByRole('button', { name: 'Configure simulation', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Assumptions: configure simulation', exact: true })
+    .click();
   await page.getByLabel('Simulation node', { exact: true }).selectOption(id);
   await expect(page.getByLabel('Work capacity', { exact: true })).toHaveValue('1');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
@@ -349,7 +364,9 @@ test('AT-19,20: MCP inspects actual queue/resource state, pause freezes it and c
     'PATCH',
     { baseVersion: saved.diagram.version, value: { capacity: 3 } },
   );
-  await page.getByRole('button', { name: 'Configure simulation', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Assumptions: configure simulation', exact: true })
+    .click();
   await page.getByLabel('Simulation node', { exact: true }).selectOption(id);
   await expect(page.getByLabel('Work capacity', { exact: true })).toHaveValue('3');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
@@ -555,7 +572,9 @@ test('AT-17,30,31,32: programmatic semantic round trip includes every concept an
   expect(semantic.scenarios).toHaveLength(2);
   expect(semantic.economics!.maximumBudget).toBe(500000);
   await open(page, request, graph);
-  await page.getByRole('button', { name: 'Configure simulation', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Assumptions: configure simulation', exact: true })
+    .click();
   await page.getByLabel('Simulation node', { exact: true }).selectOption(id('Assembly'));
   await expect(page.getByLabel('Work capacity', { exact: true })).toHaveValue('5');
   await expect(page.getByLabel('Processing time (minutes)', { exact: true })).toHaveValue('12');

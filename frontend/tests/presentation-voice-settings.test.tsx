@@ -11,6 +11,13 @@ vi.mock('../src/storage/workspace', () => ({ workspace: { setPreference: vi.fn()
 vi.mock('../src/presentation/speech/service', () => ({
   speechService: { prepare: vi.fn(), cachedVoices: vi.fn(), clearCache: vi.fn() },
 }));
+vi.mock('../src/presentation/narrator', () => ({
+  Narrator: class {
+    unlock = vi.fn().mockResolvedValue(undefined);
+    play = vi.fn().mockResolvedValue(1);
+    dispose = vi.fn();
+  },
+}));
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(database.settings.get).mockResolvedValue(undefined);

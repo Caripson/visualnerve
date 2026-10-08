@@ -1,6 +1,7 @@
 import { assertVoiceId, VOICE_SETTING } from '../presentation/speech/voices';
 import { liveQuery, type Subscription } from 'dexie';
-import { useEditor } from '../state/editor';
+import { useEditor, type SaveStatus } from '../state/editor';
+import { diffGraph } from '../state/history';
 import { ownersFor, type Graph } from '../model/types';
 import { graphDatasets } from '../data/model';
 import { StorageError } from '../model/validation';
@@ -10,6 +11,7 @@ import {
   assertMcpAccess,
   defaultBridgeUrl,
   localBridgeUrl,
+  type McpAccess,
 } from '../integration/access';
 import type { WorkspaceBackup } from './database';
 import { getSpatialView } from '../spatial/types';
@@ -87,15 +89,101 @@ function acknowledged(local: Graph, saved: Graph): Graph {
   };
 }
 
+interface QueuedSave {
+  graph: Graph;
+  revision: number;
+  sourcesChanged: boolean;
+  cancelled?: boolean;
+}
+interface PreferenceFailure {
+  generation: number;
+  message: string;
+  diagramId?: string;
+  revision: number;
+  navigation: number;
+  previousState: { status: SaveStatus; message: string };
+  previous?: PreferenceFailure;
+  resolved?: boolean;
+}
+function mutatesDocument(path: string, method: string) {
+  if (method === 'GET') return false;
+  const [collection, id, action, entity, operation] = new URL(
+    path.replace(/^\/api\/v1/, ''),
+    'http://browser.local',
+  ).pathname
+    .split('/')
+    .filter(Boolean);
+  if (['nodes', 'edges', 'owners'].includes(collection)) return true;
+  if (collection !== 'diagrams' || !id) return false;
+  if (action === 'simulation' && ['runs', 'compare'].includes(entity)) return false;
+  if (['questions', 'build-brief', 'evidence'].includes(action)) return false;
+  if (action === 'history') return !!entity && operation === 'restore' && method === 'POST';
+  return true;
+}
+function withoutCamera(graph: Graph) {
+  const {
+    viewport: _viewport,
+    viewportDevice: _device,
+    spatialView,
+    ...settings
+  } = graph.diagram.settings;
+  const { camera: _camera, ...spatial } = spatialView ?? {};
+  return {
+    ...graph,
+    diagram: {
+      ...graph.diagram,
+      settings: { ...settings, ...(spatialView ? { spatialView: spatial } : {}) },
+    },
+  } as Graph;
+}
+function cameraOnly(before: Graph, local: Graph) {
+  const delta = diffGraph(withoutCamera(before), withoutCamera(local), 'Camera compatibility');
+  return (
+    !delta.nodes.length &&
+    !delta.edges.length &&
+    !delta.nodeOrder &&
+    !delta.edgeOrder &&
+    !delta.diagram &&
+    !delta.simulation &&
+    !delta.sources?.length &&
+    JSON.stringify(before.owners) === JSON.stringify(local.owners)
+  );
+}
+function cameraRebased(before: Graph, local: Graph, committed: Graph): Graph {
+  const settings = { ...committed.diagram.settings };
+  for (const key of ['viewport', 'viewportDevice'] as const)
+    if (
+      JSON.stringify(before.diagram.settings[key]) !== JSON.stringify(local.diagram.settings[key])
+    )
+      if (key === 'viewport') settings.viewport = local.diagram.settings.viewport;
+      else settings.viewportDevice = local.diagram.settings.viewportDevice;
+  if (
+    settings.spatialView &&
+    JSON.stringify(before.diagram.settings.spatialView?.camera) !==
+      JSON.stringify(local.diagram.settings.spatialView?.camera)
+  )
+    settings.spatialView = {
+      ...settings.spatialView,
+      camera: local.diagram.settings.spatialView?.camera,
+    };
+  return { ...committed, diagram: { ...committed.diagram, settings } };
+}
+
 /** Optimistic editor state backed exclusively by committed IndexedDB transactions. */
 export class Workspace {
   private queue: Promise<void> = Promise.resolve();
   private unsubscribe?: () => void;
   private observer?: Subscription;
   private versions = new Map<string, number>();
-  private pending = new Map<string, { graph: Graph; sourcesChanged: boolean }>();
+  private pending = new Map<string, QueuedSave>();
+  private queuedSaves = new Set<QueuedSave>();
   private navigation = 0;
   private settingsRevision = 0;
+  private preferenceWrites = 0;
+  private errorGeneration = 0;
+  private preferenceFailures = new Map<string, PreferenceFailure>();
+  private accessCeiling?: McpAccess;
+  private accessChoice = 0;
   private appearanceTheme?: AppearancePreference;
   private stopped = false;
   private analysisCommands = new Set<AbortController>();
@@ -133,8 +221,10 @@ export class Workspace {
         this.pending.get(graph.diagram.id)?.sourcesChanged === true ||
         oldSources.length !== sources.length ||
         sources.some((source, index) => source !== oldSources[index]);
-      this.pending.set(graph.diagram.id, { graph, sourcesChanged });
-      this.queue = this.queue.then(() => this.persist(graph, revision, sourcesChanged));
+      const save = { graph, revision, sourcesChanged };
+      this.pending.set(graph.diagram.id, save);
+      this.queuedSaves.add(save);
+      this.queue = this.queue.then(() => this.persist(save));
     });
     await this.refresh();
     const last = await this.repo.db.settings.get('last-diagram');
@@ -183,16 +273,87 @@ export class Workspace {
     if ((await this.repo.db.settings.get('storage-consent'))?.value !== true)
       throw new StorageError(403, 'Accept local browser storage before using the workspace.');
   }
+  private mcpGrant(value: unknown): McpAccess {
+    const grant = mcpAccess(value);
+    if (grant === 'off' || this.accessCeiling === 'off') return 'off';
+    if (grant === 'read' || this.accessCeiling === 'read') return 'read';
+    return 'write';
+  }
   private error(error: unknown) {
+    this.errorGeneration++;
     const conflict = error instanceof StorageError && [404, 409].includes(error.status);
     useEditor.setState({
       status: conflict ? 'conflict' : 'error',
       message: (error as Error).message,
     });
   }
-  private async persist(graph: Graph, revision: number, sourcesChanged = false) {
+  private ownsPreferenceError(failure: PreferenceFailure) {
+    const state = useEditor.getState();
+    return (
+      state.status === 'error' &&
+      state.message === failure.message &&
+      this.errorGeneration === failure.generation
+    );
+  }
+  private preferenceError(key: string, error: unknown) {
+    const state = useEditor.getState();
+    const previous = [...this.preferenceFailures.values()].find((failure) =>
+      this.ownsPreferenceError(failure),
+    );
+    // Repeated failed attempts belong to the same error, retaining the state
+    // that preceded it rather than restoring an earlier failed retry.
+    const replaced = this.preferenceFailures.get(key);
+    const sameKey = previous === replaced;
+    if (replaced) replaced.resolved = true;
+    this.error(error);
+    this.preferenceFailures.set(key, {
+      generation: this.errorGeneration,
+      message: (error as Error).message,
+      diagramId: state.graph?.diagram.id,
+      revision: state.editRevision,
+      navigation: this.navigation,
+      previousState:
+        sameKey && previous
+          ? previous.previousState
+          : { status: state.status, message: state.message },
+      previous: sameKey && previous ? previous.previous : previous,
+    });
+  }
+  private acknowledgePreference(key: string, failure?: PreferenceFailure) {
+    if (!failure || this.preferenceFailures.get(key) !== failure) return;
+    this.preferenceFailures.delete(key);
+    failure.resolved = true;
+    const state = useEditor.getState();
+    if (
+      this.stopped ||
+      !this.ownsPreferenceError(failure) ||
+      state.graph?.diagram.id !== failure.diagramId ||
+      state.editRevision !== failure.revision ||
+      this.navigation !== failure.navigation ||
+      this.pending.size ||
+      this.queuedSaves.size ||
+      state.commandError
+    )
+      return;
+    let restore = failure.previousState;
+    let previous = failure.previous;
+    // A different preference may have been successfully retried while hidden
+    // behind this error. Do not resurrect an already acknowledged failure.
+    while (previous?.resolved) {
+      restore = previous.previousState;
+      previous = previous.previous;
+    }
+    this.errorGeneration++;
+    if (previous) previous.generation = this.errorGeneration;
+    useEditor.setState(restore);
+  }
+  private async persist(save: QueuedSave) {
+    const { graph, revision, sourcesChanged } = save;
     const id = graph.diagram.id;
-    if (useEditor.getState().status === 'conflict') return;
+    if (save.cancelled || useEditor.getState().status === 'conflict') {
+      this.queuedSaves.delete(save);
+      return;
+    }
     try {
       await this.requireStorageConsent();
       // Editor commands change the drawing/configuration, not the original CSV cells.
@@ -219,6 +380,8 @@ export class Workspace {
       if (this.pending.get(id)?.graph === graph) this.pending.delete(id);
     } catch (error) {
       this.error(error);
+    } finally {
+      this.queuedSaves.delete(save);
     }
   }
   async settled() {
@@ -238,7 +401,9 @@ export class Workspace {
   }
   async refresh() {
     if (this.stopped) return;
-    await this.queue;
+    const queue = this.queue;
+    await queue;
+    if (queue !== this.queue || this.stopped) return;
     const settingsRevision = this.settingsRevision;
     const [diagrams, owners, settings] = await Promise.all([
       this.repo.db.diagrams.orderBy('updatedAt').reverse().toArray(),
@@ -246,7 +411,13 @@ export class Workspace {
       this.repo.db.settings.toArray(),
     ]);
     const preferences = new Map(settings.map((setting) => [setting.key, setting.value]));
-    if (settingsRevision !== this.settingsRevision) return;
+    if (
+      settingsRevision !== this.settingsRevision ||
+      this.preferenceWrites ||
+      queue !== this.queue ||
+      this.stopped
+    )
+      return;
     const theme =
       preferences.get('storage-consent') === true
         ? appearancePreference(preferences.get('theme'))
@@ -258,7 +429,7 @@ export class Workspace {
       importFileLimitMb: importLimitMb(preferences.get(IMPORT_LIMIT_SETTING)),
       mcpAccess:
         preferences.get('storage-consent') === true
-          ? mcpAccess(preferences.get('mcp-access'))
+          ? this.mcpGrant(preferences.get('mcp-access'))
           : 'off',
       bridgeUrl: String(preferences.get('bridge-url') ?? defaultBridgeUrl()),
       workspaceId: String(preferences.get('workspace-id') ?? ''),
@@ -276,6 +447,12 @@ export class Workspace {
     if (!current) return;
     const record = diagrams.find((diagram) => diagram.id === current.diagram.id);
     if (record?.version === current.diagram.version) return;
+    // A delayed read can predate our own acknowledged save; it is not another writer.
+    if (
+      record &&
+      record.version < (this.versions.get(current.diagram.id) ?? current.diagram.version)
+    )
+      return;
     if (this.pending.has(current.diagram.id)) {
       this.error(
         new StorageError(
@@ -290,7 +467,13 @@ export class Workspace {
       return;
     }
     const graph = await this.repo.getGraph(record.id);
-    if (useEditor.getState().graph !== current || this.pending.has(record.id)) return;
+    if (
+      queue !== this.queue ||
+      useEditor.getState().graph !== current ||
+      this.pending.has(record.id)
+    )
+      return;
+    if (graph.diagram.version < (this.versions.get(record.id) ?? 0)) return;
     this.versions.set(record.id, graph.diagram.version);
     useEditor.setState({ graph, history: [], future: [], status: 'saved', message: '' });
   }
@@ -345,34 +528,181 @@ export class Workspace {
   ): Promise<T> {
     await this.requireStorageConsent();
     await this.settled();
-    const result = await this.repo.request<T>(path, method, data, options);
+    if (!mutatesDocument(path, method)) {
+      await options.beforeRequest?.();
+      const result = await this.repo.request<T>(path, method, data, options);
+      await this.refresh();
+      return result;
+    }
+    // External writes and autosaves have one ordering. Camera completions can still
+    // arrive while the repository transaction runs; acknowledge/rebase them before saving.
+    const operation = this.queue.then(async () => {
+      const state = useEditor.getState();
+      const before = state.graph ? ownersFor(state.graph, state.owners) : undefined;
+      await options.beforeRequest?.();
+      const result = await this.repo.request<T>(path, method, data, options);
+      if (before) {
+        const committed = await this.apiCommittedGraph(before, path, method, result);
+        if (committed !== undefined) this.acknowledgeApi(before, committed);
+      }
+      return result;
+    });
+    this.queue = operation.then(
+      () => {},
+      () => {},
+    );
+    const result = await operation;
     await this.refresh();
     return result;
   }
+  private async apiCommittedGraph(before: Graph, path: string, method: string, result: unknown) {
+    const parts = new URL(path.replace(/^\/api\/v1/, ''), 'http://browser.local').pathname
+      .split('/')
+      .filter(Boolean);
+    const value = result as Partial<Graph> & {
+      diagramId?: string;
+      id?: string;
+      version?: number;
+      nodeType?: unknown;
+      sourceNodeId?: unknown;
+      targetNodeId?: unknown;
+    };
+    if (
+      parts[0] === 'diagrams' &&
+      parts[1] === before.diagram.id &&
+      value?.diagram?.id === before.diagram.id &&
+      value.diagram.version > before.diagram.version &&
+      Array.isArray(value.nodes) &&
+      Array.isArray(value.edges)
+    )
+      return value as Graph;
+    const ownEntity =
+      value?.diagramId === before.diagram.id &&
+      (typeof value.nodeType === 'string' ||
+        (typeof value.sourceNodeId === 'string' && typeof value.targetNodeId === 'string'));
+    const ownDiagram = value?.id === before.diagram.id && typeof value.version === 'number';
+    const ownOwner = parts[0] === 'owners' && before.owners.some((owner) => owner.id === parts[1]);
+    const deletion =
+      method === 'DELETE' &&
+      ((parts[0] === 'diagrams' &&
+        parts[1] === before.diagram.id &&
+        (parts.length === 2 ||
+          (parts.length === 5 &&
+            parts[2] === 'simulation' &&
+            [
+              'nodes',
+              'edges',
+              'particle-types',
+              'resources',
+              'improvements',
+              'scenarios',
+              'processes',
+            ].includes(parts[3])))) ||
+        (parts[0] === 'nodes' && before.nodes.some((node) => node.id === parts[1])) ||
+        (parts[0] === 'edges' && before.edges.some((edge) => edge.id === parts[1])));
+    if (!ownEntity && !ownDiagram && !ownOwner && !deletion) return undefined;
+    const committed = await this.repo.db.graph(before.diagram.id);
+    if (!committed)
+      return deletion && parts.length === 2 && parts[0] === 'diagrams' ? null : undefined;
+    const expected = ownDiagram ? value.version! : before.diagram.version + 1;
+    // Node/empty responses carry no graph version. Only this operation's expected
+    // single commit is attributable; a newer unknown version belongs to another writer.
+    return committed.diagram.version === expected ? committed : undefined;
+  }
+  private acknowledgeApi(before: Graph, committed: Graph | null) {
+    const id = before.diagram.id;
+    const saves = [...this.queuedSaves].filter((save) => save.graph.diagram.id === id);
+    const state = useEditor.getState();
+    const current =
+      state.graph?.diagram.id === id ? ownersFor(state.graph, state.owners) : undefined;
+    if (committed) this.versions.set(id, committed.diagram.version);
+    if (
+      saves.some((save) => !cameraOnly(before, save.graph)) ||
+      (current && !cameraOnly(before, current))
+    ) {
+      this.error(
+        new StorageError(
+          409,
+          'The API changed this project while you were editing it. Your unsaved local edits are preserved.',
+        ),
+      );
+      return;
+    }
+    for (const save of saves) {
+      if (committed) save.graph = cameraRebased(before, save.graph, committed);
+      else save.cancelled = true;
+    }
+    if (!committed) {
+      this.pending.delete(id);
+      this.versions.delete(id);
+    }
+    if (current)
+      useEditor.setState({
+        graph: committed ? cameraRebased(before, current, committed) : null,
+        history: [],
+        future: [],
+        status: committed && saves.length ? 'saving' : 'saved',
+        message: '',
+      });
+  }
   async setPreference(key: string, value: unknown) {
-    await this.requireStorageConsent();
     if (key === 'bridge-url') localBridgeUrl(String(value));
     if (key === 'mcp-access' && !['off', 'read', 'write'].includes(String(value)))
       throw new StorageError(422, 'Invalid MCP access level.');
     if (key === IMPORT_LIMIT_SETTING) assertImportLimitMb(value);
     if (key === VOICE_SETTING) assertVoiceId(value);
     this.settingsRevision++;
-    if (key === 'theme') useEditor.setState({ theme: String(value) });
-    if (key === 'mcp-access') useEditor.setState({ mcpAccess: mcpAccess(value) });
-    if (key === 'bridge-url') useEditor.setState({ bridgeUrl: String(value) });
-    if (key === 'backup-nudge-dismissed')
-      useEditor.setState({ backupNudgeDismissed: value === true });
-    try {
-      await this.repo.db.settings.put({ key, value });
-      if (key === IMPORT_LIMIT_SETTING) useEditor.setState({ importFileLimitMb: value as number });
-      await this.refresh();
-    } catch (error) {
-      this.error(error);
-      throw error;
+    this.preferenceWrites++;
+    const retryingFailure = this.preferenceFailures.get(key);
+    let accessChoice: number | undefined;
+    // Revocation closes the live grant before the settings read/write can wait
+    // on an API transaction. Upgrades still require accepted persisted storage.
+    if (key === 'mcp-access') {
+      accessChoice = ++this.accessChoice;
+      const current = this.mcpGrant(useEditor.getState().mcpAccess);
+      const requested = this.mcpGrant(value);
+      this.accessCeiling =
+        current === 'off' || requested === 'off'
+          ? 'off'
+          : current === 'read' || requested === 'read'
+            ? 'read'
+            : 'write';
+      useEditor.setState({ mcpAccess: this.accessCeiling });
     }
+    try {
+      await this.requireStorageConsent();
+      // A newer choice can finish while this consent read is waiting. There is
+      // no await between this fence and put; started IDB writes are ordered.
+      if (key === 'mcp-access' && accessChoice !== this.accessChoice) return;
+      if (key === 'theme') useEditor.setState({ theme: String(value) });
+      if (key === 'mcp-access') useEditor.setState({ mcpAccess: this.mcpGrant(value) });
+      if (key === 'bridge-url') useEditor.setState({ bridgeUrl: String(value) });
+      await this.repo.db.settings.put({ key, value });
+      if (key === 'mcp-access' && accessChoice === this.accessChoice) {
+        // Only a successfully saved explicit choice can lift a local restriction.
+        // Failed writes and unrelated refreshes must never resurrect an old grant.
+        this.accessCeiling = mcpAccess(value);
+        useEditor.setState({ mcpAccess: this.accessCeiling });
+      }
+      // Disappearance acknowledges persistence, so an immediate reload cannot
+      // restore a reminder that looked successfully dismissed.
+      if (key === 'backup-nudge-dismissed')
+        useEditor.setState({ backupNudgeDismissed: value === true });
+      if (key === IMPORT_LIMIT_SETTING) useEditor.setState({ importFileLimitMb: value as number });
+      if (key === 'theme') this.syncAppearance(appearancePreference(value));
+      this.acknowledgePreference(key, retryingFailure);
+      // Preferences, especially access revocation, must not wait for the work
+      // they cancel or an unrelated camera/document save to leave its queue.
+    } catch (error) {
+      this.preferenceError(key, error);
+      throw error;
+    } finally {
+      this.preferenceWrites--;
+    }
+    void this.refresh().catch((error) => this.error(error));
   }
   async external<T>(path: string, method: string, data?: unknown): Promise<T> {
-    assertMcpAccess(useEditor.getState().mcpAccess, path, method);
+    assertMcpAccess(this.mcpGrant(useEditor.getState().mcpAccess), path, method);
     await this.settled();
     const permission = await this.repo.db.settings.get('mcp-access');
     assertMcpAccess(mcpAccess(permission?.value), path, method);
@@ -381,7 +711,7 @@ export class Workspace {
       const permission = await this.repo.db.settings.get('mcp-access');
       if (!useEditor.getState().privacyAcknowledged)
         throw new StorageError(403, 'Accept local storage before using the workspace.');
-      assertMcpAccess(useEditor.getState().mcpAccess, path, method);
+      assertMcpAccess(this.mcpGrant(useEditor.getState().mcpAccess), path, method);
       assertMcpAccess(mcpAccess(permission?.value), path, method);
     };
     if (spatialNavigation(useEditor.getState().graph, path, method, data)) {
@@ -393,7 +723,7 @@ export class Workspace {
       await this.settled();
       // A camera/title commit can yield; honor grants revoked while it was being saved.
       const latest = await this.repo.db.settings.get('mcp-access');
-      assertMcpAccess(useEditor.getState().mcpAccess, path, method);
+      assertMcpAccess(this.mcpGrant(useEditor.getState().mcpAccess), path, method);
       assertMcpAccess(mcpAccess(latest?.value), path, method);
     }
     const endpoint = path.replace(/^\/api\/v1/, '');
@@ -461,12 +791,14 @@ export class Workspace {
     try {
       const result = await this.execute<T>(path, method, data, {
         signal: controller?.signal,
+        beforeRequest: authorize,
+        beforeWrite: authorize,
         beforeHistoryWrite: authorize,
         beforeAnalysisSave: analysis
           ? async () => {
               await this.requireStorageConsent();
               const current = await this.repo.db.settings.get('mcp-access');
-              assertMcpAccess(useEditor.getState().mcpAccess, path, method);
+              assertMcpAccess(this.mcpGrant(useEditor.getState().mcpAccess), path, method);
               assertMcpAccess(mcpAccess(current?.value), path, method);
             }
           : undefined,

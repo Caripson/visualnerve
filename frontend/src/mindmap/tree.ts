@@ -24,23 +24,34 @@ export function topicTree(nodes: GraphNode[]) {
 export function mindmapTopics(nodes: GraphNode[]): Map<string, MindmapTopic> {
   const { children, roots } = topicTree(nodes);
   const topics = new Map<string, MindmapTopic>();
-  const visit = (node: GraphNode, topic: MindmapTopic) => {
-    if (topics.has(node.id)) return;
+  const pending: { node: GraphNode; topic: MindmapTopic }[] = roots
+    .map((node) => ({
+      node,
+      topic: { depth: 0, color: node.color || '#23664d', side: 'root' as const },
+    }))
+    .reverse();
+  while (pending.length) {
+    const { node, topic } = pending.pop()!;
+    if (topics.has(node.id)) continue;
     topics.set(node.id, topic);
-    (children.get(node.id) ?? []).forEach((child, index) => {
+    const list = children.get(node.id) ?? [];
+    for (let index = list.length - 1; index >= 0; index--) {
+      const child = list[index];
       const first = topic.depth === 0;
-      visit(child, {
-        depth: topic.depth + 1,
-        color: child.color || (first ? branchColors[index % branchColors.length] : topic.color),
-        side: first
-          ? child.x + child.width / 2 < node.x + node.width / 2
-            ? 'left'
-            : 'right'
-          : topic.side,
+      pending.push({
+        node: child,
+        topic: {
+          depth: topic.depth + 1,
+          color: child.color || (first ? branchColors[index % branchColors.length] : topic.color),
+          side: first
+            ? child.x + child.width / 2 < node.x + node.width / 2
+              ? 'left'
+              : 'right'
+            : topic.side,
+        },
       });
-    });
-  };
-  roots.forEach((root) => visit(root, { depth: 0, color: root.color || '#23664d', side: 'root' }));
+    }
+  }
   return topics;
 }
 
@@ -52,13 +63,25 @@ export function balancedMindmap(nodes: GraphNode[]): Map<string, Geometry> {
   const positions = new Map<string, Geometry>();
   const gap = 24;
   const measure = (node: GraphNode): number => {
-    const list = children.get(node.id) ?? [];
-    const span = Math.max(
-      node.height,
-      list.reduce((sum, child) => sum + measure(child), 0) + Math.max(0, list.length - 1) * gap,
-    );
-    spans.set(node.id, span);
-    return span;
+    const pending = [{ node, measured: false }];
+    while (pending.length) {
+      const current = pending.pop()!;
+      const list = children.get(current.node.id) ?? [];
+      if (!current.measured) {
+        pending.push({ node: current.node, measured: true });
+        for (let index = list.length - 1; index >= 0; index--)
+          pending.push({ node: list[index], measured: false });
+      } else
+        spans.set(
+          current.node.id,
+          Math.max(
+            current.node.height,
+            list.reduce((sum, child) => sum + spans.get(child.id)!, 0) +
+              Math.max(0, list.length - 1) * gap,
+          ),
+        );
+    }
+    return spans.get(node.id)!;
   };
   const placeChildren = (
     list: GraphNode[],
@@ -67,16 +90,32 @@ export function balancedMindmap(nodes: GraphNode[]): Map<string, Geometry> {
     centerY: number,
     sign: number,
   ) => {
-    const total =
-      list.reduce((sum, child) => sum + spans.get(child.id)!, 0) +
-      Math.max(0, list.length - 1) * gap;
-    let top = centerY - total / 2;
-    for (const child of list) {
-      const cy = top + spans.get(child.id)! / 2;
-      const cx = sign > 0 ? x + parent.width + 96 : x - 96 - child.width;
+    const frame = (siblings: GraphNode[], parent: GraphNode, x: number, centerY: number) => ({
+      siblings,
+      parent,
+      x,
+      index: 0,
+      top:
+        centerY -
+        (siblings.reduce((sum, child) => sum + spans.get(child.id)!, 0) +
+          Math.max(0, siblings.length - 1) * gap) /
+          2,
+    });
+    const pending = [frame(list, parent, x, centerY)];
+    while (pending.length) {
+      const current = pending.at(-1)!;
+      const child = current.siblings[current.index++];
+      if (!child) {
+        pending.pop();
+        continue;
+      }
+      const cy = current.top + spans.get(child.id)! / 2;
+      const cx = sign > 0 ? current.x + current.parent.width + 96 : current.x - 96 - child.width;
       positions.set(child.id, { x: cx, y: cy - child.height / 2 });
-      placeChildren(children.get(child.id) ?? [], child, cx, cy, sign);
-      top += spans.get(child.id)! + gap;
+      current.top += spans.get(child.id)! + gap;
+      const descendants = children.get(child.id) ?? [];
+      // Finish a subtree before the next sibling, retaining the public Map's DFS order.
+      if (descendants.length) pending.push(frame(descendants, child, cx, cy));
     }
   };
   let nextRootY: number | undefined;

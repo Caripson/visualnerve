@@ -52,6 +52,7 @@ import { revealOverviewTargets } from '../overview/reveal';
 import { SelectionTools } from '../ui/SelectionTools';
 import { projectGraph, type CanvasNode, type NodeData, type RenderCache } from './projection';
 import { canvasViewportGraph, persistCanvasFocus } from './navigation';
+import { canvasFitPadding } from './fit-padding';
 import { useResponsiveCanvasViewport } from './useResponsiveCanvasViewport';
 import { DrawingOverlay } from '../drawing/DrawingOverlay';
 import { ParticleOverlay } from '../simulation/ParticleOverlay';
@@ -87,6 +88,7 @@ import {
 import { attachCanvasPresentationCamera } from '../presentation/canvas-camera';
 import { presentation } from '../presentation/service';
 import { VIDEO_CANVAS_INFO, type VideoCanvasInfoRequest } from '../presentation/video-frame-events';
+import { absoluteCanvasMoves, canonicalGeometry, isReadonlyCanvasNode } from './logical-geometry';
 const SpatialCanvas = lazy(() =>
   import('../spatial/SpatialCanvas')
     .then((module) => ({ default: module.SpatialCanvas }))
@@ -176,7 +178,7 @@ export function Canvas() {
     () =>
       new Set(
         renderGraph?.nodes
-          .filter((node) => node.metadata.simulationProjected)
+          .filter((node) => isReadonlyCanvasNode(node) && node.metadata.simulationProjected)
           .map((node) => node.id),
       ),
     [renderGraph?.nodes],
@@ -195,6 +197,8 @@ export function Canvas() {
   );
   const readonlyNodes = useRef(projectedIds);
   readonlyNodes.current = new Set([...projectedIds, ...layoutOnlyIds.current]);
+  const renderedNodes = useRef(new Map<string, GraphNode>());
+  renderedNodes.current = new Map(renderGraph?.nodes.map((node) => [node.id, node]));
   const exploration = useMemo(
     () => (graph ? getExploration(graph) : undefined),
     [graph?.diagram.settings.relationshipExploration],
@@ -262,17 +266,14 @@ export function Canvas() {
         ? timelineGeometry(graph.nodes, graph.diagram.settings.timelineScale ?? 'month')
         : null;
     const adjusted = new Map<string, Partial<GraphNode>>();
-    for (const [id, position] of moves) {
+    const geometryNodes = new Map(index);
+    for (const [id, node] of renderedNodes.current) geometryNodes.set(id, node);
+    const absolute = relative && !timeline ? absoluteCanvasMoves(geometryNodes, moves) : moves;
+    for (const [id, position] of absolute) {
       if (readonlyNodes.current.has(id)) continue;
       const n = index.get(id);
       if (!n) continue;
-      const parent = n.parentId ? index.get(n.parentId) : undefined;
-      const offset =
-        relative && !timeline && parent?.nodeType === 'group'
-          ? (moves.get(parent.id) ?? parent)
-          : { x: 0, y: 0 };
-      const x = position.x + offset.x,
-        y = position.y + offset.y;
+      const { x, y } = position;
       if (timeline) {
         const date = new Date(timeline.origin + Math.round(x / timeline.pixelsPerDay) * dayMS)
           .toISOString()
@@ -285,17 +286,18 @@ export function Canvas() {
           endDate: new Date(Date.parse(date) + duration * dayMS).toISOString().slice(0, 10),
         });
       } else {
-        adjusted.set(id, {
+        const geometry = canonicalGeometry(n, renderedNodes.current.get(id), {
           x,
           y,
           ...(position.width !== undefined ? { width: position.width } : {}),
           ...(position.height !== undefined ? { height: position.height } : {}),
         });
+        adjusted.set(id, geometry);
         if (n.nodeType === 'group')
           for (const child of descendantIds(graph.nodes, id))
             if (!moves.has(child) && !readonlyNodes.current.has(child)) {
               const c = index.get(child)!;
-              adjusted.set(child, { x: c.x + x - n.x, y: c.y + y - n.y });
+              adjusted.set(child, { x: c.x + geometry.x - n.x, y: c.y + geometry.y - n.y });
             }
       }
     }
@@ -730,12 +732,12 @@ export function Canvas() {
         if (processProjection?.active)
           void flow.fitView({
             nodes: touch ? renderGraph?.nodes.map((node) => ({ id: node.id })) : fitProcessNodes(),
-            padding: 0.16,
+            padding: canvasFitPadding(0.16, flowStore.getState().domNode),
             minZoom: touch ? 0.05 : 0.72,
             maxZoom: 1,
             duration: 180,
           });
-        else void fitDiagram(flow, s.graph, 0.2);
+        else void fitDiagram(flow, s.graph, 0.2, 0, undefined, flowStore.getState());
       }
     };
     window.addEventListener('keydown', listener, true);
@@ -894,7 +896,7 @@ export function Canvas() {
         }}
         onNodeClick={(_, node) => {
           if (getSimulationProcessId(node.data.node)) return;
-          if (node.data.node.metadata.simulationProjected)
+          if (node.data.node.metadata.simulationProjected && isReadonlyCanvasNode(node.data.node))
             useEditor.getState().select([logicalNodeId(node.data.node)]);
         }}
         onNodeDoubleClick={(_, node) => {
@@ -969,15 +971,7 @@ export function Canvas() {
             </div>
           </Panel>
         )}
-        <Controls
-          showInteractive={false}
-          showFitView={
-            !processProjection?.active &&
-            (overview?.active ||
-              !getDrawingLayer(graph.diagram.settings.drawing)?.visible ||
-              !getDrawingLayer(graph.diagram.settings.drawing)?.strokes.length)
-          }
-        >
+        <Controls showInteractive={false} showFitView={false}>
           {processProjection?.active && (
             <ControlButton
               aria-label="Fit view"
@@ -987,7 +981,7 @@ export function Canvas() {
                   nodes: touch
                     ? renderGraph?.nodes.map((node) => ({ id: node.id }))
                     : fitProcessNodes(),
-                  padding: 0.16,
+                  padding: canvasFitPadding(0.16, flowStore.getState().domNode),
                   minZoom: touch ? 0.05 : 0.72,
                   maxZoom: touch ? 0.9 : 1,
                   duration: 180,
@@ -997,18 +991,28 @@ export function Canvas() {
               <Maximize size={16} />
             </ControlButton>
           )}
-          {!processProjection?.active &&
-            !overview?.active &&
-            getDrawingLayer(graph.diagram.settings.drawing)?.visible &&
-            !!getDrawingLayer(graph.diagram.settings.drawing)?.strokes.length && (
-              <ControlButton
-                aria-label="Fit view"
-                title="Fit view"
-                onClick={() => void fitDiagram(flow, graph)}
-              >
-                <Maximize size={16} />
-              </ControlButton>
-            )}
+          {!processProjection?.active && (
+            <ControlButton
+              aria-label="Fit view"
+              title="Fit view"
+              onClick={() =>
+                void fitDiagram(
+                  flow,
+                  graph,
+                  !overview?.active &&
+                    getDrawingLayer(graph.diagram.settings.drawing)?.visible &&
+                    getDrawingLayer(graph.diagram.settings.drawing)?.strokes.length
+                    ? 0.2
+                    : 0.1,
+                  0,
+                  undefined,
+                  flowStore.getState(),
+                )
+              }
+            >
+              <Maximize size={16} />
+            </ControlButton>
+          )}
         </Controls>
         {!overview?.active && <DrawingOverlay />}
         {!!exploration && (

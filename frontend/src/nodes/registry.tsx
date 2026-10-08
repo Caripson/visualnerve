@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 import {
   Handle,
   NodeResizer,
@@ -6,6 +6,7 @@ import {
   useStore,
   type NodeProps,
   type NodeTypes,
+  type ResizeParams,
 } from '@xyflow/react';
 import {
   Box,
@@ -44,6 +45,7 @@ import { SimulationNodeSummary } from '../simulation/NodeSummary';
 import { ResourcePoolCard } from '../simulation/ResourcePoolCard';
 import { ProcessCard } from '../simulation/ProcessCard';
 import { NodeQuickAdd } from './NodeQuickAdd';
+import { isReadonlyCanvasNode } from '../canvas/logical-geometry';
 
 export const nodeRegistry: Record<NodeKind, { label: string; icon: LucideIcon; shape: string }> = {
   generic: { label: 'Generic', icon: Box, shape: 'box' },
@@ -70,6 +72,14 @@ function renderer(kind: NodeKind) {
   const Component = memo(({ id, data, selected }: NodeProps<CanvasNode>) => {
     const { node, owners, exporting } = data;
     const projected = node.metadata.simulationProjected === true;
+    const readonly = isReadonlyCanvasNode(node);
+    // The resizer's effect owns touchmove/touchend listeners. A new callback during
+    // live dimension renders tears down the active touch gesture before it commits.
+    const resize = useCallback(
+      (_: unknown, p: ResizeParams) =>
+        data.resize?.(id, { x: p.x, y: p.y, width: p.width, height: p.height }),
+      [id, data.resize],
+    );
     const code = !!getCodeObject(node);
     const smallZoom = useStore((state) => state.transform[2] < 0.2);
     const overview = smallZoom && !exporting && !selected;
@@ -114,19 +124,18 @@ function renderer(kind: NodeKind) {
             {data.presentationNumber}
           </span>
         )}
-        {selected && !exporting && !projected && !node.metadata.simulationLayoutProjected && (
+        {selected && !exporting && !readonly && (
           <NodeResizer
+            nodeId={id}
             minWidth={code ? 220 : 100}
-            minHeight={code ? 150 : 50}
+            minHeight={data.minimumHeight ?? (code ? 150 : 50)}
             handleClassName={code ? 'code-resize-handle' : undefined}
             color="#267b6a"
-            onResizeEnd={(_, p) =>
-              data.resize?.(id, { x: p.x, y: p.y, width: p.width, height: p.height })
-            }
+            onResizeEnd={resize}
           />
         )}
-        <Handle type="target" position={Position.Left} id="in" isConnectable={!projected} />
-        <Handle type="source" position={Position.Right} id="out" isConnectable={!projected} />
+        <Handle type="target" position={Position.Left} id="in" isConnectable={!readonly} />
+        <Handle type="source" position={Position.Right} id="out" isConnectable={!readonly} />
         {node.metadata.simulationLayoutProjected === true && (
           <>
             <Handle type="target" position={Position.Bottom} id="in-bottom" isConnectable={false} />
@@ -135,12 +144,12 @@ function renderer(kind: NodeKind) {
         )}
         {!overview && (
           <>
-            <Handle type="target" position={Position.Top} id="in-top" isConnectable={!projected} />
+            <Handle type="target" position={Position.Top} id="in-top" isConnectable={!readonly} />
             <Handle
               type="source"
               position={Position.Bottom}
               id="out-bottom"
-              isConnectable={!projected}
+              isConnectable={!readonly}
             />
           </>
         )}

@@ -189,7 +189,9 @@ test('complex example exposes real root and nested bottlenecks identically throu
     baseVersion: graph.diagram.version,
     value: { work: { capacity: 4 } },
   });
-  await page.getByRole('button', { name: 'Configure simulation', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Assumptions: configure simulation', exact: true })
+    .click();
   await page.getByLabel('Simulation node', { exact: true }).selectOption(pick.id);
   await expect(page.getByLabel('Work capacity', { exact: true })).toHaveValue('4');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
@@ -336,7 +338,9 @@ test('MCP builds nested groups and shared work with UI/headless deterministic pa
   expect(ui.metrics).toEqual(headless.metrics);
   expect(ui.processes).toEqual(headless.processes);
   expect(ui.events).toEqual(headless.events);
-  await page.getByRole('button', { name: 'Configure simulation', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Assumptions: configure simulation', exact: true })
+    .click();
   await page.getByLabel('Simulation node', { exact: true }).selectOption(id('Assembly'));
   await page.getByLabel('Work capacity', { exact: true }).fill('4');
   await page.getByRole('button', { name: 'Apply assumptions', exact: true }).click();

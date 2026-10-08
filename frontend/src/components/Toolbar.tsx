@@ -117,7 +117,14 @@ export function Toolbar({
       await new Promise<void>((resolve) => setTimeout(resolve, 80));
       const laidOut = useEditor.getState().graph;
       if (laidOut?.diagram.id === current.diagram.id)
-        await fitDiagram(flow, laidOut, laidOut.diagram.type === 'mindmap' ? 0.14 : 0.25, 250);
+        await fitDiagram(
+          flow,
+          laidOut,
+          laidOut.diagram.type === 'mindmap' ? 0.14 : 0.25,
+          250,
+          undefined,
+          flowStore.getState(),
+        );
     } catch (e) {
       useEditor.setState({ status: 'error', message: (e as Error).message });
     } finally {
@@ -164,7 +171,9 @@ export function Toolbar({
         switchView={switchView}
         add={mindmap ? () => addTopic() : addNode}
         addSibling={() => addTopic(true)}
-        fit={() => void fitDiagram(flow, graph, mindmap ? 0.14 : 0.25)}
+        fit={() =>
+          void fitDiagram(flow, graph, mindmap ? 0.14 : 0.25, 0, undefined, flowStore.getState())
+        }
         runLayout={runLayout}
         newSpatialExample={newSpatialExample}
       />
@@ -491,7 +500,9 @@ export function Toolbar({
           aria-label="Fit diagram"
           title="Fit diagram (F)"
           disabled={spatial}
-          onClick={() => void fitDiagram(flow, graph, mindmap ? 0.14 : 0.25)}
+          onClick={() =>
+            void fitDiagram(flow, graph, mindmap ? 0.14 : 0.25, 0, undefined, flowStore.getState())
+          }
         >
           <Maximize size={15} />
         </button>

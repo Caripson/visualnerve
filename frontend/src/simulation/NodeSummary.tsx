@@ -64,10 +64,6 @@ export function SimulationNodeSummary({ id, node }: { id: string; node?: GraphNo
         ? [lookup.resources.get(config.resourceId)?.name ?? config.resourceId]
         : [];
   const fullResourceNames = resourceNames.join(', ');
-  const shortResourceNames =
-    fullResourceNames.length > 56
-      ? `${fullResourceNames.slice(0, 55).trimEnd()}…`
-      : fullResourceNames;
   const workSlots =
     config.type === 'work' && view?.state
       ? getSimulationPresentationSlots(view.run.id, view.state).occupancy(logicalId)
@@ -111,76 +107,100 @@ export function SimulationNodeSummary({ id, node }: { id: string; node?: GraphNo
           {traffic.label}
         </span>
       </span>
-      {resourceNames.length > 0 && (
-        <span
-          className="simulation-node-resources"
-          title={`Required resources: ${fullResourceNames}`}
-          aria-label={`Required resources: ${fullResourceNames}`}
-        >
-          Resources: {shortResourceNames}
-        </span>
-      )}
-      {config.type === 'source' && (
-        <span>
-          {metric
-            ? `Created ${metric.started}`
-            : `${(config.source.ratePerHour ?? 0).toFixed(2)} arrivals / hour`}
-        </span>
-      )}
-      {config.type === 'outcome' && metric && (
-        <span>
-          {metric.realizedRevenue.toFixed(2)} {model.currency} revenue
-        </span>
-      )}
-      {(config.type === 'work' || config.type === 'resource') && capacity !== undefined && (
-        <>
-          <span className="simulation-node-capacity">
-            Capacity {capacity} ·{' '}
-            {((resource?.currentUtilization ?? metric?.currentUtilization ?? 0) * 100).toFixed(0)}%
-            busy
-          </span>
+      <div
+        className="simulation-node-details nodrag nopan nowheel"
+        data-node-scroll
+        role="region"
+        aria-label={`Simulation details for ${node?.title ?? config.name}`}
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (
+            [
+              'ArrowUp',
+              'ArrowDown',
+              'ArrowLeft',
+              'ArrowRight',
+              'PageUp',
+              'PageDown',
+              'Home',
+              'End',
+              ' ',
+            ].includes(event.key)
+          )
+            event.stopPropagation();
+        }}
+      >
+        {resourceNames.length > 0 && (
           <span
-            className="simulation-utilization-track"
-            aria-hidden="true"
-            style={
-              {
-                '--simulation-utilization': `${Math.min(100, Math.max(0, traffic.utilization * 100))}%`,
-              } as CSSProperties
-            }
+            className="simulation-node-resources"
+            title={`Required resources: ${fullResourceNames}`}
+            aria-label={`Required resources: ${fullResourceNames}`}
           >
-            <span />
+            Resources: {fullResourceNames}
           </span>
-          {card ? (
-            <>
-              <span
-                className="simulation-capacity-card-unit"
-                data-capacity-occupied={capacity > 0 ? !!occupied : undefined}
-              >
-                {capacity > 0
-                  ? `Unit ${card.unit} of ${capacity} · ${occupied ? 'occupied' : 'idle'}`
-                  : 'No active capacity'}
-              </span>
-              {card.hidden > 0 && (
-                <span aria-label={`${card.hidden} additional capacity units aggregated`}>
-                  +{card.hidden} units aggregated
-                </span>
-              )}
-            </>
-          ) : (
-            <div className="simulation-capacity-units" aria-label={`${capacity} capacity units`}>
-              {Array.from({ length: Math.min(8, capacity) }, (_, index) => (
-                <i
-                  key={index}
-                  className={index < (resource?.busy ?? metric?.busy ?? 0) ? 'occupied' : ''}
+        )}
+        {config.type === 'source' && (
+          <span>
+            {metric
+              ? `Created ${metric.started}`
+              : `${(config.source.ratePerHour ?? 0).toFixed(2)} arrivals / hour`}
+          </span>
+        )}
+        {config.type === 'outcome' && metric && (
+          <span>
+            {metric.realizedRevenue.toFixed(2)} {model.currency} revenue
+          </span>
+        )}
+        {(config.type === 'work' || config.type === 'resource') && capacity !== undefined && (
+          <>
+            <span className="simulation-node-capacity">
+              Capacity {capacity} ·{' '}
+              {((resource?.currentUtilization ?? metric?.currentUtilization ?? 0) * 100).toFixed(0)}
+              % busy
+            </span>
+            <span
+              className="simulation-utilization-track"
+              aria-hidden="true"
+              style={
+                {
+                  '--simulation-utilization': `${Math.min(100, Math.max(0, traffic.utilization * 100))}%`,
+                } as CSSProperties
+              }
+            >
+              <span />
+            </span>
+            {card ? (
+              <>
+                <span
+                  className="simulation-capacity-card-unit"
+                  data-capacity-occupied={capacity > 0 ? !!occupied : undefined}
                 >
-                  {index + 1}
-                </i>
-              ))}
-              {capacity > 8 && <span>+{capacity - 8}</span>}
-            </div>
-          )}
-        </>
-      )}
+                  {capacity > 0
+                    ? `Unit ${card.unit} of ${capacity} · ${occupied ? 'occupied' : 'idle'}`
+                    : 'No active capacity'}
+                </span>
+                {card.hidden > 0 && (
+                  <span aria-label={`${card.hidden} additional capacity units aggregated`}>
+                    +{card.hidden} units aggregated
+                  </span>
+                )}
+              </>
+            ) : (
+              <div className="simulation-capacity-units" aria-label={`${capacity} capacity units`}>
+                {Array.from({ length: Math.min(8, capacity) }, (_, index) => (
+                  <i
+                    key={index}
+                    className={index < (resource?.busy ?? metric?.busy ?? 0) ? 'occupied' : ''}
+                  >
+                    {index + 1}
+                  </i>
+                ))}
+                {capacity > 8 && <span>+{capacity - 8}</span>}
+              </div>
+            )}
+          </>
+        )}
+      </div>
       {(metric || resource) &&
         (config.type === 'work' || config.type === 'resource') &&
         (!card || card.unit === 1) && (

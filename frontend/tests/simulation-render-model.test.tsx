@@ -183,7 +183,7 @@ describe('truthful scenario resource rendering', () => {
     ).not.toBe(first);
     expect(resolveSimulationRenderModel(model)).toBe(model);
   });
-  it('shows bounded dedicated resource names with complete accessible descriptions on the Work node', () => {
+  it('shows complete dedicated resource names in a touch and keyboard readable Work detail region', () => {
     const graph = createSimulationGraph('Kiosk');
     const model = structuredClone(graph.simulation!);
     const staff = model.resources.find((resource) => resource.id === 'package-staff')!;
@@ -209,8 +209,9 @@ describe('truthful scenario resource rendering', () => {
     const label = screen.getByLabelText(full);
     expect(label).toHaveAttribute('title', full);
     expect(label).toHaveClass('simulation-node-resources');
-    expect(label.textContent!.length).toBeLessThanOrEqual('Resources: '.length + 56);
-    expect(label).toHaveTextContent('…');
+    expect(label).toHaveTextContent(`Resources: ${staff.name}, Dedicated package counter`);
+    expect(label.closest('[data-node-scroll]')).toHaveAttribute('tabindex', '0');
+    expect(label.closest('[data-node-scroll]')).toHaveAttribute('role', 'region');
     expect(screen.getByText(/Capacity 2/)).toBeInTheDocument();
   });
 });

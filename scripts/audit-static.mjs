@@ -17,7 +17,7 @@ export function auditStatic(directory) {
         || helpScreenshots.some(name => path === `help/images/${name}.webp`)
         || path === 'robots.txt'
         || productPages.some(name => path === `${name}/index.html`)
-        || ['site/site.css', 'site/captures.css', 'site/site.js', 'site/mark.svg', 'site/consent.css', 'site/consent.js', 'site/vendor/klaro.js', 'site/vendor/klaro.css', 'site/vendor/klaro-LICENSE', 'site/vendor/preact-LICENSE', 'site/vendor/core-js-LICENSE', 'site/vendor/classnames-LICENSE'].includes(path)
+        || ['site/site.css', 'site/syntax.css', 'site/captures.css', 'site/site.js', 'site/mark.svg', 'site/consent.css', 'site/consent.js', 'site/vendor/klaro.js', 'site/vendor/klaro.css', 'site/vendor/klaro-LICENSE', 'site/vendor/preact-LICENSE', 'site/vendor/core-js-LICENSE', 'site/vendor/classnames-LICENSE'].includes(path)
         || ['phone', 'tablet', 'desktop', 'laptop', 'social'].some(name => path === `site/images/${name}.webp`)
         || /^editor\/(?:app\.(?:js|css)|assets\/[\w.-]+\.(?:js|css|svg|png|woff2?))$/.test(path)
         || /^editor\/speech\/(?:ort-wasm(?:-simd)?\.wasm|piper_phonemize\.(?:wasm|data))$/.test(path)

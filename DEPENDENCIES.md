@@ -18,6 +18,7 @@ Versions are locked in frontend/package-lock.json and backend/go.mod/go.sum. The
 | @types/three | 0.186.0 | MIT | direct development |
 | @vitejs/plugin-react | 5.2.0 | MIT | direct development |
 | @xyflow/react | 12.12.0 | MIT | direct runtime |
+| axe-core | 4.14.0 | MPL-2.0 | direct development |
 | dexie | 4.4.6 | Apache-2.0 | direct runtime |
 | elkjs | 0.12.0 | EPL-2.0 OR GPL-3.0-or-later | direct runtime |
 | entities | 8.1.0 | BSD-2-Clause | direct runtime |

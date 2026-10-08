@@ -1,5 +1,5 @@
 import { PresentationNumberField } from '../presentation/NumberField';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowRight, Layers, Link, Plus, Trash2, ChevronRight, Star } from 'lucide-react';
 import { useEditor } from '../state/editor';
 import {
@@ -89,6 +89,7 @@ function PropertyPanel({
             <Trash2 size={15} />
             Delete selection
           </button>
+          <PropertyError />
         </div>
       </aside>
     );
@@ -381,6 +382,7 @@ function PropertyPanel({
             <Trash2 size={14} />
             Delete node
           </button>
+          <PropertyError />
         </div>
       </aside>
     );
@@ -478,6 +480,7 @@ function PropertyPanel({
             <Trash2 size={14} />
             Delete connection
           </button>
+          <PropertyError />
         </div>
       </aside>
     );
@@ -579,6 +582,23 @@ function PropertyPanel({
       </div>
     </aside>
   );
+}
+
+/** Mobile Properties covers the canvas notice, so keep edit errors in the active sheet. */
+function PropertyError() {
+  const status = useEditor((state) => state.status);
+  const message = useEditor((state) => state.message);
+  const commandError = useEditor((state) => state.commandError);
+  const error = commandError || (status === 'error' ? message : '');
+  const alert = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (error) alert.current?.scrollIntoView?.({ block: 'nearest' });
+  }, [error]);
+  return error ? (
+    <p ref={alert} className="form-error" role="alert">
+      {error}
+    </p>
+  ) : null;
 }
 export function Field({ title, children }: { title: string; children: React.ReactNode }) {
   return (

@@ -159,7 +159,7 @@ export async function importSimulationRuns(
           Object.entries(run.result.routeMetrics).map(([route, metric]) => [
             route
               .split(' → ')
-              .map((key) => identity.nodes.get(key) ?? key)
+              .map((key) => identity.edges.get(key) ?? key)
               .join(' → '),
             metric,
           ]),

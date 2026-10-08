@@ -1,0 +1,88 @@
+/* Shared Chroma tokens follow the same appearance controller as the workspace. */
+:root {
+  --code-surface: #f2f5f3;
+  --code-text: #21352a;
+  --code-keyword: #6a287e;
+  --code-name: #205c73;
+  --code-string: #215c37;
+  --code-number: #754613;
+  --code-comment: #52665b;
+  --code-error: #a02530;
+}
+:root[data-theme="dark"] {
+  --code-surface: #18231d;
+  --code-text: #e4eee8;
+  --code-keyword: #dba6ed;
+  --code-name: #95d8f0;
+  --code-string: #a4d59b;
+  --code-number: #e6bb85;
+  --code-comment: #a4b9ad;
+  --code-error: #ffadb5;
+}
+.highlight .chroma {
+  background: var(--code-surface);
+  color: var(--code-text);
+}
+.chroma :is(.k, .kc, .kd, .kn, .kp, .kr, .kt, .nt, .o, .ow) {
+  color: var(--code-keyword);
+}
+.chroma :is(.na, .nc, .no, .nd, .ne, .nx, .nf, .fm, .nb, .bp) {
+  color: var(--code-name);
+}
+.chroma
+  :is(
+    .s,
+    .sa,
+    .sb,
+    .sc,
+    .dl,
+    .sd,
+    .s2,
+    .sh,
+    .si,
+    .sx,
+    .sr,
+    .s1,
+    .ss,
+    .ld,
+    .gi
+  ) {
+  color: var(--code-string);
+}
+.chroma :is(.l, .se, .m, .mb, .mf, .mh, .mi, .il, .mo) {
+  color: var(--code-number);
+}
+.chroma :is(.c, .ch, .cm, .c1, .cs, .cp, .cpf, .gu, .ln, .lnt) {
+  color: var(--code-comment);
+}
+.chroma :is(.err, .gd, .gr) {
+  color: var(--code-error);
+}
+.chroma .ge {
+  font-style: italic;
+}
+.chroma .gs {
+  font-weight: bold;
+}
+.chroma .gl {
+  text-decoration: underline;
+}
+.chroma .line {
+  display: block;
+}
+.chroma .lnlinks {
+  color: inherit;
+  text-decoration: none;
+}
+.chroma .lntd {
+  padding: 0;
+  border: 0;
+  vertical-align: top;
+}
+.chroma .lntable {
+  border-spacing: 0;
+}
+.chroma :is(.ln, .lnt) {
+  margin-right: 0.5em;
+  user-select: none;
+}

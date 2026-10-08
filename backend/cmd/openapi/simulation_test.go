@@ -57,6 +57,16 @@ func TestSimulationSchemasExposeCompleteSemanticModel(t *testing.T) {
 			t.Fatal("missing visual projection semantics", field)
 		}
 	}
+	for _, field := range []string{"primaryEditable", "additionalCardsReadOnly", "compactHierarchyReadOnly"} {
+		property, ok := visual["properties"].(object)[field].(object)
+		if !ok || property["type"] != "boolean" || len(property["enum"].([]bool)) != 1 || !property["enum"].([]bool)[0] {
+			t.Fatal("capacity card editability must be explicitly discoverable", field)
+		}
+	}
+	legacy := visual["properties"].(object)["readOnly"].(object)
+	if legacy["deprecated"] != true || !strings.Contains(legacy["description"].(string), "additional capacity cards") || !strings.Contains(legacy["description"].(string), "compact hierarchy") || !strings.Contains(legacy["description"].(string), "primary") {
+		t.Fatal("legacy readOnly flag must disclose its limited scope without overriding primary editability")
+	}
 }
 
 func TestSimulationPathsSupportDiscoveryCRUDRunsReplayAndComparison(t *testing.T) {

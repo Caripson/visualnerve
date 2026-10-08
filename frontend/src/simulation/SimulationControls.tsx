@@ -223,7 +223,7 @@ export function SimulationRunSettings({
         </select>
       </label>
       <button onClick={createScenario}>New scenario</button>
-      <button aria-label="Configure simulation" onClick={configure}>
+      <button aria-label="Assumptions: configure simulation" onClick={configure}>
         <Settings2 size={15} />
         Assumptions
       </button>

@@ -12,6 +12,8 @@ isHTML = true
 notAlternative = true
 [markup.goldmark.renderer]
 unsafe = false
+[markup.highlight]
+noClasses = false
 [params]
 environment = 'staging'
 googleAnalyticsMeasurementId = ''

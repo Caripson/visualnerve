@@ -22,7 +22,7 @@ async function open(page: Page, name: string) {
   await expect(page.getByRole('region', { name: 'Process Simulator', exact: true })).toBeVisible();
 }
 async function configure(page: Page, nodeId: string, capacity: string) {
-  await page.getByRole('button', { name: 'Configure simulation' }).click();
+  await page.getByRole('button', { name: 'Assumptions: configure simulation' }).click();
   await page.getByLabel('Simulation node', { exact: true }).selectOption(nodeId);
   await page.getByLabel('Work capacity', { exact: true }).fill(capacity);
 }
@@ -84,7 +84,7 @@ test('AT-17 UI edits semantic work and API edits update the same UI model', asyn
   );
   expect(response.ok()).toBeTruthy();
   await expect(page.locator(`[data-simulation-node="${work.id}"]`)).toContainText('Capacity 8');
-  await page.getByRole('button', { name: 'Configure simulation' }).click();
+  await page.getByRole('button', { name: 'Assumptions: configure simulation' }).click();
   await page.getByLabel('Simulation node', { exact: true }).selectOption(work.id);
   await expect(page.getByLabel('Work capacity', { exact: true })).toHaveValue('8');
 });
@@ -364,7 +364,17 @@ test('capacity cards preserve native style, show real occupied work, share one q
   const persisted = (await (
     await request.get(`/api/v1/diagrams/${graph.diagram.id}`)
   ).json()) as Graph;
-  expect(persisted.nodes).toEqual(original.nodes);
+  // A replica selects the same editable logical process. Keyboard movement
+  // moves that process once, rather than saving the capacity bank's offsets.
+  const moved = persisted.nodes.find((node) => node.id === work.id)!;
+  expect(moved.x).toBe(original.nodes.find((node) => node.id === work.id)!.x + 10);
+  expect(persisted.nodes).toEqual(
+    original.nodes.map((node) =>
+      node.id === work.id
+        ? { ...node, x: node.x + 10, version: moved.version, updatedAt: moved.updatedAt }
+        : node,
+    ),
+  );
   expect(persisted.edges).toEqual(original.edges);
   expect(persisted.simulation).toEqual(original.simulation);
   await page.screenshot({ path: '/tmp/visualnerve-process-capacity-cards.png' });
@@ -426,7 +436,7 @@ test('simulation controls and assumptions remain readable in dark theme', async 
       return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
     });
   expect(await contrast(region)).toBeGreaterThanOrEqual(4.5);
-  await page.getByRole('button', { name: 'Configure simulation' }).click();
+  await page.getByRole('button', { name: 'Assumptions: configure simulation' }).click();
   expect(
     await contrast(page.locator('.simulation-modal nav button[aria-pressed="true"]')),
   ).toBeGreaterThanOrEqual(4.5);
@@ -450,6 +460,9 @@ test('AT-13/14 scenario resource labels and bindings follow the actual run witho
   await page.getByRole('button', { name: 'Play simulation' }).click();
   await expect(page.locator('.simulation-run-status')).toHaveText('completed');
   await page.getByRole('button', { name: 'Fit diagram', exact: true }).click();
+  // A complete capacity bank can fit below the overview/detail threshold.
+  // Selecting its primary card reveals the semantic details in that overview.
+  await page.locator(`[data-node-id="${packageWork.id}"] .node-title`).click();
   const work = page.locator(`[data-simulation-node="${packageWork.id}"]`);
   await expect(work).toContainText('Capacity 2');
   await expect(work.locator('.simulation-node-resources')).toHaveAttribute(

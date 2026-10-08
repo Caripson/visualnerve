@@ -439,7 +439,9 @@ test('capture truthful kiosk simulation, assumptions and comparison', async ({ p
   await screenshot(page, 'simulation');
   page.once('dialog', (dialog) => dialog.accept('Package demand ×100'));
   await page.getByRole('button', { name: 'New scenario', exact: true }).click();
-  await page.getByRole('button', { name: 'Configure simulation', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Assumptions: configure simulation', exact: true })
+    .click();
   await page
     .getByLabel('Simulation node', { exact: true })
     .selectOption({ label: 'Package arrivals (source)' });

@@ -1,5 +1,12 @@
-import { Fragment, memo, useEffect, useRef, type CSSProperties } from 'react';
-import { Handle, NodeResizer, Position, useStore, type NodeProps } from '@xyflow/react';
+import { Fragment, memo, useCallback, useEffect, useRef, type CSSProperties } from 'react';
+import {
+  Handle,
+  NodeResizer,
+  Position,
+  useStore,
+  type NodeProps,
+  type ResizeParams,
+} from '@xyflow/react';
 import { Lightbulb, Minus, Plus } from 'lucide-react';
 import type { CanvasNode } from '../canvas/projection';
 import { useEditor } from '../state/editor';
@@ -10,6 +17,11 @@ import { NodeStatus } from '../ui/NodeStatus';
 
 export const MindmapNode = memo(({ id, data, selected }: NodeProps<CanvasNode>) => {
   const { node, mindmap: topic, exporting, owners } = data;
+  const resize = useCallback(
+    (_: unknown, p: ResizeParams) =>
+      data.resize?.(id, { x: p.x, y: p.y, width: p.width, height: p.height }),
+    [id, data.resize],
+  );
   const editing = useEditor((state) => state.editingNode === id);
   const title = useEditor((state) => (state.editingNode === id ? state.editingTitle : ''));
   const input = useRef<HTMLTextAreaElement>(null);
@@ -59,14 +71,7 @@ export const MindmapNode = memo(({ id, data, selected }: NodeProps<CanvasNode>) 
         </span>
       )}
       {selected && !exporting && (
-        <NodeResizer
-          minWidth={100}
-          minHeight={40}
-          color={color}
-          onResizeEnd={(_, p) =>
-            data.resize?.(id, { x: p.x, y: p.y, width: p.width, height: p.height })
-          }
-        />
+        <NodeResizer nodeId={id} minWidth={100} minHeight={40} color={color} onResizeEnd={resize} />
       )}
       {(['left', 'right'] as const).map((side) => (
         <Fragment key={side}>

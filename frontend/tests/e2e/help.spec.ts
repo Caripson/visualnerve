@@ -147,7 +147,7 @@ test('local full-text search is keyboard accessible, handles no results and clea
 }) => {
   await page.goto('/help/');
   await page.keyboard.press('/');
-  const search = page.getByRole('searchbox', { name: 'Search help', exact: true });
+  const search = page.getByRole('combobox', { name: 'Search help', exact: true });
   await expect(search).toBeFocused();
   await search.fill('COBOL');
   const results = page.getByRole('region', { name: 'Search results', exact: true });
@@ -266,7 +266,7 @@ test('accepted local workspace caches every guide, screenshot and the help searc
       await imagesLoaded(page);
     }
     await page.goto(`${publicURL}/help/`);
-    await page.getByRole('searchbox', { name: 'Search help', exact: true }).fill('COBOL');
+    await page.getByRole('combobox', { name: 'Search help', exact: true }).fill('COBOL');
     await expect(page.getByRole('region', { name: 'Search results', exact: true })).toContainText(
       /guide.*found/,
     );

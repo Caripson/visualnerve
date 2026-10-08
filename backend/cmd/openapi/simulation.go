@@ -279,7 +279,9 @@ func addSimulationRuntimeSchemas(schemas object) {
 	})
 	schemas["SimulationRunSummary"] = strictObject(nil, object{
 		"id": object{"type": "string", "format": "uuid"}, "diagramId": object{"type": "string", "format": "uuid"}, "status": stateProps["status"], "options": object{"type": "object", "additionalProperties": true},
-		"createdAt": object{"type": "string", "format": "date-time"}, "updatedAt": object{"type": "string", "format": "date-time"}, "metrics": ref("SimulationMetrics"), "error": object{"type": "string"},
+		"currency":     object{"type": "string", "pattern": "^[A-Z]{3}$", "description": "Currency captured by this run, independent of later document edits."},
+		"scenarioName": object{"type": "string", "description": "Scenario name captured by this run, or Baseline when no scenario was selected; later renames/deletions do not relabel history."},
+		"createdAt":    object{"type": "string", "format": "date-time"}, "updatedAt": object{"type": "string", "format": "date-time"}, "metrics": ref("SimulationMetrics"), "error": object{"type": "string"},
 	})
 	schemas["SimulationEventPage"] = strictObject(nil, object{"events": simArray("SimulationEvent"), "offset": simInteger(0), "limit": simInteger(1), "retained": simInteger(0), "dropped": simInteger(0)})
 	schemas["SimulationComparison"] = strictObject(nil, object{
@@ -287,20 +289,24 @@ func addSimulationRuntimeSchemas(schemas object) {
 		"delta": object{"type": "object", "additionalProperties": object{"type": "number"}}, "incrementalCashImpact": object{"type": "number"}, "paybackTimeSeconds": object{"type": "number", "nullable": true},
 		"paybackReached": object{"type": "boolean"}, "comparable": object{"type": "boolean"}, "warnings": stringList(),
 	})
-	schemas["SimulationComparisonResult"] = strictObject([]string{"baselineRunId", "comparisons"}, object{"baselineRunId": object{"type": "string", "format": "uuid"}, "comparisons": simArray("SimulationComparison")})
+	schemas["SimulationComparisonResult"] = strictObject([]string{"baselineRunId", "comparisons"}, object{"baselineRunId": object{"type": "string", "format": "uuid"}, "currency": object{"type": "string", "pattern": "^[A-Z]{3}$", "description": "Common captured currency. Mixed-currency comparisons return 422 SIMULATION_CURRENCY_MISMATCH; no exchange-rate conversion is performed."}, "comparisons": simArray("SimulationComparison")})
 	schemas["SimulationExecutionLimits"] = strictObject([]string{"activeParticles", "semanticEvents", "routeVisits", "activeRuns", "cachedRuns"}, object{
 		"activeParticles": object{"type": "integer", "enum": []int{200000}}, "semanticEvents": object{"type": "integer", "enum": []int{50000000}, "description": "Execution ceiling counting scheduled internal events as well as emitted semantic events; exceeding it fails explicitly with partial results."},
 		"routeVisits": object{"type": "integer", "enum": []int{10000}}, "activeRuns": object{"type": "integer", "enum": []int{4}, "description": "Shared ceiling for resident execution and transient replay workers, including paused workers and synchronous startup reservations. Concurrent external starts/seeks beyond this ceiling return 409 before another worker starts."}, "cachedRuns": object{"type": "integer", "enum": []int{60}},
 	})
 	schemas["SimulationVisualCapacity"] = strictObject([]string{"view", "representation", "readOnly", "sharedLogicalModel", "persistentUnitIdentity", "occupancy", "queueDisplay", "limits", "overflow", "spatialView"}, object{
 		"view": simEnum("2d"), "representation": simEnum("full-native-cards"),
-		"readOnly": object{"type": "boolean", "enum": []bool{true}}, "sharedLogicalModel": object{"type": "boolean", "enum": []bool{true}},
-		"persistentUnitIdentity": object{"type": "boolean", "enum": []bool{false}},
-		"occupancy":              simEnum("actual-aggregate-busy"), "queueDisplay": simEnum("shared-at-first-card"),
+		"readOnly":                 object{"type": "boolean", "enum": []bool{true}, "deprecated": true, "description": "Deprecated compatibility flag scoped to additional capacity cards and compact hierarchy projections. It does not make the full flow's original primary card read-only. Use primaryEditable, additionalCardsReadOnly and compactHierarchyReadOnly instead."},
+		"primaryEditable":          object{"type": "boolean", "enum": []bool{true}, "description": "The full flow's original primary card edits the saved logical Work/Resource object, including position, dimensions and configuration."},
+		"additionalCardsReadOnly":  object{"type": "boolean", "enum": []bool{true}, "description": "Additional capacity cards are temporary runtime projections sharing one logical Work/Resource ID; their presentation IDs are not independently editable model entities."},
+		"compactHierarchyReadOnly": object{"type": "boolean", "enum": []bool{true}, "description": "Compact hierarchy placements are read-only projections; edit the saved logical object through the full flow or semantic model API."},
+		"sharedLogicalModel":       object{"type": "boolean", "enum": []bool{true}},
+		"persistentUnitIdentity":   object{"type": "boolean", "enum": []bool{false}},
+		"occupancy":                simEnum("actual-aggregate-busy"), "queueDisplay": simEnum("shared-at-first-card"),
 		"limits":   strictObject([]string{"cardsPerBank", "additionalCards"}, object{"cardsPerBank": object{"type": "integer", "enum": []int{8}}, "additionalCards": object{"type": "integer", "enum": []int{256}}}),
 		"overflow": simEnum("explicit-aggregate-label"), "spatialView": simEnum("logical-model"),
 	})
-	schemas["SimulationVisualCapacity"].(object)["description"] = "Live 2D capacity is a read-only runtime projection using full native cards, such as Counter 1/2/3. Ordinals identify anonymous capacity units sharing one logical Work/Resource ID, model and queue; they are not persistent named-worker identities or independent process nodes. Actual aggregate busy capacity drives occupancy. Limits bound visual cards only; omitted units remain simulated and have explicit aggregate labels. 3D keeps the logical model."
+	schemas["SimulationVisualCapacity"].(object)["description"] = "Live 2D capacity uses full native cards, such as Counter 1/2/3. In the full flow the original primary card remains editable; additional capacity cards and compact hierarchy placements are read-only runtime projections. Ordinals identify anonymous capacity units sharing one logical Work/Resource ID, model and queue; they are not persistent named-worker identities or independent process nodes. Actual aggregate busy capacity drives occupancy. Limits bound visual cards only; omitted units remain simulated and have explicit aggregate labels. 3D keeps the logical model."
 	schemas["SimulationCapabilities"] = object{
 		"type": "object", "additionalProperties": true,
 		"description": "Machine-readable type/schema/API version, seconds and currency conventions, supported node/routing/queue/scaling operations, execution requirements, permissions and bounded retention/transport limits.",
@@ -337,7 +343,7 @@ func addSimulationPaths(add func(string, string, string, string, string, string)
 		add("PUT", base+"/"+field, "Replace simulation "+field+" at baseVersion", "Simulation"+name+"Update", "Graph", "200")
 	}
 	runs := base + "/runs"
-	add("GET", runs, "List separately identifiable local runs and summary metrics", "", "SimulationRunSummary[]", "200")
+	add("GET", runs, "List separately identifiable local runs, captured scenarioName/currency and summary metrics", "", "SimulationRunSummary[]", "200")
 	add("POST", runs, "Start asynchronous seeded worker run; animation-independent correctness, write access required", "SimulationRunInput", "SimulationRunInfo", "201")
 	run := runs + "/{runId}"
 	add("GET", run, "Read frozen input, options and run progress/result", "", "SimulationRunInfo", "200")
@@ -358,7 +364,7 @@ func addSimulationPaths(add func(string, string, string, string, string, string)
 	}
 	add("POST", run+"/seek", "Replay paused/completed run deterministically; shared resident worker ceiling and current external write grant apply", "SimulationSeek", "SimulationState", "200")
 	add("POST", run+"/speed", "Set live pacing without changing deterministic business inputs", "SimulationSpeedInput", "SimulationRunInfo", "200")
-	add("POST", base+"/compare", "Read-only compare 2..20 document runs, whole-system deltas and observed incremental payback", "SimulationCompareInput", "SimulationComparisonResult", "200")
+	add("POST", base+"/compare", "Read-only compare 2..20 document runs in the same captured currency, whole-system deltas and observed incremental payback; mixed currencies return structured 422", "SimulationCompareInput", "SimulationComparisonResult", "200")
 	// Common routes normally use UUIDs; semantic entity IDs may be readable names.
 	for path, raw := range paths {
 		if path != "/simulation/capabilities" && (len(path) < len(base) || path[:len(base)] != base) {

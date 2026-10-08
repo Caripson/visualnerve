@@ -120,6 +120,8 @@ Expand **Local connection details** only when configuring the bridge address or 
 
 Turning access Off closes the browser connection. The browser must remain open for commands, including headless simulations. This grant lets your chosen tool read content and optionally edit it; the tool handles received content under its own settings. See [API and MCP setup](/help/api-mcp/).
 
+Reducing access takes effect immediately. If that setting cannot be saved, the open workspace keeps the lower access level through refreshes. Select the desired access level again; access can increase once that change saves successfully. A failed save does not store the choice for a later reload.
+
 ## Resolve a save conflict
 
 Multiple tabs of the same browser/origin share the workspace. If another tab changes a diagram while you hold older edits, the conflict notice offers:

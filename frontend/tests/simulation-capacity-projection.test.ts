@@ -16,6 +16,7 @@ import {
   layoutCapacityBanks,
   type CapacityBankGeometry,
 } from '../src/simulation/capacity-layout';
+import { SimulationCardSizing } from '../src/simulation/card-sizing';
 
 function fixture(model: SimulationModel = createBasicModel({ capacity: 3 })) {
   const graph = createSimulationGraph('Capacity cards', model);
@@ -141,7 +142,10 @@ describe('runtime full capacity cards', () => {
         nodeType: work.nodeType,
         color: work.color,
         width: work.width,
-        height: work.height,
+        height: new SimulationCardSizing().fit(
+          work,
+          graph.simulation!.nodes.find((node) => node.id === work.id),
+        ).height,
         description: work.description,
         status: work.status,
         metadata: { areaIcon: 'truck', simulationProjected: true },

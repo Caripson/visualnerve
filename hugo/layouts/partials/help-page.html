@@ -5,6 +5,7 @@
   <script src="/appearance.js"></script>
   <link rel="stylesheet" href="/editor/app.css">
   <link rel="stylesheet" href="/help/help.css">
+  <link rel="stylesheet" href="/site/syntax.css">
   <script defer src="/help/help.js"></script>
 </head>
 <body class="help-site">
@@ -16,12 +17,12 @@
       <form class="help-search-form" role="search" aria-label="Search help">
         <label class="help-search-label" for="help-search">Search help</label>
         <div class="help-search-field">
-          <input id="help-search" type="search" placeholder="Search topics or tasks…" autocomplete="off" aria-controls="help-search-results" aria-expanded="false" aria-describedby="help-search-hint">
+          <input id="help-search" type="search" role="combobox" aria-autocomplete="list" aria-haspopup="grid" placeholder="Search topics or tasks…" autocomplete="off" aria-controls="help-search-grid" aria-expanded="false" aria-describedby="help-search-hint">
           <button class="help-search-clear" type="button" aria-label="Clear help search" hidden>×</button>
         </div>
         <p id="help-search-hint" class="help-search-hint">Local search · press / to focus</p>
       </form>
-      <section id="help-search-results" class="help-search-results" aria-label="Search results" hidden><p class="help-search-status" role="status" aria-live="polite" aria-atomic="true"></p><ul></ul></section>
+      <section id="help-search-results" class="help-search-results" aria-label="Search results" hidden><p class="help-search-status" role="status" aria-live="polite" aria-atomic="true"></p><ul id="help-search-grid" role="grid" aria-label="Matching help guides"></ul></section>
       <nav class="help-desktop-topics" aria-label="Guide topics">{{ partial "help-topics.html" . }}</nav>
       <details class="help-mobile-topics"><summary>Topics</summary><nav aria-label="Guide topics mobile">{{ partial "help-topics.html" . }}</nav></details>
     </aside>

@@ -59,6 +59,10 @@ import { simulationCommand, simulationCapabilities } from './simulation-commands
 import { createSimulationGraph } from '../simulation/document';
 
 export type CommandOptions = AnalysisCommandOptions & {
+  /** Recheck external grants after queue waits and immediately before dispatch. */
+  beforeRequest?: () => Promise<void>;
+  /** Recheck external grants inside document transactions before their first write. */
+  beforeWrite?: () => Promise<void>;
   /** Recheck external grants after history hashing and before its first write. */
   beforeHistoryWrite?: () => Promise<void>;
 };
@@ -163,13 +167,18 @@ export class Repository {
     if (!graph) throw new StorageError(404, 'Project does not exist in this browser.');
     return graph;
   }
-  async saveGraph(input: Graph, expectedVersion?: number): Promise<Graph> {
-    return this.persistGraph(input, expectedVersion);
+  async saveGraph(
+    input: Graph,
+    expectedVersion?: number,
+    beforeWrite?: () => Promise<void>,
+  ): Promise<Graph> {
+    return this.persistGraph(input, expectedVersion, false, beforeWrite);
   }
   private async persistGraph(
     input: Graph,
     expectedVersion?: number,
     canonicalPositions = false,
+    beforeWrite?: () => Promise<void>,
   ): Promise<Graph> {
     validateGraphFields(input);
     const saved = await this.db.transaction(
@@ -181,6 +190,7 @@ export class Repository {
         this.db.owners,
         this.db.datasets,
         this.db.simulationModels,
+        ...(beforeWrite ? [this.db.settings] : []),
       ],
       async () => {
         const old = await this.db.graph(input.diagram.id);
@@ -269,6 +279,7 @@ export class Repository {
         };
         const ids = new Set(graph.nodes.map((node) => node.id)),
           edges = new Set(graph.edges.map((edge) => edge.id));
+        await beforeWrite?.();
         await this.db.nodes.bulkDelete(
           old?.nodes.filter((node) => !ids.has(node.id)).map((node) => node.id) ?? [],
         );
@@ -300,7 +311,7 @@ export class Repository {
     this.db.rememberDataset(saved.diagram, saved.dataset, saved.datasets);
     return saved;
   }
-  async removeDiagram(id: string) {
+  async removeDiagram(id: string, beforeWrite?: () => Promise<void>) {
     await this.db.transaction(
       'rw',
       [
@@ -312,8 +323,10 @@ export class Repository {
         this.db.simulationRuns,
         this.db.simulationCheckpoints,
         ...historyTables(this.db),
+        ...(beforeWrite ? [this.db.settings] : []),
       ],
       async () => {
+        await beforeWrite?.();
         this.db.forgetDatasets();
         await this.db.nodes.where('diagramId').equals(id).delete();
         await this.db.edges.where('diagramId').equals(id).delete();
@@ -623,52 +636,60 @@ export class Repository {
       ];
     });
   }
-  async owner(data: Patch, id?: string): Promise<Owner> {
-    return this.db.transaction('rw', this.db.owners, this.db.nodes, this.db.diagrams, async () => {
-      const old = id ? await this.db.owners.get(id) : undefined;
-      if (id && !old) throw new StorageError(404, 'Owner does not exist.');
-      if (old) requireVersion(old.version, data.version);
-      const input = old
-        ? patch(old, data)
-        : ({
-            ...base(),
-            name: '',
-            kind: 'person',
-            color: '#23664d',
-            metadata: {},
-            ...data,
-          } as Owner);
-      if (!old && (await this.db.owners.get(input.id)))
-        throw new StorageError(409, 'Owner id already exists.');
-      if (input.externalId) {
-        const external = await this.db.owners.where('externalId').equals(input.externalId).first();
-        if (external && external.id !== input.id)
-          throw new StorageError(409, 'External owner id already exists.');
-      }
-      validateOwner(input);
-      const owner = stamp(input, old);
-      await this.db.owners.put(owner);
-      if (old) {
-        const ids = [
-          ...new Set(
-            (await this.db.nodes.where('ownerIds').equals(old.id).toArray()).map(
-              (node) => node.diagramId,
+  async owner(data: Patch, id?: string, beforeWrite?: () => Promise<void>): Promise<Owner> {
+    return this.db.transaction(
+      'rw',
+      [this.db.owners, this.db.nodes, this.db.diagrams, ...(beforeWrite ? [this.db.settings] : [])],
+      async () => {
+        const old = id ? await this.db.owners.get(id) : undefined;
+        if (id && !old) throw new StorageError(404, 'Owner does not exist.');
+        if (old) requireVersion(old.version, data.version);
+        const input = old
+          ? patch(old, data)
+          : ({
+              ...base(),
+              name: '',
+              kind: 'person',
+              color: '#23664d',
+              metadata: {},
+              ...data,
+            } as Owner);
+        if (!old && (await this.db.owners.get(input.id)))
+          throw new StorageError(409, 'Owner id already exists.');
+        if (input.externalId) {
+          const external = await this.db.owners
+            .where('externalId')
+            .equals(input.externalId)
+            .first();
+          if (external && external.id !== input.id)
+            throw new StorageError(409, 'External owner id already exists.');
+        }
+        validateOwner(input);
+        const owner = stamp(input, old);
+        await beforeWrite?.();
+        await this.db.owners.put(owner);
+        if (old) {
+          const ids = [
+            ...new Set(
+              (await this.db.nodes.where('ownerIds').equals(old.id).toArray()).map(
+                (node) => node.diagramId,
+              ),
             ),
-          ),
-        ];
-        const diagrams = (await this.db.diagrams.bulkGet(ids)).filter(
-          (diagram): diagram is Diagram => !!diagram,
-        );
-        await this.db.diagrams.bulkPut(
-          diagrams.map((diagram) => ({
-            ...diagram,
-            version: diagram.version + 1,
-            updatedAt: new Date().toISOString(),
-          })),
-        );
-      }
-      return owner;
-    });
+          ];
+          const diagrams = (await this.db.diagrams.bulkGet(ids)).filter(
+            (diagram): diagram is Diagram => !!diagram,
+          );
+          await this.db.diagrams.bulkPut(
+            diagrams.map((diagram) => ({
+              ...diagram,
+              version: diagram.version + 1,
+              updatedAt: new Date().toISOString(),
+            })),
+          );
+        }
+        return owner;
+      },
+    );
   }
   async request<T>(
     path: string,
@@ -772,14 +793,16 @@ export class Repository {
       return (await this.restore(payload as WorkspaceBackup)) as T;
     if (collection === 'owners') {
       if (read) return (id ? await this.db.owners.get(id) : await this.db.owners.toArray()) as T;
-      if (!remove) return (await this.owner(object(payload), id)) as T;
+      if (!remove) return (await this.owner(object(payload), id, options.beforeWrite)) as T;
       return await this.db.transaction(
         'rw',
         this.db.owners,
         this.db.nodes,
         this.db.diagrams,
+        this.db.settings,
         async () => {
           const nodes = await this.db.nodes.where('ownerIds').equals(id).toArray();
+          await options.beforeWrite?.();
           await this.db.nodes.bulkPut(
             nodes.map((node) => {
               const ownerIds = node.ownerIds.filter((owner) => owner !== id);
@@ -824,7 +847,10 @@ export class Repository {
     if (collection === 'diagrams') {
       if (id && action === 'simulation')
         return (await simulationCommand(
-          this,
+          {
+            getGraph: (id) => this.getGraph(id),
+            saveGraph: (graph, version) => this.saveGraph(graph, version, options.beforeWrite),
+          },
           id,
           parts,
           url,
@@ -834,7 +860,11 @@ export class Repository {
         )) as T;
       if (id && understandingActions.includes(action))
         return (await understandingCommand(
-          this,
+          {
+            getGraph: (id) => this.getGraph(id),
+            saveGraph: (graph, version) => this.saveGraph(graph, version, options.beforeWrite),
+            history: this.history,
+          },
           id,
           parts,
           url,
@@ -856,7 +886,7 @@ export class Repository {
               ? createSimulationGraph(data.name as string)
               : blankGraph(data.name as string, (data.type ?? 'blank') as Diagram['type']);
         graph.diagram = { ...graph.diagram, ...data } as Diagram;
-        return (await this.saveGraph(graph, 0)).diagram as T;
+        return (await this.saveGraph(graph, 0, options.beforeWrite)).diagram as T;
       }
       if (action === 'presentation') {
         if (parts.length !== 3) throw new StorageError(404, 'Unknown presentation endpoint.');
@@ -882,6 +912,7 @@ export class Repository {
             this.db.owners,
             this.db.datasets,
             this.db.simulationModels,
+            this.db.settings,
           ],
           async () => {
             const graph = await this.getGraph(id);
@@ -889,6 +920,7 @@ export class Repository {
             return (await this.saveGraph(
               setPresentation(graph, data.presentation),
               data.baseVersion as number,
+              options.beforeWrite,
             )) as T;
           },
         );
@@ -898,7 +930,7 @@ export class Repository {
         return (action === 'nodes' ? graph.nodes : action === 'edges' ? graph.edges : graph) as T;
       }
       if (remove && !action) {
-        await this.removeDiagram(id);
+        await this.removeDiagram(id, options.beforeWrite);
         return undefined as T;
       }
       if (action === 'graph') {
@@ -906,9 +938,10 @@ export class Repository {
         const graph = data.graph as Graph;
         validateGraphFields(graph);
         if (graph.diagram.id !== id) throw new StorageError(422, 'Diagram id mismatch.');
-        return (await this.saveGraph(graph, data.baseVersion as number)) as T;
+        return (await this.saveGraph(graph, data.baseVersion as number, options.beforeWrite)) as T;
       }
-      if (action === 'bulk') return (await this.bulk(id, object(payload))) as T;
+      if (action === 'bulk')
+        return (await this.bulk(id, object(payload), options.beforeWrite)) as T;
       return await this.db.transaction(
         'rw',
         [
@@ -918,6 +951,7 @@ export class Repository {
           this.db.owners,
           this.db.datasets,
           this.db.simulationModels,
+          this.db.settings,
         ],
         async () => {
           const graph = await this.getGraph(id),
@@ -932,7 +966,7 @@ export class Repository {
             if (data.ownerId !== undefined && data.ownerIds === undefined)
               node.ownerIds = data.ownerId ? [data.ownerId as string] : [];
             graph.nodes.push(node);
-            const saved = await this.saveGraph(graph, version);
+            const saved = await this.saveGraph(graph, version, options.beforeWrite);
             return saved.nodes.find((value) => value.id === node.id) as T;
           }
           if (action === 'edges') {
@@ -943,12 +977,12 @@ export class Repository {
               data as Partial<GraphEdge>,
             );
             graph.edges.push(edge);
-            const saved = await this.saveGraph(graph, version);
+            const saved = await this.saveGraph(graph, version, options.beforeWrite);
             return saved.edges.find((value) => value.id === edge.id) as T;
           }
           requireVersion(version, data.version);
           graph.diagram = patch(graph.diagram, data);
-          return (await this.saveGraph(graph, version)).diagram as T;
+          return (await this.saveGraph(graph, version, options.beforeWrite)).diagram as T;
         },
       );
     }
@@ -966,6 +1000,7 @@ export class Repository {
           this.db.owners,
           this.db.datasets,
           this.db.simulationModels,
+          this.db.settings,
         ],
         async () => {
           const graph = await this.getGraph(entity.diagramId),
@@ -984,7 +1019,7 @@ export class Repository {
               child.ownerIds = data.ownerId ? [data.ownerId as string] : [];
             graph.nodes.push(child);
             graph.edges.push(newEdge(graph.diagram.id, id, child.id, { edgeType: 'hierarchy' }));
-            const stored = await this.saveGraph(graph, version);
+            const stored = await this.saveGraph(graph, version, options.beforeWrite);
             return stored.nodes.find((node) => node.id === child.id) as T;
           }
           const currentEntity =
@@ -1034,7 +1069,7 @@ export class Repository {
               graph.edges = graph.edges.map((edge) => (edge.id === id ? next : edge));
             }
           }
-          const stored = await this.saveGraph(graph, version);
+          const stored = await this.saveGraph(graph, version, options.beforeWrite);
           return (
             remove
               ? undefined
@@ -1047,7 +1082,7 @@ export class Repository {
     }
     throw new StorageError(404, 'Unknown browser command.');
   }
-  async bulk(id: string, data: Patch): Promise<Graph> {
+  async bulk(id: string, data: Patch, beforeWrite?: () => Promise<void>): Promise<Graph> {
     const saved = await this.db.transaction(
       'rw',
       [
@@ -1057,6 +1092,7 @@ export class Repository {
         this.db.owners,
         this.db.datasets,
         this.db.simulationModels,
+        ...(beforeWrite ? [this.db.settings] : []),
       ],
       async () => {
         const graph = await this.getGraph(id),
@@ -1076,6 +1112,7 @@ export class Repository {
           const owner = await this.owner(
             { ...values, ...(previous ? { version: previous.version } : {}) },
             previous?.id,
+            beforeWrite,
           );
           if (owner.externalId) ownerExternal.set(owner.externalId, owner);
         }
@@ -1170,7 +1207,7 @@ export class Repository {
         }
         // Owner updates may have advanced the diagram version inside this same transaction.
         const current = (await this.db.diagrams.get(id))!;
-        return this.saveGraph(graph, current.version);
+        return this.saveGraph(graph, current.version, beforeWrite);
       },
     );
     this.db.rememberDataset(saved.diagram, saved.dataset, saved.datasets);

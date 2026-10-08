@@ -21,7 +21,7 @@ for (const width of [320, 390, 1440]) {
           }),
         ).toBe(1);
       }
-      const search = page.getByRole('searchbox', { name: 'Search help', exact: true });
+      const search = page.getByRole('combobox', { name: 'Search help', exact: true });
       const topics = page.locator('.help-mobile-topics');
       if (width < 900) await topics.locator('summary').click();
       await search.fill('COBOL');

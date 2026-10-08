@@ -25,6 +25,8 @@ import { drawingBounds, unionBounds } from '../drawing/geometry';
 import { getDrawingLayer } from '../drawing/types';
 import { getCsvNode } from '../data/csv';
 import { getSpatialView } from '../spatial/types';
+import { simulationService } from '../simulation/service';
+import { SimulationExportScene } from './simulation-scene';
 export interface RenderOptions {
   scope: 'complete' | 'viewport' | 'selected';
   multiplier: 1 | 2 | 4;
@@ -104,7 +106,13 @@ async function capturePNG(
 }
 /** Selection keeps its node crop; complete export includes all visible world-coordinate ink. */
 export function renderedScene(graph: Graph, scope: 'complete' | 'selected', selection: string[]) {
-  const selected = new Set(selection);
+  const simulation = new SimulationExportScene().project(
+    graph,
+    selection,
+    graph.simulation ? simulationService.current(graph.diagram.id) : undefined,
+  );
+  const renderingGraph = simulation.graph;
+  const selected = new Set(simulation.selection);
   const historicIds = new Set(
     graph.nodes
       .filter((node) => selected.has(node.id) && getCsvNode(node)?.visible === false)
@@ -121,13 +129,13 @@ export function renderedScene(graph: Graph, scope: 'complete' | 'selected', sele
   const source =
     scope === 'selected'
       ? {
-          ...graph,
-          nodes: graph.nodes.filter((n) => selected.has(n.id)).map(selectedNode),
-          edges: graph.edges.filter(
+          ...renderingGraph,
+          nodes: renderingGraph.nodes.filter((n) => selected.has(n.id)).map(selectedNode),
+          edges: renderingGraph.edges.filter(
             (e) => selected.has(e.sourceNodeId) && selected.has(e.targetNodeId),
           ),
         }
-      : graph;
+      : renderingGraph;
   const projection = projectGraph(
     source,
     source.owners,

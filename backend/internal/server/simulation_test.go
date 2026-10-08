@@ -23,6 +23,11 @@ func TestMCPDiscoversProcessSimulatorWithoutAConnectedBrowser(t *testing.T) {
 			t.Fatal("bundled schema missing simulation semantics", phrase)
 		}
 	}
+	for _, phrase := range []string{"primaryEditable:true", "additionalCardsReadOnly:true", "compactHierarchyReadOnly:true", "readOnly:true"} {
+		if !strings.Contains(initialized["instructions"].(string), phrase) || !strings.Contains(mcpAPIGuide, phrase) {
+			t.Fatal("MCP must discover editable original cards separately from read-only projections", phrase)
+		}
+	}
 	if len(handler.peers) != 0 {
 		t.Fatal("documentation discovery unexpectedly opened a browser")
 	}

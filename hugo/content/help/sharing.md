@@ -49,6 +49,8 @@ An active semantic Overview can export its summary projection. Choose **Details*
 
 PNG and PDF always use the canonical **2D** diagram, including when 3D is active. JSON and backups preserve the saved 3D camera and independent object placements for later use. For an animated 3D presentation, use [video export](/help/presentations/#export-a-film).
 
+Process Simulator complete exports show the full real flow with the same readable capacity cards as **Show all steps**, using the selected run's scenario and current capacity when a run is selected. Selecting a capacity card exports that logical object's bank; selecting a process group exports its actual steps and descendants. These visual cards do not add work to the saved model.
+
 ## Keep a lossless JSON copy
 
 Diagram JSON includes current CSV source strings and analysis choices when the diagram owns those sources. It retains recognized SQL schema/query metadata, code structure, drawing layers, presentation definitions and applicable Process Simulator semantics. Hidden retained objects are preserved.

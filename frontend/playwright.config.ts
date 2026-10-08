@@ -8,6 +8,8 @@ export const browserLaunchOptions = {
     '--ignore-certificate-errors',
     '--host-resolver-rules=MAP public-app.test 127.0.0.1',
     '--no-proxy-server',
+    // Optional local diagnostic for a headless GPU/compositor scheduling stall.
+    ...(process.env.VISUAL_NERVE_E2E_DISABLE_GPU === '1' ? ['--disable-gpu'] : []),
   ],
 };
 export default defineConfig({

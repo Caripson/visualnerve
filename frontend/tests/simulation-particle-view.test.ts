@@ -108,7 +108,7 @@ it('omits filtered canvas nodes and edges rather than drawing hidden queue or tr
   ).toBeUndefined();
 });
 
-it('makes runtime cards and fan edges readonly while restoring editable canonical nodes', () => {
+it('keeps the native primary editable, synthetic runtime cards and fan edges readonly', () => {
   const { graph, projection, work } = fixture();
   const cache: RenderCache = { nodes: new Map(), edges: new Map() };
   const data = new Map();
@@ -129,6 +129,14 @@ it('makes runtime cards and fan edges readonly while restoring editable canonica
   );
   expect(cards).toHaveLength(3);
   for (const card of cards) {
+    expect(card.selected).toBe(true);
+    if (card.id === work.id) {
+      expect(card.draggable).not.toBe(false);
+      expect(card.selectable).not.toBe(false);
+      expect(card.connectable).not.toBe(false);
+      expect(card.data.resize).toBe(resize);
+      continue;
+    }
     expect(card).toMatchObject({
       selected: true,
       draggable: false,

@@ -123,7 +123,7 @@
   }
   .compact-view-toggle button[aria-pressed='true'] {
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
   }
   .compact-editor-toolbar .add-node span {
     font-size: 12px;

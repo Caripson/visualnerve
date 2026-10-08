@@ -80,6 +80,12 @@ describe('static delivery and canonical storage origin', () => {
       ])
         writeFileSync(join(directory, path), 'static code');
       expect(auditStatic(directory)).toHaveLength(7);
+      mkdirSync(join(directory, 'site'));
+      writeFileSync(
+        join(directory, 'site/syntax.css'),
+        '/* shared appearance-aware highlighting */',
+      );
+      expect(auditStatic(directory)).toHaveLength(8);
       rmSync(join(directory, 'error.html'));
       expect(() => auditStatic(directory)).toThrow('Static bundle is missing error.html');
       writeFileSync(join(directory, 'error.html'), 'static error page');

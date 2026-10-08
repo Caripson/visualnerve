@@ -5,6 +5,7 @@ export class Narrator {
   private buffer?: AudioBuffer;
   private offset = 0;
   private started = 0;
+  private onEnded?: () => void;
   async unlock() {
     this.context ??= new AudioContext();
     const context = this.context;
@@ -26,7 +27,7 @@ export class Narrator {
     if (context.state !== 'running')
       throw new Error('Audio needs a browser gesture. Click Play in the diagram player.');
   }
-  async play(blob: Blob, signal: AbortSignal): Promise<number> {
+  async play(blob: Blob, signal: AbortSignal, onEnded?: () => void): Promise<number> {
     const context = this.context;
     if (!context || context.state !== 'running')
       throw new Error('Audio needs a browser gesture. Click Play in the diagram player.');
@@ -34,6 +35,7 @@ export class Narrator {
     if (signal.aborted) throw new DOMException('Cancelled', 'AbortError');
     this.stop();
     this.buffer = buffer;
+    this.onEnded = onEnded;
     this.resume();
     return buffer.duration;
   }
@@ -50,6 +52,10 @@ export class Narrator {
       if (this.source === source) {
         this.source = undefined;
         this.offset = this.buffer?.duration ?? 0;
+        source.disconnect();
+        const ended = this.onEnded;
+        this.onEnded = undefined;
+        ended?.();
       }
     };
   }
@@ -63,11 +69,13 @@ export class Narrator {
   pause() {
     if (!this.source || !this.context) return;
     this.offset += this.context.currentTime - this.started;
-    this.source.stop();
-    this.source.disconnect();
+    const source = this.source;
     this.source = undefined;
+    source.stop();
+    source.disconnect();
   }
   stop() {
+    this.onEnded = undefined;
     this.pause();
     this.buffer = undefined;
     this.offset = 0;

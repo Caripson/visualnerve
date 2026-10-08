@@ -285,6 +285,8 @@ In **economics**, set the three-letter **Currency**, optional **Maximum budget**
 
 A run freezes its model, scenario, seed and options. Later edits do not rewrite that result. If assumptions change during a run, the displayed metrics still belong to its original captured assumptions; Play starts a new run.
 
+Changing the structure by adding or removing steps or connections, moving steps between subprocesses, or changing which shared resources they use detaches the old run from the canvas. An active run started with **Play** stops and keeps its actual partial result in **Saved runs**. Completed results stay unchanged; API/MCP runs continue independently against their captured model. Use **Play** to run the changed structure.
+
 Changing speed does not improve business capacity or change the computed outcome. Use the same seed, horizon and finish-workload choice when comparing scenarios.
 
 ## Create a scenario without rewriting the baseline
@@ -302,7 +304,7 @@ For advanced JSON/API overrides, arrays replace their complete inherited value. 
 
 ## Interpret queues, capacity and metrics
 
-In 2D, the canvas shows actual transit, queued work and busy/available capacity. Scaling can display **Counter 1, Counter 2, Counter 3** as separate full cards. These are anonymous units of one logical object, not named employees or separately editable process nodes. The shared queue appears once.
+In 2D, the canvas shows actual transit, queued work and busy/available capacity. Scaling can display **Counter 1, Counter 2, Counter 3** as separate full cards. These are anonymous units of one logical object, not named employees or separately editable process nodes. The shared queue appears once. In the full flow (**Show all steps** for a diagram with subprocesses), you can move, resize and edit the original primary card. Additional capacity cards and the arranged overview/subprocess cards represent that same object; use Assumptions to change their shared processing rules or capacity.
 
 Capacity visuals are limited to **eight cards per bank and 256 extra cards across the view**. More capacity is labeled as an aggregate and remains fully simulated. Particle snapshots are sampled; population metrics count all work.
 
@@ -340,6 +342,8 @@ A P95 wait of five minutes means about 95% of observed waits are five minutes or
 ![Saved runs compare completed and abandoned work, maximum queue, waiting time and time-to-revenue, with the contribution change below.](/help/images/simulation-compare.webp "Compare whole-system effects from runs with consistent assumptions, horizon and seed.")
 
 Comparison shows deltas, incremental cash and observed payback. “Investment has not paid back within this run” means the simulated cash did not cross the investment during that horizon; it does not invent a future payback date.
+
+Saved runs keep their captured scenario name and currency, even if you later rename or delete the scenario or change the document currency. Compare runs with the same captured currency. Comparisons reject different currencies and do not convert exchange rates.
 
 Replay reconstructs captured inputs deterministically rather than relying on every animation frame being retained. Saved results remain associated with their original assumptions.
 

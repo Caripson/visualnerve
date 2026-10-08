@@ -4099,6 +4099,11 @@
               "$ref": "#/components/schemas/SimulationComparison"
             },
             "type": "array"
+          },
+          "currency": {
+            "description": "Common captured currency. Mixed-currency comparisons return 422 SIMULATION_CURRENCY_MISMATCH; no exchange-rate conversion is performed.",
+            "pattern": "^[A-Z]{3}$",
+            "type": "string"
           }
         },
         "required": [
@@ -8364,6 +8369,11 @@
             "format": "date-time",
             "type": "string"
           },
+          "currency": {
+            "description": "Currency captured by this run, independent of later document edits.",
+            "pattern": "^[A-Z]{3}$",
+            "type": "string"
+          },
           "diagramId": {
             "format": "uuid",
             "type": "string"
@@ -8381,6 +8391,10 @@
           "options": {
             "additionalProperties": true,
             "type": "object"
+          },
+          "scenarioName": {
+            "description": "Scenario name captured by this run, or Baseline when no scenario was selected; later renames/deletions do not relabel history.",
+            "type": "string"
           },
           "status": {
             "enum": [
@@ -9210,8 +9224,22 @@
       },
       "SimulationVisualCapacity": {
         "additionalProperties": false,
-        "description": "Live 2D capacity is a read-only runtime projection using full native cards, such as Counter 1/2/3. Ordinals identify anonymous capacity units sharing one logical Work/Resource ID, model and queue; they are not persistent named-worker identities or independent process nodes. Actual aggregate busy capacity drives occupancy. Limits bound visual cards only; omitted units remain simulated and have explicit aggregate labels. 3D keeps the logical model.",
+        "description": "Live 2D capacity uses full native cards, such as Counter 1/2/3. In the full flow the original primary card remains editable; additional capacity cards and compact hierarchy placements are read-only runtime projections. Ordinals identify anonymous capacity units sharing one logical Work/Resource ID, model and queue; they are not persistent named-worker identities or independent process nodes. Actual aggregate busy capacity drives occupancy. Limits bound visual cards only; omitted units remain simulated and have explicit aggregate labels. 3D keeps the logical model.",
         "properties": {
+          "additionalCardsReadOnly": {
+            "description": "Additional capacity cards are temporary runtime projections sharing one logical Work/Resource ID; their presentation IDs are not independently editable model entities.",
+            "enum": [
+              true
+            ],
+            "type": "boolean"
+          },
+          "compactHierarchyReadOnly": {
+            "description": "Compact hierarchy placements are read-only projections; edit the saved logical object through the full flow or semantic model API.",
+            "enum": [
+              true
+            ],
+            "type": "boolean"
+          },
           "limits": {
             "additionalProperties": false,
             "properties": {
@@ -9252,6 +9280,13 @@
             ],
             "type": "boolean"
           },
+          "primaryEditable": {
+            "description": "The full flow's original primary card edits the saved logical Work/Resource object, including position, dimensions and configuration.",
+            "enum": [
+              true
+            ],
+            "type": "boolean"
+          },
           "queueDisplay": {
             "enum": [
               "shared-at-first-card"
@@ -9259,6 +9294,8 @@
             "type": "string"
           },
           "readOnly": {
+            "deprecated": true,
+            "description": "Deprecated compatibility flag scoped to additional capacity cards and compact hierarchy projections. It does not make the full flow's original primary card read-only. Use primaryEditable, additionalCardsReadOnly and compactHierarchyReadOnly instead.",
             "enum": [
               true
             ],
@@ -15118,7 +15155,7 @@
           },
           {}
         ],
-        "summary": "Read-only compare 2..20 document runs, whole-system deltas and observed incremental payback"
+        "summary": "Read-only compare 2..20 document runs in the same captured currency, whole-system deltas and observed incremental payback; mixed currencies return structured 422"
       }
     },
     "/diagrams/{diagramId}/simulation/defaults": {
@@ -17927,7 +17964,7 @@
           },
           {}
         ],
-        "summary": "List separately identifiable local runs and summary metrics"
+        "summary": "List separately identifiable local runs, captured scenarioName/currency and summary metrics"
       },
       "post": {
         "operationId": "post_diagrams_diagramId_simulation_runs",

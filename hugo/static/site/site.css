@@ -636,6 +636,10 @@ input:focus-visible {
   color: var(--muted);
   line-height: 1.9;
 }
+.footer-note a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .product-main {
   max-width: 1140px;
   margin: auto;

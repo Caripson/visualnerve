@@ -142,6 +142,7 @@ export function App() {
   }, [graph?.diagram.id, compact, closeMobilePanel]);
   const status = useEditor((s) => s.status);
   const message = useEditor((s) => s.message);
+  const commandError = useEditor((s) => s.commandError);
   const file = useRef<HTMLInputElement>(null);
   const close = useCallback(() => {
     useEditor.setState({ mobilePanel: null });
@@ -543,19 +544,36 @@ export function App() {
                   </button>
                 </div>
               )}
-              {status === 'error' && message && (
-                <div className="notice error-notice">
-                  <span>{message}</span>
-                  <button
-                    onClick={() =>
-                      void workspace
-                        .settled()
-                        .catch((error) => useEditor.setState({ message: error.message }))
-                    }
-                  >
-                    Retry save
-                  </button>
-                  <button onClick={() => open('settings')}>Settings</button>
+              {(commandError || (status === 'error' && message)) && (
+                <div className="notice error-notice" role="alert">
+                  <span>{commandError || message}</span>
+                  {commandError ? (
+                    <button
+                      onClick={() =>
+                        useEditor.setState((state) => ({
+                          commandError: '',
+                          ...(state.status === 'error' && state.message === state.commandError
+                            ? { status: 'saved', message: '' }
+                            : {}),
+                        }))
+                      }
+                    >
+                      Dismiss edit error
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() =>
+                          void workspace
+                            .settled()
+                            .catch((error) => useEditor.setState({ message: error.message }))
+                        }
+                      >
+                        Retry save
+                      </button>
+                      <button onClick={() => open('settings')}>Settings</button>
+                    </>
+                  )}
                 </div>
               )}
               <SimulationFeature />

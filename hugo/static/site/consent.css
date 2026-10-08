@@ -32,7 +32,11 @@
 }
 #visualnerve-consent .cn-body h2,
 #visualnerve-consent .cn-body p { color: var(--text, #17271c); }
-#visualnerve-consent .cn-body a { color: var(--accent, #237348); }
+#visualnerve-consent .cn-body a {
+  color: var(--accent, #237348);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 #visualnerve-consent .cn-body h2 { margin: 0 0 12px; font-size: 20px; }
 #visualnerve-consent .cn-ok { display: block; }
 #visualnerve-consent .cn-learn-more { display: inline-block; padding: 12px 0; }

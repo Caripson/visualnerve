@@ -1,171 +1,21 @@
-import type { Locator } from '@playwright/test';
-import { expect, test, type APIRequestContext, type Page } from './fixtures';
-import type { Graph } from '../../src/model/types';
-import { createBasicModel } from '../../src/simulation/examples';
-import { browserLaunchOptions } from '../../playwright.config';
+import { expect, test } from './fixtures';
+import {
+  actions,
+  canvasWorldCenter,
+  containedDialog,
+  expectCanvasCenter,
+  graph,
+  noHorizontalOverflow,
+  open,
+  saved,
+  screenshot,
+  simulation,
+  touchControlIsReachable,
+  usableCanvas,
+} from './mobile-fixtures';
 
-test.use({
-  hasTouch: true,
-  isMobile: true,
-  launchOptions: {
-    ...browserLaunchOptions,
-    args: [
-      ...browserLaunchOptions.args,
-      '--use-gl=angle',
-      '--use-angle=swiftshader',
-      '--enable-unsafe-swiftshader',
-    ],
-  },
-});
-
-async function saved(page: Page) {
-  await expect(page.getByRole('status').filter({ hasText: /^Saved$/ })).toBeVisible();
-}
-
-async function graph(
-  request: APIRequestContext,
-  name: string,
-  type: 'flowchart' | 'mindmap' = 'flowchart',
-) {
-  const created = await request.post('/api/v1/diagrams', { data: { name, type } });
-  expect(created.status()).toBe(201);
-  const diagram = await created.json();
-  const populated = await request.post(`/api/v1/diagrams/${diagram.id}/bulk`, {
-    data: {
-      nodes: [
-        {
-          externalId: 'first',
-          title: 'Start here',
-          description: 'The first mobile step.',
-          x: 40,
-          y: 60,
-        },
-        {
-          externalId: 'next',
-          title: 'Next step',
-          description: 'The next mobile step.',
-          x: 340,
-          y: 60,
-          ...(type === 'mindmap' ? { parentExternalId: 'first' } : {}),
-        },
-      ],
-      edges: [
-        {
-          sourceExternalId: 'first',
-          targetExternalId: 'next',
-          ...(type === 'mindmap'
-            ? { edgeType: 'hierarchy', direction: 'none' }
-            : { direction: 'forward' }),
-        },
-      ],
-    },
-  });
-  expect(populated.ok()).toBeTruthy();
-  return (await populated.json()) as Graph;
-}
-
-async function simulation(request: APIRequestContext, name: string) {
-  const created = await request.post('/api/v1/diagrams', {
-    data: { name, type: 'process-simulator' },
-  });
-  expect(created.status()).toBe(201);
-  const diagram = await created.json();
-  const model = createBasicModel({ particles: 100, processingSeconds: 30 });
-  model.defaults.durationSeconds = 3600;
-  const saved = await request.put(`/api/v1/diagrams/${diagram.id}/simulation`, {
-    data: { baseVersion: diagram.version, model },
-  });
-  expect(saved.ok()).toBeTruthy();
-  return (await saved.json()) as Graph;
-}
-
-async function open(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Open projects', exact: true }).tap();
-  const projects = page.getByRole('dialog', { name: 'Projects', exact: true });
-  await expect(projects).toBeVisible();
-  await projects.locator('.diagram-item').filter({ hasText: name }).tap();
-  await expect(projects).toBeHidden();
-  await expect(page.getByRole('heading', { name, exact: true, level: 1 })).toBeVisible();
-  await saved(page);
-}
-
-async function noHorizontalOverflow(page: Page) {
-  const size = await page.evaluate(() => ({
-    width: innerWidth,
-    document: document.documentElement.scrollWidth,
-    body: document.body.scrollWidth,
-  }));
-  expect(size.document).toBeLessThanOrEqual(size.width + 1);
-  expect(size.body).toBeLessThanOrEqual(size.width + 1);
-}
-
-async function touchControlIsReachable(control: Locator) {
-  await expect(control).toBeInViewport({ ratio: 0.999 });
-  expect(
-    await control.evaluate((element) => {
-      const bounds = element.getBoundingClientRect();
-      const top = document.elementFromPoint(
-        bounds.x + bounds.width / 2,
-        bounds.y + bounds.height / 2,
-      );
-      return !!top && element.contains(top);
-    }),
-  ).toBe(true);
-}
-
-async function usableCanvas(page: Page) {
-  await expect(page.locator('.canvas-shell')).toBeVisible();
-  await noHorizontalOverflow(page);
-  const box = (await page.locator('.canvas-shell').boundingBox())!;
-  const viewport = page.viewportSize()!;
-  expect(box.width).toBeGreaterThanOrEqual(viewport.width - 2);
-  expect(box.height).toBeGreaterThanOrEqual(viewport.height * 0.5);
-  expect(box.x).toBeGreaterThanOrEqual(-1);
-  expect(box.y).toBeGreaterThanOrEqual(0);
-  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
-}
-
-async function canvasWorldCenter(page: Page) {
-  return page.locator('.canvas-shell .react-flow').evaluate((element) => {
-    const viewport = element.querySelector('.react-flow__viewport')!;
-    const matrix = new DOMMatrixReadOnly(getComputedStyle(viewport).transform);
-    return {
-      x: (element.clientWidth / 2 - matrix.e) / matrix.a,
-      y: (element.clientHeight / 2 - matrix.f) / matrix.a,
-    };
-  });
-}
-
-async function expectCanvasCenter(page: Page, expected: { x: number; y: number }) {
-  await expect
-    .poll(async () => {
-      const center = await canvasWorldCenter(page);
-      return Math.max(Math.abs(center.x - expected.x), Math.abs(center.y - expected.y));
-    })
-    .toBeLessThan(2);
-}
-
-async function containedDialog(page: Page, name: string) {
-  const dialog = page.getByRole('dialog', { name, exact: true });
-  await expect(dialog).toBeVisible();
-  await noHorizontalOverflow(page);
-  const box = (await dialog.boundingBox())!;
-  const viewport = page.viewportSize()!;
-  expect(box.x).toBeGreaterThanOrEqual(-1);
-  expect(box.y).toBeGreaterThanOrEqual(-1);
-  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
-  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
-  return dialog;
-}
-
-async function actions(page: Page) {
-  await page.getByRole('button', { name: 'Diagram actions', exact: true }).tap();
-  return containedDialog(page, 'Diagram actions menu');
-}
-
-async function screenshot(page: Page, label: string) {
-  await page.screenshot({ path: `/tmp/visualnerve-mobile-final-${label}.png` });
-}
+// Ordinary 2D touch coverage uses the browser's normal graphics path.
+test.use({ hasTouch: true, isMobile: true });
 
 for (const device of [
   { width: 320, height: 640, type: 'flowchart' as const },
@@ -213,7 +63,7 @@ for (const device of [
     await touchControlIsReachable(
       page.getByRole('button', { name: 'Draw on diagram', exact: true }),
     );
-    await touchControlIsReachable(page.getByRole('button', { name: 'Fit View', exact: true }));
+    await touchControlIsReachable(page.getByRole('button', { name: 'Fit view', exact: true }));
 
     await detailsTrigger.tap();
     await containedDialog(page, 'Properties');
@@ -317,7 +167,9 @@ for (const device of [
     await expect(
       details.getByLabel('Simulation scenario', { exact: true }).locator('option:checked'),
     ).toHaveText('Mobile what if');
-    await details.getByRole('button', { name: 'Configure simulation', exact: true }).tap();
+    await details
+      .getByRole('button', { name: 'Assumptions: configure simulation', exact: true })
+      .tap();
     const settings = await containedDialog(page, 'Process Simulator settings');
     await settings.getByLabel('Settings section', { exact: true }).selectOption('nodes');
     await settings.getByLabel('Simulation node', { exact: true }).selectOption(work.id);
@@ -435,53 +287,4 @@ test('mobile 390×844: template dialog and walkthrough remain usable with compac
   await player.getByRole('button', { name: 'Close diagram player', exact: true }).tap();
   await expect(player).toBeHidden();
   await usableCanvas(page);
-});
-
-test.describe('mobile relief view', () => {
-  test.use({ actionTimeout: 45000 });
-  test('mobile 360×740: 2D and 3D controls return to the same editable document', async ({
-    page,
-    request,
-  }) => {
-    await page.setViewportSize({ width: 360, height: 740 });
-    const model = await graph(request, 'Mobile relief');
-    await open(page, model.diagram.name);
-    await usableCanvas(page);
-    await page.getByRole('button', { name: '3D view', exact: true }).tap();
-    const spatial = page.getByTestId('spatial-view');
-    await expect(spatial).toHaveAttribute('data-renderer', 'ready', { timeout: 30000 });
-    await expect(page.getByTestId('spatial-canvas')).toBeVisible();
-    await expect(page.getByRole('button', { name: '3D view', exact: true })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-    await expect(page.locator('#spatial-help')).toBeHidden();
-    await page.getByRole('button', { name: 'Show 3D handles', exact: true }).tap();
-    await expect(page.getByRole('button', { name: 'Hide 3D handles', exact: true })).toBeVisible();
-    await noHorizontalOverflow(page);
-    await page.getByRole('button', { name: 'Hide 3D handles', exact: true }).tap();
-    await page.getByRole('button', { name: '3D tools', exact: true }).tap();
-    const tools = await containedDialog(page, '3D tools menu');
-    await tools.getByRole('button', { name: 'Front view', exact: true }).tap();
-    await expect(tools).toBeHidden();
-    await page.getByRole('button', { name: '3D help', exact: true }).tap();
-    await expect(page.locator('#spatial-help')).toBeVisible();
-    await page.getByRole('button', { name: 'Hide 3D help', exact: true }).tap();
-    await expect(page.locator('#spatial-help')).toBeHidden();
-    await usableCanvas(page);
-    await screenshot(page, 'relief-360-740');
-    await page.getByRole('button', { name: '2D view', exact: true }).tap();
-    await expect(spatial).toBeHidden();
-    await expect(page.getByRole('button', { name: '2D view', exact: true })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-    await saved(page);
-    const returned = (await (
-      await request.get(`/api/v1/diagrams/${model.diagram.id}`)
-    ).json()) as Graph;
-    expect(returned.nodes).toEqual(model.nodes);
-    expect(returned.edges).toEqual(model.edges);
-    await usableCanvas(page);
-  });
 });

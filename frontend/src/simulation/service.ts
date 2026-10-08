@@ -42,6 +42,18 @@ interface LiveRun {
 }
 export const simulationRuntimeLimits = { cachedRuns: 60, activeRuns: 4 };
 
+class SimulationCurrencyError extends StorageError {
+  readonly code = 'SIMULATION_CURRENCY_MISMATCH';
+  readonly issues: { path: string; code: string; message: string }[];
+  constructor(currencies: string[]) {
+    super(
+      422,
+      `Compare runs with the same currency. These runs use ${currencies.join(', ')}; exchange-rate conversion is not supported.`,
+    );
+    this.issues = [{ path: 'runIds', code: this.code, message: this.message }];
+  }
+}
+
 /** One authoritative runtime shared by UI and Repository/API commands. */
 export class SimulationService {
   private store: SimulationRunStore;
@@ -103,6 +115,27 @@ export class SimulationService {
     this.selectedRunId = id;
     this.emit();
     return run;
+  }
+  /** Synchronously detach an obsolete canvas view without deleting its immutable archive. */
+  async detachCanvasRun(diagramId: string, runId: string) {
+    if (this.activeRuns.get(diagramId) !== runId) return;
+    this.activeRuns.delete(diagramId);
+    this.emit();
+    const live = this.runs.get(runId);
+    if (
+      live?.origin === 'ui' &&
+      live.client &&
+      ['running', 'paused', 'ready'].includes(live.view.run.status)
+    ) {
+      try {
+        await this.control(runId, 'stop');
+      } catch (error) {
+        // A final worker update may win the race with the stop request.
+        if (live.client && ['running', 'paused', 'ready'].includes(live.view.run.status))
+          throw error;
+      }
+      await live.writes;
+    }
   }
   private watchPermissions() {
     if (this.observer) return;
@@ -322,6 +355,11 @@ export class SimulationService {
         diagramId: run.diagramId,
         status: run.status,
         options: run.options,
+        currency: run.model.currency,
+        scenarioName: run.options.scenarioId
+          ? (run.model.scenarios.find((scenario) => scenario.id === run.options.scenarioId)?.name ??
+            `Scenario ${run.options.scenarioId}`)
+          : 'Baseline',
         createdAt: run.createdAt,
         updatedAt: run.updatedAt,
         metrics: run.result?.metrics,
@@ -505,9 +543,13 @@ export class SimulationService {
   async compare(ids: string[]) {
     if (ids.length < 2)
       throw new StorageError(422, 'Select a baseline and at least one scenario run.');
+    const runs = await Promise.all(ids.map((id) => this.get(id)));
+    const currencies = [...new Set(runs.map((run) => run.model.currency))];
+    if (currencies.length > 1) throw new SimulationCurrencyError(currencies);
     const results = await Promise.all(ids.map((id) => this.result(id)));
     return {
       baselineRunId: ids[0],
+      currency: currencies[0],
       comparisons: results.slice(1).map((result) => compareSimulationResults(results[0], result)),
     };
   }

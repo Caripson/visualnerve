@@ -3,6 +3,7 @@ import type { SimulationRenderProjection } from './render-model';
 import type { SimulationNode, SimulationState } from './types';
 import { CAPACITY_CARD_GAP, layoutCapacityBanks } from './capacity-layout';
 import { projectCapacityEdges } from './capacity-edges';
+import { SimulationCardSizing } from './card-sizing';
 
 export const MAX_CAPACITY_CARDS_PER_BANK = 8;
 export const MAX_ADDITIONAL_CAPACITY_CARDS = 256;
@@ -96,16 +97,30 @@ export function projectSimulationCapacityNodes(
       hidden: Math.max(0, actualCapacity - count),
     });
   }
+  const sizing = new SimulationCardSizing();
+  const contentNodes = graph.nodes.map((node) => sizing.fit(node, semantic.get(node.id)));
   const positions = layoutCapacityBanks(
-    graph.nodes.map((node) => ({ node, cards: capacityGroups.get(node.id)?.cardIds.length ?? 1 })),
+    contentNodes.map((node) => ({ node, cards: capacityGroups.get(node.id)?.cardIds.length ?? 1 })),
+    undefined,
+    contentNodes.some((node, index) => node !== graph.nodes[index]),
   );
-  const nodes = graph.nodes.flatMap((node) => {
+  const nodes = contentNodes.flatMap((node, index) => {
     const position = positions.get(node.id)!,
       group = capacityGroups.get(node.id);
     if (!group)
-      return position.x === node.x && position.y === node.y
+      return node === graph.nodes[index] && position.x === node.x && position.y === node.y
         ? [node]
-        : [{ ...node, ...position, metadata: { ...node.metadata, simulationProjected: true } }];
+        : [
+            {
+              ...node,
+              ...position,
+              metadata: {
+                ...node.metadata,
+                simulationProjected: true,
+                simulationLogicalNodeId: node.id,
+              },
+            },
+          ];
     const config = semantic.get(node.id) as SimulationNode;
     return group.cardIds.map((id, index) => ({
       ...node,

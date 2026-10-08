@@ -582,8 +582,30 @@ test('substantial data gets a one-time dismissible backup reminder and public AP
     await acknowledge(page);
     for (let index = 0; index < 10; index++) await create(page, `Local diagram ${index + 1}`);
     await expect(page.locator('.backup-nudge')).toContainText('10 local diagrams');
+    // Fail the real browser persistence boundary once, without replacing Workspace state.
+    await page.evaluate(() => {
+      const original = IDBObjectStore.prototype.put;
+      IDBObjectStore.prototype.put = function (value, ...args) {
+        if (this.name === 'settings' && value?.key === 'backup-nudge-dismissed') {
+          IDBObjectStore.prototype.put = original;
+          throw new DOMException('Simulated quota failure', 'QuotaExceededError');
+        }
+        return original.call(this, value, ...args);
+      };
+    });
+    await page.getByLabel('Dismiss backup reminder').click();
+    await expect(page.locator('.backup-nudge')).toBeVisible();
+    await expect(page.getByRole('alert')).toContainText('Simulated quota failure');
+    await expect(page.getByRole('button', { name: 'Retry save', exact: true })).toBeVisible();
+    expect(
+      (await records(page)).settings.some(
+        (record) => record.key === 'backup-nudge-dismissed' && record.value === true,
+      ),
+    ).toBe(false);
     await page.getByLabel('Dismiss backup reminder').click();
     await expect(page.locator('.backup-nudge')).toHaveCount(0);
+    await saved(page);
+    await expect(page.getByRole('button', { name: 'Retry save', exact: true })).toHaveCount(0);
     await page.reload();
     await saved(page);
     await expect(page.locator('.backup-nudge')).toHaveCount(0);

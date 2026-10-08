@@ -1,4 +1,14 @@
+.node-quick-add-floating {
+  position: fixed;
+  /* Above canvas panels, below the mobile sheet/backdrop and dialogs. */
+  z-index: 70;
+}
+.node-quick-add .toolbar-menu {
+  max-width: 100%;
+}
 .node-quick-add .toolbar-menu > button {
+  max-width: 100%;
+  white-space: normal;
   min-height: 36px;
   padding: 7px 12px;
   border-radius: 18px;
@@ -7,6 +17,9 @@
   background: var(--surface);
   box-shadow: 0 3px 12px #00000012;
   font-weight: 600;
+}
+.node-quick-add .toolbar-menu > button > span {
+  overflow-wrap: anywhere;
 }
 .node-quick-add-title {
   overflow-wrap: anywhere;

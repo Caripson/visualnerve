@@ -61,13 +61,14 @@ class BankIndex {
 export function layoutCapacityBanks(
   banks: CapacityBankGeometry[],
   diagnostics?: CapacityLayoutDiagnostics,
+  fitSingleCards = false,
 ) {
   if (diagnostics) {
     diagnostics.candidateChecks = 0;
     diagnostics.bucketQueries = 0;
   }
   const positions = new Map<string, { x: number; y: number }>();
-  if (banks.every((bank) => bank.cards === 1)) {
+  if (!fitSingleCards && banks.every((bank) => bank.cards === 1)) {
     for (const { node } of banks) positions.set(node.id, { x: node.x, y: node.y });
     return positions;
   }

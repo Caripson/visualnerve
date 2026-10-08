@@ -1727,6 +1727,17 @@
   },
   {
     "ecosystem": "npm",
+    "name": "axe-core",
+    "version": "4.14.0",
+    "license": "MPL-2.0",
+    "scope": "direct development",
+    "notices": [
+      "licenses/axe-core-LICENSE",
+      "licenses/axe-core-LICENSE-3RD-PARTY.txt"
+    ]
+  },
+  {
+    "ecosystem": "npm",
     "name": "balanced-match",
     "version": "1.0.2",
     "license": "MIT",

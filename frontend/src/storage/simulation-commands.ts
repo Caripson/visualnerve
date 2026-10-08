@@ -119,7 +119,11 @@ export const simulationCapabilities = {
   visualCapacity: {
     view: '2d',
     representation: 'full-native-cards',
+    /** @deprecated Scoped to additional/compact projections; use the explicit editability flags. */
     readOnly: true,
+    primaryEditable: true,
+    additionalCardsReadOnly: true,
+    compactHierarchyReadOnly: true,
     sharedLogicalModel: true,
     persistentUnitIdentity: false,
     occupancy: 'actual-aggregate-busy',
