@@ -12,7 +12,7 @@ import {
 } from '../src/storage/contracts';
 import { VaultCrypto } from '../src/security/vault-crypto';
 import { VaultLogicalRecordCodec } from '../src/security/vault-logical-record';
-import { VaultRecordStorage } from '../src/security/vault-storage';
+import { VaultRecordStorage, type VaultPhysicalRecord } from '../src/security/vault-storage';
 import { VaultSession } from '../src/security/vault-session';
 import { base, blankGraph, newEdge, newNode, type Graph, type Owner } from '../src/model/types';
 import { parseCsv } from '../src/data/csv';
@@ -216,6 +216,83 @@ describe('authoritative encrypted workspace storage', () => {
       name: 'Process Simulator',
       graph: { diagram: { type: 'process-simulator' }, simulation: { nodes: [], edges: [] } },
     });
+  });
+
+  it('reinitializes a cold unlocked workspace from authenticated template metadata without reading saved graph payloads', async () => {
+    await db.initialize();
+    const storedTemplate = (await db.templates.get('process-simulator'))!;
+    storedTemplate.graph.nodes[0].description = 'Retained private template explanation. '.repeat(
+      3_000,
+    );
+    await db.templates.put(storedTemplate);
+    const saved = await repo.saveGraph(fixture(), 0);
+    await db.settings.bulkPut([
+      { key: 'storage-consent', value: true },
+      { key: 'last-diagram', value: saved.diagram.id },
+    ]);
+
+    // A new session/backend has no warmed record or dataset cache, as after a
+    // page reload. Use the actual browser-compatible Web Crypto implementation.
+    db.dispose();
+    await session.dispose();
+    physical.close();
+    physical = new VaultRecordStorage(physical.name);
+    session = new VaultSession(physical, cipher);
+    await session.initialize();
+    await session.unlock(password);
+    codec = new VaultLogicalRecordCodec(cipher);
+    db = new EncryptedWorkspaceDatabase(session, codec);
+    repo = new Repository(db);
+    await db.open();
+    const before = await rawRecords();
+    const control = await physical.control();
+    const read = vi.spyOn(codec, 'read');
+
+    await db.initialize();
+
+    expect(read.mock.calls.filter(([, root]) => root.store === 'templates')).toHaveLength(0);
+    expect(await rawRecords()).toEqual(before);
+    expect((await physical.control())?.revision).toBe(control!.revision);
+    expect((await db.settings.get('storage-consent'))?.value).toBe(true);
+    expect((await db.settings.get('last-diagram'))?.value).toBe(saved.diagram.id);
+    expect(await repo.getGraph(saved.diagram.id)).toEqual(saved);
+    expect(await db.templates.get('process-simulator')).toEqual(storedTemplate);
+  });
+
+  it('rejects tampered template metadata during initialization without reseeding or overwriting retained records', async () => {
+    await db.initialize();
+    const stored = ((await rawRecords()) as VaultPhysicalRecord[]).find(
+      (record) => record.store === 'templates',
+    )!;
+    const root: VaultPhysicalRecord = {
+      ...stored,
+      encrypted: {
+        ...stored.encrypted,
+        ciphertext:
+          (stored.encrypted.ciphertext[0] === 'A' ? 'B' : 'A') +
+          stored.encrypted.ciphertext.slice(1),
+      },
+    };
+    const connection = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open(physical.name);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const transaction = connection.transaction('records', 'readwrite');
+        transaction.oncomplete = () => resolve();
+        transaction.onabort = () => reject(transaction.error);
+        transaction.objectStore('records').put(root);
+      });
+    } finally {
+      connection.close();
+    }
+    const before = await rawRecords();
+    const revision = (await physical.control())!.revision;
+    await expect(db.initialize()).rejects.toMatchObject({ code: 'AUTHENTICATION_FAILED' });
+    expect(await rawRecords()).toEqual(before);
+    expect((await physical.control())!.revision).toBe(revision);
   });
 
   it('exports complete history, CSV and simulation semantics with the same filtering as the legacy backend', async () => {

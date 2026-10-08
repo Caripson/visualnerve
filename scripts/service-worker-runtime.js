@@ -82,25 +82,53 @@ function download(operation) {
     ).finally(() => controllers.delete(controller)),
   );
 }
+/** Bound network and complete body/cache writes, including during cancellation. */
+class StaticAssetPrecache {
+  constructor(cache, signal, check) {
+    this.cache = cache;
+    this.signal = signal;
+    this.check = check;
+    this.next = 0;
+    this.failed = false;
+  }
+  async worker() {
+    try {
+      while (this.next < assets.length) {
+        this.signal.throwIfAborted();
+        const path = assets[this.next++];
+        await this.check();
+        // Clear/failure may run after the awaited generation check resolves.
+        this.signal.throwIfAborted();
+        const response = await fetch(path, { signal: this.signal });
+        if (!response.ok) throw new Error(`Offline asset failed: ${path}`);
+        await this.check();
+        this.signal.throwIfAborted();
+        await this.cache.put(path, response);
+      }
+    } catch (error) {
+      if (!this.failed) {
+        this.failed = true;
+        this.failure = error;
+        for (const controller of controllers) controller.abort(cancelled());
+      }
+      throw error;
+    }
+  }
+  async run() {
+    const workers = Array.from({ length: Math.min(6, assets.length) }, () =>
+      this.worker(),
+    );
+    // Native cache.put cannot be cancelled. Settle every started worker before
+    // install fails or Clear acknowledges that no late write can repopulate it.
+    await Promise.allSettled(workers);
+    if (this.failed) throw this.failure;
+  }
+}
 self.addEventListener("install", (event) =>
   event.waitUntil(
     download(async (signal, check) => {
       const cache = await caches.open(cacheName);
-      const results = await Promise.allSettled(
-        assets.map(async (path) => {
-          try {
-            const response = await fetch(path, { signal });
-            if (!response.ok) throw new Error(`Offline asset failed: ${path}`);
-            await check();
-            await cache.put(path, response);
-          } catch (error) {
-            for (const controller of controllers) controller.abort(cancelled());
-            throw error;
-          }
-        }),
-      );
-      const failure = results.find((result) => result.status === "rejected");
-      if (failure) throw failure.reason;
+      await new StaticAssetPrecache(cache, signal, check).run();
     }),
   ),
 );

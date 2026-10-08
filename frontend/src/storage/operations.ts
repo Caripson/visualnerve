@@ -31,18 +31,27 @@ const privateBackupSettings = new Set([
 export async function initializeWorkspace(scope: WorkspaceStorage) {
   if (!(await scope.settings.get('workspace-id')))
     await scope.settings.put({ key: 'workspace-id', value: base().id });
-  const existing = await scope.templates.bulkGet(templates.map((entry) => entry.key));
-  await scope.templates.bulkPut(
-    templates
-      .filter((_, i) => !existing[i])
-      .map((entry) => ({
+  // The encrypted backend authenticates this index projection without loading
+  // template graph payloads. Most unlocks need neither an upgrade nor a write.
+  const names = new Map(
+    (await scope.templates.metadata('name')).map((entry) => [entry.id, entry.value]),
+  );
+  const candidates = templates.filter((entry) => names.get(entry.key) !== entry.name);
+  if (!candidates.length) return;
+  // Inspect differing/missing names before seeding or renaming: a private custom
+  // template can legitimately reuse a built-in key and must remain untouched.
+  const existing = await scope.templates.bulkGet(candidates.map((entry) => entry.key));
+  const missing = candidates.filter((_, i) => !existing[i]);
+  if (missing.length)
+    await scope.templates.bulkPut(
+      missing.map((entry) => ({
         id: entry.key,
         name: entry.name,
         graph: instantiate(entry.key, entry.name),
         builtin: true,
       })),
-  );
-  for (const [i, entry] of templates.entries())
+    );
+  for (const [i, entry] of candidates.entries())
     if (existing[i]?.builtin && existing[i]!.name !== entry.name)
       await scope.templates.update(entry.key, { name: entry.name });
 }

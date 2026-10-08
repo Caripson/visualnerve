@@ -52,6 +52,7 @@ import { revealOverviewTargets } from '../overview/reveal';
 import { SelectionTools } from '../ui/SelectionTools';
 import { projectGraph, type CanvasNode, type NodeData, type RenderCache } from './projection';
 import { canvasViewportGraph, persistCanvasFocus } from './navigation';
+import { CanvasFocusAnimation, isCanvasNavigationGesture } from './focus-animation';
 import { canvasFitPadding } from './fit-padding';
 import { useResponsiveCanvasViewport } from './useResponsiveCanvasViewport';
 import { CanvasTouchViewportGesture, canvasZoomRange } from './touch-viewport-gesture';
@@ -235,7 +236,7 @@ export function Canvas() {
   const presentationViewport = useRef(false);
   const presentationViewports = useRef(new Set<string>());
   const interruptPresentation = useRef(() => {});
-  const focusNavigation = useRef(0);
+  const focusNavigation = useMemo(() => new CanvasFocusAnimation(flow), [flow]);
   const [minimap, setMinimap] = useState(true);
   const [touch, setTouch] = useState(
     () => matchMedia(`(pointer: coarse), ${COMPACT_LAYOUT_QUERY}`).matches,
@@ -640,38 +641,39 @@ export function Canvas() {
   );
   useEffect(
     () => () => {
-      focusNavigation.current++;
+      focusNavigation.cancel();
     },
-    [diagramId, spatial],
+    [diagramId, spatial, focusNavigation],
   );
   const focus = useEditor((s) => s.focusNode);
   useEffect(() => {
     if (!focus || spatial) return;
     const node = flow.getNode(focus);
     if (node && !node.hidden) {
-      const generation = ++focusNavigation.current;
-      let completion: Promise<boolean>;
-      if (useEditor.getState().editingNode === focus && graph?.diagram.type === 'mindmap') {
-        const position = flow.getInternalNode(focus)?.internals.positionAbsolute ?? node.position;
-        completion = flow.setCenter(
-          position.x + (node.width ?? 180) / 2,
-          position.y + (node.height ?? 60) / 2,
-          { zoom: Math.max(0.8, Math.min(1.1, flow.getZoom())), duration: 180 },
-        );
-      } else completion = flow.fitView({ nodes: [node], maxZoom: 1.1, padding: 1, duration: 250 });
+      const navigation = focusNavigation.start(() => {
+        if (useEditor.getState().editingNode === focus && graph?.diagram.type === 'mindmap') {
+          const position = flow.getInternalNode(focus)?.internals.positionAbsolute ?? node.position;
+          return flow.setCenter(
+            position.x + (node.width ?? 180) / 2,
+            position.y + (node.height ?? 60) / 2,
+            { zoom: Math.max(0.8, Math.min(1.1, flow.getZoom())), duration: 180 },
+          );
+        }
+        return flow.fitView({ nodes: [node], maxZoom: 1.1, padding: 1, duration: 250 });
+      });
       if (diagramId)
         void persistCanvasFocus({
-          completion,
+          completion: navigation.completion,
           diagramId,
           nodeId: focus,
-          active: () => generation === focusNavigation.current && !presentationViewport.current,
+          active: () => navigation.isCurrent() && !presentationViewport.current,
           current: useEditor.getState,
           viewport: () => flow.getViewport(),
           persist: persistViewport,
         }).catch(() => {});
       useEditor.setState({ focusNode: null });
     }
-  }, [focus, nodes, flow, spatial, diagramId, persistViewport]);
+  }, [focus, nodes, flow, spatial, diagramId, persistViewport, focusNavigation]);
   const changes = useCallback((changes: NodeChange<CanvasNode>[]) => {
     changes = changes.filter(
       (change) =>
@@ -863,8 +865,17 @@ export function Canvas() {
       ref={canvasShell}
       className={`canvas-shell ${graph.diagram.type === 'mindmap' ? 'mindmap-canvas' : ''} ${showProcessNavigation ? 'simulation-process-canvas' : ''}`}
       data-testid="canvas"
-      onPointerDownCapture={() => interruptPresentation.current()}
-      onWheelCapture={() => interruptPresentation.current()}
+      onPointerDownCapture={(event) => {
+        interruptPresentation.current();
+        if (isCanvasNavigationGesture(event.target)) focusNavigation.cancel();
+      }}
+      onTouchStartCapture={(event) => {
+        if (isCanvasNavigationGesture(event.target)) focusNavigation.cancel();
+      }}
+      onWheelCapture={(event) => {
+        interruptPresentation.current();
+        if (isCanvasNavigationGesture(event.target)) focusNavigation.cancel();
+      }}
       onKeyDownCapture={(event) => {
         if (event.key !== 'Enter' && event.key !== ' ') return;
         const target = event.target as HTMLElement;

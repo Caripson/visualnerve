@@ -8,10 +8,50 @@ async function saved(page: Page) {
   await expect(page.getByRole('status').filter({ hasText: /^Saved$/ })).toBeVisible();
 }
 
-async function touchDrag(page: Page, from: { x: number; y: number }, by: { x: number; y: number }) {
+async function touchDrag(
+  page: Page,
+  target: ReturnType<Page['locator']>,
+  by: { x: number; y: number },
+) {
+  // Graph persistence can finish while Add node's automatic camera focus is still
+  // moving. Synthetic coordinate input does not get locator actionability checks.
+  await page.locator('.react-flow__viewport').evaluate(async (element) => {
+    let previous = new DOMMatrixReadOnly(getComputedStyle(element).transform);
+    let stable = 0;
+    const deadline = performance.now() + 2000;
+    while (stable < 5 && performance.now() < deadline) {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      const current = new DOMMatrixReadOnly(getComputedStyle(element).transform);
+      stable =
+        Math.abs(current.a - previous.a) < 0.00001 &&
+        Math.abs(current.e - previous.e) < 0.00001 &&
+        Math.abs(current.f - previous.f) < 0.00001
+          ? stable + 1
+          : 0;
+      previous = current;
+    }
+    if (stable < 5) throw new Error('Canvas camera did not settle before the touch gesture.');
+  });
+  const point = await target.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    const from = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
+    const hit = document.elementFromPoint(from.x, from.y);
+    return { ...from, hit: !!hit && element.contains(hit), hitElement: hit?.outerHTML };
+  });
+  expect(point.hit, `Touch must start on the intended target: ${point.hitElement}`).toBe(true);
+  const from = { x: point.x, y: point.y };
+  await target.evaluate((element) => {
+    element.setAttribute('data-test-touch-start', 'pending');
+    element.addEventListener(
+      'touchstart',
+      () => element.setAttribute('data-test-touch-start', 'received'),
+      { once: true, capture: true },
+    );
+  });
   const session = await page.context().newCDPSession(page);
   try {
     await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [from] });
+    await expect(target).toHaveAttribute('data-test-touch-start', 'received');
     for (let step = 1; step <= 8; step++) {
       await session.send('Input.dispatchTouchEvent', {
         type: 'touchMove',
@@ -21,6 +61,7 @@ async function touchDrag(page: Page, from: { x: number; y: number }, by: { x: nu
     await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   } finally {
     await session.detach();
+    await target.evaluate((element) => element.removeAttribute('data-test-touch-start'));
   }
 }
 
@@ -332,12 +373,7 @@ test('kiosk touch: the primary Work card moves and resizes without rewriting pro
   const added = before.nodes.find((node) => !graph.nodes.some((old) => old.id === node.id))!;
   const card = page.locator(`.react-flow__node[data-id="${added.id}"]`);
   await expect(card).toBeInViewport({ ratio: 1 });
-  const title = (await card.locator('.node-title').boundingBox())!;
-  await touchDrag(
-    page,
-    { x: title.x + title.width / 2, y: title.y + title.height / 2 },
-    { x: 50, y: -45 },
-  );
+  await touchDrag(page, card.locator('.node-title'), { x: 50, y: -45 });
   await saved(page);
   const moved = await read();
   const movedNode = moved.nodes.find((node) => node.id === added.id)!;
@@ -357,11 +393,7 @@ test('kiosk touch: the primary Work card moves and resizes without rewriting pro
   }));
   expect(corner.width, JSON.stringify(handleStyle)).toBeGreaterThanOrEqual(24);
   expect(corner.height).toBeGreaterThanOrEqual(24);
-  await touchDrag(
-    page,
-    { x: corner.x + corner.width / 2, y: corner.y + corner.height / 2 },
-    { x: 28, y: 24 },
-  );
+  await touchDrag(page, handle, { x: 28, y: 24 });
   await saved(page);
   const resized = await read();
   const resizedNode = resized.nodes.find((node) => node.id === added.id)!;

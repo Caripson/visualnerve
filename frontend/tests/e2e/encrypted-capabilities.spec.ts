@@ -67,13 +67,17 @@ async function grant(page: Page, request: APIRequestContext) {
 }
 
 async function unlock(page: Page, title: string) {
-  await expect(
-    page.getByRole('dialog', { name: 'Unlock your workspace', exact: true }),
-  ).toBeVisible();
-  await page.getByLabel('Workspace password', { exact: true }).fill(password);
-  await page.getByRole('button', { name: 'Unlock', exact: true }).click();
-  await expect(page.getByRole('heading', { name: title, exact: true, level: 1 })).toBeVisible();
-  await saved(page);
+  await test.step('Authenticate the saved encrypted workspace', async () => {
+    const dialog = page.getByRole('dialog', { name: 'Unlock your workspace', exact: true });
+    await expect(dialog).toBeVisible();
+    await page.getByLabel('Workspace password', { exact: true }).fill(password);
+    await page.getByRole('button', { name: 'Unlock', exact: true }).click();
+    await expect(dialog).toBeHidden();
+  });
+  await test.step('Reconstruct the saved diagram and acknowledge persistence', async () => {
+    await expect(page.getByRole('heading', { name: title, exact: true, level: 1 })).toBeVisible();
+    await saved(page);
+  });
 }
 
 async function get<T>(request: APIRequestContext, path: string): Promise<T> {
