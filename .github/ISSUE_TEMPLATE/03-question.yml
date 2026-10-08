@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        The [Guide](https://visualnerve.caripson.com/help/) covers normal workflows. For local development or integration, see the [documentation index](https://github.com/Caripson/visualnerve/blob/main/docs/README.md).
+        The [Guide](https://www.visualnerve.com/help/) covers normal workflows. For local development or integration, see the [documentation index](https://github.com/Caripson/visualnerve/blob/main/docs/README.md).
         Do not share private diagrams, source files, backups, credentials or raw HAR recordings. Use [SECURITY.md](https://github.com/Caripson/visualnerve/blob/main/SECURITY.md) for vulnerabilities.
   - type: textarea
     id: question

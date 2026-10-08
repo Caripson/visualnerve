@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Check the [Guide](https://visualnerve.caripson.com/help/) and existing issues first. Explain the workflow and outcome before proposing implementation details. Keep examples synthetic and safe to publish.
+        Check the [Guide](https://www.visualnerve.com/help/) and existing issues first. Explain the workflow and outcome before proposing implementation details. Keep examples synthetic and safe to publish.
   - type: textarea
     id: problem
     attributes:

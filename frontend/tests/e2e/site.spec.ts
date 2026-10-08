@@ -136,6 +136,49 @@ for (const width of [1440, 768, 390, 320]) {
             expect(await page.locator('main').innerText()).not.toMatch(
               /iPhone|iPad|iMac|MacBook Pro/,
             );
+            if (path === '/') {
+              const icons = page.locator('.feature-card .feature-icon');
+              await expect(icons).toHaveCount(4);
+              // Mobile text enlargement must never turn icon glyphs into wrapped text.
+              await icons.evaluateAll((elements) => {
+                for (const icon of elements) (icon as HTMLElement).style.fontSize = '40px';
+              });
+              const geometry = await icons.evaluateAll((elements) =>
+                elements.map((icon) => {
+                  const svg = icon.querySelector('svg')!;
+                  const frame = icon.getBoundingClientRect();
+                  const vector = svg.getBoundingClientRect();
+                  return {
+                    text: icon.textContent?.trim(),
+                    frame: { width: frame.width, height: frame.height },
+                    vector: { width: vector.width, height: vector.height },
+                    inset: {
+                      left: vector.left - frame.left,
+                      right: frame.right - vector.right,
+                      top: vector.top - frame.top,
+                      bottom: frame.bottom - vector.bottom,
+                    },
+                    ink: getComputedStyle(svg).stroke,
+                    color: getComputedStyle(icon).color,
+                  };
+                }),
+              );
+              for (const icon of geometry) {
+                expect(icon.text).toBe('');
+                expect(icon.frame).toEqual({ width: 38, height: 38 });
+                expect(icon.vector).toEqual({ width: 20, height: 20 });
+                for (const inset of Object.values(icon.inset)) expect(inset).toBe(9);
+                expect(icon.ink).toBe(icon.color);
+              }
+              await icons.evaluateAll((elements) => {
+                for (const icon of elements)
+                  (icon as HTMLElement).style.removeProperty('font-size');
+              });
+              await page
+                .locator('.feature-card')
+                .filter({ hasText: 'Make unfamiliar data readable' })
+                .screenshot({ path: testInfo.outputPath(`code-icon-${width}-${colorScheme}.png`) });
+            }
             if (path === '/features/') {
               await page
                 .locator('.site-capture img')

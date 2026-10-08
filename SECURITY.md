@@ -6,16 +6,18 @@ For ordinary product bugs, follow [SUPPORT.md](SUPPORT.md). Report suspected
 security vulnerabilities privately; do not put exploit details, tokens, real
 customer data, source secrets or sensitive exports in an ordinary issue.
 
-Once this repository is public and GitHub private vulnerability reporting is
-enabled, use **Report a vulnerability** on the [Security page](https://github.com/Caripson/visualnerve/security).
-That GitHub feature is unavailable during the private preview, which is limited
-to invited repository participants. No external private reporting address is
-currently published. A private route must be configured before public reporting
-is announced; see [repository preparation](docs/REPOSITORY_READINESS.md).
+This repository is public and GitHub private vulnerability reporting is enabled.
+Use **Report a vulnerability** on the
+[Security page](https://github.com/Caripson/visualnerve/security) to send a private
+security report to the maintainer. A GitHub account is required.
 
-If the GitHub button is unavailable and you have repository access, you can open
-an issue asking only for the maintainer's preferred private security contact.
-Include no vulnerability details until a private channel is established.
+If the GitHub button is unavailable, use the
+[question form](https://github.com/Caripson/visualnerve/issues/new?template=03-question.yml)
+only to ask for a private security contact. Include no vulnerability details in
+that public request; wait until a private channel is established. No separate
+email address is published. For sensitive conduct reports, follow
+[SUPPORT.md](SUPPORT.md#private-contact); the vulnerability form is for security
+findings, not conduct concerns.
 
 In the private report, include the affected revision or site hostname,
 browser/device, impact and minimal reproduction using invented data. Redact URL
@@ -30,7 +32,8 @@ no guaranteed response deadline or bug-bounty commitment.
 
 Development and security fixes target the current `main` revision. Identify the
 commit when reporting a local build, or the hostname and approximate observation
-time for a hosted build. The preview can lag behind `main` because deployments
+time for a hosted build. The site at [www.visualnerve.com](https://www.visualnerve.com/)
+can lag behind `main` because deployments
 are manual. This project does not currently publish a tagged-release support
 matrix or promise maintenance of older revisions.
 

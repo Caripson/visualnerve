@@ -19,13 +19,13 @@ Neither workflow automatically deploys after a push, PR, successful CI or stagin
 | Workflow                | `.github/workflows/deploy.yml`       | `.github/workflows/deploy-production.yml`                 |
 | Site URL                | `https://visualnerve.caripson.com`   | `https://www.visualnerve.com`                             |
 | S3 bucket               | `visualnerve.caripson.com`           | `www.visualnerve.com`                                     |
-| CloudFront distribution | `E3PXPDRARNVUFD`                     | Required `PRODUCTION_CLOUDFRONT_DISTRIBUTION_ID` variable |
+| CloudFront distribution | `E3PXPDRARNVUFD`                     | `E2DFG7DKVLDNIQ` via `PRODUCTION_CLOUDFRONT_DISTRIBUTION_ID` |
 | GitHub environment      | `staging`                            | `production`, main only                                   |
 | Hugo environment        | `staging`                            | `production`                                              |
 | Search indexing         | `noindex`, disallowed staging robots | Production canonical URL/indexing                         |
 | AWS region/account      | `us-east-1` / `094904000140`         | `us-east-1` / `094904000140`                              |
 
-The staging hostname previously served the application directly. It now hosts the complete review site, with the application at `/app/`. No browser origin changes merely because the editor path changes. The new production domain is a different origin; existing work needs export/restore there.
+The staging hostname previously served the application directly. It now hosts the complete review site, with the application at `/app/`. No browser origin changes merely because the editor path changes. Production is a different origin; existing staging work needs export/restore there.
 
 `SITE_URL` controls Hugo's base URL. `HUGO_PARAMS_ENVIRONMENT` controls the site's environment metadata. `HUGO_PARAMS_GOOGLEANALYTICSMEASUREMENTID` receives `vars.GOOGLE_ANALYTICS_MEASUREMENT_ID` during the build. These are application settings, not AWS credentials.
 
@@ -41,7 +41,7 @@ node deployment/template.mjs > /tmp/visual-nerve-cloudformation.json
 
 The build regenerates the static directory. An explicit allowlist rejects unexpected files and exports; the upload script audits again. Never upload the repository, browser profiles, downloaded workspace files, backups or test artifacts. Built-in examples are app code.
 
-For an MPL-2.0 build, provide the corresponding covered source to recipients before distributing it, as explained in [licensing and source distribution](LICENSING.md). An inaccessible private GitHub link is insufficient. A deployment does not change repository visibility or create a source offer automatically.
+The [source repository](https://github.com/Caripson/visualnerve) is public. For each distributed build, preserve access to its corresponding covered source and notices as explained in [licensing and source distribution](LICENSING.md). A deployment does not change repository visibility, create a tagged release or resolve separate third-party source obligations automatically.
 
 ## Publish staging for review
 
@@ -59,7 +59,7 @@ Deployments to each destination are serialized and are not canceled by a newer r
 
 ## Production approval is currently an explicit SHA gate
 
-The repository is private. On 2026-10-07, configuring the required reviewer **Caripson** (GitHub user ID `31686838`) returned GitHub HTTP 422: the billing plan does not support the required-reviewers protection rule. GitHub's [environment documentation](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments) describes the plan/visibility restriction.
+Historical setup: on 2026-10-07, while the repository was private, configuring the required reviewer **Caripson** (GitHub user ID `31686838`) returned GitHub HTTP 422 because that plan/visibility combination did not support the required-reviewers protection rule. The repository became public on 2026-10-08. This launch uses the existing explicit SHA gate; public visibility does not itself configure a native reviewer rule. GitHub's [environment documentation](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments) describes those controls.
 
 The `production` environment exists and accepts only the `main` branch. **It currently has no native required-reviewer rule.** The workflow therefore fails closed through an explicit repository variable instead of pretending that GitHub has paused it for review.
 
@@ -67,21 +67,21 @@ After the owner has reviewed and approved the complete staging result:
 
 1. Open **Settings → Secrets and variables → Actions → Variables** in GitHub.
 2. Create/update `PRODUCTION_APPROVED_SHA` with the exact full 40-character SHA shown by the successful staging workflow. Setting it is the deliberate production-approval step. The workflow never sets it for you.
-3. Configure `PRODUCTION_CLOUDFRONT_DISTRIBUTION_ID` with the actual reviewed distribution for `www.visualnerve.com`. No ID or certificate is inferred.
+3. Confirm `PRODUCTION_CLOUDFRONT_DISTRIBUTION_ID` is `E2DFG7DKVLDNIQ`, the reviewed distribution for `www.visualnerve.com`. Re-review this value before changing the production infrastructure.
 4. As **Caripson**, manually run **Deploy production** on `main` while main still points to that approved SHA.
 5. Remove or clear `PRODUCTION_APPROVED_SHA` after promotion when approval should no longer permit another deployment of that revision. Cancel an already running job if approval must be withdrawn during execution.
 
 Before AWS access, production requires all of:
 
 - Successful latest CI push run for the exact deployed SHA.
-- The latest manual **Deploy S3** run on main completed successfully for that SHA. A newer pending or failed staging run also blocks promotion.
+- The selected latest manual **Deploy S3** run on main completed successfully for that SHA. The gate orders runs by update time; before promotion, also confirm there is no newer dispatched pending or failed staging run. A later update of an older run can otherwise sort ahead of a newer queued run.
 - `PRODUCTION_APPROVED_SHA` exactly equals that SHA.
 - Original dispatcher and any rerun actor are Caripson.
 - The production distribution variable and deployment credentials are configured.
 
 A newer main commit requires fresh CI, staging review and exact-SHA approval. Production checks verification again after building. Staging success alone never grants approval or triggers production.
 
-This fallback depends on repository administration and workflow integrity. It is not GitHub's native protected-environment reviewer control. If plan/visibility later supports required reviewers, configure Caripson on production, keep the main-only policy, and test the actual pending-approval behavior. Do not remove the exact revision gates simply because native approval becomes available.
+This fallback depends on repository administration and workflow integrity. It is not GitHub's native protected-environment reviewer control. If native required reviewers are configured now that the repository is public, keep Caripson and the main-only policy, and test the actual pending-approval behavior. Do not remove the exact revision gates simply because native approval becomes available.
 
 ## Secrets, analytics and AWS permissions
 
@@ -102,36 +102,55 @@ For analytics, **disable Enhanced Measurement in the GA4 web stream** and remove
 
 The upload identity needs `s3:PutObject` and `s3:AbortMultipartUpload` on the chosen bucket's object ARN, plus `cloudfront:CreateInvalidation` and `cloudfront:GetInvalidation` on the actual chosen distribution ARN. It does not need IAM administration, object ACLs, S3 deletes or permission to alter CloudFront.
 
-For staging these resource ARNs are `arn:aws:s3:::visualnerve.caripson.com/*` and `arn:aws:cloudfront::094904000140:distribution/E3PXPDRARNVUFD`. For production use `arn:aws:s3:::www.visualnerve.com/*` and the reviewed distribution's real ARN. Do not expand permissions to unknown distributions to work around a missing variable. See AWS's [S3 policy actions](https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-with-s3-policy-actions.html) and [CloudFront actions](https://docs.aws.amazon.com/service-authorization/latest/reference/list_cloudfront.html).
+For staging these resource ARNs are `arn:aws:s3:::visualnerve.caripson.com/*` and `arn:aws:cloudfront::094904000140:distribution/E3PXPDRARNVUFD`. For production these are `arn:aws:s3:::www.visualnerve.com/*` and `arn:aws:cloudfront::094904000140:distribution/E2DFG7DKVLDNIQ`. Do not expand permissions to unknown distributions to work around a missing variable. See AWS's [S3 policy actions](https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-with-s3-policy-actions.html) and [CloudFront actions](https://docs.aws.amazon.com/service-authorization/latest/reference/list_cloudfront.html).
 
 The script uses `aws s3 cp` and never deletes existing objects. A failed upload does not invalidate partially uploaded content. CDN invalidation refreshes delivery; it does not clear browser IndexedDB or force an already active offline shell to replace its version.
 
-## Infrastructure is provisioned separately
+## Existing production infrastructure
 
-The existing staging distribution uses the S3 website endpoint, with `index.html` and `error.html` (404). Build/deploy does not create or change its infrastructure. Its cache policy may retain mutable files briefly; the deployment waits for final invalidation.
+The 2026-10-08 launch uses existing AWS resources, not a newly provisioned stack:
 
-The optional CloudFormation template defines a private S3 bucket, CloudFront Origin Access Control with `GetObject`, HTTPS delivery, GET/HEAD behavior and directory/canonical-origin rewriting. It creates no content API, browser write permission, account service or application database.
+| Resource | Current configuration |
+| --- | --- |
+| Canonical site | `https://www.visualnerve.com` |
+| Production bucket | `www.visualnerve.com`, using its S3 website endpoint as the origin |
+| www CloudFront distribution | `E2DFG7DKVLDNIQ` |
+| Apex redirect distribution | `E2772DY3FXHIJC` for `visualnerve.com` |
+| Shared viewer-request function | `visualnerve-production-canonical-site`, based on `deployment/viewer-request.js` |
+| Certificate names | `*.visualnerve.com` and `visualnerve.com` |
+| Static indexes/errors | Directory routes resolve to `index.html`; origin 403/404 serves `/error.html` with HTTP 404 |
 
-For the new production origin, review the generated template and provision an ACM certificate in `us-east-1` that covers the actual canonical domain and aliases. `BucketName` can set the private OAC bucket's explicit name. Review availability/ownership of that bucket name before provisioning it.
+The apex distribution redirects to HTTPS www with status 308 and preserves the
+path and query string before the editor opens browser storage. The shared
+viewer-request function provides canonical-host handling and static directory
+indexes while preserving exact license object paths, including extensionless
+`LICENSE`, `NOTICE` and `COPYING` files. License notices are uploaded as
+`text/plain`; the inventory remains `application/json`. These routes and 403/404
+mappings were configured and checked separately from the application upload.
+The workflow does not provision a certificate,
+create a distribution or change viewer functions.
 
-The following is an **operator preparation example**, not an action performed by CI or this task:
+Staging continues to use its existing S3 website endpoint, `index.html`,
+`error.html` and distribution `E3PXPDRARNVUFD`. Build/deploy does not replace that
+infrastructure. CloudFront invalidation refreshes both cached content and cached
+errors after a successful upload.
 
-```sh
-aws cloudformation deploy \
-  --template-file /tmp/visual-nerve-cloudformation.json \
-  --stack-name visual-nerve-production \
-  --parameter-overrides \
-    BucketName=www.visualnerve.com \
-    CanonicalDomain=www.visualnerve.com \
-    AlternateDomain=visualnerve.com \
-    CertificateArn=YOUR_REVIEWED_US_EAST_1_ACM_CERTIFICATE_ARN
-aws cloudformation describe-stacks --stack-name visual-nerve-production \
-  --query 'Stacks[0].Outputs'
-```
+### Optional infrastructure template
 
-Use the actual `DistributionId` output for `PRODUCTION_CLOUDFRONT_DISTRIBUTION_ID`, configure DNS/canonical redirects, and verify the certificate/origin before production approval. The stack retains its bucket on deletion. No production provisioning, workflow dispatch or AWS upload is implied by adding these files.
+`deployment/template.mjs` remains an alternative template for a separately
+reviewed deployment. It defines a private S3 bucket, CloudFront Origin Access
+Control with `GetObject`, HTTPS delivery, GET/HEAD behavior and canonical/directory
+rewriting. **No CloudFormation stack, private OAC bucket or OAC distribution was
+provisioned for the current launch.** The template is not a description of the
+existing website-origin resources above.
 
-See AWS [Origin Access Control](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html), [directory indexes](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/example_cloudfront_functions_url_rewrite_single_page_apps_section.html), [managed cache policies](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-cache-policies.html) and [S3 error documents](https://docs.aws.amazon.com/AmazonS3/latest/userguide/CustomErrorDocSupport.html).
+If a future deployment adopts this template, review the bucket ownership, ACM
+certificate in `us-east-1`, aliases, DNS and actual distribution output before
+changing deployment variables. Generating a template grants no permission to
+provision or publish. See AWS [Origin Access Control](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html),
+[directory indexes](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/example_cloudfront_functions_url_rewrite_single_page_apps_section.html),
+[managed cache policies](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-cache-policies.html)
+and [S3 error documents](https://docs.aws.amazon.com/AmazonS3/latest/userguide/CustomErrorDocSupport.html).
 
 ## Origin identity and offline updates
 

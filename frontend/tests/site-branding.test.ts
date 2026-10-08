@@ -59,6 +59,27 @@ describe('shared workspace branding', () => {
     }
   });
 
+  it('renders feature icons as fixed-size vectors instead of wrapping font characters', () => {
+    const icons = page('index.html').querySelectorAll('.feature-card .feature-icon');
+    expect(icons).toHaveLength(4);
+    const geometry = new Set<string>();
+    for (const icon of icons) {
+      const svg = icon.querySelector('svg')!;
+      expect(svg).not.toBeNull();
+      expect(svg.getAttribute('viewBox')).toBe('0 0 24 24');
+      expect(svg.getAttribute('width')).toBe('20');
+      expect(svg.getAttribute('height')).toBe('20');
+      expect(svg.getAttribute('stroke')).toBe('currentColor');
+      expect(svg.getAttribute('aria-hidden')).toBe('true');
+      expect(svg.getAttribute('focusable')).toBe('false');
+      expect(svg.querySelectorAll('path').length).toBeGreaterThan(0);
+      expect(svg.querySelector('text, image, foreignObject, script')).toBeNull();
+      expect(icon.textContent?.trim()).toBe('');
+      geometry.add(svg.innerHTML);
+    }
+    expect(geometry.size).toBe(4);
+  });
+
   it('keeps native app, help and API headers consistent and free of analytics', () => {
     const appSymbol = page('app/index.html').querySelector('.site-brand .brand-symbol')!;
     for (const route of ['app/index.html', 'help/index.html', 'api/docs/index.html']) {

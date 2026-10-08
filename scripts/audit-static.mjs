@@ -1,5 +1,6 @@
-import { readdirSync, lstatSync, readFileSync } from 'node:fs';
+import { readdirSync, lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 const helpGuides = ['getting-started', 'editing', 'layouts', '3d', 'csv', 'connected-data', 'sql', 'code', 'diagram-import', 'understanding', 'presentations', 'simulation', 'sharing', 'settings', 'api-mcp', 'troubleshooting'];
 const helpScreenshots = ['new-diagram', 'editor', 'mobile-editor', 'layouts', 'spatial', 'csv-import', 'csv-evidence', 'connected-data', 'data-quality', 'source-refresh', 'sql-query', 'sql-schema', 'code-cobol', 'code-project', 'code-project-zip', 'project-file-limit', 'diagram-import', 'overview', 'history', 'player', 'player-compact', 'storyboard', 'simulation', 'process-setup', 'process-subprocess-setup', 'process-hierarchy', 'process-drilldown', 'node-quick-add', 'simulation-traffic', 'simulation-assumptions', 'simulation-compare', 'export', 'export-svg', 'lovable', 'settings', 'backup', 'mcp-settings'];
 const productPages = ['app', 'features', 'use-cases', 'process-simulator', 'mcp', 'developers', 'security'];
@@ -36,6 +37,18 @@ export function auditStatic(directory) {
   for (const required of ['index.html', 'app/index.html', 'error.html', 'editor/app.js', 'appearance.js', 'privacy/index.html', 'sw.js']) if (!files.includes(required)) throw new Error(`Static bundle is missing ${required}`);
   return files;
 }
-if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
+function isMainModule() {
+  if (!process.argv[1]) return false;
+  try {
+    return (
+      pathToFileURL(realpathSync(process.argv[1])).href ===
+      pathToFileURL(realpathSync(fileURLToPath(import.meta.url))).href
+    );
+  } catch {
+    // Imports from stdin/eval do not necessarily have an existing entry-point file.
+    return false;
+  }
+}
+if (isMainModule()) {
   console.log(`Static bundle audit: ${auditStatic(resolve(process.argv[2] || 'public')).length} application files, no user data files.`);
 }

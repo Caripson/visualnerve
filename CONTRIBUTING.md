@@ -12,10 +12,10 @@ Small, well-scoped fixes and documentation corrections can be proposed directly.
 Reports and proposed changes are reviewed by the maintainer; submission does not
 promise acceptance or a delivery date.
 
-The repository remains private during preparation. External contributions and
-issues require repository access until the owner makes it public. Once public,
-submit a pull request from your fork targeting `main`. Maintainer and automated
-work in this checkout follows [AGENTS.md](AGENTS.md): work directly on `main`
+The repository and issue forms are public. Submit a pull request from your fork
+targeting `main`. Report vulnerabilities through the private GitHub Security
+route in [SECURITY.md](SECURITY.md), rather than an ordinary issue. Maintainer and
+automated work in this checkout follows [AGENTS.md](AGENTS.md): work directly on `main`
 without creating feature branches or worktrees unless the owner requests them.
 
 ## Set up and verify
@@ -68,7 +68,7 @@ See [licensing and source distribution](docs/LICENSING.md).
 
 ## Deployment
 
-Contributing or merging code does not publish it. S3/CloudFront deployments are
+Contributing or merging code does not deploy the website. S3/CloudFront deployments are
 manual and require successful CI for the exact revision. Production additionally
 requires the owner's reviewed approval. Follow [DEPLOYMENT.md](docs/DEPLOYMENT.md);
 never trigger a deployment as part of an automatic commit or push.

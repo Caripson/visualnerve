@@ -97,10 +97,14 @@ input:focus-visible {
   padding: 16px 24px;
   border-radius: 18px;
   background: var(--surface);
-  box-shadow: 0 6px 24px #20352a0d, 0 1px 3px #20352a0a;
+  box-shadow:
+    0 6px 24px #20352a0d,
+    0 1px 3px #20352a0a;
 }
 :root[data-theme="dark"] .public-header-shell--floating .public-header {
-  box-shadow: 0 8px 28px #00000038, 0 1px 3px #00000026;
+  box-shadow:
+    0 8px 28px #00000038,
+    0 1px 3px #00000026;
 }
 .public-header-shell--floating .site-menu-toggle {
   min-height: 44px;
@@ -524,9 +528,13 @@ input:focus-visible {
   border: 1px solid var(--border);
   border-radius: 9px;
   color: var(--accent);
-  font:
-    600 20px/1 ui-monospace,
-    monospace;
+  flex: none;
+}
+.feature-icon > .site-icon {
+  display: block;
+  width: 20px;
+  height: 20px;
+  flex: none;
 }
 .feature-card h3 {
   font-size: 17px;

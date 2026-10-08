@@ -1,7 +1,7 @@
 # Getting help and reporting problems
 
-Use the [Visual Nerve Guide](https://visualnerve.caripson.com/help/) for workflows
-and [troubleshooting](https://visualnerve.caripson.com/help/troubleshooting/) for
+Use the [Visual Nerve Guide](https://www.visualnerve.com/help/) for workflows
+and [troubleshooting](https://www.visualnerve.com/help/troubleshooting/) for
 saving, imports, speech, exports and API/MCP problems. Developers can start with
 the [documentation index](docs/README.md).
 
@@ -16,10 +16,9 @@ Open the [issue chooser](https://github.com/Caripson/visualnerve/issues/new/choo
 | Usage or documentation question | Unclear instructions or help with a particular workflow. |
 | Security finding | Use the private instructions in [SECURITY.md](SECURITY.md), not a public issue. |
 
-A GitHub account is needed to submit an issue. During the private preview,
-only people with repository access can use GitHub reports. Existing private
-issues and attachments may become public when the repository opens: treat
-everything submitted there as publishable.
+The repository and ordinary Issues are public. A GitHub account is needed to
+submit a report. Issue descriptions, comments and attachments are public; include
+only information you intend to publish.
 
 ## Make a bug reproducible
 
@@ -52,13 +51,14 @@ The project is maintained by [Johan Caripson](https://github.com/Caripson).
 
 ## Private contact
 
-No external private contact address is currently published. During the private
-preview, invited repository participants can use the question form to ask Johan
-Caripson for a private contact route. State only that you need a private channel;
-do not include vulnerability details, personal allegations or sensitive data in
-that request. Keep those details for the private channel once established.
+GitHub private vulnerability reporting is enabled. Report security findings
+through **Report a vulnerability** on the
+[Security page](https://github.com/Caripson/visualnerve/security), following
+[SECURITY.md](SECURITY.md). Keep exploit details out of ordinary Issues.
 
-Security findings follow [SECURITY.md](SECURITY.md). GitHub's dedicated private
-vulnerability reporting must be enabled when the repository opens. This route
-does not handle sensitive community-conduct reports; a separate private contact
-remains a launch prerequisite in [repository preparation](docs/REPOSITORY_READINESS.md).
+The vulnerability form does not handle sensitive community-conduct reports or
+other private concerns. No separate email address is published. Use the
+[question form](https://github.com/Caripson/visualnerve/issues/new?template=03-question.yml)
+only to ask Johan Caripson for a private contact route. State that you need a
+private channel; include no personal allegations or sensitive details in that
+public request. Share those details only after a private channel is established.

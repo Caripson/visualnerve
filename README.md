@@ -4,7 +4,9 @@
 
 A local-first visual workspace for understanding what connects ideas, data, code and processes. Build a diagram, explore it in 2D or 3D, annotate the relationships and turn it into a narrated walkthrough or a reviewed app brief.
 
-[Open the staging workspace](https://visualnerve.caripson.com/app/) · [User guide](https://visualnerve.caripson.com/help/) · [Staging website](https://visualnerve.caripson.com/) · [API reference](https://visualnerve.caripson.com/api/docs/)
+[Open Visual Nerve](https://www.visualnerve.com/app/) · [User guide](https://www.visualnerve.com/help/) · [Website](https://www.visualnerve.com/) · [API reference](https://www.visualnerve.com/api/docs/)
+
+The [source repository](https://github.com/Caripson/visualnerve) and [issue forms](https://github.com/Caripson/visualnerve/issues/new/choose) are public. [Staging](https://visualnerve.caripson.com/) remains a separate review environment with its own browser workspace.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="hugo/static/site/images/desktop-dark.webp">
@@ -50,7 +52,7 @@ cd visualnerve
 
 Open [http://localhost:4317/app/](http://localhost:4317/app/). The command installs missing frontend dependencies, builds React/Hugo, compiles the optional Go server and starts it. For frontend hot reload, use `./dev.sh --watch` and open [http://localhost:5173](http://localhost:5173). These addresses have separate browser workspaces.
 
-For a production build:
+For a static build:
 
 ```sh
 ./build.sh
@@ -85,12 +87,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution workflow, [SUPPORT.m
 ## Documentation
 
 The [documentation index](docs/README.md) groups all guides and implementation
-contracts. [Repository preparation](docs/REPOSITORY_READINESS.md) records the
-remaining steps before public launch.
+contracts. [Repository launch and maintenance](docs/REPOSITORY_READINESS.md) records the
+public reporting routes and release checks.
 
 | Start here | Reference |
 | --- | --- |
-| Use the workspace | [Task-oriented user help](https://visualnerve.caripson.com/help/) and [help maintenance](docs/HELP.md) |
+| Use the workspace | [Task-oriented user help](https://www.visualnerve.com/help/) and [help maintenance](docs/HELP.md) |
 | Understand the implementation | [Architecture](ARCHITECTURE.md), [data model](DATA_MODEL.md), [storage](docs/STORAGE.md), [development](DEVELOPMENT.md) |
 | Integrate a client | [REST API](API.md), [MCP](docs/MCP.md), [OpenAPI](docs/openapi.yaml) |
 | Analyze sources | [CSV](docs/CSV_EXPLORER.md), [connected analysis](docs/ANALYSIS_WORKFLOWS.md), [SQL](docs/SQL_IMPORT.md), [code/ZIP](docs/CODE_IMPORT.md), [draw.io/Visio](docs/DIAGRAM_IMPORT.md) |

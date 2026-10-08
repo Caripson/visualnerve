@@ -12,7 +12,10 @@ if [[ "${3:-}" == '--dry-run' ]]; then VN_DEPLOY_ARGS+=(--dryrun); fi
 # Retain previous hashed chunks so existing open tabs can finish using them.
 aws s3 cp "$VN_DEPLOY_ROOT/public/editor/assets/" "s3://$1/editor/assets/" --recursive --cache-control 'public,max-age=31536000,immutable' "${VN_DEPLOY_ARGS[@]}"
 # Publish dependencies before the HTML and service worker that reference them.
-aws s3 cp "$VN_DEPLOY_ROOT/public/" "s3://$1/" --recursive --exclude 'editor/assets/*' --exclude '*.html' --exclude 'sw.js' --cache-control 'no-cache' "${VN_DEPLOY_ARGS[@]}"
+aws s3 cp "$VN_DEPLOY_ROOT/public/" "s3://$1/" --recursive --exclude 'editor/assets/*' --exclude 'licenses/*' --exclude '*.html' --exclude 'sw.js' --cache-control 'no-cache' "${VN_DEPLOY_ARGS[@]}"
+# License filenames include extensionless notices and .BSD: disable MIME guessing.
+aws s3 cp "$VN_DEPLOY_ROOT/public/licenses/" "s3://$1/licenses/" --recursive --exclude 'inventory.json' --content-type 'text/plain' --cache-control 'no-cache' "${VN_DEPLOY_ARGS[@]}"
+aws s3 cp "$VN_DEPLOY_ROOT/public/licenses/inventory.json" "s3://$1/licenses/inventory.json" --content-type 'application/json' --cache-control 'no-cache' "${VN_DEPLOY_ARGS[@]}"
 aws s3 cp "$VN_DEPLOY_ROOT/public/" "s3://$1/" --recursive --exclude '*' --include '*.html' --cache-control 'no-cache' "${VN_DEPLOY_ARGS[@]}"
 aws s3 cp "$VN_DEPLOY_ROOT/public/sw.js" "s3://$1/sw.js" --cache-control 'no-cache' "${VN_DEPLOY_ARGS[@]}"
 if [[ "${3:-}" != '--dry-run' ]]; then

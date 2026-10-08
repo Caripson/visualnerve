@@ -6,8 +6,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        Start with the [troubleshooting guide](https://visualnerve.caripson.com/help/troubleshooting/) and [support policy](https://github.com/Caripson/visualnerve/blob/main/SUPPORT.md).
-        Issues may become public when this repository opens. Use synthetic examples and redact screenshots. Do not attach full workspace backups, real customer/source data, credentials, raw HAR files or unedited logs. A bridge URL can contain a token.
+        Start with the [troubleshooting guide](https://www.visualnerve.com/help/troubleshooting/) and [support policy](https://github.com/Caripson/visualnerve/blob/main/SUPPORT.md).
+        Issues, comments and attachments are public. Use synthetic examples and redact screenshots. Do not attach full workspace backups, real customer/source data, credentials, raw HAR files or unedited logs. A bridge URL can contain a token.
         **Security vulnerability?** Follow [SECURITY.md](https://github.com/Caripson/visualnerve/blob/main/SECURITY.md) instead of reporting exploit details here.
   - type: checkboxes
     id: before_reporting
@@ -78,7 +78,7 @@ body:
     attributes:
       label: Site and revision, if known
       description: Give the hostname or local setup and commit/build if known. Remove query strings, fragments and tokens from URLs.
-      placeholder: "visualnerve.caripson.com / local build at commit …"
+      placeholder: "www.visualnerve.com / local build at commit …"
   - type: textarea
     id: evidence
     attributes:

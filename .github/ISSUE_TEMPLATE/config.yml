@@ -1,7 +1,7 @@
 blank_issues_enabled: false
 contact_links:
   - name: User guide and troubleshooting
-    url: https://visualnerve.caripson.com/help/
+    url: https://www.visualnerve.com/help/
     about: Learn workflows, imports, simulation, exports and local storage.
   - name: Report a security vulnerability privately
     url: https://github.com/Caripson/visualnerve/blob/main/SECURITY.md

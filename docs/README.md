@@ -1,7 +1,7 @@
 # Visual Nerve documentation
 
 For normal product use, start with the
-[Guide](https://visualnerve.caripson.com/help/). It contains task-oriented
+[Guide](https://www.visualnerve.com/help/). It contains task-oriented
 instructions and real Light/Dark screenshots. This directory documents the
 implementation, supported contracts and operation of the project.
 
@@ -35,7 +35,7 @@ implementation, supported contracts and operation of the project.
 | Website, consent and assets | [Website](WEBSITE.md) |
 | User help and real screenshots | [Help maintenance](HELP.md) |
 | Manual staging and reviewed production | [Deployment](DEPLOYMENT.md) |
-| Repository preparation and public launch | [Repository readiness](REPOSITORY_READINESS.md) |
+| Public repository and launch maintenance | [Repository readiness](REPOSITORY_READINESS.md) |
 | Project and third-party licenses | [Licensing](LICENSING.md), [dependencies](../DEPENDENCIES.md), [NOTICE](../NOTICE) |
 | Requirements and verification records | [Requirements](REQUIREMENTS.md), [acceptance log](ACCEPTANCE.md), [quality audit](QUALITY_AUDIT_2026-10-07.md) |
 

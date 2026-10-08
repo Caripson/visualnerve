@@ -13,12 +13,13 @@ licenses. Commercial use is permitted. These summaries do not replace the
 [license](https://www.mozilla.org/en-US/MPL/2.0/) or
 [Mozilla's FAQ](https://www.mozilla.org/en-US/MPL/2.0/FAQ/).
 
-## Private development and distribution
+## Source availability and distribution
 
-The GitHub repository remains private until its owner chooses to open it. This
-license change does not change repository visibility, publish a source archive
-or deploy the application. `frontend/package.json` also remains `private: true`.
-Private development and internal use do not require public source publication.
+The [source repository](https://github.com/Caripson/visualnerve) became public on
+2026-10-08, separately from the license change. Source revisions, the license and
+notices are available there. `frontend/package.json` remains `private: true` to
+prevent npm publication; it does not make the GitHub repository private. Private
+development and internal use do not require public source publication.
 
 Distribution is a separate matter. Browser JavaScript sent to users, including
 minified code, is executable distribution under MPL (see FAQ Q16–17). Before
@@ -27,8 +28,9 @@ deploying this MPL-covered version or otherwise delivering it to recipients:
 - Make the corresponding MPL-covered source available to those recipients by
   reasonable means in a timely manner, under MPL-2.0.
 - Tell them how to obtain it. A GitHub link to a private repository they cannot
-  access does not meet that requirement. Opening the repository is one option;
-  a matching source archive or authorized recipient access is another.
+  access does not meet that requirement. The public repository is the current
+  source route; retain the matching revision for each build. A matching source
+  archive or authorized recipient access is another option.
 - Include the license and copyright notices, and keep third-party notices and
   source obligations intact.
 
