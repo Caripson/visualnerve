@@ -139,7 +139,7 @@ it.each(['resolve', 'reject'] as const)(
   async (outcome) => {
     const { graph, complete } = await pendingPaste();
     fireEvent.keyDown(document.body, { key: 'n', ctrlKey: true });
-    expect(screen.getByRole('dialog', { name: 'New diagram' })).toBeVisible();
+    expect(await screen.findByRole('dialog', { name: 'New diagram' })).toBeVisible();
     const before = useEditor.getState();
     await complete(outcome);
     expect(useEditor.getState().graph).toBe(graph);

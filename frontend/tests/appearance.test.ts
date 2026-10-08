@@ -23,6 +23,10 @@ function surface(database: Pick<IDBFactory, 'open'>, dark = false, messaging = t
     windowListeners = new Map<string, Callback>(),
     documentListeners = new Map<string, Callback>(),
     channels: { onmessage?: Callback }[] = [];
+  const images = {
+    sources: [] as { media: string }[],
+    links: [] as { href: string; dataset: { appearanceLink: string; appearanceDark: string } }[],
+  };
   const media = {
     matches: dark,
     addEventListener: (_: string, callback: Callback) => mediaListeners.push(callback),
@@ -31,6 +35,8 @@ function surface(database: Pick<IDBFactory, 'open'>, dark = false, messaging = t
     documentElement: { dataset: {} as Record<string, string>, style: {} as Record<string, string> },
     visibilityState: 'visible',
     addEventListener: (name: string, callback: Callback) => documentListeners.set(name, callback),
+    querySelectorAll: (selector: string) =>
+      selector.includes('source') ? images.sources : images.links,
   };
   const window = {
     indexedDB: database,
@@ -50,6 +56,8 @@ function surface(database: Pick<IDBFactory, 'open'>, dark = false, messaging = t
   return {
     api: window.visualNerveAppearance!,
     root: document.documentElement,
+    images,
+    ready: () => documentListeners.get('DOMContentLoaded')?.(),
     media(dark: boolean) {
       media.matches = dark;
       for (const callback of mediaListeners) callback();
@@ -63,6 +71,41 @@ function surface(database: Pick<IDBFactory, 'open'>, dark = false, messaging = t
     broadcast: () => channels[0]?.onmessage?.(),
   };
 }
+
+it('selects screenshot sources and full-size links by the saved preference, including images parsed after the head script', async () => {
+  const factory = new IDBFactory();
+  await seed(factory, [
+    { key: 'storage-consent', value: true },
+    { key: 'theme', value: 'dark' },
+  ]);
+  const page = surface(factory, false);
+  await page.api.refresh();
+  // The script runs in head; the browser has not parsed the picture and its anchor yet.
+  const source = { media: '(prefers-color-scheme: dark)' };
+  const link = {
+    href: '/help/images/editor.webp',
+    dataset: {
+      appearanceLink: '/help/images/editor.webp',
+      appearanceDark: '/help/images/editor-dark.webp',
+    },
+  };
+  page.images.sources.push(source);
+  page.images.links.push(link);
+  page.ready();
+  expect(source.media).toBe('all');
+  expect(link.href).toBe('/help/images/editor-dark.webp');
+  page.media(true);
+  page.api.setPreference('light');
+  expect(source.media).toBe('not all');
+  expect(link.href).toBe('/help/images/editor.webp');
+  page.api.setPreference('system');
+  expect(source.media).toBe('all');
+  expect(link.href).toBe('/help/images/editor-dark.webp');
+  page.media(false);
+  expect(source.media).toBe('not all');
+  expect(link.href).toBe('/help/images/editor.webp');
+  expect((await factory.databases()).map(({ name }) => name)).toEqual([databaseName]);
+});
 
 async function seed(
   factory: IDBFactory,

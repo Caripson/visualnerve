@@ -10,16 +10,17 @@ export async function parseCodeAsync(
   {
     signal,
     byteLimit = currentImportLimitBytes(),
-  }: { signal?: AbortSignal; byteLimit?: number } = {},
+    fileLimit,
+  }: { signal?: AbortSignal; byteLimit?: number; fileLimit?: number } = {},
 ): Promise<CodeImportResult> {
   if (signal?.aborted) throw aborted();
   const limit = checkedImportLimitBytes(byteLimit);
-  normalizeCodeInput(input, limit);
+  normalizeCodeInput(input, limit, fileLimit);
   if (typeof Worker === 'undefined') {
     const { parseCode } = await import('./analyzer');
     const { arrangeCode } = await import('./layout');
     if (signal?.aborted) throw aborted();
-    const result = await arrangeCode(parseCode(input, limit));
+    const result = await arrangeCode(parseCode(input, limit, fileLimit));
     if (signal?.aborted) throw aborted();
     return result;
   }
@@ -53,7 +54,11 @@ export async function parseCodeAsync(
     worker.onerror = (event) =>
       finish(undefined, new Error(event.message || 'Code worker could not run.'));
     try {
-      worker.postMessage({ input, byteLimit: limit });
+      worker.postMessage({
+        input,
+        byteLimit: limit,
+        ...(fileLimit !== undefined ? { fileLimit } : {}),
+      });
     } catch (error) {
       finish(undefined, error as Error);
     }

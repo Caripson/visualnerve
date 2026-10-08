@@ -51,7 +51,7 @@ async function failPreference(key = 'backup-nudge-dismissed', message = 'Local s
     new DOMException(message, 'QuotaExceededError'),
   );
   await expect(workspace.setPreference(key, true)).rejects.toThrow(message);
-  expect(useEditor.getState()).toMatchObject({ status: 'error', message });
+  expect(useEditor.getState().preferenceError).toEqual({ key, message });
 }
 
 function holdPreferenceWrite() {
@@ -71,7 +71,68 @@ async function backgroundError(error: Error) {
   await vi.waitFor(() => expect(useEditor.getState().message).toBe(error.message));
 }
 
-describe('preference save errors acknowledge only their own successful retry', () => {
+describe('preference failures are independent of document saves and acknowledge only their own retry', () => {
+  it('keeps an unresolved preference failure after an already-inflight graph save finishes', async () => {
+    const entered = deferred(),
+      release = deferred();
+    const save = repo.saveGraph.bind(repo);
+    vi.spyOn(repo, 'saveGraph').mockImplementationOnce(async (...args) => {
+      entered.resolve();
+      await release.promise;
+      return save(...args);
+    });
+    const graph = useEditor.getState().graph!;
+    useEditor.getState().updateNode(graph.nodes[0].id, { title: 'Committed document change' });
+    await entered.promise;
+    await failPreference();
+    expect(useEditor.getState().status).toBe('saving');
+    release.resolve();
+    await workspace.settled();
+    expect(useEditor.getState()).toMatchObject({ status: 'saved', message: '' });
+    expect(useEditor.getState().preferenceError).toEqual({
+      key: 'backup-nudge-dismissed',
+      message: 'Local storage is full',
+    });
+    expect((await repo.getGraph(graph.diagram.id)).nodes[0].title).toBe(
+      'Committed document change',
+    );
+    expect(await db.settings.get('backup-nudge-dismissed')).toBeUndefined();
+    await workspace.retryPreference('backup-nudge-dismissed');
+    expect(useEditor.getState().preferenceError).toBeNull();
+    expect((await db.settings.get('backup-nudge-dismissed'))?.value).toBe(true);
+  });
+
+  it('keeps an unresolved preference failure through a subsequent viewport edit and autosave', async () => {
+    await failPreference();
+    const graphId = useEditor.getState().graph!.diagram.id;
+    useEditor.getState().command('Camera', (graph) => ({
+      ...graph,
+      diagram: {
+        ...graph.diagram,
+        settings: { ...graph.diagram.settings, viewport: { x: 10, y: 20, zoom: 0.8 } },
+      },
+    }));
+    expect(useEditor.getState().preferenceError).toEqual({
+      key: 'backup-nudge-dismissed',
+      message: 'Local storage is full',
+    });
+    await workspace.settled();
+    expect(useEditor.getState()).toMatchObject({ status: 'saved', message: '' });
+    expect((await repo.getGraph(graphId)).diagram.settings.viewport).toEqual({
+      x: 10,
+      y: 20,
+      zoom: 0.8,
+    });
+    expect(useEditor.getState().preferenceError).toEqual({
+      key: 'backup-nudge-dismissed',
+      message: 'Local storage is full',
+    });
+    expect(await db.settings.get('backup-nudge-dismissed')).toBeUndefined();
+    await workspace.retryPreference('backup-nudge-dismissed');
+    expect(useEditor.getState().preferenceError).toBeNull();
+    expect(useEditor.getState().backupNudgeDismissed).toBe(true);
+  });
+
   it('recovers repeated failed retries only after the accepted write is persisted', async () => {
     await failPreference();
     await failPreference();
@@ -79,15 +140,20 @@ describe('preference save errors acknowledge only their own successful retry', (
     const retry = workspace.setPreference('backup-nudge-dismissed', true);
     await gate.entered.promise;
     expect(useEditor.getState()).toMatchObject({
-      status: 'error',
-      message: 'Local storage is full',
+      status: 'saved',
+      message: '',
+      preferenceError: { key: 'backup-nudge-dismissed', message: 'Local storage is full' },
       backupNudgeDismissed: false,
     });
     expect(await db.settings.get('backup-nudge-dismissed')).toBeUndefined();
     gate.release.resolve();
     await retry;
     expect((await db.settings.get('backup-nudge-dismissed'))?.value).toBe(true);
-    expect(useEditor.getState()).toMatchObject({ status: 'saved', message: '' });
+    expect(useEditor.getState()).toMatchObject({
+      status: 'saved',
+      message: '',
+      preferenceError: null,
+    });
   });
 
   it('restores an error that preceded the preference failure', async () => {
@@ -123,36 +189,48 @@ describe('preference save errors acknowledge only their own successful retry', (
     await failPreference();
     gate.release.resolve();
     await olderRetry;
-    expect(useEditor.getState()).toMatchObject({
-      status: 'error',
+    expect(useEditor.getState().preferenceError).toEqual({
+      key: 'backup-nudge-dismissed',
       message: 'Local storage is full',
     });
     await workspace.setPreference('backup-nudge-dismissed', true);
-    expect(useEditor.getState()).toMatchObject({ status: 'saved', message: '' });
+    expect(useEditor.getState()).toMatchObject({
+      status: 'saved',
+      message: '',
+      preferenceError: null,
+    });
   });
 
   it('keeps a different preference error and never resurrects the hidden successful retry', async () => {
     await failPreference('backup-nudge-dismissed', 'Backup preference failed');
     await failPreference('another-preference', 'Other preference failed');
     await workspace.setPreference('backup-nudge-dismissed', true);
-    expect(useEditor.getState()).toMatchObject({
-      status: 'error',
+    expect(useEditor.getState().preferenceError).toEqual({
+      key: 'another-preference',
       message: 'Other preference failed',
     });
     await workspace.setPreference('another-preference', true);
-    expect(useEditor.getState()).toMatchObject({ status: 'saved', message: '' });
+    expect(useEditor.getState()).toMatchObject({
+      status: 'saved',
+      message: '',
+      preferenceError: null,
+    });
   });
 
   it('restores an unresolved earlier preference, which can then be retried successfully', async () => {
     await failPreference('backup-nudge-dismissed', 'Backup preference failed');
     await failPreference('another-preference', 'Other preference failed');
     await workspace.setPreference('another-preference', true);
-    expect(useEditor.getState()).toMatchObject({
-      status: 'error',
+    expect(useEditor.getState().preferenceError).toEqual({
+      key: 'backup-nudge-dismissed',
       message: 'Backup preference failed',
     });
     await workspace.setPreference('backup-nudge-dismissed', true);
-    expect(useEditor.getState()).toMatchObject({ status: 'saved', message: '' });
+    expect(useEditor.getState()).toMatchObject({
+      status: 'saved',
+      message: '',
+      preferenceError: null,
+    });
   });
 
   it('does not resurrect a superseded same-key failure through another preference owner', async () => {
@@ -160,15 +238,19 @@ describe('preference save errors acknowledge only their own successful retry', (
     await failPreference('another-preference', 'Other preference failed');
     await failPreference('backup-nudge-dismissed', 'Second backup failure');
     await workspace.setPreference('backup-nudge-dismissed', true);
-    expect(useEditor.getState()).toMatchObject({
-      status: 'error',
+    expect(useEditor.getState().preferenceError).toEqual({
+      key: 'another-preference',
       message: 'Other preference failed',
     });
     await workspace.setPreference('another-preference', true);
-    expect(useEditor.getState()).toMatchObject({ status: 'saved', message: '' });
+    expect(useEditor.getState()).toMatchObject({
+      status: 'saved',
+      message: '',
+      preferenceError: null,
+    });
   });
 
-  it('does not acknowledge an error over a pending document save', async () => {
+  it('acknowledges a preference retry without acknowledging a pending document save', async () => {
     const entered = deferred(),
       release = deferred();
     const save = repo.saveGraph.bind(repo);
@@ -183,8 +265,9 @@ describe('preference save errors acknowledge only their own successful retry', (
     await failPreference();
     await workspace.setPreference('backup-nudge-dismissed', true);
     expect(useEditor.getState()).toMatchObject({
-      status: 'error',
-      message: 'Local storage is full',
+      status: 'saving',
+      message: '',
+      preferenceError: null,
     });
     expect((await repo.getGraph(graph.diagram.id)).nodes[0].title).toBe('Original');
     release.resolve();
@@ -217,22 +300,20 @@ describe('preference save errors acknowledge only their own successful retry', (
     await entered.promise;
     gate.release.resolve();
     await retry;
-    expect(useEditor.getState()).toMatchObject({
-      status: 'error',
-      message: 'Local storage is full',
-    });
+    expect(useEditor.getState().preferenceError).toBeNull();
     expect(useEditor.getState().graph!.nodes[0].title).toBe('Concurrent draft');
     release.resolve();
     await workspace.settled();
   });
 
-  it('does not acknowledge a preference error after the active graph changes', async () => {
+  it('acknowledges a retried workspace preference after the active graph changes', async () => {
     await failPreference();
     useEditor.getState().setGraph(blankGraph('Different document'));
     await workspace.setPreference('backup-nudge-dismissed', true);
     expect(useEditor.getState()).toMatchObject({
-      status: 'error',
-      message: 'Local storage is full',
+      status: 'saved',
+      message: '',
+      preferenceError: null,
     });
     expect(useEditor.getState().graph!.diagram.name).toBe('Different document');
   });

@@ -66,7 +66,8 @@ describe('public site discovery and private workspace indexing', () => {
       for (const route of ['app/index.html', 'help/index.html'])
         expect(readFileSync(join(directory, route), 'utf8')).not.toContain('/site/consent.js');
       const features = readFileSync(join(directory, 'features/index.html'), 'utf8');
-      expect(features).toContain('site-capture--laptop');
+      expect(home).toContain('device-frame--laptop');
+      expect(features).toContain('data-appearance-image');
       expect(features).toContain('site-capture--phone');
       expect(features).toContain('site-capture--detail');
       expect(features).toMatch(/phone.webp[^>]*width="390" height="844"/);

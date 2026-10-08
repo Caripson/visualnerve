@@ -117,7 +117,7 @@ Click the document title to rename it. With no selected object, F2 also opens ti
 4. Choose **Done drawing** or press Escape to return to editing objects and connections.
 5. Use the eye control to hide or show the saved layer.
 
-The layer follows pan and zoom and saves with the diagram. It does not alter objects, connections, source rows or calculations. PNG/PDF include visible drawings; JSON and full backups retain strokes even when hidden. Fit includes visible strokes, and a drawing-only diagram can be exported. Draw in 2D; use the same saved objects in 3D. Explain a pen annotation in written instructions if it must become part of a [Lovable brief](/help/sharing/).
+The layer follows pan and zoom and saves with the diagram. It does not alter objects, connections, source rows or calculations. PNG/PDF/SVG include visible drawings; JSON and full backups retain strokes even when hidden. Fit includes visible strokes, and a drawing-only diagram can be exported. Draw in 2D; use the same saved objects in 3D. Explain a pen annotation in written instructions if it must become part of a [Lovable brief](/help/sharing/).
 
 ## Copy, undo and delete deliberately
 

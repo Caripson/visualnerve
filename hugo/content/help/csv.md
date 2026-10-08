@@ -109,7 +109,7 @@ Changing a CSV filter or grouping hides other groups and their connections witho
 
 Copying a CSV card within the same data diagram retains access to its source rows. Copying it into another diagram preserves its measures as a snapshot without copying the original rows.
 
-PNG/PDF show the current data view. Native JSON and complete backups include original source cells, analysis settings and retained hidden objects. Review source values before sharing these restorable formats.
+PNG/PDF/SVG show the current data view. Native JSON and complete backups include original source cells, analysis settings and retained hidden objects. Review source values before sharing these restorable formats.
 
 ## When the view is too dense or a value looks wrong
 

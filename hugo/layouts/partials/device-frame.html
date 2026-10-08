@@ -1,0 +1,4 @@
+<div class="device-frame device-frame--{{ .device }}{{ with .class }} {{ . }}{{ end }}">
+  <div class="device-screen site-capture__screen">{{ partial "appearance-image.html" . }}</div>
+  <img class="device-frame__hardware" src="/site/devices/{{ .device }}.svg" alt="" aria-hidden="true" decoding="async">
+</div>

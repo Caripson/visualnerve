@@ -90,6 +90,9 @@ func main() {
 	addUnderstandingSchemas(schemas)
 	addSimulationSchemas(schemas)
 	schemas["ImportLimitSettingInput"] = importLimitSettingSchema()
+	schemas["ProjectFileLimitSettingInput"] = projectFileLimitSettingSchema()
+	schemas["ProjectFileLimitSettingValue"] = projectFileLimitValueSchema()
+	schemas["CodeCapabilities"] = codeCapabilitiesSchema()
 	schemas["ImportLimitSettingValue"] = importLimitSettingValueSchema()
 	schemas["ImportLimitSettingValue"].(object)["description"] = "Effective browser-local import limit in MiB (UI MB). An absent or invalid saved value returns the default 50."
 	for name, v := range map[string]any{"Diagram": model.Diagram{}, "Node": model.Node{}, "Edge": model.Edge{}, "Owner": model.Owner{}} {
@@ -189,12 +192,12 @@ func main() {
 		ref("DiagramFileImportInput"),
 	}}
 	schemas["Import"].(object)["description"] = importLimitPolicyDescription
-	schemas["Export"] = object{"type": "object", "required": []string{"diagramId", "format"}, "properties": object{"diagramId": object{"type": "string", "format": "uuid"}, "format": object{"type": "string", "enum": []string{"json", "markdown"}}}, "additionalProperties": false}
+	schemas["Export"] = exportSchema()
 	schemas["Error"] = object{"type": "object", "properties": object{"error": object{"type": "string"}, "code": object{"type": "string"}, "issues": object{"type": "array", "items": strictObject([]string{"path", "code", "message"}, object{"path": object{"type": "string"}, "code": object{"type": "string"}, "message": object{"type": "string"}})}}}
 	schemas["Health"] = object{"type": "object", "properties": object{"status": object{"type": "string"}, "storage": object{"type": "string", "enum": []string{"indexeddb"}}, "bridge": object{"type": "boolean"}, "connected": object{"type": "integer"}, "version": object{"type": "string"}}}
 	schemas["WorkspaceBackup"] = object{"type": "object", "required": []string{"format", "formatVersion", "diagrams", "nodes", "edges", "owners", "settings", "templates"}, "properties": object{"format": object{"type": "string", "enum": []string{"visual-nerve-workspace"}}, "formatVersion": object{"type": "integer", "enum": []int{1}}, "schemaVersion": object{"type": "integer", "description": "IndexedDB schema version at export; currently 6. Older backups may omit this."}, "exportedAt": object{"type": "string", "format": "date-time"}, "diagrams": object{"type": "array", "items": ref("Diagram")}, "nodes": object{"type": "array", "items": ref("Node")}, "edges": object{"type": "array", "items": ref("Edge")}, "owners": object{"type": "array", "items": ref("Owner")}, "settings": object{"type": "array", "items": object{"type": "object", "required": []string{"key", "value"}, "properties": object{"key": object{"type": "string"}, "value": object{}}}}, "templates": object{"type": "array", "items": object{"type": "object", "properties": object{"id": object{"type": "string"}, "name": object{"type": "string"}, "builtin": object{"type": "boolean"}, "graph": ref("Graph")}}}}}
 	schemas["WorkspaceBackup"].(object)["properties"].(object)["datasets"] = object{"type": "array", "items": ref("CsvDataset"), "description": "Original CSV source records. Older backups may omit this."}
-	schemas["WorkspaceBackup"].(object)["description"] = "Portable local workspace data. The device-specific import-file-limit-mb setting is excluded from export and ignored during Merge/Replace; the destination's selected limit is retained."
+	schemas["WorkspaceBackup"].(object)["description"] = "Portable local workspace data. The device-specific import-file-limit-mb and project-source-file-limit settings are excluded from export and ignored during Merge/Replace; the destination's selected limits are retained."
 	schemas["WorkspaceBackup"].(object)["properties"].(object)["history"] = ref("HistoryBackup")
 	schemas["WorkspaceBackup"].(object)["properties"].(object)["schemaVersion"].(object)["description"] = "IndexedDB schema version at export; currently 8. Older backups may omit this. History and simulation model/run/checkpoint archives are optional and included in complete workspace backups."
 	schemas["WorkspaceBackup"].(object)["properties"].(object)["simulationModels"] = simArray("SimulationModelRecord")
@@ -249,6 +252,7 @@ func main() {
 	add("POST", "/sql/preview", "Preview a SELECT/WITH query or DDL without saving; allowed with read-only access", "SqlInput", "SqlImportResult", "200")
 	add("POST", "/sql/diagrams", "Analyze SQL locally, then save and open its diagram transactionally; write access required", "SqlInput", "Graph", "201")
 	add("GET", "/code/languages", "Discover 50 code language identifiers plus Markdown and structural analysis capabilities", "", "CodeLanguageDefinition[]", "200")
+	add("GET", "/code/capabilities", "Discover code/ZIP source-file budgets and independent byte, entry, graph and time ceilings", "", "CodeCapabilities", "200")
 	add("POST", "/code/preview", "Preview a local structural code outline without saving; read-only access allowed", "CodeInput", "CodeImportResult", "200")
 	add("POST", "/code/project/preview", "Preview ZIP code or Markdown project locally without saving; read-only access allowed", "CodeProjectInput", "CodeImportResult", "200")
 	add("POST", "/code/project/diagrams", "Save and open a ZIP project relationship diagram; write access required", "CodeProjectInput", "Graph", "201")
@@ -256,6 +260,8 @@ func main() {
 	add("POST", "/diagram-files/preview", "Preview draw.io or Visio pages locally without saving; exact endpoint permits read-only access", "DiagramFileInput", "DiagramImportResult", "200")
 	add("GET", "/settings/import-file-limit-mb", "Read the effective browser-local import limit; absent or invalid saved values return 50; read-only access allowed", "", "ImportLimitSettingValue", "200")
 	add("PUT", "/settings/import-file-limit-mb", "Set this browser's local import limit from 50 to 1024 MiB; write access required", "ImportLimitSettingInput", "", "200")
+	add("GET", "/settings/project-source-file-limit", "Read the effective local ZIP source-file limit; missing/invalid saved values return 500; read-only access allowed", "", "ProjectFileLimitSettingValue", "200")
+	add("PUT", "/settings/project-source-file-limit", "Set this browser's ZIP source-file limit from 500 to 10000; write access required", "ProjectFileLimitSettingInput", "", "200")
 	add("GET", "/diagrams/{diagramId}", "Get complete canonical graph", "", "Graph", "200")
 	add("PATCH", "/diagrams/{diagramId}", "Update diagram using its version", "DiagramPatch", "Diagram", "200")
 	add("DELETE", "/diagrams/{diagramId}", "Delete diagram and graph; retain owners", "", "", "204")
@@ -275,7 +281,7 @@ func main() {
 	add("POST", "/owners", "Create owner", "OwnerInput", "Owner", "201")
 	add("PATCH", "/owners/{ownerId}", "Update owner and invalidate referencing diagrams", "OwnerPatch", "Owner", "200")
 	add("POST", "/import", "Import JSON, Markdown, CSV or one selected draw.io/Visio page transactionally; write access required", "Import", "Graph", "201")
-	add("POST", "/export", "Export canonical JSON or semantic Markdown", "Export", "Graph", "200")
+	add("POST", "/export", "Export canonical JSON, semantic Markdown or native vector SVG; read-only access allowed", "Export", "Graph", "200")
 	paths["/export"].(object)["post"].(object)["responses"].(object)["200"].(object)["content"].(object)["application/json"] = object{"schema": object{"oneOf": []any{ref("Graph"), object{"type": "string"}}}}
 	add("GET", "/workspace/export", "Download a complete browser workspace snapshot", "", "WorkspaceBackup", "200")
 	add("POST", "/workspace/import", "Restore a workspace atomically without overwriting projects", "WorkspaceBackup", "Graph[]", "200")

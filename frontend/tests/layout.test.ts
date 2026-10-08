@@ -1,4 +1,9 @@
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
+// The Node-only bundle is a test fixture, never part of the browser dependency graph.
+vi.mock('../src/layouts/elk', async () => {
+  const { default: ELK } = await import('elkjs/lib/elk.bundled.js');
+  return { layoutWithElk: (graph: import('elkjs/lib/elk-api').ElkNode) => new ELK().layout(graph) };
+});
 import { blankGraph, newEdge, newNode } from '../src/model/types';
 import { layoutGraph, timelineGeometry } from '../src/layouts/layout';
 it('ELK supports four explicit directions without changing relationships', async () => {

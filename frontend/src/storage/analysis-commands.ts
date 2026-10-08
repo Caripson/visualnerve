@@ -4,11 +4,19 @@ import { parseSqlAsync } from '../sql/client';
 import { assertImportBytes, utf8Bytes } from '../imports/limits';
 import type { CodeInput } from '../code/types';
 import { codeLanguageIds, codeLimits } from '../code/types';
+import { codeLanguages } from '../code/catalog';
+import { parseProjectArchiveAsync } from '../code/project/client';
+import { attachProjectAnalysis } from '../code/project/analysis';
+import { applyProjectLanguages } from '../code/project/languages';
+import { parseCodeAsync } from '../code/client';
+import { codeCapabilities } from '../code/capabilities';
 
 export interface AnalysisCommandOptions {
   signal?: AbortSignal;
   /** Captured browser preference; never accepted from the source payload. */
   byteLimit?: number;
+  /** Captured ZIP-only browser preference; source input cannot override it. */
+  projectFileLimit?: number;
   /** Recheck external grants after analysis and before its first write. */
   beforeAnalysisSave?: () => Promise<void>;
 }
@@ -58,9 +66,12 @@ export async function analysisCommand(
   options: AnalysisCommandOptions,
   save: (graph: Graph) => Promise<Graph>,
 ): Promise<unknown> {
+  if (endpoint === '/code/capabilities') {
+    if (method !== 'GET') throw new StorageError(405, 'Code capabilities require GET.');
+    return structuredClone(codeCapabilities);
+  }
   if (endpoint === '/code/languages') {
     if (method !== 'GET') throw new StorageError(405, 'Language discovery requires GET.');
-    const { codeLanguages } = await import('../code/catalog');
     return structuredClone(codeLanguages);
   }
   if (
@@ -109,28 +120,27 @@ export async function analysisCommand(
               422,
               'Provide ZIP base64 data, optional name, files/symbols/folders mode and focus.',
             );
-          const { parseProjectArchiveAsync } = await import('../code/project/client');
-          const { attachProjectAnalysis } = await import('../code/project/analysis');
-          const { applyProjectLanguages } = await import('../code/project/languages');
-          const { parseCodeAsync } = await import('../code/client');
           const archive = await parseProjectArchiveAsync(
             { data: data.data, ...(data.name ? { name: data.name as string } : {}) },
-            options,
+            {
+              signal: options.signal,
+              byteLimit: options.byteLimit,
+              fileLimit: options.projectFileLimit,
+            },
           );
           const result = await parseCodeAsync(
             {
               name: archive.name,
-              files: applyProjectLanguages(archive.files, data.languages),
+              files: applyProjectLanguages(archive.files, data.languages, archive.fileLimit),
               mode: (data.mode ?? 'files') as CodeInput['mode'],
               ...(data.focus ? { focus: data.focus as string } : {}),
             },
-            options,
+            { signal: options.signal, byteLimit: options.byteLimit, fileLimit: archive.fileLimit },
           );
           return attachProjectAnalysis(result, archive);
         })()
       : await (async () => {
           const input = codeInput(payload);
-          const { parseCodeAsync } = await import('../code/client');
           return parseCodeAsync(input, { signal: options.signal, byteLimit: options.byteLimit });
         })();
   validateGraph(result.graph);

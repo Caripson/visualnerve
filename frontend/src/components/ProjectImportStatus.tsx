@@ -48,6 +48,12 @@ export function ProjectImportStatus({
             {size(project.expandedBytes)} expanded · {project.ignored.total} archive entries
             excluded
           </p>
+          {project.fileLimit !== undefined && (
+            <p>
+              Captured ZIP project source-file limit: {project.fileLimit.toLocaleString('en-US')}{' '}
+              files.
+            </p>
+          )}
           {project.ignored.total > 0 && (
             <ul>
               {Object.entries(project.ignored.reasons)

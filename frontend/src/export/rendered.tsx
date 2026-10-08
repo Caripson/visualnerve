@@ -27,6 +27,7 @@ import { getCsvNode } from '../data/csv';
 import { getSpatialView } from '../spatial/types';
 import { simulationService } from '../simulation/service';
 import { SimulationExportScene } from './simulation-scene';
+import { SimulationSummaryContext } from '../simulation/summary-context';
 export interface RenderOptions {
   scope: 'complete' | 'viewport' | 'selected';
   multiplier: 1 | 2 | 4;
@@ -173,7 +174,7 @@ export function renderedScene(graph: Graph, scope: 'complete' | 'selected', sele
         ? 'Select one or more nodes to export.'
         : 'Add a node or draw a stroke before exporting an image.',
     );
-  return { nodes, edges, strokes, bounds };
+  return { nodes, edges, strokes, bounds, summary: simulation.summary };
 }
 
 /** 3D camera movement never changes the crop or coordinates of a 2D image export. */
@@ -209,25 +210,55 @@ export async function graphPNG(
       filter,
     });
   }
-  const { nodes, edges, strokes, bounds } = renderedScene(
+  return capture2DScene(
     graph,
-    options.scope === 'viewport' ? 'complete' : options.scope,
+    options.scope,
+    selection,
+    (flow, width, height, backgroundColor) =>
+      capturePNG(flow, {
+        width,
+        height,
+        pixelRatio: options.multiplier,
+        backgroundColor,
+        filter,
+      }),
+    options.multiplier,
+  );
+}
+
+/** Render canonical 2D cards once for raster or native vector serializers. */
+export async function capture2DScene<T>(
+  graph: Graph,
+  scope: RenderOptions['scope'],
+  selection: string[],
+  capture: (
+    flow: HTMLElement,
+    width: number,
+    height: number,
+    backgroundColor: string,
+  ) => Promise<T> | T,
+  rasterMultiplier?: number,
+): Promise<T> {
+  const { nodes, edges, strokes, bounds, summary } = renderedScene(
+    graph,
+    scope === 'viewport' ? 'complete' : scope,
     selection,
   );
   const canvas = document.querySelector<HTMLElement>('.canvas-shell');
   const size = canvas?.getBoundingClientRect();
   const width =
-      options.scope === 'viewport'
+      scope === 'viewport'
         ? Math.ceil(size?.width || canvas?.clientWidth || 1024)
         : Math.ceil(bounds.width + 80),
     height =
-      options.scope === 'viewport'
+      scope === 'viewport'
         ? Math.ceil(size?.height || canvas?.clientHeight || 768)
         : Math.ceil(bounds.height + 80);
   if (
-    width * options.multiplier > 16384 ||
-    height * options.multiplier > 16384 ||
-    width * height * options.multiplier ** 2 > 80000000
+    rasterMultiplier &&
+    (width * rasterMultiplier > 16384 ||
+      height * rasterMultiplier > 16384 ||
+      width * height * rasterMultiplier ** 2 > 80000000)
   )
     throw new Error(
       'This image exceeds the browser canvas limit. Use a smaller resolution, export a selection, or use JSON/Markdown.',
@@ -245,7 +276,7 @@ export async function graphPNG(
   document.body.append(container);
   const root = createRoot(container);
   const viewport: Viewport =
-    options.scope === 'viewport'
+    scope === 'viewport'
       ? rendered2DViewport(graph, bounds, { width, height })
       : { x: 40 - bounds.x, y: 40 - bounds.y, zoom: 1 };
   try {
@@ -259,39 +290,35 @@ export async function graphPNG(
         resolve();
       };
       root.render(
-        <ReactFlowProvider>
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            defaultViewport={viewport}
-            minZoom={0.01}
-            maxZoom={4}
-            nodesDraggable={false}
-            elementsSelectable={false}
-            nodesConnectable={false}
-            onlyRenderVisibleElements={false}
-          >
-            <ViewportPortal>
-              <DrawingSvg strokes={strokes} />
-              <Ready done={done} hasNodes={nodes.length > 0} viewport={viewport} />
-            </ViewportPortal>
-          </ReactFlow>
-        </ReactFlowProvider>,
+        <SimulationSummaryContext.Provider value={summary}>
+          <ReactFlowProvider>
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              defaultViewport={viewport}
+              minZoom={0.01}
+              maxZoom={4}
+              nodesDraggable={false}
+              elementsSelectable={false}
+              nodesConnectable={false}
+              onlyRenderVisibleElements={false}
+            >
+              <ViewportPortal>
+                <DrawingSvg strokes={strokes} />
+                <Ready done={done} hasNodes={nodes.length > 0} viewport={viewport} />
+              </ViewportPortal>
+            </ReactFlow>
+          </ReactFlowProvider>
+        </SimulationSummaryContext.Provider>,
       );
     });
     await document.fonts.ready;
     // Capture the inner flow: the offscreen wrapper's computed logical insets
     // otherwise override physical left/top when html-to-image clones its styles.
     const flow = container.querySelector<HTMLElement>('.react-flow')!;
-    return await capturePNG(flow, {
-      width,
-      height,
-      pixelRatio: options.multiplier,
-      backgroundColor: getComputedStyle(container).backgroundColor,
-      filter,
-    });
+    return await capture(flow, width, height, getComputedStyle(container).backgroundColor);
   } finally {
     root.unmount();
     container.remove();

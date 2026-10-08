@@ -1,5 +1,6 @@
 import type { Graph } from '../model/types';
 import type { SimulationView } from '../simulation/service';
+import type { SimulationSummarySnapshot } from '../simulation/summary-context';
 import { simulationTopologyCompatible } from '../simulation/topology';
 import { ProcessHierarchy } from '../simulation/process-hierarchy';
 import { simulationProcessCardId } from '../simulation/process-projection';
@@ -12,7 +13,12 @@ import {
 /** A picture shows the full real flow; capacity units remain views of one logical object. */
 export class SimulationExportScene {
   project(graph: Graph, selection: string[], view?: SimulationView) {
-    if (!graph.simulation) return { graph, selection };
+    if (!graph.simulation)
+      return {
+        graph,
+        selection,
+        summary: { diagramId: graph.diagram.id } as SimulationSummarySnapshot,
+      };
     // Export can run before the canvas lifecycle detaches an obsolete run, or
     // for an unopened document. Only a compatible captured flow may supply state.
     const current =
@@ -38,6 +44,11 @@ export class SimulationExportScene {
         for (const nodeId of hierarchy.nodeIds(processId)) logical.add(nodeId);
     return {
       graph: projected,
+      summary: {
+        diagramId: graph.diagram.id,
+        model: semantics.model,
+        view: current,
+      } as SimulationSummarySnapshot,
       selection: projected.nodes
         .filter((node) => logical.has(logicalNodeId(node)))
         .map((node) => node.id),

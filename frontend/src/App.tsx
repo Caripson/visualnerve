@@ -1,33 +1,21 @@
 import { PresentationFeature } from './presentation/Player';
 import { SimulationFeature } from './simulation/SimulationFeature';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { ArrowUpRight, GitBranch, Plus, X, Menu, Database, Code2 } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
+import { LazyDialogBoundary } from './components/LazyDialogBoundary';
+import { PreferenceSaveNotice } from './components/PreferenceSaveNotice';
 import { Toolbar, FilterBar } from './components/Toolbar';
 import { Properties } from './components/Properties';
 import { Canvas } from './canvas/Canvas';
 import { LocalBadge, PrivacyIntro, RestoreBackup } from './components/DataPrivacy';
-import {
-  NewDiagram,
-  ExportDialog,
-  OwnersDialog,
-  SearchDialog,
-  SettingsDialog,
-  DeleteDialog,
-  ConnectDialog,
-} from './components/Dialogs';
 import { useEditor } from './state/editor';
 import { workspace } from './storage/workspace';
 import { type WorkspaceBackup } from './storage/database';
 import { parseImport } from './export/semantic';
 import type { Clip } from './state/clipboard';
 import type { Graph } from './model/types';
-import { CsvImportDialog } from './components/CsvImportDialog';
-import { LovableDialog } from './components/LovableDialog';
-import { SqlImportDialog } from './components/SqlImportDialog';
-import { CodeImportDialog } from './components/CodeImportDialog';
-import { DiagramFileImportDialog } from './components/DiagramFileImportDialog';
 import { useImportFiles } from './imports/useImportFiles';
 import { importFileAccept } from './imports/fileRouting';
 import { currentImportLimitBytes } from './imports/preference';
@@ -43,15 +31,65 @@ import {
 import { getExploration } from './analysis/types';
 import { getSpatialView } from './spatial/types';
 import { reanalyzeDataModelAsync } from './data/modelClient';
-import { DataSourcesDialog } from './components/DataSourcesDialog';
-import { SourceRefreshDialog } from './components/SourceRefreshDialog';
-import { DataQualityDialog } from './components/DataQualityDialog';
 import { UnderstandingDialogs } from './components/UnderstandingDialogs';
 import { useCompactLayout } from './hooks/useCompactLayout';
 import { MobileWorkspacePanel } from './components/mobile/MobileWorkspacePanel';
 import { applyAppearance } from './ui/appearance';
 import { useStarterDemo } from './templates/useStarterDemo';
 import './components/mobile/mobile-workspace.css';
+const NewDiagram = lazy(() =>
+  import('./components/Dialogs').then((module) => ({ default: module.NewDiagram })),
+);
+const ExportDialog = lazy(() =>
+  import('./components/Dialogs').then((module) => ({ default: module.ExportDialog })),
+);
+const OwnersDialog = lazy(() =>
+  import('./components/Dialogs').then((module) => ({ default: module.OwnersDialog })),
+);
+const SearchDialog = lazy(() =>
+  import('./components/Dialogs').then((module) => ({ default: module.SearchDialog })),
+);
+const SettingsDialog = lazy(() =>
+  import('./components/Dialogs').then((module) => ({ default: module.SettingsDialog })),
+);
+const DeleteDialog = lazy(() =>
+  import('./components/Dialogs').then((module) => ({ default: module.DeleteDialog })),
+);
+const ConnectDialog = lazy(() =>
+  import('./components/Dialogs').then((module) => ({ default: module.ConnectDialog })),
+);
+const CsvImportDialog = lazy(() =>
+  import('./components/CsvImportDialog').then((module) => ({ default: module.CsvImportDialog })),
+);
+const LovableDialog = lazy(() =>
+  import('./components/LovableDialog').then((module) => ({ default: module.LovableDialog })),
+);
+const SqlImportDialog = lazy(() =>
+  import('./components/SqlImportDialog').then((module) => ({ default: module.SqlImportDialog })),
+);
+const CodeImportDialog = lazy(() =>
+  import('./components/CodeImportDialog').then((module) => ({ default: module.CodeImportDialog })),
+);
+const DiagramFileImportDialog = lazy(() =>
+  import('./components/DiagramFileImportDialog').then((module) => ({
+    default: module.DiagramFileImportDialog,
+  })),
+);
+const DataSourcesDialog = lazy(() =>
+  import('./components/DataSourcesDialog').then((module) => ({
+    default: module.DataSourcesDialog,
+  })),
+);
+const SourceRefreshDialog = lazy(() =>
+  import('./components/SourceRefreshDialog').then((module) => ({
+    default: module.SourceRefreshDialog,
+  })),
+);
+const DataQualityDialog = lazy(() =>
+  import('./components/DataQualityDialog').then((module) => ({
+    default: module.DataQualityDialog,
+  })),
+);
 export type DialogName =
   | 'new'
   | 'export'
@@ -504,6 +542,7 @@ export function App() {
           />
         </MobileWorkspacePanel>
         <main className="main-workspace" inert={compact && !!mobilePanel ? true : undefined}>
+          <PreferenceSaveNotice settings={() => open('settings')} />
           {graph ? (
             <>
               <Toolbar
@@ -733,77 +772,96 @@ export function App() {
           if (file.current) file.current.value = '';
         }}
       />
-      {dialog === 'new' && <NewDiagram close={close} />}
-      {dialog === 'export' && <ExportDialog close={close} />}
-      {dialog === 'lovable' && <LovableDialog close={close} />}
-      <UnderstandingDialogs name={dialog} close={close} />
-      {dialog === 'sources' && graph && (
-        <DataSourcesDialog
-          initialFiles={sourceFiles}
-          onClose={() => {
-            setSourceFiles(undefined);
-            close();
-          }}
-        />
-      )}
-      {dialog === 'refresh' && graph && <SourceRefreshDialog onClose={close} />}
-      {dialog === 'quality' && graph && <DataQualityDialog graph={graph} onClose={close} />}
-      {dialog === 'sql' && (
-        <SqlImportDialog
-          key={sqlDraft?.id ?? 'script'}
-          initial={sqlDraft}
-          close={close}
-          create={createImportedDiagram}
-        />
-      )}
-      {dialog === 'code' && (
-        <CodeImportDialog initialFiles={codeFiles} close={close} create={createImportedDiagram} />
-      )}
-      {diagramFile && (
-        <DiagramFileImportDialog file={diagramFile} close={close} create={createImportedDiagram} />
-      )}
-      {dialog === 'owners' && <OwnersDialog close={close} />}
-      {dialog === 'search' && <SearchDialog close={close} />}
-      {dialog === 'settings' && (
-        <SettingsDialog
-          close={close}
-          theme={theme}
-          setTheme={updateTheme}
-          restore={inspectBackup}
-        />
-      )}
-      {dialog === 'delete' && <DeleteDialog close={close} />}
-      {dialog === 'connect' && <ConnectDialog close={close} />}
-      {backup && <RestoreBackup backup={backup} close={() => setBackup(null)} />}
-      {csvDraft && (
-        <CsvImportDialog
-          key={csvDraft.dataset.id}
-          dataset={csvDraft.dataset}
-          previous={csvDraft.previous}
-          initialAnalysis={
-            csvDraft.previous
-              ? analysisForDataset(csvDraft.previous, csvDraft.dataset.id)
-              : undefined
-          }
-          close={() => {
-            setCsvDraft(null);
-            pendingSourceFiles.current = [];
-          }}
-          apply={(analysis, name) => applyCsv(csvDraft.dataset, analysis, name, csvDraft.previous)}
-          legacyImport={
-            csvDraft.file
-              ? async () => {
-                  const graph = parseImport(
-                    'csv',
-                    await csvDraft.file!.text(),
-                    currentImportLimitBytes(),
-                  );
-                  await workspace.create(graph);
-                }
-              : undefined
-          }
-        />
-      )}
+      <LazyDialogBoundary
+        key={`${dialog ?? ''}:${diagramFile?.name ?? ''}:${csvDraft?.dataset.id ?? ''}`}
+        close={() => {
+          close();
+          setCsvDraft(null);
+          pendingSourceFiles.current = [];
+        }}
+        beforeReload={async () => {
+          useEditor.getState().finishEditing();
+          await workspace.settled();
+        }}
+      >
+        {dialog === 'new' && <NewDiagram close={close} />}
+        {dialog === 'export' && <ExportDialog close={close} />}
+        {dialog === 'lovable' && <LovableDialog close={close} />}
+        <UnderstandingDialogs name={dialog} close={close} />
+        {dialog === 'sources' && graph && (
+          <DataSourcesDialog
+            initialFiles={sourceFiles}
+            onClose={() => {
+              setSourceFiles(undefined);
+              close();
+            }}
+          />
+        )}
+        {dialog === 'refresh' && graph && <SourceRefreshDialog onClose={close} />}
+        {dialog === 'quality' && graph && <DataQualityDialog graph={graph} onClose={close} />}
+        {dialog === 'sql' && (
+          <SqlImportDialog
+            key={sqlDraft?.id ?? 'script'}
+            initial={sqlDraft}
+            close={close}
+            create={createImportedDiagram}
+          />
+        )}
+        {dialog === 'code' && (
+          <CodeImportDialog initialFiles={codeFiles} close={close} create={createImportedDiagram} />
+        )}
+        {diagramFile && (
+          <DiagramFileImportDialog
+            file={diagramFile}
+            close={close}
+            create={createImportedDiagram}
+          />
+        )}
+        {dialog === 'owners' && <OwnersDialog close={close} />}
+        {dialog === 'search' && <SearchDialog close={close} />}
+        {dialog === 'settings' && (
+          <SettingsDialog
+            close={close}
+            theme={theme}
+            setTheme={updateTheme}
+            restore={inspectBackup}
+          />
+        )}
+        {dialog === 'delete' && <DeleteDialog close={close} />}
+        {dialog === 'connect' && <ConnectDialog close={close} />}
+        {backup && <RestoreBackup backup={backup} close={() => setBackup(null)} />}
+        {csvDraft && (
+          <CsvImportDialog
+            key={csvDraft.dataset.id}
+            dataset={csvDraft.dataset}
+            previous={csvDraft.previous}
+            initialAnalysis={
+              csvDraft.previous
+                ? analysisForDataset(csvDraft.previous, csvDraft.dataset.id)
+                : undefined
+            }
+            close={() => {
+              setCsvDraft(null);
+              pendingSourceFiles.current = [];
+            }}
+            apply={(analysis, name) =>
+              applyCsv(csvDraft.dataset, analysis, name, csvDraft.previous)
+            }
+            legacyImport={
+              csvDraft.file
+                ? async () => {
+                    const graph = parseImport(
+                      'csv',
+                      await csvDraft.file!.text(),
+                      currentImportLimitBytes(),
+                    );
+                    await workspace.create(graph);
+                  }
+                : undefined
+            }
+          />
+        )}
+      </LazyDialogBoundary>
       {draggingFile && (
         <div className="csv-drop-overlay">
           <strong>Drop a file to create a diagram</strong>

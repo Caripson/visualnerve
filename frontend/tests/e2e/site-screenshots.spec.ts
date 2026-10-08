@@ -1,28 +1,12 @@
 import { test, expect, type APIRequestContext, type Page } from './fixtures';
-import { execFileSync } from 'node:child_process';
-import { mkdir, writeFile, unlink } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { createKioskModel } from '../../src/simulation/examples';
+import { captureAppearancePair } from './capture-appearance';
 
 test.skip(process.env.VN_CAPTURE_SITE !== '1', 'Opt in to regenerate real device screenshots.');
 test.use({ colorScheme: 'light' });
 async function save(page: Page, name: string) {
-  const output = resolve('../hugo/static/site/images');
-  await mkdir(output, { recursive: true });
-  const bytes = await page.screenshot({ animations: 'disabled' });
-  const png = resolve(output, name + '.png');
-  await writeFile(png, bytes);
-  execFileSync('cwebp', [
-    '-lossless',
-    '-m',
-    '6',
-    '-quiet',
-    png,
-    '-o',
-    resolve(output, name + '.webp'),
-  ]);
-  await unlink(png);
-  console.log(name, bytes.readUInt32BE(16), bytes.readUInt32BE(20));
+  await captureAppearancePair(page, resolve('../hugo/static/site/images'), name);
 }
 async function open(page: Page, name: string) {
   await page.locator('.diagram-item').filter({ hasText: name }).click();

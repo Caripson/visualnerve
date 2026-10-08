@@ -142,6 +142,8 @@ export interface CodeProjectAnalysis {
   expandedBytes: number;
   ignoredEntries: number;
   ignoredReasons: Partial<Record<ProjectIgnoredReason, number>>;
+  /** Captured ZIP source-file limit; absent in earlier imported projects. */
+  sourceFileLimit?: number;
 }
 export interface CodeAnalysis {
   version: 1;

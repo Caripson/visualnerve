@@ -10,7 +10,7 @@ vi.mock('../src/presentation/video-service', () => ({
   videoExport: { getState: video.state, cancel: video.cancel },
   isVideoExporting: video.busy,
 }));
-import { presentationRequest } from '../src/presentation/service';
+import { presentationRequest } from '../src/presentation/commands';
 beforeEach(() => {
   vi.clearAllMocks();
   video.busy.mockReturnValue(false);

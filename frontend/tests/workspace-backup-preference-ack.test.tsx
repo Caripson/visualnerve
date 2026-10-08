@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import Dexie from 'dexie';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BackupNudge } from '../src/components/DataPrivacy';
+import { PreferenceSaveNotice } from '../src/components/PreferenceSaveNotice';
 import { blankGraph } from '../src/model/types';
 import { useEditor } from '../src/state/editor';
 import { WorkspaceDatabase } from '../src/storage/database';
@@ -47,6 +48,43 @@ afterEach(async () => {
 });
 
 describe('backup reminder persistence acknowledgement', () => {
+  it('disables duplicate retries while saving and keeps a newer preference failure retryable', async () => {
+    vi.spyOn(db.settings, 'put').mockRejectedValueOnce(new Error('Backup preference failed'));
+    await expect(workspace.setPreference('backup-nudge-dismissed', true)).rejects.toThrow(
+      'Backup preference failed',
+    );
+    const writing = deferred(),
+      release = deferred();
+    const put = db.settings.put.bind(db.settings);
+    const writes = vi.spyOn(db.settings, 'put').mockImplementationOnce((...args) => {
+      writing.resolve();
+      return Dexie.Promise.resolve(release.promise).then(() => put(...args));
+    });
+    const retries = vi.spyOn(workspace, 'retryPreference');
+    render(<PreferenceSaveNotice settings={() => {}} controller={workspace} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Retry save' }));
+    await writing.promise;
+    const saving = screen.getByRole('button', { name: 'Saving…' });
+    expect(saving).toBeDisabled();
+    fireEvent.click(saving);
+    expect(retries).toHaveBeenCalledOnce();
+    writes.mockRejectedValueOnce(new Error('Theme preference failed'));
+    await act(async () => {
+      await expect(workspace.setPreference('theme', 'dark')).rejects.toThrow(
+        'Theme preference failed',
+      );
+    });
+    expect(screen.getByRole('alert')).toHaveTextContent('Theme preference failed');
+    await act(async () => release.resolve());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Retry save' })).toBeEnabled());
+    expect((await db.settings.get('backup-nudge-dismissed'))?.value).toBe(true);
+    expect(screen.getByRole('alert')).toHaveTextContent('Theme preference failed');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry save' }));
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+    expect(retries).toHaveBeenNthCalledWith(2, 'theme');
+    expect((await db.settings.get('theme'))?.value).toBe('dark');
+  });
+
   it('stays visible until dismissal is stored, then remains dismissed in a reopened workspace', async () => {
     const writing = deferred(),
       release = deferred();
@@ -80,18 +118,49 @@ describe('backup reminder persistence acknowledgement', () => {
     vi.spyOn(db.settings, 'put').mockRejectedValueOnce(
       new DOMException('Local storage is full', 'QuotaExceededError'),
     );
-    render(<BackupNudge settings={() => {}} />);
+    render(
+      <>
+        <BackupNudge settings={() => {}} />
+        <PreferenceSaveNotice settings={() => {}} controller={workspace} />
+      </>,
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss backup reminder' }));
-    await waitFor(() => expect(useEditor.getState().status).toBe('error'));
-    expect(useEditor.getState().message).toBe('Local storage is full');
+    await waitFor(() =>
+      expect(useEditor.getState().preferenceError).toEqual({
+        key: 'backup-nudge-dismissed',
+        message: 'Local storage is full',
+      }),
+    );
+    expect(useEditor.getState()).toMatchObject({ status: 'saved', message: '' });
     expect(useEditor.getState().backupNudgeDismissed).toBe(false);
     expect(await db.settings.get('backup-nudge-dismissed')).toBeUndefined();
     expect(screen.getByRole('button', { name: 'Dismiss backup reminder' })).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Dismiss backup reminder' }));
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Settings could not be saved: Local storage is full',
+    );
+    // Completing the initial canvas fit must not dismiss this unrelated failed setting.
+    await act(async () => {
+      useEditor.getState().command('Camera', (graph) => ({
+        ...graph,
+        diagram: {
+          ...graph.diagram,
+          settings: { ...graph.diagram.settings, viewport: { x: 10, y: 20, zoom: 0.8 } },
+        },
+      }));
+      await workspace.settled();
+    });
+    expect(useEditor.getState().status).toBe('saved');
+    expect(screen.getByRole('alert')).toHaveTextContent('Local storage is full');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry save' }));
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: 'Dismiss backup reminder' })).toBeNull(),
     );
     expect((await db.settings.get('backup-nudge-dismissed'))?.value).toBe(true);
-    expect(useEditor.getState()).toMatchObject({ status: 'saved', message: '' });
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(useEditor.getState()).toMatchObject({
+      status: 'saved',
+      message: '',
+      preferenceError: null,
+    });
   });
 });

@@ -1,8 +1,6 @@
 import type { CSSProperties } from 'react';
 import type { GraphNode } from '../model/types';
-import { useEditor } from '../state/editor';
-import { useSimulation } from './useSimulation';
-import { resolveSimulationRenderModel } from './render-model';
+import { useSimulationSummary } from './summary-context';
 import { getSimulationProcessId } from './process-projection';
 import { openSimulationProcess } from './process-navigation';
 import { simulationProcessTraffic } from './process-traffic';
@@ -16,14 +14,9 @@ export function ProcessSummary({
   node: GraphNode;
   exporting?: boolean;
 }) {
-  const graph = useEditor((state) => state.graph);
-  const view = useSimulation(graph?.simulation ? graph.diagram.id : undefined);
+  const { diagramId, model, view } = useSimulationSummary();
   const id = getSimulationProcessId(node);
-  if (!id || !graph?.simulation) return null;
-  const model = resolveSimulationRenderModel(
-    view?.run.model ?? graph.simulation,
-    view?.run.options,
-  );
+  if (!id || !model) return null;
   const process = model.processes?.find((entry) => entry.id === id);
   const metrics = view?.state?.processes?.[id];
   const traffic = simulationProcessTraffic(id, model, view?.state);
@@ -118,13 +111,13 @@ export function ProcessSummary({
             'Open this process to configure each step and inspect where work waits.'}
         </p>
       )}
-      {!exporting && (
+      {!exporting && diagramId && (
         <button
           className="nodrag nopan"
           aria-label={`Open process ${process?.name ?? node.title}`}
           onClick={(event) => {
             event.stopPropagation();
-            openSimulationProcess(graph.diagram.id, id);
+            openSimulationProcess(diagramId, id);
           }}
         >
           Open process <span aria-hidden="true">→</span>

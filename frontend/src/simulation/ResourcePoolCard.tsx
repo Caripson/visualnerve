@@ -2,21 +2,15 @@ import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { Users } from 'lucide-react';
 import type { CanvasNode } from '../canvas/projection';
-import { useEditor } from '../state/editor';
-import { useSimulation } from './useSimulation';
-import { logicalNodeId, resolveSimulationRenderModel } from './render-model';
+import { useSimulationSummary } from './summary-context';
+import { logicalNodeId } from './render-model';
 import { simulationNodeTraffic } from './traffic';
 import './process-hierarchy.css';
 
 /** One shared pool, with genuine occupied units; no duplicated resource or logical Work. */
 export const ResourcePoolCard = memo(({ id, data }: NodeProps<CanvasNode>) => {
-  const graph = useEditor((state) => state.graph);
-  const view = useSimulation(graph?.simulation ? graph.diagram.id : undefined);
-  if (!graph?.simulation) return null;
-  const model = resolveSimulationRenderModel(
-    view?.run.model ?? graph.simulation,
-    view?.run.options,
-  );
+  const { model, view } = useSimulationSummary();
+  if (!model) return null;
   const logicalId = logicalNodeId(data.node);
   const config = model.nodes.find((node) => node.id === logicalId);
   if (config?.type !== 'resource') return null;

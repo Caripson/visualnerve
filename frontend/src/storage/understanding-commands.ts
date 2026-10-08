@@ -1,3 +1,4 @@
+import { projectCanonicalOverview } from '../overview/projection';
 import type { Graph } from '../model/types';
 import { StorageError } from '../model/errors';
 import { askDiagram } from '../questions/client';
@@ -63,7 +64,6 @@ export async function understandingCommand(
         url.searchParams.getAll('zoom').length > 1
       )
         throw new StorageError(422, 'Overview projection accepts only an optional zoom.');
-      const { projectCanonicalOverview } = await import('../overview/projection');
       return projectCanonicalOverview(graph, { zoom: Number(url.searchParams.get('zoom') ?? 0.1) });
     }
     if (method === 'GET') return getOverviewConfig(graph);

@@ -27,9 +27,14 @@ import {
   reconnectedDataModelEdge,
 } from '../data/model';
 import { reconnectedAnalysisEdge } from '../model/relationships';
-import { markdown, parseImport } from '../export/semantic';
+import { parseImport } from '../export/semantic';
 import { diagramFileCommand } from './diagram-file-commands';
 import { IMPORT_LIMIT_SETTING, importLimitMb, assertImportLimitMb } from '../imports/limits';
+import {
+  PROJECT_SOURCE_FILE_LIMIT_SETTING,
+  projectSourceFileLimit,
+  assertProjectSourceFileLimit,
+} from '../code/project/limits';
 import { database, type WorkspaceBackup, type WorkspaceDatabase } from './database';
 import { setSpatialView } from '../spatial/types';
 import { syncSpatialPositions } from '../spatial/movement';
@@ -459,6 +464,9 @@ export class Repository {
     const restored = await this.db.transaction('rw', this.db.tables, async () => {
       const acknowledgement = await this.db.settings.get('storage-consent');
       const importLimitPreference = await this.db.settings.get(IMPORT_LIMIT_SETTING);
+      const projectFileLimitPreference = await this.db.settings.get(
+        PROJECT_SOURCE_FILE_LIMIT_SETTING,
+      );
       if (mode === 'replace') {
         this.db.forgetDatasets();
         for (const table of this.db.tables) await table.clear();
@@ -581,12 +589,14 @@ export class Repository {
               'last-export',
               'backup-nudge-dismissed',
               IMPORT_LIMIT_SETTING,
+              PROJECT_SOURCE_FILE_LIMIT_SETTING,
             ].includes(setting.key),
         ),
       );
       await this.db.templates.bulkPut(backup.templates);
       if (acknowledgement) await this.db.settings.put(acknowledgement);
       if (importLimitPreference) await this.db.settings.put(importLimitPreference);
+      if (projectFileLimitPreference) await this.db.settings.put(projectFileLimitPreference);
       await this.db.initialize();
       return graphs;
     });
@@ -712,6 +722,12 @@ export class Repository {
     if (method === 'POST' && ['diagram-files', 'sql', 'code', 'import'].includes(collection)) {
       const setting = await this.db.settings.get(IMPORT_LIMIT_SETTING);
       options = { ...options, byteLimit: importLimitMb(setting?.value) * 1024 * 1024 };
+      if (
+        ['/code/project/preview', '/code/project/diagrams'].includes(path.replace(/^\/api\/v1/, ''))
+      ) {
+        const sourceFiles = await this.db.settings.get(PROJECT_SOURCE_FILE_LIMIT_SETTING);
+        options = { ...options, projectFileLimit: projectSourceFileLimit(sourceFiles?.value) };
+      }
     }
     if (collection === 'diagram-files') {
       if (path.replace(/^\/api\/v1/, '') !== '/diagram-files/preview')
@@ -758,12 +774,20 @@ export class Repository {
     if (collection === 'search' && read)
       return (await this.search(url.searchParams.get('q') ?? '')) as T;
     if (collection === 'settings') {
+      if (id === PROJECT_SOURCE_FILE_LIMIT_SETTING) {
+        if (parts.length !== 2 || url.search || url.hash)
+          throw new StorageError(404, 'Unknown ZIP project source-file limit endpoint.');
+        if (!['GET', 'PUT'].includes(method))
+          throw new StorageError(405, 'ZIP project source-file limit accepts GET or PUT.');
+      }
       if (read && id === 'presentation-voice') {
         const value = (await this.db.settings.get(id))?.value;
         return (isPresentationVoiceId(value) ? value : defaultPresentationVoiceId) as T;
       }
       if (read && id === IMPORT_LIMIT_SETTING)
         return importLimitMb((await this.db.settings.get(id))?.value) as T;
+      if (read && id === PROJECT_SOURCE_FILE_LIMIT_SETTING)
+        return projectSourceFileLimit((await this.db.settings.get(id))?.value) as T;
       if (read)
         return (
           id ? (await this.db.settings.get(id))?.value : await this.db.settings.toArray()
@@ -782,6 +806,19 @@ export class Repository {
         if (Object.keys(setting).some((key) => key !== 'value'))
           throw new StorageError(422, 'Import limit setting accepts only value.');
         assertImportLimitMb(setting.value);
+      }
+      if (id === PROJECT_SOURCE_FILE_LIMIT_SETTING) {
+        const setting = object(payload);
+        if (Object.keys(setting).some((key) => key !== 'value'))
+          throw new StorageError(422, 'ZIP project source-file limit setting accepts only value.');
+        assertProjectSourceFileLimit(setting.value);
+        return await this.db.transaction('rw', this.db.settings, async () => {
+          // An external grant can change while this write waits for IndexedDB.
+          // Check it inside the transaction, immediately before its first write.
+          await options.beforeWrite?.();
+          await this.db.settings.put({ key: id, value: setting.value });
+          return undefined as T;
+        });
       }
       await this.db.settings.put({ key: id, value: object(payload).value });
       return undefined as T;
@@ -844,7 +881,8 @@ export class Repository {
     if (collection === 'export' && method === 'POST') {
       const data = object(payload),
         graph = await this.getGraph(data.diagramId as string);
-      return (data.format === 'markdown' ? markdown(graph) : graph) as T;
+      const { exportCommand } = await import('../export/command');
+      return (await exportCommand(graph, data)) as T;
     }
     if (collection === 'diagrams') {
       if (id && action === 'simulation')

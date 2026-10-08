@@ -54,7 +54,7 @@ The bundled timeline's example dates are placed relative to the day you create i
 - Start with an overview, then expand the relevant branch. [Semantic overview](/help/understanding/) can summarize thousands of objects.
 - Filter or focus a region before discussing detail. Hidden objects stay saved.
 - Use meaningful labels and consistent icons instead of relying only on color.
-- Keep the native 2D arrangement readable even when you primarily explore in 3D: PNG and PDF use it.
+- Keep the native 2D arrangement readable even when you primarily explore in 3D: PNG, PDF and SVG use it.
 - Enlarge long code cards before an export; saved size determines what is visible in a rendered card.
 
 ## Common problems

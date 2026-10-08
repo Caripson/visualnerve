@@ -1,8 +1,7 @@
 import { zipSync, strToU8 } from 'fflate';
-import { execFileSync } from 'node:child_process';
-import { mkdir, writeFile, unlink } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { expect, test } from './fixtures';
+import { captureAppearancePair } from './capture-appearance';
 import type { Graph } from '../../src/model/types';
 import type { CodeImportResult } from '../../src/code/types';
 import {
@@ -49,26 +48,15 @@ async function capture(page: import('@playwright/test').Page) {
   if (process.env.VN_CAPTURE_PROJECT !== '1') return;
   const viewport = page.viewportSize()!;
   await page.setViewportSize({ width: 1440, height: 1400 });
-  const output = resolve('../hugo/static/help/images');
-  await mkdir(output, { recursive: true });
-  const png = resolve(output, 'code-project-zip.png');
-  await writeFile(
-    png,
-    await page
-      .getByRole('dialog', { name: 'Visualize code', exact: true })
-      .screenshot({ animations: 'disabled' }),
-  );
-  execFileSync('cwebp', [
-    '-lossless',
-    '-m',
-    '6',
-    '-quiet',
-    png,
-    '-o',
-    resolve(output, 'code-project-zip.webp'),
-  ]);
-  await unlink(png);
-  await page.setViewportSize(viewport);
+  try {
+    await captureAppearancePair(
+      page.getByRole('dialog', { name: 'Visualize code', exact: true }),
+      resolve('../hugo/static/help/images'),
+      'code-project-zip',
+    );
+  } finally {
+    await page.setViewportSize(viewport);
+  }
 }
 
 test('ZIP folder preview, UI creation and MCP/REST share source-free topology and persist editable directory cards', async ({

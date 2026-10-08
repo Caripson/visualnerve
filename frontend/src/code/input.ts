@@ -6,6 +6,7 @@ import {
   DEFAULT_IMPORT_LIMIT_BYTES,
   utf8Bytes,
 } from '../imports/limits';
+import { checkedProjectSourceFileLimit } from './project/limits';
 
 export interface NormalizedFile extends CodeFile {
   language: CodeLanguage;
@@ -18,6 +19,7 @@ export function defaultCodeMode(fileCount: number): 'files' | 'symbols' {
 export function normalizeCodeInput(
   input: CodeInput,
   byteLimit = DEFAULT_IMPORT_LIMIT_BYTES,
+  fileLimit: number = codeLimits.files,
 ): {
   files: NormalizedFile[];
   mode: 'files' | 'symbols' | 'folders';
@@ -26,6 +28,7 @@ export function normalizeCodeInput(
   focus?: string;
 } {
   const limit = checkedImportLimitBytes(byteLimit);
+  const sourceLimit = checkedProjectSourceFileLimit(fileLimit);
   if (
     !input ||
     typeof input !== 'object' ||
@@ -33,8 +36,8 @@ export function normalizeCodeInput(
     Object.keys(input).some((key) => !['name', 'files', 'mode', 'focus'].includes(key))
   )
     throw new Error('Code input has unsupported fields.');
-  if (!Array.isArray(input.files) || !input.files.length || input.files.length > codeLimits.files)
-    throw new Error('Import between 1 and 500 code files.');
+  if (!Array.isArray(input.files) || !input.files.length || input.files.length > sourceLimit)
+    throw new Error(`Import between 1 and ${sourceLimit.toLocaleString('en-US')} code files.`);
   if (input.mode !== undefined && !['files', 'symbols', 'folders'].includes(input.mode))
     throw new Error('Code mode must be files, symbols or folders.');
   for (const key of ['name', 'focus'] as const)

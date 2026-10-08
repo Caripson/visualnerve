@@ -21,11 +21,8 @@ vi.mock('../src/presentation/video-service', () => ({
   videoExport: { getState: () => ({ status: 'idle' }), cancel: vi.fn() },
   startVideo: vi.fn(),
 }));
-import {
-  presentation,
-  presentationRequest,
-  revealPresentationStep,
-} from '../src/presentation/service';
+import { presentation, revealPresentationStep } from '../src/presentation/service';
+import { presentationRequest } from '../src/presentation/commands';
 beforeEach(() => {
   let graph = blankGraph('Truck');
   graph.nodes = [

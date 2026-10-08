@@ -1,26 +1,18 @@
-{{- /* Public screenshots use neutral 16:10 laptop or 390:844 phone screens.
-     Contain the complete image; cropped dialog details keep native proportions. */ -}}
+{{- /* Frame real viewport ratios only; dialog crops retain their native proportions. */ -}}
 {{- $width := .width | default 0 -}}
 {{- $height := .height | default 0 -}}
-{{- $device := .device | default "laptop" -}}
-{{- if and (not .device) (gt $width 0) (gt $height $width) -}}
-  {{- $device = "detail" -}}
-  {{- if ge $height (mul $width 1.55) -}}{{- $device = "phone" -}}{{- end -}}
+{{- $device := .device | default "detail" -}}
+{{- if and (not .device) (gt $width 0) (gt $height 0) -}}
+  {{- if eq (mul $width 10) (mul $height 16) -}}{{- $device = "laptop" -}}{{- end -}}
+  {{- if eq (mul $width 844) (mul $height 390) -}}{{- $device = "phone" -}}{{- end -}}
 {{- end -}}
 <figure class="site-capture site-capture--{{ $device }}{{ with .class }} {{ . }}{{ end }}"{{ if gt $width 0 }} style="--capture-width: {{ $width }}px"{{ end }}>
-  <a class="site-capture__link" href="{{ .src | safeURL }}" target="_blank" rel="noopener noreferrer" aria-label="Open screenshot: {{ .alt }}">
-    <div class="site-capture__hardware">
-      <div class="site-capture__display">
-        {{- if ne $device "detail" -}}<span class="site-capture__camera" aria-hidden="true"></span>{{- end -}}
-        <div class="site-capture__screen"><img src="{{ .src | safeURL }}" alt="{{ .alt }}" loading="lazy" decoding="async"{{ if and (gt $width 0) (gt $height 0) }} width="{{ $width }}" height="{{ $height }}"{{ end }}></div>
-        {{- if eq $device "phone" -}}
-        <span class="site-capture__home-indicator" aria-hidden="true"></span>
-        {{- else if eq $device "laptop" -}}
-        <span class="site-capture__chin" aria-hidden="true"></span>
-        {{- end -}}
-      </div>
-      {{- if eq $device "laptop" -}}<div class="site-capture__base" aria-hidden="true"><span></span></div>{{- end -}}
-    </div>
+  <a class="site-capture__link" href="{{ .src | safeURL }}" data-appearance-link="{{ .src }}" data-appearance-dark="{{ replaceRE "\\.webp$" "-dark.webp" .src }}" target="_blank" rel="noopener noreferrer" aria-label="Open screenshot: {{ .alt }}">
+    {{ if eq $device "detail" }}
+      <div class="site-capture__detail">{{ partial "appearance-image.html" . }}</div>
+    {{ else }}
+      {{ partial "device-frame.html" (merge . (dict "device" $device)) }}
+    {{ end }}
   </a>
   {{ with .caption }}<figcaption>{{ . }}</figcaption>{{ end }}
 </figure>

@@ -1,3 +1,4 @@
+import { workspace } from '../storage/workspace';
 import { useEffect, useState } from 'react';
 import { useEditor } from '../state/editor';
 import { PRESENTATION_FOCUS, presentationFocus, presentationArrived } from '../presentation/camera';
@@ -27,7 +28,6 @@ export function SpatialLoadFailure({
     setError('');
     try {
       useEditor.getState().finishEditing();
-      const { workspace } = await import('../storage/workspace');
       await workspace.settled();
       onReload();
     } catch (error) {

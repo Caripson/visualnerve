@@ -176,3 +176,125 @@ it('supports explicit per-file language overrides for ambiguous ZIPs', async () 
   ).rejects.toThrow(/path/i);
   expect(await db.diagrams.count()).toBe(0);
 });
+
+it('discovers and applies a saved ZIP-only source count through the authoritative UI/API preference', async () => {
+  const large = {
+    name: 'Large folders',
+    mode: 'folders',
+    data: Buffer.from(
+      zipSync(
+        Object.fromEntries(
+          Array.from({ length: 501 }, (_, index) => [`repo/src/file${index}.py`, strToU8('pass')]),
+        ),
+      ),
+    ).toString('base64'),
+  };
+  const capabilities = await controller.external<Record<string, unknown>>(
+    '/code/capabilities',
+    'GET',
+  );
+  expect(capabilities).toMatchObject({
+    sourceFiles: { maximum: 500 },
+    zipProjects: {
+      maximumEntries: 10000,
+      sourceFileLimit: {
+        setting: 'project-source-file-limit',
+        default: 500,
+        minimum: 500,
+        maximum: 10000,
+      },
+    },
+    analysis: { maximumNodes: 5000 },
+  });
+  expect(await controller.external('/settings/project-source-file-limit', 'GET')).toBe(500);
+  await expect(controller.external('/code/project/preview', 'POST', large)).rejects.toThrow(
+    'more than 500 analyzable files',
+  );
+  await expect(
+    controller.external('/settings/project-source-file-limit', 'PUT', { value: 1000 }),
+  ).rejects.toThrow(/read-only/);
+  await controller.setPreference('mcp-access', 'write');
+  for (const value of [
+    { value: 499 },
+    { value: 10001 },
+    { value: 500.5 },
+    { value: '1000' },
+    { value: 1000, extra: true },
+  ])
+    await expect(
+      controller.external('/settings/project-source-file-limit', 'PUT', value),
+    ).rejects.toMatchObject({ status: 422 });
+  expect(await controller.external('/settings/project-source-file-limit', 'GET')).toBe(500);
+  await controller.external('/settings/project-source-file-limit', 'PUT', { value: 1000 });
+  expect(useEditor.getState().projectSourceFileLimit).toBe(1000);
+  expect(await controller.external('/settings/project-source-file-limit', 'GET')).toBe(1000);
+  const graph = await controller.external<Graph>('/code/project/diagrams', 'POST', large);
+  expect(getCodeAnalysis(graph)).toMatchObject({
+    fileCount: 501,
+    project: { sourceFileLimit: 1000 },
+  });
+  await expect(
+    controller.external('/code/project/preview', 'POST', { ...large, fileLimit: 10000 }),
+  ).rejects.toMatchObject({ status: 422 });
+  await expect(
+    controller.external('/code/preview', 'POST', {
+      files: Array.from({ length: 501 }, (_, index) => ({
+        path: `file${index}.py`,
+        content: 'pass',
+      })),
+      mode: 'folders',
+    }),
+  ).rejects.toMatchObject({ status: 422 });
+  await controller.external('/settings/project-source-file-limit', 'PUT', { value: 500 });
+  await controller.refresh();
+  const stored = await controller.external<Graph>(`/diagrams/${graph.diagram.id}`, 'GET');
+  expect(getCodeAnalysis(stored)).toMatchObject({
+    fileCount: 501,
+    project: { sourceFileLimit: 1000 },
+  });
+});
+
+it('captures the stored count once before archive work even if Settings changes while it runs', async () => {
+  await controller.setPreference('project-source-file-limit', 1000);
+  const scanned = await archiveClient.parseProjectArchiveAsync(
+    { name: input.name, data: input.data },
+    { fileLimit: 1000 },
+  );
+  let resolve!: (value: typeof scanned) => void;
+  let entered!: () => void;
+  const started = new Promise<void>((done) => {
+    entered = done;
+  });
+  const scan = vi
+    .spyOn(archiveClient, 'parseProjectArchiveAsync')
+    .mockImplementation((_input, options) => {
+      expect(options?.fileLimit).toBe(1000);
+      entered();
+      return new Promise((done) => {
+        resolve = done;
+      });
+    });
+  const pending = controller.external<CodeImportResult>('/code/project/preview', 'POST', input);
+  await started;
+  await controller.setPreference('project-source-file-limit', 500);
+  resolve(scanned);
+  expect((await pending).project?.sourceFileLimit).toBe(1000);
+  expect(scan).toHaveBeenCalledOnce();
+});
+
+it('rejects aliases and unsupported methods for the ZIP source-file setting without saving a value', async () => {
+  await controller.setPreference('mcp-access', 'write');
+  for (const path of [
+    '/settings/project-source-file-limit/extra',
+    '/settings/project-source-file-limit?value=1000',
+    '/settings/project-source-file-limit#edit',
+  ])
+    await expect(controller.external(path, 'PUT', { value: 1000 })).rejects.toMatchObject({
+      status: 404,
+    });
+  for (const method of ['POST', 'PATCH', 'DELETE'])
+    await expect(
+      controller.external('/settings/project-source-file-limit', method, { value: 1000 }),
+    ).rejects.toMatchObject({ status: 405 });
+  expect(await controller.external('/settings/project-source-file-limit', 'GET')).toBe(500);
+});

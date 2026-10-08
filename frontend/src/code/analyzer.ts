@@ -2,6 +2,7 @@ import { blankGraph } from '../model/types';
 import { CodeGraphBuilder } from './assembly';
 import { normalizeCodeInput } from './input';
 import { DEFAULT_IMPORT_LIMIT_BYTES, LARGE_IMPORT_WARNING } from '../imports/limits';
+import { DEFAULT_PROJECT_SOURCE_FILE_LIMIT, LARGE_PROJECT_FILE_WARNING } from './project/limits';
 import { extractProgramCode } from './program';
 import { CodeResolver, type AnalyzedFile } from './resolve';
 import { extractSpecialCode } from './special';
@@ -35,14 +36,20 @@ const specialized = new Set<CodeLanguage>([
   'assembly',
 ]);
 /** Local structural analysis. Source buffers never enter the saved graph. */
-export function parseCode(input: CodeInput, byteLimit?: number): CodeImportResult {
-  const normalized = normalizeCodeInput(input, byteLimit);
+export function parseCode(
+  input: CodeInput,
+  byteLimit?: number,
+  fileLimit?: number,
+): CodeImportResult {
+  const normalized = normalizeCodeInput(input, byteLimit, fileLimit);
   const graph = blankGraph(normalized.name, 'dependency');
   const languages = [...new Set(normalized.files.map((file) => file.language))];
   const warnings: string[] = [
     'Structural analysis uses syntax patterns, not a compiler. Dynamic dispatch, macros, generated code and runtime dependencies may be missing. Unresolved objects need review.',
   ];
   if (normalized.bytes > DEFAULT_IMPORT_LIMIT_BYTES) warnings.push(LARGE_IMPORT_WARNING);
+  if (normalized.files.length > DEFAULT_PROJECT_SOURCE_FILE_LIMIT)
+    warnings.push(LARGE_PROJECT_FILE_WARNING);
   const warn = (message: string) => {
     if (warnings.length < codeLimits.warnings && !warnings.includes(message))
       warnings.push(message.slice(0, 1000));

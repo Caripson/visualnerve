@@ -4,10 +4,19 @@
   let preference = 'system';
   let revision = 0;
   const normalize = value => value === 'light' || value === 'dark' ? value : 'system';
+  const images = theme => {
+    for (const source of document.querySelectorAll?.('[data-appearance-image] > source') ?? []) {
+      const media = theme === 'dark' ? 'all' : 'not all';
+      if (source.media !== media) source.media = media;
+    }
+    for (const link of document.querySelectorAll?.('[data-appearance-link]') ?? [])
+      link.href = theme === 'dark' ? link.dataset.appearanceDark : link.dataset.appearanceLink;
+  };
   const paint = () => {
     const theme = preference === 'system' ? (media.matches ? 'dark' : 'light') : preference;
     document.documentElement.dataset.theme = theme;
     document.documentElement.style.colorScheme = theme;
+    images(theme);
   };
   const setPreference = value => {
     revision++;
@@ -59,6 +68,7 @@
   };
   window.visualNerveAppearance = { setPreference, refresh };
   paint();
+  document.addEventListener('DOMContentLoaded', paint);
   media.addEventListener('change', paint);
   window.addEventListener('pageshow', refresh);
   window.addEventListener('focus', refresh);

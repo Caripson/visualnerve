@@ -15,6 +15,7 @@ Open **Export** on desktop or **Diagram actions → Export** on a phone.
 | **JSON · complete graph**       | Reopen or move one editable diagram        | Current objects, connections, referenced owners, metadata, hierarchy, settings, geometry and applicable data/model content |
 | **Markdown · semantic outline** | Read or share a text explanation           | Headings, descriptions, process steps and relationships                                                                    |
 | **PNG · rendered diagram**      | Put a visual in a document or message      | A locally rendered picture of the selected area                                                                            |
+| **SVG · vector diagram**        | Scale a diagram for print or edit its visual elements | Text, shapes, icons, connections and visible drawing as vector elements in a 2D view                              |
 | **PDF · printable diagram**     | Print or share a paged visual              | A 2D rendering on A4/A3, fitted or tiled                                                                                   |
 | **Export all data / backup**    | Keep or transfer your whole workspace      | All projects, owners, templates, portable preferences, source datasets, local history and retained simulation archives     |
 | **Export video** in Player      | Share a narrated walkthrough               | A film of the saved numbered sequence or storyboard                                                                        |
@@ -26,28 +27,36 @@ An image, PDF or video is not a restorable graph. Keep JSON or a full backup whe
 
 1. Open Export and keep **Export → Export diagram**.
 2. Choose **Format**.
-3. For PNG/PDF, choose **Area** and **Resolution**.
+3. For PNG/PDF/SVG, choose **Area**. PNG/PDF also offer **Resolution**.
 4. For PDF, choose paper, orientation and whether to tile across multiple pages.
 5. Choose **Export** and save the downloaded file.
 
 ![Export dialog with format, area, resolution and PDF page options.](/help/images/export.webp "Use JSON for an editable copy; use PNG or PDF for a rendered view.")
 
-For PNG/PDF, the areas mean:
+For PNG/PDF/SVG, the areas mean:
 
 | Area                                   | Result                                                                         |
 | -------------------------------------- | ------------------------------------------------------------------------------ |
 | **Complete diagram**                   | Includes off-screen and collapsed objects in an isolated export rendering      |
 | **Current viewport**                   | Captures the visible 2D crop                                                   |
-| **Saved 2D viewport** while viewing 3D | Uses the saved 2D pan/zoom; fits the 2D diagram if no usable saved crop exists |
+| **Saved 2D viewport** for SVG or while viewing 3D | Uses the saved 2D pan/zoom; fits the 2D diagram if no usable saved crop exists |
 | **Selected nodes**                     | Includes selected objects and connections whose endpoints are both selected    |
 
 Choose **1×**, **2×** or **4×** resolution. Higher resolution makes a larger bitmap and uses more browser memory. PDF supports **A4** or **A3**, **Landscape** or **Portrait**. Enable **Tile across multiple pages** when a large diagram would become unreadable on one page; tiles include page-coordinate captions.
+
+SVG keeps text and geometry as vector elements, so you can enlarge it without a bitmap becoming pixelated. Open the `.svg` file in a browser or a vector editor. It uses the current Light or Dark appearance. There is no resolution setting: the chosen area sets the document's dimensions. The receiving application may substitute fonts that are unavailable on that device, and decorative shadows may be simplified.
+
+An SVG is a visual export rather than the complete editable Visual Nerve model. Card content is clipped to its saved size. Enlarge a card before exporting if you need more of its content to be visible; keep JSON for reopening the diagram. Review the file before sharing, since text elements remain readable in the SVG source.
+
+Very large SVG exports fail with a clear error instead of omitting content. The limits are 100,000 rendered elements, 250,000 text characters and a 16 MiB output file. Choose selected nodes or a smaller view if the complete diagram exceeds a limit.
+
+![Export dialog with SVG selected and a choice of diagram area.](/help/images/export-svg.webp "Choose SVG for vector text and geometry; choose JSON for a restorable diagram.")
 
 Ordinary canvas filters do not remove content from a complete diagram export. CSV visual exports show the current analysis view, with its current measures and visible relationships, rather than every retained historical group. If you explicitly select an older CSV group revealed by exploration, the export labels it **Outside current data view**.
 
 An active semantic Overview can export its summary projection. Choose **Details** before exporting if you want the original cards. Visible pen strokes are included in their native 2D layout; hidden strokes and unfinished gestures are excluded. A drawing-only diagram can also export.
 
-PNG and PDF always use the canonical **2D** diagram, including when 3D is active. JSON and backups preserve the saved 3D camera and independent object placements for later use. For an animated 3D presentation, use [video export](/help/presentations/#export-a-film).
+PNG, PDF and SVG always use the canonical **2D** diagram, including when 3D is active. JSON and backups preserve the saved 3D camera and independent object placements for later use. For an animated 3D presentation, use [video export](/help/presentations/#export-a-film).
 
 Process Simulator complete exports show the full real flow with the same readable capacity cards as **Show all steps**, using the selected run's scenario and current capacity when a run is selected. Selecting a capacity card exports that logical object's bank; selecting a process group exports its actual steps and descendants. These visual cards do not add work to the saved model.
 
@@ -71,7 +80,7 @@ Markdown import recognizes headings and indented ordered/unordered lists. It is 
 
 Choose **Export → Export all data / backup → Export all data**, or use **Settings → Data & Privacy → Export all data**. The downloaded file is named `visual-nerve-backup-YYYY-MM-DD.json`.
 
-It includes all diagrams, owners including unassigned ones, custom templates, portable settings, CSV sources, named views, history and applicable simulation models/results/checkpoints. It excludes credentials, integration tokens and grants, storage acceptance, local identity, last selection and the browser's import-size preference. Cached app files and voice models are separate from the backup.
+It includes all diagrams, owners including unassigned ones, custom templates, portable settings, CSV sources, named views, history and applicable simulation models/results/checkpoints. It excludes credentials, integration tokens and grants, storage acceptance, local identity, last selection and the browser's import-size and ZIP source-file preferences. Cached app files and voice models are separate from the backup.
 
 Nothing is uploaded. Keep the downloaded file somewhere independent of this browser if you want a recovery copy. [Settings and local data](/help/settings/#restore-a-backup) explains Merge, Replace, moving to another device and retention.
 
@@ -136,6 +145,6 @@ The handoff permits up to 50,000 prompt characters and an encoded link up to 60,
 
 ## Resolve export problems
 
-If a bitmap exceeds browser canvas limits, lower resolution, use selection/viewport, or tile a PDF. A tiny printout usually needs a narrower scope, larger paper or tiling. If 3D exports appear in 2D, that is the PNG/PDF contract; use Player video for perspective motion. If you need to reopen objects rather than view a picture, export JSON.
+If a bitmap exceeds browser canvas limits, lower resolution, use selection/viewport, choose SVG, or tile a PDF. A tiny printout usually needs a narrower scope, larger paper or tiling. If 3D exports appear in 2D, that is the PNG/PDF/SVG contract; use Player video for perspective motion. If you need to reopen objects rather than view a picture, export JSON.
 
 See [presentations](/help/presentations/) for film controls, [settings](/help/settings/) for backup restore and [API/MCP](/help/api-mcp/) for programmatic exports and unsent brief previews.

@@ -9,6 +9,7 @@ const context = self as unknown as {
       name?: string;
       input?: ProjectArchiveInput;
       byteLimit?: number;
+      fileLimit?: number;
     }>,
   ) => void;
   postMessage: (value: unknown) => void;
@@ -21,6 +22,7 @@ context.onmessage = ({ data }) => {
     let lastProgress = 0;
     const result = loadProjectArchive(bytes, name, {
       byteLimit: data.byteLimit,
+      fileLimit: data.fileLimit,
       onProgress: (progress) => {
         const now = performance.now();
         if (

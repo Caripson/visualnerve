@@ -21,6 +21,7 @@ import { download, markdown, safeName } from '../export/semantic';
 import { DataPrivacy, StorageNotice } from './DataPrivacy';
 import { McpSettings } from './McpSettings';
 import { ImportSettings } from './ImportSettings';
+import { ProjectFileLimitSettings } from './ProjectFileLimitSettings';
 import { exportAllData } from '../storage/backup';
 import type { WorkspaceBackup } from '../storage/database';
 import type { RenderOptions } from '../export/rendered';
@@ -104,7 +105,7 @@ export function ExportDialog({ close }: { close: () => void }) {
     state.graph ? getSpatialView(state.graph).mode === '3d' : false,
   );
   const [target, setTarget] = useState('diagram');
-  const [format, setFormat] = useState<'json' | 'markdown' | 'png' | 'pdf'>('json');
+  const [format, setFormat] = useState<'json' | 'markdown' | 'svg' | 'png' | 'pdf'>('json');
   const [options, setOptions] = useState<RenderOptions>({
     scope: 'complete',
     multiplier: 2,
@@ -169,11 +170,12 @@ export function ExportDialog({ close }: { close: () => void }) {
         >
           <option value="json">JSON · complete graph</option>
           <option value="markdown">Markdown · semantic outline</option>
+          <option value="svg">SVG · vector diagram</option>
           <option value="png">PNG · rendered diagram</option>
           <option value="pdf">PDF · printable diagram</option>
         </select>
       </Field>
-      {(format === 'png' || format === 'pdf') && (
+      {(format === 'svg' || format === 'png' || format === 'pdf') && (
         <>
           <Field title="Area">
             <select
@@ -182,23 +184,27 @@ export function ExportDialog({ close }: { close: () => void }) {
               onChange={(e) => set({ scope: e.target.value as RenderOptions['scope'] })}
             >
               <option value="complete">Complete diagram</option>
-              <option value="viewport">{spatial ? 'Saved 2D viewport' : 'Current viewport'}</option>
+              <option value="viewport">
+                {spatial || format === 'svg' ? 'Saved 2D viewport' : 'Current viewport'}
+              </option>
               <option value="selected">Selected nodes</option>
             </select>
           </Field>
-          <Field title="Resolution">
-            <select
-              aria-label="Export resolution"
-              value={options.multiplier}
-              onChange={(e) => set({ multiplier: Number(e.target.value) as 1 | 2 | 4 })}
-            >
-              {[1, 2, 4].map((v) => (
-                <option key={v} value={v}>
-                  {v}×
-                </option>
-              ))}
-            </select>
-          </Field>
+          {format !== 'svg' && (
+            <Field title="Resolution">
+              <select
+                aria-label="Export resolution"
+                value={options.multiplier}
+                onChange={(e) => set({ multiplier: Number(e.target.value) as 1 | 2 | 4 })}
+              >
+                {[1, 2, 4].map((v) => (
+                  <option key={v} value={v}>
+                    {v}×
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
         </>
       )}
       {format === 'pdf' && (
@@ -243,9 +249,11 @@ export function ExportDialog({ close }: { close: () => void }) {
           ? 'Includes nodes, relationships, owners, metadata, layout and view settings. Import this file to restore the diagram.'
           : format === 'markdown'
             ? 'Exports graph meaning as headings, process steps and relationships.'
-            : spatial
-              ? 'PNG and PDF use the 2D diagram, including drawing marks. Complete includes off-screen and collapsed nodes. Saved 2D viewport uses your last 2D crop, or fits the diagram if none is saved.'
-              : 'Rendered locally from the canvas. Complete export includes off-screen and collapsed nodes.'}
+            : format === 'svg'
+              ? 'Exports the canonical 2D diagram as editable vector shapes, text, icons, connections and drawing marks. Viewport uses the saved 2D crop. Fonts are referenced by name; shadows may be simplified.'
+              : spatial
+                ? 'PNG and PDF use the 2D diagram, including drawing marks. Complete includes off-screen and collapsed nodes. Saved 2D viewport uses your last 2D crop, or fits the diagram if none is saved.'
+                : 'Rendered locally from the canvas. Complete export includes off-screen and collapsed nodes.'}
       </p>
       <StorageNotice />
       {error && <p className="form-error">{error}</p>}
@@ -266,7 +274,10 @@ export function ExportDialog({ close }: { close: () => void }) {
               const name = safeName(g.diagram.name);
               if (format === 'json') download(`${name}.json`, JSON.stringify(g, null, 2));
               else if (format === 'markdown') download(`${name}.md`, markdown(g), 'text/markdown');
-              else {
+              else if (format === 'svg') {
+                const { exportSVG } = await import('../export/svg');
+                await exportSVG(g, options.scope, state.selectedNodes);
+              } else {
                 const { exportRendered } = await import('../export/rendered');
                 await exportRendered(g, format, options, state.selectedNodes);
               }
@@ -517,6 +528,7 @@ export function SettingsDialog({
       </Field>
       <DataPrivacy restore={restore} deleted={close} />
       <ImportSettings />
+      <ProjectFileLimitSettings />
       <VoiceSettings />
       <McpSettings />
       <div className="property-section">Keyboard shortcuts</div>

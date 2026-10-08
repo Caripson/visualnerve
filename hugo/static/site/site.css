@@ -85,6 +85,26 @@ input:focus-visible {
   border-bottom: 1px solid var(--border);
   background: var(--surface);
 }
+.public-header-shell--floating {
+  position: relative;
+  z-index: 40;
+  padding: 18px 24px 0;
+  border: 0;
+  background: transparent;
+}
+.public-header-shell--floating .public-header {
+  max-width: 1280px;
+  padding: 16px 24px;
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: 0 6px 24px #20352a0d, 0 1px 3px #20352a0a;
+}
+:root[data-theme="dark"] .public-header-shell--floating .public-header {
+  box-shadow: 0 8px 28px #00000038, 0 1px 3px #00000026;
+}
+.public-header-shell--floating .site-menu-toggle {
+  min-height: 44px;
+}
 .public-header {
   max-width: 1440px;
   padding: 26px 48px;
@@ -872,6 +892,14 @@ input:focus-visible {
     flex-basis: 100%;
     margin-top: 5px;
   }
+  .public-header-shell--floating .public-header {
+    padding: 14px 20px;
+  }
+  .public-header-shell--floating .public-header nav {
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+  }
   .section-width {
     padding-left: 30px;
     padding-right: 30px;
@@ -953,6 +981,14 @@ input:focus-visible {
   .site-menu-toggle {
     padding: 9px 11px;
     font-size: 12px;
+  }
+  .public-header-shell--floating {
+    padding: 12px 14px 0;
+  }
+  .public-header-shell--floating .public-header {
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
   }
   .section-width {
     padding-left: 22px;

@@ -3,7 +3,7 @@ import type { ProjectArchiveResult } from './types';
 
 export type ProjectArchiveSummary = Pick<
   ProjectArchiveResult,
-  'name' | 'expandedBytes' | 'ignored'
+  'name' | 'expandedBytes' | 'ignored' | 'fileLimit'
 >;
 
 /** Retain scan counts, never source buffers or the archive itself. */
@@ -17,6 +17,7 @@ export function attachProjectAnalysis(
     expandedBytes: summary.expandedBytes,
     ignoredEntries: summary.ignored.total,
     ignoredReasons: { ...summary.ignored.reasons },
+    ...(summary.fileLimit !== undefined ? { sourceFileLimit: summary.fileLimit } : {}),
   };
   const { graph, ...analysis } = result;
   return {

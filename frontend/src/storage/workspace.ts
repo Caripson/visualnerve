@@ -1,6 +1,6 @@
 import { assertVoiceId, VOICE_SETTING } from '../presentation/speech/voices';
 import { liveQuery, type Subscription } from 'dexie';
-import { useEditor, type SaveStatus } from '../state/editor';
+import { useEditor } from '../state/editor';
 import { diffGraph } from '../state/history';
 import { ownersFor, type Graph } from '../model/types';
 import { graphDatasets } from '../data/model';
@@ -16,6 +16,11 @@ import {
 import type { WorkspaceBackup } from './database';
 import { getSpatialView } from '../spatial/types';
 import { assertImportLimitMb, IMPORT_LIMIT_SETTING, importLimitMb } from '../imports/limits';
+import {
+  assertProjectSourceFileLimit,
+  PROJECT_SOURCE_FILE_LIMIT_SETTING,
+  projectSourceFileLimit,
+} from '../code/project/limits';
 import {
   appearancePreference,
   appearanceSettingsChanged,
@@ -96,14 +101,8 @@ interface QueuedSave {
   cancelled?: boolean;
 }
 interface PreferenceFailure {
-  generation: number;
   message: string;
-  diagramId?: string;
-  revision: number;
-  navigation: number;
-  previousState: { status: SaveStatus; message: string };
-  previous?: PreferenceFailure;
-  resolved?: boolean;
+  value: unknown;
 }
 function mutatesDocument(path: string, method: string) {
   if (method === 'GET') return false;
@@ -180,7 +179,6 @@ export class Workspace {
   private navigation = 0;
   private settingsRevision = 0;
   private preferenceWrites = 0;
-  private errorGeneration = 0;
   private preferenceFailures = new Map<string, PreferenceFailure>();
   private accessCeiling?: McpAccess;
   private accessChoice = 0;
@@ -190,6 +188,7 @@ export class Workspace {
   constructor(public repo: Repository = repository) {}
   async start() {
     this.stopped = false;
+    this.publishPreferenceError();
     await this.repo.db.open();
     if ((await this.repo.db.settings.get('storage-consent'))?.value !== true) {
       useEditor.setState({
@@ -199,6 +198,7 @@ export class Workspace {
         owners: [],
         mcpAccess: 'off',
         importFileLimitMb: 50,
+        projectSourceFileLimit: 500,
         workspaceId: '',
         theme: 'system',
       });
@@ -280,72 +280,33 @@ export class Workspace {
     return 'write';
   }
   private error(error: unknown) {
-    this.errorGeneration++;
     const conflict = error instanceof StorageError && [404, 409].includes(error.status);
     useEditor.setState({
       status: conflict ? 'conflict' : 'error',
       message: (error as Error).message,
     });
   }
-  private ownsPreferenceError(failure: PreferenceFailure) {
-    const state = useEditor.getState();
-    return (
-      state.status === 'error' &&
-      state.message === failure.message &&
-      this.errorGeneration === failure.generation
-    );
-  }
-  private preferenceError(key: string, error: unknown) {
-    const state = useEditor.getState();
-    const previous = [...this.preferenceFailures.values()].find((failure) =>
-      this.ownsPreferenceError(failure),
-    );
-    // Repeated failed attempts belong to the same error, retaining the state
-    // that preceded it rather than restoring an earlier failed retry.
-    const replaced = this.preferenceFailures.get(key);
-    const sameKey = previous === replaced;
-    if (replaced) replaced.resolved = true;
-    this.error(error);
-    this.preferenceFailures.set(key, {
-      generation: this.errorGeneration,
-      message: (error as Error).message,
-      diagramId: state.graph?.diagram.id,
-      revision: state.editRevision,
-      navigation: this.navigation,
-      previousState:
-        sameKey && previous
-          ? previous.previousState
-          : { status: state.status, message: state.message },
-      previous: sameKey && previous ? previous.previous : previous,
+  private publishPreferenceError() {
+    const latest = [...this.preferenceFailures.entries()].at(-1);
+    // A camera/document save acknowledges only the graph. Failed preference
+    // writes remain independently visible until that setting is actually saved.
+    useEditor.setState({
+      preferenceError: latest ? { key: latest[0], message: latest[1].message } : null,
     });
+  }
+  private preferenceError(key: string, value: unknown, error: unknown) {
+    this.preferenceFailures.delete(key);
+    this.preferenceFailures.set(key, { value, message: (error as Error).message });
+    this.publishPreferenceError();
   }
   private acknowledgePreference(key: string, failure?: PreferenceFailure) {
     if (!failure || this.preferenceFailures.get(key) !== failure) return;
     this.preferenceFailures.delete(key);
-    failure.resolved = true;
-    const state = useEditor.getState();
-    if (
-      this.stopped ||
-      !this.ownsPreferenceError(failure) ||
-      state.graph?.diagram.id !== failure.diagramId ||
-      state.editRevision !== failure.revision ||
-      this.navigation !== failure.navigation ||
-      this.pending.size ||
-      this.queuedSaves.size ||
-      state.commandError
-    )
-      return;
-    let restore = failure.previousState;
-    let previous = failure.previous;
-    // A different preference may have been successfully retried while hidden
-    // behind this error. Do not resurrect an already acknowledged failure.
-    while (previous?.resolved) {
-      restore = previous.previousState;
-      previous = previous.previous;
-    }
-    this.errorGeneration++;
-    if (previous) previous.generation = this.errorGeneration;
-    useEditor.setState(restore);
+    this.publishPreferenceError();
+  }
+  async retryPreference(key: string) {
+    const failure = this.preferenceFailures.get(key);
+    if (failure) await this.setPreference(key, failure.value);
   }
   private async persist(save: QueuedSave) {
     const { graph, revision, sourcesChanged } = save;
@@ -427,6 +388,9 @@ export class Workspace {
       owners: preferences.get('storage-consent') === true ? owners : [],
       theme,
       importFileLimitMb: importLimitMb(preferences.get(IMPORT_LIMIT_SETTING)),
+      projectSourceFileLimit: projectSourceFileLimit(
+        preferences.get(PROJECT_SOURCE_FILE_LIMIT_SETTING),
+      ),
       mcpAccess:
         preferences.get('storage-consent') === true
           ? this.mcpGrant(preferences.get('mcp-access'))
@@ -650,6 +614,7 @@ export class Workspace {
     if (key === 'mcp-access' && !['off', 'read', 'write'].includes(String(value)))
       throw new StorageError(422, 'Invalid MCP access level.');
     if (key === IMPORT_LIMIT_SETTING) assertImportLimitMb(value);
+    if (key === PROJECT_SOURCE_FILE_LIMIT_SETTING) assertProjectSourceFileLimit(value);
     if (key === VOICE_SETTING) assertVoiceId(value);
     this.settingsRevision++;
     this.preferenceWrites++;
@@ -689,12 +654,14 @@ export class Workspace {
       if (key === 'backup-nudge-dismissed')
         useEditor.setState({ backupNudgeDismissed: value === true });
       if (key === IMPORT_LIMIT_SETTING) useEditor.setState({ importFileLimitMb: value as number });
+      if (key === PROJECT_SOURCE_FILE_LIMIT_SETTING)
+        useEditor.setState({ projectSourceFileLimit: value as number });
       if (key === 'theme') this.syncAppearance(appearancePreference(value));
       this.acknowledgePreference(key, retryingFailure);
       // Preferences, especially access revocation, must not wait for the work
       // they cancel or an unrelated camera/document save to leave its queue.
     } catch (error) {
-      this.preferenceError(key, error);
+      this.preferenceError(key, value, error);
       throw error;
     } finally {
       this.preferenceWrites--;
@@ -743,7 +710,7 @@ export class Workspace {
             422,
             'Open expects an optional diagramId and nodes or storyboard source.',
           );
-        const { isVideoExporting } = await import('../presentation/video-service');
+        const { isVideoExporting } = await import('../presentation/commands');
         const authorizeOpen = async () => {
           await authorize();
           if (isVideoExporting())
@@ -754,7 +721,7 @@ export class Workspace {
           await this.open(payload.diagramId as string, undefined, authorizeOpen);
         payload = 'source' in payload ? { source: payload.source } : {};
       }
-      const { presentationRequest } = await import('../presentation/service');
+      const { presentationRequest } = await import('../presentation/commands');
       await authorize();
       return (await presentationRequest(endpoint, method, payload, authorize)) as T;
     }
@@ -845,6 +812,8 @@ export class Workspace {
     this.pending.clear();
     this.versions.clear();
     await this.repo.clearAll();
+    this.preferenceFailures.clear();
+    this.publishPreferenceError();
     useEditor.getState().setGraph(null);
     useEditor.setState({ status: 'saved', message: '' });
     sessionStorage.removeItem('vn-token');

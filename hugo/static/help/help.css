@@ -320,6 +320,9 @@
   width: 100%;
   height: auto;
 }
+.help-figure picture {
+  display: block;
+}
 .help-figure figcaption {
   margin-top: 12px;
   color: var(--muted);

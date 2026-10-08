@@ -98,12 +98,12 @@ test('the help hub and all 16 guides have real screenshots, valid local links an
       ).toBe(true);
       expect(
         await screenshots.evaluateAll((images) =>
-          images.every(
-            (image) =>
-              image.parentElement?.tagName === 'A' &&
-              image.parentElement.getAttribute('href') === image.getAttribute('src') &&
-              image.parentElement.getAttribute('target') === '_blank',
-          ),
+          images.every((image) => {
+            const link = image.closest('a');
+            return (
+              link?.href === (image as HTMLImageElement).currentSrc && link?.target === '_blank'
+            );
+          }),
         ),
       ).toBe(true);
       const destinations = await page
@@ -241,8 +241,13 @@ test('accepted local workspace caches every guide, screenshot and the help searc
     for (const guide of guides) {
       await page.goto(`${publicURL}${guide.url}`);
       for (const image of await page
-        .locator('.help-article img')
-        .evaluateAll((images) => images.map((image) => (image as HTMLImageElement).src)))
+        .locator('.help-article picture')
+        .evaluateAll((pictures) =>
+          pictures.flatMap((picture) => [
+            picture.querySelector<HTMLImageElement>('img')!.src,
+            new URL(picture.querySelector('source')!.getAttribute('srcset')!, location.href).href,
+          ]),
+        ))
         onlineScreenshots.add(image);
     }
     const assets = [
@@ -258,12 +263,20 @@ test('accepted local workspace caches every guide, screenshot and the help searc
       ),
     ).toEqual(assets.map(() => true));
     await context.setOffline(true);
+    await page.emulateMedia({ colorScheme: 'dark' });
     for (const guide of guides) {
       await page.goto(`${publicURL}${guide.url}`);
       await expect(
         page.getByRole('heading', { level: 1, name: guide.title, exact: true }),
       ).toBeVisible();
       await imagesLoaded(page);
+      expect(
+        await page
+          .locator('.help-article img')
+          .evaluateAll((images) =>
+            images.every((image) => (image as HTMLImageElement).currentSrc.endsWith('-dark.webp')),
+          ),
+      ).toBe(true);
     }
     await page.goto(`${publicURL}/help/`);
     await page.getByRole('combobox', { name: 'Search help', exact: true }).fill('COBOL');

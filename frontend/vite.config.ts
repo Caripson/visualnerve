@@ -1,10 +1,12 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import { piperBrowserRuntime, vendorChunk } from './build/browser-runtime';
 
 export default defineConfig(({ command }) => ({
   base: command === 'build' ? '/editor/' : '/',
-  plugins: [react()],
-  worker: { format: 'es' },
+  plugins: [piperBrowserRuntime(), react()],
+  optimizeDeps: { exclude: ['@diffusionstudio/piper-wasm/build/piper_phonemize.js'] },
+  worker: { format: 'es', plugins: () => [piperBrowserRuntime()] },
   build: {
     outDir: '../hugo/static/editor',
     emptyOutDir: true,
@@ -14,6 +16,8 @@ export default defineConfig(({ command }) => ({
       input: 'src/main.tsx',
       output: {
         entryFileNames: 'app.js',
+        onlyExplicitManualChunks: true,
+        manualChunks: vendorChunk,
         assetFileNames: (asset) =>
           asset.names.some((name) => name.endsWith('.css'))
             ? 'app.css'

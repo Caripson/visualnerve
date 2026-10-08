@@ -1,10 +1,9 @@
-import { execFileSync } from 'node:child_process';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { expect, test, type APIRequestContext, type Page } from './fixtures';
 import type { Graph } from '../../src/model/types';
 import { createKioskModel } from '../../src/simulation/examples';
-import { browserLaunchOptions } from '../../playwright.config';
+import { captureAppearancePair } from './capture-appearance';
 
 // Opt in explicitly: normal CI validates the guide without rewriting checked-in images.
 test.skip(
@@ -12,30 +11,13 @@ test.skip(
   'Set VN_CAPTURE_HELP=1 to refresh real UI screenshots.',
 );
 test.use({
-  viewport: { width: 1280, height: 900 },
+  viewport: { width: 1440, height: 900 },
   colorScheme: 'light',
-  launchOptions: {
-    ...browserLaunchOptions,
-    args: [
-      ...browserLaunchOptions.args,
-      '--use-gl=angle',
-      '--use-angle=swiftshader',
-      '--enable-unsafe-swiftshader',
-    ],
-  },
 });
 
 const output = resolve('../hugo/static/help/images');
 async function screenshot(page: Page, name: string, locator?: ReturnType<Page['locator']>) {
-  await mkdir(output, { recursive: true });
-  const image = await (locator ?? page).screenshot({ animations: 'disabled' });
-  const png = resolve(output, `${name}.png`),
-    webp = resolve(output, `${name}.webp`);
-  await writeFile(png, image);
-  execFileSync('cwebp', ['-lossless', '-m', '6', '-quiet', png, '-o', webp]);
-  const { unlink } = await import('node:fs/promises');
-  await unlink(png);
-  console.log(`${name}.webp ${image.readUInt32BE(16)}×${image.readUInt32BE(20)}`);
+  await captureAppearancePair(locator ?? page, output, name);
 }
 const saved = (page: Page) =>
   expect(page.locator('.document-actions .save-status')).toHaveText('Saved');
@@ -146,7 +128,7 @@ test('capture workspace, navigation, spatial view and walkthrough', async ({ pag
   await page.getByRole('button', { name: 'Fit diagram', exact: true }).click();
   await page.waitForTimeout(400);
   await screenshot(page, 'mobile-editor');
-  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByLabel('Layout direction').selectOption('DOWN');
   await page.getByRole('button', { name: 'Auto layout', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Auto layout', exact: true })).toBeEnabled();
@@ -240,6 +222,8 @@ test('capture export, app handoff and local settings', async ({ page, request })
   await page.getByRole('button', { name: 'Export', exact: true }).click();
   await page.getByLabel('Export format').selectOption('pdf');
   await screenshot(page, 'export', page.getByRole('dialog', { name: 'Export diagram' }));
+  await page.getByLabel('Export format').selectOption('svg');
+  await screenshot(page, 'export-svg', page.getByRole('dialog', { name: 'Export diagram' }));
   await close(page);
   await page.getByRole('button', { name: 'Build with Lovable', exact: true }).click();
   const brief = page.getByRole('dialog', { name: 'Build with Lovable' });

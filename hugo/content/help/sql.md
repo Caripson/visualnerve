@@ -159,7 +159,7 @@ The default file or pasted UTF-8 script limit is **50 MB**. **Settings → Impor
 
 Warnings are bounded to 100, and preview/card summaries disclose further entries. Graphs over 300 objects start in a predictable grid; **Auto layout** remains available.
 
-PNG/PDF show native summaries, connections and visible drawing. **Build with Lovable** includes recognized schema fields or query structure through typed metadata. It preserves missing definitions and uncertainty; a query alone does not define screens or business workflows. Review the exact prompt and add your app instructions.
+PNG/PDF/SVG show native summaries, connections and visible drawing. **Build with Lovable** includes recognized schema fields or query structure through typed metadata. It preserves missing definitions and uncertainty; a query alone does not define screens or business workflows. Review the exact prompt and add your app instructions.
 
 The optional [API/MCP integration](/help/api-mcp/) uses the same browser worker. Preview is available with read-only access; creating a diagram requires write access. Its 32 MiB transport envelope remains unchanged when you raise the local file limit.
 

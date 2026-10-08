@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 940" fill="none">
+  <defs><linearGradient id="rim" x1="56" y1="16" x2="1384" y2="866" gradientUnits="userSpaceOnUse"><stop stop-color="#858d93"/><stop offset=".5" stop-color="#2c3339"/><stop offset="1" stop-color="#747f86"/></linearGradient><linearGradient id="base" x1="720" y1="865" x2="720" y2="940" gradientUnits="userSpaceOnUse"><stop stop-color="#e6e9eb"/><stop offset=".5" stop-color="#bcc2c6"/><stop offset="1" stop-color="#818b91"/></linearGradient></defs>
+  <path fill="url(#rim)" fill-rule="evenodd" d="M80 16H1360Q1384 16 1384 40V866H56V40Q56 16 80 16ZM78 32Q70 32 70 40V836.5Q70 844.5 78 844.5H1362Q1370 844.5 1370 836.5V40Q1370 32 1362 32Z"/>
+  <circle cx="720" cy="24" r="3" fill="#8a9aa8"/>
+  <path d="M10 866H1430V900Q1430 924 1406 929L1310 938H130L34 929Q10 924 10 900Z" fill="url(#base)"/>
+  <path d="M580 866H860V871Q860 881 850 881H590Q580 881 580 871Z" fill="#929da4"/>
+  <path d="M18 901H1422" stroke="#eef0f1" stroke-opacity=".6" stroke-width="2"/>
+</svg>

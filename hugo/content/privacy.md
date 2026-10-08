@@ -40,7 +40,7 @@ Private browsing, clearing site data, resetting a profile, browser eviction or d
 
 **Settings → Data & Privacy → Export all data** downloads a complete workspace backup. It includes diagrams, connections, owners, portable preferences, templates, datasets, supported simulation content and history. It excludes storage acceptance, integration tokens/grants, local identity and the browser's import-size preference.
 
-You choose where to keep or share that file. Visual Nerve does not upload it or create an automatic cloud backup. Native diagram JSON is a separate restorable copy of one diagram; PNG/PDF and Markdown serve different sharing purposes.
+You choose where to keep or share that file. Visual Nerve does not upload it or create an automatic cloud backup. Native diagram JSON is a separate restorable copy of one diagram; PNG/PDF/SVG and Markdown serve different sharing purposes.
 
 **Restore backup** previews Merge or Replace. Replace requires confirmation and disables imported integration access; restore does not accept storage or grant tools access on your behalf. Invalid data rolls back instead of leaving a partial workspace.
 

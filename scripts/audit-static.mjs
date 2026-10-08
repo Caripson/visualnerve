@@ -1,7 +1,7 @@
 import { readdirSync, lstatSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 const helpGuides = ['getting-started', 'editing', 'layouts', '3d', 'csv', 'connected-data', 'sql', 'code', 'diagram-import', 'understanding', 'presentations', 'simulation', 'sharing', 'settings', 'api-mcp', 'troubleshooting'];
-const helpScreenshots = ['new-diagram', 'editor', 'mobile-editor', 'layouts', 'spatial', 'csv-import', 'csv-evidence', 'connected-data', 'data-quality', 'source-refresh', 'sql-query', 'sql-schema', 'code-cobol', 'code-project', 'code-project-zip', 'diagram-import', 'overview', 'history', 'player', 'player-compact', 'storyboard', 'simulation', 'process-setup', 'process-subprocess-setup', 'process-hierarchy', 'process-drilldown', 'node-quick-add', 'simulation-traffic', 'simulation-assumptions', 'simulation-compare', 'export', 'lovable', 'settings', 'backup', 'mcp-settings'];
+const helpScreenshots = ['new-diagram', 'editor', 'mobile-editor', 'layouts', 'spatial', 'csv-import', 'csv-evidence', 'connected-data', 'data-quality', 'source-refresh', 'sql-query', 'sql-schema', 'code-cobol', 'code-project', 'code-project-zip', 'project-file-limit', 'diagram-import', 'overview', 'history', 'player', 'player-compact', 'storyboard', 'simulation', 'process-setup', 'process-subprocess-setup', 'process-hierarchy', 'process-drilldown', 'node-quick-add', 'simulation-traffic', 'simulation-assumptions', 'simulation-compare', 'export', 'export-svg', 'lovable', 'settings', 'backup', 'mcp-settings'];
 const productPages = ['app', 'features', 'use-cases', 'process-simulator', 'mcp', 'developers', 'security'];
 export function auditStatic(directory) {
   const files = [];
@@ -14,11 +14,12 @@ export function auditStatic(directory) {
       const allowed = ['index.html', 'error.html', 'sw.js', 'appearance.js', 'sitemap.xml', 'openapi.yaml', 'help/index.html', 'privacy/index.html', 'license/index.html', 'api/docs/index.html', 'api/docs/docs.css', 'api/docs/docs.js'].includes(path)
         || ['help/help.css', 'help/help.js', 'help/index.json'].includes(path)
         || helpGuides.some(guide => path === `help/${guide}/index.html`)
-        || helpScreenshots.some(name => path === `help/images/${name}.webp`)
+        || helpScreenshots.some(name => path === `help/images/${name}.webp` || path === `help/images/${name}-dark.webp`)
         || path === 'robots.txt'
         || productPages.some(name => path === `${name}/index.html`)
         || ['site/site.css', 'site/syntax.css', 'site/captures.css', 'site/site.js', 'site/mark.svg', 'site/consent.css', 'site/consent.js', 'site/vendor/klaro.js', 'site/vendor/klaro.css', 'site/vendor/klaro-LICENSE', 'site/vendor/preact-LICENSE', 'site/vendor/core-js-LICENSE', 'site/vendor/classnames-LICENSE'].includes(path)
         || ['phone', 'tablet', 'desktop', 'laptop', 'social'].some(name => path === `site/images/${name}.webp`)
+        || ['phone', 'tablet', 'desktop', 'laptop'].some(name => path === `site/images/${name}-dark.webp` || path === `site/devices/${name}.svg`)
         || /^editor\/(?:app\.(?:js|css)|assets\/[\w.-]+\.(?:js|css|svg|png|woff2?))$/.test(path)
         || /^editor\/speech\/(?:ort-wasm(?:-simd)?\.wasm|piper_phonemize\.(?:wasm|data))$/.test(path)
         || /^swagger\/swagger-ui(?:-bundle\.js|\.css)$/.test(path)

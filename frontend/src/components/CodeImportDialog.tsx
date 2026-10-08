@@ -8,6 +8,8 @@ import { parseCodeAsync } from '../code/client';
 import { codeLanguages } from '../code/catalog';
 import { readProjectArchive } from '../code/project/client';
 import type { ProjectArchiveProgress } from '../code/project/types';
+import { currentProjectSourceFileLimit } from '../code/project/preference';
+import { currentImportLimitBytes } from '../imports/preference';
 import { attachProjectAnalysis, type ProjectArchiveSummary } from '../code/project/analysis';
 import { ProjectImportStatus } from './ProjectImportStatus';
 import { defaultCodeMode } from '../code/input';
@@ -84,6 +86,8 @@ export function CodeImportDialog({
           if (folder || selected.length !== 1) throw new Error('Choose one ZIP project at a time.');
           const archive = await readProjectArchive(selected[0], {
             signal: pending.signal,
+            fileLimit: currentProjectSourceFileLimit(),
+            byteLimit: currentImportLimitBytes(),
             onProgress: (value) => {
               if (mounted.current && current === generation.current) setProgress(value);
             },
@@ -96,6 +100,7 @@ export function CodeImportDialog({
             name: archive.name,
             ignored: archive.ignored,
             expandedBytes: archive.expandedBytes,
+            fileLimit: archive.fileLimit,
           });
           return;
         }
@@ -160,7 +165,7 @@ export function CodeImportDialog({
           mode,
           ...(focus.trim() ? { focus: focus.trim() } : {}),
         },
-        { signal: pending.signal },
+        { signal: pending.signal, ...(project ? { fileLimit: project.fileLimit } : {}) },
       );
       if (!mounted.current || current !== generation.current || pending.signal.aborted) return;
       if (!result.graph.nodes.length)
@@ -227,6 +232,7 @@ export function CodeImportDialog({
           text={text}
           disabled={creating}
           loadNote={loadNote}
+          projectFileLimit={project?.fileLimit}
           load={load}
           changeFileLanguage={(index, language) => {
             invalidate();

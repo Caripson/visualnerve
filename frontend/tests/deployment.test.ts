@@ -86,6 +86,22 @@ describe('static delivery and canonical storage origin', () => {
         '/* shared appearance-aware highlighting */',
       );
       expect(auditStatic(directory)).toHaveLength(8);
+      mkdirSync(join(directory, 'site', 'images'));
+      mkdirSync(join(directory, 'site', 'devices'));
+      mkdirSync(join(directory, 'help', 'images'), { recursive: true });
+      for (const file of [
+        'site/images/desktop-dark.webp',
+        'site/devices/desktop.svg',
+        'help/images/simulation-dark.webp',
+      ])
+        writeFileSync(join(directory, file), 'public capture');
+      expect(auditStatic(directory)).toHaveLength(11);
+      writeFileSync(
+        join(directory, 'help/images/private-workspace-dark.webp'),
+        'unapproved capture',
+      );
+      expect(() => auditStatic(directory)).toThrow('Unexpected file');
+      rmSync(join(directory, 'help/images/private-workspace-dark.webp'));
       rmSync(join(directory, 'error.html'));
       expect(() => auditStatic(directory)).toThrow('Static bundle is missing error.html');
       writeFileSync(join(directory, 'error.html'), 'static error page');

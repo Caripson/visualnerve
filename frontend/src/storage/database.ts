@@ -10,6 +10,7 @@ import {
 } from '../model/types';
 import { instantiate, templates } from '../templates/templates';
 import { IMPORT_LIMIT_SETTING } from '../imports/limits';
+import { PROJECT_SOURCE_FILE_LIMIT_SETTING } from '../code/project/limits';
 import type {
   HistoryBackup,
   HistoryContent,
@@ -284,6 +285,7 @@ export class WorkspaceDatabase extends Dexie {
               'last-export',
               'backup-nudge-dismissed',
               IMPORT_LIMIT_SETTING,
+              PROJECT_SOURCE_FILE_LIMIT_SETTING,
             ].includes(setting.key),
         ),
         templates: await this.templates.toArray(),

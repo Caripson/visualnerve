@@ -1,0 +1,5 @@
+{{- $paired := and (or (hasPrefix .src "/help/images/") (hasPrefix .src "/site/images/")) (ne .src "/site/images/social.webp") -}}
+{{- $dark := replaceRE "\\.webp$" "-dark.webp" .src -}}
+{{- if $paired -}}<picture data-appearance-image><source srcset="{{ $dark | safeURL }}" media="(prefers-color-scheme: dark)">{{- end -}}
+<img src="{{ .src | safeURL }}" alt="{{ .alt }}" loading="{{ .loading | default "lazy" }}" decoding="async"{{ with .priority }} fetchpriority="{{ . }}"{{ end }}{{ if and .width .height }} width="{{ .width }}" height="{{ .height }}"{{ end }}>
+{{- if $paired -}}</picture>{{- end -}}

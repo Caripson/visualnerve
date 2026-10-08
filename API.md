@@ -57,6 +57,7 @@ Use `visual_nerve_request` for graph commands. HTTP documentation paths `/api/do
 | POST                 | /sql/preview                   | Analyze SELECT/WITH or DDL locally; return graph/counts/warnings without saving                   |
 | POST                 | /sql/diagrams                  | Analyze SQL, save transactionally and open the diagram; return complete Graph                     |
 | GET                  | /code/languages                | List 50 code language IDs plus Markdown, extensions and capabilities                                             |
+| GET                  | /code/capabilities             | Discover independent source-file, archive, byte, graph and analysis limits                                      |
 | POST                 | /code/preview                  | Analyze source files locally; return structural graph/counts/warnings without saving              |
 | POST                 | /code/project/preview          | Scan base64 ZIP and preview file/folder relationships; no save                                     |
 | POST                 | /code/project/diagrams         | Save/open the same project analysis with write access                                              |
@@ -73,12 +74,14 @@ Use `visual_nerve_request` for graph commands. HTTP documentation paths `/api/do
 | POST                 | /diagrams/{id}/bulk            | Transactional population and external-ID upsert                                                   |
 | PUT                  | /diagrams/{id}/graph           | Atomic full graph replacement using baseVersion                                                   |
 | POST                 | /import                        | JSON, Markdown, CSV or one selected draw.io/Visio page, one transaction                           |
-| POST                 | /export                        | Complete JSON or semantic Markdown                                                                |
+| POST                 | /export                        | Complete JSON, semantic Markdown or native vector SVG                                              |
 | GET                  | /search?q=...                  | Global results with diagramId and optional nodeId                                                 |
 | GET                  | /workspace/export              | Complete IndexedDB workspace snapshot                                                             |
 | POST                 | /workspace/import              | Restore all workspace tables in one transaction                                                   |
 | GET                  | /settings/import-file-limit-mb | Read the effective local import limit; missing/invalid stored values return 50; read-only allowed |
 | PUT                  | /settings/import-file-limit-mb | Save this browser’s import limit as an integer from 50 to 1024 MiB; write access required         |
+| GET                  | /settings/project-source-file-limit | Read the effective ZIP source-file limit, default 500; read-only allowed                                    |
+| PUT                  | /settings/project-source-file-limit | Save this browser's ZIP source-file limit from 500 to 10,000; write access required                           |
 
 Creates return 201 and an entity (import returns Graph). Bulk/replacement return 200 and Graph. Deletes return 204. Errors are `{ "error": "message" }`: 400 malformed JSON, 401 token missing/wrong, 403 origin/host rejected, storage not accepted or read-only mutation denied, 404 missing entity, 409 stale version or duplicate identity, 413 local history capacity/quota, 422 validation, 428 missing update version, 503 no connected browser and 504 browser timeout. No partially committed graph remains after validation fails. Requests are limited to 32 MiB. All integration requests with a configured VISUAL_NERVE_BRIDGE_TOKEN need `Authorization: Bearer TOKEN`.
 
@@ -91,6 +94,12 @@ All local file imports use a default limit of 50 MiB. **Settings → Import file
 The HTTP JSON and WebSocket request/response envelopes remain **32 MiB**. Increasing the local import preference does not raise these transport limits. Escaping, base64 and response graph size can require smaller integration inputs than the selected local file limit.
 
 `GET /settings/import-file-limit-mb` permits **Read only** and returns the effective limit as a JSON integer from 50 through 1024. An absent or invalid saved value returns 50.
+
+## ZIP project source-file preference
+
+`GET /settings/project-source-file-limit` returns this browser's effective integer count, defaulting to 500 for missing/invalid saved values. Read only access is allowed. `PUT` on the same path accepts only `{ "value": 1000 }`, requires Read + write, and validates whole numbers from 500 through 10,000 (422 for invalid input). `GET /code/capabilities` discovers this setting's name/default/minimum/maximum separately from the byte budget and unchanged archive-entry/graph/symbol/connection/line/time limits.
+
+Only ZIP projects with up to 500 analyzed source files are supported and guaranteed. Higher limits are experimental and may be slow or fail. The browser captures the authoritative saved count once per ZIP job; source payloads cannot override it. Preview and saved `codeAnalysis.project.sourceFileLimit` expose that captured budget. Non-ZIP source/folder imports remain limited to 500 files. The archive's 10,000 total entries include ignored files and directory records, so fewer source files may fit. Prefer folders mode for larger projects; file overview still cannot exceed 5,000 diagram objects. The preference is excluded from backups and ignored during Merge/Replace, preserving the destination's setting. Existing larger diagrams remain valid after resetting it to 500.
 
 ## Numbered diagram presentations
 
@@ -224,7 +233,11 @@ Send to `POST /diagrams/DIAGRAM_UUID/bulk`. `parentExternalId` resolves a node h
 
 ## Import/export
 
-`POST /export` accepts `{ "diagramId": "UUID", "format": "json" }` or `markdown`. JSON returns the canonical exchange document. Markdown returns a JSON string; browser download uses text/markdown. PNG/PDF render locally in the editor with React Flow, html-to-image and jsPDF; the Go API does not pretend to rasterize the canvas.
+`POST /export` accepts `{ "diagramId": "UUID", "format": "json" | "markdown" | "svg" }` with Read only access. JSON returns the canonical exchange document. Markdown and SVG return a JSON string; save SVG text as an `.svg` file with MIME `image/svg+xml`. SVG adds optional `scope: "complete" | "viewport" | "selected"` (default `complete`). Selected scope requires `nodeIds` with 1–20,000 unique existing node UUIDs; other scopes reject `nodeIds`, and area options are rejected for JSON/Markdown. Unknown formats/options return 422. Rendering never opens or changes the diagram.
+
+SVG uses the canonical 2D layout, including native vector text, shapes, icons, connections, arrow markers and visible pen strokes, even when the UI is in 3D. Viewport uses saved 2D pan/zoom and the current browser canvas size, or fits the diagram when no usable saved viewport exists. Fonts are referenced by name rather than embedded; shadows and CSS decoration may be simplified. The XML contains no images, `foreignObject`, scripts or active external links. PNG/PDF render locally in the editor with React Flow, html-to-image and jsPDF and remain UI downloads.
+
+SVG limits are 100,000 rendered elements, 250,000 source text characters, 16 MiB of XML and 16,777,216 pixels per dimension; larger exports fail explicitly and should use selected scope. Clipped text can remain readable in XML, so review the source before sharing. Illegal XML controls and unpaired surrogates are replaced with U+FFFD.
 
 `POST /import` accepts `{ "format": "json", "data": GRAPH_OBJECT }`, or `{ "format": "markdown", "data": "# Root\n## Child" }`, or CSV text. JSON remaps colliding IDs and their internal references together, preserving graph information. Owners with unchanged identity/content are reused. See [EXPORT_FORMAT.md](EXPORT_FORMAT.md) for exchange details. Dates must be valid `YYYY-MM-DD`; user URLs are absolute HTTP(S); entity IDs are UUIDs.
 

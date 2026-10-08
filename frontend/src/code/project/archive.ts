@@ -1,6 +1,6 @@
 import { Inflate } from 'fflate';
 import { detectProjectLanguage } from '../catalog';
-import { codeLimits } from '../types';
+import { checkedProjectSourceFileLimit } from './limits';
 import {
   assertImportBytes,
   checkedImportLimitBytes,
@@ -39,12 +39,14 @@ export class ProjectArchive {
   readonly expandedBytes: number;
   private actualBytes = 0;
   private readonly limit: number;
+  private readonly fileLimit: number;
 
   constructor(
     private readonly bytes: Uint8Array,
     private readonly options: ProjectArchiveOptions = {},
   ) {
     this.limit = checkedImportLimitBytes(options.byteLimit ?? DEFAULT_IMPORT_LIMIT_BYTES);
+    this.fileLimit = checkedProjectSourceFileLimit(options.fileLimit);
     this.checkCancelled();
     assertImportBytes(bytes.length, this.limit, 'Project ZIP');
     if (bytes.length < 22) throw invalid();
@@ -267,6 +269,7 @@ export class ProjectArchive {
       files: [],
       ignored,
       expandedBytes: this.expandedBytes,
+      fileLimit: this.fileLimit,
     };
     const prefix = this.entries[0]?.name.split('/')[0];
     const stripRoot = Boolean(
@@ -297,9 +300,9 @@ export class ProjectArchive {
             const language = detectProjectLanguage(path, content);
             if (!language && !path.split('/').at(-1)?.includes('.')) reason = 'unsupported';
             else {
-              if (result.files.length >= codeLimits.files)
+              if (result.files.length >= this.fileLimit)
                 throw new Error(
-                  'Project contains more than 500 analyzable files. Import a smaller archive or exclude dependencies and generated output.',
+                  `Project contains more than ${this.fileLimit.toLocaleString('en-US')} analyzable files. Increase the ZIP project source-file limit in Settings or import a smaller archive. Other safety limits still apply.`,
                 );
               result.files.push({ path, content, ...(language ? { language } : {}) });
             }

@@ -9,8 +9,8 @@
     "build": "tsc -b && vite build",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "format": "prettier --write src tests vite.config.ts playwright.config.ts",
-    "format:check": "prettier --check src tests vite.config.ts playwright.config.ts"
+    "format": "prettier --write src tests build vite.config.ts playwright.config.ts",
+    "format:check": "prettier --check src tests build vite.config.ts playwright.config.ts"
   },
   "dependencies": {
     "@diffusionstudio/piper-wasm": "1.0.0",

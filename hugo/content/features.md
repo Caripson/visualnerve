@@ -80,7 +80,7 @@ Organize larger models into main processes and nested subprocesses. Open a conge
 
 ## Keep and share the right kind of copy
 
-PNG and PDF share the 2D visual view. Markdown shares a semantic outline. Native JSON preserves a diagram, and a complete workspace backup includes the wider local data needed for recovery.
+PNG, PDF and SVG share the 2D visual view. SVG preserves vector text and geometry for scaling or editing in another application. Markdown shares a semantic outline. Native JSON preserves a diagram, and a complete workspace backup includes the wider local data needed for recovery.
 
 Build with Lovable prepares a reviewed app specification and prompt locally. Opening its dialog sends nothing; choosing Open in Lovable explicitly shares the reviewed text. Review descriptions, SQL literals and other included detail before that handoff.
 

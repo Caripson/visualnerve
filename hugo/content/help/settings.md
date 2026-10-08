@@ -4,7 +4,7 @@ summary: "Control appearance, imports, voices, storage and integration permissio
 weight: 14
 ---
 
-Open **Settings** on desktop or **Diagram actions → Settings** on a phone. Settings applies to this browser's workspace. Some preferences update immediately; import size, voice selection and connection details have their own save buttons.
+Open **Settings** on desktop or **Diagram actions → Settings** on a phone. Settings applies to this browser's workspace. Some preferences update immediately; import size, ZIP source-file count, voice selection and connection details have their own save buttons.
 
 ![Settings showing Appearance and the local Data & Privacy controls.](/help/images/settings.webp "Appearance follows the system by default; local-data controls explain where the workspace is saved.")
 
@@ -47,9 +47,9 @@ A reminder appears after ten local diagrams when a complete export has not been 
 
 The backup includes all projects, objects, connections, owners, custom templates, portable preferences, CSV sources and analysis settings. Named local history and applicable simulator models and retained run/replay archives are included.
 
-It excludes integration credentials/tokens and grants, storage acceptance, local identity, last selection and the browser-local import-size limit. Cached app files, downloaded voice binaries, generated narration and temporary video buffers are also excluded. A restored voice preference may therefore require its model to download on first use.
+It excludes integration credentials/tokens and grants, storage acceptance, local identity, last selection and the browser-local import-size and ZIP source-file limits. Cached app files, downloaded voice binaries, generated narration and temporary video buffers are also excluded. A restored voice preference may therefore require its model to download on first use.
 
-Single-diagram JSON and PNG/PDF exports are separate choices. [Sharing and exports](/help/sharing/) explains which file to choose.
+Single-diagram JSON and PNG/PDF/SVG exports are separate choices. [Sharing and exports](/help/sharing/) explains which file to choose.
 
 ## Restore a backup
 
@@ -66,7 +66,7 @@ Single-diagram JSON and PNG/PDF exports are separate choices. [Sharing and expor
 | **Merge with existing data** | Keeps current diagrams and adds imported work; conflicting identities receive new IDs with internal references remapped |
 | **Replace all local data**   | Replaces current diagrams, owners, templates and portable preferences; requires confirmation and leaves MCP access Off  |
 
-Both modes preserve the destination browser's own storage acceptance and import-file limit. Backups cannot accept storage or grant external tools permission for you. Merge keeps destination connection choices; Replace starts a new local workspace identity and disables integration access.
+Both modes preserve the destination browser's own storage acceptance and import limits. Backups cannot accept storage or grant external tools permission for you. Merge keeps destination connection choices; Replace starts a new local workspace identity and disables integration access.
 
 Malformed or unsupported backup data rolls back the operation instead of partially replacing tables. A single-diagram JSON file is imported as a diagram, not as a full workspace backup. To move between devices, export on the original browser, transfer the file yourself, accept local storage on the destination and restore there.
 
@@ -95,6 +95,20 @@ Under **Import file size**, set **Maximum import file size (MB)** to a whole num
 This preference stays in the destination browser and is excluded from backup/restore. It applies to local file imports and relevant pasted inputs; raising it does not remove CSV row/cell limits, code object/line limits, SQL topology limits or archive expansion limits.
 
 API/MCP JSON and WebSocket envelopes remain **32 MiB**, independently of the local file-size preference. Base64 or escaped text makes a transferred payload larger than its raw file. For detailed format bounds, see [CSV](/help/csv/), [SQL](/help/sql/), [code](/help/code/) and [diagram-file import](/help/diagram-import/).
+
+## ZIP project source-file limit
+
+A ZIP project can contain many small files even when its total size is small. **Settings → ZIP project source-file limit → Maximum analyzed source files in a ZIP project** controls this separate count. Enter a whole number from **500 to 10,000**, then choose **Save ZIP file limit**. The supported default is **500**.
+
+![The ZIP project source-file limit set to 1,000 in Settings, with its experimental-project warning.](/help/images/project-file-limit.webp "The source-file count is independent of the import size and archive-entry limits.")
+
+Only ZIP projects with up to 500 analyzed source files are supported and guaranteed. Raising the limit is experimental: larger projects may be slow or fail. Settings and the import dialog show this warning whenever a higher limit is active. Ordinary source-file and source-folder imports still allow 500 files.
+
+The archive still allows at most **10,000 entries**, including ignored files and explicit directory records. Consequently, fewer than 10,000 usable source files may fit. Byte limits are independent, and limits on lines, objects, symbols, connections and analysis time still apply. Prefer **Folder relationships** for large projects: a File overview still cannot exceed 5,000 diagram objects.
+
+Each ZIP import captures the limit when scanning starts. Change Settings before loading the archive again to use a different limit. The import summary shows the captured count. Resetting Settings to 500 does not invalidate a saved larger diagram. This preference belongs to the current browser, is excluded from workspace backups, and is preserved when restoring into this browser.
+
+API and MCP clients discover the independent limits through `GET /code/capabilities`, read this browser's effective value through `GET /settings/project-source-file-limit`, and change it with Read + write access through `PUT /settings/project-source-file-limit` with `{ "value": 1000 }`. Archive request payloads cannot override the setting.
 
 ## Presentation voice
 

@@ -6,7 +6,10 @@ import { useEditor } from '../src/state/editor';
 import { blankGraph, type Graph } from '../src/model/types';
 const request = vi.hoisted(() => vi.fn(async () => ({ open: false })));
 const videoBusy = vi.hoisted(() => vi.fn(() => false));
-vi.mock('../src/presentation/service', () => ({ presentationRequest: request }));
+vi.mock('../src/presentation/commands', () => ({
+  presentationRequest: request,
+  isVideoExporting: videoBusy,
+}));
 vi.mock('../src/presentation/video-service', () => ({ isVideoExporting: videoBusy }));
 let db: WorkspaceDatabase, repo: Repository, workspace: Workspace, graph: Graph;
 beforeEach(async () => {

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 1460" fill="none">
+  <defs><linearGradient id="rim" x1="0" y1="0" x2="1100" y2="1460" gradientUnits="userSpaceOnUse"><stop stop-color="#adb5bc"/><stop offset=".25" stop-color="#525c65"/><stop offset=".65" stop-color="#20272e"/><stop offset="1" stop-color="#89969f"/></linearGradient></defs>
+  <path fill="url(#rim)" fill-rule="evenodd" d="M60 0H1040Q1100 0 1100 60V1400Q1100 1460 1040 1460H60Q0 1460 0 1400V60Q0 0 60 0ZM62 40Q32 40 32 70V1392.0234375Q32 1422.0234375 62 1422.0234375H1038Q1068 1422.0234375 1068 1392.0234375V70Q1068 40 1038 40Z"/>
+  <rect x="4" y="4" width="1092" height="1452" rx="57" stroke="#c4cbd1" stroke-opacity=".5" stroke-width="2"/>
+  <circle cx="550" cy="20" r="5" fill="#8196aa"/>
+</svg>

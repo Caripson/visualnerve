@@ -81,6 +81,24 @@ Documentation discovery does not require a connected browser or content grant. W
 
 After updating the local executable, restart it and reconnect the MCP client to refresh discovered tools. Updating public app files is separate from updating this local process.
 
+## Export a vector diagram through MCP
+
+Use the normal export endpoint with `format: "svg"`:
+
+```json
+{
+  "path": "/export",
+  "method": "POST",
+  "data": {
+    "diagramId": "YOUR_DIAGRAM_ID",
+    "format": "svg",
+    "scope": "complete"
+  }
+}
+```
+
+The response is an SVG XML string, which the client can save as a `.svg` file. Read-only access is sufficient. The connected browser renders the same 2D scene as the UI export; the bridge does not create a separate copy of the model. For `scope: "selected"`, include `nodeIds` containing the saved node UUIDs. `scope: "viewport"` uses the saved 2D viewport and the browser's canvas size, including while exploring in 3D. [Sharing and exports](/help/sharing/) explains appearance, font handling and what visual files preserve.
+
 ## Send a workspace command
 
 Use **visual_nerve_request** with paths that omit `/api/v1`:
@@ -184,7 +202,7 @@ Read the returned graph's `diagram.id` and `diagram.version`. Replace `DIAGRAM_U
 
 `baseVersion` is the actual integer version from your latest read. Stable `externalId` values support repeatable upsert; they are distinct from local UUIDs. Ordinary node coordinates and dimensions remain useful for 2D. Add descriptions for explanation and use validated spatial metadata only when independent depth is needed.
 
-3D is relief of the same styled cards and relationships, not a separate 3D-model format. Keep a readable 2D layout for toggling back and PNG/PDF. [3D diagrams](/help/3d/) explains placement, camera controls and native appearance.
+3D is relief of the same styled cards and relationships, not a separate 3D-model format. Keep a readable 2D layout for toggling back and PNG/PDF/SVG. [3D diagrams](/help/3d/) explains placement, camera controls and native appearance.
 
 ## Inspect and change semantic simulation properties
 

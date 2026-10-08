@@ -1,3 +1,4 @@
+import { parseDiagramAsync } from '../imports/diagram/client';
 import type { Graph } from '../model/types';
 import { StorageError } from '../model/validation';
 import type { AnalysisCommandOptions } from './analysis-commands';
@@ -10,7 +11,6 @@ export async function diagramFileCommand(
   save: (graph: Graph) => Promise<Graph>,
 ): Promise<unknown> {
   const input = diagramFileInput(payload, importing, options.byteLimit);
-  const { parseDiagramAsync } = await import('../imports/diagram/client');
   let result;
   try {
     result = await parseDiagramAsync(

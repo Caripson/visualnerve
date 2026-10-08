@@ -1,6 +1,8 @@
 import { assertImportBytes, checkedImportLimitBytes } from '../../imports/limits';
 import { currentImportLimitBytes } from '../../imports/preference';
-import { validateProjectArchiveInput } from './input';
+import { decodeProjectArchive, validateProjectArchiveInput } from './input';
+import { currentProjectSourceFileLimit } from './preference';
+import { checkedProjectSourceFileLimit } from './limits';
 import {
   projectArchiveLimits,
   type ProjectArchiveInput,
@@ -18,8 +20,11 @@ export async function parseProjectArchiveAsync(
 ): Promise<ProjectArchiveResult> {
   if (options.signal?.aborted) throw aborted();
   const byteLimit = checkedImportLimitBytes(options.byteLimit ?? currentImportLimitBytes());
+  const fileLimit = checkedProjectSourceFileLimit(
+    options.fileLimit ?? currentProjectSourceFileLimit(),
+  );
   validateProjectArchiveInput(input, byteLimit);
-  return runArchiveWorker({ input }, { ...options, byteLimit });
+  return runArchiveWorker({ input }, { ...options, byteLimit, fileLimit });
 }
 
 export async function readProjectArchive(
@@ -28,6 +33,9 @@ export async function readProjectArchive(
 ): Promise<ProjectArchiveResult> {
   if (options.signal?.aborted) throw aborted();
   const byteLimit = checkedImportLimitBytes(options.byteLimit ?? currentImportLimitBytes());
+  const fileLimit = checkedProjectSourceFileLimit(
+    options.fileLimit ?? currentProjectSourceFileLimit(),
+  );
   if (!/\.zip$/i.test(file.name)) throw new Error('Choose a .zip source or Markdown project.');
   assertImportBytes(file.size, byteLimit, 'Project ZIP');
   const bytes = new Uint8Array(await readFile(file, options.signal));
@@ -35,7 +43,7 @@ export async function readProjectArchive(
   if (options.signal?.aborted) throw aborted();
   return runArchiveWorker(
     { bytes, name: file.name.replace(/\.zip$/i, '') || 'Imported project' },
-    { ...options, byteLimit },
+    { ...options, byteLimit, fileLimit },
   );
 }
 
@@ -66,11 +74,10 @@ async function runArchiveWorker(
   request: ArchiveRequest,
   options: ProjectArchiveOptions,
 ): Promise<ProjectArchiveResult> {
-  const { signal, byteLimit, onProgress } = options;
+  const { signal, byteLimit, fileLimit, onProgress } = options;
   if (signal?.aborted) throw aborted();
   if (typeof Worker === 'undefined') {
     const { loadProjectArchive } = await import('./archive');
-    const { decodeProjectArchive } = await import('./input');
     if (signal?.aborted) throw aborted();
     const bytes =
       'bytes' in request ? request.bytes : decodeProjectArchive(request.input, byteLimit);
@@ -133,7 +140,7 @@ async function runArchiveWorker(
     if (signal?.aborted) return cancel();
     try {
       worker.postMessage(
-        { ...request, byteLimit },
+        { ...request, byteLimit, fileLimit },
         'bytes' in request ? [request.bytes.buffer] : [],
       );
     } catch (error) {

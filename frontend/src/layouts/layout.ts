@@ -1,5 +1,5 @@
 import type { ElkNode } from 'elkjs/lib/elk-api';
-import workerUrl from 'elkjs/lib/elk-worker.min.js?url';
+import { layoutWithElk } from './elk';
 import type { Graph, GraphNode, TimelineScale } from '../model/types';
 import { balancedMindmap } from '../mindmap/tree';
 export type Direction = 'DOWN' | 'RIGHT' | 'LEFT' | 'UP' | 'RADIAL' | 'BALANCED';
@@ -11,13 +11,6 @@ export async function layoutGraph(
   if (!graph.nodes.length) return new Map();
   if (direction === 'BALANCED') return balancedMindmap(graph.nodes);
   if (direction === 'RADIAL') return radial(graph.nodes);
-  const ELK =
-    typeof Worker === 'undefined'
-      ? (await import('elkjs/lib/elk.bundled.js')).default
-      : (await import('elkjs/lib/elk-api.js')).default;
-  const elk = new ELK(
-    typeof Worker === 'undefined' ? {} : { workerFactory: () => new Worker(workerUrl) },
-  );
   const groupIds = new Set(graph.nodes.filter((n) => n.nodeType === 'group').map((n) => n.id));
   const children = new Map<string, GraphNode[]>();
   for (const n of graph.nodes) {
@@ -36,37 +29,33 @@ export async function layoutGraph(
           }
         : {}),
     }));
-  try {
-    const result = await elk.layout({
-      id: graph.diagram.id,
-      layoutOptions: {
-        'elk.algorithm': 'layered',
-        'elk.direction': direction,
-        'elk.spacing.nodeNode': '48',
-        'elk.layered.spacing.nodeNodeBetweenLayers': '100',
-        'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
-      },
-      children: build(''),
-      edges: graph.edges.map((e) => ({
-        id: e.id,
-        sources: [e.sourceNodeId],
-        targets: [e.targetNodeId],
-      })),
-    });
-    const positions = new Map<string, Geometry>();
-    const walk = (nodes: ElkNode[], x = 0, y = 0) => {
-      for (const n of nodes) {
-        const px = x + (n.x ?? 0),
-          py = y + (n.y ?? 0);
-        positions.set(n.id, { x: px, y: py, width: n.width, height: n.height });
-        if (n.children) walk(n.children, px, py);
-      }
-    };
-    walk(result.children ?? []);
-    return positions;
-  } finally {
-    if (typeof Worker !== 'undefined') elk.terminateWorker();
-  }
+  const result = await layoutWithElk({
+    id: graph.diagram.id,
+    layoutOptions: {
+      'elk.algorithm': 'layered',
+      'elk.direction': direction,
+      'elk.spacing.nodeNode': '48',
+      'elk.layered.spacing.nodeNodeBetweenLayers': '100',
+      'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
+    },
+    children: build(''),
+    edges: graph.edges.map((e) => ({
+      id: e.id,
+      sources: [e.sourceNodeId],
+      targets: [e.targetNodeId],
+    })),
+  });
+  const positions = new Map<string, Geometry>();
+  const walk = (nodes: ElkNode[], x = 0, y = 0) => {
+    for (const n of nodes) {
+      const px = x + (n.x ?? 0),
+        py = y + (n.y ?? 0);
+      positions.set(n.id, { x: px, y: py, width: n.width, height: n.height });
+      if (n.children) walk(n.children, px, py);
+    }
+  };
+  walk(result.children ?? []);
+  return positions;
 }
 function radial(nodes: GraphNode[]): Map<string, Geometry> {
   const byId = new Map(nodes.map((n) => [n.id, n]));

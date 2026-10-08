@@ -1,7 +1,13 @@
-import { codeLanguageIds, codeLimits, type CodeFile, type CodeLanguage } from '../types';
+import { codeLanguageIds, type CodeFile, type CodeLanguage } from '../types';
+import { checkedProjectSourceFileLimit } from './limits';
 
 /** Explicit choices use the same relative paths displayed by the ZIP preview. */
-export function applyProjectLanguages(files: CodeFile[], overrides: unknown): CodeFile[] {
+export function applyProjectLanguages(
+  files: CodeFile[],
+  overrides: unknown,
+  fileLimit?: number,
+): CodeFile[] {
+  const limit = checkedProjectSourceFileLimit(fileLimit);
   if (overrides === undefined) return files;
   if (
     !overrides ||
@@ -15,8 +21,10 @@ export function applyProjectLanguages(files: CodeFile[], overrides: unknown): Co
       'Project language overrides must be an object of file paths and supported language IDs.',
     );
   const names = Object.keys(overrides);
-  if (names.length > codeLimits.files)
-    throw new Error('Choose language overrides for at most 500 project files.');
+  if (names.length > limit)
+    throw new Error(
+      `Choose language overrides for at most ${limit.toLocaleString('en-US')} project files.`,
+    );
   const paths = new Set(files.map((file) => file.path));
   const selected = new Map<string, CodeLanguage>();
   for (const path of names) {

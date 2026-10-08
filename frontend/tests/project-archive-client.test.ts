@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { strToU8, zipSync } from 'fflate';
+import { useEditor } from '../src/state/editor';
 import { parseProjectArchiveAsync, readProjectArchive } from '../src/code/project/client';
 import {
   projectArchiveLimits,
@@ -52,11 +53,13 @@ const file = (
 
 describe('project ZIP worker client lifecycle', () => {
   beforeEach(() => {
+    useEditor.setState({ projectSourceFileLimit: 500 });
     FakeWorker.instances = [];
     FakeWorker.postError = undefined;
     vi.stubGlobal('Worker', FakeWorker);
   });
   afterEach(() => {
+    useEditor.setState({ projectSourceFileLimit: 500 });
     vi.useRealTimers();
     vi.unstubAllGlobals();
   });
@@ -90,7 +93,7 @@ describe('project ZIP worker client lifecycle', () => {
     const promise = parseProjectArchiveAsync({ name: 'API project', data });
     const worker = FakeWorker.instances[0];
     expect(worker.postMessage).toHaveBeenCalledWith(
-      { input: { name: 'API project', data }, byteLimit: 50 * 1024 * 1024 },
+      { input: { name: 'API project', data }, byteLimit: 50 * 1024 * 1024, fileLimit: 500 },
       [],
     );
     worker.receive({ result });
@@ -141,6 +144,25 @@ describe('project ZIP worker client lifecycle', () => {
     complete(archive.buffer.slice(0));
     await Promise.resolve();
     expect(FakeWorker.instances).toHaveLength(0);
+  });
+
+  it('captures the saved file count before a pending file read and transfers that original budget', async () => {
+    useEditor.setState({ projectSourceFileLimit: 1000 });
+    let complete!: (value: ArrayBuffer) => void;
+    const read = vi.fn(
+      () =>
+        new Promise<ArrayBuffer>((resolve) => {
+          complete = resolve;
+        }),
+    );
+    const promise = readProjectArchive(file(read));
+    useEditor.setState({ projectSourceFileLimit: 500 });
+    complete(archive.buffer.slice(archive.byteOffset, archive.byteOffset + archive.byteLength));
+    await vi.waitFor(() => expect(FakeWorker.instances).toHaveLength(1));
+    const worker = FakeWorker.instances[0];
+    expect(worker.postMessage.mock.calls[0][0]).toMatchObject({ fileLimit: 1000 });
+    worker.receive({ result });
+    await expect(promise).resolves.toEqual(result);
   });
 
   it('rejects an already cancelled import without reading or constructing a worker', async () => {

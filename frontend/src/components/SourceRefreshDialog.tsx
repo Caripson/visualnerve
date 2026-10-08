@@ -1,3 +1,4 @@
+import { repository } from '../storage/repository';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { assertImportBytes, utf8Bytes } from '../imports/limits';
 import { currentImportLimitBytes } from '../imports/preference';
@@ -219,7 +220,6 @@ export function SourceRefreshDialog({ onClose }: { onClose: () => void }) {
         generation.current !== snapshot.generation
       )
         throw new Error('The diagram changed. Preview changes again before applying.');
-      const { repository } = await import('../storage/repository');
       await repository.history.create(snapshot.graph.diagram.id, {
         name: `Before source refresh · ${new Date().toLocaleString()}`,
         baseVersion: snapshot.graph.diagram.version,

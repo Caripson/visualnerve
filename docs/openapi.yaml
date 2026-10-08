@@ -629,7 +629,7 @@
             "type": "integer"
           },
           "fileCount": {
-            "maximum": 500,
+            "maximum": 10000,
             "minimum": 0,
             "type": "integer"
           },
@@ -696,6 +696,161 @@
         ],
         "type": "object"
       },
+      "CodeCapabilities": {
+        "additionalProperties": false,
+        "properties": {
+          "analysis": {
+            "additionalProperties": false,
+            "properties": {
+              "maximumEdges": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "maximumLineLength": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "maximumLinesPerFile": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "maximumNodes": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "maximumProjectLines": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "maximumSymbols": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "timeoutMs": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "maximumEdges",
+              "maximumLineLength",
+              "maximumLinesPerFile",
+              "maximumNodes",
+              "maximumProjectLines",
+              "maximumSymbols",
+              "timeoutMs"
+            ],
+            "type": "object"
+          },
+          "byteLimit": {
+            "additionalProperties": false,
+            "properties": {
+              "default": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "maximum": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "setting": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "default",
+              "maximum",
+              "setting"
+            ],
+            "type": "object"
+          },
+          "modes": {
+            "items": {
+              "enum": [
+                "files",
+                "symbols",
+                "folders"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "sourceFiles": {
+            "additionalProperties": false,
+            "properties": {
+              "maximum": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "maximum"
+            ],
+            "type": "object"
+          },
+          "version": {
+            "enum": [
+              1
+            ],
+            "type": "integer"
+          },
+          "zipProjects": {
+            "additionalProperties": false,
+            "properties": {
+              "maximumEntries": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "scanTimeoutMs": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "sourceFileLimit": {
+                "additionalProperties": false,
+                "properties": {
+                  "default": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "maximum": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "minimum": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "setting": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "default",
+                  "maximum",
+                  "minimum",
+                  "setting"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "maximumEntries",
+              "scanTimeoutMs",
+              "sourceFileLimit"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "analysis",
+          "byteLimit",
+          "modes",
+          "sourceFiles",
+          "version",
+          "zipProjects"
+        ],
+        "type": "object"
+      },
       "CodeEvidence": {
         "additionalProperties": false,
         "properties": {
@@ -752,7 +907,7 @@
             "type": "integer"
           },
           "fileCount": {
-            "maximum": 500,
+            "maximum": 10000,
             "minimum": 0,
             "type": "integer"
           },
@@ -1090,6 +1245,12 @@
             "minLength": 1,
             "type": "string"
           },
+          "sourceFileLimit": {
+            "default": 500,
+            "maximum": 10000,
+            "minimum": 500,
+            "type": "integer"
+          },
           "version": {
             "enum": [
               1
@@ -1108,7 +1269,7 @@
       },
       "CodeProjectInput": {
         "additionalProperties": false,
-        "description": "The connected browser applies its saved local import file size limit: default 50 MiB, configurable from 50 to 1024 MiB (1 GiB) in Settings. UI MB means MiB and UI 1 GB means 1024 MiB. Only imports up to 50 MB are supported and guaranteed; higher limits are experimental and may be slow or fail because of browser memory or format limits. The HTTP/JSON and WebSocket transport envelopes remain 32 MiB and are not increased by this setting. Compressed ZIP and total expanded archive both use the selected byte budget; ignored entries still count. Supports stored/deflated ZIP, at most 10,000 entries and 500 analyzed files. Rejects encrypted, ZIP64, symlink, duplicate and unsafe-path archives. No execution or network fetch. Dependency/build/private/binary/generated/unsupported entries are excluded and counted. A single wrapping archive directory is removed. Folder mode aggregates directory dependencies and includes contains links. Markdown relative/reference/wiki links use the same semantic analyzer. Original archive/source is transient; derived scan counts, source paths and relationship evidence may be retained.",
+        "description": "The connected browser applies its saved local import file size limit: default 50 MiB, configurable from 50 to 1024 MiB (1 GiB) in Settings. UI MB means MiB and UI 1 GB means 1024 MiB. Only imports up to 50 MB are supported and guaranteed; higher limits are experimental and may be slow or fail because of browser memory or format limits. The HTTP/JSON and WebSocket transport envelopes remain 32 MiB and are not increased by this setting. ZIP project analyzed source-file limit is independent of the byte budget: browser-local setting project-source-file-limit, default 500, integer 500..10000. GET /settings/project-source-file-limit returns the effective integer (500 when missing or invalid); Read only is allowed. PUT with exact {value:number} requires Read + write. Only projects with up to 500 analyzed source files are supported and guaranteed; higher values are experimental. The setting is excluded from backups and ignored during Merge/Replace. The saved setting is captured once per ZIP job; source payloads cannot override it. Non-ZIP source-file/folder imports remain limited to 500 files. The 10,000 ZIP-entry limit includes ignored files and directory records, so fewer than 10,000 source files may fit. Graph, symbol, connection, line, byte and time limits remain unchanged. Use folders mode for larger projects. GET /code/capabilities discovers these independent limits. Compressed ZIP and total expanded archive both use the selected byte budget; ignored entries still count. Supports stored/deflated ZIP. Rejects encrypted, ZIP64, symlink, duplicate and unsafe-path archives. No execution or network fetch. Dependency/build/private/binary/generated/unsupported entries are excluded and counted. A single wrapping archive directory is removed. Folder mode aggregates directory dependencies and includes contains links. Markdown relative/reference/wiki links use the same semantic analyzer. Original archive/source is transient; derived scan counts, source paths and relationship evidence may be retained.",
         "properties": {
           "data": {
             "description": "Strict base64 ZIP bytes, without a data URL. The 32 MiB local API/MCP JSON envelope still applies (roughly 24 MiB compressed ZIP at most).",
@@ -1125,8 +1286,8 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/CodeLanguage"
             },
-            "description": "Optional language overrides by exact retained relative file path after common root stripping. Unknown/excluded paths and unsupported language IDs are rejected; use this to resolve ambiguous headers or .m/.cls files, matching UI language choices.",
-            "maxProperties": 500,
+            "description": "Optional language overrides by exact retained relative file path after common root stripping. The browser's captured ZIP source-file limit bounds override count. Unknown/excluded paths and unsupported language IDs are rejected; use this to resolve ambiguous headers or .m/.cls files, matching UI language choices.",
+            "maxProperties": 10000,
             "type": "object"
           },
           "mode": {
@@ -2013,25 +2174,96 @@
         "type": "object"
       },
       "Export": {
-        "additionalProperties": false,
-        "properties": {
-          "diagramId": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "format": {
-            "enum": [
-              "json",
-              "markdown"
+        "description": "Read-only export. JSON returns Graph; Markdown and SVG return text as a JSON string. SVG is native vector XML from the canonical 2D layout, never the 3D camera. Optional SVG scope defaults to complete; selected requires unique existing node UUIDs. Viewport uses the saved 2D viewport at the current browser canvas size, or fits the diagram when no usable viewport is saved. Rendering does not open or change the project. Fonts are referenced, not embedded; shadows and CSS decoration may be simplified. No external links, scripts, images or foreignObject are emitted.",
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "diagramId": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "format": {
+                "enum": [
+                  "json",
+                  "markdown"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "diagramId",
+              "format"
             ],
-            "type": "string"
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "diagramId": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "format": {
+                "enum": [
+                  "svg"
+                ],
+                "type": "string"
+              },
+              "scope": {
+                "default": "complete",
+                "enum": [
+                  "complete",
+                  "viewport"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "diagramId",
+              "format"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "diagramId": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "format": {
+                "enum": [
+                  "svg"
+                ],
+                "type": "string"
+              },
+              "nodeIds": {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "maxItems": 20000,
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "scope": {
+                "enum": [
+                  "selected"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "diagramId",
+              "format",
+              "scope",
+              "nodeIds"
+            ],
+            "type": "object"
           }
-        },
-        "required": [
-          "diagramId",
-          "format"
-        ],
-        "type": "object"
+        ]
       },
       "Graph": {
         "additionalProperties": false,
@@ -3862,7 +4094,7 @@
         "additionalProperties": false,
         "properties": {
           "fileCount": {
-            "maximum": 500,
+            "maximum": 10000,
             "minimum": 0,
             "type": "integer"
           },
@@ -3893,6 +4125,28 @@
           "languages"
         ],
         "type": "object"
+      },
+      "ProjectFileLimitSettingInput": {
+        "additionalProperties": false,
+        "description": "ZIP project analyzed source-file limit is independent of the byte budget: browser-local setting project-source-file-limit, default 500, integer 500..10000. GET /settings/project-source-file-limit returns the effective integer (500 when missing or invalid); Read only is allowed. PUT with exact {value:number} requires Read + write. Only projects with up to 500 analyzed source files are supported and guaranteed; higher values are experimental. The setting is excluded from backups and ignored during Merge/Replace. The saved setting is captured once per ZIP job; source payloads cannot override it. Non-ZIP source-file/folder imports remain limited to 500 files. The 10,000 ZIP-entry limit includes ignored files and directory records, so fewer than 10,000 source files may fit. Graph, symbol, connection, line, byte and time limits remain unchanged. Use folders mode for larger projects. GET /code/capabilities discovers these independent limits.",
+        "properties": {
+          "value": {
+            "default": 500,
+            "maximum": 10000,
+            "minimum": 500,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "type": "object"
+      },
+      "ProjectFileLimitSettingValue": {
+        "default": 500,
+        "maximum": 10000,
+        "minimum": 500,
+        "type": "integer"
       },
       "QuestionAnswer": {
         "additionalProperties": false,
@@ -10629,7 +10883,7 @@
         "type": "object"
       },
       "WorkspaceBackup": {
-        "description": "Portable local workspace data. The device-specific import-file-limit-mb setting is excluded from export and ignored during Merge/Replace; the destination's selected limit is retained.",
+        "description": "Portable local workspace data. The device-specific import-file-limit-mb and project-source-file-limit settings are excluded from export and ignored during Merge/Replace; the destination's selected limits are retained.",
         "properties": {
           "datasets": {
             "description": "Original CSV source records. Older backups may omit this.",
@@ -10768,6 +11022,130 @@
   },
   "openapi": "3.0.3",
   "paths": {
+    "/code/capabilities": {
+      "get": {
+        "operationId": "get_code_capabilities",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CodeCapabilities"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Discover code/ZIP source-file budgets and independent byte, entry, graph and time ceilings"
+      }
+    },
     "/code/diagrams": {
       "post": {
         "operationId": "post_code_diagrams",
@@ -21256,7 +21634,7 @@
           },
           {}
         ],
-        "summary": "Export canonical JSON or semantic Markdown"
+        "summary": "Export canonical JSON, semantic Markdown or native vector SVG; read-only access allowed"
       }
     },
     "/health": {
@@ -25063,6 +25441,255 @@
           {}
         ],
         "summary": "Select a catalogued browser-local presentation voice; write access required"
+      }
+    },
+    "/settings/project-source-file-limit": {
+      "get": {
+        "operationId": "get_settings_project-source-file-limit",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectFileLimitSettingValue"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Read the effective local ZIP source-file limit; missing/invalid saved values return 500; read-only access allowed"
+      },
+      "put": {
+        "operationId": "put_settings_project-source-file-limit",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectFileLimitSettingInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Set this browser's ZIP source-file limit from 500 to 10000; write access required"
       }
     },
     "/simulation/capabilities": {

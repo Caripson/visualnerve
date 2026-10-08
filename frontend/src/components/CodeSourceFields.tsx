@@ -1,6 +1,8 @@
 import type { CodeFile, CodeLanguage } from '../code/types';
 import { CodeFilesList } from './CodeFilesList';
 import { CodeLanguageSelect } from './CodeLanguageSelect';
+import { useEditor } from '../state/editor';
+import { LARGE_PROJECT_FILE_WARNING, projectSourceFileLimit } from '../code/project/limits';
 
 export function CodeSourceFields({
   files,
@@ -8,6 +10,7 @@ export function CodeSourceFields({
   text,
   disabled,
   loadNote,
+  projectFileLimit,
   load,
   changeFileLanguage,
   clearFiles,
@@ -19,12 +22,15 @@ export function CodeSourceFields({
   text: string;
   disabled: boolean;
   loadNote: string;
+  projectFileLimit?: number;
   load: (files: File[], folder?: boolean) => Promise<void>;
   changeFileLanguage: (index: number, language: CodeLanguage) => void;
   clearFiles: () => void;
   changeLanguage: (language: CodeLanguage) => void;
   changeText: (text: string) => void;
 }) {
+  const activeProjectLimit = useEditor((state) => state.projectSourceFileLimit);
+  const zipFileLimit = projectSourceFileLimit(projectFileLimit ?? activeProjectLimit);
   return (
     <>
       <div className="code-loaders">
@@ -73,10 +79,17 @@ export function CodeSourceFields({
         </label>
       </div>
       <p className="code-note">
-        Up to 500 files. The import size setting applies to each file and the complete project; its
-        default is 50 MB. ZIP and folder selection skip dependencies and build output. ZIP expansion
-        is checked against the same limit.
+        Source-file and folder imports allow up to 500 files. ZIP project source-file limit:{' '}
+        {zipFileLimit.toLocaleString('en-US')} analyzed files (Settings). The import size setting
+        applies to each file and the complete project; its default is 50 MB. ZIP and folder
+        selection skip dependencies and build output. ZIP expansion is checked against the same
+        limit.
       </p>
+      {zipFileLimit > 500 && (
+        <p className="import-limit-warning" role="note" data-testid="project-import-file-warning">
+          {LARGE_PROJECT_FILE_WARNING}
+        </p>
+      )}
       {loadNote && <p className="code-note">{loadNote}</p>}
       {files.length ? (
         <CodeFilesList

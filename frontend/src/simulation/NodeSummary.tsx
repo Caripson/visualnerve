@@ -1,13 +1,8 @@
 import type { CSSProperties } from 'react';
-import { useEditor } from '../state/editor';
-import { useSimulation } from './useSimulation';
+import { useSimulationSummary } from './summary-context';
 import type { SimulationModel, SimulationNode, Resource } from './types';
 import type { GraphNode } from '../model/types';
-import {
-  getSimulationCapacityCard,
-  logicalNodeId,
-  resolveSimulationRenderModel,
-} from './render-model';
+import { getSimulationCapacityCard, logicalNodeId } from './render-model';
 import { getSimulationPresentationSlots } from './presentation-slots';
 import { simulationNodeTraffic } from './traffic';
 import './traffic.css';
@@ -29,13 +24,8 @@ function index(model: SimulationModel) {
 }
 
 export function SimulationNodeSummary({ id, node }: { id: string; node?: GraphNode }) {
-  const baseModel = useEditor((state) => state.graph?.simulation);
-  const diagramId = useEditor((state) =>
-    state.graph?.simulation ? state.graph.diagram.id : undefined,
-  );
-  const view = useSimulation(diagramId);
-  if (!baseModel) return null;
-  const model = resolveSimulationRenderModel(view?.run.model ?? baseModel, view?.run.options);
+  const { model, view } = useSimulationSummary();
+  if (!model) return null;
   const lookup = index(model);
   const logicalId = node ? logicalNodeId(node) : id;
   const card = node && getSimulationCapacityCard(node);

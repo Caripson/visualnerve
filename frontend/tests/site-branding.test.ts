@@ -73,4 +73,67 @@ describe('shared workspace branding', () => {
       expect(document.querySelector('script[src*="googletagmanager"]'), route).toBeNull();
     }
   });
+
+  it('floats the menu on exactly the six requested product routes', () => {
+    const floating = [
+      'index.html',
+      'features/index.html',
+      'use-cases/index.html',
+      'process-simulator/index.html',
+      'mcp/index.html',
+      'developers/index.html',
+    ];
+    for (const route of [
+      ...floating,
+      'privacy/index.html',
+      'security/index.html',
+      'license/index.html',
+      'error.html',
+      'app/index.html',
+      'help/index.html',
+      'api/docs/index.html',
+    ]) {
+      expect(!!page(route).querySelector('.public-header-shell--floating'), route).toBe(
+        floating.includes(route),
+      );
+    }
+  });
+
+  it('pairs real app captures while leaving hardware transparent and cropped dialogs unframed', () => {
+    const home = page('index.html');
+    expect(home.querySelectorAll('.device-showcase picture[data-appearance-image]')).toHaveLength(
+      4,
+    );
+    for (const device of ['desktop', 'laptop', 'tablet', 'phone']) {
+      const frame = home.querySelector(`.device-frame--${device}`)!;
+      expect(frame.querySelector('picture source')?.getAttribute('srcset')).toBe(
+        `/site/images/${device}-dark.webp`,
+      );
+      expect(frame.querySelector('picture img')?.getAttribute('src')).toBe(
+        `/site/images/${device}.webp`,
+      );
+      const hardware = frame.querySelector('.device-frame__hardware')!;
+      expect(hardware.getAttribute('src')).toBe(`/site/devices/${device}.svg`);
+      expect(hardware.getAttribute('aria-hidden')).toBe('true');
+      expect(hardware.getAttribute('alt')).toBe('');
+      const svg = readFileSync(join(directory, `site/devices/${device}.svg`), 'utf8');
+      expect(svg).toContain('fill-rule="evenodd"');
+    }
+    const features = page('features/index.html');
+    expect(features.querySelector('.site-capture--detail .device-frame')).toBeNull();
+    expect(
+      features.querySelector('.site-capture--detail .site-capture__detail picture'),
+    ).not.toBeNull();
+    for (const route of ['features/index.html', 'help/simulation/index.html']) {
+      for (const link of page(route).querySelectorAll<HTMLAnchorElement>(
+        '[data-appearance-link]',
+      )) {
+        const source = link.querySelector('picture source')!;
+        expect(source.getAttribute('srcset')).toBe(link.dataset.appearanceDark);
+        expect(link.querySelector('picture img')?.getAttribute('src')).toBe(
+          link.dataset.appearanceLink,
+        );
+      }
+    }
+  });
 });

@@ -55,6 +55,106 @@ async function chooseTheme(page: Page, theme: 'dark' | 'light' | 'system') {
   await page.getByRole('button', { name: 'Done', exact: true }).click();
 }
 
+async function screenshotTheme(page: Page, theme: 'light' | 'dark') {
+  await appearance(page, theme);
+  const pictures = page.locator('[data-appearance-image]');
+  expect(await pictures.count()).toBeGreaterThan(0);
+  await pictures
+    .locator('img')
+    .evaluateAll((images) =>
+      images.forEach((image) => ((image as HTMLImageElement).loading = 'eager')),
+    );
+  await expect
+    .poll(() =>
+      pictures.evaluateAll((elements) =>
+        elements.every((picture) => {
+          const image = picture.querySelector('img')!;
+          return (
+            image.complete &&
+            image.naturalWidth > 0 &&
+            image.currentSrc.endsWith(
+              document.documentElement.dataset.theme === 'dark' ? '-dark.webp' : '.webp',
+            ) &&
+            (document.documentElement.dataset.theme === 'dark' ||
+              !image.currentSrc.endsWith('-dark.webp'))
+          );
+        }),
+      ),
+    )
+    .toBe(true);
+  expect(
+    await pictures.evaluateAll((elements) =>
+      elements.every((picture) => {
+        const link = picture.closest('a[data-appearance-link]');
+        return (
+          !link || (link as HTMLAnchorElement).href === picture.querySelector('img')!.currentSrc
+        );
+      }),
+    ),
+  ).toBe(true);
+}
+
+test('fresh product images load only the System-selected variant and switch without creating storage', async ({
+  browser,
+}) => {
+  const context = await browser.newContext({ ignoreHTTPSErrors: true, colorScheme: 'dark' });
+  const page = await context.newPage();
+  const captures: string[] = [];
+  page.on('request', (request) => {
+    if (/\/(?:help|site)\/images\/.*\.webp$/.test(new URL(request.url()).pathname))
+      captures.push(new URL(request.url()).pathname);
+  });
+  try {
+    await page.goto(publicURL + '/');
+    await screenshotTheme(page, 'dark');
+    expect(captures.length).toBeGreaterThan(0);
+    expect(captures.every((path) => path.endsWith('-dark.webp'))).toBe(true);
+    await page.emulateMedia({ colorScheme: 'light' });
+    await screenshotTheme(page, 'light');
+    expect(await page.evaluate(async () => (await indexedDB.databases()).length)).toBe(0);
+    expect(
+      await page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).length),
+    ).toBe(0);
+  } finally {
+    await context.close();
+  }
+});
+
+test('public and Help screenshots follow saved Appearance rather than OS preference, including live changes and full-size links', async ({
+  browser,
+}) => {
+  const context = await browser.newContext({ ignoreHTTPSErrors: true, colorScheme: 'light' });
+  const editor = await context.newPage();
+  try {
+    await editor.goto(publicApp);
+    await acknowledge(editor);
+    await chooseTheme(editor, 'dark');
+    const pages: Page[] = [];
+    for (const path of ['/', '/features/', '/help/simulation/']) {
+      const page = await context.newPage();
+      await page.goto(publicURL + path);
+      await screenshotTheme(page, 'dark');
+      pages.push(page);
+    }
+    await chooseTheme(editor, 'light');
+    for (const page of pages) {
+      await page.emulateMedia({ colorScheme: 'dark' });
+      await screenshotTheme(page, 'light');
+    }
+    await editor.emulateMedia({ colorScheme: 'dark' });
+    await chooseTheme(editor, 'system');
+    for (const page of pages) await screenshotTheme(page, 'dark');
+    for (const page of pages) {
+      await page.emulateMedia({ colorScheme: 'light' });
+      await screenshotTheme(page, 'light');
+      await page.reload();
+      await screenshotTheme(page, 'light');
+    }
+  } finally {
+    await context.close();
+  }
+});
+
 for (const path of referencePaths) {
   test(`fresh ${path} follows System appearance without creating a workspace`, async ({
     browser,

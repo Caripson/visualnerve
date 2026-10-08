@@ -80,15 +80,16 @@ test('all public pages have useful metadata, real images and valid local destina
 test('the four device images are distinct real viewport captures', async ({ request }) => {
   const hashes = new Set<string>();
   for (const name of ['phone', 'tablet', 'desktop', 'laptop']) {
-    const response = await request.get('/site/images/' + name + '.webp');
-    expect(response.status()).toBe(200);
-    const bytes = await response.body();
-    hashes.add(createHash('sha256').update(bytes).digest('hex'));
-    // The browser decodes actual WebP dimensions below in the viewport test;
-    // the capture fixture owns each original viewport without image resizing.
-    expect(bytes.length).toBeGreaterThan(5000);
+    for (const suffix of ['', '-dark']) {
+      const response = await request.get('/site/images/' + name + suffix + '.webp');
+      expect(response.status()).toBe(200);
+      const bytes = await response.body();
+      hashes.add(createHash('sha256').update(bytes).digest('hex'));
+      // Natural viewport sizes are decoded below; neither theme is a recolored image.
+      expect(bytes.length).toBeGreaterThan(5000);
+    }
   }
-  expect(hashes.size).toBe(4);
+  expect(hashes.size).toBe(8);
 });
 for (const width of [1440, 768, 390, 320]) {
   for (const colorScheme of ['light', 'dark'] as const) {
@@ -121,7 +122,17 @@ for (const width of [1440, 768, 390, 320]) {
                 border: getComputedStyle(header).borderBottomWidth,
               };
             });
-            expect(divider).toEqual({ left: 0, right: width, border: '1px' });
+            const floating = routes.indexOf(path) < 6;
+            expect(divider).toEqual({ left: 0, right: width, border: floating ? '0px' : '1px' });
+            await expect(page.locator('.public-header-shell')).toHaveClass(
+              floating ? /public-header-shell--floating/ : /^public-header-shell$/,
+            );
+            if (floating) {
+              const island = await page.locator('.public-header').boundingBox();
+              expect(island!.x).toBeGreaterThan(0);
+              expect(island!.y).toBeGreaterThan(0);
+              expect(island!.x + island!.width).toBeLessThan(width);
+            }
             expect(await page.locator('main').innerText()).not.toMatch(
               /iPhone|iPad|iMac|MacBook Pro/,
             );
@@ -148,7 +159,7 @@ for (const width of [1440, 768, 390, 320]) {
               const bounds = await page.locator('.site-capture').evaluateAll((frames) =>
                 frames.map((frame) => {
                   const rect = frame.getBoundingClientRect();
-                  const image = frame.querySelector('img')!;
+                  const image = frame.querySelector('picture img')! as HTMLImageElement;
                   const screen = image.getBoundingClientRect();
                   return {
                     left: rect.left,
@@ -162,8 +173,12 @@ for (const width of [1440, 768, 390, 320]) {
                     fit: getComputedStyle(image).objectFit,
                     background: getComputedStyle(frame).backgroundColor,
                     hardwareBackground: getComputedStyle(
-                      frame.querySelector('.site-capture__hardware')!,
+                      frame.querySelector('.device-frame') ??
+                        frame.querySelector('.site-capture__detail')!,
                     ).backgroundColor,
+                    detail: frame.classList.contains('site-capture--detail'),
+                    currentSrc: image.currentSrc,
+                    link: frame.querySelector<HTMLAnchorElement>('.site-capture__link')!.href,
                   };
                 }),
               );
@@ -171,7 +186,11 @@ for (const width of [1440, 768, 390, 320]) {
                 expect(frame.left).toBeGreaterThanOrEqual(0);
                 expect(frame.right).toBeLessThanOrEqual(width);
                 expect(Math.abs(frame.ratio - frame.expectedRatio)).toBeLessThan(0.001);
-                expect(frame.fit).toBe('contain');
+                expect(frame.fit).toBe(frame.detail ? 'fill' : 'contain');
+                expect(frame.link).toBe(frame.currentSrc);
+                expect(new URL(frame.currentSrc).pathname.endsWith('-dark.webp')).toBe(
+                  colorScheme === 'dark',
+                );
                 expect(frame.background).toBe('rgba(0, 0, 0, 0)');
                 expect(frame.hardwareBackground).toBe('rgba(0, 0, 0, 0)');
               }
@@ -198,14 +217,14 @@ for (const width of [1440, 768, 390, 320]) {
           ).toBe(true);
           // Eagerly load the hero captures before asserting their natural screen size.
           await page
-            .locator('.device-screen img')
+            .locator('.device-showcase .device-screen img')
             .evaluateAll((images) =>
               images.forEach((image) => ((image as HTMLImageElement).loading = 'eager')),
             );
           await expect
             .poll(() =>
               page
-                .locator('.device-screen img')
+                .locator('.device-showcase .device-screen img')
                 .evaluateAll((images) =>
                   images.every(
                     (image) =>
@@ -217,7 +236,7 @@ for (const width of [1440, 768, 390, 320]) {
             .toBe(true);
           expect(
             await page
-              .locator('.device-screen img')
+              .locator('.device-showcase .device-screen img')
               .evaluateAll((images) =>
                 images.map((image) => [
                   (image as HTMLImageElement).naturalWidth,
@@ -234,7 +253,9 @@ for (const width of [1440, 768, 390, 320]) {
             ['laptop', 16 / 10],
             ['phone', 390 / 844],
           ] as const) {
-            const screen = await page.locator('.device-' + device + ' img').boundingBox();
+            const screen = await page
+              .locator('.device-showcase .device-' + device + ' .device-screen img')
+              .boundingBox();
             expect(Math.abs(screen!.width / screen!.height - ratio)).toBeLessThan(0.001);
           }
           if (width <= 1000) {

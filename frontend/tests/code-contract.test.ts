@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { codeLanguageIds, codeLimits } from '../src/code/types';
 import { MAX_IMPORT_LIMIT_BYTES } from '../src/imports/limits';
+import { MAX_PROJECT_SOURCE_FILE_LIMIT } from '../src/code/project/limits';
 
 describe('generated code OpenAPI contract', () => {
   const document = JSON.parse(readFileSync(resolve(process.cwd(), '../docs/openapi.yaml'), 'utf8'));
@@ -42,7 +43,9 @@ it('documents ZIP language overrides and shared folder contracts', () => {
   const schemas = document.components.schemas;
   expect(schemas.CodeProjectInput.required).toEqual(['data']);
   expect(schemas.CodeProjectInput.properties.mode.default).toBe('files');
-  expect(schemas.CodeProjectInput.properties.languages.maxProperties).toBe(500);
+  expect(schemas.CodeProjectInput.properties.languages.maxProperties).toBe(
+    MAX_PROJECT_SOURCE_FILE_LIMIT,
+  );
   expect(schemas.CodeProjectInput.properties.languages.additionalProperties.$ref).toContain(
     '/CodeLanguage',
   );

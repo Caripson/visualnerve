@@ -1,4 +1,5 @@
-import { beforeEach, expect, it, vi } from 'vitest';
+import { useEditor } from '../src/state/editor';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { CodeImportDialog } from '../src/components/CodeImportDialog';
 import { readProjectArchive } from '../src/code/project/client';
@@ -26,9 +27,11 @@ const scanned: ProjectArchiveResult = {
   ],
 };
 beforeEach(() => {
+  useEditor.setState({ projectSourceFileLimit: 500 });
   read.mockReset();
   parse.mockReset();
 });
+afterEach(() => useEditor.setState({ projectSourceFileLimit: 500 }));
 it('reviews archive exclusions, changes detail and creates only the source-free preview after confirmation', async () => {
   read.mockResolvedValue(scanned);
   parse.mockImplementation(async (input) => parseCode(input));
@@ -95,4 +98,31 @@ it('reports a bad ZIP without allowing diagram creation', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent('checksum');
   expect(screen.getByRole('button', { name: 'Preview code' })).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Create diagram' })).toBeDisabled();
+});
+
+it('warns in the ZIP draft and preview and keeps the scan budget after Settings changes', async () => {
+  useEditor.setState({ projectSourceFileLimit: 1000 });
+  read.mockResolvedValue({ ...scanned, fileLimit: 1000 });
+  parse.mockImplementation(async (input, options) =>
+    parseCode(input, options?.byteLimit, options?.fileLimit),
+  );
+  render(
+    <CodeImportDialog
+      initialFiles={[new File(['zip'], 'example.zip')]}
+      create={vi.fn()}
+      close={vi.fn()}
+    />,
+  );
+  expect(await screen.findByLabelText('Project scan summary')).toHaveTextContent(
+    'Captured ZIP project source-file limit: 1,000 files',
+  );
+  expect(read.mock.calls[0][1]).toMatchObject({ fileLimit: 1000 });
+  expect(screen.getByTestId('project-import-file-warning')).toHaveTextContent('experimental');
+  act(() => useEditor.setState({ projectSourceFileLimit: 500 }));
+  expect(screen.getByTestId('project-import-file-warning')).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Code diagram detail'), { target: { value: 'folders' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Preview code' }));
+  expect(await screen.findByLabelText('Code preview')).toBeInTheDocument();
+  expect(parse.mock.calls[0][1]).toMatchObject({ fileLimit: 1000 });
+  expect(screen.getByTestId('project-import-file-warning')).toBeInTheDocument();
 });

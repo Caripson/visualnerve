@@ -29,10 +29,13 @@ export interface ProjectArchiveResult {
   ignored: { total: number; reasons: Record<ProjectIgnoredReason, number> };
   /** The verified expanded byte count, including files excluded from analysis. */
   expandedBytes: number;
+  /** Captured browser-local analyzed source-file budget for this scan. */
+  fileLimit?: number;
 }
 export interface ProjectArchiveOptions {
   signal?: AbortSignal;
   byteLimit?: number;
+  fileLimit?: number;
   onProgress?: (progress: ProjectArchiveProgress) => void;
 }
 export const projectArchiveLimits = { entries: 10_000, path: 500, timeoutMs: 120_000 } as const;

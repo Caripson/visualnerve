@@ -1,7 +1,7 @@
 <figure class="device-showcase" aria-label="Visual Nerve running on four device screen sizes">
-  <div class="device device-desktop"><div class="device-screen"><img src="/site/images/desktop.webp" width="1920" height="1080" alt="Process simulation with shared resources and live metrics on a desktop screen" fetchpriority="high"></div><div class="device-chin" aria-hidden="true"></div><div class="desktop-stand"></div><div class="desktop-foot"></div></div>
-  <div class="device device-tablet"><div class="device-screen"><img src="/site/images/tablet.webp" width="1024" height="1366" loading="lazy" alt="A product launch mind map on a portrait tablet screen"></div></div>
-  <div class="device device-laptop"><div class="device-screen"><img src="/site/images/laptop.webp" width="1440" height="900" loading="lazy" alt="SQL query analysis on a laptop screen"></div><div class="laptop-base" aria-hidden="true"></div></div>
-  <div class="device device-phone"><div class="device-screen"><img src="/site/images/phone.webp" width="390" height="844" loading="lazy" alt="A service delivery workflow with compact phone navigation"></div></div>
+  {{ partial "device-frame.html" (dict "device" "desktop" "class" "device device-desktop" "src" "/site/images/desktop.webp" "width" 1920 "height" 1080 "alt" "Process simulation with shared resources and live metrics on a desktop screen" "priority" "high" "loading" "eager") }}
+  {{ partial "device-frame.html" (dict "device" "tablet" "class" "device device-tablet" "src" "/site/images/tablet.webp" "width" 1024 "height" 1366 "alt" "A product launch mind map on a portrait tablet screen") }}
+  {{ partial "device-frame.html" (dict "device" "laptop" "class" "device device-laptop" "src" "/site/images/laptop.webp" "width" 1440 "height" 900 "alt" "SQL query analysis on a laptop screen") }}
+  {{ partial "device-frame.html" (dict "device" "phone" "class" "device device-phone" "src" "/site/images/phone.webp" "width" 390 "height" 844 "alt" "A service delivery workflow with compact phone navigation") }}
   <figcaption>Four real app views, captured at four screen sizes.</figcaption>
 </figure>

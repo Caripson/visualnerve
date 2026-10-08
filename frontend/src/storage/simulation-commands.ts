@@ -1,3 +1,4 @@
+import { simulationService } from '../simulation/service';
 import { StorageError } from '../model/errors';
 import type { Graph } from '../model/types';
 import type { RunOptions, SimulationModel, SimulationState } from '../simulation/types';
@@ -296,7 +297,6 @@ function assertModel(value: unknown): asserts value is SimulationModel {
   }
 }
 async function defaultRuntime(): Promise<SimulationRuntime> {
-  const { simulationService } = await import('../simulation/service');
   return simulationService;
 }
 

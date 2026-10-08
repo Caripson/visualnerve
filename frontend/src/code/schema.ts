@@ -9,6 +9,7 @@ import {
   type ProjectDirectory,
 } from './types';
 import { MAX_IMPORT_LIMIT_BYTES } from '../imports/limits';
+import { DEFAULT_PROJECT_SOURCE_FILE_LIMIT, MAX_PROJECT_SOURCE_FILE_LIMIT } from './project/limits';
 import { projectArchiveLimits } from './project/types';
 
 const object = (value: unknown): value is Record<string, unknown> =>
@@ -42,7 +43,7 @@ export function getProjectDirectory(node: GraphNode): ProjectDirectory | undefin
     !keys(value, ['version', 'path', 'fileCount', 'languages']) ||
     value.version !== 1 ||
     !directoryPath(value.path) ||
-    !integer(value.fileCount, codeLimits.files) ||
+    !integer(value.fileCount, MAX_PROJECT_SOURCE_FILE_LIMIT) ||
     !languageList(value.languages, value.fileCount === 0)
   )
     return undefined;
@@ -52,7 +53,14 @@ export function getProjectDirectory(node: GraphNode): ProjectDirectory | undefin
 function validProject(value: unknown): boolean {
   if (
     !object(value) ||
-    !keys(value, ['version', 'name', 'expandedBytes', 'ignoredEntries', 'ignoredReasons']) ||
+    !keys(value, [
+      'version',
+      'name',
+      'expandedBytes',
+      'ignoredEntries',
+      'ignoredReasons',
+      'sourceFileLimit',
+    ]) ||
     value.version !== 1 ||
     !text(value.name) ||
     !integer(value.expandedBytes, MAX_IMPORT_LIMIT_BYTES) ||
@@ -61,7 +69,10 @@ function validProject(value: unknown): boolean {
     !keys(value.ignoredReasons, [...projectIgnoredReasons]) ||
     !Object.values(value.ignoredReasons).every((entry) =>
       integer(entry, projectArchiveLimits.entries),
-    )
+    ) ||
+    (value.sourceFileLimit !== undefined &&
+      (!integer(value.sourceFileLimit, MAX_PROJECT_SOURCE_FILE_LIMIT) ||
+        Number(value.sourceFileLimit) < DEFAULT_PROJECT_SOURCE_FILE_LIMIT))
   )
     return false;
   return (
@@ -170,7 +181,7 @@ export function getCodeAnalysis(graph: Graph): CodeAnalysis | undefined {
     !languageList(value.languages) ||
     typeof value.mode !== 'string' ||
     !['files', 'symbols', 'folders'].includes(value.mode) ||
-    !integer(value.fileCount, codeLimits.files) ||
+    !integer(value.fileCount, MAX_PROJECT_SOURCE_FILE_LIMIT) ||
     (value.directoryCount !== undefined && !integer(value.directoryCount, codeLimits.nodes)) ||
     !integer(value.symbolCount, codeLimits.symbols) ||
     !integer(value.dependencyCount, codeLimits.edges) ||

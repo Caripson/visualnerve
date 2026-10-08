@@ -1,3 +1,5 @@
+import { workspace } from '../storage/workspace';
+import { reanalyzeDataModelAsync } from '../data/modelClient';
 import { prunePresentation } from '../presentation/definition';
 import { pruneStoryboard } from '../presentation/storyboard';
 import { reconcileSimulationGraph } from '../simulation/document';
@@ -61,8 +63,10 @@ interface Editor {
   status: SaveStatus;
   message: string;
   commandError: string;
+  preferenceError: { key: string; message: string } | null;
   theme: string;
   importFileLimitMb: number;
+  projectSourceFileLimit: number;
   mcpAccess: McpAccess;
   bridgeUrl: string;
   workspaceId: string;
@@ -133,8 +137,10 @@ export const useEditor = create<Editor>((set, get) => ({
   status: 'saved',
   message: '',
   commandError: '',
+  preferenceError: null,
   theme: 'system',
   importFileLimitMb: 50,
+  projectSourceFileLimit: 500,
   mcpAccess: 'off',
   bridgeUrl: '',
   workspaceId: '',
@@ -254,7 +260,6 @@ export const useEditor = create<Editor>((set, get) => ({
     get().command('Delete saved analysis view', (graph) => deleteAnalysisView(graph, id)),
   loadView: async (id) => {
     // Settle pending persistence before taking a versioned source snapshot.
-    const { workspace } = await import('../storage/workspace');
     await workspace.settled();
     const state = get();
     const snapshot = state.graph;
@@ -264,7 +269,6 @@ export const useEditor = create<Editor>((set, get) => ({
     const revision = state.editRevision;
     let next = applyViewConfiguration(snapshot, view);
     if (next.dataset || next.diagram.settings.csvSourceAnalyses) {
-      const { reanalyzeDataModelAsync } = await import('../data/modelClient');
       next = await reanalyzeDataModelAsync(next);
       next = applyViewConfiguration(next, view);
     }

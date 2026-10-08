@@ -187,7 +187,7 @@ A focused details region supports reading with navigation keys without nudging o
 
 File cards retain up to 200 declaration names. Use Declarations and dependencies for separate objects rather than expecting a file summary to be a complete source listing.
 
-3D faces and PNG/PDF/video exports show the top of the card at its saved size. Enlarge it in 2D to fit more details before presenting or exporting. Native JSON and backups retain all saved recognized metadata, including details beyond the visible card.
+3D faces and PNG/PDF/SVG/video exports show the top of the card at its saved size. Enlarge it in 2D to fit more details before presenting or exporting. Native JSON and backups retain all saved recognized metadata, including details beyond the visible card.
 
 ## Supported languages and structures
 
@@ -255,13 +255,15 @@ For detailed SELECT joins, column lineage or table constraints, use [Import SQL]
 
 The default limit is **50 MB per file and 50 MB for the complete source project**. Both use **Settings → Import file size**, adjustable to 1024 MB (1 GB). Imports up to 50 MB are supported and guaranteed; larger ones are experimental and can exceed browser memory.
 
-Other limits remain **500 files, 10,000 extracted symbols, 5,000 diagram objects and 10,000 connections**. Source limits are **100,000 lines per file, 500,000 lines per project and 20,000 characters per line**. ZIP scanning has a two-minute deadline, followed by the 30-second analysis deadline. ZIP archives allow up to 10,000 entries; compressed bytes and all expanded entries must each fit your selected import limit. Corrupt, encrypted, ZIP64, symlink, unsafe-path and unsupported archives are rejected. Focus narrows the diagram, not these source limits.
+Other limits remain **500 files for ordinary source/folder imports, 10,000 extracted symbols, 5,000 diagram objects and 10,000 connections**. Source limits are **100,000 lines per file, 500,000 lines per project and 20,000 characters per line**. ZIP scanning has a two-minute deadline, followed by the 30-second analysis deadline. ZIP archives allow up to 10,000 entries; compressed bytes and all expanded entries must each fit your selected import limit. Corrupt, encrypted, ZIP64, symlink, unsafe-path and unsupported archives are rejected. Focus narrows the diagram, not these source limits.
 
 The original code is a temporary import draft. Creating saves recognized names, paths, source locations, summaries, structural identifiers, confidence, relationship evidence and notes in local IndexedDB. Complete source, comments and ordinary nonstructural strings/numbers are not saved. Quoted imports, table names, resource names or fields may remain as structural identifiers.
 
 Source files are not attached to backups or kept for automatic re-analysis. After code changes, import again to create a new analysis. Existing diagrams retain their saved detail level.
 
 Paths and identifiers can still be sensitive. Native JSON/backups preserve recognized metadata; Markdown and Lovable include their recognized code contract and uncertainty. Review the exact shared output.
+
+ZIP projects have a separate **[Settings → ZIP project source-file limit](/help/settings/#zip-project-source-file-limit)**. It defaults to 500 analyzed files and accepts whole numbers up to 10,000. Only up to 500 are supported and guaranteed; larger projects are experimental. The import draft/preview shows a warning and the scan summary records the captured budget. Change Settings before loading the archive again. The 10,000-entry ZIP ceiling includes ignored files and directory records; byte, line, object, connection and time limits remain independent. Use Folder relationships for large projects. Saved larger diagrams still reopen after resetting the preference to 500.
 
 ## If the result is incomplete
 
