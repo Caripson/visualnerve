@@ -1,5 +1,6 @@
 import type { CodeDependency, CodeSymbol, ExtractedCode } from './types';
 import type { NormalizedFile } from './input';
+import { resolveMarkdownTarget } from './markdown';
 
 export interface AnalyzedFile extends NormalizedFile {
   extracted: ExtractedCode;
@@ -55,9 +56,12 @@ export class CodeResolver {
   private imports = new Map<string, AnalyzedFile[]>();
   private symbols = new Map<string, SymbolIndex>();
   private shared = new Map<string, Target[]>();
+  private anchors = new Map<string, Set<string>>();
+  private lineCounts = new Map<string, number>();
   constructor(files: AnalyzedFile[]) {
     for (const file of files) {
       this.paths.set(file.path, file);
+      if (file.extracted.anchors) this.anchors.set(file.path, new Set(file.extracted.anchors));
       append(this.stems, file.path.replace(/\.[^.]+$/, ''), file);
       append(this.leaves, leaf(file.path), file);
       const fold = insensitive.has(file.language)
@@ -91,6 +95,7 @@ export class CodeResolver {
     return undefined;
   }
   module(file: AnalyzedFile, target: string): AnalyzedFile | undefined {
+    if (file.language === 'markdown') return this.markdown(file, target);
     let path = target;
     if (file.language === 'python') {
       const prefix = target.match(/^\.+/)?.[0];
@@ -122,9 +127,56 @@ export class CodeResolver {
       return undefined;
     return unique(this.leaves.get(path.split('/').at(-1)!) ?? []);
   }
+  private markdown(file: AnalyzedFile, target: string, wiki = false): AnalyzedFile | undefined {
+    const location = resolveMarkdownTarget(file.path, target);
+    if (!location) return undefined;
+    let resolved = this.paths.get(location.path);
+    if (!resolved && !/\.[^/]+$/.test(location.path)) {
+      resolved = unique(
+        this.stems.get(location.path)?.filter((entry) => entry.language === 'markdown') ?? [],
+      );
+      if (!resolved)
+        for (const name of [
+          'README.md',
+          'readme.md',
+          'index.md',
+          'README.markdown',
+          'index.markdown',
+        ]) {
+          const candidate = this.paths.get(`${location.path}/${name}`);
+          if (candidate) {
+            resolved = candidate;
+            break;
+          }
+        }
+      if (!resolved && wiki && !decodeURIComponent(target.split('#')[0]).includes('/'))
+        resolved = unique(
+          this.leaves
+            .get(location.path.split('/').at(-1)!)
+            ?.filter((entry) => entry.language === 'markdown') ?? [],
+        );
+    }
+    if (!resolved) return undefined;
+    if (location.anchor) {
+      const line = location.anchor.match(/^L(\d+)(?:-L(\d+))?$/);
+      if (line && !this.lineCounts.has(resolved.path))
+        this.lineCounts.set(resolved.path, resolved.content.split('\n').length);
+      const validLine =
+        resolved.language !== 'markdown' &&
+        line &&
+        Number(line[1]) >= 1 &&
+        Number(line[2] ?? line[1]) >= Number(line[1]) &&
+        Number(line[2] ?? line[1]) <= this.lineCounts.get(resolved.path)!;
+      if (!validLine && !this.anchors.get(resolved.path)?.has(location.anchor)) return undefined;
+    }
+    return resolved;
+  }
   resolve(file: AnalyzedFile, dependency: CodeDependency): Target | undefined {
     if (dependency.targetType === 'module') {
-      const resolved = this.module(file, dependency.target);
+      const resolved =
+        file.language === 'markdown'
+          ? this.markdown(file, dependency.target, dependency.markdownWiki)
+          : this.module(file, dependency.target);
       return resolved ? { file: resolved } : undefined;
     }
     const index = this.symbols.get(file.path)!;

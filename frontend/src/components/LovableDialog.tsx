@@ -5,7 +5,7 @@ import { useEditor } from '../state/editor';
 import type { Graph } from '../model/types';
 import { getCsvNode } from '../data/csv';
 import { getDrawingLayer } from '../drawing/types';
-import { getCodeObject } from '../code/schema';
+import { getCodeAnalysis, getCodeObject, getProjectDirectory } from '../code/schema';
 import { getSqlQuerySource, getSqlQueryResult } from '../sql/query-schema';
 import { buildLovablePrompt, lovableLink, type LovableScope } from '../export/lovable';
 import { download, safeName } from '../export/semantic';
@@ -163,7 +163,8 @@ export function LovableDialog({ close }: { close: () => void }) {
             prompt. Review them before sharing.
           </p>
         )}
-        {graph.nodes.some((node) => getCodeObject(node)) && (
+        {(getCodeAnalysis(graph) ||
+          graph.nodes.some((node) => getCodeObject(node) || getProjectDirectory(node))) && (
           <p className="lovable-disclosure">
             Code identifiers, file paths, source locations and relationship confidence are included.
             Original source is excluded. Review the paths and unresolved behavior before sharing.

@@ -2,13 +2,29 @@ package main
 
 // Keep the language-analysis contract independent of general entity schemas.
 func addCodeSchemas(schemas object) {
-	languages := []string{"python", "javascript", "typescript", "java", "csharp", "cpp", "c", "sql", "go", "rust", "php", "kotlin", "swift", "shell", "r", "dart", "ruby", "powershell", "dax", "powerquery", "vba", "scala", "lua", "matlab", "objective-c", "perl", "groovy", "vbnet", "julia", "elixir", "solidity", "haskell", "fsharp", "clojure", "tsql", "plsql", "sas", "apex", "abap", "cobol", "fortran", "assembly", "pascal", "gdscript", "graphql", "mdx", "cypher", "vega", "hcl", "nix"}
+	languages := []string{"python", "javascript", "typescript", "java", "csharp", "cpp", "c", "sql", "go", "rust", "php", "kotlin", "swift", "shell", "r", "dart", "ruby", "powershell", "dax", "powerquery", "vba", "scala", "lua", "matlab", "objective-c", "perl", "groovy", "vbnet", "julia", "elixir", "solidity", "haskell", "fsharp", "clojure", "tsql", "plsql", "sas", "apex", "abap", "cobol", "fortran", "assembly", "pascal", "gdscript", "graphql", "mdx", "cypher", "vega", "hcl", "nix", "markdown"}
 	text := func(max int) object { return object{"type": "string", "minLength": 1, "maxLength": max} }
 	count := func(max int) object { return object{"type": "integer", "minimum": 0, "maximum": max} }
 	list := func(item object, max int) object { return object{"type": "array", "maxItems": max, "items": item} }
 	record := func(required []string, props object) object {
 		return object{"type": "object", "additionalProperties": false, "required": required, "properties": props}
 	}
+	schemas["ProjectDirectory"] = record([]string{"version", "path", "fileCount", "languages"}, object{
+		"version": object{"type": "integer", "enum": []int{1}}, "path": text(500), "fileCount": count(500), "languages": list(ref("CodeLanguage"), 51),
+	})
+	schemas["ProjectDirectory"].(object)["properties"].(object)["languages"].(object)["uniqueItems"] = true
+	schemas["CodeProjectAnalysis"] = record([]string{"version", "name", "expandedBytes", "ignoredEntries", "ignoredReasons"}, object{
+		"version": object{"type": "integer", "enum": []int{1}}, "name": text(500), "expandedBytes": count(absoluteImportByteLimit), "ignoredEntries": count(10000),
+		"ignoredReasons": object{"type": "object", "additionalProperties": false, "properties": object{
+			"dependency": count(10000), "build": count(10000), "vcs": count(10000), "private": count(10000), "binary": count(10000), "generated": count(10000), "unsupported": count(10000), "directory": count(10000),
+		}},
+	})
+	schemas["CodeProjectInput"] = record([]string{"data"}, object{
+		"name": text(500), "data": object{"type": "string", "minLength": 1, "maxLength": absoluteImportByteLimit, "description": "Strict base64 ZIP bytes, without a data URL. The 32 MiB local API/MCP JSON envelope still applies (roughly 24 MiB compressed ZIP at most)."},
+		"mode": object{"type": "string", "enum": []string{"files", "symbols", "folders"}, "default": "files"}, "focus": text(500),
+		"languages": object{"type": "object", "maxProperties": 500, "additionalProperties": ref("CodeLanguage"), "description": "Optional language overrides by exact retained relative file path after common root stripping. Unknown/excluded paths and unsupported language IDs are rejected; use this to resolve ambiguous headers or .m/.cls files, matching UI language choices."},
+	})
+	schemas["CodeProjectInput"].(object)["description"] = importLimitPolicyDescription + " Compressed ZIP and total expanded archive both use the selected byte budget; ignored entries still count. Supports stored/deflated ZIP, at most 10,000 entries and 500 analyzed files. Rejects encrypted, ZIP64, symlink, duplicate and unsafe-path archives. No execution or network fetch. Dependency/build/private/binary/generated/unsupported entries are excluded and counted. A single wrapping archive directory is removed. Folder mode aggregates directory dependencies and includes contains links. Markdown relative/reference/wiki links use the same semantic analyzer. Original archive/source is transient; derived scan counts, source paths and relationship evidence may be retained."
 	schemas["CodeLanguage"] = object{"type": "string", "enum": languages}
 	schemas["CodeLanguageDefinition"] = record([]string{"id", "name", "extensions", "family", "capabilities"}, object{
 		"id": ref("CodeLanguage"), "name": text(100), "extensions": list(text(100), 30), "family": text(100), "capabilities": list(text(100), 30),
@@ -16,9 +32,9 @@ func addCodeSchemas(schemas object) {
 	schemas["CodeFile"] = record([]string{"path", "content"}, object{
 		"path": text(500), "content": object{"type": "string", "maxLength": absoluteImportByteLimit}, "language": ref("CodeLanguage"),
 	})
-	schemas["CodeFile"].(object)["description"] = "Relative unique file path. Explicit language is required for ambiguous extensions such as .m; SQL defaults to SQL, use tsql/plsql explicitly for dialects. Source is analyzed locally and never executed."
+	schemas["CodeFile"].(object)["description"] = "Relative unique file path. Filename and conservative content/shebang hints identify languages; unresolved ambiguity still requires an explicit language such as .m; SQL defaults to SQL, use tsql/plsql explicitly for dialects. Source is analyzed locally and never executed."
 	schemas["CodeInput"] = record([]string{"files"}, object{
-		"name": text(500), "files": list(ref("CodeFile"), 500), "mode": object{"type": "string", "enum": []string{"files", "symbols"}, "description": "Optional detail level. When omitted, one file uses symbols (declarations and dependencies); multiple files use files (project overview). An explicit files or symbols choice is always preserved. Preview and saved code analysis return the resolved mode."}, "focus": text(500),
+		"name": text(500), "files": list(ref("CodeFile"), 500), "mode": object{"type": "string", "enum": []string{"files", "symbols", "folders"}, "description": "Optional detail level. When omitted, one file uses symbols (declarations and dependencies); multiple files use files (project overview). An explicit files or symbols choice is always preserved. Preview and saved code analysis return the resolved mode."}, "focus": text(500),
 	})
 	schemas["CodeInput"].(object)["properties"].(object)["files"].(object)["minItems"] = 1
 	schemas["CodeInput"].(object)["description"] = importLimitPolicyDescription + " Code applies that selected decoded UTF-8 byte limit to each file and to the total project (50 MiB each by default), with an absolute 1 GiB ceiling. Other limits: 500 files, 100,000 lines per file, 500,000 project lines, 20,000 characters per line, 10,000 extracted symbols, 5,000 diagram objects and 10,000 diagram connections; 30-second worker deadline. Structural outline, not compiler verification. Focus matches path/name substrings case-insensitively and includes immediate neighbors. Original source/comments/string literals are not saved; names/paths are retained."
@@ -27,10 +43,10 @@ func addCodeSchemas(schemas object) {
 	})
 	schemas["CodeEvidence"] = record([]string{"path", "line"}, object{"path": text(500), "line": object{"type": "integer", "minimum": 1}})
 	schemas["CodeRelation"] = record([]string{"version", "kind", "confidence"}, object{
-		"version": object{"type": "integer", "enum": []int{1}}, "kind": object{"type": "string", "enum": []string{"contains", "imports", "calls", "inherits", "references", "reads", "writes", "depends-on"}}, "confidence": object{"type": "string", "enum": []string{"syntax", "heuristic", "unresolved"}}, "evidence": ref("CodeEvidence"),
+		"version": object{"type": "integer", "enum": []int{1}}, "kind": object{"type": "string", "enum": []string{"contains", "imports", "calls", "inherits", "references", "reads", "writes", "depends-on"}}, "confidence": object{"type": "string", "enum": []string{"syntax", "heuristic", "unresolved"}}, "evidence": ref("CodeEvidence"), "occurrences": object{"type": "integer", "minimum": 1, "maximum": 10000, "description": "Number of file relationships represented by a folder-level aggregate; evidence identifies the first occurrence."},
 	})
 	schemas["CodeAnalysis"] = record([]string{"version", "languages", "mode", "fileCount", "symbolCount", "dependencyCount", "unresolvedCount", "warnings"}, object{
-		"version": object{"type": "integer", "enum": []int{1}}, "languages": list(ref("CodeLanguage"), 50), "mode": object{"type": "string", "enum": []string{"files", "symbols"}}, "fileCount": count(500), "symbolCount": count(10000), "dependencyCount": count(10000), "unresolvedCount": count(10000), "warnings": list(text(1000), 100), "focus": text(500),
+		"version": object{"type": "integer", "enum": []int{1}}, "languages": list(ref("CodeLanguage"), 51), "mode": object{"type": "string", "enum": []string{"files", "symbols", "folders"}}, "fileCount": count(500), "symbolCount": count(10000), "dependencyCount": count(10000), "unresolvedCount": count(10000), "warnings": list(text(1000), 100), "focus": text(500), "directoryCount": count(5000), "project": ref("CodeProjectAnalysis"),
 	})
 	schemas["CodeAnalysis"].(object)["properties"].(object)["languages"].(object)["minItems"] = 1
 	schemas["CodeAnalysis"].(object)["properties"].(object)["languages"].(object)["uniqueItems"] = true

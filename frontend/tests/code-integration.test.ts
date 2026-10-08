@@ -1,12 +1,18 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { blankGraph, newEdge, newNode, type Graph } from '../src/model/types';
 import { validateGraph } from '../src/model/validation';
-import { getCodeAnalysis, getCodeObject, getCodeRelation } from '../src/code/schema';
+import {
+  getCodeAnalysis,
+  getCodeObject,
+  getCodeRelation,
+  getProjectDirectory,
+} from '../src/code/schema';
 import { reconnectedAnalysisEdge } from '../src/model/relationships';
 import { copySelection, pasteSelection } from '../src/state/clipboard';
 import { buildLovablePrompt } from '../src/export/lovable';
 import { markdown } from '../src/export/semantic';
 import { Repository } from '../src/storage/repository';
+import { parseCode } from '../src/code/analyzer';
 import { WorkspaceDatabase } from '../src/storage/database';
 
 function fixture(): Graph {
@@ -167,4 +173,41 @@ describe('code metadata across normal diagram workflows', () => {
     mutate(graph);
     expect(() => validateGraph(graph)).toThrow(/Invalid code/);
   });
+});
+
+it('keeps folder provenance and aggregate evidence in bounded exports, storage and backups', async () => {
+  const result = parseCode({
+    name: 'Architecture',
+    mode: 'folders',
+    files: [
+      {
+        path: 'app/main.ts',
+        content: 'import { run } from "../lib/helper"; export function start() { run(); }',
+      },
+      { path: 'lib/helper.ts', content: 'export function run() {}' },
+      { path: 'docs/start.md', content: '[Home](../README.md)' },
+      { path: 'README.md', content: '# Project' },
+    ],
+  });
+  const graph = result.graph;
+  graph.nodes[0].metadata.private = 'EXCLUDED-ARBITRARY-DIRECTORY';
+  expect(getProjectDirectory(graph.nodes[0])).toBeDefined();
+  const prompt = buildLovablePrompt(graph, '', { scope: 'diagram' }).text;
+  const text = markdown(graph);
+  for (const output of [prompt, text]) {
+    expect(output).toContain('fileCount');
+    expect(output).toContain('occurrences');
+    expect(output).toContain('folders');
+    expect(output).not.toContain('EXCLUDED-ARBITRARY-DIRECTORY');
+  }
+  const db = new WorkspaceDatabase(`project-export-${crypto.randomUUID()}`);
+  databases.push(db);
+  await db.initialize();
+  const repo = new Repository(db);
+  await repo.importGraph(graph);
+  const saved = await repo.getGraph(graph.diagram.id);
+  expect(saved?.nodes.map(getProjectDirectory)).toEqual(graph.nodes.map(getProjectDirectory));
+  expect(
+    new Map((await db.backup()).nodes.map((node) => [node.id, getProjectDirectory(node)])),
+  ).toEqual(new Map(graph.nodes.map((node) => [node.id, getProjectDirectory(node)])));
 });

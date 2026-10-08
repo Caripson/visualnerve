@@ -1,4 +1,5 @@
 import type { CodeLanguage, LanguageDefinition } from './types';
+import { maskCode } from './lex';
 
 const declarations = ['declarations', 'calls', 'imports'];
 const language = (
@@ -79,6 +80,7 @@ export const codeLanguages: LanguageDefinition[] = [
     'references',
   ]),
   language('nix', 'Nix', ['.nix'], 'infrastructure', ['bindings', 'imports', 'references']),
+  language('markdown', 'Markdown', ['.md', '.markdown'], 'documentation', ['local links']),
 ];
 
 export function detectCodeLanguage(path: string): CodeLanguage | undefined {
@@ -89,6 +91,86 @@ export function detectCodeLanguage(path: string): CodeLanguage | undefined {
     entry.extensions.some((extension) => basename.endsWith(extension.toLowerCase())),
   );
   return matching.length === 1 ? matching[0].id : undefined;
+}
+
+/** Conservative local identification: ambiguous source stays available for explicit review. */
+export function detectProjectLanguage(path: string, content: string): CodeLanguage | undefined {
+  const basename = path.replaceAll('\\', '/').split('/').at(-1)?.toLowerCase() ?? '';
+  const sample = content.slice(0, 64_000);
+  const candidates = new Set<CodeLanguage>();
+  const cSource = /\.(?:h|m|cls)$/.test(basename) ? maskCode(sample, 'objective-c') : '';
+  if (
+    /\.(?:h|m)$/.test(basename) &&
+    /(?:^|\n)\s*(?:#\s*import\b|@(?:interface|implementation|protocol)\b)/.test(cSource)
+  )
+    candidates.add('objective-c');
+  if (basename.endsWith('.h')) {
+    if (/\b(?:namespace|template)\s*(?:\w|<)|\bclass\s+\w+\s*(?:[:{])|\bstd::/.test(cSource))
+      candidates.add('cpp');
+    if (
+      /\b(?:_Generic|_Atomic|_Bool|_Static_assert)\b|#\s*include\s*<(?:stdbool|stdatomic)\.h/.test(
+        cSource,
+      )
+    )
+      candidates.add('c');
+    return candidates.size === 1 ? [...candidates][0] : undefined;
+  }
+  if (basename.endsWith('.m')) {
+    if (
+      /^\s*(?:function\s+(?:(?:\w+|\[[^\]\n]+\])\s*=\s*)?\w+\s*(?:\(|$)|classdef\s+\w+)/m.test(
+        maskCode(sample, 'matlab'),
+      )
+    )
+      candidates.add('matlab');
+    if (
+      /^\s*(?:section\s+\w+\s*;|(?:\w+\s*=\s*)?let\b)[\s\S]*\bin\s+\w+/m.test(
+        maskCode(sample, 'powerquery'),
+      )
+    )
+      candidates.add('powerquery');
+    return candidates.size === 1 ? [...candidates][0] : undefined;
+  }
+  if (basename.endsWith('.cls')) {
+    if (
+      /^\s*(?:Attribute\s+VB_Name\b|Option\s+Explicit\b|End\s+(?:Sub|Function|Class)\b)/im.test(
+        maskCode(sample, 'vba'),
+      )
+    )
+      candidates.add('vba');
+    if (
+      /\b(?:public|private|global)\s+(?:(?:with|without|inherited)\s+sharing\s+)?class\s+\w+[^\n{]*\{|^\s*@(?:isTest|RestResource)\b/m.test(
+        cSource,
+      )
+    )
+      candidates.add('apex');
+    return candidates.size === 1 ? [...candidates][0] : undefined;
+  }
+  const detected = detectCodeLanguage(path);
+  if (detected) return detected;
+  if (basename.includes('.')) return undefined;
+  const shebang = sample.match(/^\uFEFF?#!\s*([^\r\n]+)/)?.[1];
+  if (!shebang) return undefined;
+  const interpreters: [RegExp, CodeLanguage][] = [
+    [/^python(?:\d+(?:\.\d+)*)?$/, 'python'],
+    [/^(?:node|nodejs)$/, 'javascript'],
+    [/^(?:bash|sh|zsh|ksh|dash)$/, 'shell'],
+    [/^perl(?:\d+(?:\.\d+)*)?$/, 'perl'],
+    [/^ruby(?:\d+(?:\.\d+)*)?$/, 'ruby'],
+    [/^pwsh$/, 'powershell'],
+    [/^Rscript$/, 'r'],
+    [/^julia$/, 'julia'],
+    [/^lua(?:\d+(?:\.\d+)*)?$/, 'lua'],
+    [/^elixir$/, 'elixir'],
+    [/^runhaskell$/, 'haskell'],
+  ];
+  const tokens = shebang.trim().split(/\s+/);
+  const command = tokens[0].split('/').at(-1)!;
+  const interpreter =
+    command === 'env'
+      ? tokens.slice(1).find((token) => !token.startsWith('-') && !token.includes('='))
+      : command;
+  const name = interpreter?.split('/').at(-1);
+  return interpreters.find(([pattern]) => name && pattern.test(name))?.[1];
 }
 
 export function supportedCodeFile(path: string): boolean {

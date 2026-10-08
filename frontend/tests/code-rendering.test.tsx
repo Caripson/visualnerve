@@ -119,3 +119,42 @@ it('explains inferred versus unresolved connections and saved analysis notes', (
   expect(screen.getByLabelText('Code analysis details')).toHaveTextContent('Python, HCL');
   expect(screen.getByLabelText('Code analysis details')).toHaveTextContent('focus: worker');
 });
+
+it('explains folder counts and aggregate relationships in cards and Properties', () => {
+  const graph = blankGraph('Architecture');
+  const node = newNode(graph.diagram.id, {
+    title: 'src',
+    metadata: {
+      projectDirectory: {
+        version: 1,
+        path: 'src',
+        fileCount: 20,
+        languages: ['typescript', 'markdown'],
+      },
+    },
+  });
+  const { unmount } = render(
+    <>
+      <CodeSummary node={node} />
+      <CodeObjectProperties node={node} />
+    </>,
+  );
+  expect(screen.getByLabelText('Project folder summary')).toHaveTextContent('20 files');
+  expect(screen.getByLabelText('Project folder details')).toHaveTextContent('TypeScript, Markdown');
+  unmount();
+  const edge = newEdge(graph.diagram.id, 'src', 'lib', {
+    metadata: {
+      codeRelation: {
+        version: 1,
+        kind: 'imports',
+        confidence: 'syntax',
+        occurrences: 8,
+        evidence: { path: 'src/main.ts', line: 1 },
+      },
+    },
+  });
+  render(<CodeRelationProperties edge={edge} />);
+  expect(screen.getByLabelText('Code connection details')).toHaveTextContent(
+    'Source relationships8',
+  );
+});

@@ -121,6 +121,20 @@ Inspect returned objects, counts, warnings and syntax/heuristic/unresolved relat
 
 Original source is temporary. Saved diagrams retain recognized identifiers, paths, source lines and relationship evidence rather than complete code. See [code visualization](/help/code/) for capabilities and bounds. SQL preview uses **POST `/sql/preview`** with `{sql,name?}`; creation uses `/sql/diagrams`. Draw.io/Visio uses `/diagram-files/preview` and a selected-page `/import`. These share the browser's importers and validation.
 
+## Inspect a code or documentation ZIP
+
+Use `/code/project/preview` with strict base64 ZIP bytes. Read only can inspect the unsaved result; `/code/project/diagrams` requires Read + write and opens the saved graph.
+
+```json
+{
+  "path": "/code/project/preview",
+  "method": "POST",
+  "data": {"name": "Service project", "data": "<BASE64_ZIP_BYTES>", "mode": "folders"}
+}
+```
+
+Choose `files`, `symbols` or `folders`. Folder nodes expose semantic `projectDirectory` metadata, combined dependencies expose `codeRelation.occurrences`, and `codeAnalysis.project` explains scan counts. Code and internal Markdown links use the same browser analysis as the UI. The 32 MiB envelope includes base64, so compressed archives must be below approximately 24 MiB and may need to be smaller. ZIP scan permits 120 seconds, followed by 30 seconds for analysis; these exact bridge routes allow 165 seconds. See [ZIP project help](/help/code/#import-a-zip-project) for exclusions, supported links and limits.
+
 ## Create ordinary diagram cards in 3D
 
 Create a spatial diagram through visual_nerve_request:

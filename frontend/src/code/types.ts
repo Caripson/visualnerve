@@ -1,5 +1,7 @@
 import type { Graph } from '../model/types';
 import { DEFAULT_IMPORT_LIMIT_BYTES } from '../imports/limits';
+import type { ProjectIgnoredReason } from './project/types';
+export { projectIgnoredReasons } from './project/types';
 
 export const codeLanguageIds = [
   'python',
@@ -52,6 +54,7 @@ export const codeLanguageIds = [
   'vega',
   'hcl',
   'nix',
+  'markdown',
 ] as const;
 export type CodeLanguage = (typeof codeLanguageIds)[number];
 export interface LanguageDefinition {
@@ -70,7 +73,7 @@ export interface CodeInput {
   name?: string;
   files: CodeFile[];
   /** Omitted: declarations for one file, file overview for multiple files. */
-  mode?: 'files' | 'symbols';
+  mode?: 'files' | 'symbols' | 'folders';
   /** Case-insensitive path/name substring. Include immediate related objects. */
   focus?: string;
 }
@@ -123,17 +126,35 @@ export interface CodeRelation {
   kind: CodeRelationKind;
   confidence: CodeConfidence;
   evidence?: { path: string; line: number };
+  /** Number of source relationships represented by a folder overview connection. */
+  occurrences?: number;
+}
+export interface ProjectDirectory {
+  version: 1;
+  /** '.' identifies the root; other paths are normalized relative directories. */
+  path: string;
+  fileCount: number;
+  languages: CodeLanguage[];
+}
+export interface CodeProjectAnalysis {
+  version: 1;
+  name: string;
+  expandedBytes: number;
+  ignoredEntries: number;
+  ignoredReasons: Partial<Record<ProjectIgnoredReason, number>>;
 }
 export interface CodeAnalysis {
   version: 1;
   languages: CodeLanguage[];
-  mode: 'files' | 'symbols';
+  mode: 'files' | 'symbols' | 'folders';
   fileCount: number;
+  directoryCount?: number;
   symbolCount: number;
   dependencyCount: number;
   unresolvedCount: number;
   warnings: string[];
   focus?: string;
+  project?: CodeProjectAnalysis;
 }
 export interface CodeImportResult extends CodeAnalysis {
   graph: Graph;
@@ -155,9 +176,13 @@ export interface CodeDependency {
   /** Import path versus named symbol/resource. */
   targetType: 'module' | 'symbol';
   confidence: CodeConfidence;
+  /** Wiki syntax permits an unambiguous Markdown basename lookup in the project. */
+  markdownWiki?: boolean;
 }
 export interface ExtractedCode {
   symbols: CodeSymbol[];
   dependencies: CodeDependency[];
   warnings: string[];
+  /** Local Markdown anchor identifiers used only during resolution. */
+  anchors?: string[];
 }

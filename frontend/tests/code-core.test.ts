@@ -150,7 +150,7 @@ describe('Code graph assembly and bounded local resolution', () => {
         ],
       }),
     ).toThrow(/Duplicate/);
-    expect(() => parseCode({ files: [{ path: 'app.m', content: 'function helper()' }] })).toThrow(
+    expect(() => parseCode({ files: [{ path: 'app.m', content: 'value = 1;' }] })).toThrow(
       /Choose/,
     );
     expect(

@@ -107,7 +107,7 @@ test('offers all languages and focuses a pasted diagram on a narrow phone withou
     .getByRole('button', { name: 'Visualize code', exact: true })
     .click();
   const dialog = page.getByRole('dialog', { name: 'Visualize code', exact: true });
-  await expect(dialog.getByLabel('Source language').locator('option')).toHaveCount(50);
+  await expect(dialog.getByLabel('Source language').locator('option')).toHaveCount(51);
   await dialog.getByLabel('Code diagram name').fill('Focused functions');
   await dialog.getByLabel('Source language').selectOption('typescript');
   await dialog

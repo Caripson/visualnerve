@@ -1,4 +1,4 @@
-import { codeLanguages, detectCodeLanguage } from './catalog';
+import { codeLanguages, detectProjectLanguage } from './catalog';
 import { codeLimits, type CodeFile, type CodeInput, type CodeLanguage } from './types';
 import {
   assertImportBytes,
@@ -20,7 +20,7 @@ export function normalizeCodeInput(
   byteLimit = DEFAULT_IMPORT_LIMIT_BYTES,
 ): {
   files: NormalizedFile[];
-  mode: 'files' | 'symbols';
+  mode: 'files' | 'symbols' | 'folders';
   name: string;
   bytes: number;
   focus?: string;
@@ -35,8 +35,8 @@ export function normalizeCodeInput(
     throw new Error('Code input has unsupported fields.');
   if (!Array.isArray(input.files) || !input.files.length || input.files.length > codeLimits.files)
     throw new Error('Import between 1 and 500 code files.');
-  if (input.mode !== undefined && !['files', 'symbols'].includes(input.mode))
-    throw new Error('Code mode must be files or symbols.');
+  if (input.mode !== undefined && !['files', 'symbols', 'folders'].includes(input.mode))
+    throw new Error('Code mode must be files, symbols or folders.');
   for (const key of ['name', 'focus'] as const)
     if (
       input[key] !== undefined &&
@@ -92,7 +92,7 @@ export function normalizeCodeInput(
       throw new Error('Project exceeds 500,000 lines. Import a smaller folder.');
     if (file.language !== undefined && !codeLanguages.some((entry) => entry.id === file.language))
       throw new Error(`Choose a supported language for ${path}.`);
-    const language = file.language ?? detectCodeLanguage(path);
+    const language = file.language ?? detectProjectLanguage(path, file.content);
     if (!language || !codeLanguages.some((entry) => entry.id === language))
       throw new Error(
         `Choose a supported language for ${path}. Ambiguous extensions need an explicit language.`,

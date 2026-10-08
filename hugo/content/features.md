@@ -34,7 +34,7 @@ Displaying fewer groups does not reduce the rows used in a measure. The current 
 
 SQL SELECT and WITH queries reveal source aliases, joins, output expressions and column lineage. Table definitions reveal columns, keys and foreign-key relationships. SQL is analyzed locally and never executed.
 
-Code import covers 50 languages with bounded structural analyzers. Start with a file overview or separate declarations, then inspect dependency evidence and confidence. Recognized calls can be heuristic or unresolved; the diagram is a reading aid, not a compiler or runtime debugger.
+Code import covers 50 programming/query/configuration languages plus linked Markdown documents with bounded structural analyzers. Import a ZIP project locally, review excluded files and choose a file, folder or declaration view. Start with a file overview or separate declarations, then inspect dependency evidence and confidence. Recognized calls can be heuristic or unresolved; the diagram is a reading aid, not a compiler or runtime debugger.
 
 Existing `.drawio` and `.vsdx` files can also become editable native diagrams. Preview pages and import notes before choosing the page to create. Advanced shapes and routing may be simplified.
 

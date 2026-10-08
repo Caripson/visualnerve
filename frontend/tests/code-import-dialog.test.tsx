@@ -71,13 +71,13 @@ beforeEach(() => {
   parse.mockReset();
 });
 
-it('offers all 50 languages, previews confidence and creates only after explicit confirmation', async () => {
+it('offers all 51 source languages, previews confidence and creates only after explicit confirmation', async () => {
   const create = vi.fn().mockResolvedValue(undefined);
   const close = vi.fn();
   const preview = result();
   parse.mockResolvedValue(preview);
   render(<CodeImportDialog create={create} close={close} />);
-  expect(within(screen.getByLabelText('Source language')).getAllByRole('option')).toHaveLength(50);
+  expect(within(screen.getByLabelText('Source language')).getAllByRole('option')).toHaveLength(51);
   expect(screen.getByText(/Original source is a temporary draft/)).toBeVisible();
   fireEvent.change(screen.getByLabelText('Source code'), { target: { value: initialSource } });
   expect(screen.getByLabelText('Code diagram detail')).toHaveValue('symbols');
@@ -144,7 +144,7 @@ it('aborts an in-flight preview when edited and ignores a late worker result', a
 });
 
 it('requires a language for an ambiguous file and retains project file paths', async () => {
-  const ambiguous = sourceFile('model.m', 'function y = transform(x)\ny = x;\nend');
+  const ambiguous = sourceFile('model.m', 'value = 42;');
   const python = sourceFile('main.py', 'def run():\n    return 1');
   Object.defineProperty(python, 'webkitRelativePath', { value: 'project/main.py' });
   parse.mockResolvedValue(result());

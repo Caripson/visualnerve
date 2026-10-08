@@ -33,7 +33,7 @@ function spatialNavigation(graph: Graph | null, path: string, method: string, va
   if (!graph || method === 'GET') return false;
   if (
     method === 'POST' &&
-    ['/spatial-diagrams', '/sql/diagrams', '/code/diagrams'].includes(
+    ['/spatial-diagrams', '/sql/diagrams', '/code/diagrams', '/code/project/diagrams'].includes(
       path.replace(/^\/api\/v1/, ''),
     )
   )
@@ -773,6 +773,8 @@ export class Workspace {
         '/sql/diagrams',
         '/code/preview',
         '/code/diagrams',
+        '/code/project/preview',
+        '/code/project/diagrams',
         '/diagram-files/preview',
       ].includes(endpoint) ||
         diagramFile);
@@ -805,7 +807,13 @@ export class Workspace {
       });
       if (
         method === 'POST' &&
-        (['/spatial-diagrams', '/sql/diagrams', '/code/diagrams'].includes(endpoint) || diagramFile)
+        ([
+          '/spatial-diagrams',
+          '/sql/diagrams',
+          '/code/diagrams',
+          '/code/project/diagrams',
+        ].includes(endpoint) ||
+          diagramFile)
       )
         await this.open((result as Graph).diagram.id);
       return result;

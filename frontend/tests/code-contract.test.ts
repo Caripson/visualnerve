@@ -15,7 +15,14 @@ describe('generated code OpenAPI contract', () => {
     expect(schemas.CodeFile.additionalProperties).toBe(false);
   });
   it('documents strict metadata and the separate preview/create/discovery operations', () => {
-    for (const name of ['CodeObject', 'CodeRelation', 'CodeAnalysis'])
+    for (const name of [
+      'CodeObject',
+      'CodeRelation',
+      'CodeAnalysis',
+      'ProjectDirectory',
+      'CodeProjectInput',
+      'CodeProjectAnalysis',
+    ])
       expect(schemas[name].additionalProperties).toBe(false);
     expect(schemas.Node.properties.metadata.properties.codeObject.$ref).toContain('/CodeObject');
     expect(schemas.Edge.properties.metadata.properties.codeRelation.$ref).toContain(
@@ -28,4 +35,22 @@ describe('generated code OpenAPI contract', () => {
     expect(document.paths['/code/preview'].post.summary).toContain('without saving');
     expect(document.paths['/code/diagrams'].post.responses['201']).toBeDefined();
   });
+});
+
+it('documents ZIP language overrides and shared folder contracts', () => {
+  const document = JSON.parse(readFileSync(resolve(process.cwd(), '../docs/openapi.yaml'), 'utf8'));
+  const schemas = document.components.schemas;
+  expect(schemas.CodeProjectInput.required).toEqual(['data']);
+  expect(schemas.CodeProjectInput.properties.mode.default).toBe('files');
+  expect(schemas.CodeProjectInput.properties.languages.maxProperties).toBe(500);
+  expect(schemas.CodeProjectInput.properties.languages.additionalProperties.$ref).toContain(
+    '/CodeLanguage',
+  );
+  expect(schemas.CodeInput.properties.mode.enum).toEqual(['files', 'symbols', 'folders']);
+  expect(schemas.Node.properties.metadata.properties.projectDirectory.$ref).toContain(
+    '/ProjectDirectory',
+  );
+  expect(schemas.CodeRelation.properties.occurrences.minimum).toBe(1);
+  expect(document.paths['/code/project/preview'].post.summary).toContain('without saving');
+  expect(document.paths['/code/project/diagrams'].post.responses['201']).toBeDefined();
 });

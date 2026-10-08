@@ -1,6 +1,6 @@
 import type { Graph } from '../model/types';
 import { StorageError } from '../model/errors';
-import { getCodeObject } from '../code/schema';
+import { getCodeAnalysis, getCodeObject, getProjectDirectory } from '../code/schema';
 import { getSqlTable } from '../sql/schema';
 import { getSqlQueryResult, getSqlQuerySource } from '../sql/query-schema';
 import { getCsvNode } from '../data/csv';
@@ -24,12 +24,16 @@ export async function diagramSourceEvidence(graph: Graph, query: URLSearchParams
   if (!node) throw new StorageError(404, 'Choose an object in this diagram.');
   const metricId = query.get('metricId');
   const csv = getCsvNode(node);
+  const code = getCodeObject(node);
+  const projectDirectory = getProjectDirectory(node);
   if (!metricId)
     return {
       diagramId: graph.diagram.id,
       graphVersion: graph.diagram.version,
       nodeId: node.id,
-      code: getCodeObject(node),
+      code,
+      projectDirectory,
+      codeAnalysis: code || projectDirectory ? getCodeAnalysis(graph) : undefined,
       sqlTable: getSqlTable(node),
       sqlSource: getSqlQuerySource(node),
       sqlResult: getSqlQueryResult(node),

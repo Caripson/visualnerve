@@ -1,5 +1,15 @@
-import { getCodeAnalysis, getCodeObject, getCodeRelation } from '../code/schema';
-import { codeAnalysisSummary, codeObjectSummary, codeRelationSummary } from './code';
+import {
+  getCodeAnalysis,
+  getCodeObject,
+  getCodeRelation,
+  getProjectDirectory,
+} from '../code/schema';
+import {
+  codeAnalysisSummary,
+  codeObjectSummary,
+  codeRelationSummary,
+  projectDirectorySummary,
+} from './code';
 import Papa from 'papaparse';
 import { assertImportBytes, DEFAULT_IMPORT_LIMIT_BYTES, utf8Bytes } from '../imports/limits';
 import { getSqlQuerySource, getSqlQueryResult, getSqlQueryRelationship } from '../sql/query-schema';
@@ -202,6 +212,8 @@ export function markdown(graph: Graph): string {
     if (n.notes) chunks.push(`${n.notes}\n`);
     const code = codeObjectSummary(getCodeObject(n));
     if (code) chunks.push(queryRecord('Code object', code));
+    const directory = projectDirectorySummary(getProjectDirectory(n));
+    if (directory) chunks.push(queryRecord('Project directory', directory));
     const source = sqlQuerySourceSummary(getSqlQuerySource(n));
     if (source) chunks.push(queryRecord('SQL query source', source));
     const result = sqlQueryResultSummary(getSqlQueryResult(n));

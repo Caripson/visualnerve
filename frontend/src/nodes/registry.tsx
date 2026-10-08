@@ -13,6 +13,7 @@ import {
   Circle,
   Diamond,
   FileText,
+  Folder,
   Database,
   Flag,
   Users,
@@ -39,7 +40,7 @@ import { MetricSummary } from '../components/MetricSummary';
 import { NodeStatus } from '../ui/NodeStatus';
 import { SqlTableSummary } from '../components/SqlTableSummary';
 import { CodeSummary } from '../components/CodeSummary';
-import { getCodeObject } from '../code/schema';
+import { getCodeObject, getProjectDirectory } from '../code/schema';
 import { SqlQuerySummary } from '../components/SqlQuerySummary';
 import { SimulationNodeSummary } from '../simulation/NodeSummary';
 import { ResourcePoolCard } from '../simulation/ResourcePoolCard';
@@ -80,7 +81,8 @@ function renderer(kind: NodeKind) {
         data.resize?.(id, { x: p.x, y: p.y, width: p.width, height: p.height }),
       [id, data.resize],
     );
-    const code = !!getCodeObject(node);
+    const directory = getProjectDirectory(node);
+    const code = !!(getCodeObject(node) || directory);
     const smallZoom = useStore((state) => state.transform[2] < 0.2);
     const overview = smallZoom && !exporting && !selected;
     const updateNode = useEditor((s) => s.updateNode);
@@ -155,8 +157,8 @@ function renderer(kind: NodeKind) {
         )}
         {!overview && (
           <div className="node-topline">
-            <AreaIcon metadata={node.metadata} fallback={Icon} size={13} />
-            <span className="node-kind">{config.label}</span>
+            <AreaIcon metadata={node.metadata} fallback={directory ? Folder : Icon} size={13} />
+            <span className="node-kind">{directory ? 'Folder' : config.label}</span>
             <NodeStatus status={node.status} />
           </div>
         )}

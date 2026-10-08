@@ -42,3 +42,40 @@ it('bounds reads before loading source text and retains relative file paths', as
   expect(oversized.text).not.toHaveBeenCalled();
   await expect(readCodeFiles(Array.from({ length: 501 }, () => first))).rejects.toThrow('500');
 });
+
+it('loads Markdown folders and identifies ambiguous source from content without guessing', async () => {
+  const examples = [
+    ['start.md', '# Start\n[Next](./next.md)', 'markdown'],
+    ['engine.h', 'namespace app { class Engine {}; }', 'cpp'],
+    ['plain.h', 'void run(void);', undefined],
+    ['calculate.m', 'function result = calculate(value)\n result = value;\nend', 'matlab'],
+    ['query.m', 'let Source = 1 in Source', 'powerquery'],
+    ['Model.cls', 'public class Model {}', 'apex'],
+    ['Legacy.cls', 'Option Explicit\nPrivate Sub Run()\nEnd Sub', 'vba'],
+  ] as const;
+  const files = examples.map(([name, content]) => {
+    const value = new File([content], name);
+    Object.defineProperty(value, 'webkitRelativePath', { value: `project/${name}` });
+    Object.defineProperty(value, 'text', { value: vi.fn().mockResolvedValue(content) });
+    return value;
+  });
+  expect(selectFolderFiles(files)).toEqual({ files, ignored: 0 });
+  expect(
+    (await readCodeFiles(files)).map(({ path, content, language }) => [path, content, language]),
+  ).toEqual(examples.map(([name, content, language]) => [`project/${name}`, content, language]));
+});
+
+it('applies archive path exclusions to folder selection while avoiding unknown extensionless files', () => {
+  const selected = file('guide.md', 'project/docs/guide.md');
+  const input = [
+    selected,
+    file('helper.py', 'project/.ssh/helper.py'),
+    file('credentials.py', 'project/credentials.py'),
+    file('bundle.min.js', 'project/ui/bundle.min.js'),
+    file('generated.py', 'project/generated/generated.py'),
+    file('output.py', 'project/target/output.py'),
+    file('README', 'project/README'),
+    file('LICENSE', 'project/LICENSE'),
+  ];
+  expect(selectFolderFiles(input)).toEqual({ files: [selected], ignored: 7 });
+});

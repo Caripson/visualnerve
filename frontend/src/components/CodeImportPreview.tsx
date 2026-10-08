@@ -1,4 +1,4 @@
-import { getCodeObject, getCodeRelation } from '../code/schema';
+import { getCodeObject, getCodeRelation, getProjectDirectory } from '../code/schema';
 import type { CodeImportResult } from '../code/types';
 
 export function CodeImportPreview({ preview }: { preview: CodeImportResult }) {
@@ -13,6 +13,7 @@ export function CodeImportPreview({ preview }: { preview: CodeImportResult }) {
       <dl className="code-counts">
         {[
           ['Files', preview.fileCount],
+          ['Folders', preview.directoryCount ?? 0],
           ['Symbols', preview.symbolCount],
           ['Dependencies', preview.dependencyCount],
           ['Visible objects', preview.graph.nodes.length],
@@ -33,9 +34,15 @@ export function CodeImportPreview({ preview }: { preview: CodeImportResult }) {
       <ul className="code-preview-objects" aria-label="Preview code objects">
         {preview.graph.nodes.slice(0, 30).map((node) => {
           const object = getCodeObject(node);
+          const directory = getProjectDirectory(node);
           return (
             <li key={node.id}>
               <strong>{node.title}</strong>
+              {directory && (
+                <span>
+                  Folder · {directory.path} · {directory.fileCount} files
+                </span>
+              )}
               {object && (
                 <span>
                   {object.kind} · {object.path}

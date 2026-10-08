@@ -44,7 +44,7 @@ export function questionGraph(graph: Graph) {
             : 'explicit');
       const location = code?.evidence ?? (code ? getCodeObject(byId.get(edge.source)!) : undefined);
       const description = code
-        ? `${code.kind} (${code.confidence})`
+        ? `${code.kind} (${code.confidence})${code.occurrences !== undefined ? ` · ${code.occurrences} source relationships` : ''}`
         : sql
           ? `${sql.kind}${sql.joinType ? ` ${sql.joinType}` : ''}${sql.condition ? `: ${sql.condition}` : ''}`
           : key

@@ -64,7 +64,9 @@ func main() {
 		log.Fatal("local MCP integration must bind to 127.0.0.1, localhost or ::1")
 	}
 	handler := server.New(server.Config{StaticDir: *static, Token: token, Dev: *dev, AllowRemote: remote, Bridge: *bridge, AllowedOrigins: allowed})
-	httpServer := &http.Server{Addr: *addr, Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 60 * time.Second, IdleTimeout: 90 * time.Second}
+	// Response delivery must outlive bounded request-body reading and project analysis.
+	requestReadTimeout := 30 * time.Second
+	httpServer := &http.Server{Addr: *addr, Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: requestReadTimeout, WriteTimeout: requestReadTimeout + server.MaxCommandTimeout + 15*time.Second, IdleTimeout: 90 * time.Second}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	go func() {

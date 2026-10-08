@@ -14,9 +14,13 @@ export function assertMcpAccess(access: McpAccess, path: string, method: string)
     (method === 'POST' &&
       /^\/diagrams\/[\da-f-]{36}\/simulation\/compare$/i.test(path.replace(/^\/api\/v1/, ''))) ||
     (method === 'POST' &&
-      ['/export', '/sql/preview', '/code/preview', '/diagram-files/preview'].includes(
-        path.replace(/^\/api\/v1/, ''),
-      ));
+      [
+        '/export',
+        '/sql/preview',
+        '/code/preview',
+        '/code/project/preview',
+        '/diagram-files/preview',
+      ].includes(path.replace(/^\/api\/v1/, '')));
   if (access === 'read' && !reading)
     throw new StorageError(
       403,

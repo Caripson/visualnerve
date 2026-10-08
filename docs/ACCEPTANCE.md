@@ -775,3 +775,13 @@ panels and passes with the corrected layout. API and export documentation,
 the 3D/speech guides and the bundled user guide describe the changed behavior.
 No API routes or exchange-format versions changed. Work remains directly on
 main; deployment to S3/CloudFront remains manual.
+
+## 2026-10-08: Code-project ZIP and linked-document maps
+
+The code importer accepts one project ZIP through the normal file picker/drop flow or Visualize code. Local cancellable workers validate compressed and expanded budgets, CRCs, entry ranges and paths; exclude common dependencies/build/VCS/private/generated/binary/unsupported entries; and report scan/read progress and categorized counts. Limits remain 500 analyzed files and 50 MiB by default, with 10,000 ZIP entries and the selected experimental byte limit. Oversized or invalid archives fail without a partial saved diagram.
+
+Filename, shebang and conservative content patterns identify the existing 50 code languages plus Markdown. Inconclusive files require a UI language choice or API ZIP `languages` override by exact retained path. Files, declarations and folder modes share one analyzer. Directory objects have semantic `projectDirectory` metadata and aggregate typed dependencies, confidence, representative source evidence and occurrence counts. Internal Markdown inline/reference/wiki links and supported anchors resolve only within supplied files; missing/ambiguous references stay unresolved. Source and ZIP bytes are not persisted.
+
+REST/MCP project preview/create endpoints use the same UI engine, return categorized scan provenance, and respect read-only/write grants. Revocation is checked inside the final IndexedDB import transaction. Folder structure also reaches source evidence, overview, JSON/backups and bounded Markdown/Lovable exports. Documentation and OpenAPI describe the same schema, limits and transport envelope. The help includes an actual ZIP-import screen capture.
+
+Automated coverage includes corrupt/unsafe/bomb/encrypted/ZIP64/symlink/overlapping ZIPs, 500-file and 10,000-entry bounds, cancellation/stale results, language-override validation, retained-source exclusions, conservative language detection, Markdown resolution and path identities, folder aggregation, API permissions/persistence/export and desktop/320-pixel browser UI/API/MCP parity.

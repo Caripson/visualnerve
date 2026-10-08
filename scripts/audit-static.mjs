@@ -1,7 +1,7 @@
 import { readdirSync, lstatSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 const helpGuides = ['getting-started', 'editing', 'layouts', '3d', 'csv', 'connected-data', 'sql', 'code', 'diagram-import', 'understanding', 'presentations', 'simulation', 'sharing', 'settings', 'api-mcp', 'troubleshooting'];
-const helpScreenshots = ['new-diagram', 'editor', 'mobile-editor', 'layouts', 'spatial', 'csv-import', 'csv-evidence', 'connected-data', 'data-quality', 'source-refresh', 'sql-query', 'sql-schema', 'code-cobol', 'code-project', 'diagram-import', 'overview', 'history', 'player', 'player-compact', 'storyboard', 'simulation', 'process-setup', 'process-subprocess-setup', 'process-hierarchy', 'process-drilldown', 'node-quick-add', 'simulation-traffic', 'simulation-assumptions', 'simulation-compare', 'export', 'lovable', 'settings', 'backup', 'mcp-settings'];
+const helpScreenshots = ['new-diagram', 'editor', 'mobile-editor', 'layouts', 'spatial', 'csv-import', 'csv-evidence', 'connected-data', 'data-quality', 'source-refresh', 'sql-query', 'sql-schema', 'code-cobol', 'code-project', 'code-project-zip', 'diagram-import', 'overview', 'history', 'player', 'player-compact', 'storyboard', 'simulation', 'process-setup', 'process-subprocess-setup', 'process-hierarchy', 'process-drilldown', 'node-quick-add', 'simulation-traffic', 'simulation-assumptions', 'simulation-compare', 'export', 'lovable', 'settings', 'backup', 'mcp-settings'];
 const productPages = ['app', 'features', 'use-cases', 'process-simulator', 'mcp', 'developers', 'security'];
 export function auditStatic(directory) {
   const files = [];

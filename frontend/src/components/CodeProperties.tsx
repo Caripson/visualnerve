@@ -1,4 +1,9 @@
-import { getCodeAnalysis, getCodeObject, getCodeRelation } from '../code/schema';
+import {
+  getCodeAnalysis,
+  getCodeObject,
+  getCodeRelation,
+  getProjectDirectory,
+} from '../code/schema';
 import { codeLanguages } from '../code/catalog';
 import type { Graph, GraphEdge, GraphNode } from '../model/types';
 import './code-summary.css';
@@ -7,6 +12,25 @@ const languageName = (id: string) =>
   codeLanguages.find((language) => language.id === id)?.name ?? id;
 export function CodeObjectProperties({ node }: { node: GraphNode }) {
   const object = getCodeObject(node);
+  const directory = getProjectDirectory(node);
+  if (directory)
+    return (
+      <section className="code-details" aria-label="Project folder details">
+        <div className="property-section">Project folder</div>
+        <dl>
+          <dt>Folder</dt>
+          <dd>{directory.path === '.' ? 'Project root' : directory.path}</dd>
+          <dt>Source files</dt>
+          <dd>{directory.fileCount}</dd>
+          <dt>Languages</dt>
+          <dd>{directory.languages.map(languageName).join(', ')}</dd>
+        </dl>
+        <p>
+          Counts include nested folders. Connections combine file dependencies between their
+          containing folders; they do not prove runtime behavior.
+        </p>
+      </section>
+    );
   if (!object) return null;
   return (
     <section className="code-details" aria-label="Code object details">
@@ -64,6 +88,12 @@ export function CodeRelationProperties({ edge }: { edge: GraphEdge }) {
               ? 'Inferred'
               : 'Unresolved'}
         </dd>
+        {relation.occurrences !== undefined && (
+          <>
+            <dt>Source relationships</dt>
+            <dd>{relation.occurrences}</dd>
+          </>
+        )}
         {relation.evidence && (
           <>
             <dt>Evidence</dt>
@@ -95,9 +125,21 @@ export function CodeAnalysisProperties({ graph }: { graph: Graph }) {
         dependencies · {analysis.unresolvedCount} unresolved
       </p>
       <p>
-        {analysis.mode === 'files' ? 'File overview' : 'Declarations and dependencies'}
+        {analysis.mode === 'folders'
+          ? 'Folder relationships'
+          : analysis.mode === 'files'
+            ? 'File overview'
+            : 'Declarations and dependencies'}
         {analysis.focus ? ` · focus: ${analysis.focus}` : ''}
       </p>
+      {analysis.directoryCount !== undefined && <p>{analysis.directoryCount} folders</p>}
+      {analysis.project && (
+        <p>
+          ZIP project: {analysis.project.name} ·{' '}
+          {(analysis.project.expandedBytes / 1024 / 1024).toFixed(1)} MB expanded ·{' '}
+          {analysis.project.ignoredEntries} excluded entries
+        </p>
+      )}
       {analysis.warnings.length > 0 && (
         <details>
           <summary>Analysis notes ({analysis.warnings.length})</summary>

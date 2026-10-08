@@ -1,5 +1,5 @@
 import type { Graph, GraphNode } from '../model/types';
-import { getCodeObject } from '../code/schema';
+import { getCodeObject, getProjectDirectory } from '../code/schema';
 import { getCsvNode } from '../data/csv';
 import { getSqlTable } from '../sql/schema';
 import { getSqlQuerySource } from '../sql/query-schema';
@@ -50,6 +50,20 @@ export function overviewGrouping(graph: Graph, grouping: OverviewGrouping) {
     return tag ? [part('tags', 'Tags', 'tag'), part(`tag:${tag}`, tag, 'tag')] : undefined;
   };
   const source = (node: GraphNode) => {
+    const directory = getProjectDirectory(node);
+    if (directory) {
+      const segments = directory.path === '.' ? [] : directory.path.split('/');
+      return [
+        part('project-folders', 'Project folders', 'source'),
+        ...(segments.length
+          ? segments
+              .slice(0, 4)
+              .map((folder, index) =>
+                part(`folder:${segments.slice(0, index + 1).join('/')}`, folder, 'source'),
+              )
+          : [part('folder:.', 'Project root', 'source')]),
+      ];
+    }
     const code = getCodeObject(node);
     if (code) {
       const segments = code.path.replaceAll('\\', '/').split('/').filter(Boolean);

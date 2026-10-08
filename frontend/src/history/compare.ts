@@ -196,9 +196,15 @@ export function compareHistoryGraphs(
   )
     for (const node of [...before.nodes, ...after.nodes])
       if (
-        ['csv', 'sql', 'sqlTable', 'sqlQuerySource', 'sqlQueryResult', 'codeObject'].some(
-          (key) => node.metadata[key] !== undefined,
-        )
+        [
+          'csv',
+          'sql',
+          'sqlTable',
+          'sqlQuerySource',
+          'sqlQueryResult',
+          'codeObject',
+          'projectDirectory',
+        ].some((key) => node.metadata[key] !== undefined)
       )
         seeds.add(node.id);
   const adjacency = new Map<string, string[]>();

@@ -471,6 +471,9 @@
               "codeObject": {
                 "$ref": "#/components/schemas/CodeObject"
               },
+              "projectDirectory": {
+                "$ref": "#/components/schemas/ProjectDirectory"
+              },
               "spatial": {
                 "$ref": "#/components/schemas/SpatialNode"
               },
@@ -620,6 +623,11 @@
             "minimum": 0,
             "type": "integer"
           },
+          "directoryCount": {
+            "maximum": 5000,
+            "minimum": 0,
+            "type": "integer"
+          },
           "fileCount": {
             "maximum": 500,
             "minimum": 0,
@@ -634,7 +642,7 @@
             "items": {
               "$ref": "#/components/schemas/CodeLanguage"
             },
-            "maxItems": 50,
+            "maxItems": 51,
             "minItems": 1,
             "type": "array",
             "uniqueItems": true
@@ -642,9 +650,13 @@
           "mode": {
             "enum": [
               "files",
-              "symbols"
+              "symbols",
+              "folders"
             ],
             "type": "string"
+          },
+          "project": {
+            "$ref": "#/components/schemas/CodeProjectAnalysis"
           },
           "symbolCount": {
             "maximum": 10000,
@@ -705,7 +717,7 @@
       },
       "CodeFile": {
         "additionalProperties": false,
-        "description": "Relative unique file path. Explicit language is required for ambiguous extensions such as .m; SQL defaults to SQL, use tsql/plsql explicitly for dialects. Source is analyzed locally and never executed.",
+        "description": "Relative unique file path. Filename and conservative content/shebang hints identify languages; unresolved ambiguity still requires an explicit language such as .m; SQL defaults to SQL, use tsql/plsql explicitly for dialects. Source is analyzed locally and never executed.",
         "properties": {
           "content": {
             "maxLength": 1073741824,
@@ -734,6 +746,11 @@
             "minimum": 0,
             "type": "integer"
           },
+          "directoryCount": {
+            "maximum": 5000,
+            "minimum": 0,
+            "type": "integer"
+          },
           "fileCount": {
             "maximum": 500,
             "minimum": 0,
@@ -751,7 +768,7 @@
             "items": {
               "$ref": "#/components/schemas/CodeLanguage"
             },
-            "maxItems": 50,
+            "maxItems": 51,
             "minItems": 1,
             "type": "array",
             "uniqueItems": true
@@ -759,9 +776,13 @@
           "mode": {
             "enum": [
               "files",
-              "symbols"
+              "symbols",
+              "folders"
             ],
             "type": "string"
+          },
+          "project": {
+            "$ref": "#/components/schemas/CodeProjectAnalysis"
           },
           "symbolCount": {
             "maximum": 10000,
@@ -823,7 +844,8 @@
             "description": "Optional detail level. When omitted, one file uses symbols (declarations and dependencies); multiple files use files (project overview). An explicit files or symbols choice is always preserved. Preview and saved code analysis return the resolved mode.",
             "enum": [
               "files",
-              "symbols"
+              "symbols",
+              "folders"
             ],
             "type": "string"
           },
@@ -889,7 +911,8 @@
           "cypher",
           "vega",
           "hcl",
-          "nix"
+          "nix",
+          "markdown"
         ],
         "type": "string"
       },
@@ -1003,6 +1026,129 @@
         ],
         "type": "object"
       },
+      "CodeProjectAnalysis": {
+        "additionalProperties": false,
+        "properties": {
+          "expandedBytes": {
+            "maximum": 1073741824,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "ignoredEntries": {
+            "maximum": 10000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "ignoredReasons": {
+            "additionalProperties": false,
+            "properties": {
+              "binary": {
+                "maximum": 10000,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "build": {
+                "maximum": 10000,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "dependency": {
+                "maximum": 10000,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "directory": {
+                "maximum": 10000,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "generated": {
+                "maximum": 10000,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "private": {
+                "maximum": 10000,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "unsupported": {
+                "maximum": 10000,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "vcs": {
+                "maximum": 10000,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "name": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          "version": {
+            "enum": [
+              1
+            ],
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "name",
+          "expandedBytes",
+          "ignoredEntries",
+          "ignoredReasons"
+        ],
+        "type": "object"
+      },
+      "CodeProjectInput": {
+        "additionalProperties": false,
+        "description": "The connected browser applies its saved local import file size limit: default 50 MiB, configurable from 50 to 1024 MiB (1 GiB) in Settings. UI MB means MiB and UI 1 GB means 1024 MiB. Only imports up to 50 MB are supported and guaranteed; higher limits are experimental and may be slow or fail because of browser memory or format limits. The HTTP/JSON and WebSocket transport envelopes remain 32 MiB and are not increased by this setting. Compressed ZIP and total expanded archive both use the selected byte budget; ignored entries still count. Supports stored/deflated ZIP, at most 10,000 entries and 500 analyzed files. Rejects encrypted, ZIP64, symlink, duplicate and unsafe-path archives. No execution or network fetch. Dependency/build/private/binary/generated/unsupported entries are excluded and counted. A single wrapping archive directory is removed. Folder mode aggregates directory dependencies and includes contains links. Markdown relative/reference/wiki links use the same semantic analyzer. Original archive/source is transient; derived scan counts, source paths and relationship evidence may be retained.",
+        "properties": {
+          "data": {
+            "description": "Strict base64 ZIP bytes, without a data URL. The 32 MiB local API/MCP JSON envelope still applies (roughly 24 MiB compressed ZIP at most).",
+            "maxLength": 1073741824,
+            "minLength": 1,
+            "type": "string"
+          },
+          "focus": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          "languages": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CodeLanguage"
+            },
+            "description": "Optional language overrides by exact retained relative file path after common root stripping. Unknown/excluded paths and unsupported language IDs are rejected; use this to resolve ambiguous headers or .m/.cls files, matching UI language choices.",
+            "maxProperties": 500,
+            "type": "object"
+          },
+          "mode": {
+            "default": "files",
+            "enum": [
+              "files",
+              "symbols",
+              "folders"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
       "CodeRelation": {
         "additionalProperties": false,
         "properties": {
@@ -1029,6 +1175,12 @@
               "depends-on"
             ],
             "type": "string"
+          },
+          "occurrences": {
+            "description": "Number of file relationships represented by a folder-level aggregate; evidence identifies the first occurrence.",
+            "maximum": 10000,
+            "minimum": 1,
+            "type": "integer"
           },
           "version": {
             "enum": [
@@ -2521,6 +2673,9 @@
               "codeObject": {
                 "$ref": "#/components/schemas/CodeObject"
               },
+              "projectDirectory": {
+                "$ref": "#/components/schemas/ProjectDirectory"
+              },
               "spatial": {
                 "$ref": "#/components/schemas/SpatialNode"
               },
@@ -2651,6 +2806,9 @@
               "codeObject": {
                 "$ref": "#/components/schemas/CodeObject"
               },
+              "projectDirectory": {
+                "$ref": "#/components/schemas/ProjectDirectory"
+              },
               "spatial": {
                 "$ref": "#/components/schemas/SpatialNode"
               },
@@ -2768,6 +2926,9 @@
             "properties": {
               "codeObject": {
                 "$ref": "#/components/schemas/CodeObject"
+              },
+              "projectDirectory": {
+                "$ref": "#/components/schemas/ProjectDirectory"
               },
               "spatial": {
                 "$ref": "#/components/schemas/SpatialNode"
@@ -3694,6 +3855,42 @@
         "required": [
           "defaultVoiceId",
           "voices"
+        ],
+        "type": "object"
+      },
+      "ProjectDirectory": {
+        "additionalProperties": false,
+        "properties": {
+          "fileCount": {
+            "maximum": 500,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "languages": {
+            "items": {
+              "$ref": "#/components/schemas/CodeLanguage"
+            },
+            "maxItems": 51,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "path": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          "version": {
+            "enum": [
+              1
+            ],
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "path",
+          "fileCount",
+          "languages"
         ],
         "type": "object"
       },
@@ -9652,10 +9849,13 @@
       },
       "SourceEvidence": {
         "additionalProperties": true,
-        "description": "Code declarations carry retained source path/line; SQL carries retained schema or logical expressions. CSV metadata identifies source/path/measures. Supplying metricId returns explanation with up to 100 original/cleaned rows, original data-row numbers and contributing/excluded/duplicate dispositions. No code or SQL is executed; original code/SQL scripts are not retained. Evidence explicitly requested over MCP can include sensitive original cells.",
+        "description": "Code declarations carry retained source path/line; project directories expose their recognized path/count/languages and code analysis scan provenance; SQL carries retained schema or logical expressions. CSV metadata identifies source/path/measures. Supplying metricId returns explanation with up to 100 original/cleaned rows, original data-row numbers and contributing/excluded/duplicate dispositions. No code or SQL is executed; original code/SQL scripts are not retained. Evidence explicitly requested over MCP can include sensitive original cells.",
         "properties": {
           "code": {
             "$ref": "#/components/schemas/CodeObject"
+          },
+          "codeAnalysis": {
+            "$ref": "#/components/schemas/CodeAnalysis"
           },
           "columns": {
             "items": {
@@ -9681,6 +9881,9 @@
           "nodeId": {
             "format": "uuid",
             "type": "string"
+          },
+          "projectDirectory": {
+            "$ref": "#/components/schemas/ProjectDirectory"
           },
           "sqlResult": {
             "$ref": "#/components/schemas/SqlQueryResult"
@@ -10559,7 +10762,7 @@
     }
   },
   "info": {
-    "description": "IndexedDB in the browser is authoritative and is the only database. This optional API forwards commands through a WebSocket bridge to an open browser with explicit storage acceptance and MCP access set to Read only or Read + write (default Off). Read-only access permits GET, POST /export, exact POST /sql/preview, /code/preview or /diagram-files/preview and exact diagram questions/build-brief previews, rejecting mutations with 403. Semantic overview, evidence-backed multi-level questions, local version history, editable storyboard scenes and reviewed app specifications share the same canonical graph and browser-local persistence. Draw.io XML and base64 Visio .vsdx ZIP files are analyzed locally without executing or fetching embedded content; POST /import saves only a selected native page and requires write access. Multipage imports require pageId from preview. Original XML/ZIP is transient. SQL SELECT/WITH visualization retains scoped aliases, expressions, joins and clauses locally; it never executes SQL or connects to a database. POST /sql/diagrams and POST /code/diagrams save and open validated graphs and require write access. GET /code/languages discovers all 50 supported structural analyzers. Code diagrams retain identifiers, paths, source lines and confidence; original source and nonstructural string values are discarded. The public static host provides no content API; endpoints target a loopback bridge only. Start the static server with --bridge. No application records are stored in the server. PATCH requires version; graph replacement requires baseVersion. Optional VISUAL_NERVE_BRIDGE_TOKEN protects all integration requests. PNG/PDF render in the browser. MCP is available at /mcp. Its initialize instructions advertise Process Simulator, native 2D and opt-in 3D. Process Simulator is a first-class local document with separately typed schemaVersion 1 semantics and the same deterministic worker engine for UI, API and MCP. Seeded runs return asynchronous IDs; headless execution needs no active canvas or animation but still requires a connected browser. Shared resources, queues, scaling, economics, replay and scenario results are semantically inspectable.  visual_nerve_api_docs provides a compact guide by default and the full bundled OpenAPI with document=openapi; the same documents are MCP resources. Documentation discovery requires no connected browser. The browser workspace is at /app/; / is the public product home. Both editor routes use the same origin's IndexedDB without a data migration. The website domain without a path is the allowed app origin; Settings shows a separate local MCP HTTP URL for Codex and WebSocket URL for the browser. Public GET /mcp/ is setup documentation; local MCP POST /mcp and REST /api/v1 endpoints remain unchanged.",
+    "description": "IndexedDB in the browser is authoritative and is the only database. This optional API forwards commands through a WebSocket bridge to an open browser with explicit storage acceptance and MCP access set to Read only or Read + write (default Off). Read-only access permits GET, POST /export, exact POST /sql/preview, /code/preview, /code/project/preview or /diagram-files/preview and exact diagram questions/build-brief previews, rejecting mutations with 403. Semantic overview, evidence-backed multi-level questions, local version history, editable storyboard scenes and reviewed app specifications share the same canonical graph and browser-local persistence. Draw.io XML and base64 Visio .vsdx ZIP files are analyzed locally without executing or fetching embedded content; POST /import saves only a selected native page and requires write access. Multipage imports require pageId from preview. Original XML/ZIP is transient. SQL SELECT/WITH visualization retains scoped aliases, expressions, joins and clauses locally; it never executes SQL or connects to a database. POST /sql/diagrams and POST /code/diagrams save and open validated graphs and require write access. GET /code/languages discovers 50 code languages plus Markdown. POST /code/project/preview and /code/project/diagrams accept strict base64 ZIP projects and files/symbols/folders modes, using the same local analysis engine. Project preview permits read-only access; saving requires write access. Code diagrams retain identifiers, paths, source lines and confidence; original source and nonstructural string values are discarded. The public static host provides no content API; endpoints target a loopback bridge only. Start the static server with --bridge. No application records are stored in the server. PATCH requires version; graph replacement requires baseVersion. Optional VISUAL_NERVE_BRIDGE_TOKEN protects all integration requests. PNG/PDF render in the browser. MCP is available at /mcp. Its initialize instructions advertise Process Simulator, native 2D and opt-in 3D. Process Simulator is a first-class local document with separately typed schemaVersion 1 semantics and the same deterministic worker engine for UI, API and MCP. Seeded runs return asynchronous IDs; headless execution needs no active canvas or animation but still requires a connected browser. Shared resources, queues, scaling, economics, replay and scenario results are semantically inspectable.  visual_nerve_api_docs provides a compact guide by default and the full bundled OpenAPI with document=openapi; the same documents are MCP resources. Documentation discovery requires no connected browser. The browser workspace is at /app/; / is the public product home. Both editor routes use the same origin's IndexedDB without a data migration. The website domain without a path is the allowed app origin; Settings shows a separate local MCP HTTP URL for Codex and WebSocket URL for the browser. Public GET /mcp/ is setup documentation; local MCP POST /mcp and REST /api/v1 endpoints remain unchanged.",
     "title": "Visual Nerve local API",
     "version": "0.3.0"
   },
@@ -10823,7 +11026,7 @@
           },
           {}
         ],
-        "summary": "Discover all 50 language identifiers and structural analysis capabilities"
+        "summary": "Discover 50 code language identifiers plus Markdown and structural analysis capabilities"
       }
     },
     "/code/preview": {
@@ -10958,6 +11161,274 @@
           {}
         ],
         "summary": "Preview a local structural code outline without saving; read-only access allowed"
+      }
+    },
+    "/code/project/diagrams": {
+      "post": {
+        "operationId": "post_code_project_diagrams",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodeProjectInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Graph"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Save and open a ZIP project relationship diagram; write access required"
+      }
+    },
+    "/code/project/preview": {
+      "post": {
+        "operationId": "post_code_project_preview",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodeProjectInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CodeImportResult"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Preview ZIP code or Markdown project locally without saving; read-only access allowed"
       }
     },
     "/diagram-files/preview": {

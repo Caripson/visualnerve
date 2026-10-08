@@ -20,7 +20,7 @@ test('REST and MCP discover languages, preview with read-only access, and create
   };
   const catalog = await request.get('/api/v1/code/languages');
   expect(catalog.status()).toBe(200);
-  expect(await catalog.json()).toHaveLength(50);
+  expect(await catalog.json()).toHaveLength(51);
   await page.getByRole('button', { name: 'Local only: storage and privacy', exact: true }).click();
   await page.getByLabel('MCP access', { exact: true }).selectOption('read');
   await page.getByRole('button', { name: 'Done', exact: true }).click();

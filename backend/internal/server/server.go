@@ -258,10 +258,18 @@ func readJSON(w http.ResponseWriter, r *http.Request) (json.RawMessage, error) {
 	}
 	return bytes, nil
 }
+
+// MaxCommandTimeout bounds project ZIP scan, code analysis and the guarded save.
+const MaxCommandTimeout = 165 * time.Second
+
 func commandTimeout(path string) time.Duration {
 	// Browser analysis is cancellable after 30 seconds. Leave time for layout,
 	// validation and the final IndexedDB transaction before the transport expires.
 	path = strings.TrimPrefix(path, "/api/v1")
+	// ZIP scan has its own 120-second deadline, followed by 30-second code analysis.
+	if path == "/code/project/preview" || path == "/code/project/diagrams" {
+		return MaxCommandTimeout
+	}
 	if path == "/sql/preview" || path == "/sql/diagrams" || path == "/code/preview" || path == "/code/diagrams" || path == "/diagram-files/preview" || path == "/import" || strings.Contains(path, "/history") || strings.Contains(path, "/evidence?") {
 		return 45 * time.Second
 	}

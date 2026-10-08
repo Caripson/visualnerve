@@ -6,6 +6,10 @@ import { CodeSourceFields } from './CodeSourceFields';
 import { CodeImportPreview } from './CodeImportPreview';
 import { parseCodeAsync } from '../code/client';
 import { codeLanguages } from '../code/catalog';
+import { readProjectArchive } from '../code/project/client';
+import type { ProjectArchiveProgress } from '../code/project/types';
+import { attachProjectAnalysis, type ProjectArchiveSummary } from '../code/project/analysis';
+import { ProjectImportStatus } from './ProjectImportStatus';
 import { defaultCodeMode } from '../code/input';
 import { readCodeFiles, selectFolderFiles } from '../code/importFiles';
 import type { CodeFile, CodeImportResult, CodeLanguage } from '../code/types';
@@ -34,7 +38,7 @@ export function CodeImportDialog({
         : utf8Bytes(text),
     [files, text],
   );
-  const [chosenMode, setChosenMode] = useState<'files' | 'symbols'>();
+  const [chosenMode, setChosenMode] = useState<'files' | 'symbols' | 'folders'>();
   const mode = chosenMode ?? defaultCodeMode(files.length || 1);
   const detailHelpId = useId();
   const [focus, setFocus] = useState('');
@@ -43,6 +47,8 @@ export function CodeImportDialog({
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
   const [loadNote, setLoadNote] = useState('');
+  const [project, setProject] = useState<ProjectArchiveSummary | null>(null);
+  const [progress, setProgress] = useState<ProjectArchiveProgress | null>(null);
   const controller = useRef<AbortController | null>(null);
   const generation = useRef(0);
   const mounted = useRef(true);
@@ -54,6 +60,7 @@ export function CodeImportDialog({
   const invalidate = useCallback(() => {
     cancel();
     setWorking(false);
+    setProgress(null);
     setPreview(null);
     setError('');
   }, [cancel]);
@@ -69,7 +76,29 @@ export function CodeImportDialog({
       controller.current = pending;
       setWorking(true);
       setLoadNote('');
+      setFiles([]);
+      setProject(null);
+      setProgress(null);
       try {
+        if (selected.some((file) => /\.zip$/i.test(file.name))) {
+          if (folder || selected.length !== 1) throw new Error('Choose one ZIP project at a time.');
+          const archive = await readProjectArchive(selected[0], {
+            signal: pending.signal,
+            onProgress: (value) => {
+              if (mounted.current && current === generation.current) setProgress(value);
+            },
+          });
+          if (!mounted.current || current !== generation.current) return;
+          setFiles(archive.files);
+          setName(archive.name);
+          setChosenMode((value) => value ?? 'files');
+          setProject({
+            name: archive.name,
+            ignored: archive.ignored,
+            expandedBytes: archive.expandedBytes,
+          });
+          return;
+        }
         const accepted = folder ? selectFolderFiles(selected) : { files: selected, ignored: 0 };
         if (!accepted.files.length)
           throw new Error(
@@ -89,6 +118,7 @@ export function CodeImportDialog({
         if (mounted.current && current === generation.current) {
           controller.current = null;
           setWorking(false);
+          setProgress(null);
         }
       }
     },
@@ -135,7 +165,7 @@ export function CodeImportDialog({
       if (!mounted.current || current !== generation.current || pending.signal.aborted) return;
       if (!result.graph.nodes.length)
         throw new Error('No objects match this view. Broaden the focus and preview again.');
-      setPreview(result);
+      setPreview(project ? attachProjectAnalysis(result, project) : result);
     } catch (error) {
       if (mounted.current && current === generation.current && !pending.signal.aborted)
         setError(message(error));
@@ -173,8 +203,9 @@ export function CodeImportDialog({
         }}
       >
         <p>
-          Understand files, declarations and dependencies across 50 languages. Analysis runs
-          locally; source code is never executed.
+          Map a code or documentation project from a ZIP, a folder or source files. Identify
+          languages and explore imports, calls and internal Markdown links. Analysis runs locally;
+          source code is never executed.
         </p>
         <ImportSizeNotice bytes={sourceBytes} />
         <label className="field">
@@ -205,6 +236,8 @@ export function CodeImportDialog({
             invalidate();
             setFiles([]);
             setLoadNote('');
+            setProject(null);
+            setProgress(null);
           }}
           changeLanguage={(value) => {
             invalidate();
@@ -229,6 +262,7 @@ export function CodeImportDialog({
               }}
             >
               <option value="files">File overview</option>
+              <option value="folders">Folder relationships</option>
               <option value="symbols">Declarations and dependencies</option>
             </select>
           </label>
@@ -248,9 +282,11 @@ export function CodeImportDialog({
           </label>
         </div>
         <p className="code-note" id={detailHelpId}>
-          {mode === 'symbols'
-            ? 'Creates separate objects for recognized functions, paragraphs, types and resources, with their connections.'
-            : 'Creates one object per source file. Choose Declarations and dependencies to show functions, paragraphs and resources separately.'}
+          {mode === 'folders'
+            ? 'Combines files into directory objects and shows relationships between folders. Counts include files in nested folders.'
+            : mode === 'symbols'
+              ? 'Creates separate objects for recognized functions, paragraphs, types and resources, with their connections.'
+              : 'Creates one object per source file. Choose Declarations and dependencies to show functions, paragraphs and resources separately.'}
         </p>
         <p className="code-note">
           Focus keeps matching names or paths and their immediate connections. Inferred and
@@ -261,7 +297,21 @@ export function CodeImportDialog({
           Original source is a temporary draft. Only names, source paths, line numbers and
           relationship evidence are saved locally when you create the diagram.
         </p>
-        {working && <p role="status">Preparing code preview…</p>}
+        <ProjectImportStatus project={project} progress={progress} />
+        {working && (
+          <div className="code-import-progress">
+            {!progress && <p role="status">Preparing code preview…</p>}
+            <button
+              type="button"
+              onClick={() => {
+                invalidate();
+                setProgress(null);
+              }}
+            >
+              Cancel preparation
+            </button>
+          </div>
+        )}
         {error && (
           <p role="alert" className="code-error">
             {error}

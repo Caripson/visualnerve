@@ -14,7 +14,7 @@ func TestCodeDetailModeHasInputDependentDefaultAndResolvedOutput(t *testing.T) {
 	if !reflect.DeepEqual(input["required"], []string{"files"}) {
 		t.Fatal("detail mode must remain optional")
 	}
-	if !reflect.DeepEqual(mode["enum"], []string{"files", "symbols"}) {
+	if !reflect.DeepEqual(mode["enum"], []string{"files", "symbols", "folders"}) {
 		t.Fatal("automatic selection must not add a persisted detail-mode value")
 	}
 	if _, fixed := mode["default"]; fixed {
@@ -27,7 +27,7 @@ func TestCodeDetailModeHasInputDependentDefaultAndResolvedOutput(t *testing.T) {
 		}
 	}
 	analysis := schemas["CodeAnalysis"].(object)
-	if !reflect.DeepEqual(analysis["properties"].(object)["mode"].(object)["enum"], []string{"files", "symbols"}) {
-		t.Fatal("saved analysis exposes only the resolved files/symbols mode")
+	if !reflect.DeepEqual(analysis["properties"].(object)["mode"].(object)["enum"], []string{"files", "symbols", "folders"}) {
+		t.Fatal("saved analysis exposes the resolved files/symbols/folders mode")
 	}
 }

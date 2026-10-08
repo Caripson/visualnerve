@@ -27,7 +27,7 @@ function codeInput(payload: unknown): CodeInput {
     (data.name !== undefined && !nonempty(data.name, 500)) ||
     (data.focus !== undefined && !nonempty(data.focus, 500)) ||
     (data.mode !== undefined &&
-      (typeof data.mode !== 'string' || !['files', 'symbols'].includes(data.mode))) ||
+      (typeof data.mode !== 'string' || !['files', 'symbols', 'folders'].includes(data.mode))) ||
     !Array.isArray(data.files) ||
     !data.files.length ||
     data.files.length > codeLimits.files
@@ -63,7 +63,16 @@ export async function analysisCommand(
     const { codeLanguages } = await import('../code/catalog');
     return structuredClone(codeLanguages);
   }
-  if (!['/sql/preview', '/sql/diagrams', '/code/preview', '/code/diagrams'].includes(endpoint))
+  if (
+    ![
+      '/sql/preview',
+      '/sql/diagrams',
+      '/code/preview',
+      '/code/diagrams',
+      '/code/project/preview',
+      '/code/project/diagrams',
+    ].includes(endpoint)
+  )
     throw new StorageError(404, 'Unknown analysis endpoint.');
   if (method !== 'POST') throw new StorageError(405, 'Analysis requires POST.');
   const result = endpoint.startsWith('/sql/')
@@ -82,11 +91,48 @@ export async function analysisCommand(
           byteLimit: options.byteLimit,
         });
       })()
-    : await (async () => {
-        const input = codeInput(payload);
-        const { parseCodeAsync } = await import('../code/client');
-        return parseCodeAsync(input, { signal: options.signal, byteLimit: options.byteLimit });
-      })();
+    : endpoint.startsWith('/code/project/')
+      ? await (async () => {
+          const data = payloadObject(payload);
+          if (
+            Object.keys(data).some(
+              (key) => !['name', 'data', 'mode', 'focus', 'languages'].includes(key),
+            ) ||
+            typeof data.data !== 'string' ||
+            (data.name !== undefined && !nonempty(data.name, 500)) ||
+            (data.focus !== undefined && !nonempty(data.focus, 500)) ||
+            (data.mode !== undefined &&
+              (typeof data.mode !== 'string' ||
+                !['files', 'symbols', 'folders'].includes(data.mode)))
+          )
+            throw new StorageError(
+              422,
+              'Provide ZIP base64 data, optional name, files/symbols/folders mode and focus.',
+            );
+          const { parseProjectArchiveAsync } = await import('../code/project/client');
+          const { attachProjectAnalysis } = await import('../code/project/analysis');
+          const { applyProjectLanguages } = await import('../code/project/languages');
+          const { parseCodeAsync } = await import('../code/client');
+          const archive = await parseProjectArchiveAsync(
+            { data: data.data, ...(data.name ? { name: data.name as string } : {}) },
+            options,
+          );
+          const result = await parseCodeAsync(
+            {
+              name: archive.name,
+              files: applyProjectLanguages(archive.files, data.languages),
+              mode: (data.mode ?? 'files') as CodeInput['mode'],
+              ...(data.focus ? { focus: data.focus as string } : {}),
+            },
+            options,
+          );
+          return attachProjectAnalysis(result, archive);
+        })()
+      : await (async () => {
+          const input = codeInput(payload);
+          const { parseCodeAsync } = await import('../code/client');
+          return parseCodeAsync(input, { signal: options.signal, byteLimit: options.byteLimit });
+        })();
   validateGraph(result.graph);
   if (endpoint.endsWith('/preview')) return result;
   await options.beforeAnalysisSave?.();

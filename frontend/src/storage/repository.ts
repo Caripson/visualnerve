@@ -338,7 +338,7 @@ export class Repository {
       },
     );
   }
-  async importGraph(source: Graph): Promise<Graph> {
+  async importGraph(source: Graph, beforeWrite?: () => Promise<void>): Promise<Graph> {
     const imported = await this.db.transaction(
       'rw',
       [
@@ -348,6 +348,7 @@ export class Repository {
         this.db.owners,
         this.db.datasets,
         this.db.simulationModels,
+        ...(beforeWrite ? [this.db.settings] : []),
       ],
       async () => {
         const graph = structuredClone(source);
@@ -425,7 +426,7 @@ export class Repository {
                   `csv-rel:${relationship}:${nodeIds.get(source) ?? source}:${nodeIds.get(target) ?? target}`,
               ),
             );
-        return this.saveGraph(graph, 0);
+        return this.saveGraph(graph, 0, beforeWrite);
       },
     );
     this.db.rememberDataset(imported.diagram, imported.dataset, imported.datasets);
@@ -717,7 +718,7 @@ export class Repository {
         throw new StorageError(404, 'Unknown diagram file endpoint.');
       if (method !== 'POST') throw new StorageError(405, 'Diagram file preview requires POST.');
       return (await diagramFileCommand(payload, false, options, (graph) =>
-        this.importGraph(graph),
+        this.importGraph(graph, options.beforeWrite),
       )) as T;
     }
     if (collection === 'sql' || collection === 'code')
@@ -726,7 +727,7 @@ export class Repository {
         method,
         payload,
         options,
-        (graph) => this.importGraph(graph),
+        (graph) => this.importGraph(graph, options.beforeWrite),
       )) as T;
     if (collection === 'spatial-diagrams') {
       if (
@@ -830,13 +831,14 @@ export class Repository {
         if (path.replace(/^\/api\/v1/, '') !== '/import')
           throw new StorageError(404, 'Unknown diagram import endpoint.');
         return (await diagramFileCommand(data, true, options, (graph) =>
-          this.importGraph(graph),
+          this.importGraph(graph, options.beforeWrite),
         )) as T;
       }
       return (await this.importGraph(
         typeof data.data === 'string'
           ? parseImport(data.format as 'json' | 'markdown' | 'csv', data.data, options.byteLimit)
           : (data.data as Graph),
+        options.beforeWrite,
       )) as T;
     }
     if (collection === 'export' && method === 'POST') {

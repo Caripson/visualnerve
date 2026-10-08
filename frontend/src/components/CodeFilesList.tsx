@@ -19,8 +19,8 @@ export function CodeFilesList({
   return (
     <div className="code-file-list" aria-label="Loaded source files">
       <p>
-        {files.length} source files. Confirm the language for ambiguous extensions such as .m, .sql
-        or .bas.
+        {files.length} source {files.length === 1 ? 'file' : 'files'}. Review detected languages and
+        choose one for any unidentified file.
       </p>
       {files.slice(offset, offset + pageSize).map((file, index) => (
         <label key={file.path} className="code-file-language">

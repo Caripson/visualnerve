@@ -29,6 +29,20 @@ export function CodeSourceFields({
     <>
       <div className="code-loaders">
         <label>
+          Load ZIP project
+          <input
+            aria-label="Load ZIP project"
+            type="file"
+            accept=".zip,application/zip"
+            disabled={disabled}
+            onChange={(event) => {
+              const picked = Array.from(event.target.files ?? []);
+              event.target.value = '';
+              if (picked.length) void load(picked);
+            }}
+          />
+        </label>
+        <label>
           Load source files
           <input
             aria-label="Load source files"
@@ -60,7 +74,8 @@ export function CodeSourceFields({
       </div>
       <p className="code-note">
         Up to 500 files. The import size setting applies to each file and the complete project; its
-        default is 50 MB. Folder selection skips dependencies and build output.
+        default is 50 MB. ZIP and folder selection skip dependencies and build output. ZIP expansion
+        is checked against the same limit.
       </p>
       {loadNote && <p className="code-note">{loadNote}</p>}
       {files.length ? (

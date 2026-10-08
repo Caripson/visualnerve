@@ -32,11 +32,11 @@ Connect another file through a deliberate key match, such as Customer ID. Review
 
 ## Read an unfamiliar codebase
 
-Import the files you want to understand. File overview shows the supplied modules and their recognized dependencies; Declarations and dependencies shows individual functions, classes, paragraphs or other language structures.
+Import a ZIP code project, a folder, or the files you want to understand. Folder relationships summarizes connected directories with descendant file counts; File overview shows the supplied modules and their recognized dependencies; Declarations and dependencies shows individual functions, classes, paragraphs or other language structures.
 
 Inspect file and line evidence on a connection. Keep heuristic and unresolved links visible as uncertainty. The analyzer does not execute the project, resolve every dynamic call or discover code you did not supply.
 
-**Try this:** load a COBOL program and follow PERFORM calls between its numbered paragraphs, then inspect the file resources its paragraphs read and write.
+**Try this:** import a Markdown handbook ZIP to follow internal document links, or load a COBOL program and follow PERFORM calls between its numbered paragraphs, then inspect the file resources its paragraphs read and write.
 
 ![A COBOL diagram with program paragraphs and input/output file resources.](/help/images/code-cobol.webp "Separate paragraphs and file relationships make the program's recognized structure easier to inspect.")
 

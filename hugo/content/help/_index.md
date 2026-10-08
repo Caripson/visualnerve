@@ -67,7 +67,7 @@ These entry points keep earlier links and bookmarks useful.
 [Visualize SELECT/WITH queries and CREATE/ALTER schemas](/help/sql/).
 
 ### Visualize source code
-[Preview code in all 50 supported languages](/help/code/).
+[Preview code projects and linked Markdown documents](/help/code/).
 
 ### Import draw.io or Visio
 [Convert a selected diagram page into native editable objects](/help/diagram-import/).

@@ -139,3 +139,34 @@
     gap: 5px;
   }
 }
+
+.code-archive-progress,
+.code-project-info {
+  padding: 14px;
+  margin: 14px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-alt);
+}
+.code-archive-progress progress {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.code-archive-progress span {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}
+.code-project-info ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 24px;
+  padding-left: 18px;
+  font-size: 12px;
+}
+.code-import-progress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}

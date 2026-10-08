@@ -75,7 +75,7 @@ const samples: Array<[CodeLanguage, string]> = [
 describe('Code language catalog and modular program analyzers', () => {
   it('contains each requested language once, in the supplied order', () => {
     expect(codeLanguages.map((language) => language.id)).toEqual([...codeLanguageIds]);
-    expect(new Set(codeLanguages.map((language) => language.id)).size).toBe(50);
+    expect(new Set(codeLanguages.map((language) => language.id)).size).toBe(codeLanguageIds.length);
   });
   it('requires explicit choices for ambiguous extensions', () => {
     for (const path of ['helper.m', 'helper.h', 'helper.cls']) {

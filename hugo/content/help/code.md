@@ -1,6 +1,6 @@
 ---
 title: "Understand source code as a diagram"
-summary: "Visualize files, declarations and dependencies across 50 languages, then read the source evidence behind each connection."
+summary: "Visualize files, declarations and dependencies across 50 code languages and linked Markdown documents, then read the source evidence behind each connection."
 weight: 8
 ---
 
@@ -10,8 +10,8 @@ Use a code diagram to find what a script contains, which files depend on each ot
 
 1. Choose **Visualize code**. On a phone, open **Diagram actions → Visualize code**.
 2. Enter the diagram name.
-3. Paste **Source code** and choose **Source language**, or use **Load source files / Load source folder**.
-4. Review the chosen language for every file. Ambiguous extensions need your choice.
+3. Paste **Source code** and choose **Source language**, or use **Load source files / Load source folder / Load ZIP project**.
+4. Review the chosen language for every file. Filename, shebang and content help identify project languages. Inconclusive files need your choice.
 5. Choose **Diagram detail** and, optionally, **Focus on name or path**.
 6. Choose **Preview code**.
 7. Review recognized objects, dependencies, unresolved references and notes.
@@ -23,14 +23,45 @@ Folder selection skips dependency and build output. It analyzes only supplied fi
 
 | Diagram detail | Best first question |
 | --- | --- |
+| **Folder relationships** | “Which areas of the project are connected?” Directory cards show descendant file counts and languages; connections combine dependencies between their folders. |
 | **File overview** | “Which parts of this project depend on each other?” One native object per supplied file summarizes its declarations and file dependencies. |
 | **Declarations and dependencies** | “What functions, paragraphs, classes or resources are inside this script?” Recognized declarations become separate objects with their connections. |
 
-One script or file automatically starts with Declarations and dependencies. Multiple files start with File overview. You can choose either explicitly.
+One script or file automatically starts with Declarations and dependencies. Multiple files start with File overview. ZIP projects start with File overview. You can choose any level explicitly.
 
 **Focus on name or path** keeps objects matching part of a name or source path and their immediate related objects. For example, `customer` or `src/payments` can turn a large import into a focused starting view. Source-size limits still apply to the whole supplied project.
 
 ![A source-project diagram in File overview, with native cards summarizing declarations and file dependencies.](/help/images/code-project.webp "Start with file relationships, then use Declarations and dependencies when you need individual functions or resources.")
+
+## Import a ZIP project
+
+1. Export or compress the project as a `.zip`. Exclude installed dependencies and build output where possible.
+2. Drop the ZIP on the canvas, or choose **Visualize code → Load ZIP project**.
+3. Follow the scan/read percentage. **Cancel preparation** stops pending work.
+4. Review the scan summary: it explains which dependencies, build output, private files, binaries, generated files and unsupported files were excluded.
+5. Review detected languages and choose **File overview**, **Folder relationships** or **Declarations and dependencies**.
+6. Preview, inspect uncertain connections, then create the diagram.
+
+A common enclosing folder is removed from paths. Only supplied files are inspected; code is never executed and linked documents are never downloaded. The original ZIP and source are temporary. The saved diagram contains the recognized structure and scan counts.
+
+![A ZIP project import with detected languages, excluded-entry counts and the Folder relationships view selected.](/help/images/code-project-zip.webp "Review the scan summary and choose the view that answers your first question before creating the diagram.")
+
+Start with Folder relationships for a broad architecture map. Select a folder to read its path, languages and file count; select a dependency to read how many source relationships it combines. Files in the same folder do not produce a folder self-link. For their individual relationships, choose File overview and preview again before creating. After closing the import draft, reload the source to create a different analysis; complete source is not retained.
+
+## Map linked Markdown documents
+
+A ZIP of Markdown files works without programming code. For example:
+
+```text
+handbook/
+  README.md              → [Delivery](operations/delivery.md)
+  operations/delivery.md → [Checklist](checklist.md#before-start)
+  operations/checklist.md
+```
+
+The resulting file map connects README to delivery, then delivery to checklist. Relative paths, paths beginning at the project root (`/`), percent-encoded names, inline/reference links and `[[wiki links]]` are supported. Supported heading, HTML and line anchors are checked against the destination; fragments do not create extra document nodes. Unresolved internal targets remain visible for review. Links in fenced/inline code, comments, images and external web URLs are excluded.
+
+Use a ZIP, source folder or several Markdown files for this workflow. Dropping one `.md` file still opens the existing Markdown diagram importer. The `.mdx` extension continues to mean MDX for OLAP, rather than Markdown with JSX.
 
 ## Example: trace a Python helper
 
@@ -214,8 +245,9 @@ All entries below are bounded structural analyzers. “Possible calls” are sou
 | Vega / Vega-Lite | .vg.json, .vl.json, .vega.json, .vegalite.json | Named datasets, transforms and data references. |
 | HCL | .tf, .tfvars, .hcl | Resources/modules/variables/outputs and references. |
 | Nix | .nix | Bindings, imports and references. |
+| Markdown | .md, .markdown | Internal inline/reference/wiki document links. |
 
-Choose the language explicitly for `.m` (MATLAB, Objective-C or Power Query M), `.h` and `.cls`. Use T-SQL or PL/SQL for those dialect scripts; `.sql` alone selects SQL. Rakefile/Gemfile are recognized as Ruby and Jenkinsfile as Groovy. Ordinary diagram JSON is not a Vega source file.
+Choose the language explicitly for `.m` (MATLAB, Objective-C or Power Query M), `.h` and `.cls` when detection remains inconclusive. Use T-SQL or PL/SQL for those dialect scripts; `.sql` alone selects SQL. Rakefile/Gemfile are recognized as Ruby and Jenkinsfile as Groovy. Ordinary diagram JSON is not a Vega source file.
 
 For detailed SELECT joins, column lineage or table constraints, use [Import SQL](/help/sql/) rather than the general code outline.
 
@@ -223,7 +255,7 @@ For detailed SELECT joins, column lineage or table constraints, use [Import SQL]
 
 The default limit is **50 MB per file and 50 MB for the complete source project**. Both use **Settings → Import file size**, adjustable to 1024 MB (1 GB). Imports up to 50 MB are supported and guaranteed; larger ones are experimental and can exceed browser memory.
 
-Other limits remain **500 files, 10,000 extracted symbols, 5,000 diagram objects and 10,000 connections**. Source limits are **100,000 lines per file, 500,000 lines per project and 20,000 characters per line**. Preview has a 30-second deadline. Focus narrows the diagram, not these source limits.
+Other limits remain **500 files, 10,000 extracted symbols, 5,000 diagram objects and 10,000 connections**. Source limits are **100,000 lines per file, 500,000 lines per project and 20,000 characters per line**. ZIP scanning has a two-minute deadline, followed by the 30-second analysis deadline. ZIP archives allow up to 10,000 entries; compressed bytes and all expanded entries must each fit your selected import limit. Corrupt, encrypted, ZIP64, symlink, unsafe-path and unsupported archives are rejected. Focus narrows the diagram, not these source limits.
 
 The original code is a temporary import draft. Creating saves recognized names, paths, source locations, summaries, structural identifiers, confidence, relationship evidence and notes in local IndexedDB. Complete source, comments and ordinary nonstructural strings/numbers are not saved. Quoted imports, table names, resource names or fields may remain as structural identifiers.
 
@@ -242,6 +274,6 @@ Paths and identifiers can still be sensitive. Native JSON/backups preserve recog
 | A card seems truncated | Scroll its details, enlarge it, or inspect Properties. |
 | Too many objects or a timeout | Begin with File overview, import a smaller source set or refine focus; review the explicit error. |
 
-The [API/MCP integration](/help/api-mcp/) lists the same 50 languages and uses the same local analyzer. Preview permits read-only access; creating or resizing saved objects requires write access. Raising the file limit does not raise the 32 MiB integration transport envelope.
+The [API/MCP integration](/help/api-mcp/) lists the same 50 code languages plus Markdown and uses the same local analyzer. Preview permits read-only access; creating or resizing saved objects requires write access. Raising the file limit does not raise the 32 MiB integration transport envelope.
 
 Continue with [Understand large diagrams](/help/understanding/), [Connected data and analysis views](/help/connected-data/), or [Sharing and Lovable](/help/sharing/).

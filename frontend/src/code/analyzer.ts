@@ -1,16 +1,12 @@
-import {
-  blankGraph,
-  newEdge,
-  newNode,
-  type GraphEdge,
-  type GraphNode,
-  type NodeKind,
-} from '../model/types';
+import { blankGraph } from '../model/types';
+import { CodeGraphBuilder } from './assembly';
 import { normalizeCodeInput } from './input';
 import { DEFAULT_IMPORT_LIMIT_BYTES, LARGE_IMPORT_WARNING } from '../imports/limits';
 import { extractProgramCode } from './program';
 import { CodeResolver, type AnalyzedFile } from './resolve';
 import { extractSpecialCode } from './special';
+import { extractMarkdown, resolveMarkdownTarget } from './markdown';
+import { ProjectDirectoryIndex } from './directories';
 import {
   codeLimits,
   type CodeAnalysis,
@@ -18,8 +14,7 @@ import {
   type CodeImportResult,
   type CodeLanguage,
   type CodeObject,
-  type CodeObjectKind,
-  type CodeRelation,
+  type ProjectDirectory,
 } from './types';
 
 const specialized = new Set<CodeLanguage>([
@@ -39,39 +34,6 @@ const specialized = new Set<CodeLanguage>([
   'cobol',
   'assembly',
 ]);
-const kinds: Record<CodeObjectKind, NodeKind> = {
-  file: 'document',
-  class: 'system',
-  function: 'process',
-  type: 'system',
-  resource: 'system',
-  query: 'database',
-  measure: 'process',
-  variable: 'input',
-  external: 'external',
-};
-const colors: Record<CodeObjectKind, string> = {
-  file: '#dbeafe',
-  class: '#ede9fe',
-  function: '#dcfce7',
-  type: '#ede9fe',
-  resource: '#ffedd5',
-  query: '#cffafe',
-  measure: '#dcfce7',
-  variable: '#fef3c7',
-  external: '#f1f5f9',
-};
-const relationLabels = {
-  contains: 'contains',
-  imports: 'imports',
-  calls: 'calls',
-  inherits: 'inherits',
-  references: 'references',
-  reads: 'reads',
-  writes: 'writes',
-  'depends-on': 'depends on',
-};
-
 /** Local structural analysis. Source buffers never enter the saved graph. */
 export function parseCode(input: CodeInput, byteLimit?: number): CodeImportResult {
   const normalized = normalizeCodeInput(input, byteLimit);
@@ -88,9 +50,12 @@ export function parseCode(input: CodeInput, byteLimit?: number): CodeImportResul
   let symbolCount = 0;
   let dependencyCount = 0;
   const files: AnalyzedFile[] = normalized.files.map((file) => {
-    const extracted = specialized.has(file.language)
-      ? extractSpecialCode(file.content, file.language)
-      : extractProgramCode(file.content, file.language);
+    const extracted =
+      file.language === 'markdown'
+        ? extractMarkdown(file.content)
+        : specialized.has(file.language)
+          ? extractSpecialCode(file.content, file.language)
+          : extractProgramCode(file.content, file.language);
     symbolCount += extracted.symbols.length;
     dependencyCount += extracted.dependencies.length;
     if (symbolCount > codeLimits.symbols || dependencyCount > codeLimits.edges)
@@ -98,74 +63,48 @@ export function parseCode(input: CodeInput, byteLimit?: number): CodeImportResul
         'Project exceeds 10,000 declarations or dependencies. Import a smaller folder.',
       );
     extracted.warnings.forEach((message) => warn(`${file.path}: ${message}`));
-    if (!extracted.symbols.length && !extracted.dependencies.length && file.content.trim())
+    if (
+      file.language !== 'markdown' &&
+      !extracted.symbols.length &&
+      !extracted.dependencies.length &&
+      file.content.trim()
+    )
       warn(
         `${file.path}: No supported declarations or dependencies were recognized. Review this syntax manually.`,
       );
     return { ...file, extracted };
   });
   const resolver = new CodeResolver(files);
-  const nodes = new Map<string, GraphNode>();
-  const allEdges: GraphEdge[] = [];
-  const edgeKeys = new Set<string>();
+  const directories = normalized.mode === 'folders' ? new ProjectDirectoryIndex(files) : undefined;
+  const builder = new CodeGraphBuilder(graph, normalized.mode);
+  const { nodes, edges: allEdges } = builder;
   let unresolvedCount = 0;
   const fileKey = (file: AnalyzedFile) => `file:${file.path}`;
   const symbolKey = (file: AnalyzedFile, key: string) => `symbol:${file.path}:${key}`;
-  const addNode = (key: string, metadata: CodeObject) => {
-    if (!nodes.has(key)) {
-      const title = metadata.kind === 'file' ? metadata.path.split('/').at(-1)! : metadata.name;
-      nodes.set(
-        key,
-        newNode(graph.diagram.id, {
-          title,
-          nodeType: kinds[metadata.kind],
-          color: colors[metadata.kind],
-          width: 300,
-          height: metadata.kind === 'file' ? 240 : 150,
-          metadata: { codeObject: metadata },
-        }),
-      );
-    }
-    return nodes.get(key)!;
-  };
-  const addEdge = (sourceKey: string, targetKey: string, metadata: CodeRelation) => {
-    if (
-      sourceKey === targetKey &&
-      (normalized.mode === 'files' || !['calls', 'references'].includes(metadata.kind))
-    )
-      return;
-    const key = `${sourceKey}\0${targetKey}\0${metadata.kind}`;
-    if (edgeKeys.has(key)) return;
-    edgeKeys.add(key);
-    const source = nodes.get(sourceKey)!;
-    const target = nodes.get(targetKey)!;
-    if (!source || !target) return;
-    allEdges.push(
-      newEdge(graph.diagram.id, source.id, target.id, {
-        edgeType: `code-${metadata.kind}`,
-        label: relationLabels[metadata.kind],
-        style:
-          metadata.confidence === 'unresolved'
-            ? 'dashed'
-            : metadata.kind === 'contains'
-              ? 'dotted'
-              : 'solid',
-        metadata: { codeRelation: metadata },
-      }),
-    );
-  };
+  const locationKey = (file: AnalyzedFile) =>
+    directories ? `directory:${directories.owner(file.path)}` : fileKey(file);
+  if (directories) {
+    for (const directory of directories.directories) builder.directory(directory);
+    for (const { parent, child } of directories.hierarchy)
+      builder.relation(`directory:${parent}`, `directory:${child}`, {
+        version: 1,
+        kind: 'contains',
+        confidence: 'syntax',
+      });
+  }
   for (const file of files) {
-    addNode(fileKey(file), {
-      version: 1,
-      language: file.language,
-      path: file.path,
-      kind: 'file',
-      name: file.path,
-      summary: file.extracted.symbols.slice(0, 200).map((symbol) => symbol.name.slice(0, 500)),
-    });
+    if (!directories)
+      builder.object(fileKey(file), {
+        version: 1,
+        language: file.language,
+        path: file.path,
+        kind: 'file',
+        name: file.path,
+        summary: file.extracted.symbols.slice(0, 200).map((symbol) => symbol.name.slice(0, 500)),
+      });
     if (normalized.mode === 'symbols')
       for (const symbol of file.extracted.symbols) {
-        addNode(symbolKey(file, symbol.key), {
+        builder.object(symbolKey(file, symbol.key), {
           version: 1,
           language: file.language,
           path: file.path,
@@ -179,7 +118,7 @@ export function parseCode(input: CodeInput, byteLimit?: number): CodeImportResul
   for (const file of files) {
     if (normalized.mode === 'symbols')
       for (const symbol of file.extracted.symbols) {
-        addEdge(
+        builder.relation(
           symbol.parent ? symbolKey(file, symbol.parent) : fileKey(file),
           symbolKey(file, symbol.key),
           {
@@ -197,17 +136,29 @@ export function parseCode(input: CodeInput, byteLimit?: number): CodeImportResul
         dependency.source &&
         nodes.has(symbolKey(file, dependency.source))
           ? symbolKey(file, dependency.source)
-          : fileKey(file);
+          : locationKey(file);
       let targetKey: string;
       if (target?.file)
         targetKey =
           normalized.mode === 'symbols' && target.symbol
             ? symbolKey(target.file, target.symbol.key)
-            : fileKey(target.file);
+            : locationKey(target.file);
       else {
         unresolvedCount++;
-        targetKey = `external:${file.language}:${dependency.targetType}:${dependency.target}`;
-        addNode(targetKey, {
+        const markdownTarget =
+          file.language === 'markdown'
+            ? resolveMarkdownTarget(file.path, dependency.target)
+            : undefined;
+        const unresolvedIdentity =
+          file.language === 'markdown'
+            ? JSON.stringify(
+                markdownTarget
+                  ? [markdownTarget.path, markdownTarget.anchor ?? '']
+                  : [file.path, dependency.target],
+              )
+            : dependency.target;
+        targetKey = `external:${file.language}:${dependency.targetType}:${unresolvedIdentity}`;
+        builder.object(targetKey, {
           version: 1,
           language: file.language,
           path: file.path,
@@ -215,13 +166,15 @@ export function parseCode(input: CodeInput, byteLimit?: number): CodeImportResul
           name: dependency.target.slice(0, 500),
           external: true,
           summary: [
-            dependency.targetType === 'module'
-              ? 'Module not included or import could not be resolved'
-              : 'Target not uniquely resolved by structural analysis',
+            file.language === 'markdown'
+              ? 'Local document or anchor was not included, was ambiguous or could not be resolved'
+              : dependency.targetType === 'module'
+                ? 'Module not included or import could not be resolved'
+                : 'Target not uniquely resolved by structural analysis',
           ],
         });
       }
-      addEdge(sourceKey, targetKey, {
+      builder.relation(sourceKey, targetKey, {
         version: 1,
         kind: dependency.kind,
         confidence: target ? dependency.confidence : 'unresolved',
@@ -235,6 +188,20 @@ export function parseCode(input: CodeInput, byteLimit?: number): CodeImportResul
     const matches = new Set(
       selected
         .filter((node) => {
+          if (directories && node.metadata.projectDirectory) {
+            const directory = node.metadata.projectDirectory as ProjectDirectory;
+            return (
+              directory.path.toLocaleLowerCase().includes(focus) ||
+              files.some(
+                (file) =>
+                  directories.owner(file.path) === directory.path &&
+                  (file.path.toLocaleLowerCase().includes(focus) ||
+                    file.extracted.symbols.some((symbol) =>
+                      symbol.name.toLocaleLowerCase().includes(focus),
+                    )),
+              )
+            );
+          }
           const metadata = node.metadata.codeObject as CodeObject;
           if (`${metadata.path}\n${metadata.name}`.toLocaleLowerCase().includes(focus)) return true;
           return (
@@ -279,11 +246,16 @@ export function parseCode(input: CodeInput, byteLimit?: number): CodeImportResul
     warn(
       'File overview combines connections between the same files. Local declarations are listed on each file; choose Symbols to inspect individual functions and types.',
     );
+  if (directories)
+    warn(
+      'Folder overview combines dependencies between owning directories. Same-folder connections are omitted; choose Files or Symbols to inspect them. Directory counts include descendant files.',
+    );
   const analysis: CodeAnalysis = {
     version: 1,
     languages,
     mode: normalized.mode,
     fileCount: files.length,
+    ...(directories ? { directoryCount: directories.directories.length } : {}),
     symbolCount,
     dependencyCount,
     unresolvedCount,

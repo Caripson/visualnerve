@@ -1,7 +1,8 @@
-import { detectCodeLanguage, supportedCodeFile } from './catalog';
+import { detectProjectLanguage, supportedCodeFile } from './catalog';
 import { codeLimits, type CodeFile } from './types';
 import { assertImportBytes, checkedImportLimitBytes, utf8Bytes } from '../imports/limits';
 import { currentImportLimitBytes } from '../imports/preference';
+import { projectPathReason } from './project/policy';
 
 export function codeFilePath(file: File): string {
   return file.webkitRelativePath || file.name;
@@ -9,10 +10,7 @@ export function codeFilePath(file: File): string {
 export function selectFolderFiles(files: File[]): { files: File[]; ignored: number } {
   const selected = files.filter((file) => {
     const path = codeFilePath(file);
-    return (
-      !/(^|\/)(node_modules|\.git|\.venv|venv|vendor|dist|build)(\/|$)/i.test(path) &&
-      supportedCodeFile(path)
-    );
+    return !projectPathReason(path) && supportedCodeFile(path);
   });
   return { files: selected, ignored: files.length - selected.length };
 }
@@ -41,7 +39,7 @@ export async function readCodeFiles(
     assertImportBytes(bytes, limit, path);
     actualBytes += bytes;
     assertImportBytes(actualBytes, limit, 'Source project');
-    result.push({ path, content, language: detectCodeLanguage(path) });
+    result.push({ path, content, language: detectProjectLanguage(path, content) });
   }
   return result;
 }

@@ -1,0 +1,178 @@
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { zipSync, strToU8 } from 'fflate';
+import { WorkspaceDatabase } from '../src/storage/database';
+import { Repository } from '../src/storage/repository';
+import { Workspace } from '../src/storage/workspace';
+import { useEditor } from '../src/state/editor';
+import { getCodeAnalysis, getProjectDirectory } from '../src/code/schema';
+import type { CodeImportResult } from '../src/code/types';
+import type { Graph } from '../src/model/types';
+import * as archiveClient from '../src/code/project/client';
+
+const archive = zipSync({
+  'service/src/main.ts': strToU8(
+    'import { helper } from "./utils/helper"; export function run() { const value="PRIVATE-CODE-LITERAL"; return helper(); }',
+  ),
+  'service/src/utils/helper.ts': strToU8('export function helper() { return 1; }'),
+  'service/README.md': strToU8('[Usage](docs/usage.md)\nPRIVATE-DOCUMENT-PARAGRAPH'),
+  'service/docs/usage.md': strToU8('[Home](../README.md#start)'),
+  'service/node_modules/other/index.js': strToU8('throw new Error("EXCLUDED-DEPENDENCY-CODE")'),
+  'service/.env': strToU8('KEY=EXCLUDED-PRIVATE-KEY'),
+});
+const input = {
+  name: 'Service folders',
+  data: Buffer.from(archive).toString('base64'),
+  mode: 'folders',
+};
+let db: WorkspaceDatabase, controller: Workspace;
+beforeEach(async () => {
+  vi.stubGlobal('Worker', undefined);
+  db = new WorkspaceDatabase(`project-api-${crypto.randomUUID()}`);
+  await db.initialize();
+  await db.settings.put({ key: 'storage-consent', value: true });
+  useEditor.getState().setGraph(null);
+  useEditor.setState({
+    privacyAcknowledged: false,
+    mcpAccess: 'off',
+    status: 'saved',
+    message: '',
+    owners: [],
+    diagrams: [],
+  });
+  controller = new Workspace(new Repository(db));
+  await controller.start();
+  await controller.setPreference('mcp-access', 'read');
+});
+afterEach(async () => {
+  controller.stop();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  await db.delete();
+});
+
+it('previews ZIP topology read-only and saves the same semantic analysis without source or archive bytes', async () => {
+  const preview = await controller.external<CodeImportResult>(
+    '/code/project/preview',
+    'POST',
+    input,
+  );
+  expect(preview.fileCount).toBe(4);
+  expect(preview.mode).toBe('folders');
+  expect(preview.project).toMatchObject({
+    name: input.name,
+    ignoredEntries: 2,
+    ignoredReasons: { private: 1, dependency: 1 },
+  });
+  expect(
+    preview.graph.nodes
+      .map(getProjectDirectory)
+      .filter(Boolean)
+      .map((node) => node!.path),
+  ).toEqual(['.', 'src', 'src/utils', 'docs']);
+  expect(await db.diagrams.count()).toBe(0);
+  expect(useEditor.getState().graph).toBeNull();
+  await expect(controller.external('/code/project/diagrams', 'POST', input)).rejects.toThrow(
+    /read-only/,
+  );
+  await expect(
+    controller.external('/code/project/preview?save=true', 'POST', input),
+  ).rejects.toThrow(/read-only/);
+  await controller.setPreference('mcp-access', 'write');
+  const graph = await controller.external<Graph>('/api/v1/code/project/diagrams', 'POST', input);
+  expect(getCodeAnalysis(graph)).toEqual(getCodeAnalysis(preview.graph));
+  expect(useEditor.getState().graph?.diagram.id).toBe(graph.diagram.id);
+  const stored = await controller.external<Graph>(`/diagrams/${graph.diagram.id}`, 'GET');
+  expect(stored.nodes.map(getProjectDirectory)).toEqual(graph.nodes.map(getProjectDirectory));
+  const json = JSON.stringify(stored);
+  for (const value of [
+    'PRIVATE-CODE-LITERAL',
+    'PRIVATE-DOCUMENT-PARAGRAPH',
+    'EXCLUDED-DEPENDENCY-CODE',
+    'EXCLUDED-PRIVATE-KEY',
+    input.data,
+  ])
+    expect(json).not.toContain(value);
+});
+
+it.each([
+  { ...input, surprise: true },
+  { ...input, mode: ['folders'] },
+  { ...input, mode: 'automatic' },
+  { ...input, focus: '' },
+  { ...input, data: 'data:application/zip;base64,' + input.data },
+  { ...input, data: 'not base64' },
+])('rejects invalid project inputs without storing anything', async (value) => {
+  await expect(controller.external('/code/project/preview', 'POST', value)).rejects.toThrow();
+  expect(await db.diagrams.count()).toBe(0);
+});
+
+it('revocation cancels the archive stage and prevents a late result from writing or navigating', async () => {
+  await controller.setPreference('mcp-access', 'write');
+  const scanned = await archiveClient.parseProjectArchiveAsync({
+    name: input.name,
+    data: input.data,
+  });
+  let resolve!: (value: typeof scanned) => void;
+  let signal: AbortSignal | undefined;
+  let entered!: () => void;
+  const started = new Promise<void>((done) => {
+    entered = done;
+  });
+  vi.spyOn(archiveClient, 'parseProjectArchiveAsync').mockImplementation((_input, options) => {
+    signal = options?.signal;
+    entered();
+    return new Promise((done) => {
+      resolve = done;
+    });
+  });
+  const pending = controller.external('/code/project/diagrams', 'POST', input);
+  const rejected = expect(pending).rejects.toThrow();
+  await started;
+  await controller.setPreference('mcp-access', 'off');
+  expect(signal?.aborted).toBe(true);
+  resolve(scanned);
+  await rejected;
+  expect(await db.diagrams.count()).toBe(0);
+  expect(useEditor.getState().graph).toBeNull();
+});
+
+it('checks live authorization inside the final import transaction after collision reads', async () => {
+  await controller.setPreference('mcp-access', 'write');
+  const original = db.nodes.bulkGet.bind(db.nodes);
+  const lookup = vi.spyOn(db.nodes, 'bulkGet').mockImplementation((keys) =>
+    original(keys).then((nodes) => {
+      useEditor.setState({ mcpAccess: 'read' });
+      return nodes;
+    }),
+  );
+  await expect(controller.external('/code/project/diagrams', 'POST', input)).rejects.toThrow(
+    /read-only/,
+  );
+  expect(lookup).toHaveBeenCalled();
+  expect(await db.diagrams.count()).toBe(0);
+  expect(await db.nodes.count()).toBe(0);
+  expect(useEditor.getState().graph).toBeNull();
+});
+
+it('supports explicit per-file language overrides for ambiguous ZIPs', async () => {
+  const ambiguous = {
+    data: Buffer.from(
+      zipSync({ 'project/include/types.h': strToU8('int process(int value);') }),
+    ).toString('base64'),
+  };
+  await expect(controller.external('/code/project/preview', 'POST', ambiguous)).rejects.toThrow(
+    /language/i,
+  );
+  const result = await controller.external<CodeImportResult>('/code/project/preview', 'POST', {
+    ...ambiguous,
+    languages: { 'include/types.h': 'c' },
+  });
+  expect(result.languages).toEqual(['c']);
+  await expect(
+    controller.external('/code/project/preview', 'POST', {
+      ...ambiguous,
+      languages: { 'project/include/types.h': 'c' },
+    }),
+  ).rejects.toThrow(/path/i);
+  expect(await db.diagrams.count()).toBe(0);
+});

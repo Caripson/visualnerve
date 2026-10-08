@@ -1,6 +1,16 @@
 import { sqlTableSchema, sqlForeignKeySchema } from './sql-schema';
-import { getCodeAnalysis, getCodeObject, getCodeRelation } from '../code/schema';
-import { codeAnalysisSummary, codeObjectSummary, codeRelationSummary } from './code';
+import {
+  getCodeAnalysis,
+  getCodeObject,
+  getCodeRelation,
+  getProjectDirectory,
+} from '../code/schema';
+import {
+  codeAnalysisSummary,
+  codeObjectSummary,
+  codeRelationSummary,
+  projectDirectorySummary,
+} from './code';
 import { getCsvNode } from '../data/csv';
 import { graphDatasets, analysisForDataset, isGeneratedCsvNode } from '../data/model';
 import type { CsvNodeData } from '../data/types';
@@ -146,6 +156,7 @@ export function buildLovablePrompt(
           : undefined,
       csvGroup: data ? group(data) : undefined,
       codeObject: codeObjectSummary(getCodeObject(node)),
+      projectDirectory: projectDirectorySummary(getProjectDirectory(node)),
       sqlTable: sqlTableSchema(getSqlTable(node)),
       sqlQuerySource: sqlQuerySourceSummary(getSqlQuerySource(node)),
       sqlQueryResult: sqlQueryResultSummary(getSqlQueryResult(node)),
@@ -250,6 +261,7 @@ export function buildLovablePrompt(
       title: node.title,
       description: node.description,
       codeObject: codeObjectSummary(getCodeObject(node)),
+      projectDirectory: projectDirectorySummary(getProjectDirectory(node)),
       sqlTable: sqlTableSchema(getSqlTable(node)),
       sqlQuerySource: sqlQuerySourceSummary(getSqlQuerySource(node)),
       sqlQueryResult: sqlQueryResultSummary(getSqlQueryResult(node)),
@@ -364,7 +376,10 @@ export function buildLovablePrompt(
       'Query expressions and predicates include literal values and are supplied in this prompt. The original SQL script and comments, database rows and arbitrary metadata are not supplied.',
     );
   }
-  if (graph.nodes.some((node) => getCodeObject(node))) {
+  if (
+    getCodeAnalysis(graph) ||
+    graph.nodes.some((node) => getCodeObject(node) || getProjectDirectory(node))
+  ) {
     lines.push(
       `Code analysis notes: ${json(codeAnalysisSummary(getCodeAnalysis(graph)) ?? { warnings: ['Import analysis notes were not supplied.'] })}`,
       'Code context: these objects and relationships are a bounded static outline, not an executed program or compiler-verified call graph. File paths and source line numbers identify the original input; they may become outdated after edits.',

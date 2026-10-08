@@ -1,8 +1,8 @@
 # Visualize source code and dependencies
 
-Use **Visualize code** to paste a script, choose several source files, or select a folder. Choose the language for pasted text and for ambiguous extensions, then preview and review the objects, connections and analysis notes before **Create diagram**. A single `.sql`/`.ddl` drop still opens the more detailed SQL importer. SQL can also participate in a mixed code project.
+Use **Visualize code** to paste a script, choose several source files, select a folder, or import a **ZIP project**. Choose the language for pasted text and for ambiguous extensions, then preview and review the objects, connections and analysis notes before **Create diagram**. A single `.sql`/`.ddl` drop still opens the more detailed SQL importer. SQL can also participate in a mixed code project.
 
-The automatic detail level uses **Declarations and dependencies** for a pasted script or a single source file, and **File overview** for multiple files. **File overview** starts with one card per file and connections between files or external dependencies. **Declarations and dependencies** adds recognized functions, classes, types, resources, measures and query parts. You can explicitly choose either view. For example, a single COBOL program displays its program, recognized paragraphs and file resources with their calls and reads/writes; choosing File overview intentionally reduces it to a file card. **Focus** matches a case-insensitive substring in paths or object names and includes immediate related objects. For example, import a project and focus on `billing` to examine its neighboring dependencies. The diagram's existing relationship explorer can then inspect neighbors and paths or save a named perspective. Changing the input cancels and invalidates the preview.
+The automatic detail level uses **Declarations and dependencies** for a pasted script or a single source file, and **File overview** for multiple files. **File overview** starts with one card per file and connections between files or external dependencies. **Declarations and dependencies** adds recognized functions, classes, types, resources, measures and query parts. **Folder relationships** creates directory cards with descendant file counts and languages. Dependencies between files in different folders are combined into folder connections with `occurrences`; same-folder dependencies stay available in File overview. You can choose any view explicitly. For example, a single COBOL program displays its program, recognized paragraphs and file resources with their calls and reads/writes; choosing File overview intentionally reduces it to a file card. **Focus** matches a case-insensitive substring in paths or object names and includes immediate related objects. For example, import a project and focus on `billing` to examine its neighboring dependencies. The diagram's existing relationship explorer can then inspect neighbors and paths or save a named perspective. Changing the input cancels and invalidates the preview.
 
 These are editable native diagram objects. Move and connect them, annotate, assign status, use the pen, switch between 2D and 3D, and export the canonical 2D layout to PNG/PDF. Select an object for its language, original file and source line. Select a connection for its relationship kind, confidence and file/line evidence. Renaming a card does not rewrite the source. Reconnecting an analyzed edge removes its stale source evidence; undo restores it.
 
@@ -74,8 +74,21 @@ External objects remain visible. An imported name is not evidence that its sourc
 | Vega / Vega-Lite | Named datasets, transforms and data references |
 | HCL | Resources/modules/variables/outputs and references |
 | Nix | Bindings, imports and references |
+| Markdown | Local inline/reference/wiki links between supplied documents; code examples, images and external URLs are excluded |
 
-Extensions such as `.m` (MATLAB, Objective-C or Power Query M), `.h` and `.cls` are ambiguous and require an explicit language. Use `tsql`/`plsql` for SQL dialect scripts; `.sql` alone selects SQL. Vega files can use `.vg.json`, `.vl.json`, `.vega.json` or `.vegalite.json`; ordinary diagram JSON remains diagram import. There is no automatic execution or package discovery.
+Filename, extension, shebang and conservative content patterns identify project languages. Extensions such as `.m` (MATLAB, Objective-C or Power Query M), `.h` and `.cls` need an explicit language when the content is inconclusive. This browser implementation does not run GitHub Linguist or claim compiler-level classification. Use `tsql`/`plsql` for SQL dialect scripts; `.sql` alone selects SQL. Vega files can use `.vg.json`, `.vl.json`, `.vega.json` or `.vegalite.json`; ordinary diagram JSON remains diagram import. There is no automatic execution or package discovery.
+
+## Import a complete project archive
+
+Choose **Load ZIP project** in Visualize code, or drop one `.zip` on the application. The browser scans and reads the archive in a cancellable worker. Progress reports the scan/read stage and percentage; its summary explains excluded entries. If there is one common wrapping folder, it is removed from every relative path. Review detected languages, choose the diagram detail and preview before creating.
+
+Dependencies (`node_modules`, `vendor`, virtual environments), build output, version-control directories, common private files (`.env`, keys, credentials), binary files, generated output and unsupported files are excluded from analysis. This is a bounded filter, not a guarantee that arbitrary source contains no secrets. Only supplied files are analyzed. No code is executed, packages installed, files written to disk, or linked documents fetched.
+
+Compressed ZIP bytes and the complete verified expanded archive must each fit the selected import limit, including entries excluded from analysis. ZIP archives are limited to 10,000 entries and 500 analyzed files. Too many source files fail clearly rather than silently producing a truncated project. Every file's size and checksum are verified. Unsafe/duplicate paths, symlinks, encryption, ZIP64, unsupported compression, overlapping entries and corrupt data are rejected. ZIP scanning has a two-minute deadline; the subsequent analysis retains its 30-second deadline. The exact ZIP API routes allow 165 seconds across both stages and saving. The server response write budget is 210 seconds, including bounded request-body reading; clients must also allow enough request time.
+
+A ZIP can contain code, Markdown, or both. Markdown links resolve relative to the containing document, or from the supplied project root when prefixed with `/`. Percent-encoded paths and fragments are decoded; supported heading, HTML and line anchors are checked against the target document. Missing targets/anchors, ambiguous wiki targets and paths outside the supplied project remain unresolved; external web URLs and image links do not create project dependencies. Inline, reference and `[[wiki links]]` are supported. A single Markdown drop continues to use the existing diagram importer; use ZIP, a folder, several Markdown files, or Visualize code for a linked-document analysis. `.mdx` remains the existing MDX/OLAP analyzer.
+
+Folder nodes use `metadata.projectDirectory` (`version`, `path`, descendant `fileCount`, `languages`), distinct from `metadata.codeObject`. Root is `.`. Aggregated relationships retain confidence, a representative source location and `occurrences`. `diagram.metadata.codeAnalysis` also records optional `directoryCount` and `project` scan provenance (`name`, `expandedBytes`, `ignoredEntries`, categorized counts). These records survive native JSON, backups and the bounded Markdown/Lovable handoff. Source text and archive bytes are temporary and are not saved.
 
 ## Size and responsiveness
 
@@ -91,9 +104,9 @@ Native diagram JSON and full workspace backups preserve the recognized metadata.
 
 ## API and MCP
 
-Start the optional local bridge and grant access in the open browser. The public S3 site does not expose a code-analysis API. `GET /code/languages` lists the 50 language IDs, extensions and capabilities. Read-only access permits the exact `POST /code/preview` endpoint; `POST /code/diagrams` requires write access and saves/opens the result transactionally.
+Start the optional local bridge and grant access in the open browser. The public S3 site does not expose a code-analysis API. `GET /code/languages` lists the 50 code language IDs plus `markdown`, extensions and capabilities. Read-only access permits the exact `POST /code/preview` endpoint; `POST /code/diagrams` requires write access and saves/opens the result transactionally.
 
-Omitting `mode` uses `"symbols"` for one supplied file and `"files"` for multiple supplied files, matching the UI's automatic detail level. Explicit `mode:"files"` or `mode:"symbols"` overrides that choice. Preview and `diagram.metadata.codeAnalysis.mode` report the resolved mode; no `"auto"` value is stored or accepted by the API. Existing diagrams retain their saved detail level and are not automatically re-analyzed.
+Omitting `mode` uses `"symbols"` for one supplied file and `"files"` for multiple supplied files, matching the UI's automatic detail level. Explicit `mode:"files"`, `mode:"symbols"` or `mode:"folders"` overrides that choice. Preview and `diagram.metadata.codeAnalysis.mode` report the resolved mode; no `"auto"` value is stored or accepted by the API. Existing diagrams retain their saved detail level and are not automatically re-analyzed.
 
 ```json
 {
@@ -111,6 +124,22 @@ Preview returns `graph`, `version`, `languages`, `mode`, `fileCount`, `symbolCou
 
 Code cards use the existing node geometry contract. Read `GET /nodes/{nodeId}`, then send `PATCH /nodes/{nodeId}` with its current `version` and the desired `width`/`height`; include `x`/`y` when repositioning. Geometry-only changes preserve `metadata.codeObject` and connection evidence. For nodes with an assigned `externalId`, `POST /diagrams/{diagramId}/bulk` with `upsert:true`, the current diagram `baseVersion` and matching node external IDs can update several sizes atomically. Imported code nodes initially have UUIDs without external IDs, so use node PATCH for them. Resizing needs write access; it introduces no new endpoint or metadata schema.
 
+### ZIP through REST or MCP
+
+`POST /code/project/preview` accepts `{data,name?,mode?,focus?,languages?}`. `data` is strict base64 ZIP bytes without a data-URL prefix. ZIP imports default to `files`, including one-file archives. After reviewing the returned `CodeImportResult`, send the same payload to `/code/project/diagrams` with write access to save/open its `Graph`. Both use the same scan and analysis as the UI. Read-only mode permits only the exact preview route; consent/access are rechecked before saving, and revocation cancels pending work.
+
+```json
+{
+  "path": "/code/project/preview",
+  "method": "POST",
+  "data": {"name": "Service architecture", "data": "<BASE64_ZIP_BYTES>", "mode": "folders"}
+}
+```
+
+The 32 MiB JSON/WebSocket envelope includes base64 and request metadata. Therefore an integration ZIP must be below approximately 24 MiB compressed (and often smaller); raising Settings does not raise this transport limit. Use the UI for larger bounded archives. The source-files endpoints remain available, including `language:"markdown"` and `mode:"folders"`.
+
 ## Implementation boundaries
 
 `frontend/src/code` separates the public contract/catalog, lexical helpers, program-language families, specialized query/BI/infrastructure/legacy families, graph assembly, layout and worker lifecycle. `frontend/src/imports` owns file classification and application import routing. Code import dialog, file list, language selector, preview, card summary and Properties sections are separate components. `storage/analysis-commands.ts` owns SQL/code import endpoints and their shared guarded save boundary. General CRUD stays in Repository; backend OpenAPI code/SQL/spatial schemas and MCP descriptions have their own files.
+
+ZIP API language overrides use `languages:{"src/header.h":"c"}` with exact retained paths after wrapping-folder removal. Unknown/excluded paths and unsupported IDs are rejected. Preview again with these overrides if detection is inconclusive, matching the UI language selectors.

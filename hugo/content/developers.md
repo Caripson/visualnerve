@@ -117,6 +117,20 @@ Review objects, warnings and relationship confidence. Send the same data to `/co
 
 For a requested 3D graph, create through `POST /spatial-diagrams` with `{ "name": "Truck lifecycle", "type": "mindmap" }`, then populate its returned graph through standard node/edge or bulk commands. These are native styled cards; 3D does not require a separate mesh model. Keep the canonical 2D arrangement readable.
 
+## Inspect a code or documentation ZIP
+
+Use `/code/project/preview` with strict base64 ZIP bytes. Read only can inspect the unsaved result; `/code/project/diagrams` requires Read + write and opens the saved graph.
+
+```json
+{
+  "path": "/code/project/preview",
+  "method": "POST",
+  "data": {"name": "Service project", "data": "<BASE64_ZIP_BYTES>", "mode": "folders"}
+}
+```
+
+Choose `files`, `symbols` or `folders`. Folder nodes expose semantic `projectDirectory` metadata, combined dependencies expose `codeRelation.occurrences`, and `codeAnalysis.project` explains scan counts. Code and internal Markdown links use the same browser analysis as the UI. The 32 MiB envelope includes base64, so compressed archives must be below approximately 24 MiB and may need to be smaller. ZIP scan permits 120 seconds, followed by 30 seconds for analysis; these exact bridge routes allow 165 seconds. See [ZIP project help](/help/code/#import-a-zip-project) for exclusions, supported links and limits.
+
 ## Run and inspect a simulation
 
 Discover `GET /simulation/capabilities`, list process-simulator documents and inspect `/diagrams/{id}/simulation`. The semantic model exposes sources, Work nodes, routes, particle types, shared resources, improvements, economics, scenarios and retention.

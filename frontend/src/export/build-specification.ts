@@ -1,7 +1,7 @@
 import { sqlTableSchema, sqlForeignKeySchema } from './sql-schema';
 import type { Graph } from '../model/types';
 import { getSqlRelationship, getSqlTable } from '../sql/schema';
-import { getCodeObject, getCodeRelation } from '../code/schema';
+import { getCodeObject, getCodeRelation, getProjectDirectory } from '../code/schema';
 import { getSqlQueryRelationship } from '../sql/query-schema';
 import { graphDatasets, isGeneratedCsvNode } from '../data/model';
 import { getCsvNode } from '../data/csv';
@@ -214,7 +214,7 @@ export function applicationSpecification(
         `Confirm the external behavior or integration represented by ${node.title}.`,
         [node.id],
       );
-    if (node.description?.trim() && !table && !getCodeObject(node))
+    if (node.description?.trim() && !table && !getCodeObject(node) && !getProjectDirectory(node))
       acceptance.push(
         `Given the app capability ${reference} ${JSON.stringify(node.title)}, when its described workflow is used, then verify the explicitly described behavior: ${JSON.stringify(node.description)}. Refine this into concrete test inputs and outputs before implementation.`,
       );
