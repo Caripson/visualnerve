@@ -5,6 +5,15 @@ import { expect, test, type Page } from './fixtures';
 /** Check rendered controls and text, including actual contrast in both appearances. */
 async function accessible(page: Page, label: string, info: TestInfo) {
   await page.evaluate(axe.source);
+  // The theme attribute changes before button backgrounds finish transitioning.
+  // Audit the settled rendering, preserving animations and every contrast rule.
+  await page.waitForFunction(() =>
+    document
+      .getAnimations()
+      .every(
+        (animation) => !(animation instanceof CSSTransition) || animation.playState === 'finished',
+      ),
+  );
   const violations = await page.evaluate(async () => {
     const engine = (window as unknown as { axe: typeof axe }).axe;
     const result = await engine.run(document, {

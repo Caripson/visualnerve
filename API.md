@@ -4,6 +4,8 @@ The browser editor lives at `/app/`; `/` is the public product home. This route 
 
 IndexedDB in the browser is the only database. Start the static server with `--bridge`, open the app and explicitly choose Settings → MCP access → Read only or Read + write (default Off). REST and MCP forward commands over a local WebSocket to that browser. The browser applies IndexedDB transactions before replying. The Go server retains no application records; without a connected browser graph requests return 503.
 
+Saved access and local connection changes apply to the open workspace without reloading the page. While access remains enabled, temporary connection failures retry every three seconds, including a browser's temporary rejection when opening the local WebSocket. Invalid addresses remain errors until corrected. Turning access Off closes the socket and cancels retries; origin, certificate, local-network permission and configured token requirements remain unchanged.
+
 Base: `http://localhost:4317/api/v1`. Request bodies and responses use JSON, including Markdown and SVG exports, which return their text as JSON strings. Swagger is bundled at `/api/docs`, the generated OpenAPI 3 contract at `/api/openapi.yaml`, and its source at `docs/openapi.yaml` (JSON syntax, valid YAML 1.2). Regenerate with `cd backend && go run ./cmd/openapi`.
 
 ## MCP discovery and connection addresses

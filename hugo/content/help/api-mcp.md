@@ -61,6 +61,8 @@ On mobile, the normal UI remains usable locally. Integration still needs a compa
 
 Access is **Off** by default. Read only permits GET inspection and supported exact unsaved previews, exports and comparisons. It does not grant general permission to POST or edit. Read + write additionally permits mutations, saving models and controlling simulations/presentations. Turning access Off closes the browser connection.
 
+Access changes and **Save connection** take effect in the open workspace without a page reload. If the local process is unavailable or the browser temporarily blocks a connection, Visual Nerve retries every few seconds while access remains enabled. Start the bridge and grant any requested local-network permission, then watch for **Connected**. If it stays on **Error**, check the exact allowed origin, trusted local certificate and address; an invalid address must be corrected and saved. Turning access Off also cancels connection retries.
+
 If the bridge uses `VISUAL_NERVE_BRIDGE_TOKEN`, the browser's **Integration token** must match it. That token lasts for the browser session and is excluded from backups and copied setup instructions. REST clients send `Authorization: Bearer YOUR_LOCAL_TOKEN` when a token is configured; configure the corresponding header in your MCP client. Choose the tools you grant access to, since they receive the content you ask them to inspect.
 
 ## Discover documentation before sending commands

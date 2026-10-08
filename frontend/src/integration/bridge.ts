@@ -27,7 +27,7 @@ export function bridgeError(error: unknown) {
     ...(Array.isArray(details?.issues) ? { issues: details.issues } : {}),
   };
 }
-class Bridge {
+export class Bridge {
   private socket?: WebSocket;
   private retry?: ReturnType<typeof setTimeout>;
   private unsubscribe?: () => void;
@@ -44,6 +44,15 @@ class Bridge {
     });
     this.reconnect();
   }
+  stop() {
+    ++this.generation;
+    clearTimeout(this.retry);
+    this.unsubscribe?.();
+    this.unsubscribe = undefined;
+    this.socket?.close();
+    this.socket = undefined;
+    useEditor.setState({ bridgeStatus: 'disabled' });
+  }
   reconnect() {
     const generation = ++this.generation;
     clearTimeout(this.retry);
@@ -59,14 +68,20 @@ class Bridge {
     if (generation !== this.generation) return;
     const token = sessionStorage.getItem('vn-token');
     let url: URL;
-    let socket: WebSocket;
     try {
       url = localBridgeUrl(useEditor.getState().bridgeUrl);
       if (token) url.searchParams.set('token', token);
+    } catch {
+      useEditor.setState({ bridgeStatus: 'error' });
+      return;
+    }
+    let socket: WebSocket;
+    try {
       useEditor.setState({ bridgeStatus: 'waiting' });
       socket = new WebSocket(url);
     } catch {
       useEditor.setState({ bridgeStatus: 'error' });
+      this.scheduleRetry(generation);
       return;
     }
     this.socket = socket;
@@ -108,10 +123,14 @@ class Bridge {
       if (generation !== this.generation) return;
       if (useEditor.getState().bridgeStatus !== 'error')
         useEditor.setState({ bridgeStatus: 'waiting' });
-      this.retry = setTimeout(() => {
-        void this.connect(generation);
-      }, 3000);
+      this.scheduleRetry(generation);
     };
+  }
+  private scheduleRetry(generation: number) {
+    clearTimeout(this.retry);
+    this.retry = setTimeout(() => {
+      void this.connect(generation);
+    }, 3000);
   }
 }
 export const bridge = new Bridge();

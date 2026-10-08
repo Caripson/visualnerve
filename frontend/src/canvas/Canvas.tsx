@@ -54,6 +54,7 @@ import { projectGraph, type CanvasNode, type NodeData, type RenderCache } from '
 import { canvasViewportGraph, persistCanvasFocus } from './navigation';
 import { canvasFitPadding } from './fit-padding';
 import { useResponsiveCanvasViewport } from './useResponsiveCanvasViewport';
+import { CanvasTouchViewportGesture, canvasZoomRange } from './touch-viewport-gesture';
 import { DrawingOverlay } from '../drawing/DrawingOverlay';
 import { ParticleOverlay } from '../simulation/ParticleOverlay';
 import { ProcessStartPanel } from '../simulation/ProcessWizard';
@@ -230,6 +231,7 @@ export function Canvas() {
   const renderCache = useRef<RenderCache>({ nodes: new Map(), edges: new Map() });
   const flow = useReactFlow<CanvasNode>();
   const flowStore = useStoreApi<CanvasNode>();
+  const canvasShell = useRef<HTMLDivElement>(null);
   const presentationViewport = useRef(false);
   const presentationViewports = useRef(new Set<string>());
   const interruptPresentation = useRef(() => {});
@@ -414,6 +416,18 @@ export function Canvas() {
   useEffect(() => setNodes(projected.nodes), [projected.nodes]);
   useEffect(() => setEdges(projected.edges), [projected.edges]);
   const diagramId = graph?.diagram.id;
+  useEffect(() => {
+    if (spatial) return;
+    const surface = canvasShell.current?.querySelector<HTMLElement>('.react-flow__renderer');
+    if (!surface) return;
+    const gesture = new CanvasTouchViewportGesture(surface, {
+      getViewport: () => flow.getViewport(),
+      setViewport: (viewport) => {
+        void flow.setViewport(viewport, { duration: 0 });
+      },
+    });
+    return () => gesture.destroy();
+  }, [diagramId, spatial, flow]);
   const processViewKey = `${processView.mode}:${processView.processId ?? ''}`;
   useEffect(() => {
     if (!processProjection?.active && !processProjector?.hierarchy.processes.size) return;
@@ -846,6 +860,7 @@ export function Canvas() {
   const showProcessNavigation = !presentationOpen && !!graph.simulation?.processes?.length;
   return (
     <div
+      ref={canvasShell}
       className={`canvas-shell ${graph.diagram.type === 'mindmap' ? 'mindmap-canvas' : ''} ${showProcessNavigation ? 'simulation-process-canvas' : ''}`}
       data-testid="canvas"
       onPointerDownCapture={() => interruptPresentation.current()}
@@ -946,8 +961,8 @@ export function Canvas() {
         multiSelectionKeyCode={['Meta', 'Control', 'Shift']}
         snapToGrid={!!graph.diagram.settings.snap}
         snapGrid={[20, 20]}
-        minZoom={0.05}
-        maxZoom={3}
+        minZoom={canvasZoomRange.min}
+        maxZoom={canvasZoomRange.max}
         onlyRenderVisibleElements
         nodesFocusable
         edgesFocusable

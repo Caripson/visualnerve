@@ -11,7 +11,7 @@ An object describes something; a connection describes how two things relate. Use
 | Task | Desktop | Phone / touch |
 | --- | --- | --- |
 | Pan | Hold Space and drag; middle/right-button drag also works | Drag empty canvas with one finger |
-| Zoom | Scroll over the canvas or use zoom controls | Pinch with two fingers |
+| Zoom | Scroll over the canvas or use zoom controls | Pinch with two fingers, including over a card |
 | Fit the diagram | **Fit diagram** or F when the canvas is active | Fit control in the canvas tools |
 | Centre selected objects | Crosshair / focus control below the canvas | Select, then use the focus control |
 | Select one | Click a card or line | Tap a card or line |
@@ -20,6 +20,8 @@ An object describes something; a connection describes how two things relate. Use
 | Edit properties | Select, then use the right panel | Select, then tap **Edit** |
 
 The minimap is pannable and zoomable. Grid and magnet controls toggle canvas dots and snapping. These are view aids; they do not change the meaning of connections. If a diagram seems empty, use Fit, check filters and collapsed groups, and return to **Details** from semantic overview.
+
+On a touch screen, two fingers navigate the 2D view even when they start over an object or its scrollable details. The gesture zooms around the space between your fingers and does not move the object. Lift both fingers before dragging an object or scrolling its details with one finger again.
 
 ## Create and describe an object
 
