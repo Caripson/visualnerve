@@ -10,7 +10,7 @@ const catalog = {
   'dialogs.exportVisioPreviewHint':
     'Visio-esiversio: paketti tarkistetaan automaattisesti, mutta yhteensopivuus on vielä varmistettava Microsoft Visiossa. Säilytä Visual Nerven JSON-varmuuskopio.',
   'dialogs.exportEditable2DHint':
-    'Käyttää tallennettua 2D-asettelua ja loogisia prosessisolmuja. Simulointi ja 3D jäävät Visual Nerveen.',
+    'Käyttää tallennettua 2D-asettelua ja loogisia prosessisolmuja. Vaalea pinta ja tumma teksti; korostusvärit säilyvät. Simulointi ja 3D jäävät Visual Nerveen.',
   'dialogs.exportEditableProgress': 'Valmistellaan muokattavaa vientiä · {percent}%',
   'dialogs.exportSvgSourceHint':
     'Rajattu lähdeteksti voi säilyä SVG-tiedostossa. Tarkista tiedosto ennen jakamista.',

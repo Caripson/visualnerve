@@ -389,6 +389,32 @@ describe('native Visio exchange export', () => {
     expect(input.warnings).toHaveLength(1);
   });
 
+  it('keeps pale connector accents separate from portable dark label text', () => {
+    const { page } = packageXml(
+      scene(
+        [node('left'), node('right', { x: 384 })],
+        [
+          edge('pale', 'left', 'right', { stroke: '#B3CBE7', label: 'Readable pale accent' }),
+          edge('explicit-ink', 'left', 'right', { stroke: '#FFFFFF', textColor: '#223344' }),
+        ],
+      ),
+    );
+    const connectors = Array.from(page.getElementsByTagName('Shape')).slice(2);
+    expect(connectors.map((shape) => cells(shape).get('LineColor')?.getAttribute('V'))).toEqual([
+      '#B3CBE7',
+      '#FFFFFF',
+    ]);
+    expect(
+      connectors.map((shape) =>
+        children(shape, 'Section')
+          .find((section) => section.getAttribute('N') === 'Character')
+          ?.querySelector('Cell[N="Color"]')
+          ?.getAttribute('V'),
+      ),
+    ).toEqual(['#1F2D28', '#223344']);
+    expect(children(connectors[0], 'Text')[0].textContent).toBe('Readable pale accent');
+  });
+
   it('exports deliberately selected scene content without arbitrary metadata or external resources', () => {
     const input = scene([node('first', { description: 'Public description' })]);
     Object.assign(input, {

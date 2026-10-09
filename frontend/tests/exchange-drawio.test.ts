@@ -140,6 +140,44 @@ describe('editable draw.io export', () => {
     });
   });
 
+  it('keeps a portable light surface and independent label ink when the receiving editor is dark', () => {
+    const value = scene(
+      [
+        node('group', { kind: 'group', fill: '#FFFFFF', textColor: '#1F2D28' }),
+        node('a', { parentId: 'group', fill: '#FFFFFF', stroke: '#31766C' }),
+        node('b', { fill: '#FFFFFF', stroke: '#31766C' }),
+      ],
+      [edge('e', { stroke: '#98A79D' })],
+    );
+    const document = parseXml(xml(value));
+    const model = first(first(document, 'diagram')!, 'mxGraphModel')!;
+    expect(model.attributes).toMatchObject({ background: '#FFFFFF', adaptiveColors: 'none' });
+    const entries = cells(xml(value));
+    expect(style(byId(entries, 'n1'))).toMatchObject({
+      fillColor: '#FFFFFF',
+      fontColor: '#1F2D28',
+    });
+    expect(style(byId(entries, 'n2')).strokeColor).toBe('#31766C');
+    expect(style(byId(entries, 'e1'))).toMatchObject({
+      strokeColor: '#98A79D',
+      fontColor: '#1F2D28',
+    });
+    value.background = '#FFF5E1';
+    value.edges[0].textColor = '#24372F';
+    const customOutput = xml(value);
+    expect(
+      attr(first(first(parseXml(customOutput), 'diagram')!, 'mxGraphModel')!, 'background'),
+    ).toBe('#FFF5E1');
+    expect(style(byId(cells(customOutput), 'e1'))).toMatchObject({
+      strokeColor: '#98A79D',
+      fontColor: '#24372F',
+    });
+    const imported = parseDrawio(customOutput, 'portable.drawio').pages[0].graph;
+    expect(imported.edges[0].metadata.diagramImport).toMatchObject({
+      strokeColor: '#98a79d',
+    });
+  });
+
   it('writes nested groups with relative coordinates and connectors in their common ancestor', () => {
     const value = scene(
       [
@@ -319,6 +357,8 @@ describe('editable draw.io export', () => {
     scene([node('a', { x: Infinity })]),
     scene([node('a', { width: 0 })]),
     scene([node('a', { fill: '#fff;shape=image;image=https://bad.test' })]),
+    { ...scene([node('a')]), background: '#fff"/><script/>' },
+    scene([node('a'), node('b')], [edge('e', { textColor: '#fff;image=https://bad.test' })]),
   ])('rejects invalid scenes before returning ambiguous or unsafe objects', (value) => {
     expect(() => serializeDrawio(value)).toThrow(ExchangeExportError);
   });

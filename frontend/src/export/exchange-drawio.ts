@@ -64,7 +64,7 @@ function edgeStyle(edge: ExchangeEdge): string {
       : edge.style === 'dashed'
         ? 'dashed=1;dashPattern=6 4;'
         : 'dashed=0;';
-  return `edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;whiteSpace=wrap;strokeWidth=1.6;strokeColor=${color(edge.stroke)};fontColor=${color(edge.stroke)};startArrow=${start ? 'classic' : 'none'};endArrow=${end ? 'classic' : 'none'};startFill=1;endFill=1;${dash}`;
+  return `edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;whiteSpace=wrap;strokeWidth=1.6;strokeColor=${color(edge.stroke)};fontColor=${color(edge.textColor ?? '#1F2D28')};startArrow=${start ? 'classic' : 'none'};endArrow=${end ? 'classic' : 'none'};startFill=1;endFill=1;${dash}`;
 }
 
 /** Validate references and index the parent tree for bounded common-ancestor lookup. */
@@ -158,7 +158,8 @@ export function serializeDrawio(
         'Specialised card kinds and decorations are simplified to standard editable draw.io shapes. Start/end and input/output kinds share shapes.',
     });
   writer.write(
-    `<?xml version="1.0" encoding="UTF-8"?><mxfile compressed="false"><diagram id="page-1" name="${exchangeXML(scene.name)}"><mxGraphModel grid="0" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" math="0" shadow="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/>`,
+    // Disabling adaptive colours keeps the portable surface and ink readable in dark editors.
+    `<?xml version="1.0" encoding="UTF-8"?><mxfile compressed="false"><diagram id="page-1" name="${exchangeXML(scene.name)}"><mxGraphModel background="${exchangeXML(color(scene.background ?? '#FFFFFF'))}" adaptiveColors="none" grid="0" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" math="0" shadow="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/>`,
   );
   // Parent cells precede their children even if the source list uses a different order.
   const order = scene.nodes

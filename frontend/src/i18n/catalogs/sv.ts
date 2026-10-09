@@ -10,7 +10,7 @@ const catalog = {
   'dialogs.exportVisioPreviewHint':
     'Visio-förhandsversion: paketet kontrolleras automatiskt, men kompatibiliteten behöver fortfarande verifieras i Microsoft Visio. Behåll din Visual Nerve-säkerhetskopia i JSON.',
   'dialogs.exportEditable2DHint':
-    'Använder sparad 2D-layout och logiska processnoder. Simulering och 3D finns kvar i Visual Nerve.',
+    'Använder sparad 2D-layout och logiska processnoder. Ljus yta, mörk text och bevarade färgaccenter. Simulering och 3D finns kvar i Visual Nerve.',
   'dialogs.exportEditableProgress': 'Förbereder redigerbar export · {percent}%',
   'dialogs.exportSvgSourceHint':
     'Källtext som inte syns på kortet kan finnas kvar i SVG-filen. Granska den innan du delar.',

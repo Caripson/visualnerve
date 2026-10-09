@@ -31,6 +31,8 @@ export interface ExchangeEdge {
   direction: GraphEdge['direction'];
   style: GraphEdge['style'];
   stroke: string;
+  /** Label ink is independent of a possibly pale, user-chosen line accent. */
+  textColor?: string;
 }
 export interface ExchangeWarning {
   code: string;
@@ -38,6 +40,8 @@ export interface ExchangeWarning {
 }
 export interface ExchangeScene {
   name: string;
+  /** Portable drawing surface; serializers default to white. */
+  background?: string;
   nodes: ExchangeNode[];
   edges: ExchangeEdge[];
   warnings: ExchangeWarning[];

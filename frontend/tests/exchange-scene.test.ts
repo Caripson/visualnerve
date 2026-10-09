@@ -16,6 +16,48 @@ const theme: SvgTheme = {
   doneBorder: '#16803D',
 };
 describe('deliberate editable exchange content and canonical geometry', () => {
+  it('uses the same readable light drawing in dark Appearance while retaining explicit accents', () => {
+    const graph = blankGraph('Portable colors');
+    const group = newNode(graph.diagram.id, { nodeType: 'group', title: 'Operations' });
+    const a = newNode(graph.diagram.id, {
+      title: 'Assembly',
+      color: '#b3cbe7',
+      parentId: group.id,
+    });
+    const b = newNode(graph.diagram.id, { title: 'Delivered' });
+    graph.nodes = [group, a, b];
+    graph.edges = [
+      newEdge(graph.diagram.id, a.id, b.id, {
+        label: 'Pale accent, readable label',
+        metadata: { diagramImport: { format: 'drawio', strokeColor: '#b3cbe7' } },
+      }),
+      newEdge(graph.diagram.id, b.id, a.id, { label: 'Default connection' }),
+    ];
+    const snapshot = exchangeGraphSnapshot(graph);
+    const light = exchangeScene(snapshot, {}, theme);
+    const dark = exchangeScene(
+      snapshot,
+      {},
+      {
+        ...theme,
+        background: '#151F19',
+        node: '#242D27',
+        text: '#E1E7E1',
+        muted: '#8A9694',
+        border: '#49594F',
+      },
+    );
+    expect(dark).toEqual(light);
+    expect(dark.background).toBe('#FFFFFF');
+    expect(
+      dark.nodes.every((node) => node.fill === '#FFFFFF' && node.textColor === '#1F2D28'),
+    ).toBe(true);
+    expect(dark.nodes.find((node) => node.id === a.id)?.stroke).toBe('#B3CBE7');
+    expect(dark.edges).toMatchObject([
+      { stroke: '#B3CBE7', textColor: '#1F2D28' },
+      { stroke: '#56675D', textColor: '#1F2D28' },
+    ]);
+  });
   it('does not recreate deliberately suppressed CSV parent relationships or copy raw CSV metadata', () => {
     const graph = blankGraph('CSV hierarchy', 'mindmap');
     const parent = newNode(graph.diagram.id, { title: 'All customers' });

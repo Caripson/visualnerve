@@ -254,6 +254,7 @@ async function populate(request: APIRequestContext) {
           label: 'Approve & <next>',
           direction: 'both',
           style: 'dotted',
+          metadata: { diagramImport: { format: 'drawio', strokeColor: '#B3CBE7' } },
         },
         {
           sourceNodeId: b,
@@ -270,7 +271,7 @@ async function populate(request: APIRequestContext) {
 }
 
 graphicsTest(
-  'UI downloads and native REST chunks match for both editable formats; 3D preserves the canonical 2D drawing',
+  'UI downloads and native REST chunks match for both editable formats; dark Appearance and 3D preserve the readable 2D drawing',
   async ({ page, request }, info) => {
     test.setTimeout(120_000);
     const { graph, ids } = await populate(request);
@@ -331,6 +332,28 @@ graphicsTest(
     const selectedUi = await download(page, 'drawio', 'selected');
     expect(selectedUi.equals(selectedApi.bytes)).toBe(true);
     assertNativeContent(selectedUi, 'drawio', 1, 0);
+    // A receiving drawing stays legible even when workspace Appearance changes.
+    const themed = await request.put('/api/v1/settings/theme', { data: { value: 'dark' } });
+    expect(themed.status(), await themed.text()).toBe(200);
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    for (const format of ['drawio', 'vsdx'] as const) {
+      const job = await start(request, graph.diagram.id, format);
+      await completed(request, job.jobId);
+      const darkApi = await result(request, job.jobId, format);
+      expect(darkApi.bytes.equals(canonical.get(format)!)).toBe(true);
+      expect((await download(page, format)).equals(canonical.get(format)!)).toBe(true);
+      if (format === 'drawio') {
+        const xml = darkApi.bytes.toString('utf8');
+        expect(xml).toContain('background="#FFFFFF"');
+        expect(xml).toContain('adaptiveColors="none"');
+        expect(xml).toContain('strokeColor=#B3CBE7;fontColor=#1F2D28');
+      } else {
+        const xml = strFromU8(unzipSync(darkApi.bytes)['visio/pages/page1.xml']);
+        expect(xml).toContain('<Cell N="LineColor" V="#B3CBE7"');
+        expect(xml).toContain('<Cell N="Color" V="#1F2D28"');
+        expect(xml).not.toContain('#E1E7E1');
+      }
+    }
     const saved = (await (
       await request.get(`/api/v1/diagrams/${graph.diagram.id}`)
     ).json()) as Graph;

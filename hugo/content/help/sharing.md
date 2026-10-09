@@ -38,6 +38,8 @@ An image, PDF or video is not a restorable graph. Draw.io/Visio files are editab
 
 Text and basic shapes stay editable. Owner/status labels and simple process assumptions are included as text. Icons, custom stencils, pen strokes, rich formatting and 3D relief may be simplified or omitted; long descriptions can need resizing in the destination editor. **Complete diagram includes stored nodes hidden in temporary CSV/overview views.** Use Selected nodes when you intend to share only particular content. Source datasets, original source files and full simulation execution/scenarios are not part of these documents.
 
+Editable Draw.io/Visio documents use a **light drawing surface**, even if the app uses Dark or follows a dark system appearance. White base fills and dark text, connection labels and base borders keep the exported drawing readable; your saved node, connection and mind-map color accents remain. The exported document does not copy the app's dark theme. Native JSON preserves full stored styling, and workspace backup includes portable appearance settings. SVG still follows the app's current appearance.
+
 Visio is a **compatibility preview**: package checks are automatic, but the document still needs verification in Microsoft Visio. Keep your native JSON and check the actual file before depending on fidelity. Draw.io/Visio are useful editable drawings; JSON or encrypted workspace backup preserves the complete Visual Nerve model.
 
 ![Editable export on desktop, with format, scope and Visio compatibility notes.](/help/images/export-editable-desktop.webp "Choose an editable drawing format and review its sharing scope.")

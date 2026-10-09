@@ -8,7 +8,7 @@ const catalog = {
   'dialogs.exportVisioPreviewHint':
     'Visio preview: the package is checked automatically, but compatibility must still be verified in Microsoft Visio. Keep your Visual Nerve JSON backup.',
   'dialogs.exportEditable2DHint':
-    'Uses saved 2D layout and logical process nodes. Simulation execution and 3D remain in Visual Nerve.',
+    'Uses saved 2D layout and logical process nodes. Light surface and dark text; color accents stay. Simulation and 3D remain in Visual Nerve.',
   'dialogs.exportEditableProgress': 'Preparing editable export · {percent}%',
 
   'dialogs.exportSvgSourceHint':

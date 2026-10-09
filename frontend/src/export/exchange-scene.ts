@@ -180,11 +180,11 @@ export function exchangeColor(value: unknown, fallback: string) {
   return fallback;
 }
 
-/** Canonical saved 2D geometry and logical nodes. Live capacity cards never duplicate the model. */
+/** Canonical saved 2D geometry on a portable light surface, independent of workspace Appearance. */
 export function exchangeScene(
   graph: Graph,
   options: ExchangeOptions,
-  theme: SvgTheme,
+  _theme: SvgTheme,
 ): ExchangeScene {
   validateExchangeOptions(graph, options);
   const all = new Map(graph.nodes.map((node) => [node.id, node]));
@@ -246,9 +246,11 @@ export function exchangeScene(
     (edge) => edgeById.has(edge.id) || !all.get(edge.target)?.metadata.exchangeNoDerivedHierarchy,
   );
   let textCharacters = graph.diagram.name.length;
-  const textColor = exchangeColor(theme.text, '#1F2D28');
-  const fill = exchangeColor(theme.node, '#FFFFFF');
-  const stroke = exchangeColor(theme.border, '#E2E5DF');
+  // Receiving editors have their own theme rules. A consistent light drawing avoids
+  // white group titles on white Visio pages and retains readable connector labels.
+  const textColor = '#1F2D28';
+  const fill = '#FFFFFF';
+  const stroke = '#56675D';
   const result = projection.nodes.map((view) => {
     const node = view.data.node;
     // Model positions are absolute, including grouped nodes; only timeline projects another x/width.
@@ -321,7 +323,7 @@ export function exchangeScene(
     {
       code: 'EDITABLE_FORMAT_FIDELITY',
       message:
-        'Native editable shapes preserve text, basic colors, groups and connections. Icons, custom stencils, pen strokes, rich formatting and 3D relief are simplified or omitted. Long labels may need resizing in the destination editor. Use Visual Nerve JSON for a complete model backup.',
+        'Native editable shapes use a light drawing surface with dark labels regardless of workspace Appearance. Stored node, connection and mind map branch color accents are retained. Icons, custom stencils, pen strokes, rich formatting and 3D relief are simplified or omitted. Long labels may need resizing in the destination editor. Use Visual Nerve JSON for a complete model backup.',
     },
   ];
   if (graph.diagram.metadata.exchangeSimulation)
@@ -358,6 +360,7 @@ export function exchangeScene(
     });
   return {
     name: graph.diagram.name,
+    background: '#FFFFFF',
     nodes: result,
     edges: projectedEdges.map((edge) => ({
       id: edge.id,
@@ -367,9 +370,11 @@ export function exchangeScene(
       direction: edgeById.get(edge.id)?.direction ?? 'none',
       style: edgeById.get(edge.id)?.style ?? 'solid',
       stroke: exchangeColor(
-        edgeById.get(edge.id)?.metadata.exchangeStroke ?? edge.style?.stroke,
-        exchangeColor(theme.muted, '#56675D'),
+        edgeById.get(edge.id)?.metadata.exchangeStroke ??
+          (!edgeById.has(edge.id) ? edge.style?.stroke : undefined),
+        stroke,
       ),
+      textColor,
     })),
     warnings,
   };

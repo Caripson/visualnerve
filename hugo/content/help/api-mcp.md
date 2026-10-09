@@ -578,6 +578,8 @@ The existing `POST /export` JSON/Markdown behavior is unchanged. Source graphs w
 
 Use editable exports when you want to continue working on the drawing in another editor. They preserve basic shapes, text, colors, groups and attached connectors using the saved 2D layout, including when the app is showing 3D. They do not transfer raw datasets, original source files, live capacity copies or complete simulation execution and scenarios. Keep native JSON or an encrypted workspace backup for a faithful model transfer.
 
+Both editable formats use a deliberate **light drawing surface**, regardless of app Appearance. White base fills and dark text, connection labels and base borders keep the document readable in another editor. Saved node, connection and mind-map color accents remain. Native JSON preserves full stored styling, and workspace backups also retain portable appearance settings. This needs no extra API argument; SVG keeps its existing appearance behavior.
+
 1. Read `GET /exports/capabilities` first. Its existing SVG fields remain unchanged; `diagrams` describes the editable formats, scopes, compatibility and separate limits. Bridge 0.6.0 advertises `exchange-export-v1`.
 2. Start an export with the existing **visual_nerve_request** tool:
 

@@ -134,7 +134,7 @@ export class VisioShapeWriter {
         cell('TxtLocPinY', 0.15, 'TxtHeight*0.5') +
         cell('TxtAngle', 0),
     );
-    this.characterSections(edge.stroke, 1, false);
+    this.characterSections(edge.textColor ?? '#1F2D28', 1, false);
     this.writer.write(
       `<Section N="Geometry" IX="0">${cell('NoFill', 1)}${cell('NoLine', 0)}${cell('NoShow', 0)}`,
     );

@@ -10,7 +10,7 @@ const catalog = {
   'dialogs.exportVisioPreviewHint':
     'Aperçu Visio : le paquet est contrôlé automatiquement, mais sa compatibilité doit encore être vérifiée dans Microsoft Visio. Conservez votre sauvegarde JSON Visual Nerve.',
   'dialogs.exportEditable2DHint':
-    'Utilise la disposition 2D enregistrée et les nœuds logiques du processus. La simulation et la 3D restent dans Visual Nerve.',
+    'Utilise la disposition 2D enregistrée et les nœuds logiques du processus. Fond clair, texte sombre et couleurs d’accent conservées. La simulation et la 3D restent dans Visual Nerve.',
   'dialogs.exportEditableProgress': 'Préparation de l’export modifiable · {percent}%',
   'dialogs.exportSvgSourceHint':
     'Le texte source masqué peut rester dans le fichier SVG. Vérifiez-le avant de le partager.',
