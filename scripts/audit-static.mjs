@@ -13,7 +13,7 @@ export function auditStatic(directory) {
       if (stat.isSymbolicLink()) throw new Error(`Static bundle must not contain symlinks: ${path}`);
       if (stat.isDirectory()) { visit(path); continue; }
       const allowed = ['index.html', 'error.html', 'sw.js', 'appearance.js', 'sitemap.xml', 'openapi.yaml', 'help/index.html', 'privacy/index.html', 'license/index.html', 'api/docs/index.html', 'api/docs/docs.css', 'api/docs/docs.js'].includes(path)
-        || ['help/help.css', 'help/help.js', 'help/index.json', 'workspace-navigation.js'].includes(path)
+        || ['help/help.css', 'help/help.js', 'help/index.json'].includes(path)
         || helpGuides.some(guide => path === `help/${guide}/index.html`)
         || helpScreenshots.some(name => path === `help/images/${name}.webp` || path === `help/images/${name}-dark.webp`)
         || path === 'robots.txt'

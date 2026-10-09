@@ -14,7 +14,6 @@ const speech = [
 ];
 const core = [
   '/',
-  '/workspace-navigation.js',
   '/editor/app.js',
   '/editor/assets/private-workspace.js',
   '/help/',

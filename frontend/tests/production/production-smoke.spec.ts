@@ -479,10 +479,8 @@ test('live mobile workspace navigation activates real links and an untimed start
     await timer.uncheck();
     await expect(page.getByRole('dialog')).toContainText('Automatic locking is off.');
     await createVault(page, password);
-    const trigger = page.locator('.workspace-menu-toggle');
     const nav = page.locator('#workspace-site-nav');
-    await expect(trigger).toBeVisible();
-    await trigger.tap();
+    await expect(page.locator('.workspace-menu-toggle')).toHaveCount(0);
     await expect(nav).toBeVisible();
     const geometry = await nav.boundingBox();
     expect(geometry!.x).toBeGreaterThanOrEqual(0);
@@ -491,8 +489,7 @@ test('live mobile workspace navigation activates real links and an untimed start
     await nav.getByRole('link', { name: 'Privacy', exact: true }).tap();
     await expect(page).toHaveURL(`${app}/privacy/`);
     await expect(page.locator('main')).toContainText('AES-256-GCM');
-    await trigger.tap();
-    await nav.getByRole('link', { name: 'Workspace', exact: true }).tap();
+    await page.locator('.site-brand').tap();
     await expect(page).toHaveURL(`${app}/`);
     await expect(
       page.getByRole('dialog', { name: 'Unlock your workspace', exact: true }),

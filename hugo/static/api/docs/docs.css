@@ -1,18 +1,6 @@
 .api-reference-page {
   background: var(--canvas);
 }
-.api-reference-page .site-shell {
-  height: auto;
-  min-height: 48px;
-  gap: 20px;
-  padding-top: 10px;
-  padding-bottom: 10px;
-}
-.api-reference-page .site-shell nav {
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  row-gap: 12px;
-}
 .api-reference-page .site-shell nav a[aria-current="page"] {
   color: var(--accent);
   font-weight: 600;
@@ -222,13 +210,25 @@
 .api-reference .swagger-ui .opblock {
   --api-method-bg: #43516a;
 }
-.api-reference .swagger-ui .opblock-get { --api-method-bg: #1d5e9e; }
-.api-reference .swagger-ui .opblock-post { --api-method-bg: #237348; }
-.api-reference .swagger-ui .opblock-put { --api-method-bg: #a85600; }
-.api-reference .swagger-ui .opblock-patch { --api-method-bg: #15685a; }
-.api-reference .swagger-ui .opblock-delete { --api-method-bg: #b72c37; }
+.api-reference .swagger-ui .opblock-get {
+  --api-method-bg: #1d5e9e;
+}
+.api-reference .swagger-ui .opblock-post {
+  --api-method-bg: #237348;
+}
+.api-reference .swagger-ui .opblock-put {
+  --api-method-bg: #a85600;
+}
+.api-reference .swagger-ui .opblock-patch {
+  --api-method-bg: #15685a;
+}
+.api-reference .swagger-ui .opblock-delete {
+  --api-method-bg: #b72c37;
+}
 .api-reference .swagger-ui .opblock-head,
-.api-reference .swagger-ui .opblock-options { --api-method-bg: #5a468c; }
+.api-reference .swagger-ui .opblock-options {
+  --api-method-bg: #5a468c;
+}
 .api-reference .swagger-ui .opblock .opblock-summary-method {
   color: #ffffff;
   background: var(--api-method-bg);
@@ -526,16 +526,6 @@
 @media (max-width: 760px) {
   .api-reference {
     padding: 30px 18px 50px;
-  }
-  .api-reference-page .site-shell {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 12px;
-    padding: 12px 18px;
-  }
-  .api-reference-page .site-shell nav {
-    justify-content: flex-start;
-    gap: 12px 18px;
   }
   .api-context {
     grid-template-columns: 1fr;

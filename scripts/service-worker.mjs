@@ -39,7 +39,6 @@ export function buildServiceWorker(
           "/",
           "/app/",
           "/appearance.js",
-          "/workspace-navigation.js",
           "/error.html",
           "/privacy/",
           "/license/",

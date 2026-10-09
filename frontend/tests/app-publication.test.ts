@@ -310,7 +310,6 @@ async function shellFixture() {
   put('public/editor/app.css', '.app{}');
   put('public/editor/assets/example-hashed.js', 'export const worker = 1;');
   put('public/appearance.js', 'window.appearance = 1;');
-  put('public/workspace-navigation.js', '/* local workspace navigation */');
   put('public/sw.js', '// public worker');
   put('public/site/mark.svg', '<svg/>');
   put('public/site/syntax.css', '.syntax{}');

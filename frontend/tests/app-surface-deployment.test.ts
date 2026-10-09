@@ -39,7 +39,6 @@ function fixture() {
   put('error.html', shell('<main>Marketing error page</main>'));
   put('sw.js', '/* old mixed public shell must not be copied */');
   put('appearance.js', 'window.appearance = true;');
-  put('workspace-navigation.js', '/* local workspace navigation class */');
   put('editor/app.js', 'import "./assets/worker-example.js";');
   put('editor/app.css', '.site-shell{}');
   put('editor/assets/worker-example.js', 'export const localWorker = true;');
@@ -96,9 +95,16 @@ it('prepares a single app root and local documentation without legacy alias, mar
     '<meta name="visualnerve-app-origin" content="https://app.visualnerve.com">',
   );
   expect(html).toContain('type="module" src="/editor/app.js"');
+  expect(html).toContain('<nav id="workspace-site-nav"');
+  expect(html).toContain('data-app-chrome-text="guide"');
+  expect(html).toContain('data-app-chrome-text="privacy"');
+  expect(html).toContain('class="github-link"');
+  expect(html).toContain('data-app-chrome-label="reportIssue"');
+  expect(html).not.toMatch(/workspace-menu-toggle|workspace-navigation\.js/);
   expect(prepared.files).not.toContain('app/index.html');
   expect(html).not.toMatch(/visualnerve-google-analytics|consent\.js|klaro|Marketing|\/features\//);
   expect(prepared.files).not.toContain('site/site.js');
+  expect(prepared.files).not.toContain('workspace-navigation.js');
   for (const path of [
     'site/consent.js',
     'site/vendor/klaro.js',

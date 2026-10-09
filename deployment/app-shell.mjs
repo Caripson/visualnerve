@@ -19,7 +19,7 @@ export function appBrand(source) {
 }
 
 export function appHeader(brand, options, workspace = false) {
-  return `<header class="site-shell" data-workspace-navigation${workspace ? " data-app-chrome" : ""}><a class="site-brand" href="/">${brand}</a><button class="workspace-menu-toggle" type="button" aria-expanded="false" aria-controls="workspace-site-nav"><span data-app-chrome-text="site">Site</span><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><nav id="workspace-site-nav" aria-label="Site" data-app-chrome-label="site"><a href="/"><span data-app-chrome-text="workspace">Workspace</span></a><a href="/help/"><span data-app-chrome-text="guide">Guide</span></a><a href="/api/docs/"><span data-app-chrome-text="apiReference">API reference</span></a><a href="/privacy/"><span data-app-chrome-text="privacy">Privacy</span></a><a class="site-credit" href="/license/">Johan Caripson · MPL-2.0</a><a href="${escape(options.websiteOrigin)}/" target="_blank" rel="noopener noreferrer"><span data-app-chrome-text="website">Website</span> <span aria-hidden="true">↗</span></a></nav></header>`;
+  return `<header class="site-shell"${workspace ? " data-app-chrome" : ""}><a class="site-brand" href="/">${brand}</a><nav id="workspace-site-nav" aria-label="Site" data-app-chrome-label="site"><a class="site-desktop-link" href="/"><span data-app-chrome-text="workspace">Workspace</span></a><a href="/help/"><span data-app-chrome-text="guide">Guide</span></a><a class="site-desktop-link" href="/api/docs/"><span data-app-chrome-text="apiReference">API reference</span></a><a href="/privacy/"><span data-app-chrome-text="privacy">Privacy</span></a><a class="site-credit site-desktop-link" href="/license/">Johan Caripson · MPL-2.0</a><a class="site-desktop-link" href="${escape(options.websiteOrigin)}/" target="_blank" rel="noopener noreferrer"><span data-app-chrome-text="website">Website</span> <span aria-hidden="true">↗</span></a><a class="github-link" href="https://github.com/Caripson/visualnerve/issues/new/choose" target="_blank" rel="noopener noreferrer" aria-label="Report an issue on GitHub" data-app-chrome-label="reportIssue"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 6v-3.9a3.4 3.4 0 0 0-.9-2.7c3-.3 6.2-1.5 6.2-6.8A5.3 5.3 0 0 0 18.9 5a4.9 4.9 0 0 0-.1-3.6s-1.2-.4-3.8 1.4a13.2 13.2 0 0 0-7 0C5.4 1 4.2 1.4 4.2 1.4A4.9 4.9 0 0 0 4.1 5a5.3 5.3 0 0 0-1.4 3.7c0 5.3 3.2 6.5 6.2 6.8A3.4 3.4 0 0 0 8 18.2V22"/></svg></a></nav></header>`;
 }
 
 export function appDocument(title, path, body, brand, options, assets = {}) {
@@ -33,11 +33,7 @@ export function appDocument(title, path, body, brand, options, assets = {}) {
     "/site/app-surface.css",
     ...(assets.styles ?? []),
   ];
-  const scripts = [
-    "/appearance.js",
-    "/workspace-navigation.js",
-    ...(assets.scripts ?? []),
-  ];
+  const scripts = ["/appearance.js", ...(assets.scripts ?? [])];
   return `<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="robots" content="noindex, nofollow"><meta name="referrer" content="no-referrer"><meta name="visualnerve-surface" content="isolated-app"><meta name="visualnerve-vault-required" content="true"><meta name="visualnerve-app-origin" content="${escape(options.appOrigin)}"><meta http-equiv="Content-Security-Policy" content="${escape(metaCsp)}"><title>${escape(title)} · Visual Nerve</title><link rel="canonical" href="${escape(new URL(path, options.appOrigin).href)}"><link rel="icon" href="/site/mark.svg">${styles.map((path) => `<link rel="stylesheet" href="${path}">`).join("")}${scripts.map((path) => `<script src="${path}"${path === "/appearance.js" ? "" : " defer"}></script>`).join("")}${(assets.modules ?? []).map((path) => `<script type="module" src="${path}"></script>`).join("")}</head><body${assets.bodyClass ? ` class="${escape(assets.bodyClass)}"` : ""}>${appHeader(brand, options, assets.workspaceChrome === true)}${body}</body></html>\n`;
 }
 

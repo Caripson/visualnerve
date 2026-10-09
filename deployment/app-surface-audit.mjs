@@ -38,7 +38,6 @@ const generatedFiles = [
 export const copiedAsset = (path) =>
   [
     "appearance.js",
-    "workspace-navigation.js",
     "openapi.yaml",
     "site/mark.svg",
     "site/syntax.css",
