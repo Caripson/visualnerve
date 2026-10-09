@@ -14,7 +14,7 @@ const speech = [
 ];
 const core = [
   '/',
-  '/app/',
+  '/workspace-navigation.js',
   '/editor/app.js',
   '/editor/assets/private-workspace.js',
   '/help/',
@@ -82,10 +82,10 @@ it('does not add hundreds of dependency notice requests to app installation', ()
 it('keeps explicitly managed site notices precached and existing speech assets lazy', () => {
   const plan = new OfflineAssetPlan({
     surface: 'site',
-    assets: [...core, ...notices, ...speech],
+    assets: [...core, '/app/', ...notices, ...speech],
     lazyAssets: speech,
   });
-  expect(plan.assets).toEqual([...core, ...notices]);
+  expect(plan.assets).toEqual([...core, '/app/', ...notices]);
   expect(plan.lazyAssets).toEqual(speech);
 });
 

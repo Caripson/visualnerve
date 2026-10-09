@@ -8,9 +8,17 @@ export function mcpServerUrl(bridgeAddress: string): string {
   return url.href;
 }
 
-export function mcpSetupNote(websiteOrigin: string, bridgeAddress: string): string {
-  const website = new URL(websiteOrigin).origin;
-  const workspace = new URL('/app/', website).href;
+export function mcpSetupNote(
+  websiteOrigin: string,
+  bridgeAddress: string,
+  encryptedSurface = false,
+): string {
+  const requested = new URL(websiteOrigin);
+  const production = ['app.visualnerve.com', 'www.visualnerve.com', 'visualnerve.com'].includes(
+    requested.hostname,
+  );
+  const website = production ? 'https://app.visualnerve.com' : requested.origin;
+  const workspace = new URL(production || encryptedSurface ? '/' : '/app/', website).href;
   const reference = new URL('/api/docs/', website).href;
   return [
     `Visual Nerve website: ${website}`,

@@ -102,4 +102,4 @@ jobs:
       - name: Verify private hosting, publish app-only files and wait for CDN invalidation
         run: ./scripts/deploy-app.sh
       - name: Report isolated app publication
-        run: echo "Published owner-approved $GITHUB_SHA to https://app.visualnerve.com from audited public-app only; private origin/policy/LIVE routes verified and invalidation completed. Legacy www workspace preserved." >> "$GITHUB_STEP_SUMMARY"
+        run: echo "Published owner-approved $GITHUB_SHA to https://app.visualnerve.com from audited public-app only; private origin/policy/LIVE routes verified and invalidation completed. The retired /app path is not an app entry." >> "$GITHUB_STEP_SUMMARY"

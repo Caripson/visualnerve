@@ -21,7 +21,7 @@ Start with visual_nerve_api_docs with {} (or omit arguments) for this compact gu
 
 Call visual_nerve_request for workspace commands only. Paths omit /api/v1, for example {"path":"/diagrams","method":"GET"}. /api/docs and /api/openapi.yaml are HTTP documentation routes, not browser graph commands; do not send them to visual_nerve_request.
 
-The browser editor is at /app/ on the website origin; / is the public product home. Keep /app/ open with local storage accepted and MCP access enabled in Settings. Existing diagrams use the same origin's IndexedDB across this route change. REST /api/v1 and MCP POST /mcp keep their existing endpoints; the public GET /mcp/ page is setup documentation, not the local MCP endpoint. Allowed origins omit /app/ and all other paths.
+The production browser editor is at https://app.visualnerve.com/; https://www.visualnerve.com/ is the public product website. Keep the app open, human-unlocked, with required local storage accepted and MCP access enabled in Settings. The old website /app entry redirects to the app origin; /app is not an editor alias on the app origin. Origins have separate IndexedDB databases and no automatic transfer. Local source-development builds may retain a development-only /app editor. REST /api/v1 and MCP POST /mcp keep their existing endpoints; the public GET /mcp/ page is setup documentation, not the local MCP endpoint. Allowed origins omit all paths; production uses https://app.visualnerve.com.
 
 ## Encrypted workspace boundary
 

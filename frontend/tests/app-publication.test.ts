@@ -310,6 +310,7 @@ async function shellFixture() {
   put('public/editor/app.css', '.app{}');
   put('public/editor/assets/example-hashed.js', 'export const worker = 1;');
   put('public/appearance.js', 'window.appearance = 1;');
+  put('public/workspace-navigation.js', '/* local workspace navigation */');
   put('public/sw.js', '// public worker');
   put('public/site/mark.svg', '<svg/>');
   put('public/site/syntax.css', '.syntax{}');
@@ -342,7 +343,7 @@ async function shellFixture() {
   );
   put(
     'test-bin/aws',
-    `#!${process.execPath}\nconst fs = require('node:fs'), path = require('node:path');\nconst args = process.argv.slice(2);\nfs.appendFileSync(process.env.VN_TEST_AWS_LOG, JSON.stringify(args) + '\\n');\nconst command = args.slice(0,2).join(' ');\nconst names = {'sts get-caller-identity':'identity','cloudfront get-distribution':'distribution','cloudfront get-origin-access-control':'oac','cloudfront get-response-headers-policy':'headers','cloudfront describe-function':'functionDescription','s3api get-bucket-location':'location','s3api get-public-access-block':'publicAccess','s3api get-bucket-ownership-controls':'ownership','s3api get-bucket-policy':'bucketPolicy'};\nif (names[command]) process.stdout.write(fs.readFileSync(path.join(process.env.VN_TEST_REVIEW,names[command]+'.json')));\nelse if (command === 'cloudfront get-function') { fs.copyFileSync(path.join(process.env.VN_TEST_REVIEW,'function.js'),args[args.indexOf('--stage')+2]); process.stdout.write('{"ETag":"EFUNCTION1234","ContentType":"application/javascript"}'); }\nelse if (command === 's3api get-bucket-website') { console.error('An error occurred ('+(process.env.VN_TEST_WEBSITE_ERROR || 'NoSuchWebsiteConfiguration')+') when calling the GetBucketWebsite operation'); process.exitCode=254; }\nelse if (command === 'cloudfront create-invalidation') process.stdout.write('IEXAMPLE1234\\n');\nelse if (command !== 's3 cp' && command !== 'cloudfront wait') { console.error('Unexpected AWS command'); process.exitCode=1; }\n`,
+    `#!${process.execPath}\nconst fs = require('node:fs'), path = require('node:path');\nconst args = process.argv.slice(2);\nfs.appendFileSync(process.env.VN_TEST_AWS_LOG, JSON.stringify(args) + '\\n');\nconst command = args.slice(0,2).join(' ');\nconst names = {'sts get-caller-identity':'identity','cloudfront get-distribution':'distribution','cloudfront get-origin-access-control':'oac','cloudfront get-response-headers-policy':'headers','cloudfront describe-function':'functionDescription','s3api get-bucket-location':'location','s3api get-public-access-block':'publicAccess','s3api get-bucket-ownership-controls':'ownership','s3api get-bucket-policy':'bucketPolicy'};\nif (names[command]) process.stdout.write(fs.readFileSync(path.join(process.env.VN_TEST_REVIEW,names[command]+'.json')));\nelse if (command === 'cloudfront get-function') { fs.copyFileSync(path.join(process.env.VN_TEST_REVIEW,'function.js'),args[args.indexOf('--stage')+2]); process.stdout.write('{"ETag":"EFUNCTION1234","ContentType":"application/javascript"}'); }\nelse if (command === 's3api get-bucket-website') { console.error('An error occurred ('+(process.env.VN_TEST_WEBSITE_ERROR || 'NoSuchWebsiteConfiguration')+') when calling the GetBucketWebsite operation'); process.exitCode=254; }\nelse if (command === 'cloudfront create-invalidation') process.stdout.write('IEXAMPLE1234\\n');\nelse if (command === 's3 rm' && args[2] === 's3://app.visualnerve.com/app/index.html') { if (process.env.VN_TEST_FAIL_RETIRE === '1') process.exitCode=1; }\nelse if (command !== 's3 cp' && command !== 'cloudfront wait') { console.error('Unexpected AWS command'); process.exitCode=1; }\n`,
     0o755,
   );
   const awsLog = join(alias, 'aws.log');
@@ -393,7 +394,7 @@ describe('manual app publication shell boundary', () => {
         .slice(0, 11)
         .every((args) => args[1].startsWith('get-') || args[1] === 'describe-function'),
     ).toBe(true);
-    const uploads = commands.filter((args) => args[0] === 's3');
+    const uploads = commands.filter((args) => args[0] === 's3' && args[1] === 'cp');
     expect(uploads).toHaveLength(6);
     expect(
       uploads.every(
@@ -409,10 +410,13 @@ describe('manual app publication shell boundary', () => {
     expect(uploads[3].join(' ')).toContain('--content-type application/json');
     expect(uploads[4].join(' ')).toContain('--include *.html');
     expect(uploads[5][2]).toBe(join(alias, 'public-app/sw.js'));
+    expect(commands.filter((args) => args[0] === 's3' && args[1] === 'rm')).toEqual([
+      ['s3', 'rm', 's3://app.visualnerve.com/app/index.html', '--dryrun'],
+    ]);
     expect(readFileSync(join(alias, 'gate.log'), 'utf8').trim().split('\n')).toEqual(['CI', 'CI']);
     expect(commands.some((args) => args[1] === 'create-invalidation')).toBe(false);
   });
-  it('waits for invalidation only after all six real upload commands succeed', async () => {
+  it('waits for invalidation only after the uploads and narrow legacy shell removal succeed', async () => {
     const { deploy, calls } = await shellFixture();
     const result = deploy({}, []);
     expect(result.status, result.stderr).toBe(0);
@@ -439,6 +443,13 @@ describe('manual app publication shell boundary', () => {
         'IEXAMPLE1234',
       ],
     ]);
+  });
+  it('does not invalidate a release if narrow removal of the retired app shell fails', async () => {
+    const { deploy, calls } = await shellFixture();
+    const result = deploy({ VN_TEST_FAIL_RETIRE: '1' }, []);
+    expect(result.status).not.toBe(0);
+    expect(calls().at(-1)).toEqual(['s3', 'rm', 's3://app.visualnerve.com/app/index.html']);
+    expect(calls().some((args) => args[1] === 'create-invalidation')).toBe(false);
   });
   it('rejects weakened deployed headers before any object upload', async () => {
     const fixture = await shellFixture();

@@ -21,6 +21,8 @@ export class VaultStorageError extends StorageError {
 export interface VaultSessionPolicy {
   idleTimeoutMs: number;
   absoluteTimeoutMs: number;
+  /** Omitted in existing records: automatic idle and absolute locking is enabled. */
+  sessionTimerEnabled?: boolean;
 }
 export const defaultVaultSessionPolicy: Readonly<VaultSessionPolicy> = Object.freeze({
   idleTimeoutMs: 15 * 60_000,
@@ -80,6 +82,7 @@ const positive = (value: unknown) => Number.isSafeInteger(value) && (value as nu
 export function validateVaultSessionPolicy(value: VaultSessionPolicy): VaultSessionPolicy {
   if (
     !value ||
+    (value.sessionTimerEnabled !== undefined && typeof value.sessionTimerEnabled !== 'boolean') ||
     !positive(value.idleTimeoutMs) ||
     value.idleTimeoutMs < 60_000 ||
     value.idleTimeoutMs > 4 * 60 * 60_000 ||
@@ -88,7 +91,11 @@ export function validateVaultSessionPolicy(value: VaultSessionPolicy): VaultSess
     value.absoluteTimeoutMs > 24 * 60 * 60_000
   )
     invalid('Use 1–240 minutes of inactivity and an absolute limit up to 24 hours.');
-  return { idleTimeoutMs: value.idleTimeoutMs, absoluteTimeoutMs: value.absoluteTimeoutMs };
+  return {
+    idleTimeoutMs: value.idleTimeoutMs,
+    absoluteTimeoutMs: value.absoluteTimeoutMs,
+    ...(value.sessionTimerEnabled === false ? { sessionTimerEnabled: false } : {}),
+  };
 }
 
 function timestamp(value: number) {
@@ -148,8 +155,9 @@ function validatePhysicalRecord(value: VaultPhysicalRecord): VaultPhysicalRecord
 function expired(control: VaultControl, now: number) {
   return (
     now < control.lastActivityAt ||
-    now - control.lastActivityAt >= control.policy.idleTimeoutMs ||
-    now - control.startedAt >= control.policy.absoluteTimeoutMs
+    (control.policy.sessionTimerEnabled !== false &&
+      (now - control.lastActivityAt >= control.policy.idleTimeoutMs ||
+        now - control.startedAt >= control.policy.absoluteTimeoutMs))
   );
 }
 function assertLease(control: VaultControl, lease: VaultLease, now: number) {
@@ -295,19 +303,39 @@ export class VaultRecordStorage {
   async beginSession(
     authenticatedHeader: VaultHeader,
     expectedEpoch?: number,
+    sessionTimerEnabled?: boolean,
   ): Promise<VaultLease> {
     const header = parseVaultHeader(authenticatedHeader);
+    if (sessionTimerEnabled !== undefined && typeof sessionTimerEnabled !== 'boolean')
+      invalid('Invalid automatic session lock choice.');
     return this.transaction('readwrite', async (tx) => {
       const metadata = tx.objectStore('metadata');
       const control = validateControl(await request(metadata.get('control')));
       if (JSON.stringify(header) !== JSON.stringify(control.header)) conflict();
       if (expectedEpoch !== undefined && control.epoch !== expectedEpoch) conflict();
       const now = timestamp(this.now());
+      let changed = false;
       if (control.locked || expired(control, now)) {
         control.epoch++;
         control.locked = false;
         control.startedAt = now;
         control.lastActivityAt = now;
+        changed = true;
+      }
+      // Only a successfully authenticated human unlock can choose this option.
+      // Joining a live sibling session never renews either shared clock.
+      if (
+        sessionTimerEnabled !== undefined &&
+        sessionTimerEnabled !== (control.policy.sessionTimerEnabled !== false)
+      ) {
+        control.policy = validateVaultSessionPolicy({ ...control.policy, sessionTimerEnabled });
+        changed = true;
+        if (expired(control, now)) {
+          control.locked = true;
+          control.epoch++;
+        }
+      }
+      if (changed) {
         control.revision++;
         await request(metadata.put(control));
       }

@@ -3,6 +3,7 @@
 <head>
   {{ partial "site-meta.html" . }}
   <script src="/appearance.js"></script>
+  <script defer src="/workspace-navigation.js"></script>
   <link rel="stylesheet" href="/editor/app.css">
   <link rel="stylesheet" href="/help/help.css">
   <link rel="stylesheet" href="/site/syntax.css">
@@ -50,7 +51,7 @@
         {{ end }}{{ end }}
       </nav>
       {{ end }}
-      <footer class="help-footer">Your diagrams stay in this browser. <a href="/app/">Return to workspace</a> · <a href="/privacy/">Privacy</a> · <a href="/api/docs/">API reference</a></footer>
+      <footer class="help-footer">Your diagrams stay in this browser. <a href="{{ partial "workspace-url.html" . }}">Return to workspace</a> · <a href="/privacy/">Privacy</a> · <a href="/api/docs/">API reference</a></footer>
     </main>
   </div>
 </body>

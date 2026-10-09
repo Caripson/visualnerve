@@ -1,6 +1,6 @@
 # How Visual Nerve stores your data
 
-The application can be publicly hosted. Your workspace is stored in the browser profile where you created it. No account is required and no cloud database automatically receives diagrams. Other visitors to the same URL cannot see your work. Exports and the optional Lovable handoff let you explicitly share a copy.
+The public website delivers information and application files. Your workspace is stored in the browser profile where you created it. No account is required and no cloud database automatically receives diagrams. Other visitors to the same URL cannot see your work. Exports and the optional Lovable handoff let you explicitly share a copy.
 
 The website delivers app files. The browser saves diagrams, nodes, relationships, owners, metadata, preferences, viewport, user templates, original CSV cells, analysis choices and imported SQL schema/query structure in IndexedDB. React holds active working state. **Saved** means a local transaction completed.
 
@@ -8,7 +8,7 @@ The website delivers app files. The browser saves diagrams, nodes, relationships
 Visual Nerve website → your browser → IndexedDB
 ```
 
-## Encrypted app release under review
+## Encrypted production app
 
 The separate `app.visualnerve.com` implementation encrypts all private IndexedDB
 records with AES-256-GCM, including sources, settings, history and simulation
@@ -18,9 +18,7 @@ workers, API and MCP. Automated calls do not renew human inactivity, and no
 programmatic unlock or server password reset exists. The surface has no
 Analytics or marketing execution.
 
-This release is under review. The published `www.visualnerve.com/app/` still uses
-readable local records. An explicit encrypted export and fully verified transfer
-moves existing work without deleting the source or synchronizing origins. Small
+The production editor is `https://app.visualnerve.com/`. The old website `/app` path redirects there, and `/app` on the app origin returns HTTP 404. Retiring a path does not delete, encrypt or migrate older browser records. An existing encrypted transfer or backup can be restored explicitly. Preserve an unexported older browser profile and contact `hello@visualnerve.com` before clearing site data. Small
 vault/session and asset-cache coordination metadata remain readable technical
 exceptions without workspace content. [Storage/session schema](ENCRYPTED_WORKSPACE_SCHEMA.md).
 
@@ -95,9 +93,9 @@ Settings distinguishes the current website and its documentation from the local 
 
 ## Network requests and deletion
 
-Normal editing at `/app/` and reading Help/API documentation download same-origin static files, with no analytics, content telemetry, remote fonts or automatic error reporting. Normal editing uploads no graph title, owners, metadata or export content. The optional bridge is restricted to literal loopback hosts and explicit grants. Hosts may log ordinary file requests and client IPs; diagram data is not included.
+Normal editing at `https://app.visualnerve.com/` and reading Help/API documentation download same-origin static files, with no analytics, content telemetry, remote fonts or automatic error reporting. Normal editing uploads no graph title, owners, metadata or export content. The optional bridge is restricted to literal loopback hosts and explicit grants. Hosts may log ordinary file requests and client IPs; diagram data is not included.
 
-Public product pages can optionally use Google Analytics when a real Measurement ID is configured and the visitor explicitly accepts through the locally bundled Klaro consent manager. Rejection is the default; neither the Google tag nor denied-mode pings load before consent. Only the public page origin/path and a fixed title are supplied. Query strings, fragments, referrers, diagram contents and source files are excluded. Analytics is never loaded in `/app/`, `/help/` or `/api/docs/`, including when consent was previously accepted. Advertising signals are disabled; the Analytics property must also have Enhanced Measurement disabled and no Connected Site Tags or custom automatic events reading page URLs or content. These account settings cannot be verified from a Measurement ID alone. Google still receives ordinary request metadata, including the visitor's IP and browser details. See [website privacy](../hugo/content/privacy.md) and [website configuration](WEBSITE.md).
+Public product pages can optionally use Google Analytics when a real Measurement ID is configured and the visitor explicitly accepts through the locally bundled Klaro consent manager. Rejection is the default; neither the Google tag nor denied-mode pings load before consent. Only the public page origin/path and a fixed title are supplied. Query strings, fragments, referrers, diagram contents and source files are excluded. Analytics is never loaded on the isolated app origin, `/help/` or `/api/docs/`, including when consent was previously accepted. Advertising signals are disabled; the Analytics property must also have Enhanced Measurement disabled and no Connected Site Tags or custom automatic events reading page URLs or content. These account settings cannot be verified from a Measurement ID alone. Google still receives ordinary request metadata, including the visitor's IP and browser details. See [website privacy](../hugo/content/privacy.md) and [website configuration](WEBSITE.md).
 
 **Cookie settings** lets visitors change the optional 30-day website choice. Withdrawal blocks the tag, expires accessible `_ga` cookies and reloads the public page to remove already-loaded listeners. Website consent is separate from required workspace-storage acceptance and is excluded from workspace backups. If no Analytics ID is configured, no optional tag runs and Cookie settings explains this. Neither rejection nor withdrawal deletes diagrams or retracts requests already sent to Google.
 

@@ -70,9 +70,25 @@ describe('privacy settings on the selected workspace surface', () => {
     expect(screen.getByText('IndexedDB · schema 8')).toBeInTheDocument();
   });
 
+  it('explains private browser storage without claiming the legacy workspace is encrypted', () => {
+    render(<PrivacyIntro />);
+    expect(
+      screen.getByText(
+        'Your diagrams are stored in this browser profile. Other visitors to Visual Nerve cannot see them.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/AES-256-GCM/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/can be a public website/)).not.toBeInTheDocument();
+  });
+
   it('shows old-credential guidance at encrypted first use and in data settings', () => {
     vi.mocked(isEncryptedWorkspaceSurface).mockReturnValue(true);
     const intro = render(<PrivacyIntro />);
+    expect(
+      screen.getByText(
+        'Your saved workspace content in IndexedDB is encrypted with AES-256-GCM (256-bit keys). Unlocking happens locally in this browser.',
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText('Security of downloaded copies')).toHaveTextContent(
       'Older encrypted backups can still be opened with the password or recovery key used when they were created',
     );

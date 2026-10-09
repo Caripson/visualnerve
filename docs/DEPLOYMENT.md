@@ -1,6 +1,6 @@
 # Manual staging and reviewed production
 
-`public/` contains the public website and its legacy `/app/` entry. A separately audited `public-app/` package contains the encrypted workspace for `https://app.visualnerve.com`, with the editor at `/` and a same-origin `/app/` compatibility path. S3 and CloudFront deliver static files and do not store user diagrams. The browser owns IndexedDB content.
+`public/` contains the public website. Production builds remove the former `/app/` editor shell; the website's reviewed CloudFront function redirects that path to `https://app.visualnerve.com/`. A separately audited `public-app/` package contains the encrypted workspace at its root only; the isolated app rejects `/app` with HTTP 404. Local development/staging fixtures may retain `/app/` for testing. S3 and CloudFront deliver static files and do not store user diagrams. The browser owns IndexedDB content.
 
 ```text
 Push main → CI tests/build
@@ -19,7 +19,7 @@ No deployment workflow automatically runs after a push, PR, successful CI or sta
 
 Besides successful exact-commit CI and manual staging, the app gate requires `PRODUCTION_APPROVED_SHA`, `APP_SURFACE_APPROVED_SHA` and `APP_SURFACE_STAGING_VERIFIED_SHA` to identify the same reviewed commit. Review the encrypted app fixture and native vault/MCP/offline checks as well as ordinary staging: the www/staging app uses the legacy backend. Publication waits for CloudFront invalidation. Post-deployment checks must use real public DNS/TLS and disposable profiles. Infrastructure preparation and an application release are separate operations. Follow [the full app-origin hosting and release guide](APP_ORIGIN_DEPLOYMENT.md).
 
-Origin changes do not migrate IndexedDB. Keep `www.visualnerve.com/app/` accessible; its browser records remain available until a human exports an encrypted transfer and verifies the destination. Do not redirect that entry or delete its source data automatically. See [storage and transfer](STORAGE.md).
+Origin changes do not migrate IndexedDB. The owner authorized retiring the public `/app` route after the encrypted app release. Its redirect does not delete or read source browser records. Existing encrypted transfer and backup files can be restored explicitly; keep an unexported older browser profile intact and contact `hello@visualnerve.com` before clearing site data. See [storage and transfer](STORAGE.md).
 
 ## Destinations and build configuration
 
@@ -165,13 +165,13 @@ and [S3 error documents](https://docs.aws.amazon.com/AmazonS3/latest/userguide/C
 
 IndexedDB belongs to one browser profile and exact origin. The staging and production domains have separate workspaces. Redirect aliases before the app runs so users do not accidentally work under different hosts. To move existing data, export at the old origin and restore at the new one; redirects cannot migrate browser databases.
 
-The editor's route is `/app/`; changing from `/` to `/app/` on the same scheme/host/port retains the browser-storage origin. Database upgrades preserve records. Do not reset local databases during deployment.
+The production editor is at the isolated app root. The retired website `/app` redirects there; it does not migrate, encrypt or delete the old origin's IndexedDB. Local development/staging fixtures retain their `/app/` editor. Database upgrades preserve records. Do not reset local databases during deployment.
 
 The service worker caches app files only after storage acceptance. Existing tabs keep their version until they close; the new shell activates after that. Complete a first online visit before relying on offline reload and keep a backup independent of the browser.
 
 ## Equivalent static hosts
 
-Serve `public/` as HTTPS files, preserving asset MIME types and directory indexes for `/app/`, product pages, `/help/`, `/privacy/`, `/license/` and `/api/docs/`. Redirect aliases to one origin. The public API reference is documentation; it does not create public workspace endpoints or a save API.
+Serve the production `public/` package as HTTPS files, preserving asset MIME types and directory indexes for product pages, `/help/`, `/privacy/`, `/license/` and `/api/docs/`. `/app` aliases use a CloudFront 308 redirect to the app root; do not publish a second editor there. Redirect aliases to one origin. The public API reference is documentation; it does not create public workspace endpoints or a save API.
 
 ## Optional local MCP
 

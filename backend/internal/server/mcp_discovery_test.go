@@ -152,7 +152,7 @@ func TestMCPDocumentationResourcesMatchToolDocuments(t *testing.T) {
 	if len(templates["resourceTemplates"].([]any)) != 0 {
 		t.Fatal("static documents have no resource templates", templates)
 	}
-	for _, phrase := range []string{"Use 2D unless the user requests 3D", "POST /spatial-diagrams", "x/y/width/height", "metadata.spatial", "settings.spatialView", "sourceExternalId/targetExternalId", "baseVersion", "IndexedDB", "requires no connected browser", "Read + write", "not browser graph commands", "browser editor is at /app/", "public GET /mcp/", "Allowed origins omit /app/"} {
+	for _, phrase := range []string{"Use 2D unless the user requests 3D", "POST /spatial-diagrams", "x/y/width/height", "metadata.spatial", "settings.spatialView", "sourceExternalId/targetExternalId", "baseVersion", "IndexedDB", "requires no connected browser", "Read + write", "not browser graph commands", "browser editor is at https://app.visualnerve.com/", "public GET /mcp/", "Allowed origins omit all paths", "/app is not an editor alias"} {
 		if !strings.Contains(mcpAPIGuide, phrase) {
 			t.Fatal("guide is missing a supported workflow", phrase)
 		}

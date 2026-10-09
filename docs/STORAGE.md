@@ -4,7 +4,7 @@ IndexedDB is the authoritative persistent application data store. There is no se
 
 ## Schema
 
-The legacy database name `visual-nerve-cache` remains so existing plaintext data upgrades in place. It holds canonical records, not a secondary cache. Its published workspace remains available during the separate encrypted release review.
+The legacy database name `visual-nerve-cache` remains so existing plaintext data upgrades in place. It holds canonical records, not a secondary cache. It remains supported in local development and existing browser profiles. The retired public `/app` address no longer opens that editor; routing changes do not delete its records.
 
 The isolated app runtime uses `visual-nerve-vault`, physical schema 1, with only technical metadata and authenticated ciphertext records. It does not open the legacy database. Both adapters implement the same typed logical schema 8 and 14 stores listed below; Repository, history, simulation and external commands use that shared contract. All private logical records, query projections and identifiers are encrypted or keyed. A small vault header/control record contains setup/revision metadata but no readable content or credentials. [Complete wire and session schema](ENCRYPTED_WORKSPACE_SCHEMA.md).
 

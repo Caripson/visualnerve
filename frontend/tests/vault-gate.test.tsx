@@ -39,6 +39,35 @@ function enterNewPassword() {
 }
 
 describe('encrypted workspace first-visit gate', () => {
+  it('offers a default-on timer at setup and remembers an explicit unchecked choice at the next unlock', async () => {
+    const open = vi.fn(async () => undefined);
+    render(
+      <VaultGate session={session} openWorkspace={open}>
+        <p>Private workspace</p>
+      </VaultGate>,
+    );
+    await screen.findByRole('button', { name: 'Create encrypted workspace' });
+    const timer = screen.getByRole('checkbox', { name: 'Automatic session lock' });
+    expect(timer).toBeChecked();
+    fireEvent.click(timer);
+    expect(screen.getByText(/Automatic locking is off\./)).toBeInTheDocument();
+    enterNewPassword();
+    fireEvent.click(screen.getByRole('button', { name: 'Create encrypted workspace' }));
+    await screen.findByLabelText('Recovery key — keep it private');
+    expect((await session.getPolicy()).sessionTimerEnabled).toBe(false);
+    fireEvent.click(
+      screen.getByRole('checkbox', {
+        name: 'I have saved my recovery key in a protected location.',
+      }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByText('Private workspace');
+    await act(async () => {
+      await session.lock();
+    });
+    await screen.findByRole('button', { name: 'Unlock' });
+    expect(screen.getByRole('checkbox', { name: 'Automatic session lock' })).not.toBeChecked();
+  });
   it('shows backup independence before setup and opens only after recovery acknowledgement', async () => {
     const open = vi.fn(async () => undefined);
     render(

@@ -143,8 +143,11 @@ describe('static delivery and canonical storage origin', () => {
   });
   it('serves Hugo indexes and leaves static assets intact, refusing application uploads', () => {
     expect(route('/').uri).toBe('/index.html');
-    expect(route('/app').uri).toBe('/app/index.html');
-    expect(route('/app/').uri).toBe('/app/index.html');
+    for (const path of ['/app', '/app/']) {
+      const redirected = route(path);
+      expect(redirected.statusCode).toBe(308);
+      expect(redirected.headers.location.value).toBe('https://app.visualnerve.com/');
+    }
     expect(route('/mcp/').uri).toBe('/mcp/index.html');
     expect(route('/help').uri).toBe('/help/index.html');
     expect(route('/privacy/').uri).toBe('/privacy/index.html');
@@ -191,7 +194,7 @@ describe('static delivery and canonical storage origin', () => {
     expect(route('/licenses-unrelated/NOTICE').uri).toBe('/licenses-unrelated/NOTICE/index.html');
     expect(route('/not-a-real-page').uri).toBe('/not-a-real-page/index.html');
     expect(route('/help/code/').uri).toBe('/help/code/index.html');
-    expect(route('/app').uri).toBe('/app/index.html');
+    expect(route('/app').headers.location.value).toBe('https://app.visualnerve.com/');
     expect(route('/editor/assets/app-example.js').uri).toBe('/editor/assets/app-example.js');
     expect(route('/licenses/visualnerve-LICENSE', undefined, {}, 'POST').statusCode).toBe(405);
   });

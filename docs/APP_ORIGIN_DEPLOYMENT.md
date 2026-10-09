@@ -11,21 +11,14 @@ The intended boundary is:
 
 | Origin                        | Surface                                               | Browser workspace                     |
 | ----------------------------- | ----------------------------------------------------- | ------------------------------------- |
-| `https://www.visualnerve.com` | Existing public website and `/app/` migration entry   | Existing origin-local records         |
+| `https://www.visualnerve.com` | Public product website; retired `/app` redirects      | Existing origin-local records         |
 | `https://app.visualnerve.com` | Isolated app, local guides/API reference and policies | Separate password-protected workspace |
 
-Keep the existing `www.visualnerve.com/app/` available. Do not redirect it to the
-app subdomain or delete its browser data: another origin cannot read those records.
-For a complete move, use **Export encrypted transfer** on the legacy address,
-then **Transfer existing workspace** on the destination. This preserves original
-identifiers, source data, history and simulation archives, replaces destination
-work only after explicit confirmation, and verifies all saved encrypted payloads
-before reopening the editor. It does not delete the source or synchronize the two
-copies. Ordinary **Restore backup → Merge/Replace** remains a separate import flow.
-Keep the source and transfer file until the destination and its new backup have
-been checked. See the [transfer guide](../hugo/content/help/settings.md#transfer-an-existing-workspace).
-The app output retains `/app/` as a same-origin compatibility entry, while `/`
-opens the workspace.
+The production editor has one entry at the isolated app root. The owner authorized retiring the public `/app` path after the encrypted release: website `/app` aliases redirect with HTTP 308 to `https://app.visualnerve.com/`, without forwarding query data; isolated app `/app` aliases return HTTP 404. Production public and isolated packages contain no `app/index.html`. Deployment removes that previous object narrowly while retaining earlier hashed assets for open tabs.
+
+Retiring a route never deletes, encrypts or transfers origin-bound IndexedDB. Another origin cannot read those records. Restore an existing backup or complete encrypted transfer explicitly, preserving identifiers and archives. If older work was not exported, keep the original browser profile intact and contact `hello@visualnerve.com` before clearing site data. Local source-development/staging fixtures can retain `/app/`; they are outside the production package.
+
+The updated production static worker excludes the retired entry from its inventory, installs its complete public asset set, then takes over a previous worker. Once active, it returns the same redirect/404 before looking up old cached editor HTML. It neither deletes old caches nor accesses workspace data. A client with no network cannot obtain an update it has never downloaded; an already-open older tab is not forcibly navigated or allowed to discard drafts. Reconnect and refresh to obtain the current routing behavior.
 
 ## Build a distinct package
 
@@ -42,7 +35,7 @@ unrecognized destination folders; it never uploads anything.
 
 The app package includes:
 
-- The workspace at `/` and `/app/`, existing relative editor modules, layout/import/
+- The workspace at `/` only, existing relative editor modules, layout/import/
   simulation workers, local WASM/pronunciation files and approved static assets.
 - Local Help and its search/captures, interactive API reference, OpenAPI, license
   notices and simplified privacy/security/license pages.
@@ -64,7 +57,7 @@ individual dependency notices remain in the audited distribution and are cached
 on a successful online visit. An unopened notice can require a connection. Both
 initial and demand-cached assets contribute to the shell revision hash and use
 the same bounded download, cancellation and Clear app cache ownership rules.
-The ordinary website's offline plan remains unchanged.
+The production website worker also retires the former app entry; local development workers retain explicit development routing.
 
 Every generated HTML shell declares:
 
@@ -150,8 +143,7 @@ The review artifact contains separate AWS CLI/API input shapes:
   [AWS's OAC guidance](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html)
   requires a regular S3 origin and distribution-scoped bucket permission.
 - `viewerRequestFunction`: source and configuration for a dedicated app function.
-  `/`, `/app`, `/app/` and real Help/API directory paths resolve to their own
-  static objects. Unknown routes are not redirected to the workspace.
+  `/` and real Help/API directory paths resolve to their own static objects; `/app` aliases return 404. Unknown routes are not redirected to the workspace.
   `FunctionCode` is base64 for AWS CLI's `base64` binary format;
   `viewerRequestFunctionSource` contains the same readable source for review.
   [Create/update and test it in DEVELOPMENT, then publish LIVE before association](https://docs.aws.amazon.com/cloudfront/latest/APIReference/API_CreateFunction.html).
@@ -318,12 +310,9 @@ and performs no invalidation. It is not an approval bypass or offline fixture.
 
 ### Verify the release before proceeding
 
-After the workflow completes, verify the actual HTTPS app root, compatibility
-`/app/`, Help and API routes; all response security headers; direct unauthenticated
+After the workflow completes, verify the actual HTTPS app root, `/app` HTTP404, website `/app` HTTP308 to the app root, Help and API routes; all response security headers; direct unauthenticated
 S3 denial; missing-route/asset HTTP404; absence of marketing/Analytics requests;
-unlock/save/reload/lock and bridge grants. Test the real transfer from the preserved
-legacy www workspace using non-sensitive sample data and check its source is still
-present. Complete transfer must verify a pending saved copy before editor/API
+unlock/save/reload/lock and bridge grants. Test explicit existing transfer/backup imports using non-sensitive sample data and check that restoration does not delete the source browser records. Complete transfer must verify a pending saved copy before editor/API
 startup, including after an interrupted tab or Cancel; it is never an automatic
 cross-origin migration. Complete CDN invalidation alone does not clear IndexedDB
 or immediately replace an already-open browser's offline shell.

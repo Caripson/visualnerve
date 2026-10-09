@@ -1689,13 +1689,15 @@ const catalog = {
   'privacy.consent.decline': 'Jag godkänner inte',
   'privacy.consent.declined':
     'Arbetsytan förblir stängd utan godkännande. Du kan läsa guiden eller integritetssidan, eller godkänna här när du vill använda den.',
+  'privacy.consent.encryptedIndexedDB':
+    'Ditt sparade arbetsyteinnehåll i IndexedDB krypteras med AES-256-GCM (256-bitars nycklar). Upplåsning sker lokalt i den här webbläsaren.',
   'privacy.consent.explicitExportSharing':
     'Använd Exportera för att behålla en säkerhetskopia eller flytta ditt arbete. Bygg med Lovable låter dig granska och uttryckligen dela en appbeskrivning.',
   'privacy.consent.learnMore': 'Läs mer',
   'privacy.consent.localNoAccount':
     'Ditt arbete sparas lokalt och laddas aldrig upp automatiskt. Inget konto krävs, och en annan webbläsare eller enhet har en egen separat arbetsyta.',
   'privacy.consent.publicWebsitePrivateProfile':
-    'Visual Nerve kan vara en offentlig webbplats. Dina diagram förblir privata i den här webbläsarprofilen.',
+    'Dina diagram sparas i den här webbläsarprofilen. Andra besökare på Visual Nerve kan inte se dem.',
   'privacy.consent.requiredStorage':
     'För att använda arbetsytan måste du godkänna lokal webbläsarlagring. Diagram och inställningar sparas med IndexedDB; appfiler cachas så att du kan arbeta offline. Tjänsten kan inte fungera utan den här lagringen.',
   'privacy.consent.title': 'Ditt arbete stannar i den här webbläsaren',
@@ -1766,7 +1768,7 @@ const catalog = {
   'privacy.storage.usageLabel': 'Webbplatsens lagringsanvändning',
   'privacy.storage.workspaceIdLabel': 'Arbetsytans ID',
   'privacy.transfer.destinationInstructions':
-    'Flyttar du från www.visualnerve.com/app/? Exportera en krypterad överföring där, behåll originalet och använd sedan Överför befintlig arbetsyta här. Den fullständiga överföringen bevarar identifierare, källrader och arkiv, sätter API/MCP till Av och verifierar den sparade kopian innan editorn öppnas igen. En vanlig Återställ säkerhetskopia kan fortfarande slå samman diagram.',
+    'Återställer du en befintlig arbetsyta? Använd en sparad krypterad överföringsfil med Överför befintlig arbetsyta här. Den gamla /app/-adressen är avvecklad; webbläsarlagring flyttas inte automatiskt mellan origins. En överföring bevarar identifierare, källrader och arkiv, stänger av API/MCP och verifierar den sparade kopian innan redigeraren öppnas. Återställ säkerhetskopia kan fortfarande slå samman diagram från en sparad säkerhetskopia.',
   'privacy.transfer.downloaded':
     'Krypterad överföring nedladdad. Behåll dess ursprungliga lösenord och återställningsnyckel, och behåll den här arbetsytan tills destinationen har verifierats.',
   'privacy.transfer.export': 'Exportera krypterad överföring',
@@ -1898,7 +1900,7 @@ const catalog = {
   'security.gate.saveRecoveryTitle': 'Spara din återställningsnyckel',
   'security.gate.setNewPassword': 'Ange nytt lösenord',
   'security.gate.setupExplanation':
-    'Din arbetsyta krypteras i den här webbläsaren. Välj ett lösenord innan du skapar eller importerar privat arbete.',
+    'Ditt sparade arbetsyteinnehåll i IndexedDB krypteras med AES-256-GCM (256-bitars nycklar). Välj ett lösenord innan du skapar eller importerar privat innehåll.',
   'security.gate.setupTitle': 'Skydda din lokala arbetsyta',
   'security.gate.unlock': 'Lås upp',
   'security.gate.unlockTitle': 'Lås upp din arbetsyta',
@@ -1964,10 +1966,19 @@ const catalog = {
   'security.rotation.title': 'Rotera arbetsytans innehållskrypteringsnyckel',
   'security.rotation.validation':
     'Använd en annan, unik lösenordsfras med minst 12 tecken och en likadan bekräftelse.',
+  'security.sessionTimer.enabled': 'Automatiskt sessionslås',
+  'security.sessionTimer.enabledDescription':
+    'Lås efter inaktivitet eller maximal sessionstid. Du kan ändra gränserna i Inställningar.',
+  'security.sessionTimer.disabledWarning':
+    'Automatisk låsning är avstängd. Arbetsytan förblir upplåst i öppna flikar tills du låser den manuellt. Omladdning eller stängning av en flik tar fortfarande bort dess nyckel från minnet och kräver lösenordet igen. Använd detta endast på en betrodd enhet.',
+  'security.sessionTimer.settingsDescription':
+    'Valet gäller arbetsytan i den här webbläsarprofilen, inklusive andra upplåsta flikar. API/MCP-åtkomst upphör fortfarande när arbetsytan låses.',
+  'security.sessionTimer.reenableWarning':
+    'När automatisk låsning aktiveras används de befintliga sessionstiderna. Om en gräns redan har passerats låses arbetsytan direkt.',
   'security.settings.absoluteHours': 'Maximal session (timmar)',
   'security.settings.changePassword': 'Byt lösenord',
   'security.settings.encryptionBoundary':
-    'Lokala poster och säkerhetskopior av arbetsytan använder AES-256-GCM-kryptering. Upplåsning sker i den här webbläsaren; det finns ingen serverfunktion för att återställa lösenordet.',
+    'Arbetsyteinnehåll i IndexedDB och säkerhetskopior av arbetsytan använder AES-256-GCM-kryptering (256-bitars nycklar). Upplåsning sker i den här webbläsaren; lösenordet kan inte återställas på en server.',
   'security.settings.idleAndIntegrationBoundary':
     'Låsning stoppar API/MCP-åtkomst till ditt innehåll och bakgrundsarbete. Bara din interaktion med appen håller inaktivitetssessionen vid liv.',
   'security.settings.idleMinutes': 'Lås efter inaktivitet (minuter)',
@@ -1997,7 +2008,7 @@ const catalog = {
   'security.transfer.encryptedAppRequired': 'Överföring av arbetsytan kräver den krypterade appen.',
   'security.transfer.encryptingVerifying': 'Krypterar och verifierar…',
   'security.transfer.independentOrigins':
-    'Behåll din ursprungliga arbetsyta och en verifierad säkerhetskopia. Stäng dess andra flikar och stoppa eventuella agenter så att du inte fortsätter redigera två oberoende kopior. Den här åtgärden läser, omdirigerar eller raderar inte den gamla webbplatsen. API/MCP-åtkomst är nu Av.',
+    'Behåll originalfilerna och en verifierad säkerhetskopia. Stoppa eventuella agenter och stäng andra arbetsyteflikar så att du inte redigerar två oberoende kopior. Importen läser eller tar inte bort lagring på en annan origin. API/MCP-åtkomst är nu avstängd.',
   'security.transfer.keepOpen':
     'Håll den här fliken öppen. Verifieringen läser den sparade krypterade kopian innan editorn öppnas.',
   'security.transfer.open': 'Öppna överförd arbetsyta',

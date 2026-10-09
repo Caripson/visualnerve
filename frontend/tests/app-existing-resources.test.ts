@@ -191,8 +191,6 @@ it('routes only real app/docs directory objects and preserves unknown Help paths
   runInNewContext(plan.viewerRequestFunctionSource, context);
   for (const [uri, expected] of [
     ['/', '/index.html'],
-    ['/app', '/app/index.html'],
-    ['/app/', '/app/index.html'],
     ['/help/', '/help/index.html'],
     ['/help/editing/', '/help/editing/index.html'],
     ['/help/missing', '/help/missing/index.html'],
@@ -204,6 +202,14 @@ it('routes only real app/docs directory objects and preserves unknown Help paths
     });
     expect(routed.uri).toBe(expected);
     expect(routed.statusCode).toBeUndefined();
+  }
+  for (const uri of ['/app', '/app/', '/app/index.html', '/app/nested']) {
+    const retired = context.handler!({
+      request: { method: 'GET', uri, headers: { host: { value: 'app.visualnerve.com' } } },
+    });
+    expect(retired.statusCode).toBe(404);
+    expect(retired.headers['cache-control'].value).toBe('no-store');
+    expect(retired.headers.location).toBeUndefined();
   }
   const errors = plan.updateDistribution.DistributionConfig.CustomErrorResponses;
   expect(errors.Quantity).toBe(errors.Items.length);

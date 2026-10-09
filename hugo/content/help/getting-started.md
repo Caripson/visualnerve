@@ -16,9 +16,9 @@ The app interface is available in English, Danish, Norwegian Bokmål, Swedish, F
 4. Pick a template, enter a **New diagram name**, then choose **Create diagram**.
 5. Wait for **Saved**. This confirms that the local database transaction has committed.
 
-The public website is at `www.visualnerve.com`; the encrypted editor is at `app.visualnerve.com`. Existing work on the public website remains available at its `/app/` path in the same browser profile. A path change within one origin keeps its database; a different hostname does not.
+The public website is at `www.visualnerve.com`; the encrypted editor is at `app.visualnerve.com`. The former website `/app` address redirects to this separate app root. It is not a second workspace entry. A different hostname has separate browser storage; the redirect never moves your data.
 
-**Workspace addresses:** `app.visualnerve.com` is the separate encrypted workspace. `www.visualnerve.com/app/` is the existing plaintext workspace: local-only storage does not mean that its records or ordinary JSON backups are encrypted. The two addresses have separate browser storage. Moving to the new address requires an explicit **Export encrypted transfer** on the original address and **Transfer existing workspace** on the destination. The destination cannot discover or automatically encrypt work saved on the old address. [Complete transfer steps](/help/settings/#transfer-an-existing-workspace).
+**Workspace addresses:** `app.visualnerve.com` is the encrypted workspace. The old public `/app` editor has been retired without deleting its origin-bound records. Restore an existing backup or encrypted transfer file explicitly. If older work was never exported, preserve that browser profile and contact `hello@visualnerve.com` before clearing site data. The new address cannot discover or automatically encrypt data saved on the old origin. [Complete transfer steps](/help/settings/#transfer-an-existing-workspace).
 
 Acceptance is required because the editor needs local browser storage. Reading Help, Privacy, License or the API reference does not require opening or creating a workspace. [What gets stored](/help/settings/#what-saved-means).
 
@@ -27,7 +27,7 @@ Acceptance is required because the editor needs local browser storage. Reading H
 On the isolated address, the first visit starts with **Protect your local workspace**:
 
 1. Choose a unique passphrase of at least 12 characters and enter it twice.
-2. Choose **Create encrypted workspace**.
+2. Leave **Automatic session lock** enabled for timed locking, or uncheck it to use manual locking. Then choose **Create encrypted workspace**.
 3. Save the displayed recovery key in a trusted password manager or another protected location. Keep it private and separate from your backup files.
 4. Confirm **I have saved my recovery key in a protected location**, then choose **Continue**.
 5. Accept local storage and create a diagram. To bring your complete existing workspace from the old address, open **Settings → Data & Privacy → Transfer existing workspace** and follow the [transfer guide](/help/settings/#transfer-an-existing-workspace).
@@ -36,7 +36,7 @@ The password and recovery key are used in the browser. There is no server passwo
 
 ![First-visit password setup, including the warning that downloaded backups keep their original protection.](/help/images/vault-setup.webp "Choose a strong password locally and read the downloaded-copy warning before creating the workspace.")
 
-The default session locks after 15 minutes without your interaction or after 8 hours from unlock, whichever comes first. Agent requests and background work do not extend it. Save pending edits before leaving, and unlock in the browser when you return. Grant an agent fresh access through Settings after every unlock if you want to reconnect it.
+With **Automatic session lock** enabled, the default session locks after 15 minutes without your interaction or after 8 hours from unlock, whichever comes first. Agent requests and background work do not extend it. Turning it off keeps an open tab unlocked until you lock it; reloading or closing the app still requires your password. You can change this choice and the time limits in [Settings](/help/settings/#protect-the-isolated-workspace). Save pending edits before leaving, and grant an agent fresh access through Settings after every unlock if you want to reconnect it.
 
 ![New diagram dialog showing the template choices and a name field.](/help/images/new-diagram.webp "Choose a starting structure and give this particular diagram a meaningful name. Templates create editable objects, rather than a fixed image.")
 
@@ -101,7 +101,7 @@ There is no manual Save button. Editing saves locally; **Saving…** means a wri
 
 Return using the **same browser profile and website address**. Another device, private window, browser profile or origin has its own workspace. Nothing automatically transfers between them. In Settings, **Export all data** creates a complete workspace backup; **Restore backup** imports one through a reviewed Merge or Replace flow. Ordinary backups from the existing workspace are readable JSON; backups from the isolated workspace are encrypted and need the password or recovery key valid when exported. [Backup and restore steps](/help/settings/#export-all-local-data).
 
-For the complete move from `www.visualnerve.com/app/` to the isolated encrypted app, use **Export encrypted transfer**, then **Transfer existing workspace**. This separate flow preserves original identifiers, source data, history and simulation archives, verifies the saved encrypted destination, and leaves the source unchanged. Its transfer file has its own password and recovery key. Keep the original until you have checked the destination and made a new backup there; the two copies do not synchronize. [Transfer steps](/help/settings/#transfer-an-existing-workspace).
+For a complete existing encrypted transfer file, use **Transfer existing workspace** on the isolated app. Local development or another still-accessible source workspace can create that file through **Export encrypted transfer**. This separate flow preserves original identifiers, source data, history and simulation archives, verifies the saved encrypted destination, and leaves the source unchanged. Its transfer file has its own password and recovery key. Keep the original until you have checked the destination and made a new backup there; the two copies do not synchronize. [Transfer steps](/help/settings/#transfer-an-existing-workspace).
 
 **Lock now** on the isolated address tries to finish pending saves first. If saving fails, **Lock and discard unsaved changes** lets you choose to lose those drafts. Automatic session expiry preserves only the last durable saved version. A later password change cannot change a backup already downloaded; [protect older copies](/help/settings/#downloaded-copies-and-password-changes) separately.
 

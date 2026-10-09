@@ -1,5 +1,8 @@
 import type { AppSurfaceOptions } from "../deployment/app-policy.mjs";
-export function auditAppSurface(directory: string): string[];
+export function auditAppSurface(
+  directory: string,
+  options?: { allowLegacyAlias?: boolean },
+): string[];
 export function buildAppSurface(
   sourceDirectory: string,
   destinationDirectory: string,

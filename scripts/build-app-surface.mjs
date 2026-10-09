@@ -66,7 +66,8 @@ export async function buildAppSurface(
   );
   if (within(source, destination) || within(destination, source))
     throw new Error("App output and source must not overlap.");
-  if (existsSync(destination)) auditAppSurface(destination);
+  if (existsSync(destination))
+    auditAppSurface(destination, { allowLegacyAlias: true });
   const output = mkdtempSync(
     resolve(dirname(destination), ".visualnerve-app-surface-"),
   );
@@ -75,18 +76,15 @@ export async function buildAppSurface(
       mkdirSync(dirname(resolve(output, path)), { recursive: true });
       copyFileSync(resolve(source, path), resolve(output, path));
     }
-    const workspace = text(source, "app/index.html"),
+    const workspace = text(source, "help/index.html"),
       brand = appBrand(workspace);
-    const root = workspace.match(
-      /<div\b[^>]*id="visual-nerve"[^>]*>[\s\S]*?<\/div>/,
-    )?.[0];
-    if (!root) throw new Error("The source is missing the workspace mount.");
+    const root =
+      '<div id="visual-nerve"><noscript>Visual Nerve needs JavaScript for its interactive editor. The <a href="/help/">guide</a> and <a href="/api/docs/">API documentation</a> are available separately.</noscript></div>';
     const app = appDocument("Workspace", "/", root, brand, options, {
       modules: ["/editor/app.js"],
       workspaceChrome: true,
     });
     put(output, "index.html", app);
-    put(output, "app/index.html", app);
     for (const path of sourceFiles.filter(helpPage)) {
       const original = text(source, path);
       const title =

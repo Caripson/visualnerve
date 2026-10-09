@@ -18,7 +18,11 @@ function files(directory, prefix) {
 }
 export function buildServiceWorker(
   publicDir,
-  { surface = "site", assets: requestedAssets } = {},
+  {
+    surface = "site",
+    assets: requestedAssets,
+    retireAppPaths = surface === "app",
+  } = {},
 ) {
   if (!["site", "app"].includes(surface))
     throw new Error("Unknown application surface.");
@@ -35,6 +39,7 @@ export function buildServiceWorker(
           "/",
           "/app/",
           "/appearance.js",
+          "/workspace-navigation.js",
           "/error.html",
           "/privacy/",
           "/license/",
@@ -53,7 +58,9 @@ export function buildServiceWorker(
       ];
   const plan = new OfflineAssetPlan({
     surface,
-    assets: managedAssets,
+    assets: retireAppPaths
+      ? managedAssets.filter((path) => !/^\/app(?:\/|$)/.test(path))
+      : managedAssets,
     lazyAssets: speechAssets,
   });
   const { assets, lazyAssets } = plan;
@@ -63,7 +70,7 @@ export function buildServiceWorker(
   );
   const hash = createHash("sha256")
     .update(runtime)
-    .update(JSON.stringify({ assets, lazyAssets }));
+    .update(JSON.stringify({ assets, lazyAssets, retireAppPaths, surface }));
   for (const path of plan.inventory)
     hash
       .update(path)
@@ -79,7 +86,11 @@ export function buildServiceWorker(
   const source = runtime
     .replace("__CACHE_NAME__", JSON.stringify(cacheName))
     .replace("__ASSETS__", JSON.stringify(assets))
-    .replace("__LAZY_ASSETS__", JSON.stringify(lazyAssets));
+    .replace("__LAZY_ASSETS__", JSON.stringify(lazyAssets))
+    .replace(
+      "__RETIRED_APP_PATHS__",
+      JSON.stringify(retireAppPaths ? surface : false),
+    );
   writeFileSync(resolve(publicDir, "sw.js"), source);
   return { cacheName, assets, lazyAssets };
 }
@@ -95,6 +106,7 @@ try {
 if (main) {
   const result = buildServiceWorker(
     resolve(dirname(fileURLToPath(import.meta.url)), "../public"),
+    { retireAppPaths: process.env.HUGO_PARAMS_ENVIRONMENT === "production" },
   );
   console.log(
     `Built offline application shell: ${result.assets.length} local assets.`,

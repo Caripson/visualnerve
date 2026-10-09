@@ -36,7 +36,7 @@ An available source checkout builds with `./build.sh`, producing `public/` and `
 ./bin/visual-nerve --static ./public --bridge --addr 127.0.0.1:4317
 ```
 
-Open `http://127.0.0.1:4317/app/`. For a separately hosted app, configure its exact allowed origin and any trusted local TLS required by the browser. [Connection steps](/help/api-mcp/).
+Open `https://app.visualnerve.com/`, unlock locally and grant access in Settings. Start the bridge with `--allowed-origin https://app.visualnerve.com` and any trusted local TLS required by the browser. `/app` is retired on production; it is not an app alias. Local development builds can retain a development-only `/app/` test editor. [Connection steps](/help/api-mcp/).
 
 One listener serves `/mcp`, `/bridge` and `/api/v1`. If 4317 conflicts with another plugin, select an available port explicitly with `--addr 127.0.0.1:4318` and update both the app's saved WebSocket address and all client URLs. For a stdio adapter, use `--mcp-url http://127.0.0.1:4318/mcp` to target that listener. No port is guaranteed free and there is no automatic random-port fallback. [Dedicated port example](/help/api-mcp/#choose-a-dedicated-local-port).
 

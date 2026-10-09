@@ -20,6 +20,7 @@ function worker(editor = 'editor workspace') {
       'index.html': 'public product home',
       'app/index.html': editor,
       'appearance.js': 'appearance',
+      'workspace-navigation.js': 'local workspace navigation',
       'error.html': 'error page',
       'privacy/index.html': 'privacy',
       'license/index.html': 'license',

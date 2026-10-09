@@ -1687,13 +1687,15 @@ const catalog = {
   'privacy.consent.decline': 'En hyväksy',
   'privacy.consent.declined':
     'Työtila pysyy suljettuna ilman hyväksyntää. Voit lukea oppaan tai tietosuojasivun tai hyväksyä tässä, kun haluat käyttää työtilaa.',
+  'privacy.consent.encryptedIndexedDB':
+    'IndexedDB:hen tallennettu työtilan sisältö salataan AES-256-GCM:llä (256-bittiset avaimet). Lukitus avataan paikallisesti tässä selaimessa.',
   'privacy.consent.explicitExportSharing':
     'Säilytä varmuuskopio tai siirrä työsi käyttämällä Vie-toimintoa. Rakenna Lovablella -toiminnolla voit tarkistaa ja jakaa sovelluskuvauksen nimenomaisesti.',
   'privacy.consent.learnMore': 'Lue lisää',
   'privacy.consent.localNoAccount':
     'Työsi tallennetaan paikallisesti eikä sitä koskaan lähetetä automaattisesti. Tiliä ei tarvita, ja toisella selaimella tai laitteella on oma erillinen työtilansa.',
   'privacy.consent.publicWebsitePrivateProfile':
-    'Visual Nerve voi olla julkinen verkkosivusto. Kaaviosi pysyvät yksityisinä tässä selainprofiilissa.',
+    'Kaaviosi tallennetaan tähän selainprofiiliin. Muut Visual Nerven vierailijat eivät näe niitä.',
   'privacy.consent.requiredStorage':
     'Työtilan käyttö edellyttää selaimen paikallisen tallennuksen hyväksymistä. Kaaviot ja asetukset tallennetaan IndexedDB:llä. Sovellustiedostot tallennetaan välimuistiin, jotta voit työskennellä offline-tilassa. Palvelu ei voi toimia ilman tätä tallennusta.',
   'privacy.consent.title': 'Työsi pysyy tässä selaimessa',
@@ -1764,7 +1766,7 @@ const catalog = {
   'privacy.storage.usageLabel': 'Sivuston tallennustilan käyttö',
   'privacy.storage.workspaceIdLabel': 'Työtilan tunniste',
   'privacy.transfer.destinationInstructions':
-    'Siirrytkö osoitteesta www.visualnerve.com/app/? Vie siellä salattu siirto, säilytä alkuperäinen ja käytä sitten täällä Siirrä olemassa oleva työtila -toimintoa. Koko siirto säilyttää tunnisteet, lähderivit ja arkistot, poistaa API/MCP-pääsyn käytöstä ja varmentaa tallennetun kopion ennen editorin avaamista uudelleen. Tavallisella Palauta varmuuskopio -toiminnolla voi edelleen yhdistää kaavioita.',
+    'Palautatko olemassa olevaa työtilaa? Käytä tallennettua salattua siirtotiedostoa kohdassa Siirrä olemassa oleva työtila. Vanha /app/-osoite on poistettu käytöstä; selaindata ei siirry automaattisesti originien välillä. Siirto säilyttää tunnisteet, lähderivit ja arkistot, poistaa API/MCP:n käytöstä ja tarkistaa tallennetun kopion ennen editorin avaamista. Palauta varmuuskopio voi edelleen yhdistää kaavioita tallennetusta varmuuskopiosta.',
   'privacy.transfer.downloaded':
     'Salattu siirto ladattu. Säilytä sen alkuperäinen salasana ja palautusavain sekä tämä työtila, kunnes kohde on varmennettu.',
   'privacy.transfer.export': 'Vie salattu siirto',
@@ -1898,7 +1900,7 @@ const catalog = {
   'security.gate.saveRecoveryTitle': 'Tallenna palautusavaimesi',
   'security.gate.setNewPassword': 'Aseta uusi salasana',
   'security.gate.setupExplanation':
-    'Työtilasi salataan tässä selaimessa. Valitse salasana ennen yksityisen työn luomista tai tuomista.',
+    'IndexedDB:hen tallennettu työtilan sisältö salataan AES-256-GCM:llä (256-bittiset avaimet). Valitse salasana ennen yksityisen sisällön luomista tai tuomista.',
   'security.gate.setupTitle': 'Suojaa paikallinen työtilasi',
   'security.gate.unlock': 'Avaa lukitus',
   'security.gate.unlockTitle': 'Avaa työtilasi lukitus',
@@ -1962,10 +1964,19 @@ const catalog = {
   'security.rotation.title': 'Vaihda työtilan sisällön salausavain',
   'security.rotation.validation':
     'Käytä erilaista, yksilöllistä salalausetta, jossa on vähintään 12 merkkiä, ja vahvista se samalla tekstillä.',
+  'security.sessionTimer.enabled': 'Automaattinen istunnon lukitus',
+  'security.sessionTimer.enabledDescription':
+    'Lukitse käyttämättömyyden tai istunnon enimmäiskeston jälkeen. Voit muuttaa rajoja Asetuksissa.',
+  'security.sessionTimer.disabledWarning':
+    'Automaattinen lukitus on pois käytöstä. Työtila pysyy avoimissa välilehdissä lukitsemattomana, kunnes lukitset sen käsin. Välilehden lataaminen uudelleen tai sulkeminen poistaa silti sen avaimen muistista, jolloin salasana tarvitaan uudelleen. Käytä tätä vain luotetulla laitteella.',
+  'security.sessionTimer.settingsDescription':
+    'Tämä valinta koskee tämän selainprofiilin työtilaa, myös muita lukitsemattomia välilehtiä. API/MCP-käyttöoikeus päättyy edelleen, kun työtila lukitaan.',
+  'security.sessionTimer.reenableWarning':
+    'Automaattisen lukituksen käyttöönotto käyttää nykyisiä istuntokelloja. Jos jokin raja on jo ylittynyt, työtila lukitaan heti.',
   'security.settings.absoluteHours': 'Istunnon enimmäiskesto (tuntia)',
   'security.settings.changePassword': 'Vaihda salasana',
   'security.settings.encryptionBoundary':
-    'Paikalliset tietueet ja työtilan varmuuskopiot käyttävät AES-256-GCM-salausta. Lukitus avataan tässä selaimessa. Salasanaa ei voi nollata palvelimella.',
+    'Työtilan sisältö IndexedDB:ssä ja työtilan varmuuskopiot käyttävät AES-256-GCM-salausta (256-bittiset avaimet). Lukitus avataan tässä selaimessa; salasanaa ei voi palauttaa palvelimella.',
   'security.settings.idleAndIntegrationBoundary':
     'Lukitseminen estää API/MCP-pääsyn sisältöösi ja pysäyttää taustatyön. Vain oma toimintasi sovelluksessa pitää istunnon aktiivisena käyttämättömyysrajan kannalta.',
   'security.settings.idleMinutes': 'Lukitse käyttämättömyyden jälkeen (minuuttia)',
@@ -1994,7 +2005,7 @@ const catalog = {
   'security.transfer.encryptedAppRequired': 'Työtilan siirto edellyttää salattua sovellusta.',
   'security.transfer.encryptingVerifying': 'Salataan ja varmennetaan…',
   'security.transfer.independentOrigins':
-    'Säilytä alkuperäinen työtilasi ja varmistettu varmuuskopio. Sulje sen muut välilehdet ja pysäytä kaikki agentit, jotta et jatka kahden erillisen kopion muokkaamista. Tämä toiminto ei lue, uudelleenohjaa eikä poista vanhaa sivustoa. API/MCP-pääsy on nyt pois käytöstä.',
+    'Säilytä alkuperäiset tiedostot ja tarkistettu varmuuskopio. Pysäytä mahdolliset agentit ja sulje muut työtilan välilehdet, jotta et muokkaa kahta erillistä kopiota. Tuonti ei lue eikä poista toisen originin tallennustilaa. API/MCP-käyttöoikeus on nyt pois käytöstä.',
   'security.transfer.keepOpen':
     'Pidä tämä välilehti auki. Varmennus lukee tallennetun salatun kopion ennen editorin avaamista.',
   'security.transfer.open': 'Avaa siirretty työtila',

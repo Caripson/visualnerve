@@ -35,6 +35,7 @@ export function LocalBadge({ onClick }: { onClick: () => void }) {
 }
 export function PrivacyIntro() {
   const { t } = useI18n();
+  const encrypted = isEncryptedWorkspaceSurface();
   const [error, setError] = useState('');
   const [accepted, setAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -53,9 +54,10 @@ export function PrivacyIntro() {
     <Modal title={t('privacy.consent.title')} close={() => {}} dismissible={false}>
       <p>{t('privacy.consent.publicWebsitePrivateProfile')}</p>
       <p className="muted">{t('privacy.consent.localNoAccount')}</p>
+      {encrypted && <p>{t('privacy.consent.encryptedIndexedDB')}</p>}
       <p className="muted">{t('privacy.consent.explicitExportSharing')}</p>
       <p>{t('privacy.consent.requiredStorage')}</p>
-      <BackupSecurityNotice encrypted={isEncryptedWorkspaceSurface()} />
+      <BackupSecurityNotice encrypted={encrypted} />
       <label className="check-field">
         <input
           type="checkbox"

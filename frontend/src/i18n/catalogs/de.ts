@@ -1710,13 +1710,15 @@ const catalog = {
   'privacy.consent.decline': 'Ich stimme nicht zu',
   'privacy.consent.declined':
     'Ohne Zustimmung bleibt der Arbeitsbereich geschlossen. Sie können die Anleitung oder Datenschutzseite lesen oder hier zustimmen, wenn Sie ihn nutzen möchten.',
+  'privacy.consent.encryptedIndexedDB':
+    'Ihre gespeicherten Arbeitsbereichsinhalte in IndexedDB werden mit AES-256-GCM verschlüsselt (256-Bit-Schlüssel). Die Entsperrung erfolgt lokal in diesem Browser.',
   'privacy.consent.explicitExportSharing':
     'Verwenden Sie Exportieren, um eine Sicherungskopie zu behalten oder Ihre Arbeit zu übertragen. Mit Lovable erstellen ermöglicht es Ihnen, eine App-Beschreibung zu prüfen und ausdrücklich zu teilen.',
   'privacy.consent.learnMore': 'Mehr erfahren',
   'privacy.consent.localNoAccount':
     'Ihre Arbeit wird lokal gespeichert und niemals automatisch hochgeladen. Es ist kein Konto erforderlich, und ein anderer Browser oder ein anderes Gerät hat einen eigenen, getrennten Arbeitsbereich.',
   'privacy.consent.publicWebsitePrivateProfile':
-    'Visual Nerve kann eine öffentliche Website sein. Ihre Diagramme bleiben in diesem Browserprofil privat.',
+    'Ihre Diagramme werden in diesem Browserprofil gespeichert. Andere Besucher von Visual Nerve können sie nicht sehen.',
   'privacy.consent.requiredStorage':
     'Um den Arbeitsbereich zu nutzen, müssen Sie der lokalen Browserspeicherung zustimmen. Diagramme und Einstellungen werden mit IndexedDB gespeichert; App-Dateien werden für die Offline-Nutzung zwischengespeichert. Ohne diese Speicherung kann der Dienst nicht funktionieren.',
   'privacy.consent.title': 'Ihre Arbeit bleibt in diesem Browser',
@@ -1787,7 +1789,7 @@ const catalog = {
   'privacy.storage.usageLabel': 'Speicherverbrauch der Website',
   'privacy.storage.workspaceIdLabel': 'Arbeitsbereichs-ID',
   'privacy.transfer.destinationInstructions':
-    'Wechseln Sie von www.visualnerve.com/app/? Exportieren Sie dort eine verschlüsselte Übertragung, behalten Sie das Original und verwenden Sie dann hier Bestehenden Arbeitsbereich übertragen. Die vollständige Übertragung bewahrt Kennungen, Quelldatenzeilen und Archive, setzt API/MCP auf Aus und überprüft die gespeicherte Kopie vor dem erneuten Öffnen des Editors. Mit Sicherungskopie wiederherstellen können weiterhin einzelne Diagramme zusammengeführt werden.',
+    'Sie stellen einen bestehenden Arbeitsbereich wieder her? Verwenden Sie hier eine gespeicherte verschlüsselte Übertragungsdatei mit Bestehenden Arbeitsbereich übertragen. Der alte /app/-Pfad wurde eingestellt; Browserdaten werden nicht automatisch zwischen Origins verschoben. Eine Übertragung bewahrt Kennungen, Quellzeilen und Archive, schaltet API/MCP aus und überprüft die gespeicherte Kopie, bevor der Editor geöffnet wird. Sicherung wiederherstellen kann weiterhin Diagramme aus einer gespeicherten Sicherung zusammenführen.',
   'privacy.transfer.downloaded':
     'Verschlüsselte Übertragung heruntergeladen. Behalten Sie deren ursprüngliches Passwort und Wiederherstellungsschlüssel sowie diesen Arbeitsbereich, bis das Ziel überprüft wurde.',
   'privacy.transfer.export': 'Verschlüsselte Übertragung exportieren',
@@ -1924,7 +1926,7 @@ const catalog = {
   'security.gate.saveRecoveryTitle': 'Wiederherstellungsschlüssel speichern',
   'security.gate.setNewPassword': 'Neues Passwort festlegen',
   'security.gate.setupExplanation':
-    'Ihr Arbeitsbereich wird in diesem Browser verschlüsselt. Wählen Sie ein Passwort, bevor Sie private Inhalte erstellen oder importieren.',
+    'Ihre gespeicherten Arbeitsbereichsinhalte in IndexedDB werden mit AES-256-GCM verschlüsselt (256-Bit-Schlüssel). Wählen Sie ein Passwort, bevor Sie private Inhalte erstellen oder importieren.',
   'security.gate.setupTitle': 'Lokalen Arbeitsbereich schützen',
   'security.gate.unlock': 'Entsperren',
   'security.gate.unlockTitle': 'Arbeitsbereich entsperren',
@@ -1990,10 +1992,19 @@ const catalog = {
   'security.rotation.title': 'Inhaltsschlüssel des Arbeitsbereichs rotieren',
   'security.rotation.validation':
     'Verwenden Sie eine andere, einzigartige Passphrase mit mindestens 12 Zeichen und einer übereinstimmenden Bestätigung.',
+  'security.sessionTimer.enabled': 'Automatische Sitzungssperre',
+  'security.sessionTimer.enabledDescription':
+    'Nach Inaktivität oder der maximalen Sitzungsdauer sperren. Sie können die Grenzen in den Einstellungen ändern.',
+  'security.sessionTimer.disabledWarning':
+    'Die automatische Sperre ist ausgeschaltet. Ihr Arbeitsbereich bleibt in offenen Tabs entsperrt, bis Sie ihn manuell sperren. Das Neuladen oder Schließen eines Tabs entfernt weiterhin dessen Schlüssel aus dem Arbeitsspeicher und erfordert erneut das Passwort. Verwenden Sie dies nur auf einem vertrauenswürdigen Gerät.',
+  'security.sessionTimer.settingsDescription':
+    'Diese Auswahl gilt für den Arbeitsbereich in diesem Browserprofil, einschließlich anderer entsperrter Tabs. Der API/MCP-Zugriff endet weiterhin, wenn der Arbeitsbereich gesperrt wird.',
+  'security.sessionTimer.reenableWarning':
+    'Beim Aktivieren der automatischen Sperre werden die bestehenden Sitzungszeiten verwendet. Wenn eine Grenze bereits überschritten wurde, wird der Arbeitsbereich sofort gesperrt.',
   'security.settings.absoluteHours': 'Maximale Sitzung (Stunden)',
   'security.settings.changePassword': 'Passwort ändern',
   'security.settings.encryptionBoundary':
-    'Lokale Datensätze und Sicherungskopien des Arbeitsbereichs verwenden AES-256-GCM-Verschlüsselung. Das Entsperren erfolgt in diesem Browser; es gibt keine Passwortzurücksetzung auf einem Server.',
+    'Arbeitsbereichsinhalte in IndexedDB und Sicherungskopien des Arbeitsbereichs verwenden AES-256-GCM-Verschlüsselung (256-Bit-Schlüssel). Die Entsperrung erfolgt in diesem Browser; das Passwort kann nicht auf einem Server zurückgesetzt werden.',
   'security.settings.idleAndIntegrationBoundary':
     'Das Sperren beendet den API/MCP-Zugriff auf Ihre Inhalte und Hintergrundarbeiten. Nur Ihre Interaktion mit der App hält die Sitzung im Hinblick auf Inaktivität aktiv.',
   'security.settings.idleMinutes': 'Nach Inaktivität sperren (Minuten)',
@@ -2025,7 +2036,7 @@ const catalog = {
     'Die Übertragung des Arbeitsbereichs erfordert die verschlüsselte App.',
   'security.transfer.encryptingVerifying': 'Verschlüsselung und Überprüfung laufen…',
   'security.transfer.independentOrigins':
-    'Bewahren Sie Ihren ursprünglichen Arbeitsbereich und eine überprüfte Sicherungskopie auf. Schließen Sie seine anderen Tabs und stoppen Sie alle Agenten, damit Sie nicht weiter zwei unabhängige Kopien bearbeiten. Diese Aktion liest die alte Website nicht, leitet sie nicht um und löscht sie nicht. Der API/MCP-Zugriff ist jetzt Aus.',
+    'Bewahren Sie die Originaldateien und eine überprüfte Sicherung auf. Stoppen Sie alle Agenten und schließen Sie andere Arbeitsbereich-Tabs, damit Sie nicht zwei unabhängige Kopien bearbeiten. Beim Import wird der Speicher einer anderen Origin weder gelesen noch gelöscht. Der API/MCP-Zugriff ist jetzt ausgeschaltet.',
   'security.transfer.keepOpen':
     'Lassen Sie diesen Tab geöffnet. Die Überprüfung liest die gespeicherte verschlüsselte Kopie, bevor der Editor geöffnet wird.',
   'security.transfer.open': 'Übertragenen Arbeitsbereich öffnen',

@@ -2,6 +2,7 @@
 const cacheName = __CACHE_NAME__;
 const assets = __ASSETS__;
 const lazyAssets = __LAZY_ASSETS__;
+const retiredAppPaths = __RETIRED_APP_PATHS__;
 const assetLock = "visual-nerve-app-assets-v1";
 const controlCache = "visual-nerve-cache-control-v1";
 const controlURL = "https://visualnerve.invalid/cache-control-v1";
@@ -129,6 +130,9 @@ self.addEventListener("install", (event) =>
     download(async (signal, check) => {
       const cache = await caches.open(cacheName);
       await new StaticAssetPrecache(cache, signal, check).run();
+      // A retired entry must stop being served by an older worker after this
+      // complete public-asset installation. No private records are removed.
+      if (retiredAppPaths) await self.skipWaiting();
     }),
   ),
 );
@@ -162,6 +166,22 @@ self.addEventListener("fetch", (event) => {
     url.pathname.startsWith("/api/v1/")
   )
     return;
+  if (retiredAppPaths && /^\/app(?:\/|$)/.test(url.pathname)) {
+    event.respondWith(
+      Promise.resolve(
+        retiredAppPaths === "site"
+          ? Response.redirect("https://app.visualnerve.com/", 308)
+          : new Response("Page not found. Open the workspace at /.", {
+              status: 404,
+              headers: {
+                "Content-Type": "text/plain; charset=utf-8",
+                "Cache-Control": "no-store",
+              },
+            }),
+      ),
+    );
+    return;
+  }
   const path =
     url.pathname === "/app" || url.pathname === "/app/index.html"
       ? "/app/"

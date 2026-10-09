@@ -4,7 +4,7 @@
 
 A local-first visual workspace for understanding what connects ideas, data, code and processes. Build a diagram, explore it in 2D or 3D, annotate the relationships and turn it into a narrated walkthrough or a reviewed app brief.
 
-[Open Visual Nerve](https://www.visualnerve.com/app/) · [User guide](https://www.visualnerve.com/help/) · [Website](https://www.visualnerve.com/) · [API reference](https://www.visualnerve.com/api/docs/)
+[Open Visual Nerve](https://app.visualnerve.com/) · [User guide](https://www.visualnerve.com/help/) · [Website](https://www.visualnerve.com/) · [API reference](https://www.visualnerve.com/api/docs/)
 
 The [source repository](https://github.com/Caripson/visualnerve) and [issue forms](https://github.com/Caripson/visualnerve/issues/new/choose) are public. [Staging](https://visualnerve.caripson.com/) remains a separate review environment with its own browser workspace.
 
@@ -77,7 +77,7 @@ Port **4317** is Visual Nerve's dedicated default for `/mcp`, `/bridge` and loca
 
 ### Encrypted app release under review
 
-The separate `app.visualnerve.com` implementation uses a browser-only password, AES-256-GCM encrypted IndexedDB, bounded sessions and one revocable UI/API/MCP storage boundary. It has no programmatic unlock or mandatory backend. The existing `www.visualnerve.com/app/` remains a plaintext local workspace and a transfer entry; the dedicated encrypted address has separate browser storage. Moving existing work requires an explicit encrypted export and verified complete transfer; the source is kept intact. See the [release plan](docs/ENCRYPTED_WORKSPACE_PLAN.md), [storage/session schema](docs/ENCRYPTED_WORKSPACE_SCHEMA.md) and [app-origin deployment review](docs/APP_ORIGIN_DEPLOYMENT.md).
+The production workspace at `app.visualnerve.com` uses a browser-only password, AES-256-GCM encrypted IndexedDB and one revocable UI/API/MCP storage boundary. Automatic session timers are enabled by default; a human can turn them off at startup or in Settings, while reload, manual lock and cross-tab revocation still require unlock. It has no programmatic unlock or mandatory backend. The old public `/app` entry redirects to the app root, and the app origin does not serve a duplicate `/app` editor. Routing changes do not delete or move origin-bound browser records. Restore an existing backup or encrypted transfer explicitly; if an older browser profile has unexported work, keep it intact and contact `hello@visualnerve.com` before clearing site data. See the [release plan](docs/ENCRYPTED_WORKSPACE_PLAN.md), [storage/session schema](docs/ENCRYPTED_WORKSPACE_SCHEMA.md) and [app-origin deployment review](docs/APP_ORIGIN_DEPLOYMENT.md).
 
 Changing a password cannot revoke old backups. Normal password changes preserve the content key; a separate human-only incident flow rotates that key for current records. Older copies keep their original credentials. [Backup and incident procedures](hugo/content/help/settings.md).
 

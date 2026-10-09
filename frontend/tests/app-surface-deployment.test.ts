@@ -39,6 +39,7 @@ function fixture() {
   put('error.html', shell('<main>Marketing error page</main>'));
   put('sw.js', '/* old mixed public shell must not be copied */');
   put('appearance.js', 'window.appearance = true;');
+  put('workspace-navigation.js', '/* local workspace navigation class */');
   put('editor/app.js', 'import "./assets/worker-example.js";');
   put('editor/app.css', '.site-shell{}');
   put('editor/assets/worker-example.js', 'export const localWorker = true;');
@@ -81,7 +82,7 @@ function fixture() {
   return { directory, source, output, put };
 }
 
-it('prepares a separate app root, editable alias and local documentation without marketing or consent executables', async () => {
+it('prepares a single app root and local documentation without legacy alias, marketing or consent executables', async () => {
   const { source, output } = fixture();
   const original = readFileSync(join(source, 'app/index.html'), 'utf8');
   const prepared = await buildAppSurface(source, output);
@@ -95,7 +96,7 @@ it('prepares a separate app root, editable alias and local documentation without
     '<meta name="visualnerve-app-origin" content="https://app.visualnerve.com">',
   );
   expect(html).toContain('type="module" src="/editor/app.js"');
-  expect(readFileSync(join(output, 'app/index.html'), 'utf8')).toBe(html);
+  expect(prepared.files).not.toContain('app/index.html');
   expect(html).not.toMatch(/visualnerve-google-analytics|consent\.js|klaro|Marketing|\/features\//);
   expect(prepared.files).not.toContain('site/site.js');
   for (const path of [
@@ -123,6 +124,21 @@ it('prepares a separate app root, editable alias and local documentation without
   expect(worker).toContain('/editor/speech/piper_phonemize.wasm');
   expect(worker).not.toMatch(/site\/consent|vendor\/klaro|\/features\//);
   expect(readFileSync(join(output, 'robots.txt'), 'utf8')).toBe('User-agent: *\nDisallow: /\n');
+});
+
+it('builds from a retired production website and safely replaces a previously audited app alias without publishing it again', async () => {
+  const { source, output } = fixture();
+  rmSync(join(source, 'app'), { recursive: true });
+  const first = await buildAppSurface(source, output);
+  expect(first.files).not.toContain('app/index.html');
+  const root = readFileSync(join(output, 'index.html'), 'utf8');
+  mkdirSync(join(output, 'app'));
+  writeFileSync(join(output, 'app/index.html'), root);
+  expect(() => auditAppSurface(output)).toThrow('Unexpected file');
+  const next = await buildAppSurface(source, output);
+  expect(next.files).not.toContain('app/index.html');
+  expect(readFileSync(join(output, 'index.html'), 'utf8')).toBe(root);
+  expect(() => readFileSync(join(source, 'app/index.html'))).toThrow();
 });
 
 it('rejects unexpected outputs and never replaces a directory containing unrelated files', async () => {

@@ -46,6 +46,35 @@ afterEach(() => {
 });
 
 describe('browser-only vault security settings', () => {
+  it('loads an untimed policy, explains it, preserves the chosen limits and allows reenabling', async () => {
+    const session = fixture({ ...defaultVaultSessionPolicy, sessionTimerEnabled: false });
+    const timer = screen.getByRole('checkbox', { name: 'Automatic session lock' });
+    await waitFor(() => expect(timer).not.toBeChecked());
+    expect(screen.getByLabelText('Lock after inactivity (minutes)')).toBeDisabled();
+    expect(screen.getByLabelText('Maximum session (hours)')).toBeDisabled();
+    expect(screen.getByRole('region', { name: 'Workspace security' })).toHaveTextContent(
+      'Automatic locking is off.',
+    );
+    submitPolicy();
+    await waitFor(() =>
+      expect(session.setPolicy).toHaveBeenCalledWith({
+        ...defaultVaultSessionPolicy,
+        sessionTimerEnabled: false,
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Save session limits' })).toBeEnabled(),
+    );
+    fireEvent.click(timer);
+    expect(screen.getByLabelText('Lock after inactivity (minutes)')).toBeEnabled();
+    expect(screen.getByRole('region', { name: 'Workspace security' })).toHaveTextContent(
+      'If a limit has already passed',
+    );
+    submitPolicy();
+    await waitFor(() =>
+      expect(session.setPolicy).toHaveBeenLastCalledWith(defaultVaultSessionPolicy),
+    );
+  });
   it('labels session controls and explains defaults, agent inactivity and the encryption boundary', async () => {
     const session = fixture();
     const inactivity = screen.getByLabelText('Lock after inactivity (minutes)');

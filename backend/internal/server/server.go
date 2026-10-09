@@ -245,7 +245,7 @@ func (s *Server) forward(ctx context.Context, workspace, path, method string, da
 	}
 	if selected == nil {
 		s.mu.Unlock()
-		return reply{Status: 503}, errors.New("No active Visual Nerve browser session. Open the workspace at /app/ and enable MCP access in Settings.")
+		return reply{Status: 503}, errors.New("No active Visual Nerve browser session. Open https://app.visualnerve.com/, unlock the workspace and enable MCP access in Settings.")
 	}
 	ch := make(chan reply, 1)
 	selected.pending[id] = ch

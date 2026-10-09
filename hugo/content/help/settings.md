@@ -6,7 +6,7 @@ weight: 14
 
 Open **Settings** on desktop or **Diagram actions → Settings** on a phone. Settings applies to this browser's workspace. Some preferences update immediately; import size, ZIP source-file count, voice selection and connection details have their own save buttons.
 
-**Workspace addresses:** the password-protected workspace uses `app.visualnerve.com`. The existing workspace at `www.visualnerve.com/app/` remains available and stores readable local records and ordinary JSON backups. Its optional **Export encrypted transfer** protects a downloaded copy; it does not encrypt those existing browser records. A password feature on the new address does not retroactively encrypt the existing address. Check the workspace address before following the encryption steps.
+**Workspace address:** the password-protected editor uses `https://app.visualnerve.com/`. The old public `/app` editor is retired and redirects there; `/app` on the app origin returns 404. The redirect does not delete or transfer older browser records. Earlier readable backups and records on other origins remain readable. Restore an existing backup or encrypted transfer explicitly; preserve any unexported older browser profile and contact `hello@visualnerve.com` before clearing site data.
 
 ![Settings showing Appearance and the local Data & Privacy controls.](/help/images/settings.webp "Appearance follows the system by default; local-data controls explain where the workspace is saved.")
 
@@ -48,7 +48,7 @@ Diagrams, objects, connections, owners, notes, templates, preferences and applic
 
 | Workspace                                            | Protection of saved private records                                                           | Complete workspace backup                                         |
 | ---------------------------------------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Existing `www.visualnerve.com/app/`                  | Readable local records; browser/device access controls protect the profile                    | Readable `visual-nerve-workspace` JSON, format version 1          |
+| Older website-origin records / local development | Readable records if created before encryption; retirement does not modify them | Readable `visual-nerve-workspace` JSON, format version 1 |
 | Isolated `app.visualnerve.com` | AES-256-GCM encrypted records; opening private work requires a local password or recovery key | Authenticated encrypted `visualnerve-backup` container, version 1 |
 
 The filename ends in `.json` in both cases. A JSON filename alone does not tell you whether a backup is encrypted. The existing address also offers a separate **Export encrypted transfer**, using the same encrypted container format as the isolated app's backups. This protects that file, while its source workspace remains readable. Individual diagram exports remain readable on both addresses.
@@ -62,14 +62,14 @@ Use the same browser profile and address to return to your work. **Restore backu
 On the isolated app address, password setup comes before creating or importing private work:
 
 1. In **Protect your local workspace**, enter a unique passphrase of at least 12 characters and repeat it in **Confirm new password**.
-2. Read the downloaded-copy warning, then choose **Create encrypted workspace**.
+2. Read the downloaded-copy warning. **Automatic session lock** is selected by default. Uncheck it if you want this open tab to stay unlocked until manual lock; this disables both automatic inactivity and maximum-session expiration. Then choose **Create encrypted workspace**.
 3. In **Save your recovery key**, save the displayed key in a trusted password manager or another protected location.
 4. Check **I have saved my recovery key in a protected location**, then choose **Continue**.
 5. Accept local storage when prompted and create or restore a diagram. To move the complete old workspace with its original identifiers and archives, use **Transfer existing workspace** as described below.
 
 The password and recovery key are entered in the browser. There is no account-based password reset and no password field in the API or MCP. Keep the recovery key private; it can unlock the workspace. Do not include it in an agent prompt, support report, diagram description or unprotected document. Keep its protected copy separate from the backup file it can open.
 
-After a lock or a new visit, enter **Workspace password**, then choose **Unlock**. If you forgot it, choose **Use recovery key**, enter the saved key and set a new password. Recovery shows a new recovery key: save that replacement before continuing. Without the password or recovery key, Visual Nerve cannot reconstruct the encryption key or recover the saved private records.
+After a lock or a new visit, enter **Workspace password**, choose whether **Automatic session lock** should be enabled, then choose **Unlock**. If you forgot it, choose **Use recovery key**, enter the saved key and set a new password. Recovery shows a new recovery key: save that replacement before continuing. Without the password or recovery key, Visual Nerve cannot reconstruct the encryption key or recover the saved private records.
 
 ![Locked workspace asking for a browser-only password or recovery key.](/help/images/vault-unlock.webp "Private diagrams are closed until you unlock locally. There is no programmatic unlock or server password reset.")
 
@@ -77,14 +77,18 @@ Encryption protects saved records while locked. It does not protect readable con
 
 ## Session limits and locking
 
-Open **Settings → Workspace security** on the isolated app address. The existing plaintext workspace does not have these vault controls.
+Open **Settings → Workspace security** on the isolated app address. **Automatic session lock** is enabled by default and can also be selected or unchecked on the startup password screen. Unchecking it disables both automatic inactivity and maximum-session expiration. Choose **Save session limits** to save a Settings change. The choice applies to this browser workspace, including its other unlocked tabs.
+
+With automatic locking off, encryption still protects saved IndexedDB records. Reloading or closing a tab removes its in-memory key; a later visit still requires the password. **Lock now**, explicit API/MCP lock and cross-tab revocation still lock the workspace. Use this choice only when the device and open browser are controlled.
+
+The following limits apply when **Automatic session lock** is selected:
 
 | Control                             | Default    | Allowed value                                                                             |
 | ----------------------------------- | ---------- | ----------------------------------------------------------------------------------------- |
 | **Lock after inactivity (minutes)** | 15 minutes | Whole minutes from 1 to 240                                                               |
 | **Maximum session (hours)**         | 8 hours    | At least the inactivity limit and no more than 24 hours; fractions of an hour are allowed |
 
-Choose **Save session limits** after editing. The inactivity timer follows your interaction with the app. API/MCP calls, an agent polling the workspace, simulations and background work do not renew it. The maximum session is an absolute deadline from unlock, even if you keep interacting. Saving a policy does not restart either clock; shortening a limit can lock the workspace immediately.
+Choose **Save session limits** after editing. The inactivity timer follows your interaction with the app. API/MCP calls, an agent polling the workspace, simulations and background work do not renew it. The maximum session is an absolute deadline from unlock, even if you keep interacting. Saving a policy does not restart either clock; shortening a limit can lock the workspace immediately. Re-enabling automatic locking also uses the existing clocks, so a limit that has already elapsed locks immediately.
 
 Use **Lock now** when you are finished. It waits for pending saves when possible, then locks the workspace tabs and stops private API/MCP access, playback, simulation and background work. If a save fails, the app explains the failure and offers **Lock and discard unsaved changes**. Use that option only when you accept losing changes that have not committed.
 
@@ -131,7 +135,7 @@ A reminder appears after ten local diagrams when a complete export has not been 
 
 1. Open **Settings → Data & Privacy**.
 2. Choose **Export all data**.
-3. Save the dated `visual-nerve-backup-YYYY-MM-DD.json` file somewhere you control. It is encrypted on the isolated app address and readable on the existing plaintext address.
+3. Save the dated `visual-nerve-backup-YYYY-MM-DD.json` file somewhere you control. It is encrypted on the isolated app address. Backups from older or local plaintext workspaces remain readable unless explicitly protected.
 4. Keep a separate protected recovery copy, then verify that you can read the backup before depending on it.
 
 An encrypted backup needs the password or recovery key valid **when that file was exported**. Save the correct credential in a protected location; the backup is not useful for recovery if both credentials are lost. The export completes locally and does not upload the file.
@@ -144,7 +148,7 @@ Single-diagram JSON and PNG/PDF/SVG exports are separate choices. [Sharing and e
 
 ## Transfer an existing workspace
 
-Use this flow to move the complete existing workspace from `www.visualnerve.com/app/` to the isolated encrypted app once that release is approved. It is separate from **Restore backup → Merge/Replace**. A complete transfer preserves the original diagram, object and relationship identifiers, versions, CSV source rows, history and retained simulation archives. The destination uses its own encryption; it does not copy the source's credentials or grant agents access.
+Use this flow to restore an existing complete encrypted transfer file into the isolated app. A still-accessible local or source workspace can create that file through **Export encrypted transfer**. The retired public `/app` path is no longer an export entry; keep an older unexported browser profile intact and ask `hello@visualnerve.com` for guidance before clearing it. It is separate from **Restore backup → Merge/Replace**. A complete transfer preserves the original diagram, object and relationship identifiers, versions, CSV source rows, history and retained simulation archives. The destination uses its own encryption; it does not copy the source's credentials or grant agents access.
 
 The two addresses have independent browser storage. Exporting or transferring does not read across origins, delete the original workspace or start synchronization. Close other source tabs and stop connected agents before making the copy so you do not continue editing two different versions. If the destination already contains work, export and verify its own backup before replacing it.
 

@@ -89,6 +89,8 @@ async function createVault(page: Page, password: string) {
   await expect(
     page.getByRole('dialog', { name: 'Protect your local workspace', exact: true }),
   ).toBeVisible();
+  await expect(page.getByRole('dialog')).toContainText('IndexedDB');
+  await expect(page.getByRole('dialog')).toContainText('AES-256-GCM');
   await credentialAction(async () => {
     await page.getByLabel('New workspace password', { exact: true }).fill(password);
     await page.getByLabel('Confirm new password', { exact: true }).fill(password);
@@ -458,7 +460,57 @@ test('live encrypted app saves and reloads offline, then enforces the same human
   }
 });
 
-test('live app Help/API render under CSP, unknown routes are 404, and www legacy entry remains accessible', async ({
+test('live mobile workspace navigation activates real links and an untimed startup still requires the password after navigation', async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    ignoreHTTPSErrors: false,
+    locale: 'en-US',
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+  });
+  const page = await context.newPage();
+  let password = `Disposable mobile verification ${randomBytes(24).toString('base64url')}`;
+  try {
+    const clean = await diagnostics(page);
+    await page.goto(app);
+    const timer = page.getByRole('checkbox', { name: 'Automatic session lock', exact: true });
+    await expect(timer).toBeChecked();
+    await timer.uncheck();
+    await expect(page.getByRole('dialog')).toContainText('Automatic locking is off.');
+    await createVault(page, password);
+    const trigger = page.locator('.workspace-menu-toggle');
+    const nav = page.locator('#workspace-site-nav');
+    await expect(trigger).toBeVisible();
+    await trigger.tap();
+    await expect(nav).toBeVisible();
+    const geometry = await nav.boundingBox();
+    expect(geometry!.x).toBeGreaterThanOrEqual(0);
+    expect(geometry!.x + geometry!.width).toBeLessThanOrEqual(390);
+    expect(geometry!.y + geometry!.height).toBeLessThanOrEqual(844);
+    await nav.getByRole('link', { name: 'Privacy', exact: true }).tap();
+    await expect(page).toHaveURL(`${app}/privacy/`);
+    await expect(page.locator('main')).toContainText('AES-256-GCM');
+    await trigger.tap();
+    await nav.getByRole('link', { name: 'Workspace', exact: true }).tap();
+    await expect(page).toHaveURL(`${app}/`);
+    await expect(
+      page.getByRole('dialog', { name: 'Unlock your workspace', exact: true }),
+    ).toBeVisible();
+    await expect(timer).not.toBeChecked();
+    await credentialAction(async () => {
+      await page.getByLabel('Workspace password', { exact: true }).fill(password);
+      await page.getByRole('button', { name: 'Unlock', exact: true }).click();
+    });
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await clean();
+  } finally {
+    password = '';
+    await context.close();
+  }
+});
+
+test('live app Help/API render under CSP, retired app aliases are 404, and the old website entry redirects', async ({
   browser,
   playwright,
 }) => {
@@ -490,11 +542,17 @@ test('live app Help/API render under CSP, unknown routes are 404, and www legacy
     expect(directS3.status()).toBe(403);
     // Fetch static HTML only: do not execute the legacy app or open any old-origin
     // IndexedDB. A disposable request context has no existing user browser profile.
-    const legacy = await request.get(`${website}/app/`);
-    expect(legacy.status()).toBe(200);
-    expect(new URL(legacy.url()).origin).toBe(website);
-    expect(new URL(legacy.url()).pathname).toBe('/app/');
-    expect(await legacy.text()).toMatch(/id="visual-nerve"/);
+    for (const path of ['/app', '/app/', '/app/index.html']) {
+      const retired = await request.get(app + path);
+      expect(retired.status()).toBe(404);
+      expect(await retired.text()).not.toMatch(/id="visual-nerve"/);
+      const legacy = await request.get(`${website}${path}?private=must-not-travel`, {
+        maxRedirects: 0,
+      });
+      expect(legacy.status()).toBe(308);
+      expect(legacy.headers().location).toBe(app + '/');
+      expect(await legacy.text()).not.toMatch(/id="visual-nerve"/);
+    }
   } finally {
     await context.close();
     await request.dispose();

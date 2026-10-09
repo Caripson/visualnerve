@@ -28,7 +28,6 @@ const guideNames = [
 export const policyNames = ["privacy", "security", "license"];
 const generatedFiles = [
   "index.html",
-  "app/index.html",
   "error.html",
   "sw.js",
   "robots.txt",
@@ -39,6 +38,7 @@ const generatedFiles = [
 export const copiedAsset = (path) =>
   [
     "appearance.js",
+    "workspace-navigation.js",
     "openapi.yaml",
     "site/mark.svg",
     "site/syntax.css",
@@ -64,7 +64,7 @@ export function filesIn(directory, prefix = "") {
 }
 export const text = (directory, path) =>
   readFileSync(resolve(directory, path), "utf8");
-export function auditAppSurface(directory) {
+export function auditAppSurface(directory, { allowLegacyAlias = false } = {}) {
   if (lstatSync(directory).isSymbolicLink())
     throw new Error("The app output must not be a symlink.");
   const files = filesIn(directory);
@@ -86,6 +86,7 @@ export function auditAppSurface(directory) {
   for (const path of files) {
     if (
       !generatedFiles.includes(path) &&
+      !(allowLegacyAlias && path === "app/index.html") &&
       !copiedAsset(path) &&
       !helpPage(path) &&
       path !== "api/docs/index.html" &&

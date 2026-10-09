@@ -22,9 +22,7 @@ The browser may temporarily hold unsaved working state in memory. Keep the tab o
 
 ## Encryption on the dedicated app surface
 
-**Workspace addresses:** `app.visualnerve.com` is the dedicated encrypted workspace. The existing
-`www.visualnerve.com/app/` remains available with readable local records and a transfer entry.
-The controls below do not retroactively protect the old origin.
+**Workspace address:** the encrypted editor is `https://app.visualnerve.com/`. The public website's old `/app` path redirects there, and `/app` on the app origin returns 404. Routing changes never read, transfer or delete older browser records. Encryption on the app origin does not retroactively protect readable records or backups created elsewhere.
 
 The dedicated app surface at `app.visualnerve.com` requires a password and stores workspace records in an **AES-256-GCM encrypted IndexedDB backend**. This includes source rows, history, preferences and simulation archives, with protected lookup metadata. UI, API and MCP operations use the same revocable unlocked session; no readable persistent workspace shadow is created.
 
@@ -36,7 +34,7 @@ Password setup, unlock, recovery and session-limit changes happen in the browser
 
 After an encrypted-session unlock, access starts Off. The human must choose a new Read only or Read + write grant; a previous tool grant is not restored automatically.
 
-Only human app interaction renews the inactivity session. Requests and background work do not. Lock revokes in-flight operations, cancels jobs and clears working plaintext; old requests remain revoked after another unlock. Tabs sharing the vault observe lock, and each tab needs its own unlock.
+**Automatic session lock** is on by default and can be unchecked at startup or in Settings to disable both inactivity and maximum-session expiration. Reloading or closing a tab still drops its memory-only key; manual lock and cross-tab revocation remain active. With the timer enabled, only human app interaction renews the inactivity session. Requests and background work do not. Lock revokes in-flight operations, cancels jobs and clears working plaintext; old requests remain revoked after another unlock. Tabs sharing the vault observe lock, and each tab needs its own unlock.
 
 This encrypted origin is separate from existing legacy, staging and local origins. Their old records and readable backups do not become encrypted or move automatically. Use **Export encrypted transfer** on the source, then **Transfer existing workspace** on the encrypted destination. This preserves identifiers and archives, disables API/MCP access and verifies the complete saved copy before reopening the editor. The original workspace stays in place. Manage remaining readable copies yourself. [Transfer steps](/help/settings/#transfer-an-existing-workspace).
 

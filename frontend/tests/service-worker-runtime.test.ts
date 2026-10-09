@@ -44,7 +44,8 @@ function worker(
   )
     .replace('__CACHE_NAME__', JSON.stringify(shell))
     .replace('__ASSETS__', JSON.stringify(assets))
-    .replace('__LAZY_ASSETS__', JSON.stringify(lazyAssets));
+    .replace('__LAZY_ASSETS__', JSON.stringify(lazyAssets))
+    .replace('__RETIRED_APP_PATHS__', 'false');
   runInNewContext(source, {
     self: {
       location: { origin },

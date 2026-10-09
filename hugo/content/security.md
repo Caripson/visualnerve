@@ -18,9 +18,7 @@ Local storage is not a guarantee of confidentiality or recovery. A person or pro
 
 ## The dedicated encrypted app surface
 
-**Workspace addresses:** the password-protected workspace uses `app.visualnerve.com`. The existing
-`www.visualnerve.com/app/` still stores readable local records and provides a transfer entry.
-The controls below apply to the dedicated app; moving addresses does not encrypt old copies.
+**Workspace address:** the password-protected editor is `https://app.visualnerve.com/`. The old public `/app` path redirects there; the isolated app's `/app` path returns 404. The controls below apply to the app origin. A redirect cannot move, encrypt or delete records on an older origin, and earlier readable copies remain readable.
 
 The dedicated app surface at `app.visualnerve.com` requires browser-local password setup on first use and human unlock on later visits. Its IndexedDB workspace records—including diagrams, owners, preferences, CSV sources, history, simulation models and archived results—use **AES-256-GCM**. Lookup metadata is protected within the same encrypted backend. The UI, API and MCP share this storage boundary; there is no persistent readable shadow database or separate MCP simulation model.
 
@@ -33,6 +31,8 @@ This surface is isolated from legacy workspaces on other origins. It does not au
 The password and recovery key are used locally. There is no server password reset, mandatory account, backend or SSO. Keep the recovery key separately from the device and backup. If both usable credentials and recovery material are lost, the service cannot restore access to the encrypted data.
 
 ### Session expiration and connected tools
+
+**Automatic session lock** is enabled by default. You can uncheck it on the startup password screen or in **Settings → Workspace security** to disable both automatic inactivity and maximum-session expiration. Keys still stay in the open tab's memory: reload, close, manual lock and cross-tab revocation require a new unlock. This is a human-only workspace policy, never an API/MCP setting. Re-enabling the timers uses the original session clocks and can lock immediately if a limit has passed.
 
 **Workspace security** in Settings controls inactivity and maximum-session limits. Only human interaction with the app renews inactivity. API/MCP requests and background work do not renew it. Locking clears working plaintext, cancels jobs and invalidates their originating session; a later unlock does not make an old request valid again. Tabs sharing the vault observe revocation, while each tab obtains its own unlock session.
 

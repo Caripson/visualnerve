@@ -1704,13 +1704,15 @@ const catalog = {
   'privacy.consent.decline': 'No acepto',
   'privacy.consent.declined':
     'El espacio de trabajo permanece cerrado sin aceptación. Puedes leer la guía o la página de privacidad, o aceptar aquí cuando quieras usarlo.',
+  'privacy.consent.encryptedIndexedDB':
+    'El contenido de tu espacio de trabajo guardado en IndexedDB se cifra con AES-256-GCM (claves de 256 bits). El desbloqueo se realiza localmente en este navegador.',
   'privacy.consent.explicitExportSharing':
     'Usa Exportar para conservar una copia de seguridad o mover tu trabajo. Crear con Lovable te permite revisar y compartir explícitamente una descripción de la aplicación.',
   'privacy.consent.learnMore': 'Más información',
   'privacy.consent.localNoAccount':
     'Tu trabajo se guarda localmente y nunca se sube automáticamente. No se necesita una cuenta, y otro navegador o dispositivo tiene su propio espacio de trabajo independiente.',
   'privacy.consent.publicWebsitePrivateProfile':
-    'Visual Nerve puede ser un sitio web público. Tus diagramas siguen siendo privados en este perfil del navegador.',
+    'Tus diagramas se guardan en este perfil del navegador. Otros visitantes de Visual Nerve no pueden verlos.',
   'privacy.consent.requiredStorage':
     'Para usar el espacio de trabajo, debes aceptar el almacenamiento local del navegador. Los diagramas y las preferencias se guardan con IndexedDB; los archivos de la aplicación se almacenan en caché para trabajar sin conexión. El servicio no puede funcionar sin este almacenamiento.',
   'privacy.consent.title': 'Tu trabajo se queda en este navegador',
@@ -1781,7 +1783,7 @@ const catalog = {
   'privacy.storage.usageLabel': 'Uso del almacenamiento del sitio',
   'privacy.storage.workspaceIdLabel': 'ID del espacio de trabajo',
   'privacy.transfer.destinationInstructions':
-    '¿Te mudas desde www.visualnerve.com/app/? Exporta allí una transferencia cifrada, conserva el original y usa aquí Transferir espacio de trabajo existente. La transferencia completa conserva los identificadores, las filas de origen y los archivos, pone API/MCP en Desactivado y verifica la copia guardada antes de reabrir el editor. Restaurar copia de seguridad de forma normal sigue permitiendo combinar diagramas.',
+    '¿Vas a restaurar un espacio de trabajo existente? Usa aquí un archivo de transferencia cifrado guardado con Transferir espacio de trabajo existente. La antigua ruta /app/ se ha retirado; el almacenamiento del navegador no se mueve automáticamente entre orígenes. Una transferencia conserva identificadores, filas de origen y archivos, desactiva API/MCP y verifica la copia guardada antes de abrir el editor. Restaurar copia de seguridad aún permite combinar diagramas de una copia guardada.',
   'privacy.transfer.downloaded':
     'Transferencia cifrada descargada. Conserva su contraseña y clave de recuperación originales, y conserva este espacio de trabajo hasta verificar el destino.',
   'privacy.transfer.export': 'Exportar transferencia cifrada',
@@ -1918,7 +1920,7 @@ const catalog = {
   'security.gate.saveRecoveryTitle': 'Guarda tu clave de recuperación',
   'security.gate.setNewPassword': 'Establecer nueva contraseña',
   'security.gate.setupExplanation':
-    'Tu espacio de trabajo se cifra en este navegador. Elige una contraseña antes de crear o importar trabajo privado.',
+    'El contenido de tu espacio de trabajo guardado en IndexedDB se cifra con AES-256-GCM (claves de 256 bits). Elige una contraseña antes de crear o importar contenido privado.',
   'security.gate.setupTitle': 'Protege tu espacio de trabajo local',
   'security.gate.unlock': 'Desbloquear',
   'security.gate.unlockTitle': 'Desbloquea tu espacio de trabajo',
@@ -1984,10 +1986,19 @@ const catalog = {
   'security.rotation.title': 'Rotar la clave de contenido del espacio de trabajo',
   'security.rotation.validation':
     'Usa una frase de contraseña diferente y única de al menos 12 caracteres y una confirmación que coincida.',
+  'security.sessionTimer.enabled': 'Bloqueo automático de la sesión',
+  'security.sessionTimer.enabledDescription':
+    'Bloquear tras la inactividad o al alcanzar la duración máxima de la sesión. Puedes cambiar los límites en Configuración.',
+  'security.sessionTimer.disabledWarning':
+    'El bloqueo automático está desactivado. Tu espacio de trabajo permanece desbloqueado en las pestañas abiertas hasta que lo bloquees manualmente. Recargar o cerrar una pestaña sigue eliminando su clave de la memoria y requiere la contraseña de nuevo. Úsalo solo en un dispositivo de confianza.',
+  'security.sessionTimer.settingsDescription':
+    'Esta elección se aplica al espacio de trabajo de este perfil del navegador, incluidas otras pestañas desbloqueadas. El acceso a API/MCP sigue terminando cuando se bloquea el espacio de trabajo.',
+  'security.sessionTimer.reenableWarning':
+    'Al activar el bloqueo automático se usan los tiempos de sesión existentes. Si ya se ha superado un límite, el espacio de trabajo se bloquea inmediatamente.',
   'security.settings.absoluteHours': 'Sesión máxima (horas)',
   'security.settings.changePassword': 'Cambiar contraseña',
   'security.settings.encryptionBoundary':
-    'Los registros locales y las copias de seguridad del espacio de trabajo usan cifrado AES-256-GCM. El desbloqueo ocurre en este navegador; no hay restablecimiento de contraseña en un servidor.',
+    'El contenido del espacio de trabajo en IndexedDB y sus copias de seguridad usan cifrado AES-256-GCM (claves de 256 bits). El desbloqueo se realiza en este navegador; la contraseña no se puede restablecer en un servidor.',
   'security.settings.idleAndIntegrationBoundary':
     'El bloqueo detiene el acceso de API/MCP a tu contenido y el trabajo en segundo plano. Solo tu interacción con la aplicación mantiene activa la sesión frente al límite de inactividad.',
   'security.settings.idleMinutes': 'Bloquear tras inactividad (minutos)',
@@ -2018,7 +2029,7 @@ const catalog = {
     'La transferencia del espacio de trabajo requiere la aplicación cifrada.',
   'security.transfer.encryptingVerifying': 'Cifrando y verificando…',
   'security.transfer.independentOrigins':
-    'Conserva tu espacio de trabajo original y una copia de seguridad verificada. Cierra sus otras pestañas y detén los agentes para no seguir editando dos copias independientes. Esta acción no lee, redirige ni elimina el sitio antiguo. El acceso API/MCP está ahora Desactivado.',
+    'Conserva los archivos originales y una copia de seguridad verificada. Detén los agentes y cierra las demás pestañas del espacio de trabajo para no editar dos copias independientes. La importación no lee ni elimina el almacenamiento de otro origen. El acceso a API/MCP está ahora desactivado.',
   'security.transfer.keepOpen':
     'Mantén esta pestaña abierta. La verificación lee la copia cifrada guardada antes de abrir el editor.',
   'security.transfer.open': 'Abrir espacio de trabajo transferido',

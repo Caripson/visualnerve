@@ -53,6 +53,8 @@ aws s3 cp "$VN_APP_PACKAGE/licenses/" "s3://$APP_S3_BUCKET/licenses/" --recursiv
 aws s3 cp "$VN_APP_PACKAGE/licenses/inventory.json" "s3://$APP_S3_BUCKET/licenses/inventory.json" --content-type 'application/json' --cache-control 'no-cache' "${VN_APP_ARGS[@]}"
 aws s3 cp "$VN_APP_PACKAGE/" "s3://$APP_S3_BUCKET/" --recursive --exclude '*' --include '*.html' --cache-control 'no-cache' "${VN_APP_ARGS[@]}"
 aws s3 cp "$VN_APP_PACKAGE/sw.js" "s3://$APP_S3_BUCKET/sw.js" --cache-control 'no-cache' "${VN_APP_ARGS[@]}"
+# The app has a single root entry. Retire its former duplicate object explicitly.
+aws s3 rm "s3://$APP_S3_BUCKET/app/index.html" "${VN_APP_ARGS[@]}"
 if [[ "${1:-}" != '--dry-run' ]]; then
   VN_APP_INVALIDATION="$(aws cloudfront create-invalidation --distribution-id "$APP_CLOUDFRONT_DISTRIBUTION_ID" --paths '/*' --query 'Invalidation.Id' --output text)"
   echo "Waiting for isolated app CloudFront invalidation $VN_APP_INVALIDATION..."

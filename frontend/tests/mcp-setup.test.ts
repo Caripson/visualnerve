@@ -9,7 +9,7 @@ it.each([
   expect(mcpServerUrl(bridge)).toBe(server);
 });
 
-it('keeps the production domain in website/docs/origin roles and exposes 3D via MCP discovery', () => {
+it('keeps the explicit staging/development domain in website/docs/origin roles and exposes 3D via MCP discovery', () => {
   const note = mcpSetupNote('https://visualnerve.caripson.com', 'wss://localhost:9443/bridge');
   expect(note).toContain('Browser workspace: https://visualnerve.caripson.com/app/');
   expect(note).toContain('Keep this workspace open');
@@ -22,6 +22,28 @@ it('keeps the production domain in website/docs/origin roles and exposes 3D via 
   expect(note).toContain('visualCapacity');
   expect(note).toContain('Counter 1/2/3');
   expect(note).toContain('not separate persistent process nodes');
+});
+
+it.each([
+  'https://app.visualnerve.com',
+  'https://www.visualnerve.com/app/',
+  'https://visualnerve.com',
+])('uses the sole production app root and its exact allowed origin for %s', (origin) => {
+  const note = mcpSetupNote(origin, 'ws://127.0.0.1:4317/bridge');
+  expect(note).toContain('Browser workspace: https://app.visualnerve.com/\n');
+  expect(note).toContain('API reference: https://app.visualnerve.com/api/docs/');
+  expect(note).toContain('--allowed-origin https://app.visualnerve.com\n');
+  expect(note).not.toContain('visualnerve.com/app/');
+});
+
+it('uses the root of a separately reviewed encrypted preview surface without inventing an /app alias', () => {
+  const note = mcpSetupNote(
+    'https://app-preview.visualnerve.example',
+    'ws://127.0.0.1:4317/bridge',
+    true,
+  );
+  expect(note).toContain('Browser workspace: https://app-preview.visualnerve.example/\n');
+  expect(note).toContain('--allowed-origin https://app-preview.visualnerve.example\n');
 });
 
 it.each([

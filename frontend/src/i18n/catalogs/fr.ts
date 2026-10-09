@@ -1716,13 +1716,15 @@ const catalog = {
   'privacy.consent.decline': 'Je n’accepte pas',
   'privacy.consent.declined':
     'L’espace de travail reste fermé sans acceptation. Vous pouvez lire le guide ou la page de confidentialité, ou accepter ici lorsque vous souhaitez l’utiliser.',
+  'privacy.consent.encryptedIndexedDB':
+    'Le contenu de votre espace de travail enregistré dans IndexedDB est chiffré avec AES-256-GCM (clés de 256 bits). Le déverrouillage se fait localement dans ce navigateur.',
   'privacy.consent.explicitExportSharing':
     'Utilisez Exporter pour conserver une sauvegarde ou déplacer votre travail. Créer avec Lovable vous permet de vérifier et de partager explicitement une description d’application.',
   'privacy.consent.learnMore': 'En savoir plus',
   'privacy.consent.localNoAccount':
     'Votre travail est enregistré localement et n’est jamais téléversé automatiquement. Aucun compte n’est nécessaire, et un autre navigateur ou appareil possède son propre espace de travail distinct.',
   'privacy.consent.publicWebsitePrivateProfile':
-    'Visual Nerve peut être un site public. Vos diagrammes restent privés dans ce profil de navigateur.',
+    'Vos diagrammes sont enregistrés dans ce profil de navigateur. Les autres visiteurs de Visual Nerve ne peuvent pas les voir.',
   'privacy.consent.requiredStorage':
     'Pour utiliser l’espace de travail, vous devez accepter le stockage local du navigateur. Les diagrammes et préférences sont enregistrés avec IndexedDB ; les fichiers de l’application sont mis en cache pour travailler hors ligne. Le service ne peut pas fonctionner sans ce stockage.',
   'privacy.consent.title': 'Votre travail reste dans ce navigateur',
@@ -1797,7 +1799,7 @@ const catalog = {
   'privacy.storage.usageLabel': 'Utilisation du stockage du site',
   'privacy.storage.workspaceIdLabel': 'ID de l’espace de travail',
   'privacy.transfer.destinationInstructions':
-    'Vous quittez www.visualnerve.com/app/ ? Exportez-y un transfert chiffré, conservez l’original, puis utilisez ici Transférer un espace de travail existant. Le transfert complet conserve les identifiants, les lignes sources et les archives, désactive API/MCP et vérifie la copie enregistrée avant de rouvrir l’éditeur. Restaurer une copie de sauvegarde permet toujours de fusionner des diagrammes.',
+    'Vous restaurez un espace de travail existant ? Utilisez ici un fichier de transfert chiffré enregistré avec Transférer un espace de travail existant. L’ancienne adresse /app/ a été retirée ; le stockage du navigateur ne se déplace pas automatiquement entre les origines. Un transfert conserve les identifiants, les lignes sources et les archives, désactive API/MCP et vérifie la copie enregistrée avant d’ouvrir l’éditeur. Restaurer une sauvegarde permet toujours de fusionner des diagrammes depuis une sauvegarde enregistrée.',
   'privacy.transfer.downloaded':
     'Transfert chiffré téléchargé. Conservez son mot de passe et sa clé de récupération d’origine, ainsi que cet espace de travail jusqu’à la vérification de la destination.',
   'privacy.transfer.export': 'Exporter un transfert chiffré',
@@ -1937,7 +1939,7 @@ const catalog = {
   'security.gate.saveRecoveryTitle': 'Enregistrez votre clé de récupération',
   'security.gate.setNewPassword': 'Définir un nouveau mot de passe',
   'security.gate.setupExplanation':
-    'Votre espace de travail est chiffré dans ce navigateur. Choisissez un mot de passe avant de créer ou d’importer un travail privé.',
+    'Le contenu de votre espace de travail enregistré dans IndexedDB est chiffré avec AES-256-GCM (clés de 256 bits). Choisissez un mot de passe avant de créer ou d’importer du contenu privé.',
   'security.gate.setupTitle': 'Protégez votre espace de travail local',
   'security.gate.unlock': 'Déverrouiller',
   'security.gate.unlockTitle': 'Déverrouillez votre espace de travail',
@@ -2005,10 +2007,19 @@ const catalog = {
   'security.rotation.title': 'Renouveler la clé de contenu de l’espace de travail',
   'security.rotation.validation':
     'Utilisez une phrase de passe différente et unique d’au moins 12 caractères, avec une confirmation identique.',
+  'security.sessionTimer.enabled': 'Verrouillage automatique de la session',
+  'security.sessionTimer.enabledDescription':
+    'Verrouiller après une période d’inactivité ou la durée maximale de session. Vous pouvez modifier les limites dans les Paramètres.',
+  'security.sessionTimer.disabledWarning':
+    'Le verrouillage automatique est désactivé. Votre espace de travail reste déverrouillé dans les onglets ouverts jusqu’à ce que vous le verrouilliez manuellement. Recharger ou fermer un onglet supprime toujours sa clé en mémoire et exige à nouveau le mot de passe. Utilisez cette option uniquement sur un appareil de confiance.',
+  'security.sessionTimer.settingsDescription':
+    'Ce choix s’applique à l’espace de travail de ce profil de navigateur, y compris les autres onglets déverrouillés. L’accès API/MCP prend toujours fin lorsque l’espace de travail se verrouille.',
+  'security.sessionTimer.reenableWarning':
+    'L’activation du verrouillage automatique utilise les temps de session existants. Si une limite est déjà dépassée, l’espace de travail se verrouille immédiatement.',
   'security.settings.absoluteHours': 'Durée maximale de la session (heures)',
   'security.settings.changePassword': 'Changer le mot de passe',
   'security.settings.encryptionBoundary':
-    'Les enregistrements locaux et les sauvegardes de l’espace de travail utilisent le chiffrement AES-256-GCM. Le déverrouillage a lieu dans ce navigateur ; aucun serveur ne permet de réinitialiser le mot de passe.',
+    'Le contenu de l’espace de travail dans IndexedDB et ses sauvegardes utilisent le chiffrement AES-256-GCM (clés de 256 bits). Le déverrouillage se fait dans ce navigateur ; le mot de passe ne peut pas être réinitialisé sur un serveur.',
   'security.settings.idleAndIntegrationBoundary':
     'Le verrouillage arrête l’accès API/MCP à votre contenu et le travail en arrière-plan. Seule votre interaction avec l’application maintient la session active vis-à-vis de la limite d’inactivité.',
   'security.settings.idleMinutes': 'Verrouiller après inactivité (minutes)',
@@ -2040,7 +2051,7 @@ const catalog = {
     'Le transfert de l’espace de travail nécessite l’application chiffrée.',
   'security.transfer.encryptingVerifying': 'Chiffrement et vérification…',
   'security.transfer.independentOrigins':
-    'Conservez votre espace de travail d’origine et une sauvegarde vérifiée. Fermez ses autres onglets et arrêtez les agents pour ne pas continuer à modifier deux copies indépendantes. Cette action ne lit, ne redirige et ne supprime pas l’ancien site. L’accès API/MCP est désormais Désactivé.',
+    'Conservez les fichiers d’origine et une sauvegarde vérifiée. Arrêtez les agents et fermez les autres onglets de l’espace de travail pour ne pas modifier deux copies indépendantes. L’importation ne lit ni ne supprime le stockage d’une autre origine. L’accès API/MCP est maintenant désactivé.',
   'security.transfer.keepOpen':
     'Gardez cet onglet ouvert. La vérification lit la copie chiffrée enregistrée avant d’ouvrir l’éditeur.',
   'security.transfer.open': 'Ouvrir l’espace de travail transféré',

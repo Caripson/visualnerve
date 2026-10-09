@@ -36,7 +36,7 @@ Only documented technical bootstrap metadata may remain readable while locked: f
 - Configure HTTPS, browser security headers, framing protection and a tested Content Security Policy. Explicitly account for local WebSocket integration, workers, WebAssembly and user-requested voice-model downloads.
 - Keep security policy consistent for HTML, assets, documentation, errors and cached/offline responses; enforce relevant policy in application code where headers alone cannot apply.
 - Prepare manual deployment configuration for the new origin. Verify the actual deployed response headers, not only a repository template.
-- Preserve the old `/app/` as a migration entry point. Do not redirect users away from their existing origin-bound IndexedDB before transfer and recovery are available.
+- The original release retained `/app/` for migration. The owner subsequently authorized retiring it: public `/app` redirects to the isolated app root, and isolated `/app` returns 404. No routing or asset update deletes origin-bound browser data; existing backups/transfer files remain explicit recovery inputs.
 
 ### 3. Cryptography and encrypted persistence
 

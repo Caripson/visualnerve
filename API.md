@@ -1,6 +1,6 @@
 # Optional local REST and MCP integration
 
-The public website has its product home at `/`; its existing `/app/` workspace remains accessible for user-controlled transfer. The isolated encrypted app package opens the workspace at `https://app.visualnerve.com/`, with `/app/` as a same-origin compatibility entry. IndexedDB is origin-bound: these workspaces are separate and are never silently moved or synchronized. API/MCP command paths remain the same; configure the exact app origin when starting the local bridge.
+The public product website is `https://www.visualnerve.com/`. The encrypted editor has one production entry: `https://app.visualnerve.com/`. The former public `/app` paths redirect there without forwarding query data; `/app` on the app origin returns HTTP 404. IndexedDB is origin-bound: existing records on older origins are not deleted, moved or synchronized by routing changes. Local source-development builds retain a development-only `/app/` editor for test fixtures. API/MCP command paths remain the same; allow the exact `https://app.visualnerve.com` origin when starting the local bridge.
 
 IndexedDB in the browser is the only database. Start the static server with `--bridge`, open the app and explicitly choose Settings → MCP access → Read only or Read + write (default Off). REST and MCP forward commands over a local WebSocket to that browser. The browser applies IndexedDB transactions before replying. The Go server retains no application records; without a connected browser graph requests return 503.
 

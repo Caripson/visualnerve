@@ -10,6 +10,7 @@ export function VaultSettings({ session }: { session: VaultSession }) {
   const { t } = useI18n();
   const [idle, setIdle] = useState(15);
   const [absolute, setAbsolute] = useState(8);
+  const [sessionTimerEnabled, setSessionTimerEnabled] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [changePassword, setChangePassword] = useState(false);
@@ -23,6 +24,7 @@ export function VaultSettings({ session }: { session: VaultSession }) {
         if (active) {
           setIdle(policy.idleTimeoutMs / 60_000);
           setAbsolute(policy.absoluteTimeoutMs / 3_600_000);
+          setSessionTimerEnabled(policy.sessionTimerEnabled !== false);
         }
       })
       .catch((error: unknown) => {
@@ -44,7 +46,11 @@ export function VaultSettings({ session }: { session: VaultSession }) {
           setBusy(true);
           setMessage('');
           void session
-            .setPolicy({ idleTimeoutMs: idle * 60_000, absoluteTimeoutMs: absolute * 3_600_000 })
+            .setPolicy({
+              idleTimeoutMs: idle * 60_000,
+              absoluteTimeoutMs: absolute * 3_600_000,
+              ...(sessionTimerEnabled ? {} : { sessionTimerEnabled: false }),
+            })
             .then(() =>
               setMessage('Session limits saved. Existing session clocks were not restarted.'),
             )
@@ -52,6 +58,25 @@ export function VaultSettings({ session }: { session: VaultSession }) {
             .finally(() => setBusy(false));
         }}
       >
+        <label className="check-field">
+          <input
+            type="checkbox"
+            checked={sessionTimerEnabled}
+            onChange={(event) => setSessionTimerEnabled(event.target.checked)}
+            disabled={busy}
+            aria-describedby="settings-session-timer-description"
+          />
+          <span>{t('security.sessionTimer.enabled')}</span>
+        </label>
+        <p className="muted" id="settings-session-timer-description">
+          {t('security.sessionTimer.settingsDescription')}
+        </p>
+        {!sessionTimerEnabled && (
+          <p className="muted">{t('security.sessionTimer.disabledWarning')}</p>
+        )}
+        {sessionTimerEnabled && (
+          <p className="muted">{t('security.sessionTimer.reenableWarning')}</p>
+        )}
         <label className="field">
           <span>{t('security.settings.idleMinutes')}</span>
           <input
@@ -62,7 +87,7 @@ export function VaultSettings({ session }: { session: VaultSession }) {
             value={idle}
             onChange={(event) => setIdle(Number(event.target.value))}
             required
-            disabled={busy}
+            disabled={busy || !sessionTimerEnabled}
           />
         </label>
         <label className="field">
@@ -75,7 +100,7 @@ export function VaultSettings({ session }: { session: VaultSession }) {
             value={absolute}
             onChange={(event) => setAbsolute(Number(event.target.value))}
             required
-            disabled={busy}
+            disabled={busy || !sessionTimerEnabled}
           />
         </label>
         <p className="muted">{t('security.settings.shorterPolicyWarning')}</p>

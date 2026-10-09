@@ -44,7 +44,7 @@ An authorized tool with **Read + write** can explicitly lock the encrypted works
 
 `POST /api/v1/workspace/lock` accepts only an empty object or no arguments. It waits for pending saves, checks the current grant again, locks the shared vault session and returns safe security metadata. If saving fails, it does not silently discard edits. Calling it on an already-locked retained connection only reports that local locked status; it does not revoke again. A concurrent grant or saved-data change produces **409**, rather than locking from a stale authorization snapshot; the current session remains available. Inspect the saved state and grant before issuing a new request. Read-only access cannot lock an unlocked workspace. No tool can unlock it. If several tabs share a workspace, the local bridge prefers a content-enabled tab and never retries a dispatched write against another tab.
 
-**Settings → Workspace security** controls inactivity and maximum-session limits in the browser. Only human interaction with the app renews inactivity; API/MCP requests, particle animation and background jobs do not keep it unlocked. Locking cancels jobs and invalidates in-flight requests, including requests whose results arrive after a later unlock. Other tabs sharing the vault observe revocation; each tab must obtain its own human-unlocked session. Do not assume that a simulation or export continued after lock.
+**Session timer** is enabled by default. At startup or in **Settings → Workspace security**, you can turn it off to disable both inactivity and maximum-session expiration. Manual lock, closing/reloading the page and cross-tab revocation still end the unlocked session. Only the human UI can change this choice; there is no API/MCP policy endpoint. When the timer is on, Settings controls inactivity and maximum-session limits. Only human interaction with the app renews inactivity; API/MCP requests, particle animation and background jobs do not keep it unlocked. Locking cancels jobs and invalidates in-flight requests, including requests whose results arrive after a later unlock. Other tabs sharing the vault observe revocation; each tab must obtain its own human-unlocked session. Do not assume that a simulation or export continued after lock.
 
 Encryption protects saved records while locked. An authorized API/MCP request, diagram export or AI handoff releases readable information intentionally. `GET /workspace/export` is a readable semantic backup for authorized tools; the browser's encrypted backup download and its reviewed restore flow are separate actions. Changing the live password does not update downloaded backup files: older copies retain their own password and recovery credentials. [Security and recovery boundaries](/security/).
 
@@ -52,8 +52,8 @@ Encryption protects saved records while locked. An authorized API/MCP request, d
 
 | Address                                                       | Purpose                                                                     |
 | ------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `https://www.visualnerve.com/app/`                            | Public browser workspace where your diagrams and Settings live              |
-| `https://www.visualnerve.com`                                 | Public website origin allowed by your bridge; use the origin without a path |
+| `https://app.visualnerve.com/` | Encrypted browser workspace where your diagrams and Settings live |
+| `https://app.visualnerve.com` | Exact app origin allowed by your bridge; use it without a path |
 | `ws://127.0.0.1:4317/bridge` or trusted `wss://…/bridge`      | Browser-to-local-service WebSocket connection                               |
 | `http://127.0.0.1:4317/mcp` or matching `https://…/mcp`       | Local MCP server address for any compatible client                          |
 | `http://127.0.0.1:4317/api/v1` or matching `https://…/api/v1` | Local REST API base                                                         |
@@ -68,21 +68,17 @@ Settings displays the **Visual Nerve website**, API reference and local **MCP se
 
 The bridge is the project's optional Go executable. If you are building from source, the repository's build requires Go 1.26+, Node.js 22.12+, npm and Hugo 0.140+ on Linux, WSL or macOS. Run `./build.sh` to produce `public/` and `bin/visual-nerve`. Once built, the executable and static files do not need the toolchain at runtime.
 
-For a locally served workspace:
+For the production encrypted workspace, open `https://app.visualnerve.com/` and start the local bridge with its exact allowed origin:
 
 ```sh
-./bin/visual-nerve --static ./public --bridge --addr 127.0.0.1:4317
-```
-
-Open `http://127.0.0.1:4317/app/`, accept storage and configure access. The home page at `/` introduces the product; API and MCP endpoint paths keep their existing addresses. To connect the public workspace at `https://www.visualnerve.com/app/`, allow its exact origin:
-
-```sh
-./bin/visual-nerve --static ./public --bridge \
+./bin/visual-nerve --static ./public-app --bridge \
   --addr 127.0.0.1:4317 \
-  --allowed-origin https://www.visualnerve.com
+  --allowed-origin https://app.visualnerve.com
 ```
 
-For the separate **staging** workspace at `https://visualnerve.caripson.com/app/`, replace the final argument with `--allowed-origin https://visualnerve.caripson.com`. Copy the **Visual Nerve website** value shown in your workspace's Settings; the bridge must allow that exact origin. Staging and production have separate browser workspaces.
+Unlock in the browser and configure integration access there. The public website's former `/app` path redirects to the app root; `/app` on the isolated app returns 404. The redirect never migrates older origin-bound browser records. Restore an existing backup or encrypted transfer explicitly.
+
+The separate app package is built with `node scripts/build-app-surface.mjs public public-app` after `./build.sh`. A local source-development build may retain its development-only `http://127.0.0.1:4317/app/` test editor. For a separately reviewed preview workspace, copy the exact **Visual Nerve website** value from its Settings into `--allowed-origin`. Preview, local development and production have separate browser storage.
 
 Browser local-network and secure-connection rules vary. If your browser requires secure local WebSockets, start the process with `--tls-cert` and `--tls-key` pointing to a certificate/key trusted by that browser for the chosen loopback hostname, then use `wss://…/bridge` in Settings. The matching MCP/REST addresses use HTTPS. Grant local-network permission if the browser requests it.
 

@@ -22,6 +22,7 @@ export interface VaultSessionSnapshot {
   epoch?: number;
   idleExpiresAt?: number;
   absoluteExpiresAt?: number;
+  sessionTimerEnabled?: boolean;
 }
 type Cleanup = () => void | Promise<void>;
 export interface VaultSessionContext {
@@ -162,21 +163,34 @@ export class VaultSession {
       vaultId: control.header.vaultId,
       keyVersion: control.header.keyVersion,
       epoch: control.epoch,
-      idleExpiresAt: control.lastActivityAt + control.policy.idleTimeoutMs,
-      absoluteExpiresAt: control.startedAt + control.policy.absoluteTimeoutMs,
+      sessionTimerEnabled: control.policy.sessionTimerEnabled !== false,
+      ...(control.policy.sessionTimerEnabled !== false
+        ? {
+            idleExpiresAt: control.lastActivityAt + control.policy.idleTimeoutMs,
+            absoluteExpiresAt: control.startedAt + control.policy.absoluteTimeoutMs,
+          }
+        : {}),
     });
     this.schedule();
   }
   private schedule() {
     clearTimeout(this.timer);
     if (this.snapshot.status !== 'unlocked') return;
-    const deadline = Math.min(this.snapshot.idleExpiresAt!, this.snapshot.absoluteExpiresAt!);
-    this.timer = setTimeout(
-      () => {
-        void this.verify().catch(() => undefined);
-      },
-      Math.max(1, Math.min(30_000, deadline - this.now())),
-    );
+    // Untimed sessions still check durable revocation every 30 seconds, including
+    // browsers that cannot deliver cross-tab BroadcastChannel messages.
+    const delay =
+      this.snapshot.sessionTimerEnabled === false
+        ? 30_000
+        : Math.max(
+            1,
+            Math.min(
+              30_000,
+              Math.min(this.snapshot.idleExpiresAt!, this.snapshot.absoluteExpiresAt!) - this.now(),
+            ),
+          );
+    this.timer = setTimeout(() => {
+      void this.verify().catch(() => undefined);
+    }, delay);
   }
   private listen() {
     if (!this.channel && typeof BroadcastChannel !== 'undefined') {
@@ -251,10 +265,11 @@ export class VaultSession {
     keys: VaultKeys,
     generation: number,
     expectedEpoch: number,
+    sessionTimerEnabled?: boolean,
   ) {
     try {
       this.assertAttempt(generation);
-      const lease = await this.storage.beginSession(header, expectedEpoch);
+      const lease = await this.storage.beginSession(header, expectedEpoch, sessionTimerEnabled);
       if (this.disposed || generation !== this.generation) {
         await this.storage.lock(lease);
         throw lockedError();
@@ -267,6 +282,8 @@ export class VaultSession {
       this.assertAttempt(generation);
       this.listen();
       this.publishControl(control);
+      if (sessionTimerEnabled !== undefined)
+        this.channel?.postMessage({ type: 'policy-updated', vaultId: control.header.vaultId });
     } catch (error) {
       this.crypto.destroyKeys(keys);
       if (this.keys === keys) this.keys = undefined;
@@ -277,6 +294,12 @@ export class VaultSession {
     if (generation !== this.generation || this.disposed) return;
     const control = await this.storage.control();
     if (generation !== this.generation || this.disposed) return;
+    if (control?.locked)
+      this.channel?.postMessage({
+        type: 'revoked',
+        vaultId: control.header.vaultId,
+        epoch: control.epoch,
+      });
     this.publish(
       control
         ? {
@@ -284,6 +307,7 @@ export class VaultSession {
             vaultId: control.header.vaultId,
             keyVersion: control.header.keyVersion,
             epoch: control.epoch,
+            sessionTimerEnabled: control.policy.sessionTimerEnabled !== false,
           }
         : { status: 'uninitialized' },
     );
@@ -312,7 +336,7 @@ export class VaultSession {
   }
 
   /** Human password form only; callers must not retain the supplied password. */
-  async unlock(password: string) {
+  async unlock(password: string, sessionTimerEnabled?: boolean) {
     await this.locking;
     await this.quiescing;
     const generation = this.attempt();
@@ -321,7 +345,7 @@ export class VaultSession {
       if (!control)
         throw new VaultStorageError(409, 'VAULT_NOT_CREATED', 'Set a workspace password first.');
       const keys = await this.crypto.unlockWithPassword(control.header, password);
-      await this.activate(control.header, keys, generation, control.epoch);
+      await this.activate(control.header, keys, generation, control.epoch, sessionTimerEnabled);
     } catch (error) {
       await this.failedAttempt(generation);
       throw error;
@@ -456,7 +480,10 @@ export class VaultSession {
     return this.activityPending;
   }
 
-  private async invalidate(expectedGeneration = this.generation): Promise<number | undefined> {
+  private async invalidate(
+    expectedGeneration = this.generation,
+    sessionTimerEnabled = this.snapshot.sessionTimerEnabled,
+  ): Promise<number | undefined> {
     if (expectedGeneration !== this.generation) return undefined;
     const invalidatedGeneration = ++this.generation;
     clearTimeout(this.timer);
@@ -469,6 +496,7 @@ export class VaultSession {
       vaultId: this.snapshot.vaultId,
       keyVersion: this.snapshot.keyVersion,
       epoch: this.snapshot.epoch,
+      sessionTimerEnabled,
     });
     // Abort callbacks may synchronously try another operation. Revoke capabilities
     // and publish the locked state before dispatching those callbacks.
@@ -626,6 +654,10 @@ export class VaultSession {
   async getPolicy(): Promise<VaultSessionPolicy> {
     return { ...(await this.verify()).policy };
   }
+  /** Public technical preference only; no keys, private records or unlock capability. */
+  async getStartupTimerEnabled(): Promise<boolean> {
+    return (await this.storage.control())?.policy.sessionTimerEnabled !== false;
+  }
   async setPolicy(policy: VaultSessionPolicy) {
     const operation = await this.captureOperation();
     try {
@@ -642,7 +674,8 @@ export class VaultSession {
           vaultId: updated.header.vaultId,
           epoch: updated.epoch,
         });
-        if (updated.locked) await this.invalidate(generation);
+        if (updated.locked)
+          await this.invalidate(generation, updated.policy.sessionTimerEnabled !== false);
         else this.publishControl(updated);
       });
     } finally {

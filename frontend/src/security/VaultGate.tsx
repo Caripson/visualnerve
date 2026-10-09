@@ -7,6 +7,7 @@ import { BackupSecurityNotice } from './BackupSecurityNotice';
 import { VaultPasswordFields } from './VaultPasswordFields';
 import { VaultRecoveryNotice } from './VaultRecoveryNotice';
 import type { VaultSession } from './vault-session';
+import { defaultVaultSessionPolicy } from './vault-storage';
 
 /** Mounts the workspace only after unlocking AND opening its encrypted repository. */
 export function VaultGate({
@@ -30,12 +31,17 @@ export function VaultGate({
   const [awaitingRecovery, setAwaitingRecovery] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [sessionTimerEnabled, setSessionTimerEnabled] = useState(true);
   useEffect(() => {
     let active = true;
     void session
       .initialize()
-      .then(() => {
-        if (active) setInitialized(true);
+      .then(async () => {
+        const enabled = await session.getStartupTimerEnabled();
+        if (active) {
+          setSessionTimerEnabled(enabled);
+          setInitialized(true);
+        }
       })
       .catch((error: unknown) => {
         if (active) setError((error as Error).message);
@@ -47,6 +53,7 @@ export function VaultGate({
   useEffect(
     () =>
       session.onLock(() => {
+        setSessionTimerEnabled(session.getSnapshot().sessionTimerEnabled !== false);
         setPassword('');
         setConfirmation('');
         setRecoveryInput('');
@@ -119,10 +126,18 @@ export function VaultGate({
             if (setup || recovering) setAwaitingRecovery(true);
             void (async () => {
               try {
-                if (setup) setNewRecovery((await session.setup(password)).recoveryKey);
+                if (setup)
+                  setNewRecovery(
+                    (
+                      await session.setup(password, {
+                        ...defaultVaultSessionPolicy,
+                        sessionTimerEnabled,
+                      })
+                    ).recoveryKey,
+                  );
                 else if (recovering)
                   setNewRecovery((await session.recover(recoveryInput, password)).recoveryKey);
-                else await session.unlock(password);
+                else await session.unlock(password, sessionTimerEnabled);
               } catch (error) {
                 setError((error as Error).message);
                 setAwaitingRecovery(false);
@@ -161,6 +176,25 @@ export function VaultGate({
             disabled={busy}
             confirm={setup || recovering}
           />
+          {!recovering && (
+            <>
+              <label className="check-field">
+                <input
+                  type="checkbox"
+                  checked={sessionTimerEnabled}
+                  onChange={(event) => setSessionTimerEnabled(event.target.checked)}
+                  disabled={busy}
+                  aria-describedby="startup-session-timer-description"
+                />
+                <span>{t('security.sessionTimer.enabled')}</span>
+              </label>
+              <p className="muted" id="startup-session-timer-description">
+                {sessionTimerEnabled
+                  ? t('security.sessionTimer.enabledDescription')
+                  : t('security.sessionTimer.disabledWarning')}
+              </p>
+            </>
+          )}
           {(setup || recovering) && <BackupSecurityNotice encrypted />}
           {error && (
             <p role="alert" className="form-error">

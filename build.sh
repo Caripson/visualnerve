@@ -15,6 +15,9 @@ cp "$VN_ROOT/docs/openapi.yaml" "$VN_ROOT/hugo/static/openapi.yaml"
 cd "$VN_ROOT"
 node scripts/licenses.mjs "$VN_GO"
 hugo --source hugo --destination "$VN_ROOT/public" --cleanDestinationDir --baseURL "${SITE_URL:-https://visualnerve.caripson.com/}"
+if [[ "${HUGO_PARAMS_ENVIRONMENT:-}" == 'production' ]]; then
+  node "$VN_ROOT/scripts/retire-public-workspace.mjs" "$VN_ROOT/public"
+fi
 node scripts/service-worker.mjs
 node scripts/audit-static.mjs "$VN_ROOT/public"
 mkdir -p bin

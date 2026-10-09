@@ -2,6 +2,7 @@ import { localizedFeedback } from './localized-feedback';
 import { useI18n } from '../i18n';
 import { useRef, useState } from 'react';
 import { mcpServerUrl, mcpSetupNote } from '../integration/setup';
+import { isEncryptedWorkspaceSurface } from '../security/surface';
 
 export function McpConnectionInfo({ endpoint }: { endpoint: string }) {
   const { t } = useI18n();
@@ -13,7 +14,7 @@ export function McpConnectionInfo({ endpoint }: { endpoint: string }) {
   let instructions = '';
   try {
     server = mcpServerUrl(endpoint);
-    instructions = mcpSetupNote(website, endpoint);
+    instructions = mcpSetupNote(website, endpoint, isEncryptedWorkspaceSurface());
   } catch {
     // A malformed saved connection must never become a copyable remote MCP destination.
   }

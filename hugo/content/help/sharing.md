@@ -8,7 +8,7 @@ Visual Nerve saves locally. Export creates a file you control; it does not autom
 
 Open **Export** on desktop or **Diagram actions → Export** on a phone.
 
-The existing `www.visualnerve.com/app/` workspace stores readable records and exports. The separate encrypted workspace at `app.visualnerve.com` protects private records with a local password. On that isolated address, only **Export all data / backup** produces an encrypted workspace file. Individual diagram JSON/Markdown, images, SVG, PDF, video and copied text remain readable. Review them before sharing, even if the workspace itself is password protected.
+Older records and backups created on the website origin may remain readable; retiring its `/app` editor does not encrypt or delete them. The separate encrypted workspace at `app.visualnerve.com` protects private records with a local password. On that isolated address, only **Export all data / backup** produces an encrypted workspace file. Individual diagram JSON/Markdown, images, SVG, PDF, video and copied text remain readable. Review them before sharing, even if the workspace itself is password protected.
 
 ## Choose the right output
 

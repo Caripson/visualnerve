@@ -1693,13 +1693,15 @@ const catalog = {
   'privacy.consent.decline': 'Jeg godtar ikke',
   'privacy.consent.declined':
     'Arbeidsområdet forblir lukket uten godkjenning. Du kan lese veiledningen eller personvernsiden, eller godta her når du vil bruke det.',
+  'privacy.consent.encryptedIndexedDB':
+    'Det lagrede innholdet i arbeidsområdet i IndexedDB krypteres med AES-256-GCM (256-bit nøkler). Opplåsing skjer lokalt i denne nettleseren.',
   'privacy.consent.explicitExportSharing':
     'Bruk Eksport for å beholde en sikkerhetskopi eller flytte arbeidet ditt. Bygg med Lovable lar deg gjennomgå og uttrykkelig dele en appbeskrivelse.',
   'privacy.consent.learnMore': 'Les mer',
   'privacy.consent.localNoAccount':
     'Arbeidet ditt lagres lokalt og lastes aldri opp automatisk. Ingen konto er nødvendig, og en annen nettleser eller enhet har sitt eget separate arbeidsområde.',
   'privacy.consent.publicWebsitePrivateProfile':
-    'Visual Nerve kan være et offentlig nettsted. Diagrammene dine forblir private i denne nettleserprofilen.',
+    'Diagrammene dine lagres i denne nettleserprofilen. Andre besøkende på Visual Nerve kan ikke se dem.',
   'privacy.consent.requiredStorage':
     'For å bruke arbeidsområdet må du godta lokal nettleserlagring. Diagrammer og innstillinger lagres med IndexedDB; appfiler mellomlagres slik at du kan arbeide frakoblet. Tjenesten kan ikke fungere uten denne lagringen.',
   'privacy.consent.title': 'Arbeidet ditt forblir i denne nettleseren',
@@ -1770,7 +1772,7 @@ const catalog = {
   'privacy.storage.usageLabel': 'Nettstedets lagringsbruk',
   'privacy.storage.workspaceIdLabel': 'Arbeidsområdets ID',
   'privacy.transfer.destinationInstructions':
-    'Flytter du fra www.visualnerve.com/app/? Eksporter en kryptert overføring der, behold originalen, og bruk deretter Overfør eksisterende arbeidsområde her. Den fullstendige overføringen bevarer identifikatorer, kilderader og arkiver, setter API/MCP til Av og verifiserer den lagrede kopien før editoren åpnes igjen. En vanlig Gjenopprett sikkerhetskopi kan fortsatt slå sammen diagrammer.',
+    'Gjenoppretter du et eksisterende arbeidsområde? Bruk en lagret kryptert overføringsfil med Overfør eksisterende arbeidsområde her. Den gamle /app/-adressen er avviklet; nettleserlagring flyttes ikke automatisk mellom origins. En overføring bevarer identifikatorer, kilderader og arkiver, slår API/MCP av og verifiserer den lagrede kopien før redigeringsverktøyet åpnes. Gjenopprett sikkerhetskopi kan fortsatt slå sammen diagrammer fra en lagret sikkerhetskopi.',
   'privacy.transfer.downloaded':
     'Kryptert overføring lastet ned. Behold det opprinnelige passordet og gjenopprettingsnøkkelen, og behold dette arbeidsområdet til målet er verifisert.',
   'privacy.transfer.export': 'Eksporter kryptert overføring',
@@ -1902,7 +1904,7 @@ const catalog = {
   'security.gate.saveRecoveryTitle': 'Lagre gjenopprettingsnøkkelen din',
   'security.gate.setNewPassword': 'Angi nytt passord',
   'security.gate.setupExplanation':
-    'Arbeidsområdet ditt krypteres i denne nettleseren. Velg et passord før du oppretter eller importerer privat arbeid.',
+    'Det lagrede innholdet i arbeidsområdet i IndexedDB krypteres med AES-256-GCM (256-bit nøkler). Velg et passord før du oppretter eller importerer privat innhold.',
   'security.gate.setupTitle': 'Beskytt det lokale arbeidsområdet ditt',
   'security.gate.unlock': 'Lås opp',
   'security.gate.unlockTitle': 'Lås opp arbeidsområdet ditt',
@@ -1968,10 +1970,19 @@ const catalog = {
   'security.rotation.title': 'Roter arbeidsområdets innholdskrypteringsnøkkel',
   'security.rotation.validation':
     'Bruk en annen, unik passfrase på minst 12 tegn, og bekreft den med samme tekst.',
+  'security.sessionTimer.enabled': 'Automatisk øktlås',
+  'security.sessionTimer.enabledDescription':
+    'Lås etter inaktivitet eller maksimal øktvarighet. Du kan endre grensene i Innstillinger.',
+  'security.sessionTimer.disabledWarning':
+    'Automatisk låsing er av. Arbeidsområdet forblir ulåst i åpne faner til du låser det manuelt. Å laste inn eller lukke en fane fjerner fortsatt nøkkelen fra minnet og krever passordet igjen. Bruk dette bare på en enhet du stoler på.',
+  'security.sessionTimer.settingsDescription':
+    'Dette valget gjelder arbeidsområdet i denne nettleserprofilen, inkludert andre ulåste faner. API/MCP-tilgang opphører fortsatt når arbeidsområdet låses.',
+  'security.sessionTimer.reenableWarning':
+    'Når automatisk låsing aktiveres, brukes de eksisterende øktklokkene. Hvis en grense allerede er overskredet, låses arbeidsområdet umiddelbart.',
   'security.settings.absoluteHours': 'Maksimal økt (timer)',
   'security.settings.changePassword': 'Endre passord',
   'security.settings.encryptionBoundary':
-    'Lokale poster og sikkerhetskopier av arbeidsområdet bruker AES-256-GCM-kryptering. Opplåsing skjer i denne nettleseren; passordet kan ikke tilbakestilles på en server.',
+    'Arbeidsområdeinnhold i IndexedDB og sikkerhetskopier av arbeidsområdet bruker AES-256-GCM-kryptering (256-bit nøkler). Opplåsing skjer i denne nettleseren; passordet kan ikke tilbakestilles på en server.',
   'security.settings.idleAndIntegrationBoundary':
     'Låsing stopper API/MCP-tilgang til innholdet ditt og bakgrunnsarbeid. Bare din samhandling med appen holder økten aktiv i forhold til inaktivitet.',
   'security.settings.idleMinutes': 'Lås etter inaktivitet (minutter)',
@@ -2002,7 +2013,7 @@ const catalog = {
     'Overføring av arbeidsområdet krever den krypterte appen.',
   'security.transfer.encryptingVerifying': 'Krypterer og verifiserer…',
   'security.transfer.independentOrigins':
-    'Behold det opprinnelige arbeidsområdet og en verifisert sikkerhetskopi. Lukk de andre fanene og stopp eventuelle agenter, slik at du ikke fortsetter å redigere to uavhengige kopier. Denne handlingen leser, omdirigerer eller sletter ikke det gamle nettstedet. API/MCP-tilgang er nå Av.',
+    'Behold de opprinnelige filene og en verifisert sikkerhetskopi. Stopp eventuelle agenter og lukk andre arbeidsområdefaner slik at du ikke redigerer to uavhengige kopier. Import leser eller sletter ikke lagring på en annen origin. API/MCP-tilgang er nå av.',
   'security.transfer.keepOpen':
     'Hold denne fanen åpen. Verifiseringen leser den lagrede krypterte kopien før editoren åpnes.',
   'security.transfer.open': 'Åpne det overførte arbeidsområdet',

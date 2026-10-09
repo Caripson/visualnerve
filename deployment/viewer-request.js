@@ -10,6 +10,28 @@ function handler(event) {
       headers: { allow: { value: "GET, HEAD" } },
     };
   }
+  // Retired paths go directly to the isolated root, including the apex alias.
+  // Discard their query before any canonical-host redirect can forward it.
+  if (/^\/app(?:\/|$)/.test(request.uri)) {
+    if (canonicalHost === "app.visualnerve.com")
+      return {
+        statusCode: 404,
+        statusDescription: "Not Found",
+        headers: {
+          "cache-control": { value: "no-store" },
+          "content-type": { value: "text/plain; charset=utf-8" },
+        },
+        body: "Page not found. Open the workspace at /.",
+      };
+    return {
+      statusCode: 308,
+      statusDescription: "Permanent Redirect",
+      headers: {
+        location: { value: "https://app.visualnerve.com/" },
+        "cache-control": { value: "public, max-age=300" },
+      },
+    };
+  }
   if (canonicalHost && request.headers.host.value !== canonicalHost) {
     var pairs = [];
     var query = request.querystring || {};

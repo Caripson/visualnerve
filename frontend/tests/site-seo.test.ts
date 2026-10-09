@@ -1,9 +1,10 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
+import { PublicWorkspaceRetirement } from '../../scripts/retire-public-workspace.mjs';
 
 function build(environment: string, origin: string) {
   const target = mkdtempSync(join(tmpdir(), 'visualnerve-seo-'));
@@ -19,6 +20,7 @@ function build(environment: string, origin: string) {
     rmSync(target, { recursive: true, force: true });
     throw new Error(result.stderr);
   }
+  if (environment === 'production') new PublicWorkspaceRetirement(target).retire();
   return target;
 }
 describe('public site discovery and private workspace indexing', () => {
@@ -57,13 +59,11 @@ describe('public site discovery and private workspace indexing', () => {
         expect(sitemap).toContain('https://www.visualnerve.com/' + route + '/');
       expect(sitemap).not.toContain('/app/');
       expect(sitemap).not.toContain('/api/v1/');
-      expect(readFileSync(join(directory, 'app/index.html'), 'utf8')).toMatch(
-        /name="robots" content="noindex, nofollow"/,
-      );
+      expect(existsSync(join(directory, 'app'))).toBe(false);
       expect(readFileSync(join(directory, 'robots.txt'), 'utf8')).toContain(
         'Sitemap: https://www.visualnerve.com/sitemap.xml',
       );
-      for (const route of ['app/index.html', 'help/index.html'])
+      for (const route of ['help/index.html'])
         expect(readFileSync(join(directory, route), 'utf8')).not.toContain('/site/consent.js');
       const features = readFileSync(join(directory, 'features/index.html'), 'utf8');
       expect(home).toContain('device-frame--laptop');
@@ -81,10 +81,9 @@ describe('public site discovery and private workspace indexing', () => {
         ]
           .map((match) => match[1].replace(/<[^>]*>/g, ''))
           .join('\n');
-        expect(shellExamples, route).toContain('--allowed-origin https://www.visualnerve.com');
+        expect(shellExamples, route).toContain('--allowed-origin https://app.visualnerve.com');
         expect(shellExamples, route).not.toContain('visualnerve.caripson.com');
-        expect(connectionGuide, route).toContain('https://www.visualnerve.com/app/');
-        expect(connectionGuide, route).toMatch(/separate <strong>staging<\/strong> workspace/);
+        expect(connectionGuide, route).toContain('https://app.visualnerve.com');
       }
     } finally {
       rmSync(directory, { recursive: true, force: true });

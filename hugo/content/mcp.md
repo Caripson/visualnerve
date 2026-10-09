@@ -33,29 +33,19 @@ The bridge forwards commands to the browser. It has no independent workspace dat
 
 ## Start a bridge and grant access
 
-With a built source checkout, start the local executable:
+Open [the encrypted workspace](https://app.visualnerve.com/) and unlock it in your browser. With a built source checkout, run the optional local bridge:
 
 ```sh
-./bin/visual-nerve --static ./public --bridge --addr 127.0.0.1:4317
-```
-
-Open its local `/app/` page, accept required local storage, then open **Settings → MCP / API integration**. Choose an access level and check that the connection is Connected.
-
-When using a separately hosted app, add its exact **origin** with `--allowed-origin`. An origin consists of the scheme, host and port; it excludes `/app/` and other paths. Copy the current Visual Nerve website origin from Settings instead of assuming that a previous hostname still applies.
-
-For the public workspace at `https://www.visualnerve.com/app/`, start the bridge with:
-
-```sh
-./bin/visual-nerve --static ./public --bridge \
+./bin/visual-nerve --static ./public-app --bridge \
   --addr 127.0.0.1:4317 \
-  --allowed-origin https://www.visualnerve.com
+  --allowed-origin https://app.visualnerve.com
 ```
 
-For the separate **staging** workspace at `https://visualnerve.caripson.com/app/`, replace the final argument with `--allowed-origin https://visualnerve.caripson.com`. Staging and production have separate browser workspaces.
+Open **Settings → MCP / API integration**, choose an access level and check that the connection is Connected. The bridge uses the app's exact **origin**: scheme, host and port, without a path. The public product website is not the app origin. Its former `/app` path redirects to the app root; the isolated app does not serve a duplicate `/app` editor.
 
-Use your actual app origin in that final argument. Browser local-network rules can require permission or trusted local TLS. The bridge supports `--tls-cert` and `--tls-key`; configure matching `wss`/HTTPS addresses when required. The bridge remains loopback-only.
+For a separately reviewed preview app, use the origin displayed in that app's Settings. A local source-development build can retain `/app/` for tests; it has separate browser storage and is not the production address. Browser local-network rules can require permission or trusted local TLS. The bridge supports `--tls-cert` and `--tls-key`; configure matching `wss`/HTTPS addresses when required. It remains loopback-only.
 
-The dedicated encrypted app at `app.visualnerve.com` is available. When using that surface, allow `https://app.visualnerve.com` instead, unlock in the browser and grant access there. It does not share the old website's browser storage; [transfer the existing workspace explicitly](/help/settings/#transfer-an-existing-workspace).
+The app encrypts saved IndexedDB records with **AES-256-GCM**. Unlock in the browser, then grant tool access there. Other origins' records do not move automatically; restore an existing backup or encrypted transfer explicitly. [Transfer and recovery steps](/help/settings/#transfer-an-existing-workspace).
 
 ## Choose your local MCP client
 

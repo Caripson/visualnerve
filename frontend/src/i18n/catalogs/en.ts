@@ -1674,13 +1674,15 @@ const catalog = {
   'privacy.consent.decline': "I don't accept",
   'privacy.consent.declined':
     'The workspace stays closed without acceptance. You can read the guide or privacy page, or accept here when you want to use it.',
+  'privacy.consent.encryptedIndexedDB':
+    'Your saved workspace content in IndexedDB is encrypted with AES-256-GCM (256-bit keys). Unlocking happens locally in this browser.',
   'privacy.consent.explicitExportSharing':
     'Use Export to keep a backup or move your work. Build with Lovable lets you review and share an app brief explicitly.',
   'privacy.consent.learnMore': 'Learn more',
   'privacy.consent.localNoAccount':
     'Your work is saved locally and is never uploaded automatically. No account is required, and another browser or device has its own separate workspace.',
   'privacy.consent.publicWebsitePrivateProfile':
-    'Visual Nerve can be a public website. Your diagrams stay private in this browser profile.',
+    'Your diagrams are stored in this browser profile. Other visitors to Visual Nerve cannot see them.',
   'privacy.consent.requiredStorage':
     'To use the workspace, you must accept local browser storage. Diagrams and preferences are saved using IndexedDB; app files are cached so you can work offline. The service cannot work without this storage.',
   'privacy.consent.title': 'Your work stays in this browser',
@@ -1749,7 +1751,7 @@ const catalog = {
   'privacy.storage.usageLabel': 'Site storage usage',
   'privacy.storage.workspaceIdLabel': 'Workspace ID',
   'privacy.transfer.destinationInstructions':
-    'Moving from www.visualnerve.com/app/? Export an encrypted transfer there, keep the original, then use Transfer existing workspace here. The complete transfer preserves identifiers, source rows and archives, turns API/MCP Off, and verifies the saved copy before reopening the editor. A normal Restore backup can still merge diagrams.',
+    'Restoring an existing workspace? Use a saved encrypted transfer file with Transfer existing workspace here. The old /app/ route is retired; browser storage does not move automatically between origins. A transfer preserves identifiers, source rows and archives, turns API/MCP Off, and verifies the saved copy before opening the editor. Restore backup can still merge diagrams from a saved backup.',
   'privacy.transfer.downloaded':
     'Encrypted transfer downloaded. Keep its original password and recovery key, and keep this workspace until the destination has been verified.',
   'privacy.transfer.export': 'Export encrypted transfer',
@@ -1880,7 +1882,7 @@ const catalog = {
   'security.gate.saveRecoveryTitle': 'Save your recovery key',
   'security.gate.setNewPassword': 'Set new password',
   'security.gate.setupExplanation':
-    'Your workspace is encrypted in this browser. Choose a password before creating or importing private work.',
+    'Your saved workspace content in IndexedDB is encrypted with AES-256-GCM (256-bit keys). Choose a password before creating or importing private work.',
   'security.gate.setupTitle': 'Protect your local workspace',
   'security.gate.unlock': 'Unlock',
   'security.gate.unlockTitle': 'Unlock your workspace',
@@ -1943,10 +1945,19 @@ const catalog = {
   'security.rotation.title': 'Rotate the workspace content key',
   'security.rotation.validation':
     'Use a different, unique passphrase of at least 12 characters and matching confirmation.',
+  'security.sessionTimer.enabled': 'Automatic session lock',
+  'security.sessionTimer.enabledDescription':
+    'Lock after inactivity or the maximum session duration. You can change the limits in Settings.',
+  'security.sessionTimer.disabledWarning':
+    'Automatic locking is off. Your workspace stays unlocked in open tabs until you lock it manually. Reloading or closing a tab still removes its in-memory key and requires the password again. Use this only on a trusted device.',
+  'security.sessionTimer.settingsDescription':
+    'This choice applies to the workspace in this browser profile, including other unlocked tabs. API/MCP access still ends when the workspace locks.',
+  'security.sessionTimer.reenableWarning':
+    'Enabling automatic locking uses the existing session clocks. If a limit has already passed, the workspace locks immediately.',
   'security.settings.absoluteHours': 'Maximum session (hours)',
   'security.settings.changePassword': 'Change password',
   'security.settings.encryptionBoundary':
-    'Local records and workspace backups use AES-256-GCM encryption. Unlocking happens in this browser; there is no server password reset.',
+    'Workspace content in IndexedDB and workspace backups use AES-256-GCM encryption (256-bit keys). Unlocking happens in this browser; there is no server password reset.',
   'security.settings.idleAndIntegrationBoundary':
     'Locking stops API/MCP access to your content and background work. Only your interaction with the app keeps the inactivity session alive.',
   'security.settings.idleMinutes': 'Lock after inactivity (minutes)',
@@ -1975,7 +1986,7 @@ const catalog = {
   'security.transfer.encryptedAppRequired': 'Workspace transfer requires the encrypted app.',
   'security.transfer.encryptingVerifying': 'Encrypting and verifying…',
   'security.transfer.independentOrigins':
-    'Keep your original workspace and a verified backup. Close its other tabs and stop any agents so you do not keep editing two independent copies. The old website is not read, redirected or deleted by this action. API/MCP access is now Off.',
+    'Keep the original files and a verified backup. Stop any agents and close other workspace tabs so you do not edit two independent copies. Importing does not read or delete storage on another origin. API/MCP access is now Off.',
   'security.transfer.keepOpen':
     'Keep this tab open. Verification reads the saved encrypted copy before opening the editor.',
   'security.transfer.open': 'Open transferred workspace',
