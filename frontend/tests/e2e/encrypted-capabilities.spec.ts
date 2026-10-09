@@ -3,6 +3,10 @@ import { readFile } from 'node:fs/promises';
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { acknowledge } from './fixtures';
 import { browserLaunchOptions } from '../../playwright.config';
+import {
+  installEncryptedStartupDiagnostics,
+  readEncryptedStartupDiagnostics,
+} from './encrypted-startup-diagnostics';
 import type { CsvNodeData } from '../../src/data/types';
 import type { Graph } from '../../src/model/types';
 import type { SimulationResult } from '../../src/simulation/types';
@@ -105,7 +109,9 @@ test('isolated CSP permits real CSV grouping and encrypted source persistence, i
   const errors: string[] = [];
   page.on('worker', (worker) => workers.push(worker.url()));
   page.on('pageerror', (error) => errors.push(error.message));
+  const startup: unknown[] = [];
   try {
+    await page.addInitScript(installEncryptedStartupDiagnostics);
     await setup(page);
     await grant(page, request);
     const name = 'Encrypted CSV customer ledger';
@@ -178,16 +184,30 @@ test('isolated CSP permits real CSV grouping and encrypted source persistence, i
         },
       )
       .toMatchObject({ active: 'activated', controller: 'activated', controlledByActive: true });
+    startup.push(await readEncryptedStartupDiagnostics(page, 'before-first-online-reload'));
     await page.reload();
     await unlock(page, name);
+    startup.push(await readEncryptedStartupDiagnostics(page, 'after-first-online-unlock'));
     await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
     await context.setOffline(true);
     await page.reload();
     await unlock(page, name);
+    startup.push(await readEncryptedStartupDiagnostics(page, 'after-offline-unlock'));
     await expect(page.locator(`.canvas-shell [data-node-id="${root.id}"]`)).toContainText('1,000');
     await expect(page.locator('.canvas-shell [data-testid="graph-node"]')).toHaveCount(3);
     await cleanCsp(page);
     expect(errors).toEqual([]);
+    await test.info().attach('encrypted-startup-native-timings.json', {
+      body: JSON.stringify({ segments: startup, pageErrors: errors }, null, 2),
+      contentType: 'application/json',
+    });
+  } catch (error) {
+    startup.push(await readEncryptedStartupDiagnostics(page, 'failure'));
+    await test.info().attach('encrypted-startup-native-timings.json', {
+      body: JSON.stringify({ segments: startup, pageErrors: errors }, null, 2),
+      contentType: 'application/json',
+    });
+    throw error;
   } finally {
     await context.setOffline(false);
     await request.dispose();
