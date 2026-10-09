@@ -70,6 +70,9 @@ import { SimulationRunStore } from '../simulation/run-store';
 import { importSimulationRuns } from '../simulation/backup';
 import { simulationCapabilities } from './simulation-capabilities';
 import { createSimulationGraph } from '../simulation/document';
+import { createEmptySimulationModel } from '../simulation/starter';
+import { browserApiVersion } from './api-version';
+import { BulkIdentities } from './bulk-identities';
 
 export type CommandOptions = AnalysisCommandOptions & {
   /** Recheck external grants after queue waits and immediately before dispatch. */
@@ -884,7 +887,9 @@ export class Repository {
       )
         throw new StorageError(422, 'Choose a name and supported diagram type.');
       const graph = setSpatialView(
-        blankGraph(data.name, (data.type ?? 'mindmap') as Diagram['type']),
+        data.type === 'process-simulator'
+          ? createSimulationGraph(data.name, createEmptySimulationModel())
+          : blankGraph(data.name, (data.type ?? 'mindmap') as Diagram['type']),
         { mode: '3d' },
       );
       return (await this.saveGraph(graph, 0, options.beforeWrite)) as T;
@@ -893,7 +898,7 @@ export class Repository {
       return {
         status: 'ok',
         storage: 'indexeddb',
-        version: '0.3.0',
+        version: browserApiVersion,
         workspaceSecurity: workspaceSecurityStatus(this.db),
       } as T;
     if (collection === 'search' && read)
@@ -1269,17 +1274,32 @@ export class Repository {
         const graph = await scoped.getGraph(id),
           version = graph.diagram.version;
         if (data.baseVersion !== undefined) requireVersion(version, data.baseVersion);
+        const existingOwners = await scope.owners.toArray();
+        const ownerInputs = new BulkIdentities('owner', data.owners, existingOwners, !!data.upsert);
+        const nodeInputs = new BulkIdentities('node', data.nodes, graph.nodes, !!data.upsert);
+        const edgeInputs = new BulkIdentities('connection', data.edges, graph.edges, !!data.upsert);
+        // Validate identities before simulation projection can collapse duplicate canonical IDs.
+        // Owners and graph records share this transaction, so any later failure also rolls back.
+        ownerInputs.validate();
+        nodeInputs.validate(
+          nodeInputs.canonicalIds.length ? await scope.nodes.bulkGet(nodeInputs.canonicalIds) : [],
+        );
+        edgeInputs.validate(
+          edgeInputs.canonicalIds.length ? await scope.edges.bulkGet(edgeInputs.canonicalIds) : [],
+        );
         const ownerExternal = new Map(
-          (await scope.owners.toArray())
+          existingOwners
             .filter((owner) => owner.externalId)
             .map((owner) => [owner.externalId!, owner]),
         );
-        for (const values of (data.owners ?? []) as Patch[]) {
+        for (const values of ownerInputs.entries) {
           const previous = values.externalId
             ? ownerExternal.get(values.externalId as string)
             : undefined;
           if (previous && !data.upsert)
             throw new StorageError(409, 'External owner id already exists.');
+          if (previous && values.version !== undefined)
+            requireVersion(previous.version, values.version);
           const owner = await scoped.owner(
             { ...values, ...(previous ? { version: previous.version } : {}) },
             previous?.id,
@@ -1291,7 +1311,7 @@ export class Repository {
           graph.nodes.filter((node) => node.externalId).map((node) => [node.externalId!, node]),
         );
         const pendingParents = new Map<string, string>();
-        for (const values of (data.nodes ?? []) as Patch[]) {
+        for (const values of nodeInputs.entries) {
           const previous = values.externalId
             ? nodeExternal.get(values.externalId as string)
             : undefined;
@@ -1346,7 +1366,7 @@ export class Repository {
         const edgeExternal = new Map(
           graph.edges.filter((edge) => edge.externalId).map((edge) => [edge.externalId!, edge]),
         );
-        for (const values of (data.edges ?? []) as Patch[]) {
+        for (const values of edgeInputs.entries) {
           const previous = values.externalId
             ? edgeExternal.get(values.externalId as string)
             : undefined;

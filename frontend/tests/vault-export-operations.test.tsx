@@ -276,7 +276,15 @@ describe('readable diagram downloads are bound to the original vault session', (
     settled.mockRestore();
     const replacement = blankGraph('Different newly opened diagram');
     replacement.nodes = [newNode(replacement.diagram.id, { title: 'Unrelated private node' })];
-    act(() => useEditor.getState().setGraph(replacement));
+    // Navigate through the real persisted workspace. An arbitrary unsaved ID
+    // injected into editor state can correctly be cleared by a delayed refresh.
+    await act(async () => {
+      await fixture.workspace.create(replacement);
+      await fixture.workspace.refresh();
+    });
+    const reopened = await fixture.workspace.repo.getGraph(replacement.diagram.id);
+    expect(reopened.nodes[0].title).toBe('Unrelated private node');
+    expect(useEditor.getState().graph?.diagram.id).toBe(replacement.diagram.id);
     await act(async () => {
       waiting.resolve();
       await waiting.promise;

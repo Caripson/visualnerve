@@ -1,6 +1,10 @@
 import type { Catalog } from '../types';
 
 const catalog = {
+  'integration.bridge.updateRequired':
+    'Uppdatera den lokala bryggan, anslut sedan MCP-klienten igen och uppdatera dess verktygslista. Den här anslutningen visar inte aktuella funktioner för API-dokumentation och säkra skrivningar.',
+  'integration.bridge.detectedVersion': 'Identifierad bryggversion: {version}',
+  'integration.bridge.updateGuide': 'Kontrollera bryggan och upptäckta verktyg',
   'appUpdate.title': 'En uppdatering är klar',
   'appUpdate.hint':
     'Nya rättningar och funktioner är klara. Uppdatera när det passar dig; arbetsytan finns kvar i den här webbläsaren.',

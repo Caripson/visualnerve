@@ -14,6 +14,20 @@ Commands recheck access after queue waits and before document writes. If saving 
 
 Call `visual_nerve_api_docs` first. Its default compact guide and full `{"document":"openapi"}` response describe both canonical definitions and playback. Commands use `visual_nerve_request` with paths that omit `/api/v1`.
 
+To discover one command without reading unrelated schemas, call:
+
+```json
+{
+  "document": "endpoint",
+  "path": "/diagrams/{diagramId}/bulk",
+  "method": "POST"
+}
+```
+
+Use the exact documented path template and uppercase `GET`, `POST`, `PUT`, `PATCH` or `DELETE`. This read-only response is a complete scoped OpenAPI document: the operation, shared path parameters, security schemes and all transitively referenced components are retained without truncation. It requires no connected browser. `path` and `method` are required for `endpoint` and rejected for other selectors. Missing operations or broken bundled references fail explicitly; full `openapi`/`all` responses and documentation resources are unchanged.
+
+Canonical `id` values are UUIDs. Optional `externalId` values are stable integration strings, such as `engineering` or `truck`, and bulk `upsert:true` matches those external IDs. Use versioned PATCH when editing by canonical UUID. An existing UUID without its matching external ID produces 409; supplying both identifiers for different entities produces 422. Duplicate explicit UUIDs or nonempty external IDs within a bulk entity collection also produce 422. Each error rejects the whole batch. New records may supply unused valid UUIDs. Optional entity versions and diagram `baseVersion` guard against stale bulk writes; stale supplied node, edge or owner versions produce 409. Read the returned canonical IDs and versions before the next edit.
+
 ## Client transports and port selection
 
 Codex, Cursor, Claude Code and Gemini CLI use the same Streamable HTTP endpoint and tools; no client name grants special permissions. Initialize negotiates `2025-03-26`, `2025-06-18` or `2025-11-25`, returning the requested version when supported or the latest supported version otherwise. Subsequent HTTP requests send the negotiated `MCP-Protocol-Version`. A missing header uses the backward-compatible `2025-03-26` subset; unsupported headers return HTTP 400. This stateless endpoint returns JSON and answers GET with 405 because it offers no SSE stream. It does not implement the deprecated separate HTTP+SSE transport, server-initiated requests or tasks. [MCP transports](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports) and [initialization](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle).
@@ -25,6 +39,28 @@ The optional `VISUAL_NERVE_BRIDGE_TOKEN` is passed in the adapter environment an
 Port **4317** serves `/mcp`, `/bridge` and `/api/v1` on one Visual Nerve process. A port cannot be guaranteed free: an occupied-port error stops startup instead of picking a hidden fallback. To use 4318, start `visual-nerve --bridge --addr 127.0.0.1:4318` with the required allowed app origin, save `ws://127.0.0.1:4318/bridge` in the browser, and configure `http://127.0.0.1:4318/mcp` in the HTTP client. The stdio adapter takes `--mcp-url http://127.0.0.1:4318/mcp`. Keep the hostname, TLS choice and port consistent; changing the browser workspace origin itself changes its IndexedDB storage identity.
 
 On the isolated encrypted app, the deployed Content Security Policy also restricts browser bridge connections to explicitly approved ports. A custom port must be included in that app build and its response-header policy; changing Settings alone cannot override it. The reviewed default is 4317.
+
+## Recover a write without creating duplicates
+
+Use a current bridge and refreshed app tab. Bridge version 0.4.0 reports `operations-v1` and `endpoint-docs-v1` in health and its browser handshake, together with supported tool names. This reports software support; it does not reveal workspace data or grant access. Older browser tabs remain one-shot and cannot reserve or recover operation receipts.
+
+Read bridge software health through direct HTTP `GET /api/v1/health` (`/health` relative to the REST base). MCP `visual_nerve_request` with `path:"/health"` instead reads the connected browser's semantic IndexedDB health, without bridge-only tool/capability fields. Their absence in that browser response is not evidence of an outdated bridge.
+
+Before a write, reserve an opaque ID:
+
+```json
+{"path":"/operations","method":"POST","data":{}}
+```
+
+The reservation requires an unlocked browser, accepted storage and Read + write access. Read its returned `operationId`, then supply it as a top-level argument of `visual_nerve_request` alongside the write's `path`, `method` and `data`. REST uses `X-Visual-Nerve-Operation-Id`. Successful write bodies are unchanged; MCP `structuredContent.operationId` and the REST response header expose identity. Agents must retain that identity before dispatch if they need to recover even when the client loses the entire response.
+
+After a timeout, call `GET /operations/{operationId}` through the same tool. Its browser receipt returns `operationId`, `state`, `resultAvailable` and optional original `status`/`result`. States are `reserved`, `running`, `succeeded`, `failed` and `unknown`. A response containing `OPERATION_OUTCOME_UNKNOWN` means the write may still commit. Inspect the receipt, or retry the exact method/path/JSON data with the same ID. Omitted and `null` data are different. A changed payload produces 409 `OPERATION_CONFLICT`; a new ID can duplicate the original work.
+
+Operation recovery belongs to the original workspace, origin, browser instance and access grant. Another tab or new grant cannot take over. Bridge restart produces 409 `OPERATION_OUTCOME_UNKNOWN`; receipt expiry produces 410 `OPERATION_EXPIRED`. Reconcile the actual saved model before new work when recovery is unavailable. A terminal status can survive result eviction, so `resultAvailable:false` never means that execution did not occur.
+
+An invalid browser acknowledgment can also produce 502 `OPERATION_OUTCOME_UNKNOWN`. State `failed` reports a browser command error, not guaranteed rollback of all multi-phase runtime side effects. Receipts provide at-most-once command execution in retained browser/grant scope, not exactly-once transactions across page or bridge lifetimes.
+
+Receipts stay in browser RAM for up to 15 minutes, bounded to 256 entries and 8 MiB of readable results. The bridge retains only opaque routing/fingerprint metadata in RAM, bounded to 15 minutes and 1,024 entries. Neither receipt store is persisted. Reload, lock and grant revocation remove recovery data; integration traffic does not unlock or renew the session. See [the API contract](../API.md#recover-writes-after-a-timeout).
 
 ## Exact Read only POST routes
 
@@ -50,6 +86,8 @@ Call `visual_nerve_request` with `{path:"/export",method:"POST",data:{diagramId:
 SVG preserves native paths, shapes, text, icons, connections and visible saved pen strokes from the canonical 2D projection, including when the diagram is in 3D. It contains no embedded raster screenshot, `foreignObject`, script or active external link. Fonts are referenced rather than embedded. Source text can retain clipped content, so review the file before sharing. Export fails beyond 100,000 rendered DOM elements, 250,000 source text characters or 16 MiB SVG XML; bridge envelope/time limits also apply. JSON and Markdown exports accept only `diagramId` and `format`. See [export formats](../EXPORT_FORMAT.md).
 
 ## Inspect and control hierarchical processes
+
+`POST /spatial-diagrams` with `{name,type:"process-simulator"}` starts a blank, semantically valid schema-version-1 model in 3D. Add the actual process model through versioned simulation commands before running. Ordinary `POST /diagrams` with the same type retains the kiosk example. Both share the same engine; full live capacity banks and particle traffic are visualized in 2D.
 
 Start with `{path:"/simulation/capabilities"}`. The response advertises `hierarchical-processes` and `process-drilldown`, including the fields `processes[].parentId` and `nodes[].processId`. Read `GET /diagrams` to find documents whose type is `process-simulator`, then `GET /diagrams/{diagramId}/simulation` for the complete semantic model. This model, shared resources, scenarios and deterministic engine are the same ones used by the UI. MCP does not infer process structure from canvas positions or keep a shadow configuration.
 

@@ -1,6 +1,8 @@
 import { useEditor } from '../state/editor';
 import { StorageError } from '../model/validation';
 import { localBridgeUrl } from './access';
+import { BridgeOperations, type OperationCommand } from './operations';
+import { bridgeDiagnostics } from './diagnostics';
 import { workspace } from '../storage/workspace';
 import { VaultStorageError } from '../security/vault-storage';
 import type { WorkspaceOperation } from '../storage/contracts';
@@ -15,6 +17,11 @@ interface Command {
   path: string;
   method: string;
   data?: unknown;
+  operationId?: string;
+  operationNew?: boolean;
+  operationAction?: OperationCommand['operationAction'];
+  browserInstanceId?: string;
+  accessGrantId?: string;
 }
 export function bridgeResponseStatus(path: string, method: string): number {
   return method === 'DELETE' && path.replace(/^\/api\/v1/, '') !== '/presentation/video'
@@ -38,6 +45,9 @@ export function bridgeErrorStatus(error: unknown): number {
   return error instanceof StorageError || error instanceof VaultStorageError ? error.status : 422;
 }
 export class Bridge {
+  private readonly browserInstanceId = crypto.randomUUID();
+  private accessGrantId = crypto.randomUUID();
+  private readonly operations = new BridgeOperations();
   private socket?: WebSocket;
   private retry?: ReturnType<typeof setTimeout>;
   private unsubscribe?: () => void;
@@ -72,15 +82,18 @@ export class Bridge {
   /** An explicit Off choice cancels the transport even if the displayed grant is already Off. */
   disconnect() {
     ++this.generation;
+    this.revokeOperations();
     this.restricted = false;
     this.connectedWorkspace = undefined;
     clearTimeout(this.retry);
     this.socket?.close();
     this.socket = undefined;
+    bridgeDiagnostics.disconnect();
     useEditor.setState({ bridgeStatus: 'disabled' });
   }
   /** Retain only an already-open authorized connection; never reconnect a locked workspace. */
   restrictToControl() {
+    this.revokeOperations();
     clearTimeout(this.retry);
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN || !this.connectedWorkspace) {
       this.disconnect();
@@ -88,7 +101,13 @@ export class Bridge {
     }
     this.restricted = true;
     try {
-      this.socket.send(JSON.stringify({ peerMode: 'control' }));
+      this.socket.send(
+        JSON.stringify({
+          peerMode: 'control',
+          browserInstanceId: this.browserInstanceId,
+          accessGrantId: this.accessGrantId,
+        }),
+      );
     } catch {
       // Transport failure must never interrupt the remaining plaintext/key cleanup.
       this.disconnect();
@@ -100,8 +119,26 @@ export class Bridge {
     this.restricted = false;
     this.reconnect();
   }
+  /** An explicit choice ends prior receipts even when the selected access level is unchanged. */
+  beginAccessChoice() {
+    this.revokeOperations();
+    if (this.socket?.readyState === WebSocket.OPEN && !this.restricted) {
+      try {
+        this.socket.send(
+          JSON.stringify({
+            peerMode: 'content',
+            browserInstanceId: this.browserInstanceId,
+            accessGrantId: this.accessGrantId,
+          }),
+        );
+      } catch {
+        this.reconnect();
+      }
+    }
+  }
   reconnect() {
     if (this.restricted) return;
+    this.revokeOperations();
     const generation = ++this.generation;
     clearTimeout(this.retry);
     this.socket?.close();
@@ -136,7 +173,15 @@ export class Bridge {
     socket.onopen = () => {
       if (generation !== this.generation) return socket.close();
       this.connectedWorkspace = useEditor.getState().workspaceId;
-      socket.send(JSON.stringify({ workspaceId: this.connectedWorkspace, peerMode: 'content' }));
+      bridgeDiagnostics.connect();
+      socket.send(
+        JSON.stringify({
+          workspaceId: this.connectedWorkspace,
+          peerMode: 'content',
+          browserInstanceId: this.browserInstanceId,
+          accessGrantId: this.accessGrantId,
+        }),
+      );
       useEditor.setState({ bridgeStatus: 'connected' });
     };
     socket.onmessage = (event) => {
@@ -148,7 +193,23 @@ export class Bridge {
         } catch {
           return;
         }
+        if (bridgeDiagnostics.receive(command)) return;
         if (!command.id || !command.path?.startsWith('/')) return;
+        const grant = this.accessGrantId;
+        const workspaceId = this.connectedWorkspace;
+        if (
+          command.operationId &&
+          command.browserInstanceId === this.browserInstanceId &&
+          command.accessGrantId === grant &&
+          !this.restricted
+        ) {
+          const preparation = this.operations.prepare(command as OperationCommand);
+          if (preparation) {
+            if (this.canReply(socket, generation))
+              socket.send(JSON.stringify({ id: command.id, ...preparation }));
+            return;
+          }
+        }
         let operation: WorkspaceOperation | undefined;
         const locking = isWorkspaceLockCommand(command.path, command.method);
         try {
@@ -166,20 +227,69 @@ export class Bridge {
             operation = await workspace.repo.db.captureOperation();
           if (!this.canReply(socket, generation)) return;
           if (operation?.signal.aborted) throw lockedWorkspace();
-          const body = await workspace.external(
-            command.path,
-            command.method,
-            command.data,
-            operation,
-          );
+          const checkGrant = () => {
+            if (
+              grant !== this.accessGrantId ||
+              workspaceId !== this.connectedWorkspace ||
+              this.restricted
+            )
+              throw new StorageError(
+                403,
+                'The originating MCP grant was revoked. Read saved state before issuing a fresh request.',
+              );
+          };
+          const guarded = operation
+            ? {
+                ...operation,
+                check: async () => {
+                  await operation!.check();
+                  checkGrant();
+                },
+              }
+            : undefined;
+          const execute = async () => {
+            try {
+              const body = await workspace.external(
+                command.path,
+                command.method,
+                command.data,
+                guarded,
+              );
+              return { status: bridgeResponseStatus(command.path, command.method), body };
+            } catch (error) {
+              return { status: bridgeErrorStatus(error), body: bridgeError(error) };
+            }
+          };
+          let response;
+          if (command.operationId) {
+            if (
+              command.browserInstanceId !== this.browserInstanceId ||
+              command.accessGrantId !== grant
+            )
+              throw new StorageError(
+                409,
+                'This operation belongs to a different browser or access grant. Read saved state before issuing new work.',
+              );
+            if (!['reserve', 'execute', 'status'].includes(command.operationAction ?? ''))
+              throw new StorageError(422, 'Invalid operation action.');
+            response = await this.operations.request(
+              command as OperationCommand,
+              async () => {
+                if (locking && workspaceSecurityStatus(workspace.repo.db).state === 'locked')
+                  return;
+                if (!guarded) throw lockedWorkspace();
+                await workspace.authorizeExternal(command.path, command.method, guarded);
+              },
+              execute,
+            );
+          } else response = await execute();
           // Only this exact command intentionally revokes its own lease and returns public metadata.
           if (!locking) {
             await operation?.check();
             if (operation?.signal.aborted) throw lockedWorkspace();
           }
-          const status = bridgeResponseStatus(command.path, command.method);
           if (this.canReply(socket, generation))
-            socket.send(JSON.stringify({ id: command.id, status, body }));
+            socket.send(JSON.stringify({ id: command.id, ...response }));
         } catch (error) {
           let responseError = error;
           if (operation) {
@@ -210,6 +320,7 @@ export class Bridge {
     };
     socket.onclose = () => {
       if (generation !== this.generation) return;
+      bridgeDiagnostics.disconnect();
       if (this.restricted) {
         this.disconnect();
         return;
@@ -225,6 +336,10 @@ export class Bridge {
       socket === this.socket &&
       socket.readyState === WebSocket.OPEN
     );
+  }
+  private revokeOperations() {
+    this.accessGrantId = crypto.randomUUID();
+    this.operations.clear();
   }
   private scheduleRetry(generation: number) {
     clearTimeout(this.retry);

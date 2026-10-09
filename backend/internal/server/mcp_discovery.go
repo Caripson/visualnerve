@@ -17,7 +17,7 @@ const mcpAPIGuide = `# Visual Nerve API guide
 
 ## Discover the contract through MCP
 
-Start with visual_nerve_api_docs with {} (or omit arguments) for this compact guide. When detailed command fields or schemas are needed, request {"document":"openapi"} for the complete bundled OpenAPI contract or {"document":"all"} for both documents. The same content is available through resources/read at visual-nerve://docs/guide and visual-nerve://docs/openapi. Documentation discovery is read-only, requires no connected browser, and never reads workspace records. The OpenAPI document is read from this server's bundled openapi.yaml; no external fetch is performed.
+Start with visual_nerve_api_docs with {} (or omit arguments) for this compact guide. When detailed command fields or schemas are needed, request {"document":"endpoint","path":"/diagrams/{diagramId}/bulk","method":"POST"} for that exact operation and its complete transitive component dependencies, including shared path parameters and security schemes. Use documented path templates without /api/v1, actual IDs or query parameters, and uppercase GET/POST/PUT/PATCH/DELETE. path and method are required for endpoint and rejected for other selectors. Unknown operations or unresolved bundled references return an explicit tool error; no schema is truncated. Request {"document":"openapi"} for the complete bundled OpenAPI contract or {"document":"all"} for both documents. The same full documents are available through resources/read at visual-nerve://docs/guide and visual-nerve://docs/openapi. Documentation discovery is read-only, requires no connected browser, and never reads workspace records. The OpenAPI document is read from this server's bundled openapi.yaml; no external fetch is performed.
 
 Call visual_nerve_request for workspace commands only. Paths omit /api/v1, for example {"path":"/diagrams","method":"GET"}. /api/docs and /api/openapi.yaml are HTTP documentation routes, not browser graph commands; do not send them to visual_nerve_request.
 
@@ -35,9 +35,21 @@ Only a previously authorized open socket is retained as restricted control when 
 
 Encryption protects persisted records while locked, not content intentionally released to an authorized client. API/MCP reads, diagram exports and GET /workspace/export return readable semantic information. The browser's encrypted backup download is a separate user action; restore it through the browser, not a programmatic password endpoint. Changing the live workspace password does not update downloaded backup files: old copies retain their own password/recovery credentials. The local architecture has no mandatory backend or SSO, and makes no compliance/certification guarantee.
 
+## Recoverable writes and bridge discovery
+
+Bridge version 0.4.0 advertises operations-v1 and endpoint-docs-v1 with supported tool names in direct HTTP GET /api/v1/health (/health relative to the REST base) and the browser handshake. This identifies software support, not workspace content or authorization. visual_nerve_request with path:/health instead reads the connected browser's semantic IndexedDB health; it does not expose bridge-only tools or capabilities. Do not diagnose an old bridge from their absence in that browser response. Use a current bridge and refreshed browser tab; old tabs remain one-shot and cannot reserve/recover operation IDs.
+
+Before a write, call POST /operations with exactly {} to reserve a server-issued opaque operationId. This requires an unlocked connected browser, accepted storage and Read + write. Pass that ID as the optional operationId argument of visual_nerve_request, or REST header X-Visual-Nerve-Operation-Id. Successful command bodies are unchanged; identity appears in MCP structuredContent.operationId or the REST response header. GET /operations/{operationId} returns the original browser receipt {operationId,state,resultAvailable,status?,result?}; states are reserved, running, succeeded, failed and unknown. Opaque operation tokens are not graph UUIDs.
+
+OPERATION_OUTCOME_UNKNOWN means a dispatched write may still commit. Inspect its receipt or retry only with the same operation ID and identical method/path/JSON data, including absent versus null. Never blindly repeat it with a new ID. Conflicting reuse returns 409 OPERATION_CONFLICT. Identity is bound to the original workspace, origin, browser instance and access grant; another tab or fresh grant cannot reroute it. A bridge restart returns 409 OPERATION_OUTCOME_UNKNOWN; receipt expiry returns 410 OPERATION_EXPIRED. When recovery is unavailable or resultAvailable is false, reconcile saved model state before fresh work. Browser receipts stay in RAM for up to 15 minutes, 256 entries and 8 MiB of readable results. The bridge retains only opaque routing/fingerprint metadata in RAM for up to 15 minutes and 1024 entries, never private bodies or disk data. Reload, lock and revocation discard recovery data; no integration traffic unlocks or renews the session.
+
+Invalid browser acknowledgments after dispatch return 502 OPERATION_OUTCOME_UNKNOWN with the same recovery rules. Receipt state failed means the browser returned a command error; it does not prove that every multi-phase runtime side effect was rolled back. This provides at-most-once command execution within retained browser/grant scope, not exactly-once transactions across page or bridge lifetimes.
+
 ## Process Simulator
 
 Process Simulator is its own document type, process-simulator, with graph.simulation={type:"process-simulator",schemaVersion:1,...}. GET /simulation/capabilities discovers model units, operations and retention limits. Create through POST /diagrams with {name,type:"process-simulator"}; GET /diagrams includes these documents. GET /diagrams/{diagramId}/simulation returns the complete semantic topology, particle types, resource requirements, queues, scaling, improvements, economics and scenarios. PUT the exact {baseVersion,model} replaces it atomically. Semantic CRUD for processes, nodes, edges, particle-types, resources, improvements and scenarios is under that same simulation route; POST/PATCH use {baseVersion,value}, and DELETE uses ?baseVersion=N. Node/edge changes update the native canvas in the same transaction. Read exact schemas before editing. No business semantics are inferred from canvas coordinates.
+
+POST /spatial-diagrams with {name,type:"process-simulator"} creates a blank, semantically valid schema-version-1 simulation in a 3D view; configure its particles, sources, Work, outcomes and flow edges through versioned simulation commands before running. Ordinary POST /diagrams with that type retains the kiosk example. Both use the same engine, with full live capacity banks and particle traffic visualized in 2D.
 
 GET /templates lists browser-local {id,name,builtin,graph} records; GET /templates/{id} reads one. The UI's Process Simulator template has id process-simulator-blank and a valid empty graph.simulation, ready for guided setup. Kiosk + package pickup has the preserved id process-simulator and explicit demo assumptions/scenarios. POST /diagrams with type:"process-simulator" retains the kiosk default for compatibility. To build from zero, create the document, then PUT its /simulation with current baseVersion and either the empty template's complete graph.simulation or your own full model. An empty model still requires type, schemaVersion, currency, defaults and all six arrays: nodes, edges, particleTypes, resources, improvements and scenarios. Add a particle type, Source, Work and Outcome plus flow edges before running. Alternatively, replace the entire connected model in one atomic PUT. Use canonical IDs returned by the save when editing persisted entries and the updated diagram.version for the next baseVersion; new readable node/edge IDs may be normalized to UUIDs with their aliases retained as externalId.
 
@@ -85,7 +97,7 @@ Visual Nerve supports native 2D diagrams and 3D views of the same canonical grap
 
 For 2D, use POST /diagrams with {name,type?}, then populate the graph with the standard nodes/edges or bulk commands. For a requested 3D diagram, use visual_nerve_request with {"path":"/spatial-diagrams","method":"POST","data":{"name":"Requested 3D diagram","type":"mindmap"}}. This creates and opens a graph in 3D mode and returns its diagram, nodes and edges. Read the returned diagram.id and diagram.version before adding content.
 
-Populate or edit that same graph through POST /diagrams/{diagramId}/bulk, node/edge commands, versioned PATCH, or PUT /diagrams/{diagramId}/graph. Bulk supports upsert with externalId, and edges can refer to nodes through sourceExternalId/targetExternalId. Consult the full OpenAPI schemas for fields and required versions. PATCH requires the entity's version; replacing a graph requires baseVersion. Use current response versions for subsequent edits.
+Populate or edit that same graph through POST /diagrams/{diagramId}/bulk, node/edge commands, versioned PATCH, or PUT /diagrams/{diagramId}/graph. externalId is an ordinary stable integration string, such as truck or engineering, not a UUID. Bulk supports upsert with externalId, and edges can refer to nodes through sourceExternalId/targetExternalId. Bulk updates match externalId only; use versioned PATCH to edit an existing canonical UUID. An existing id without its matching externalId returns 409. Both identifiers must agree when supplied together; mismatches and duplicate explicit IDs/external IDs within a bulk collection return 422 without partial writes. New entities may supply an unused UUID. Supplied stale entity versions return 409, including owners; entity version and diagram baseVersion remain optional for external-ID bulk upserts. Consult the scoped endpoint or full OpenAPI schemas for fields and required versions. PATCH requires the entity's version; replacing a graph requires baseVersion. Use current response versions for subsequent edits.
 
 Node metadata.spatial is {version:1,position?:{x,y,z}}. Diagram settings.spatialView is {version:1,mode:"2d"|"3d",camera?}. Keep each node's native x/y/width/height as an independent readable 2D layout for PNG/PDF. Do not replace the 2D layout with 3D coordinates. Explicit 3D changes leave that layout intact. Moving displayed 2D geometry shifts an existing explicit 3D X/Y by the corresponding movement, preserving Z and the placement offset; conversion uses the previous uniform relief scale. New explicit X/Y/Z in the same command takes precedence. Editor commands and repository API writes, including PATCH, bulk and graph replacement, share this behavior. Both views use the same nodes and relationships; switching modes does not require a second graph or schema change. Reserved fields and exchange format remain version 1. PNG/PDF export renders in the browser using the 2D layout.
 
@@ -176,7 +188,7 @@ func (s *Server) mcpReadResource(data json.RawMessage) (any, *mcpError) {
 }
 
 func (s *Server) mcpDocsTool(data json.RawMessage) (any, *mcpError) {
-	arguments, err := mcpObject(data, true, "document")
+	arguments, err := mcpObject(data, true, "document", "path", "method")
 	if err != nil {
 		return nil, err
 	}
@@ -187,6 +199,31 @@ func (s *Server) mcpDocsTool(data json.RawMessage) (any, *mcpError) {
 	if _, provided := arguments["document"]; !provided {
 		selected = "guide"
 	}
+	if selected == "endpoint" {
+		path, err := mcpString(arguments, "path", true)
+		if err != nil {
+			return nil, err
+		}
+		method, err := mcpString(arguments, "method", true)
+		if err != nil {
+			return nil, err
+		}
+		if method != "GET" && method != "POST" && method != "PUT" && method != "PATCH" && method != "DELETE" {
+			return nil, invalidMCPParams("endpoint method must be GET, POST, PUT, PATCH or DELETE")
+		}
+		document, readError := s.mcpDocument(mcpOpenAPIURI)
+		if readError == nil {
+			var scoped []byte
+			scoped, readError = endpointOpenAPI([]byte(document["text"]), path, method)
+			if readError == nil {
+				return map[string]any{"isError": false, "content": []any{map[string]string{"type": "text", "text": string(scoped)}}}, nil
+			}
+		}
+		return map[string]any{"isError": true, "content": []any{map[string]string{"type": "text", "text": readError.Error()}}}, nil
+	}
+	if arguments["path"] != nil || arguments["method"] != nil {
+		return nil, invalidMCPParams("path and method are supported only with document endpoint")
+	}
 	var uris []string
 	switch selected {
 	case "all":
@@ -196,7 +233,7 @@ func (s *Server) mcpDocsTool(data json.RawMessage) (any, *mcpError) {
 	case "openapi":
 		uris = []string{mcpOpenAPIURI}
 	default:
-		return nil, invalidMCPParams("document must be all, guide or openapi")
+		return nil, invalidMCPParams("document must be all, guide, openapi or endpoint")
 	}
 	content := make([]any, 0, len(uris))
 	for _, uri := range uris {

@@ -51,7 +51,7 @@ func mcpInitialize(data json.RawMessage) (any, *mcpError) {
 	return map[string]any{
 		"protocolVersion": version,
 		"capabilities":    map[string]any{"tools": map[string]any{}, "resources": map[string]any{}},
-		"serverInfo":      map[string]string{"name": "visual-nerve", "version": "0.3.0"},
+		"serverInfo":      map[string]string{"name": "visual-nerve", "version": bridgeVersion},
 		"instructions":    mcpProtocolPolicy + mcpInstructions,
 	}, nil
 }

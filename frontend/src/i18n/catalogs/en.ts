@@ -1,4 +1,8 @@
 const catalog = {
+  'integration.bridge.updateRequired':
+    'Update the local bridge, then reconnect your MCP client and refresh its tool list. This connection does not advertise the current API documentation and safe-write capabilities.',
+  'integration.bridge.detectedVersion': 'Detected bridge version: {version}',
+  'integration.bridge.updateGuide': 'Check the bridge and discovered tools',
   'appUpdate.title': 'An update is ready',
   'appUpdate.hint':
     'New fixes and features are ready. Update when it suits you; your workspace stays in this browser.',

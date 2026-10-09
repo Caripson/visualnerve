@@ -1,6 +1,10 @@
 import type { Catalog } from '../types';
 
 const catalog = {
+  'integration.bridge.updateRequired':
+    'Päivitä paikallinen silta, yhdistä MCP-asiakas uudelleen ja päivitä sen työkaluluettelo. Tämä yhteys ei ilmoita nykyisiä API-dokumentoinnin ja turvallisten kirjoitusten ominaisuuksia.',
+  'integration.bridge.detectedVersion': 'Tunnistettu siltaversio: {version}',
+  'integration.bridge.updateGuide': 'Tarkista silta ja löydetyt työkalut',
   'appUpdate.title': 'Päivitys on valmis',
   'appUpdate.hint':
     'Uusia korjauksia ja toimintoja on saatavilla. Päivitä sinulle sopivana hetkenä; työtilasi säilyy tässä selaimessa.',

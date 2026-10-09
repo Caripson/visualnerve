@@ -1,6 +1,10 @@
 import type { Catalog } from '../types';
 
 const catalog = {
+  'integration.bridge.updateRequired':
+    'Aktualisieren Sie die lokale Bridge, verbinden Sie den MCP-Client erneut und aktualisieren Sie seine Werkzeugliste. Diese Verbindung meldet nicht die aktuellen Funktionen für API-Dokumentation und sichere Schreibvorgänge.',
+  'integration.bridge.detectedVersion': 'Erkannte Bridge-Version: {version}',
+  'integration.bridge.updateGuide': 'Bridge und erkannte Werkzeuge prüfen',
   'appUpdate.title': 'Ein Update ist bereit',
   'appUpdate.hint':
     'Neue Fehlerbehebungen und Funktionen sind bereit. Aktualisieren Sie, wenn es Ihnen passt; Ihr Arbeitsbereich bleibt in diesem Browser.',

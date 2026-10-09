@@ -830,6 +830,7 @@ export class Workspace {
     // Revocation closes the live grant before a persisted write can wait on IDB.
     if (key === 'mcp-access') {
       accessChoice = ++this.accessChoice;
+      if (this.repo === repository) bridge.beginAccessChoice();
       const current = this.mcpGrant(useEditor.getState().mcpAccess);
       const requested = this.mcpGrant(value);
       this.accessCeiling =
@@ -894,17 +895,37 @@ export class Workspace {
     data?: unknown,
     originatingOperation?: WorkspaceOperation,
   ): Promise<T> {
+    const accessChoice = this.accessChoice;
     if (method === 'GET' && path.replace(/^\/api\/v1/, '') === '/workspace/security')
       return this.repo.request<T>(path, method, data);
     if (isWorkspaceLockCommand(path, method))
       return this.lockExternal(data, originatingOperation) as Promise<T>;
     return this.withOperation(
-      (job) => this.externalCaptured<T>(path, method, data, job),
+      (job) => this.externalCaptured<T>(path, method, data, job, accessChoice),
       undefined,
       originatingOperation,
     );
   }
+  /** Cached transport results require the same current browser permissions as fresh commands. */
+  async authorizeExternal(path: string, method: string, operation: WorkspaceOperation) {
+    await operation.check();
+    await this.requireStorageConsent(operation.storage);
+    const permission = await operation.storage.settings.get('mcp-access');
+    if (!useEditor.getState().privacyAcknowledged)
+      throw new StorageError(403, 'Accept local storage before using the workspace.');
+    assertMcpAccess(this.mcpGrant(useEditor.getState().mcpAccess), path, method);
+    assertMcpAccess(mcpAccess(permission?.value), path, method);
+    await operation.check();
+  }
+  private assertAccessChoice(choice: number) {
+    if (choice !== this.accessChoice)
+      throw new StorageError(
+        403,
+        'The originating MCP grant was revoked. Submit a fresh request after reviewing saved state.',
+      );
+  }
   private async lockExternal(data: unknown, originatingOperation?: WorkspaceOperation) {
+    const accessChoice = this.accessChoice;
     if (
       data !== undefined &&
       (!data ||
@@ -921,6 +942,7 @@ export class Workspace {
     const operation = originatingOperation ?? (await this.repo.db.captureOperation());
     const authorize = async () => {
       await operation.check();
+      this.assertAccessChoice(accessChoice);
       this.assertLifecycle(lifecycle);
       await operation.storage.atomic('r', ['settings'], async (scope) => {
         await this.requireStorageConsent(scope);
@@ -931,6 +953,7 @@ export class Workspace {
           throw new StorageError(403, 'Accept local storage before using the workspace.');
       });
       await operation.check();
+      this.assertAccessChoice(accessChoice);
       this.assertLifecycle(lifecycle);
       assertMcpAccess(this.mcpGrant(useEditor.getState().mcpAccess), '/workspace/lock', 'POST');
     };
@@ -952,6 +975,7 @@ export class Workspace {
             'Unlock the workspace in the browser to continue.',
           );
         this.assertLifecycle(lifecycle);
+        this.assertAccessChoice(accessChoice);
         assertMcpAccess(this.mcpGrant(useEditor.getState().mcpAccess), '/workspace/lock', 'POST');
       });
       return workspaceSecurityStatus(this.repo.db);
@@ -964,20 +988,25 @@ export class Workspace {
     method: string,
     data: unknown,
     job: WorkspaceJob,
+    accessChoice: number,
   ): Promise<T> {
     const { operation } = job;
+    this.assertAccessChoice(accessChoice);
     assertMcpAccess(this.mcpGrant(useEditor.getState().mcpAccess), path, method);
     await this.settled();
     const permission = await operation.storage.settings.get('mcp-access');
     assertMcpAccess(mcpAccess(permission?.value), path, method);
+    this.assertAccessChoice(accessChoice);
     const authorize = async (scope: WorkspaceStorage = operation.storage) => {
       await operation.check();
+      this.assertAccessChoice(accessChoice);
       await this.requireStorageConsent(scope);
       const permission = await scope.settings.get('mcp-access');
       if (!useEditor.getState().privacyAcknowledged)
         throw new StorageError(403, 'Accept local storage before using the workspace.');
       assertMcpAccess(this.mcpGrant(useEditor.getState().mcpAccess), path, method);
       assertMcpAccess(mcpAccess(permission?.value), path, method);
+      this.assertAccessChoice(accessChoice);
     };
     if (spatialNavigation(useEditor.getState().graph, path, method, data)) {
       await this.requireStorageConsent(operation.storage);
@@ -1079,10 +1108,13 @@ export class Workspace {
           beforeHistoryWrite: authorize,
           beforeAnalysisSave: analysis
             ? async () => {
+                await operation.check();
+                this.assertAccessChoice(accessChoice);
                 await this.requireStorageConsent(operation.storage);
                 const current = await operation.storage.settings.get('mcp-access');
                 assertMcpAccess(this.mcpGrant(useEditor.getState().mcpAccess), path, method);
                 assertMcpAccess(mcpAccess(current?.value), path, method);
+                this.assertAccessChoice(accessChoice);
               }
             : undefined,
         },

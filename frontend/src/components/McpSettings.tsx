@@ -5,6 +5,7 @@ import { useEditor } from '../state/editor';
 import { workspace } from '../storage/workspace';
 import type { McpAccess } from '../integration/access';
 import { McpConnectionInfo } from './McpConnectionInfo';
+import { McpBridgeDiagnostics } from './McpBridgeDiagnostics';
 
 export function McpSettings() {
   const { t } = useI18n();
@@ -47,6 +48,7 @@ export function McpSettings() {
         })}
       </p>
       <p className="muted">{t('integration.settings.keepOpen')}</p>
+      {state === 'connected' && <McpBridgeDiagnostics />}
       <McpConnectionInfo endpoint={endpoint} />
       {state === 'error' && <p className="muted">{t('integration.settings.bridgeUnavailable')}</p>}
       <details className="storage-details">

@@ -22,6 +22,15 @@ it('keeps the explicit staging/development domain in website/docs/origin roles a
   expect(note).toContain('visualCapacity');
   expect(note).toContain('Counter 1/2/3');
   expect(note).toContain('not separate persistent process nodes');
+  expect(note).toContain('Bridge health on this computer: https://localhost:9443/api/v1/health');
+  expect(note).toContain('tools/list');
+  expect(note).toContain('operations-v1');
+  expect(note).toContain('"document":"endpoint"');
+  expect(note).toContain('type:"process-simulator"');
+  expect(note).toContain('stable externalId');
+  expect(note).toContain('Use PATCH for individual ID-based');
+  expect(note).toContain('OPERATION_OUTCOME_UNKNOWN');
+  expect(note).toContain('same operationId');
 });
 
 it.each([

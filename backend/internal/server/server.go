@@ -30,31 +30,42 @@ type Config struct {
 	AllowedOrigins           []string
 }
 type reply struct {
-	ID     string          `json:"id"`
-	Status int             `json:"status"`
-	Body   json.RawMessage `json:"body"`
+	ID          string          `json:"id"`
+	Status      int             `json:"status"`
+	Body        json.RawMessage `json:"body"`
+	OperationID string          `json:"operationId,omitempty"`
+}
+type pendingCommand struct {
+	response  chan reply
+	operation *bridgeOperation
+	action    string
 }
 type peer struct {
-	conn      *websocket.Conn
-	workspace string
-	mode      string
-	pending   map[string]chan reply
+	conn       *websocket.Conn
+	workspace  string
+	mode       string
+	origin     string
+	instanceID string
+	grantID    string
+	pending    map[string]*pendingCommand
 }
 type Server struct {
-	config  Config
-	handler http.Handler
-	mu      sync.Mutex
-	peers   map[*peer]bool
+	config         Config
+	handler        http.Handler
+	mu             sync.Mutex
+	peers          map[*peer]bool
+	operationEpoch string
+	operations     map[string]*bridgeOperation
 }
 
 func New(config Config) *Server {
-	s := &Server{config: config, peers: make(map[*peer]bool)}
+	s := &Server{config: config, peers: make(map[*peer]bool), operationEpoch: randomIdentifier(), operations: make(map[string]*bridgeOperation)}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/v1/health", func(w http.ResponseWriter, r *http.Request) {
 		s.mu.Lock()
 		count := len(s.peers)
 		s.mu.Unlock()
-		send(w, 200, map[string]any{"status": "ok", "storage": "indexeddb", "version": "0.3.0", "bridge": config.Bridge, "connected": count})
+		send(w, 200, map[string]any{"status": "ok", "storage": "indexeddb", "version": bridgeVersion, "bridge": config.Bridge, "connected": count, "tools": bridgeToolNames, "capabilities": bridgeCapabilities})
 	})
 	mux.HandleFunc("GET /bridge", s.connect)
 	mux.HandleFunc("/mcp", s.mcp)
@@ -156,8 +167,10 @@ func (s *Server) connect(w http.ResponseWriter, r *http.Request) {
 	defer conn.CloseNow()
 	conn.SetReadLimit(32 << 20)
 	var hello struct {
-		WorkspaceID string `json:"workspaceId"`
-		PeerMode    string `json:"peerMode"`
+		WorkspaceID       string `json:"workspaceId"`
+		PeerMode          string `json:"peerMode"`
+		BrowserInstanceID string `json:"browserInstanceId"`
+		AccessGrantID     string `json:"accessGrantId"`
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	err = wsjson.Read(ctx, conn, &hello)
@@ -165,23 +178,45 @@ func (s *Server) connect(w http.ResponseWriter, r *http.Request) {
 	if err != nil || len(hello.WorkspaceID) != 36 || !validPeerMode(hello.PeerMode) {
 		return
 	}
-	p := &peer{conn: conn, workspace: hello.WorkspaceID, mode: hello.PeerMode, pending: make(map[string]chan reply)}
+	if (hello.BrowserInstanceID == "") != (hello.AccessGrantID == "") ||
+		(hello.BrowserInstanceID != "" && (!validAuthorityID(hello.BrowserInstanceID) || !validAuthorityID(hello.AccessGrantID))) {
+		return
+	}
+	p := &peer{conn: conn, workspace: hello.WorkspaceID, mode: hello.PeerMode, origin: r.Header.Get("Origin"), instanceID: hello.BrowserInstanceID, grantID: hello.AccessGrantID, pending: make(map[string]*pendingCommand)}
 	s.mu.Lock()
 	s.peers[p] = true
 	s.mu.Unlock()
 	defer func() {
 		s.mu.Lock()
 		delete(s.peers, p)
-		for id, ch := range p.pending {
-			ch <- reply{Status: 503, Body: json.RawMessage(`{"error":"browser disconnected"}`)}
+		for id, pending := range p.pending {
+			if pending.response != nil {
+				if pending.operation != nil {
+					pending.response <- operationFailure(503, "OPERATION_OUTCOME_UNKNOWN", pending.operation.id, "The browser disconnected after dispatch. Reconcile this operation before sending another write.")
+				} else if pending.action == "execute" {
+					pending.response <- operationFailure(503, "OPERATION_OUTCOME_UNKNOWN", "", "The legacy browser disconnected after dispatch. The write may have committed; inspect the model before repeating it.")
+				} else {
+					pending.response <- reply{Status: 503, Body: json.RawMessage(`{"error":"browser disconnected"}`)}
+				}
+			}
 			delete(p.pending, id)
 		}
 		s.mu.Unlock()
 	}()
+	if p.instanceID != "" {
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		err = wsjson.Write(ctx, conn, map[string]any{"type": "bridge-info", "version": bridgeVersion, "tools": bridgeToolNames, "capabilities": bridgeCapabilities})
+		cancel()
+		if err != nil {
+			return
+		}
+	}
 	for {
 		var response struct {
 			reply
-			PeerMode string `json:"peerMode"`
+			PeerMode          string `json:"peerMode"`
+			BrowserInstanceID string `json:"browserInstanceId"`
+			AccessGrantID     string `json:"accessGrantId"`
 		}
 		if err = wsjson.Read(r.Context(), conn, &response); err != nil {
 			return
@@ -192,15 +227,34 @@ func (s *Server) connect(w http.ResponseWriter, r *http.Request) {
 				s.mu.Unlock()
 				return
 			}
+			if response.BrowserInstanceID != "" || response.AccessGrantID != "" {
+				if response.BrowserInstanceID != p.instanceID || !validAuthorityID(response.AccessGrantID) {
+					s.mu.Unlock()
+					return
+				}
+				p.grantID = response.AccessGrantID
+			}
 			p.mode = response.PeerMode
 			s.mu.Unlock()
 			continue
 		}
-		ch := p.pending[response.ID]
+		pending := p.pending[response.ID]
 		delete(p.pending, response.ID)
+		var responseChannel chan reply
+		if pending != nil {
+			responseChannel = pending.response
+		}
+		if pending != nil && pending.operation != nil && pending.action == "execute" {
+			pending.operation.terminal = true
+			pending.operation.completed = time.Now()
+		}
 		s.mu.Unlock()
-		if ch != nil {
-			ch <- response.reply
+		if pending != nil && responseChannel != nil {
+			// Operation identity is transport metadata; never trust a browser to replace it.
+			if pending.operation != nil {
+				response.OperationID = pending.operation.id
+			}
+			responseChannel <- response.reply
 		}
 	}
 }
@@ -209,6 +263,9 @@ func (s *Server) connect(w http.ResponseWriter, r *http.Request) {
 // Omitted modes preserve the existing legacy client protocol.
 func validPeerMode(mode string) bool { return mode == "" || mode == "content" || mode == "control" }
 func (s *Server) forward(ctx context.Context, workspace, path, method string, data json.RawMessage) (reply, error) {
+	return s.forwardOperation(ctx, workspace, path, method, data, "")
+}
+func (s *Server) forwardOperation(ctx context.Context, workspace, path, method string, data json.RawMessage, operationID string) (reply, error) {
 	if !s.config.Bridge {
 		return reply{Status: 503}, errors.New("local integration is disabled")
 	}
@@ -230,8 +287,16 @@ func (s *Server) forward(ctx context.Context, workspace, path, method string, da
 	}
 	id := hex.EncodeToString(key[:])
 	s.mu.Lock()
+	operation, action, operationError := s.prepareOperationLocked(workspace, path, method, data, operationID)
+	if operationError != nil {
+		s.mu.Unlock()
+		return *operationError, nil
+	}
 	var selected *peer
 	for p := range s.peers {
+		if operation != nil && !operation.matches(p) {
+			continue
+		}
 		if workspace != "" && p.workspace != workspace {
 			continue
 		}
@@ -239,32 +304,94 @@ func (s *Server) forward(ctx context.Context, workspace, path, method string, da
 			s.mu.Unlock()
 			return reply{Status: 409}, errors.New("multiple workspaces are connected; provide X-Visual-Nerve-Workspace")
 		}
-		if selected == nil || (selected.mode == "control" && p.mode != "control") {
+		if selected == nil || (selected.mode == "control" && p.mode != "control") || (selected.mode != "control" && p.mode != "control" && selected.instanceID == "" && p.instanceID != "") {
 			selected = p
 		}
 	}
 	if selected == nil {
 		s.mu.Unlock()
+		if operation != nil {
+			return operationFailure(409, "OPERATION_OUTCOME_UNKNOWN", operation.id, "The original browser and access grant are unavailable. A different tab or grant cannot retry this operation; reconcile the model manually."), nil
+		}
 		return reply{Status: 503}, errors.New("No active Visual Nerve browser session. Open https://app.visualnerve.com/, unlock the workspace and enable MCP access in Settings.")
 	}
+	if operation == nil && (action == "reserve" || operationID != "") && selected.instanceID == "" {
+		s.mu.Unlock()
+		return operationFailure(426, "OPERATION_PROTOCOL_REQUIRED", "", "Reload the browser to enable operation recovery before using operation IDs."), nil
+	}
+	if len(selected.pending) >= maxPendingCommands {
+		s.mu.Unlock()
+		return operationFailure(429, "BRIDGE_BUSY", operationID, "Too many browser commands are pending. Inspect the existing operation before retrying a write."), nil
+	}
+	operationNew := false
+	if operation == nil && (action == "reserve" || method != "GET") && selected.instanceID != "" {
+		operation, operationError = s.newOperationLocked(selected)
+		if operationError != nil {
+			s.mu.Unlock()
+			return *operationError, nil
+		}
+		operationNew = true
+	}
+	if operation != nil && action == "execute" {
+		if conflict := operation.bind(path, method, data); conflict != nil {
+			s.mu.Unlock()
+			return *conflict, nil
+		}
+		operation.dispatched = true
+	}
 	ch := make(chan reply, 1)
-	selected.pending[id] = ch
+	pending := &pendingCommand{response: ch, operation: operation, action: action}
+	selected.pending[id] = pending
 	s.mu.Unlock()
-	defer func() { s.mu.Lock(); delete(selected.pending, id); s.mu.Unlock() }()
+	defer func() {
+		s.mu.Lock()
+		if current := selected.pending[id]; current == pending {
+			if operation != nil {
+				// Keep only correlation metadata so a late acknowledgment can finish the
+				// operation. Never retain its private result after the waiter has gone.
+				pending.response = nil
+			} else {
+				delete(selected.pending, id)
+			}
+		}
+		s.mu.Unlock()
+	}()
 	command := map[string]any{"id": id, "path": path, "method": method, "data": data}
+	if operation != nil {
+		command["operationId"] = operation.id
+		command["browserInstanceId"] = operation.instanceID
+		command["accessGrantId"] = operation.grantID
+		command["operationAction"] = action
+		command["operationNew"] = operationNew
+	}
 	if path == "/workspace/lock" && method == "POST" && len(data) == 0 {
 		delete(command, "data")
 	}
 	if err := wsjson.Write(ctx, selected.conn, command); err != nil {
+		if operation != nil {
+			return operationFailure(503, "OPERATION_OUTCOME_UNKNOWN", operation.id, "The browser dispatch could not be acknowledged. Reconcile the operation before sending another write."), nil
+		}
 		return reply{Status: 503}, err
 	}
 	select {
 	case response := <-ch:
 		if response.Status < 200 || response.Status > 599 {
+			if operation != nil {
+				return operationFailure(502, "OPERATION_OUTCOME_UNKNOWN", operation.id, "The browser returned an invalid acknowledgment. Reconcile this operation before sending another write."), nil
+			}
+			if method != "GET" {
+				return operationFailure(502, "OPERATION_OUTCOME_UNKNOWN", "", "The legacy browser returned an invalid acknowledgment. The write may have committed; inspect the model before repeating it."), nil
+			}
 			return reply{Status: 502}, errors.New("invalid browser response")
 		}
 		return response, nil
 	case <-ctx.Done():
+		if operation != nil {
+			return operationFailure(504, "OPERATION_OUTCOME_UNKNOWN", operation.id, "The browser did not acknowledge before the transport deadline. This operation may still commit; query its status or retry only with the same operation ID and exact payload."), nil
+		}
+		if method != "GET" {
+			return operationFailure(504, "OPERATION_OUTCOME_UNKNOWN", "", "The legacy browser did not acknowledge before the deadline. The write may still commit; inspect the model before repeating it."), nil
+		}
 		return reply{Status: 504}, ctx.Err()
 	}
 }
@@ -316,6 +443,12 @@ func commandTimeout(path string) time.Duration {
 }
 func (s *Server) forwardHTTP(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1")
+	operationHeaders := r.Header.Values("X-Visual-Nerve-Operation-Id")
+	if len(operationHeaders) > 1 || (len(operationHeaders) == 1 && operationHeaders[0] == "") {
+		response := operationFailure(422, "INVALID_OPERATION_ID", "", "Supply exactly one nonempty operation ID header, or omit it for a new command.")
+		send(w, response.Status, response.Body)
+		return
+	}
 	var data json.RawMessage
 	// Existing DELETE commands are bodyless; video cancellation has an exact {} contract.
 	if r.Method != "GET" && (r.Method != "DELETE" || path == "/presentation/video") {
@@ -335,7 +468,10 @@ func (s *Server) forwardHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), commandTimeout(path))
 	defer cancel()
-	response, err := s.forward(ctx, r.Header.Get("X-Visual-Nerve-Workspace"), path, r.Method, data)
+	response, err := s.forwardOperation(ctx, r.Header.Get("X-Visual-Nerve-Workspace"), path, r.Method, data, r.Header.Get("X-Visual-Nerve-Operation-Id"))
+	if response.OperationID != "" {
+		w.Header().Set("X-Visual-Nerve-Operation-Id", response.OperationID)
+	}
 	if err != nil {
 		failure(w, response.Status, err.Error())
 		return

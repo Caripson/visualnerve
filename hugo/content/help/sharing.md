@@ -52,6 +52,8 @@ An SVG is a visual export rather than the complete editable Visual Nerve model. 
 
 Very large SVG exports fail with a clear error instead of omitting content. The limits are 100,000 rendered elements, 250,000 text characters and a 16 MiB output file. Choose selected nodes or a smaller view if the complete diagram exceeds a limit.
 
+For a large Process Simulator, select a process group and choose **Selected nodes**. The export includes its actual steps and descendants, with the connections between them. Export separate subprocesses when a complete model is too large to render within the browser's time or memory budget. For API/MCP, use `POST /export` with `format: "svg"`, `scope: "selected"` and `nodeIds` read from the model or process hierarchy. Keep the complete JSON model as well; a cropped vector image does not contain the whole simulation.
+
 ![Export dialog with SVG selected and a choice of diagram area.](/help/images/export-svg.webp "Choose SVG for vector text and geometry; choose JSON for a restorable diagram.")
 
 Ordinary canvas filters do not remove content from a complete diagram export. CSV visual exports show the current analysis view, with its current measures and visible relationships, rather than every retained historical group. If you explicitly select an older CSV group revealed by exploration, the export labels it **Outside current data view**.

@@ -5,7 +5,11 @@ import { workspace } from '../src/storage/workspace';
 import { VaultStorageError } from '../src/security/vault-storage';
 
 vi.mock('../src/storage/workspace', () => ({
-  workspace: { external: vi.fn(), repo: { db: { captureOperation: vi.fn() } } },
+  workspace: {
+    external: vi.fn(),
+    authorizeExternal: vi.fn(),
+    repo: { db: { captureOperation: vi.fn() } },
+  },
 }));
 
 class LocalSocket {
@@ -39,6 +43,9 @@ let origin: {
 beforeEach(() => {
   vi.useFakeTimers();
   vi.mocked(workspace.external).mockReset();
+  vi.mocked(workspace.authorizeExternal)
+    .mockReset()
+    .mockImplementation(async (_path, _method, operation) => operation.check());
   delete (workspace.repo.db as unknown as { session?: unknown }).session;
   abort = new AbortController();
   origin = {
@@ -81,6 +88,106 @@ beforeEach(() => {
   bridge.start();
 });
 
+it('reuses an operation after an ordinary socket reconnect without performing the write twice', async () => {
+  useEditor.setState({ mcpAccess: 'write' });
+  sockets[0].open();
+  const hello = JSON.parse(sockets[0].send.mock.calls[0][0]);
+  let finish!: () => void;
+  vi.mocked(workspace.external).mockImplementationOnce(async () => {
+    await new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    return { id: 'saved-once', version: 1 };
+  });
+  const command = {
+    ...hello,
+    id: 'first',
+    path: '/diagrams',
+    method: 'POST',
+    data: { name: 'Once' },
+    operationId: 'vnop1.bridge.write',
+    operationAction: 'execute',
+    operationNew: true,
+  };
+  sockets[0].onmessage?.(new MessageEvent('message', { data: JSON.stringify(command) }));
+  await vi.waitFor(() => expect(workspace.external).toHaveBeenCalledOnce());
+  sockets[0].readyState = 3;
+  sockets[0].onclose?.();
+  await vi.advanceTimersByTimeAsync(3000);
+  sockets[1].open();
+  const reconnected = JSON.parse(sockets[1].send.mock.calls[0][0]);
+  expect(reconnected.browserInstanceId).toBe(hello.browserInstanceId);
+  expect(reconnected.accessGrantId).toBe(hello.accessGrantId);
+  finish();
+  await vi.advanceTimersByTimeAsync(0);
+  sockets[1].onmessage?.(
+    new MessageEvent('message', {
+      data: JSON.stringify({ ...command, id: 'retry', operationNew: false }),
+    }),
+  );
+  await vi.waitFor(() =>
+    expect(JSON.parse(sockets[1].send.mock.calls.at(-1)![0])).toMatchObject({ id: 'retry' }),
+  );
+  expect(workspace.external).toHaveBeenCalledOnce();
+  expect(JSON.parse(sockets[1].send.mock.calls.at(-1)![0])).toEqual({
+    id: 'retry',
+    status: 201,
+    body: { id: 'saved-once', version: 1 },
+  });
+});
+
+it('never revives a retained write result for an old grant after Off then Write', async () => {
+  useEditor.setState({ mcpAccess: 'write' });
+  sockets[0].open();
+  const hello = JSON.parse(sockets[0].send.mock.calls[0][0]);
+  vi.mocked(workspace.external).mockResolvedValueOnce({ text: 'Private saved result' });
+  const command = {
+    ...hello,
+    id: 'first',
+    path: '/diagrams',
+    method: 'POST',
+    data: {},
+    operationId: 'vnop1.bridge.write',
+    operationAction: 'execute',
+    operationNew: true,
+  };
+  sockets[0].onmessage?.(new MessageEvent('message', { data: JSON.stringify(command) }));
+  await vi.advanceTimersByTimeAsync(0);
+  await vi.waitFor(() =>
+    expect(JSON.parse(sockets[0].send.mock.calls.at(-1)![0])).toMatchObject({
+      id: 'first',
+      status: 201,
+    }),
+  );
+  useEditor.setState({ mcpAccess: 'off' });
+  useEditor.setState({ mcpAccess: 'write' });
+  sockets[1].open();
+  sockets[1].onmessage?.(
+    new MessageEvent('message', {
+      data: JSON.stringify({ ...command, id: 'old-retry', operationNew: false }),
+    }),
+  );
+  await vi.advanceTimersByTimeAsync(0);
+  expect(workspace.external).toHaveBeenCalledOnce();
+  expect(JSON.parse(sockets[1].send.mock.calls.at(-1)![0])).toMatchObject({ status: 409 });
+  expect(JSON.stringify(sockets[1].send.mock.calls)).not.toContain('Private saved result');
+});
+
+it('an explicit same-level access choice rotates receipt authority without reconnecting', () => {
+  useEditor.setState({ mcpAccess: 'write' });
+  sockets[0].open();
+  const hello = JSON.parse(sockets[0].send.mock.calls[0][0]);
+  bridge.beginAccessChoice();
+  const updated = JSON.parse(sockets[0].send.mock.calls.at(-1)![0]);
+  expect(updated).toMatchObject({
+    peerMode: 'content',
+    browserInstanceId: hello.browserInstanceId,
+  });
+  expect(updated.accessGrantId).not.toBe(hello.accessGrantId);
+  expect(construct).toHaveBeenCalledOnce();
+  expect(sockets[0].close).not.toHaveBeenCalled();
+});
+
 it('preserves structured locked-workspace status through the actual browser reply', async () => {
   useEditor.setState({ mcpAccess: 'read' });
   sockets[0].open();
@@ -114,7 +221,12 @@ it('executes and publishes a private command through the exact originating capab
     }),
   );
   await vi.advanceTimersByTimeAsync(0);
-  expect(workspace.external).toHaveBeenCalledWith('/diagrams', 'GET', undefined, origin);
+  expect(workspace.external).toHaveBeenCalledWith(
+    '/diagrams',
+    'GET',
+    undefined,
+    expect.objectContaining({ storage: origin.storage, signal: origin.signal }),
+  );
   expect(origin.check).toHaveBeenCalledOnce();
   expect(origin.dispose).toHaveBeenCalledOnce();
   expect(JSON.parse(sockets[0].send.mock.calls.at(-1)![0])).toEqual({
@@ -237,9 +349,12 @@ it('activates, changes grants, disables and reactivates from live settings witho
   expect(construct).toHaveBeenCalledOnce();
   sockets[0].open();
   expect(useEditor.getState().bridgeStatus).toBe('connected');
-  expect(sockets[0].send).toHaveBeenCalledWith(
-    JSON.stringify({ workspaceId: useEditor.getState().workspaceId, peerMode: 'content' }),
-  );
+  expect(JSON.parse(sockets[0].send.mock.calls[0][0])).toMatchObject({
+    workspaceId: useEditor.getState().workspaceId,
+    peerMode: 'content',
+    browserInstanceId: expect.any(String),
+    accessGrantId: expect.any(String),
+  });
 
   useEditor.setState({ mcpAccess: 'write' });
   expect(sockets[0].close).toHaveBeenCalledOnce();
@@ -352,7 +467,11 @@ it('retains only a previously open connection for locked control without reconne
   useEditor.setState({ mcpAccess: 'off', workspaceId: '' });
   bridge.start();
   expect(sockets[0].close).not.toHaveBeenCalled();
-  expect(sockets[0].send).toHaveBeenLastCalledWith(JSON.stringify({ peerMode: 'control' }));
+  expect(JSON.parse(sockets[0].send.mock.calls.at(-1)![0])).toMatchObject({
+    peerMode: 'control',
+    browserInstanceId: expect.any(String),
+    accessGrantId: expect.any(String),
+  });
   vi.mocked(workspace.repo.db.captureOperation).mockRejectedValueOnce(
     new VaultStorageError(423, 'WORKSPACE_LOCKED', 'Locked'),
   );

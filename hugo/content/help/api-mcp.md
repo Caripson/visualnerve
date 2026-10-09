@@ -90,12 +90,12 @@ On mobile, the normal UI remains usable locally. Integration still needs a compa
 
 Visual Nerve uses **4317** by default. One bridge listener serves the MCP `/mcp` endpoint, the browser WebSocket `/bridge` and the REST `/api/v1` routes. MCP does not need a second listener or a vendor-specific port.
 
-If another plugin or process already uses 4317, choose an available port explicitly. For example, to connect the public workspace through 4318:
+If another plugin or process already uses 4317, choose an available port explicitly. For example, to configure the isolated app connection through 4318, after including that port in its app build and response-header policy:
 
 ```sh
-./bin/visual-nerve --static ./public --bridge \
+./bin/visual-nerve --static ./public-app --bridge \
   --addr 127.0.0.1:4318 \
-  --allowed-origin https://www.visualnerve.com
+  --allowed-origin https://app.visualnerve.com
 ```
 
 Then save `ws://127.0.0.1:4318/bridge` under **Local connection details** in the app, and set your MCP client's URL to `http://127.0.0.1:4318/mcp`. REST requests use `http://127.0.0.1:4318/api/v1`. With trusted local TLS, use the matching `wss` and `https` schemes. Change the port in the client examples below to match your chosen listener.
@@ -126,6 +126,76 @@ Access changes and **Save connection** take effect in the open workspace without
 If the bridge uses `VISUAL_NERVE_BRIDGE_TOKEN`, the browser's **Integration token** must match it. That token lasts for the browser session and is excluded from backups and copied setup instructions. Configure the client's matching Authorization header through protected local settings or supported environment-variable references. Do not put real tokens in shared configuration files or prompts. Choose the tools you grant access to, since they receive the content you ask them to inspect.
 
 ## Configure your MCP client
+
+### Check the bridge and discovered tools
+
+The app, the local bridge executable and your MCP client are three separate programs. Updating the website does not update a bridge binary already running on your computer. Your client's version also does not identify the bridge version.
+
+Before giving an agent workspace commands:
+
+1. Inspect the local `GET /api/v1/health` address shown in the copied instructions. The current bridge reports version **0.4.0**, both MCP tool names, and the capabilities `operations-v1` and `endpoint-docs-v1`. Health contains public transport metadata; it does not read diagrams or unlock the workspace.
+2. Reconnect or initialize the MCP client, then inspect its discovered tools. It should show both **visual_nerve_request** and **visual_nerve_api_docs**. A client can retain an old tool list until you reconnect it.
+3. Ask the agent to read the compact guide before making commands. For a particular endpoint, it can request a smaller contract containing that operation and every referenced schema:
+
+```json
+{
+  "name": "visual_nerve_api_docs",
+  "arguments": {
+    "document": "endpoint",
+    "path": "/nodes/{nodeId}",
+    "method": "PATCH"
+  }
+}
+```
+
+Use the exact OpenAPI template path, including `{nodeId}` rather than an individual node's UUID. The guide, endpoint contract and full OpenAPI work without a connected browser.
+
+If these tools or capabilities are missing, stop the old bridge, replace or rebuild the executable from the current repository using its [build instructions](https://github.com/Caripson/visualnerve#run-locally), then restart it with your existing port, allowed origin and protected token settings. Reconnect the MCP client and refresh its tool discovery. Re-enable browser access if its grant has ended. **Connected** only confirms the browser transport; it does not prove that the client has current tools. Settings now shows an update reminder when the bridge cannot advertise the current capabilities. The reminder does not prevent normal UI editing.
+
+Older browser tabs and older bridge binaries can still perform one-shot commands, but do not provide the current retry protection. Refresh the app when saved work permits, update the bridge and rediscover the tools before using operation IDs.
+
+### Recover an uncertain write without creating it twice
+
+A transport timeout is not a rollback. A command can take longer than the bridge's response deadline and still commit in IndexedDB. Do not issue the same creation with a new ID simply because you received **504**.
+
+For work that must survive a lost response, reserve its operation ID before sending it:
+
+```json
+{ "path": "/operations", "method": "POST", "data": {} }
+```
+
+The response contains an opaque `operationId` and `state: "reserved"`. Use that ID as an argument on the subsequent write:
+
+```json
+{
+  "path": "/diagrams",
+  "method": "POST",
+  "data": { "name": "Delivery process", "type": "process-simulator" },
+  "operationId": "<the reserved operationId>"
+}
+```
+
+REST callers reserve with `POST /api/v1/operations` and pass the returned ID in the `X-Visual-Nerve-Operation-Id` header. Successful writes keep their normal response body. A write without an explicit ID receives one automatically from the current bridge; REST exposes it in the response header and MCP in `structuredContent.operationId`. Reserving first gives you the ID even if the entire later response is lost.
+
+After **504** with `code: "OPERATION_OUTCOME_UNKNOWN"`, inspect the operation through the same request tool:
+
+```json
+{ "path": "/operations/<operationId>", "method": "GET" }
+```
+
+| State | Meaning and next step |
+| ----- | --------------------- |
+| `reserved` | The command has not started in this browser. Send the intended write with this ID. |
+| `running` | The command is still being handled. Poll status; do not start a second copy. |
+| `succeeded` | The browser handled the command successfully. Inspect its result or reread saved data. |
+| `failed` | The browser returned an error. Inspect that response and saved state before preparing a corrected operation. |
+| `unknown`, expired or unavailable authority | The retained transport information cannot prove the outcome. Reread saved data and current versions before issuing new work. |
+
+An invalid browser acknowledgment can also produce **502 OPERATION_OUTCOME_UNKNOWN**. `failed` reports a browser command error, without guaranteeing rollback of every multi-phase runtime side effect. This is at-most-once command execution within retained browser/grant scope, not exactly-once transactions across page or bridge lifetimes.
+
+Retrying an identical write with the same ID reuses its in-flight or retained result. Changing the method, path or body under that ID returns **409 OPERATION_CONFLICT**. The bridge binds an operation to one browser tab, origin, workspace and access grant; it never moves an ambiguous write to another tab. Turning MCP Off, locking, reloading, changing the connection or starting a fresh grant can end this protection. A restarted bridge rejects IDs from its previous process. These errors do not prove that an earlier write failed.
+
+This is bounded session protection, not a permanent transaction log. Browser operation records expire after 15 minutes when inactive, are limited to 256 entries and retain up to 8 MiB of response text. Large results or older response bodies may be dropped while their status remains available. If `resultAvailable` is false, read the saved model; never execute the write again just to recover its response. The bridge keeps up to 1,024 routing records in memory, with the same retention period, and stores no request/result bodies or application database. Active operations are not evicted to make room for new ones; new work can receive an explicit limit error. Operation records are absent from backups and are cleared when the browser grant ends.
 
 The following direct HTTP examples connect to an **already running bridge on this computer**. They do not start it, grant browser access or unlock an encrypted workspace. Replace the URL if your saved connection uses a different loopback hostname, port or trusted HTTPS. Merge settings into the client's existing configuration rather than replacing other servers.
 

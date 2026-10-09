@@ -237,6 +237,8 @@ For a Router, choose a **Routing strategy**:
 
 Set **Fallback connection** deliberately. Weighted routing with no positive eligible branch uses a valid type-compatible fallback; if none exists, the particle fails rather than following an invented route.
 
+Each particle chooses one outgoing process connection at a time. Multiple sources, Work slots and process groups can run concurrently and compete for shared resources, but a branch does not clone one case into parallel child tasks or wait for all child tasks to rejoin. Explicit case-level fork/join synchronization is not currently supported. For example, drawing three outgoing lines for access, equipment and site readiness does not make the engine wait for all three before completing a delivery.
+
 ### Outcomes: completion and realized revenue
 
 Select an Outcome and choose **completed**, **failed** or **rejected**. **Realize revenue** determines whether it realizes the item's carried expected revenue; **Outcome revenue override** can supply an explicit value.

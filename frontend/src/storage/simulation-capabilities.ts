@@ -2,11 +2,12 @@ import {
   MAX_CAPACITY_CARDS_PER_BANK,
   MAX_ADDITIONAL_CAPACITY_CARDS,
 } from '../simulation/capacity-projection';
+import { browserApiVersion } from './api-version';
 
 export const simulationCapabilities = {
   type: 'process-simulator',
   schemaVersion: 1,
-  apiVersion: '0.3.0',
+  apiVersion: browserApiVersion,
   engine: 'deterministic-discrete-event',
   timeUnit: 'second',
   currency: 'one configurable currency per model',
