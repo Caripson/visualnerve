@@ -35,8 +35,8 @@ inventory and static audit. It emitted no ordinary JavaScript chunk-size warning
 
 | Built module | Minified bytes | Reported gzip size |
 | --- | ---: | ---: |
-| `editor/app.js` | 326,211 | 95.23 kB |
-| `WorkspaceSurface` | 492,375 | 151.01 kB |
+| `editor/app.js` | 326,211 | 95.22 kB |
+| `WorkspaceSurface` | 492,819 | 151.13 kB |
 | `Properties` | approximately 30.58 kB | 8.19 kB |
 | `jspdf.es.min` — separate export import | approximately 379.79 kB | 123.16 kB |
 
@@ -71,6 +71,8 @@ follow-ups below do not relabel it as a passing full-suite run.
 | Real encrypted language switching/offline reopen | Both native browser cases passed in the full run. All eight cached language modules work while locked/offline; human unlock restores the same graph. |
 | Native 3D language switching | Passed with the same canvas element, unchanged API geometry/camera and captured faces. |
 | Help captures | Four genuine encrypted-app images captured in light/dark: Settings and App language. Recovery/password material and bridge grants were absent. |
+| Final ordinary-control review | Found and corrected the remaining English New scenario prompt and ephemeral process-card ARIA guidance. Sixty relevant unit tests passed, including ten new checks for all eight languages, exact authored text, cache invalidation and unchanged model/data/geometry/camera. The native prompt case passed for all eight languages with canonical generated defaults, exact authored names, unchanged remaining model and cancel behavior. |
+| Complete affected-browser follow-up | **25/25 passed**, 2.4 minutes, on the final build: all accessibility cases, all eight-language UI/API/MCP checks, real scenario prompts, subprocess hierarchy, all twelve simulator UI cases and real 3D faces/camera/model retention. |
 
 The first 14-case follow-up recorded 13 passed and one failed: the language-parity
 baseline was captured before the initial camera-fit transaction finished. The
@@ -87,7 +89,8 @@ native-speaker certification.
 Local logs are ignored under `tmp/verification/`: `localization-checks-first.log`,
 `localization-boundary-budgets.log`, `localization-full-native-e2e.log`,
 `localization-final-native-followup.log`, `localization-capacity-native-repeat.log`,
-`localization-language-native-repeat.log`, and `localization-build-release.log`.
+`localization-language-native-repeat.log`, `localization-final-aria-scenario-units.log`,
+`localization-build-complete.log` and `localization-native-complete-followup.log`.
 
 ## Publication gate
 

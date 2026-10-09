@@ -1,6 +1,8 @@
 import { expect, test } from './fixtures';
 import { APP_LOCALES } from '../../src/i18n/types';
 import { LocaleCatalogLoader } from '../../src/i18n/catalog-loader';
+import { MessageFormatter } from '../../src/i18n/message-formatter';
+import { createBasicModel } from '../../src/simulation/examples';
 import type { Graph } from '../../src/model/types';
 
 test.use({ locale: 'sv-SE' });
@@ -60,6 +62,13 @@ test('all eight UI languages preserve the authoritative API/MCP graph, node sele
     await expect(page.locator('html')).toHaveAttribute('lang', id);
     await expect(dialog).toHaveAttribute('aria-label', catalog['app.settings']);
     await expect(selector).toHaveAttribute('aria-label', catalog['settings.appLanguage']);
+    await expect(page.locator(`.react-flow__node[data-id="${node.id}"]`)).toHaveAttribute(
+      'aria-label',
+      new MessageFormatter(id, catalog).t('editor.canvas.accessibility.objectLabel', {
+        title: node.title,
+        kind: catalog['editor.nodes.typeLabel.generic'],
+      }),
+    );
     await expect(
       dialog.getByLabel(catalog['voice.narrationVoiceField'], { exact: true }),
     ).toHaveValue('en_GB-alan-medium');
@@ -93,6 +102,61 @@ test('all eight UI languages preserve the authoritative API/MCP graph, node sele
   await expect(
     page.getByRole('heading', { level: 1, name: diagram.name, exact: true }),
   ).toBeVisible();
+});
+
+test('scenario creation prompts use every app language while authored names and the simulation model remain canonical', async ({
+  page,
+  request,
+}) => {
+  const model = createBasicModel();
+  const created = await request.post('/api/v1/diagrams', {
+    data: { name: 'Scenario authoring', type: 'process-simulator' },
+  });
+  expect(created.status()).toBe(201);
+  const diagram = await created.json();
+  const configured = await request.put(`/api/v1/diagrams/${diagram.id}/simulation`, {
+    data: { baseVersion: diagram.version, model },
+  });
+  expect(configured.ok()).toBe(true);
+  const baselineModel = ((await configured.json()) as Graph).simulation!;
+  await page.locator('.diagram-item').filter({ hasText: diagram.name }).click();
+  await expect(page.locator('.document-actions .save-status')).toHaveText('Saved');
+  const catalogs = new LocaleCatalogLoader();
+  let active = await catalogs.load('en');
+  const names: string[] = [];
+  for (const { id } of APP_LOCALES) {
+    await page.getByRole('button', { name: active['privacy.localBadge.accessibleName'] }).click();
+    active = await catalogs.load(id);
+    await page.getByTestId('app-language').selectOption(id);
+    await expect(page.locator('html')).toHaveAttribute('lang', id);
+    await page.getByRole('dialog').locator('.modal-heading button').click();
+    const prompted = page.waitForEvent('dialog');
+    const click = page.getByRole('button', { name: active['simulator.run.newScenario'] }).click();
+    const prompt = await prompted;
+    expect(prompt.type()).toBe('prompt');
+    expect(prompt.message()).toBe(active['simulator.scenario.scenarioName']);
+    expect(prompt.defaultValue()).toBe(`Scenario ${String.fromCharCode(65 + names.length)}`);
+    const name = `Authored ${id} — customer scenario`;
+    names.push(name);
+    await prompt.accept(name);
+    await click;
+    await expect
+      .poll(async () => {
+        const graph = (await (await request.get(`/api/v1/diagrams/${diagram.id}`)).json()) as Graph;
+        return graph.simulation!.scenarios.map((scenario) => scenario.name);
+      })
+      .toEqual(names);
+    const graph = (await (await request.get(`/api/v1/diagrams/${diagram.id}`)).json()) as Graph;
+    const { scenarios: _scenarios, ...actual } = graph.simulation!;
+    const { scenarios: _baselineScenarios, ...baseline } = baselineModel;
+    expect(actual).toEqual(baseline);
+  }
+  const canceled = page.waitForEvent('dialog');
+  const click = page.getByRole('button', { name: active['simulator.run.newScenario'] }).click();
+  await (await canceled).dismiss();
+  await click;
+  const graph = (await (await request.get(`/api/v1/diagrams/${diagram.id}`)).json()) as Graph;
+  expect(graph.simulation!.scenarios.map((scenario) => scenario.name)).toEqual(names);
 });
 
 test('all languages fit mobile Settings in light, dark, narrow portrait and short landscape', async ({

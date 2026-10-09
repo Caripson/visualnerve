@@ -676,7 +676,12 @@ const catalog = {
     'Tryck Enter eller blanksteg för att välja en nod. Använd sedan piltangenterna för att flytta den. Tryck Delete för att ta bort den och Escape för att avbryta.',
   'editor.canvas.accessibility.nodeSelection':
     'Tryck Enter eller blanksteg för att välja en nod. Tryck Delete för att ta bort den och Escape för att avbryta.',
+  'editor.canvas.accessibility.objectLabel': '{title}, {kind}',
+  'editor.canvas.accessibility.processGroupLabel':
+    '{title}, processgrupp. Öppna för att granska underprocesser.',
   'editor.canvas.accessibility.right': 'åt höger',
+  'editor.canvas.accessibility.sharedProcessLabel':
+    '{title}, {kind}. Öppna den gemensamma processens egenskaper.',
   'editor.canvas.accessibility.up': 'uppåt',
   'editor.canvas.accessibility.zoomIn': 'Zooma in',
   'editor.canvas.accessibility.zoomOut': 'Zooma ut',

@@ -667,7 +667,12 @@ const catalog = {
     'Press enter or space to select a node. You can then use the arrow keys to move the node around. Press delete to remove it and escape to cancel.',
   'editor.canvas.accessibility.nodeSelection':
     'Press enter or space to select a node. Press delete to remove it and escape to cancel.',
+  'editor.canvas.accessibility.objectLabel': '{title}, {kind}',
+  'editor.canvas.accessibility.processGroupLabel':
+    '{title}, process group. Open to inspect subprocesses.',
   'editor.canvas.accessibility.right': 'right',
+  'editor.canvas.accessibility.sharedProcessLabel':
+    '{title}, {kind}. Open shared process properties.',
   'editor.canvas.accessibility.up': 'up',
   'editor.canvas.accessibility.zoomIn': 'Zoom In',
   'editor.canvas.accessibility.zoomOut': 'Zoom Out',

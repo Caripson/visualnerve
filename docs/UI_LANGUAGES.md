@@ -37,6 +37,9 @@ Interface language does not select a narrator or translate work.
 Use `useI18n().t(messageId, namedParameters)` for UI copy. Use whole messages,
 explicit canonical option values and stable IDs. React escapes text parameters.
 Avoid translated labels as focus selectors or validation identities.
+Canvas node accessibility labels are an ephemeral display callback: changing a
+language invalidates cached labels while retaining source model/data and geometry.
+Pure projection/export callers keep the original canonical default guidance.
 
 ## Storage and session boundary
 

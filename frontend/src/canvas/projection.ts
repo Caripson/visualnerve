@@ -56,6 +56,7 @@ export function projectGraph(
   renderCache?: RenderCache,
   topicContext?: GraphNode[],
   exploration?: ExplorationResult | null,
+  nodeAriaLabel?: (node: GraphNode) => string,
 ): { nodes: CanvasNode[]; edges: Edge[] } {
   const presentationNumbers = new Map(
     getPresentation(graph).nodeIds.map((id, index) => [id, index + 1]),
@@ -211,7 +212,9 @@ export function projectGraph(
         ...(readonly && simulationProjected ? { selectable: false } : {}),
         hidden: collapsed(n) || (!match && filters.mode === 'hide'),
         data,
-        ariaLabel: `${n.title}, ${typeof n.metadata.simulationProcessId === 'string' ? 'process group. Open to inspect subprocesses' : n.nodeType}${simulationProjected && !n.metadata.simulationProcessId ? '. Open shared process properties' : ''}`,
+        ariaLabel:
+          nodeAriaLabel?.(n) ??
+          `${n.title}, ${typeof n.metadata.simulationProcessId === 'string' ? 'process group. Open to inspect subprocesses' : n.nodeType}${simulationProjected && !n.metadata.simulationProcessId ? '. Open shared process properties' : ''}`,
         // A card contains its own focusable details and actions; the wrapper is a group.
         ariaRole: 'group',
         zIndex: n.nodeType === 'group' ? -1 : 1,
@@ -225,6 +228,7 @@ export function projectGraph(
         cached.selected === view.selected &&
         cached.hidden === view.hidden &&
         cached.className === view.className &&
+        cached.ariaLabel === view.ariaLabel &&
         cached.position.x === view.position.x &&
         cached.position.y === view.position.y &&
         cached.width === view.width &&

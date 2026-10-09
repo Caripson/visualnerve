@@ -208,7 +208,10 @@ export function SimulationFeature() {
   const createScenario = () => {
     if (!changeControls(() => {})) return;
     const name = window
-      .prompt('Scenario name', `Scenario ${String.fromCharCode(65 + model.scenarios.length)}`)
+      .prompt(
+        t('simulator.scenario.scenarioName'),
+        `Scenario ${String.fromCharCode(65 + model.scenarios.length)}`,
+      )
       ?.trim();
     if (!name) return;
     const id = crypto.randomUUID();

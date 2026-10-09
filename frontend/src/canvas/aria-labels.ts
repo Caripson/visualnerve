@@ -1,11 +1,29 @@
 import type { AriaLabelConfig } from '@xyflow/react';
 import type { MessageId, Translate } from '../i18n';
+import type { GraphNode } from '../model/types';
+import { nodeKindLabel } from '../ui/editor-labels';
 const directionMessages: Record<string, MessageId> = {
   left: 'editor.canvas.accessibility.left',
   right: 'editor.canvas.accessibility.right',
   up: 'editor.canvas.accessibility.up',
   down: 'editor.canvas.accessibility.down',
 };
+
+/** Ephemeral node guidance; authored titles and model kinds remain unchanged. */
+export function canvasNodeAriaLabel(
+  t: Translate,
+  node: Pick<GraphNode, 'title' | 'metadata'> & { nodeType: string },
+): string {
+  if (typeof node.metadata.simulationProcessId === 'string')
+    return t('editor.canvas.accessibility.processGroupLabel', { title: node.title });
+  return t(
+    node.metadata.simulationProjected === true && !node.metadata.simulationProcessId
+      ? 'editor.canvas.accessibility.sharedProcessLabel'
+      : 'editor.canvas.accessibility.objectLabel',
+    { title: node.title, kind: nodeKindLabel(t, node.nodeType) },
+  );
+}
+
 /** Supported ReactFlow configuration, without language-dependent CSS or model labels. */
 export function canvasAriaLabels(t: Translate): Partial<AriaLabelConfig> {
   return {

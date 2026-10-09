@@ -676,7 +676,12 @@ const catalog = {
     'Valitse solmu painamalla Enter tai välilyönti. Siirrä sitä sitten nuolinäppäimillä. Poista se Delete-näppäimellä ja peruuta Escape-näppäimellä.',
   'editor.canvas.accessibility.nodeSelection':
     'Valitse solmu painamalla Enter tai välilyönti. Poista se Delete-näppäimellä ja peruuta Escape-näppäimellä.',
+  'editor.canvas.accessibility.objectLabel': '{title}, {kind}',
+  'editor.canvas.accessibility.processGroupLabel':
+    '{title}, prosessiryhmä. Avaa tarkastellaksesi aliprosesseja.',
   'editor.canvas.accessibility.right': 'oikealle',
+  'editor.canvas.accessibility.sharedProcessLabel':
+    '{title}, {kind}. Avaa jaetun prosessin ominaisuudet.',
   'editor.canvas.accessibility.up': 'ylös',
   'editor.canvas.accessibility.zoomIn': 'Lähennä',
   'editor.canvas.accessibility.zoomOut': 'Loitonna',

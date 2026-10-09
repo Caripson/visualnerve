@@ -682,7 +682,12 @@ const catalog = {
     'Pulsa Intro o espacio para seleccionar un nodo. Después usa las flechas para moverlo. Pulsa Supr para eliminarlo y Escape para cancelar.',
   'editor.canvas.accessibility.nodeSelection':
     'Pulsa Intro o espacio para seleccionar un nodo. Pulsa Supr para eliminarlo y Escape para cancelar.',
+  'editor.canvas.accessibility.objectLabel': '{title}, {kind}',
+  'editor.canvas.accessibility.processGroupLabel':
+    '{title}, grupo de procesos. Abre para examinar los subprocesos.',
   'editor.canvas.accessibility.right': 'a la derecha',
+  'editor.canvas.accessibility.sharedProcessLabel':
+    '{title}, {kind}. Abre las propiedades del proceso compartido.',
   'editor.canvas.accessibility.up': 'hacia arriba',
   'editor.canvas.accessibility.zoomIn': 'Acercar',
   'editor.canvas.accessibility.zoomOut': 'Alejar',

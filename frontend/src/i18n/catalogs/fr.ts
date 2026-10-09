@@ -687,7 +687,12 @@ const catalog = {
     'Appuyez sur Entrée ou Espace pour sélectionner un nœud. Utilisez ensuite les flèches pour le déplacer. Appuyez sur Suppr pour le supprimer et Échap pour annuler.',
   'editor.canvas.accessibility.nodeSelection':
     'Appuyez sur Entrée ou Espace pour sélectionner un nœud. Appuyez sur Suppr pour le supprimer et Échap pour annuler.',
+  'editor.canvas.accessibility.objectLabel': '{title}, {kind}',
+  'editor.canvas.accessibility.processGroupLabel':
+    '{title}, groupe de processus. Ouvrez pour examiner les sous-processus.',
   'editor.canvas.accessibility.right': 'vers la droite',
+  'editor.canvas.accessibility.sharedProcessLabel':
+    '{title}, {kind}. Ouvrez les propriétés du processus partagé.',
   'editor.canvas.accessibility.up': 'vers le haut',
   'editor.canvas.accessibility.zoomIn': 'Agrandir',
   'editor.canvas.accessibility.zoomOut': 'Réduire',

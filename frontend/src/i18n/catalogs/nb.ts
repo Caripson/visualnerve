@@ -679,7 +679,12 @@ const catalog = {
     'Trykk Enter eller mellomrom for å velge en node. Bruk deretter piltastene til å flytte den. Trykk Delete for å fjerne den og Escape for å avbryte.',
   'editor.canvas.accessibility.nodeSelection':
     'Trykk Enter eller mellomrom for å velge en node. Trykk Delete for å fjerne den og Escape for å avbryte.',
+  'editor.canvas.accessibility.objectLabel': '{title}, {kind}',
+  'editor.canvas.accessibility.processGroupLabel':
+    '{title}, prosessgruppe. Åpne for å undersøke delprosesser.',
   'editor.canvas.accessibility.right': 'mot høyre',
+  'editor.canvas.accessibility.sharedProcessLabel':
+    '{title}, {kind}. Åpne egenskapene for den delte prosessen.',
   'editor.canvas.accessibility.up': 'opp',
   'editor.canvas.accessibility.zoomIn': 'Zoom inn',
   'editor.canvas.accessibility.zoomOut': 'Zoom ut',

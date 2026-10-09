@@ -685,7 +685,12 @@ const catalog = {
     'Enter oder Leertaste drücken, um einen Knoten auszuwählen. Danach mit den Pfeiltasten verschieben. Mit Entf löschen und mit Escape abbrechen.',
   'editor.canvas.accessibility.nodeSelection':
     'Enter oder Leertaste drücken, um einen Knoten auszuwählen. Mit Entf löschen und mit Escape abbrechen.',
+  'editor.canvas.accessibility.objectLabel': '{title}, {kind}',
+  'editor.canvas.accessibility.processGroupLabel':
+    '{title}, Prozessgruppe. Öffnen, um Teilprozesse zu untersuchen.',
   'editor.canvas.accessibility.right': 'nach rechts',
+  'editor.canvas.accessibility.sharedProcessLabel':
+    '{title}, {kind}. Eigenschaften des gemeinsamen Prozesses öffnen.',
   'editor.canvas.accessibility.up': 'nach oben',
   'editor.canvas.accessibility.zoomIn': 'Vergrößern',
   'editor.canvas.accessibility.zoomOut': 'Verkleinern',

@@ -1,4 +1,4 @@
-import { canvasAriaLabels } from './aria-labels';
+import { canvasAriaLabels, canvasNodeAriaLabel } from './aria-labels';
 import { useI18n } from '../i18n';
 import {
   lazy,
@@ -111,6 +111,7 @@ const pendingExploration = {
 export function Canvas() {
   const { t, plural } = useI18n();
   const ariaLabels = useMemo(() => canvasAriaLabels(t), [t]);
+  const nodeAriaLabel = useCallback((node: GraphNode) => canvasNodeAriaLabel(t, node), [t]);
   const graph = useEditor((s) => s.graph);
   const owners = useEditor((s) => s.owners);
   const selectedNodes = useEditor((s) => s.selectedNodes);
@@ -353,6 +354,7 @@ export function Canvas() {
             renderCache.current,
             undefined,
             exploration ? (explorationResult ?? pendingExploration) : undefined,
+            nodeAriaLabel,
           )
         : { nodes: [], edges: [] },
     [
@@ -364,6 +366,7 @@ export function Canvas() {
       resize,
       exploration,
       explorationResult,
+      nodeAriaLabel,
     ],
   );
   const overviewZoom = useOverviewZoom(graph?.diagram.id, spatial);
