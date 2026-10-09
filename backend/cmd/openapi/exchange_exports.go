@@ -1,6 +1,6 @@
 package main
 
-const diagramExportPolicy = "Read-only editable diagram exchange in the connected browser's local Web Worker. POST /exports/diagrams snapshots saved logical nodes, internal connections and canonical 2D geometry into drawio XML or a vsdx ZIP package without opening or changing the diagram. A 3D view exports the saved 2D layout. Both editable formats deliberately use a light drawing surface regardless of app Appearance: white base fills, dark text/connection labels/base borders, and preserved stored node/connection/mind-map color accents. Native JSON preserves full stored styling; workspace backups also retain portable appearance settings. SVG appearance is unchanged and no additional API argument is needed. Complete scope includes stored logical nodes, including nodes hidden in a temporary CSV or overview view; selected scope contains only explicit node UUIDs and internal edges. Visible labels may contain titles, descriptions, owner/status labels and simple process assumptions. Raw datasets, source files, arbitrary metadata, simulation execution/results, live capacity copies, presentation audio and vault data are not included. This is an editable drawing, not a full-fidelity native backup. Review warnings before sharing. VSDX compatibility is preview and requires verification in Microsoft Visio; package/schema tests do not establish real Visio fidelity. Every request needs accepted storage, an unlocked workspace and at least Read only MCP access. Jobs retain their original vault session and MCP grant. Lock, explicit grant changes, cache clearing, stop or reload invalidate them. Jobs/results are transient local RAM, not IndexedDB or bridge files. Invalidated, evicted, expired or cancelled jobs return 404 after current authorization; locked requests return 423 first. Result retrieval before success returns 409."
+const diagramExportPolicy = "Read-only editable diagram exchange in the connected browser's local Web Worker. POST /exports/diagrams snapshots saved logical nodes, internal connections and canonical 2D geometry into drawio XML without opening or changing the diagram. A 3D view exports the saved 2D layout. Editable draw.io drawings deliberately use a light drawing surface regardless of app Appearance: white base fills, dark text/connection labels/base borders, and preserved stored node/connection/mind-map color accents. Native JSON preserves full stored styling; workspace backups also retain portable appearance settings. SVG appearance is unchanged and no additional API argument is needed. Complete scope includes stored logical nodes, including nodes hidden in a temporary CSV or overview view; selected scope contains only explicit node UUIDs and internal edges. Visible labels may contain titles, descriptions, owner/status labels and simple process assumptions. Raw datasets, source files, arbitrary metadata, simulation execution/results, live capacity copies, presentation audio and vault data are not included. This is an editable drawing, not a full-fidelity native backup. Review warnings before sharing. Every request needs accepted storage, an unlocked workspace and at least Read only MCP access. Jobs retain their original vault session and MCP grant. Lock, explicit grant changes, cache clearing, stop or reload invalidate them. Jobs/results are transient local RAM, not IndexedDB or bridge files. Invalidated, evicted, expired or cancelled jobs return 404 after current authorization; locked requests return 423 first. Result retrieval before success returns 409."
 
 func addDiagramExportSchemas(schemas object) {
 	schemas["DiagramExportWarning"] = strictObject([]string{"code", "message"}, object{
@@ -31,15 +31,10 @@ func addDiagramExportSchemas(schemas object) {
 		"version":   object{"type": "integer", "enum": []int{1}},
 		"execution": object{"type": "string", "enum": []string{"local-web-worker"}},
 		"scopes":    object{"type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": object{"type": "string", "enum": []string{"complete", "selected"}}},
-		"formats": strictObject([]string{"drawio", "vsdx"}, object{
+		"formats": strictObject([]string{"drawio"}, object{
 			"drawio": strictObject([]string{"editable", "validation"}, object{
 				"editable":   object{"type": "boolean", "enum": []bool{true}},
 				"validation": object{"type": "string", "enum": []string{"format-and-drawio"}},
-			}),
-			"vsdx": strictObject([]string{"editable", "compatibility", "requiresMicrosoftVisioVerification"}, object{
-				"editable":                           object{"type": "boolean", "enum": []bool{true}},
-				"compatibility":                      object{"type": "string", "enum": []string{"preview"}},
-				"requiresMicrosoftVisioVerification": object{"type": "boolean", "enum": []bool{true}},
 			}),
 		}),
 		"limits":                          ref("DiagramExportLimits"),
@@ -56,11 +51,11 @@ func addDiagramExportSchemas(schemas object) {
 	capabilities["description"] = svgExportJobPolicy + " The additive diagrams field discovers separate editable diagram exchange capabilities. " + diagramExportPolicy
 	schemas["DiagramExportJobInput"] = object{"description": diagramExportPolicy + " Format is required. Scope defaults to complete. Selected requires 1..20,000 unique existing canonical node UUIDs; nodeIds is forbidden outside selected, including []. Unknown fields and query parameters are rejected.", "oneOf": []any{
 		strictObject([]string{"diagramId", "format"}, object{
-			"diagramId": svgExportIdentity(), "format": object{"type": "string", "enum": []string{"drawio", "vsdx"}},
+			"diagramId": svgExportIdentity(), "format": object{"type": "string", "enum": []string{"drawio"}},
 			"scope": object{"type": "string", "enum": []string{"complete"}, "default": "complete"},
 		}),
 		strictObject([]string{"diagramId", "format", "scope", "nodeIds"}, object{
-			"diagramId": svgExportIdentity(), "format": object{"type": "string", "enum": []string{"drawio", "vsdx"}},
+			"diagramId": svgExportIdentity(), "format": object{"type": "string", "enum": []string{"drawio"}},
 			"scope":   object{"type": "string", "enum": []string{"selected"}},
 			"nodeIds": object{"type": "array", "minItems": 1, "maxItems": 20000, "uniqueItems": true, "items": svgExportIdentity()},
 		}),
@@ -72,7 +67,7 @@ func addDiagramExportSchemas(schemas object) {
 		"jobId", "diagramId", "format", "state", "progress", "phase", "createdAt", "updatedAt", "nodeCount", "edgeCount", "warnings",
 	}, object{
 		"jobId": svgExportIdentity(), "diagramId": svgExportIdentity(),
-		"format":    object{"type": "string", "enum": []string{"drawio", "vsdx"}},
+		"format":    object{"type": "string", "enum": []string{"drawio"}},
 		"state":     object{"type": "string", "enum": []string{"queued", "running", "succeeded", "failed", "cancelled"}},
 		"progress":  object{"type": "number", "minimum": 0, "maximum": 100},
 		"phase":     object{"type": "string", "enum": []string{"queued", "projection", "nodes", "edges", "packaging", "complete"}},
@@ -87,7 +82,7 @@ func addDiagramExportSchemas(schemas object) {
 	schemas["DiagramExportResultChunk"] = strictObject([]string{
 		"jobId", "format", "mimeType", "encoding", "offset", "nextOffset", "totalBytes", "data", "complete", "warnings",
 	}, object{
-		"jobId": svgExportIdentity(), "format": object{"type": "string", "enum": []string{"drawio", "vsdx"}},
+		"jobId": svgExportIdentity(), "format": object{"type": "string", "enum": []string{"drawio"}},
 		"mimeType":   object{"type": "string", "description": "MIME type of the complete editable document."},
 		"encoding":   object{"type": "string", "enum": []string{"base64"}},
 		"offset":     object{"type": "integer", "minimum": 0, "maximum": 64 * 1024 * 1024},
@@ -101,7 +96,7 @@ func addDiagramExportSchemas(schemas object) {
 }
 
 func addDiagramExportPaths(add func(string, string, string, string, string, string), paths object) {
-	add("POST", "/exports/diagrams", "Start an editable drawio or preview vsdx export in a local worker", "DiagramExportJobInput", "DiagramExportJobStatus", "201")
+	add("POST", "/exports/diagrams", "Start an editable drawio export in a local worker", "DiagramExportJobInput", "DiagramExportJobStatus", "201")
 	add("GET", "/exports/diagrams/{jobId}", "Inspect editable diagram export progress and warnings", "", "DiagramExportJobStatus", "200")
 	add("DELETE", "/exports/diagrams/{jobId}", "Cancel and discard an editable diagram export job", "SvgExportEmptyInput", "DiagramExportJobStatus", "200")
 	add("GET", "/exports/diagrams/{jobId}/result", "Retrieve one bounded base64 binary chunk from an editable diagram export", "", "DiagramExportResultChunk", "200")
@@ -124,5 +119,5 @@ func addDiagramExportPaths(add func(string, string, string, string, string, stri
 	)
 	capabilities := paths["/exports/capabilities"].(object)["get"].(object)
 	capabilities["summary"] = "Discover existing SVG and additive editable diagram export capabilities"
-	capabilities["description"] = svgExportJobPolicy + " Existing SVG fields are preserved; diagrams adds independent drawio/vsdx formats, scope, binary chunk units, limits and compatibility metadata. " + diagramExportPolicy
+	capabilities["description"] = svgExportJobPolicy + " Existing SVG fields are preserved; diagrams adds the editable drawio format, scope, binary chunk units, independent limits and validation metadata. " + diagramExportPolicy
 }

@@ -416,7 +416,7 @@ The existing `POST /export` JSON/Markdown behavior is unchanged. Source graphs w
 
 ## Editable diagram exchange
 
-API 0.6.0 adds editable Draw.io and preview Visio exports without changing JSON, Markdown or SVG routes. `GET /exports/capabilities` retains every top-level SVG field and adds `diagrams` with formats, scopes, compatibility metadata, byte chunk units and independent limits. Bridge discovery advertises `exchange-export-v1`; update the local bridge and refresh the browser before using it.
+API 0.6.0 adds editable Draw.io exports without changing JSON, Markdown or SVG routes. `GET /exports/capabilities` retains every top-level SVG field and adds `diagrams` with the drawio format, scopes, validation metadata, byte chunk units and independent limits. Bridge discovery advertises `exchange-export-v1`; update the local bridge and refresh the browser before using it.
 
 All job routes permit **Read only** access and use the same local worker and authoritative saved model as the UI:
 
@@ -431,32 +431,32 @@ All job routes permit **Read only** access and use the same local worker and aut
 {"diagramId":"YOUR_DIAGRAM_UUID","format":"drawio","scope":"complete"}
 ```
 
-`format` is required: `drawio` or `vsdx`. `scope` defaults to `complete`; `selected` requires 1–20,000 unique existing canonical node UUIDs in `nodeIds`. `nodeIds` is rejected outside selected scope, including `[]`. Unknown fields, unsupported/duplicate query parameters, invalid references and unsafe integer ranges are rejected. Creation/status/cancellation take no query parameters; cancellation accepts no body or exactly `{}`.
+`format` is required and must be `drawio`. `scope` defaults to `complete`; `selected` requires 1–20,000 unique existing canonical node UUIDs in `nodeIds`. `nodeIds` is rejected outside selected scope, including `[]`. Unknown fields, unsupported/duplicate query parameters, invalid references and unsafe integer ranges are rejected. Creation/status/cancellation take no query parameters; cancellation accepts no body or exactly `{}`.
 
 The immutable snapshot contains saved logical nodes, internal connections and canonical 2D geometry, including when the app is in 3D. **Complete includes stored nodes hidden by temporary CSV/overview views.** Selected includes only explicit nodes and edges with both endpoints selected. API exchange selection does not implicitly expand process groups: include actual descendant node IDs read from the hierarchy. Basic shapes, text, colors, groups and attached connectors remain editable. Titles, descriptions, owner/status labels and simple process assumptions are deliberately readable. Icons, custom stencils, pen strokes, rich formatting and 3D relief may be simplified or omitted; long labels may need resizing in the destination editor.
 
-Editable Draw.io/Visio exports deliberately use a **light drawing surface**, regardless of the app's Appearance. White base fills and dark text, labels and base borders keep the drawing readable in its destination editor; stored node, connection and mind-map branch color accents are retained. This is a portable drawing style, not a capture of the app's dark theme. Native JSON preserves full stored styling; workspace backups also preserve portable appearance settings. SVG retains its existing appearance behavior. No extra export argument is required.
+Editable Draw.io exports deliberately use a **light drawing surface**, regardless of the app's Appearance. White base fills and dark text, labels and base borders keep the drawing readable in its destination editor; stored node, connection and mind-map branch color accents are retained. This is a portable drawing style, not a capture of the app's dark theme. Native JSON preserves full stored styling; workspace backups also preserve portable appearance settings. SVG retains its existing appearance behavior. No extra export argument is required.
 
-Raw datasets, original source files, arbitrary metadata, simulation execution/results/scenarios, live capacity copies, audio and vault data are excluded. This is an editable drawing, not a full backup. Native JSON or workspace backup remains the faithful model transfer. **VSDX is a compatibility preview:** automatic package/schema tests do not establish Microsoft Visio rendering/editing fidelity. Capabilities explicitly report `requiresMicrosoftVisioVerification:true`; verify there before relying on the file and retain native JSON.
+Raw datasets, original source files, arbitrary metadata, simulation execution/results/scenarios, live capacity copies, audio and vault data are excluded. This is an editable drawing, not a full backup. Native JSON or workspace backup remains the faithful model transfer.
 
 Status includes `jobId`, `diagramId`, `format`, `state`, `progress` (0–100), `phase`, timestamps, node/edge counts, `warnings:[{code,message}]` and optional `bytes`/`error`. Phases are `queued`, `projection`, `nodes`, `edges`, `packaging` and `complete`. Poll with a short backoff until `succeeded`, `failed` or `cancelled`. A failed job remains inspectable with structured errors; result before success returns `409 EXCHANGE_JOB_NOT_READY`.
 
 ```json
 {
   "jobId":"YOUR_JOB_UUID",
-  "format":"vsdx",
-  "mimeType":"application/vnd.ms-visio.drawing",
+  "format":"drawio",
+  "mimeType":"application/vnd.jgraph.mxfile",
   "encoding":"base64",
   "offset":0,
   "nextOffset":3,
   "totalBytes":3,
-  "data":"UEsD",
+  "data":"PG14",
   "complete":true,
   "warnings":[]
 }
 ```
 
-Result offsets and limits count **raw binary bytes**, separately from SVG's UTF-16 offsets. Limit defaults to and cannot exceed **786,432 bytes**, producing at most 1,048,576 base64 characters per chunk. Decode every `data` chunk separately, concatenate decoded bytes in order and request `nextOffset` until `complete:true`. **Never concatenate base64 strings:** each chunk can carry its own padding. Preserve format, MIME type and warnings, then save `.drawio` or `.vsdx`. Offset equal to `totalBytes` returns an empty final chunk; greater offsets return 422.
+Result offsets and limits count **raw binary bytes**, separately from SVG's UTF-16 offsets. Limit defaults to and cannot exceed **786,432 bytes**, producing at most 1,048,576 base64 characters per chunk. Decode every `data` chunk separately, concatenate decoded bytes in order and request `nextOffset` until `complete:true`. **Never concatenate base64 strings:** each chunk can carry its own padding. Preserve format, MIME type and warnings, then save `.drawio`. Offset equal to `totalBytes` returns an empty final chunk; greater offsets return 422.
 
 Independent exchange limits are 100,000 source nodes/500,000 source edges before snapshotting; 20,000 scoped nodes/100,000 internal edges; 5,000,000 exported text characters; 64 MiB output; and 16,777,216 coordinate/dimension units. Two jobs may run concurrently, with four terminal jobs/128 MiB retained results. Retention lasts 15 minutes from creation; worker execution has a 120-second deadline. Busy starts return `429 EXCHANGE_JOB_BUSY`. Limits fail explicitly without silent truncation; use a selection or separate diagrams.
 

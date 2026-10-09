@@ -247,7 +247,7 @@ export function exchangeScene(
   );
   let textCharacters = graph.diagram.name.length;
   // Receiving editors have their own theme rules. A consistent light drawing avoids
-  // white group titles on white Visio pages and retains readable connector labels.
+  // dark group titles on dark editor canvases and retains readable connector labels.
   const textColor = '#1F2D28';
   const fill = '#FFFFFF';
   const stroke = '#56675D';

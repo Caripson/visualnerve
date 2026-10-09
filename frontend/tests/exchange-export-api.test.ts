@@ -33,12 +33,14 @@ class WorkerBoundary {
       data: {
         type: 'result',
         result: {
-          format: 'vsdx',
-          mimeType: 'application/vnd.ms-visio.drawing',
+          format: 'drawio',
+          mimeType: 'application/vnd.jgraph.mxfile',
           bytes,
           nodeCount: 1,
           edgeCount: 0,
-          warnings: [{ code: 'VISIO_PREVIEW', message: 'Verify this package in Microsoft Visio.' }],
+          warnings: [
+            { code: 'EDITABLE_FORMAT_FIDELITY', message: 'Editable drawing simplification.' },
+          ],
         },
       },
     } as unknown as MessageEvent<ExchangeWorkerResponse>);
@@ -96,7 +98,7 @@ async function start() {
     return await workspace.external<ExchangeJobStatus>(
       '/api/v1/exports/diagrams',
       'POST',
-      { diagramId, format: 'vsdx' },
+      { diagramId, format: 'drawio' },
       post,
     );
   } finally {
@@ -119,7 +121,7 @@ async function complete(
 it('keeps the original lease after POST and returns byte-exact independently decoded binary chunks without changing the model', async () => {
   const before = await repo.getGraph(diagramId),
     job = await start();
-  expect(job).toMatchObject({ state: 'queued', format: 'vsdx', diagramId, warnings: [] });
+  expect(job).toMatchObject({ state: 'queued', format: 'drawio', diagramId, warnings: [] });
   const bytes = await complete(job);
   let offset = 0;
   const collected: number[] = [];
@@ -130,12 +132,12 @@ it('keeps the original lease after POST and returns byte-exact independently dec
     );
     expect(chunk).toMatchObject({
       jobId: job.jobId,
-      format: 'vsdx',
-      mimeType: 'application/vnd.ms-visio.drawing',
+      format: 'drawio',
+      mimeType: 'application/vnd.jgraph.mxfile',
       encoding: 'base64',
       offset,
       totalBytes: bytes.length,
-      warnings: [{ code: 'VISIO_PREVIEW' }],
+      warnings: [{ code: 'EDITABLE_FORMAT_FIDELITY' }],
     });
     collected.push(...Array.from(atob(chunk.data), (char) => char.charCodeAt(0)));
     offset = chunk.nextOffset;
@@ -181,8 +183,12 @@ it('caps default chunks at 786432 raw bytes and preserves the remaining binary b
   );
   expect(last).toMatchObject({ offset: 786432, nextOffset: 786433, data: '/w==', complete: true });
 });
-it('adds compatibility metadata without replacing existing SVG capability fields', async () => {
-  expect(await workspace.external('/exports/capabilities', 'GET')).toMatchObject({
+it('advertises only draw.io editable export without replacing existing SVG capability fields', async () => {
+  const capabilities = await workspace.external<{ diagrams: { formats: unknown } }>(
+    '/exports/capabilities',
+    'GET',
+  );
+  expect(capabilities).toMatchObject({
     format: 'svg',
     resultOffsetUnit: 'utf-16-code-units',
     limits: { resultChunkCharacters: 1048576 },
@@ -196,10 +202,24 @@ it('adds compatibility metadata without replacing existing SVG capability fields
       requiresOriginalSessionAndGrant: true,
       formats: {
         drawio: { editable: true },
-        vsdx: { compatibility: 'preview', requiresMicrosoftVisioVerification: true },
       },
     },
   });
+  expect(capabilities.diagrams.formats).toEqual({
+    drawio: { editable: true, validation: 'format-and-drawio' },
+  });
+});
+it('rejects Visio export requests with a structured validation error before creating any job', async () => {
+  const dispatch = vi.spyOn(exchangeExportController, 'start');
+  await expect(
+    workspace.external('/exports/diagrams', 'POST', { diagramId, format: 'vsdx' }),
+  ).rejects.toMatchObject({
+    status: 422,
+    message:
+      'Editable diagram export expects diagramId, format drawio, optional scope and unique selected nodeIds.',
+  });
+  expect(dispatch).not.toHaveBeenCalled();
+  expect(WorkerBoundary.instances).toHaveLength(0);
 });
 it('rejects unsupported shapes before dispatch and returns structured result-not-ready/chunk errors', async () => {
   for (const input of [
@@ -267,8 +287,8 @@ it('cancels a running original job at stop and refuses late publication after re
     data: {
       type: 'result',
       result: {
-        format: 'vsdx',
-        mimeType: 'application/vnd.ms-visio.drawing',
+        format: 'drawio',
+        mimeType: 'application/vnd.jgraph.mxfile',
         bytes: new Uint8Array([80, 75]),
         nodeCount: 1,
         edgeCount: 0,

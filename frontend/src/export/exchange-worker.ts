@@ -8,14 +8,16 @@ const send = (response: ExchangeWorkerResponse) => self.postMessage(response);
 self.onmessage = async (event: MessageEvent<ExchangeWorkerRequest>) => {
   try {
     const { graph, format, options, theme } = event.data;
+    if (format !== 'drawio')
+      throw new ExchangeExportError(
+        'EXCHANGE_FORMAT_INVALID',
+        'Choose drawio for editable export.',
+      );
     send({ type: 'progress', progress: 5, phase: 'projection' });
     const scene = exchangeScene(graph, options, theme);
     const progress = (percent: number, phase: 'projection' | 'nodes' | 'edges' | 'packaging') =>
       send({ type: 'progress', progress: percent, phase });
-    const result =
-      format === 'drawio'
-        ? (await import('./exchange-drawio')).serializeDrawio(scene, progress)
-        : (await import('./exchange-visio')).serializeVisio(scene, progress);
+    const result = (await import('./exchange-drawio')).serializeDrawio(scene, progress);
     self.postMessage({ type: 'result', result } satisfies ExchangeWorkerResponse, {
       transfer: [result.bytes.buffer as ArrayBuffer],
     });

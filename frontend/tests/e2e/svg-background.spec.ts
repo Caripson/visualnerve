@@ -353,24 +353,26 @@ test('encrypted read-only SVG and editable jobs survive POST disposal and erase 
     expect((await request.get(`/api/v1/exports/svg/${job.jobId}`)).status()).toBe(404);
     expect(await (await request.get(`/api/v1/diagrams/${diagram.id}`)).json()).toEqual(before);
     // The completed binary result retains the same original read grant after its POST closes.
-    const visioStarted = await request.post('/api/v1/exports/diagrams', {
-      data: { diagramId: diagram.id, format: 'vsdx' },
+    const drawioStarted = await request.post('/api/v1/exports/diagrams', {
+      data: { diagramId: diagram.id, format: 'drawio' },
     });
-    expect(visioStarted.status(), await visioStarted.text()).toBe(201);
-    const retainedVisio = (await visioStarted.json()) as ExchangeJobStatus;
-    await completed(request, retainedVisio.jobId, 'diagrams');
-    const visioResult = await request.get(`/api/v1/exports/diagrams/${retainedVisio.jobId}/result`);
-    expect(visioResult.status(), await visioResult.text()).toBe(200);
-    const visioChunk = await visioResult.json();
-    expect(visioChunk).toMatchObject({
-      format: 'vsdx',
+    expect(drawioStarted.status(), await drawioStarted.text()).toBe(201);
+    const retainedDrawio = (await drawioStarted.json()) as ExchangeJobStatus;
+    await completed(request, retainedDrawio.jobId, 'diagrams');
+    const drawioResult = await request.get(
+      `/api/v1/exports/diagrams/${retainedDrawio.jobId}/result`,
+    );
+    expect(drawioResult.status(), await drawioResult.text()).toBe(200);
+    const drawioChunk = await drawioResult.json();
+    expect(drawioChunk).toMatchObject({
+      format: 'drawio',
       encoding: 'base64',
       offset: 0,
       complete: true,
     });
-    const visioBytes = Buffer.from(visioChunk.data, 'base64');
-    expect(visioBytes.subarray(0, 2).toString('ascii')).toBe('PK');
-    expect(visioBytes.byteLength).toBe(visioChunk.totalBytes);
+    const drawioBytes = Buffer.from(drawioChunk.data, 'base64');
+    expect(drawioBytes.toString('utf8')).toContain('<mxGraphModel');
+    expect(drawioBytes.byteLength).toBe(drawioChunk.totalBytes);
     const blocked = new Promise<void>((resolve) => {
       unblock = resolve;
     });
@@ -391,11 +393,11 @@ test('encrypted read-only SVG and editable jobs survive POST disposal and erase 
     expect((await (await request.get(`/api/v1/exports/svg/${pending.jobId}`)).json()).state).toBe(
       'running',
     );
-    const drawioStarted = await request.post('/api/v1/exports/diagrams', {
+    const pendingDrawioStarted = await request.post('/api/v1/exports/diagrams', {
       data: { diagramId: diagram.id, format: 'drawio' },
     });
-    expect(drawioStarted.status(), await drawioStarted.text()).toBe(201);
-    const pendingDrawio = (await drawioStarted.json()) as ExchangeJobStatus;
+    expect(pendingDrawioStarted.status(), await pendingDrawioStarted.text()).toBe(201);
+    const pendingDrawio = (await pendingDrawioStarted.json()) as ExchangeJobStatus;
     await expect.poll(() => exchangeScriptRequested).toBe(true);
     expect(
       (await (await request.get(`/api/v1/exports/diagrams/${pendingDrawio.jobId}`)).json()).state,
@@ -416,7 +418,7 @@ test('encrypted read-only SVG and editable jobs survive POST disposal and erase 
     await grant('read');
     expect((await request.get(`/api/v1/exports/svg/${pending.jobId}`)).status()).toBe(404);
     expect((await request.get(`/api/v1/exports/svg/${pending.jobId}/result`)).status()).toBe(404);
-    for (const jobId of [retainedVisio.jobId, pendingDrawio.jobId]) {
+    for (const jobId of [retainedDrawio.jobId, pendingDrawio.jobId]) {
       expect((await request.get(`/api/v1/exports/diagrams/${jobId}`)).status()).toBe(404);
       expect((await request.get(`/api/v1/exports/diagrams/${jobId}/result`)).status()).toBe(404);
     }

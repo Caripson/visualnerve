@@ -4,11 +4,8 @@ const catalog = {
   'dialogs.exportEditableFullHint':
     'Koko kaavion vienti sisältää kaikki tallennetut solmut, myös suodattimien tai näkymien piilottamat solmut. Rajaa jaettava sisältö valitsemalla solmut.',
   'dialogs.exportDrawioOption': 'draw.io · muokattava kaavio',
-  'dialogs.exportVisioOption': 'Visio (.vsdx) · esiversio',
   'dialogs.exportEditableHint':
     'Vie muokattavat muodot, tekstin, perusvärit, ryhmät ja liitetyt yhteydet. Kuvakkeet, kynänjäljet ja monipuolinen muotoilu yksinkertaistetaan tai jätetään pois. Pitkät tekstit voivat vaatia solmujen suurentamista. Tiedosto on salaamaton eikä ole täydellinen varmuuskopio.',
-  'dialogs.exportVisioPreviewHint':
-    'Visio-esiversio: paketti tarkistetaan automaattisesti, mutta yhteensopivuus on vielä varmistettava Microsoft Visiossa. Säilytä Visual Nerven JSON-varmuuskopio.',
   'dialogs.exportEditable2DHint':
     'Käyttää tallennettua 2D-asettelua ja loogisia prosessisolmuja. Vaalea pinta ja tumma teksti; korostusvärit säilyvät. Simulointi ja 3D jäävät Visual Nerveen.',
   'dialogs.exportEditableProgress': 'Valmistellaan muokattavaa vientiä · {percent}%',

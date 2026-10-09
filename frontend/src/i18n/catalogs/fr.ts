@@ -4,11 +4,8 @@ const catalog = {
   'dialogs.exportEditableFullHint':
     'L’export complet inclut tous les nœuds enregistrés, même ceux masqués par les filtres ou les vues. Utilisez une sélection pour limiter le contenu partagé.',
   'dialogs.exportDrawioOption': 'draw.io · diagramme modifiable',
-  'dialogs.exportVisioOption': 'Visio (.vsdx) · aperçu',
   'dialogs.exportEditableHint':
     'Exporte des formes, du texte, des couleurs de base, des groupes et des connexions liées modifiables. Les icônes, traits de crayon et formats complexes sont simplifiés ou omis. Les textes longs peuvent nécessiter des nœuds plus grands. Le fichier est non chiffré et ne constitue pas une sauvegarde complète.',
-  'dialogs.exportVisioPreviewHint':
-    'Aperçu Visio : le paquet est contrôlé automatiquement, mais sa compatibilité doit encore être vérifiée dans Microsoft Visio. Conservez votre sauvegarde JSON Visual Nerve.',
   'dialogs.exportEditable2DHint':
     'Utilise la disposition 2D enregistrée et les nœuds logiques du processus. Fond clair, texte sombre et couleurs d’accent conservées. La simulation et la 3D restent dans Visual Nerve.',
   'dialogs.exportEditableProgress': 'Préparation de l’export modifiable · {percent}%',

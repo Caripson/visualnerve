@@ -60,10 +60,10 @@ export class ExchangeExportController {
     authority: SvgJobAuthority,
   ): ExchangeJobStatus {
     assertExportActive(authority.guard);
-    if (format !== 'drawio' && format !== 'vsdx')
+    if (format !== 'drawio')
       throw new ExchangeExportError(
         'EXCHANGE_FORMAT_INVALID',
-        'Choose drawio or vsdx for editable export.',
+        'Choose drawio for editable export.',
       );
     validateExchangeOptions(graph, options);
     if (

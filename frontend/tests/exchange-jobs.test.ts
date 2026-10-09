@@ -180,7 +180,7 @@ describe('editable export worker leases and retained plaintext', () => {
     expect(() => f.controller.start(f.graph, 'drawio', {}, f.authority)).toThrow('Two editable');
     await vi.advanceTimersByTimeAsync(0);
     const result = finish(f.workers[0]);
-    result.format = 'vsdx';
+    result.format = 'svg' as never;
     await vi.advanceTimersByTimeAsync(0);
     expect((await f.controller.status(one.jobId)).error?.code).toBe('EXCHANGE_RESULT_INVALID');
     await vi.advanceTimersByTimeAsync(exchangeLimits.deadlineMs);

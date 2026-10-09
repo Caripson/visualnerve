@@ -574,13 +574,13 @@ Jobs are transient browser memory, with at most two running jobs, four retained 
 
 The existing `POST /export` JSON/Markdown behavior is unchanged. Source graphs with at most 100 nodes and 20,000 title/description/serialized metadata characters before projection retain its SVG JSON-string response and 16 MiB limit. Larger sources return `409 SVG_BACKGROUND_REQUIRED` even for a small selection, with instructions to use `/exports/svg`, avoiding a command timeout with an uncertain export result. The UI chooses the background route automatically, displays progress and offers Cancel. Review SVG source before sharing: an encrypted workspace does not encrypt diagram exports.
 
-## Export an editable Draw.io or Visio document
+## Export an editable Draw.io document
 
 Use editable exports when you want to continue working on the drawing in another editor. They preserve basic shapes, text, colors, groups and attached connectors using the saved 2D layout, including when the app is showing 3D. They do not transfer raw datasets, original source files, live capacity copies or complete simulation execution and scenarios. Keep native JSON or an encrypted workspace backup for a faithful model transfer.
 
-Both editable formats use a deliberate **light drawing surface**, regardless of app Appearance. White base fills and dark text, connection labels and base borders keep the document readable in another editor. Saved node, connection and mind-map color accents remain. Native JSON preserves full stored styling, and workspace backups also retain portable appearance settings. This needs no extra API argument; SVG keeps its existing appearance behavior.
+Editable Draw.io drawings use a deliberate **light drawing surface**, regardless of app Appearance. White base fills and dark text, connection labels and base borders keep the document readable in another editor. Saved node, connection and mind-map color accents remain. Native JSON preserves full stored styling, and workspace backups also retain portable appearance settings. This needs no extra API argument; SVG keeps its existing appearance behavior.
 
-1. Read `GET /exports/capabilities` first. Its existing SVG fields remain unchanged; `diagrams` describes the editable formats, scopes, compatibility and separate limits. Bridge 0.6.0 advertises `exchange-export-v1`.
+1. Read `GET /exports/capabilities` first. Its existing SVG fields remain unchanged; `diagrams` describes the drawio format, scopes, validation metadata and separate limits. Bridge 0.6.0 advertises `exchange-export-v1`.
 2. Start an export with the existing **visual_nerve_request** tool:
 
 ```json
@@ -588,14 +588,14 @@ Both editable formats use a deliberate **light drawing surface**, regardless of 
 ```
 
 3. The **201** response contains a `jobId`, not the file. Poll `GET /exports/diagrams/{jobId}` with a short backoff. Status reports real progress, phases and warnings. Continue until `succeeded`, `failed` or `cancelled`; inspect `error` if it fails.
-4. After success, read `GET /exports/diagrams/{jobId}/result?offset=0&limit=786432`. Decode that chunk's `data` from base64, then request its `nextOffset` until `complete:true`. Save the concatenated **decoded bytes** as `.drawio` or `.vsdx` using the returned format and MIME type.
+4. After success, read `GET /exports/diagrams/{jobId}/result?offset=0&limit=786432`. Decode that chunk's `data` from base64, then request its `nextOffset` until `complete:true`. Save the concatenated **decoded bytes** as `.drawio` using the returned format and MIME type.
 5. Review warnings and open the file in the destination editor. Exact `DELETE /exports/diagrams/{jobId}` with no body or `{}` cancels/removes it and returns **200** once; later reads return **404**.
 
 Result offsets count **raw binary bytes**. They are different from SVG's UTF-16 offsets. Each response contains `{jobId,format,mimeType,encoding:"base64",offset,nextOffset,totalBytes,data,complete,warnings}`. The default and maximum chunk limit is 786,432 bytes, which produces at most 1,048,576 base64 characters. **Decode every chunk separately. Never join the base64 strings:** padding can occur in any chunk.
 
 Complete exports include all stored logical nodes, including nodes hidden in temporary CSV or overview views. For `scope:"selected"`, supply 1–20,000 unique existing canonical node UUIDs in `nodeIds`; only those nodes and connections with both endpoints selected are included. API selection does not expand a process group automatically: include its actual descendant IDs. The normal app selector performs that expansion for its process cards and maps a capacity card back to its single logical node. `nodeIds` is forbidden outside selected scope.
 
-**VSDX is a compatibility preview requiring verification in Microsoft Visio.** Automatic package checks and a Visual Nerve re-import do not establish real Visio rendering/editing fidelity. Capabilities report `requiresMicrosoftVisioVerification:true`. Icons, custom stencils, pen strokes, rich formatting and 3D relief can be simplified or omitted; long labels may need resizing.
+Icons, custom stencils, pen strokes, rich formatting and 3D relief can be simplified or omitted; long labels may need resizing.
 
 ### A local REST example
 
@@ -655,7 +655,7 @@ console.log(chunk.warnings);
 await request(`/exports/diagrams/${job.jobId}`, { method: 'DELETE' });
 ```
 
-Change `format` to `vsdx` to produce the Visio preview. The example never automatically repeats a POST after a transport error. If a write response is uncertain, use the [operation receipt workflow](#recover-an-uncertain-write-without-creating-it-twice); safe status/result reads can be repeated while the original job remains authorized.
+The example never automatically repeats a POST after a transport error. If a write response is uncertain, use the [operation receipt workflow](#recover-an-uncertain-write-without-creating-it-twice); safe status/result reads can be repeated while the original job remains authorized.
 
 ### Limits, permissions and readable output
 
@@ -663,4 +663,4 @@ All four editable-job routes permit **Read only**. Their exact POST/DELETE excep
 
 The source graph can contain up to 100,000 nodes/500,000 connections; the selected export is limited to 20,000 nodes/100,000 internal connections, 5,000,000 exported text characters and 64 MiB. Two jobs may run at once; four terminal jobs and 128 MiB of result bytes may be retained. Jobs expire 15 minutes after creation, with a two-minute worker deadline. Discover exact limits through capabilities and reduce the selection when needed; the exporter does not silently truncate it.
 
-Jobs retain the **original unlocked session and MCP grant**, beyond the POST response. Lock, reload, stop, cache clearing or an explicit grant change removes them; a later unlock or grant cannot recover the old result. Locked content requests return **423**, and authorized reads of expired, removed or cancelled jobs return **404**. Temporary results stay in browser memory. Downloaded files are readable and cannot be recalled by locking the workspace. Review titles, descriptions, owner/status labels, process assumptions and scope before sharing. See [sharing and exports](/help/sharing/#continue-editing-in-drawio-or-visio) and the [complete API contract](https://github.com/Caripson/visualnerve/blob/main/API.md#editable-diagram-exchange).
+Jobs retain the **original unlocked session and MCP grant**, beyond the POST response. Lock, reload, stop, cache clearing or an explicit grant change removes them; a later unlock or grant cannot recover the old result. Locked content requests return **423**, and authorized reads of expired, removed or cancelled jobs return **404**. Temporary results stay in browser memory. Downloaded files are readable and cannot be recalled by locking the workspace. Review titles, descriptions, owner/status labels, process assumptions and scope before sharing. See [sharing and exports](/help/sharing/#continue-editing-in-drawio) and the [complete API contract](https://github.com/Caripson/visualnerve/blob/main/API.md#editable-diagram-exchange).

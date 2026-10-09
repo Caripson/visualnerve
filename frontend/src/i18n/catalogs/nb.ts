@@ -4,11 +4,8 @@ const catalog = {
   'dialogs.exportEditableFullHint':
     'Hele diagrammet omfatter alle lagrede noder, også dem som skjules av filtre eller visninger. Velg bestemte noder for å begrense delt innhold.',
   'dialogs.exportDrawioOption': 'draw.io · redigerbart diagram',
-  'dialogs.exportVisioOption': 'Visio (.vsdx) · forhåndsversjon',
   'dialogs.exportEditableHint':
     'Eksporterer redigerbare former, tekst, grunnfarger, grupper og tilknyttede forbindelser. Ikoner, pennestreker og avansert formatering forenkles eller utelates. Lange tekster kan kreve større noder. Filen er ukryptert og er ikke en komplett sikkerhetskopi.',
-  'dialogs.exportVisioPreviewHint':
-    'Visio-forhåndsversjon: pakken kontrolleres automatisk, men kompatibiliteten må fortsatt verifiseres i Microsoft Visio. Behold Visual Nerve-sikkerhetskopien i JSON.',
   'dialogs.exportEditable2DHint':
     'Bruker lagret 2D-layout og logiske prosessnoder. Lys flate, mørk tekst og bevarte fargeaksenter. Simulering og 3D forblir i Visual Nerve.',
   'dialogs.exportEditableProgress': 'Forbereder redigerbar eksport · {percent}%',

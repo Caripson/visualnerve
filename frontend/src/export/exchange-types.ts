@@ -2,7 +2,7 @@ import type { NodeKind, GraphEdge } from '../model/types';
 import type { Graph } from '../model/types';
 import type { SvgTheme } from './svg-job-types';
 
-export type ExchangeFormat = 'drawio' | 'vsdx';
+export type ExchangeFormat = 'drawio';
 export interface ExchangeOptions {
   scope?: 'complete' | 'selected';
   nodeIds?: string[];

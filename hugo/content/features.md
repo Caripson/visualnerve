@@ -38,7 +38,7 @@ Code import covers 50 programming/query/configuration languages plus linked Mark
 
 Existing `.drawio` and `.vsdx` files can also become editable native diagrams. Preview pages and import notes before choosing the page to create. Advanced shapes and routing may be simplified.
 
-You can also export a whole diagram or selected nodes as an editable `.drawio` drawing, or try the `.vsdx` compatibility preview. Text, basic shapes, groups and attached connectors use the saved 2D layout. Keep native JSON for the complete model; [the export guide](/help/sharing/#continue-editing-in-drawio-or-visio) explains format limits and the remaining Microsoft Visio verification.
+You can also export a whole diagram or selected nodes as an editable `.drawio` drawing. Text, basic shapes, groups and attached connectors use the saved 2D layout. Keep native JSON for the complete model; [the export guide](/help/sharing/#continue-editing-in-drawio) explains conversion limits and how to continue editing the drawing.
 
 [Visualize SQL](/help/sql/) · [Visualize code](/help/code/) · [Import diagram files](/help/diagram-import/)
 

@@ -72,7 +72,7 @@ Read only is an explicit route allowlist, not general permission for POST:
 | ----------------------------------- | ------------------------------------------ |
 | `/export`                           | Current graph JSON, Markdown or SVG export |
 | `/exports/svg`                      | Transient background SVG export job        |
-| `/exports/diagrams`                 | Editable Draw.io or preview Visio export job |
+| `/exports/diagrams`                 | Editable Draw.io export job |
 | `/sql/preview`                      | Unsaved SQL query/schema analysis          |
 | `/code/preview`                     | Unsaved code analysis                      |
 | `/code/project/preview`             | Unsaved ZIP project analysis               |
@@ -91,21 +91,21 @@ SVG preserves native paths, shapes, text, icons, connections and visible saved p
 
 The synchronous `/export` route accepts source graphs with at most 100 nodes and 20,000 cumulative title, description and serialized metadata characters before projection, including when exporting a selection. Larger sources return `409 SVG_BACKGROUND_REQUIRED`; use the [background SVG job](#parallel-cases-and-background-exports). Small synchronous exports additionally retain 100,000 rendered DOM-element, 250,000 source-text-character and 16 MiB XML limits, subject to bridge envelope/time limits. Background jobs support up to 20,000 rendered nodes, 100,000 rendered edges, 5,000,000 source text characters and 64 MiB XML. JSON and Markdown exports accept only `diagramId` and `format`. See [export formats](../EXPORT_FORMAT.md).
 
-## Export an editable Draw.io or Visio diagram
+## Export an editable Draw.io diagram
 
-Bridge 0.6.0 advertises `exchange-export-v1`. `GET /exports/capabilities` keeps all SVG fields and adds `diagrams`: formats, scopes, independent budgets, byte chunk units and preview compatibility. Use the existing request tool:
+Bridge 0.6.0 advertises `exchange-export-v1`. `GET /exports/capabilities` keeps all SVG fields and adds `diagrams`: the drawio format, scopes, independent budgets, byte chunk units and validation metadata. Use the existing request tool:
 
 ```json
 {"path":"/exports/diagrams","method":"POST","data":{"diagramId":"DIAGRAM_UUID","format":"drawio","scope":"complete"}}
 ```
 
-The `201` response is a job status, not the file. Poll `GET /exports/diagrams/{jobId}` for real progress, state and warnings. After `succeeded`, retrieve `/exports/diagrams/{jobId}/result?offset=0&limit=786432`. Chunks contain `{jobId,format,mimeType,encoding:"base64",offset,nextOffset,totalBytes,data,complete,warnings}`. **Decode each padded base64 data chunk separately**, concatenate binary bytes and advance with `nextOffset` until complete. Offsets count raw bytes; never concatenate base64 strings or use SVG's UTF-16 offsets. Save `.drawio` or `.vsdx` and review warnings. Starting, inspecting, retrieving and exact DELETE cancellation permit Read only. Cancellation accepts no arguments or `{}`, returns cancelled status once and then removes the job/result.
+The `201` response is a job status, not the file. Poll `GET /exports/diagrams/{jobId}` for real progress, state and warnings. After `succeeded`, retrieve `/exports/diagrams/{jobId}/result?offset=0&limit=786432`. Chunks contain `{jobId,format,mimeType,encoding:"base64",offset,nextOffset,totalBytes,data,complete,warnings}`. **Decode each padded base64 data chunk separately**, concatenate binary bytes and advance with `nextOffset` until complete. Offsets count raw bytes; never concatenate base64 strings or use SVG's UTF-16 offsets. Save `.drawio` and review warnings. Starting, inspecting, retrieving and exact DELETE cancellation permit Read only. Cancellation accepts no arguments or `{}`, returns cancelled status once and then removes the job/result.
 
 Exports use saved logical nodes and canonical 2D geometry. Basic text/shapes/colors/groups and attached connectors are editable. Complete includes stored nodes hidden by temporary views. Selected requires 1–20,000 explicit existing canonical node UUIDs and includes only internal connections; include descendant IDs yourself for process hierarchies. Viewport is unsupported. Visible titles/descriptions, owner/status labels and simple process assumptions are readable; raw datasets, source files, arbitrary metadata and simulation execution/results are excluded. Icons, rich formatting and drawing can be simplified or omitted. Native JSON/workspace backup remains the full model transfer.
 
-Both editable formats use a deliberate **light drawing surface**, independent of app Appearance: white base fills, dark text/labels/base borders and preserved stored node, connection and mind-map color accents. This keeps labels readable when opening the document in another editor. Native JSON retains full stored styling, and workspace backups retain portable appearance settings. SVG appearance is unchanged; no new API option is needed.
+Editable Draw.io drawings use a deliberate **light drawing surface**, independent of app Appearance: white base fills, dark text/labels/base borders and preserved stored node, connection and mind-map color accents. This keeps labels readable when opening the document in another editor. Native JSON retains full stored styling, and workspace backups retain portable appearance settings. SVG appearance is unchanged; no new API option is needed.
 
-**VSDX is a preview requiring Microsoft Visio verification.** Automatic package checks do not prove real Visio rendering/editing fidelity. Inspect the file there and retain native JSON. Transient local jobs retain their original session/grant and disappear on lock, reload, stop, cache clearing or explicit grant changes. Independent limits are 100,000 source nodes/500,000 source edges, 20,000 scoped nodes/100,000 internal edges, 5,000,000 text characters, 64 MiB output, two active/four terminal jobs, 128 MiB retained bytes, 15-minute retention and a two-minute deadline. Results before success return 409; invalid chunks return 422; unavailable original jobs return 404 after authorization. See [the complete binary contract](../API.md#editable-diagram-exchange).
+Transient local jobs retain their original session/grant and disappear on lock, reload, stop, cache clearing or explicit grant changes. Independent limits are 100,000 source nodes/500,000 source edges, 20,000 scoped nodes/100,000 internal edges, 5,000,000 text characters, 64 MiB output, two active/four terminal jobs, 128 MiB retained bytes, 15-minute retention and a two-minute deadline. Results before success return 409; invalid chunks return 422; unavailable original jobs return 404 after authorization. See [the complete binary contract](../API.md#editable-diagram-exchange).
 
 ## Inspect and control hierarchical processes
 

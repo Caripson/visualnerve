@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { strFromU8, unzipSync } from 'fflate';
 import { expect, test, type APIRequestContext, type Page } from './fixtures';
 import type {
   ExchangeFormat,
@@ -10,7 +9,6 @@ import type {
 } from '../../src/export/exchange-types';
 import type { Graph } from '../../src/model/types';
 import { parseDrawio } from '../../src/imports/diagram/drawio';
-import { parseVsdx } from '../../src/imports/diagram/vsdx';
 import { browserLaunchOptions } from '../../playwright.config';
 
 // Actual browser workers, binary serializers and bridge requests remain enabled.
@@ -99,9 +97,7 @@ async function readChunks(
     offset = chunk.nextOffset;
     if (chunk.complete) {
       expect(offset).toBe(chunk.totalBytes);
-      expect(chunk.mimeType).toBe(
-        format === 'drawio' ? 'application/vnd.jgraph.mxfile' : 'application/vnd.ms-visio.drawing',
-      );
+      expect(chunk.mimeType).toBe('application/vnd.jgraph.mxfile');
       return { bytes: Buffer.concat(chunks), chunkCount: chunks.length, warnings: chunk.warnings };
     }
     expect(bytes.byteLength).toBeGreaterThan(0);
@@ -153,36 +149,23 @@ async function download(page: Page, format: ExchangeFormat, scope = 'complete') 
       .evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value)),
   ).toEqual(['complete', 'selected']);
   await area.selectOption(scope);
-  if (format === 'vsdx') {
-    await expect(page.getByLabel('Export format').locator('option[value="vsdx"]')).toContainText(
-      'preview',
-    );
-    await expect(page.getByRole('dialog').getByRole('note')).toContainText('Microsoft Visio');
-  }
+  await expect(page.getByLabel('Export format').locator('option[value="vsdx"]')).toHaveCount(0);
   const downloading = page.waitForEvent('download');
   await page.getByRole('dialog').getByRole('button', { name: 'Export', exact: true }).click();
   const file = await downloading;
   expect(file.suggestedFilename()).toMatch(new RegExp(`\\.${format}$`));
   return readFile((await file.path())!);
 }
-function imported(bytes: Buffer, format: ExchangeFormat) {
-  const parsed =
-    format === 'drawio'
-      ? parseDrawio(bytes.toString('utf8'), 'native.drawio')
-      : parseVsdx(new Uint8Array(bytes), 'native.vsdx');
+function imported(bytes: Buffer) {
+  const parsed = parseDrawio(bytes.toString('utf8'), 'native.drawio');
   expect(parsed.pages).toHaveLength(1);
   return parsed.pages[0].graph;
 }
 function assertNativeContent(bytes: Buffer, format: ExchangeFormat, nodes: number, edges: number) {
-  const source =
-    format === 'drawio'
-      ? bytes.toString('utf8')
-      : Object.values(unzipSync(new Uint8Array(bytes)))
-          .map((part) => strFromU8(part))
-          .join('\n');
+  const source = bytes.toString('utf8');
   expect(source).not.toContain(secret);
   expect(source).not.toMatch(/<(?:script|image|foreignObject|iframe)\b/);
-  const graph = imported(bytes, format);
+  const graph = imported(bytes);
   expect(graph.nodes).toHaveLength(nodes);
   expect(graph.edges).toHaveLength(edges);
   const ids = new Set(graph.nodes.map((node) => node.id));
@@ -271,7 +254,7 @@ async function populate(request: APIRequestContext) {
 }
 
 graphicsTest(
-  'UI downloads and native REST chunks match for both editable formats; dark Appearance and 3D preserve the readable 2D drawing',
+  'UI downloads and native REST chunks match for draw.io; dark Appearance and 3D preserve the readable 2D drawing',
   async ({ page, request }, info) => {
     test.setTimeout(120_000);
     const { graph, ids } = await populate(request);
@@ -280,7 +263,7 @@ graphicsTest(
     await page.locator(`button[data-diagram-id="${graph.diagram.id}"]`).click();
     await expect(page.locator('.canvas-shell [data-testid="graph-node"]')).toHaveCount(4);
     const canonical = new Map<ExchangeFormat, Buffer>();
-    for (const format of ['drawio', 'vsdx'] as const) {
+    for (const format of ['drawio'] as const) {
       const job = await start(request, graph.diagram.id, format);
       const status = await completed(request, job.jobId);
       expect(status).toMatchObject({ nodeCount: 4, edgeCount: 2 });
@@ -306,19 +289,10 @@ graphicsTest(
       expect(child.y - group.y).toBeCloseTo(50, 6);
       expect(child.width).toBeCloseTo(200, 6);
       expect(child.height).toBeCloseTo(120, 6);
-      if (format === 'vsdx')
-        expect(native.warnings).toEqual(
-          expect.arrayContaining([
-            expect.objectContaining({ code: 'VISIO_COMPATIBILITY_PREVIEW' }),
-          ]),
-        );
       canonical.set(format, ui);
       await info.attach(`native-ui.${format}`, {
         body: ui,
-        contentType:
-          format === 'drawio'
-            ? 'application/vnd.jgraph.mxfile'
-            : 'application/vnd.ms-visio.drawing',
+        contentType: 'application/vnd.jgraph.mxfile',
       });
     }
     // A UI selection contains its explicit node, rather than its group or outside endpoints.
@@ -336,23 +310,16 @@ graphicsTest(
     const themed = await request.put('/api/v1/settings/theme', { data: { value: 'dark' } });
     expect(themed.status(), await themed.text()).toBe(200);
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-    for (const format of ['drawio', 'vsdx'] as const) {
+    for (const format of ['drawio'] as const) {
       const job = await start(request, graph.diagram.id, format);
       await completed(request, job.jobId);
       const darkApi = await result(request, job.jobId, format);
       expect(darkApi.bytes.equals(canonical.get(format)!)).toBe(true);
       expect((await download(page, format)).equals(canonical.get(format)!)).toBe(true);
-      if (format === 'drawio') {
-        const xml = darkApi.bytes.toString('utf8');
-        expect(xml).toContain('background="#FFFFFF"');
-        expect(xml).toContain('adaptiveColors="none"');
-        expect(xml).toContain('strokeColor=#B3CBE7;fontColor=#1F2D28');
-      } else {
-        const xml = strFromU8(unzipSync(darkApi.bytes)['visio/pages/page1.xml']);
-        expect(xml).toContain('<Cell N="LineColor" V="#B3CBE7"');
-        expect(xml).toContain('<Cell N="Color" V="#1F2D28"');
-        expect(xml).not.toContain('#E1E7E1');
-      }
+      const xml = darkApi.bytes.toString('utf8');
+      expect(xml).toContain('background="#FFFFFF"');
+      expect(xml).toContain('adaptiveColors="none"');
+      expect(xml).toContain('strokeColor=#B3CBE7;fontColor=#1F2D28');
     }
     const saved = (await (
       await request.get(`/api/v1/diagrams/${graph.diagram.id}`)
@@ -367,7 +334,7 @@ graphicsTest(
     await expect(page.getByTestId('spatial-view')).toHaveAttribute('data-renderer', 'ready', {
       timeout: 30_000,
     });
-    for (const format of ['drawio', 'vsdx'] as const) {
+    for (const format of ['drawio'] as const) {
       const job = await start(request, graph.diagram.id, format);
       await completed(request, job.jobId);
       const spatialApi = await result(request, job.jobId, format);
@@ -397,9 +364,20 @@ test('read-only REST and MCP jobs preserve selected internal edges, enforce byte
     scopes: ['complete', 'selected'],
     resultEncoding: 'base64',
     resultOffsetUnit: 'bytes',
-    formats: { vsdx: { compatibility: 'preview', requiresMicrosoftVisioVerification: true } },
+    formats: { drawio: { editable: true, validation: 'format-and-drawio' } },
     limits: { resultChunkBytes: chunkLimit },
   });
+  expect(Object.keys(capabilities.diagrams.formats)).toEqual(['drawio']);
+  const unsupported = await request.post(base, {
+    data: { diagramId: graph.diagram.id, format: 'vsdx' },
+  });
+  expect(unsupported.status()).toBe(422);
+  const unsupportedMcp = await mcp(request, '/exports/diagrams', 'POST', {
+    diagramId: graph.diagram.id,
+    format: 'vsdx',
+  });
+  expect(unsupportedMcp.isError).toBe(true);
+  expect(unsupportedMcp.structuredContent.status).toBe(422);
   const tools = await rpc<{ tools: Array<{ name: string }> }>(request, 'tools/list');
   expect(tools.tools.map((tool) => tool.name)).toContain('visual_nerve_request');
   const docs = await rpc<ToolResult<unknown>>(request, 'tools/call', {
@@ -410,7 +388,7 @@ test('read-only REST and MCP jobs preserve selected internal edges, enforce byte
   expect(
     JSON.parse(docs.content[0].text).paths['/exports/diagrams/{jobId}/result'].get,
   ).toBeDefined();
-  for (const format of ['drawio', 'vsdx'] as const) {
+  for (const format of ['drawio'] as const) {
     const input = { scope: 'selected', nodeIds: [ids.a, ids.b] };
     const rest = await start(request, graph.diagram.id, format, input);
     const status = await completed(request, rest.jobId);
@@ -699,17 +677,17 @@ test.describe('capture editable export UI', () => {
         await page.getByRole('button', { name: 'Export', exact: true }).click();
         const dialog = page.getByRole('dialog', { name: 'Export diagram', exact: true });
         await expect(dialog).toBeVisible();
-        await dialog.getByLabel('Export format', { exact: true }).selectOption('vsdx');
+        await dialog.getByLabel('Export format', { exact: true }).selectOption('drawio');
         await dialog.getByLabel('Export area', { exact: true }).selectOption('complete');
         await expect(dialog.getByLabel('Export format').locator('option:checked')).toHaveText(
-          'Visio (.vsdx) · preview',
+          'draw.io · editable diagram',
         );
         await expect(dialog.getByLabel('Export area').locator('option:checked')).toHaveText(
           'Complete diagram',
         );
-        await expect(dialog.getByRole('note')).toContainText(
-          'compatibility must still be verified in Microsoft Visio',
-        );
+        await expect(
+          dialog.getByLabel('Export format').locator('option[value="vsdx"]'),
+        ).toHaveCount(0);
         await expect(dialog).toContainText('Uses saved 2D layout and logical process nodes.');
         await expect(dialog).toContainText(
           'Exports editable shapes, text, basic colors, groups and attached connectors.',

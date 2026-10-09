@@ -12,7 +12,6 @@ export const exchangeExportCapabilities = {
   scopes: ['complete', 'selected'],
   formats: {
     drawio: { editable: true, validation: 'format-and-drawio' },
-    vsdx: { editable: true, compatibility: 'preview', requiresMicrosoftVisioVerification: true },
   },
   limits: { ...exchangeLimits, resultChunkBytes: chunkLimit },
   resultOffsetUnit: 'bytes',
@@ -89,8 +88,7 @@ export class ExchangeExportCommands {
         ) ||
         typeof input.diagramId !== 'string' ||
         !idPattern.test(input.diagramId) ||
-        typeof input.format !== 'string' ||
-        !['drawio', 'vsdx'].includes(input.format) ||
+        input.format !== 'drawio' ||
         (input.scope !== undefined &&
           (typeof input.scope !== 'string' || !['complete', 'selected'].includes(input.scope))) ||
         (input.nodeIds !== undefined && input.scope !== 'selected') ||
@@ -103,7 +101,7 @@ export class ExchangeExportCommands {
       )
         throw new StorageError(
           422,
-          'Editable diagram export expects diagramId, format drawio or vsdx, optional scope and unique selected nodeIds.',
+          'Editable diagram export expects diagramId, format drawio, optional scope and unique selected nodeIds.',
         );
       const graph = await this.repo.getGraph(input.diagramId);
       if (input.scope === 'selected') {

@@ -43,9 +43,9 @@ export function ExportDialog({ close }: { close: () => void }) {
     state.graph ? getSpatialView(state.graph).mode === '3d' : false,
   );
   const [target, setTarget] = useState('diagram');
-  const [format, setFormat] = useState<
-    'json' | 'markdown' | 'svg' | 'png' | 'pdf' | 'drawio' | 'vsdx'
-  >('json');
+  const [format, setFormat] = useState<'json' | 'markdown' | 'svg' | 'png' | 'pdf' | 'drawio'>(
+    'json',
+  );
   const [options, setOptions] = useState<RenderOptions>({
     scope: 'complete',
     multiplier: 2,
@@ -56,7 +56,7 @@ export function ExportDialog({ close }: { close: () => void }) {
   const [busy, setBusy] = useState(false);
   const [svgProgress, setSvgProgress] = useState<number | undefined>(undefined);
   const [error, setError] = useState('');
-  const editable = format === 'drawio' || format === 'vsdx';
+  const editable = format === 'drawio';
   const set = (patch: Partial<RenderOptions>) => setOptions((v) => ({ ...v, ...patch }));
   const targetField = (
     <Field title={t('dialogs.exportField')}>
@@ -109,15 +109,13 @@ export function ExportDialog({ close }: { close: () => void }) {
           value={format}
           onChange={(e) => {
             const next = e.target.value as typeof format;
-            if ((next === 'drawio' || next === 'vsdx') && options.scope === 'viewport')
-              set({ scope: 'complete' });
+            if (next === 'drawio' && options.scope === 'viewport') set({ scope: 'complete' });
             setFormat(next);
           }}
         >
           <option value="json">{t('dialogs.exportJsonOption')}</option>
           <option value="markdown">{t('dialogs.exportMarkdownOption')}</option>
           <option value="drawio">{t('dialogs.exportDrawioOption')}</option>
-          <option value="vsdx">{t('dialogs.exportVisioOption')}</option>
           <option value="svg">{t('dialogs.exportSvgOption')}</option>
           <option value="png">{t('dialogs.exportPngOption')}</option>
           <option value="pdf">{t('dialogs.exportPdfOption')}</option>
@@ -217,11 +215,6 @@ export function ExportDialog({ close }: { close: () => void }) {
         <p className="muted">{t('dialogs.exportEditableFullHint')}</p>
       )}
       {editable && <p className="muted">{t('dialogs.exportEditableHint')}</p>}
-      {format === 'vsdx' && (
-        <p role="note" className="storage-notice">
-          {t('dialogs.exportVisioPreviewHint')}
-        </p>
-      )}
       {busy && svgProgress !== undefined && (
         <div role="status" aria-live="polite">
           <p>
@@ -298,7 +291,7 @@ export function ExportDialog({ close }: { close: () => void }) {
               const name = safeName(g.diagram.name);
               if (format === 'json') download(`${name}.json`, JSON.stringify(g, null, 2));
               else if (format === 'markdown') download(`${name}.md`, markdown(g), 'text/markdown');
-              else if (format === 'drawio' || format === 'vsdx') {
+              else if (format === 'drawio') {
                 const { exportExchangeSnapshot } = await waitForExport(
                   import('../export/exchange-download'),
                   guard,

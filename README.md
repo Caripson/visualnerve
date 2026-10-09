@@ -26,7 +26,7 @@ The screenshot shows the actual desktop workspace with illustrative data. Light 
 | Understand code          | Visualize SQL SELECT/WITH and DDL, analyze 50 code languages plus Markdown, or inspect a ZIP project by file, declaration or folder.  |
 | Import existing diagrams | Preview and convert a selected draw.io or Visio `.vsdx` page into editable native objects.                                            |
 | Rotate the same diagram  | Styled 3D card relief with readable front/back text and editable placement; return to the canonical 2D layout.                        |
-| Explain and share        | Walkthroughs, local Piper narration, video, PNG/PDF/SVG, Markdown, lossless JSON, editable draw.io and preview Visio export. |
+| Explain and share        | Walkthroughs, local Piper narration, video, PNG/PDF/SVG, Markdown, lossless JSON, editable draw.io export. |
 | Simulate a process       | Seeded worker runs with queues, shared resources, nested processes, scenarios, metrics, economics and bounded replay archives.        |
 | Connect other tools      | Optional local REST/MCP for the same validated model; review a workflow brief before opening it in Lovable.                           |
 

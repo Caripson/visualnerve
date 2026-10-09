@@ -35,7 +35,7 @@ func TestDiagramExchangeSchemasPreserveSVGAndDescribeStrictBinaryJobs(t *testing
 		t.Fatal("selection must be unique bounded canonical IDs")
 	}
 	status := schemas["DiagramExportJobStatus"].(object)["properties"].(object)
-	if !reflect.DeepEqual(status["format"].(object)["enum"], []string{"drawio", "vsdx"}) ||
+	if !reflect.DeepEqual(status["format"].(object)["enum"], []string{"drawio"}) ||
 		!reflect.DeepEqual(status["phase"].(object)["enum"], []string{"queued", "projection", "nodes", "edges", "packaging", "complete"}) ||
 		status["warnings"].(object)["items"].(object)["$ref"] != "#/components/schemas/DiagramExportWarning" {
 		t.Fatal("status must describe actual worker format/phases/warnings")
@@ -58,10 +58,17 @@ func TestDiagramExchangeSchemasPreserveSVGAndDescribeStrictBinaryJobs(t *testing
 		}
 	}
 	formats := schemas["DiagramExportCapabilities"].(object)["properties"].(object)["formats"].(object)["properties"].(object)
-	visio := formats["vsdx"].(object)["properties"].(object)
-	if !reflect.DeepEqual(visio["compatibility"].(object)["enum"], []string{"preview"}) ||
-		!reflect.DeepEqual(visio["requiresMicrosoftVisioVerification"].(object)["enum"], []bool{true}) {
-		t.Fatal("format compliance tests must not falsely promise Microsoft Visio fidelity")
+	if len(formats) != 1 || formats["drawio"] == nil || formats["vsdx"] != nil {
+		t.Fatal("editable export capabilities must advertise only draw.io")
+	}
+	for _, schema := range []object{
+		whole["properties"].(object)["format"].(object),
+		selected["properties"].(object)["format"].(object),
+		properties["format"].(object),
+	} {
+		if !reflect.DeepEqual(schema["enum"], []string{"drawio"}) {
+			t.Fatal("request and result schemas must reject unsupported editable formats", schema)
+		}
 	}
 }
 
@@ -83,6 +90,11 @@ func TestGeneratedDiagramExchangePathsDiscoverCompleteScopedContracts(t *testing
 		t.Fatal("additive export release must identify current API version")
 	}
 	paths := document["paths"].(object)
+	schemas := document["components"].(object)["schemas"].(object)
+	if !reflect.DeepEqual(schemas["DiagramFileFormat"].(object)["enum"], []any{"drawio", "vsdx"}) ||
+		paths["/diagram-files/preview"].(object)["post"] == nil {
+		t.Fatal("removing Visio export must retain existing VSDX import support")
+	}
 	for _, endpoint := range []struct{ path, method, code, schema string }{
 		{"/exports/diagrams", "post", "201", "DiagramExportJobStatus"},
 		{"/exports/diagrams/{jobId}", "get", "200", "DiagramExportJobStatus"},
