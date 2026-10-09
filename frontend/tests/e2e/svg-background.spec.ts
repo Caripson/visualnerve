@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { expect, test, type APIRequestContext } from './fixtures';
 import type { SvgJobStatus } from '../../src/export/svg-job-types';
+import type { ExchangeJobStatus } from '../../src/export/exchange-types';
 
 // Native SVG workers and crypto remain real; service-worker caching is covered separately.
 test.use({ serviceWorkers: 'block' });
@@ -17,12 +18,16 @@ async function start(request: APIRequestContext, diagramId: string, options = {}
   expect(response.status(), await response.text()).toBe(201);
   return response.json() as Promise<SvgJobStatus>;
 }
-async function completed(request: APIRequestContext, jobId: string) {
+async function completed(
+  request: APIRequestContext,
+  jobId: string,
+  family: 'svg' | 'diagrams' = 'svg',
+) {
   await expect
     .poll(async () => {
-      const response = await request.get(`/api/v1/exports/svg/${jobId}`);
+      const response = await request.get(`/api/v1/exports/${family}/${jobId}`);
       expect(response.status(), await response.text()).toBe(200);
-      const status = (await response.json()) as SvgJobStatus;
+      const status = (await response.json()) as SvgJobStatus | ExchangeJobStatus;
       expect(status.state, status.error?.message).not.toBe('failed');
       return status.state;
     })
@@ -282,7 +287,7 @@ test('background jobs preserve dark appearance, saved viewport and native vector
   expect(await (await request.get(`/api/v1/diagrams/${diagram.id}`)).json()).toEqual(before);
 });
 
-test('encrypted read-only SVG jobs survive POST disposal, allow cancellation, and erase a blocked native worker on lock/reunlock', async ({
+test('encrypted read-only SVG and editable jobs survive POST disposal and erase completed results and blocked workers on lock/reunlock', async ({
   page,
   playwright,
 }) => {
@@ -314,6 +319,7 @@ test('encrypted read-only SVG jobs survive POST disposal, allow cancellation, an
     await expect.poll(async () => (await request.get('/api/v1/diagrams')).status()).toBe(200);
     await page.getByRole('button', { name: 'Done', exact: true }).click();
   };
+  let unblock = () => {};
   try {
     await grant('write');
     const diagram = await (
@@ -346,7 +352,25 @@ test('encrypted read-only SVG jobs survive POST disposal, allow cancellation, an
     expect((await request.delete(`/api/v1/exports/svg/${job.jobId}`)).status()).toBe(200);
     expect((await request.get(`/api/v1/exports/svg/${job.jobId}`)).status()).toBe(404);
     expect(await (await request.get(`/api/v1/diagrams/${diagram.id}`)).json()).toEqual(before);
-    let unblock!: () => void;
+    // The completed binary result retains the same original read grant after its POST closes.
+    const visioStarted = await request.post('/api/v1/exports/diagrams', {
+      data: { diagramId: diagram.id, format: 'vsdx' },
+    });
+    expect(visioStarted.status(), await visioStarted.text()).toBe(201);
+    const retainedVisio = (await visioStarted.json()) as ExchangeJobStatus;
+    await completed(request, retainedVisio.jobId, 'diagrams');
+    const visioResult = await request.get(`/api/v1/exports/diagrams/${retainedVisio.jobId}/result`);
+    expect(visioResult.status(), await visioResult.text()).toBe(200);
+    const visioChunk = await visioResult.json();
+    expect(visioChunk).toMatchObject({
+      format: 'vsdx',
+      encoding: 'base64',
+      offset: 0,
+      complete: true,
+    });
+    const visioBytes = Buffer.from(visioChunk.data, 'base64');
+    expect(visioBytes.subarray(0, 2).toString('ascii')).toBe('PK');
+    expect(visioBytes.byteLength).toBe(visioChunk.totalBytes);
     const blocked = new Promise<void>((resolve) => {
       unblock = resolve;
     });
@@ -356,11 +380,26 @@ test('encrypted read-only SVG jobs survive POST disposal, allow cancellation, an
       await blocked;
       await route.continue().catch(() => undefined);
     });
+    let exchangeScriptRequested = false;
+    await page.route('**/exchange-worker-*.js', async (route) => {
+      exchangeScriptRequested = true;
+      await blocked;
+      await route.continue().catch(() => undefined);
+    });
     const pending = await start(request, diagram.id);
     await expect.poll(() => scriptRequested).toBe(true);
     expect((await (await request.get(`/api/v1/exports/svg/${pending.jobId}`)).json()).state).toBe(
       'running',
     );
+    const drawioStarted = await request.post('/api/v1/exports/diagrams', {
+      data: { diagramId: diagram.id, format: 'drawio' },
+    });
+    expect(drawioStarted.status(), await drawioStarted.text()).toBe(201);
+    const pendingDrawio = (await drawioStarted.json()) as ExchangeJobStatus;
+    await expect.poll(() => exchangeScriptRequested).toBe(true);
+    expect(
+      (await (await request.get(`/api/v1/exports/diagrams/${pendingDrawio.jobId}`)).json()).state,
+    ).toBe('running');
     await page
       .getByRole('button', { name: 'Local only: storage and privacy', exact: true })
       .click();
@@ -377,9 +416,14 @@ test('encrypted read-only SVG jobs survive POST disposal, allow cancellation, an
     await grant('read');
     expect((await request.get(`/api/v1/exports/svg/${pending.jobId}`)).status()).toBe(404);
     expect((await request.get(`/api/v1/exports/svg/${pending.jobId}/result`)).status()).toBe(404);
+    for (const jobId of [retainedVisio.jobId, pendingDrawio.jobId]) {
+      expect((await request.get(`/api/v1/exports/diagrams/${jobId}`)).status()).toBe(404);
+      expect((await request.get(`/api/v1/exports/diagrams/${jobId}/result`)).status()).toBe(404);
+    }
     expect(await (await request.get(`/api/v1/diagrams/${diagram.id}`)).json()).toEqual(before);
     expect(errors).toEqual([]);
   } finally {
+    unblock();
     await request.dispose();
   }
 });

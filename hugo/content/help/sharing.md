@@ -8,7 +8,7 @@ Visual Nerve saves locally. Export creates a file you control; it does not autom
 
 Open **Export** on desktop or **Diagram actions → Export** on a phone.
 
-Older records and backups created on the website origin may remain readable; retiring its `/app` editor does not encrypt or delete them. The separate encrypted workspace at `app.visualnerve.com` protects private records with a local password. On that isolated address, only **Export all data / backup** produces an encrypted workspace file. Individual diagram JSON/Markdown, images, SVG, PDF, video and copied text remain readable. Review them before sharing, even if the workspace itself is password protected.
+Older records and backups created on the website origin may remain readable; retiring its `/app` editor does not encrypt or delete them. The separate encrypted workspace at `app.visualnerve.com` protects private records with a local password. On that isolated address, only **Export all data / backup** produces an encrypted workspace file. Individual diagram JSON/Markdown, Draw.io/Visio documents, images, SVG, PDF, video and copied text remain readable. Review them before sharing, even if the workspace itself is password protected.
 
 ## Choose the right output
 
@@ -18,12 +18,35 @@ Older records and backups created on the website origin may remain readable; ret
 | **Markdown · semantic outline** | Read or share a text explanation           | Headings, descriptions, process steps and relationships                                                                    |
 | **PNG · rendered diagram**      | Put a visual in a document or message      | A locally rendered picture of the selected area                                                                            |
 | **SVG · vector diagram**        | Scale a diagram for print or edit its visual elements | Text, shapes, icons, connections and visible drawing as vector elements in a 2D view                              |
+| **draw.io · editable diagram** | Continue editing in Draw.io | Basic editable text, shapes, colors, groups and attached connectors in the saved 2D layout |
+| **Visio (.vsdx) · preview** | Try an editable drawing in Microsoft Visio | Basic native diagram structure; compatibility still requires verification in Visio |
 | **PDF · printable diagram**     | Print or share a paged visual              | A 2D rendering on A4/A3, fitted or tiled                                                                                   |
 | **Export all data / backup**    | Keep or transfer your whole workspace      | All projects, owners, templates, portable preferences, source datasets, local history and retained simulation archives     |
 | **Export video** in Player      | Share a narrated walkthrough               | A film of the saved numbered sequence or storyboard                                                                        |
 | **Build with Lovable**          | Turn a workflow into an app-building brief | Reviewed text describing the chosen diagram scope and requirements                                                         |
 
-An image, PDF or video is not a restorable graph. Keep JSON or a full backup when you need an editable copy. Locking the app later does not encrypt or recall any downloaded file.
+An image, PDF or video is not a restorable graph. Draw.io/Visio files are editable drawings with simpler content than the original model. Keep JSON or a full backup for a faithful editable copy. Locking the app later does not encrypt or recall any downloaded file.
+
+## Continue editing in Draw.io or Visio
+
+1. Open **Export** on desktop or **Diagram actions → Export** on a phone.
+2. Choose **draw.io · editable diagram** or **Visio (.vsdx) · preview**.
+3. Choose **Complete diagram** or **Selected nodes**. Select both endpoints to keep their connection. Selecting a process group in the app includes its actual descendant steps.
+4. Read the format notes. Both use the saved 2D layout, even when you are viewing 3D.
+5. Choose **Export**. Preparation runs locally with percentage progress and cancellation; it does not send your model to a conversion service.
+6. Open the file in the destination editor and check its labels, groups and connectors.
+
+Text and basic shapes stay editable. Owner/status labels and simple process assumptions are included as text. Icons, custom stencils, pen strokes, rich formatting and 3D relief may be simplified or omitted; long descriptions can need resizing in the destination editor. **Complete diagram includes stored nodes hidden in temporary CSV/overview views.** Use Selected nodes when you intend to share only particular content. Source datasets, original source files and full simulation execution/scenarios are not part of these documents.
+
+Visio is a **compatibility preview**: package checks are automatic, but the document still needs verification in Microsoft Visio. Keep your native JSON and check the actual file before depending on fidelity. Draw.io/Visio are useful editable drawings; JSON or encrypted workspace backup preserves the complete Visual Nerve model.
+
+![Editable export on desktop, with format, scope and Visio compatibility notes.](/help/images/export-editable-desktop.webp "Choose an editable drawing format and review its sharing scope.")
+
+![The same editable export dialog on a phone, with both actions visible.](/help/images/export-editable-mobile.webp "On mobile, open Diagram actions → Export. Light and dark captures follow Appearance.")
+
+Editable exports support up to 20,000 scoped nodes, 100,000 internal connections, 5,000,000 exported characters and a 64 MiB file, with a two-minute execution deadline. Selection can come from a source graph of up to 100,000 nodes/500,000 connections. Exceeding limits gives an explicit error; reduce the selection or export separate diagrams. Two editable jobs can run at once. Temporary results expire after 15 minutes and are removed by workspace lock, reload, cancellation or app cache clearing. API/MCP jobs also disappear when their original integration grant is changed or stopped. UI export works independently of MCP being enabled.
+
+Downloaded documents are readable even when your workspace is encrypted. Review descriptions and scope before sharing. API/MCP users can perform the same export through [editable diagram jobs](/help/api-mcp/); binary chunks must be decoded separately before joining the bytes.
 
 ## Export one diagram
 

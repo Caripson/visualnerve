@@ -1659,6 +1659,519 @@
         ],
         "type": "object"
       },
+      "DiagramExportCapabilities": {
+        "additionalProperties": false,
+        "description": "Read-only editable diagram exchange in the connected browser's local Web Worker. POST /exports/diagrams snapshots saved logical nodes, internal connections and canonical 2D geometry into drawio XML or a vsdx ZIP package without opening or changing the diagram. A 3D view exports the saved 2D layout. Complete scope includes stored logical nodes, including nodes hidden in a temporary CSV or overview view; selected scope contains only explicit node UUIDs and internal edges. Visible labels may contain titles, descriptions, owner/status labels and simple process assumptions. Raw datasets, source files, arbitrary metadata, simulation execution/results, live capacity copies, presentation audio and vault data are not included. This is an editable drawing, not a full-fidelity native backup. Review warnings before sharing. VSDX compatibility is preview and requires verification in Microsoft Visio; package/schema tests do not establish real Visio fidelity. Every request needs accepted storage, an unlocked workspace and at least Read only MCP access. Jobs retain their original vault session and MCP grant. Lock, explicit grant changes, cache clearing, stop or reload invalidate them. Jobs/results are transient local RAM, not IndexedDB or bridge files. Invalidated, evicted, expired or cancelled jobs return 404 after current authorization; locked requests return 423 first. Result retrieval before success returns 409.",
+        "properties": {
+          "execution": {
+            "enum": [
+              "local-web-worker"
+            ],
+            "type": "string"
+          },
+          "formats": {
+            "additionalProperties": false,
+            "properties": {
+              "drawio": {
+                "additionalProperties": false,
+                "properties": {
+                  "editable": {
+                    "enum": [
+                      true
+                    ],
+                    "type": "boolean"
+                  },
+                  "validation": {
+                    "enum": [
+                      "format-and-drawio"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "editable",
+                  "validation"
+                ],
+                "type": "object"
+              },
+              "vsdx": {
+                "additionalProperties": false,
+                "properties": {
+                  "compatibility": {
+                    "enum": [
+                      "preview"
+                    ],
+                    "type": "string"
+                  },
+                  "editable": {
+                    "enum": [
+                      true
+                    ],
+                    "type": "boolean"
+                  },
+                  "requiresMicrosoftVisioVerification": {
+                    "enum": [
+                      true
+                    ],
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "editable",
+                  "compatibility",
+                  "requiresMicrosoftVisioVerification"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "drawio",
+              "vsdx"
+            ],
+            "type": "object"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/DiagramExportLimits"
+          },
+          "persistence": {
+            "enum": [
+              "transient-memory"
+            ],
+            "type": "string"
+          },
+          "requiresOriginalSessionAndGrant": {
+            "enum": [
+              true
+            ],
+            "type": "boolean"
+          },
+          "resultEncoding": {
+            "enum": [
+              "base64"
+            ],
+            "type": "string"
+          },
+          "resultOffsetUnit": {
+            "enum": [
+              "bytes"
+            ],
+            "type": "string"
+          },
+          "scopes": {
+            "items": {
+              "enum": [
+                "complete",
+                "selected"
+              ],
+              "type": "string"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "version": {
+            "enum": [
+              1
+            ],
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "execution",
+          "scopes",
+          "formats",
+          "limits",
+          "resultOffsetUnit",
+          "resultEncoding",
+          "requiresOriginalSessionAndGrant",
+          "persistence"
+        ],
+        "type": "object"
+      },
+      "DiagramExportFailure": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "type": "object"
+      },
+      "DiagramExportJobInput": {
+        "description": "Read-only editable diagram exchange in the connected browser's local Web Worker. POST /exports/diagrams snapshots saved logical nodes, internal connections and canonical 2D geometry into drawio XML or a vsdx ZIP package without opening or changing the diagram. A 3D view exports the saved 2D layout. Complete scope includes stored logical nodes, including nodes hidden in a temporary CSV or overview view; selected scope contains only explicit node UUIDs and internal edges. Visible labels may contain titles, descriptions, owner/status labels and simple process assumptions. Raw datasets, source files, arbitrary metadata, simulation execution/results, live capacity copies, presentation audio and vault data are not included. This is an editable drawing, not a full-fidelity native backup. Review warnings before sharing. VSDX compatibility is preview and requires verification in Microsoft Visio; package/schema tests do not establish real Visio fidelity. Every request needs accepted storage, an unlocked workspace and at least Read only MCP access. Jobs retain their original vault session and MCP grant. Lock, explicit grant changes, cache clearing, stop or reload invalidate them. Jobs/results are transient local RAM, not IndexedDB or bridge files. Invalidated, evicted, expired or cancelled jobs return 404 after current authorization; locked requests return 423 first. Result retrieval before success returns 409. Format is required. Scope defaults to complete. Selected requires 1..20,000 unique existing canonical node UUIDs; nodeIds is forbidden outside selected, including []. Unknown fields and query parameters are rejected.",
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "diagramId": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "format": {
+                "enum": [
+                  "drawio",
+                  "vsdx"
+                ],
+                "type": "string"
+              },
+              "scope": {
+                "default": "complete",
+                "enum": [
+                  "complete"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "diagramId",
+              "format"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "diagramId": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "format": {
+                "enum": [
+                  "drawio",
+                  "vsdx"
+                ],
+                "type": "string"
+              },
+              "nodeIds": {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "maxItems": 20000,
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "scope": {
+                "enum": [
+                  "selected"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "diagramId",
+              "format",
+              "scope",
+              "nodeIds"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "DiagramExportJobStatus": {
+        "additionalProperties": false,
+        "description": "Read-only editable diagram exchange in the connected browser's local Web Worker. POST /exports/diagrams snapshots saved logical nodes, internal connections and canonical 2D geometry into drawio XML or a vsdx ZIP package without opening or changing the diagram. A 3D view exports the saved 2D layout. Complete scope includes stored logical nodes, including nodes hidden in a temporary CSV or overview view; selected scope contains only explicit node UUIDs and internal edges. Visible labels may contain titles, descriptions, owner/status labels and simple process assumptions. Raw datasets, source files, arbitrary metadata, simulation execution/results, live capacity copies, presentation audio and vault data are not included. This is an editable drawing, not a full-fidelity native backup. Review warnings before sharing. VSDX compatibility is preview and requires verification in Microsoft Visio; package/schema tests do not establish real Visio fidelity. Every request needs accepted storage, an unlocked workspace and at least Read only MCP access. Jobs retain their original vault session and MCP grant. Lock, explicit grant changes, cache clearing, stop or reload invalidate them. Jobs/results are transient local RAM, not IndexedDB or bridge files. Invalidated, evicted, expired or cancelled jobs return 404 after current authorization; locked requests return 423 first. Result retrieval before success returns 409. Status includes real progress and warnings but never complete file content or authority secrets. Failed jobs return status 200 with structured error. Cancellation returns a final cancelled status once and removes the result; later requests return 404.",
+        "properties": {
+          "bytes": {
+            "maximum": 67108864,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "diagramId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "edgeCount": {
+            "description": "Source count while queued, internal exported count after success (at most 100,000).",
+            "maximum": 500000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "error": {
+            "$ref": "#/components/schemas/DiagramExportFailure"
+          },
+          "format": {
+            "enum": [
+              "drawio",
+              "vsdx"
+            ],
+            "type": "string"
+          },
+          "jobId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "nodeCount": {
+            "description": "Source count while queued, scoped exported count after success (at most 20,000).",
+            "maximum": 100000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "phase": {
+            "enum": [
+              "queued",
+              "projection",
+              "nodes",
+              "edges",
+              "packaging",
+              "complete"
+            ],
+            "type": "string"
+          },
+          "progress": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "number"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed",
+              "cancelled"
+            ],
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/DiagramExportWarning"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "jobId",
+          "diagramId",
+          "format",
+          "state",
+          "progress",
+          "phase",
+          "createdAt",
+          "updatedAt",
+          "nodeCount",
+          "edgeCount",
+          "warnings"
+        ],
+        "type": "object"
+      },
+      "DiagramExportLimits": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "description": "Maximum concurrent queued/running diagram exchange jobs in this browser.",
+            "enum": [
+              2
+            ],
+            "type": "integer"
+          },
+          "bytes": {
+            "description": "Maximum complete output file size in bytes.",
+            "enum": [
+              67108864
+            ],
+            "type": "integer"
+          },
+          "deadlineMs": {
+            "description": "Maximum worker execution deadline in milliseconds.",
+            "enum": [
+              120000
+            ],
+            "type": "integer"
+          },
+          "dimension": {
+            "description": "Maximum absolute coordinate or document dimension.",
+            "enum": [
+              16777216
+            ],
+            "type": "integer"
+          },
+          "edges": {
+            "description": "Maximum internal scoped connections serialized.",
+            "enum": [
+              100000
+            ],
+            "type": "integer"
+          },
+          "nodes": {
+            "description": "Maximum scoped logical nodes serialized; selected scope can reduce this scene.",
+            "enum": [
+              20000
+            ],
+            "type": "integer"
+          },
+          "resultChunkBytes": {
+            "description": "Maximum raw binary bytes per result chunk, encoded into at most 1,048,576 standard base64 characters.",
+            "enum": [
+              786432
+            ],
+            "type": "integer"
+          },
+          "retained": {
+            "description": "Maximum retained terminal diagram exchange jobs.",
+            "enum": [
+              4
+            ],
+            "type": "integer"
+          },
+          "retainedBytes": {
+            "description": "Maximum retained editable diagram result bytes in this browser.",
+            "enum": [
+              134217728
+            ],
+            "type": "integer"
+          },
+          "retentionMs": {
+            "description": "Retention from creation in milliseconds; expiry removes status and result.",
+            "enum": [
+              900000
+            ],
+            "type": "integer"
+          },
+          "sourceEdges": {
+            "description": "Maximum source graph connections before snapshotting, independent of scope.",
+            "enum": [
+              500000
+            ],
+            "type": "integer"
+          },
+          "sourceNodes": {
+            "description": "Maximum source graph nodes before snapshotting, independent of scope.",
+            "enum": [
+              100000
+            ],
+            "type": "integer"
+          },
+          "textCharacters": {
+            "description": "Maximum deliberately exported text budget in UTF-16 code units.",
+            "enum": [
+              5000000
+            ],
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sourceNodes",
+          "sourceEdges",
+          "nodes",
+          "edges",
+          "textCharacters",
+          "bytes",
+          "dimension",
+          "active",
+          "retained",
+          "retainedBytes",
+          "retentionMs",
+          "deadlineMs",
+          "resultChunkBytes"
+        ],
+        "type": "object"
+      },
+      "DiagramExportResultChunk": {
+        "additionalProperties": false,
+        "description": "Read-only editable diagram exchange in the connected browser's local Web Worker. POST /exports/diagrams snapshots saved logical nodes, internal connections and canonical 2D geometry into drawio XML or a vsdx ZIP package without opening or changing the diagram. A 3D view exports the saved 2D layout. Complete scope includes stored logical nodes, including nodes hidden in a temporary CSV or overview view; selected scope contains only explicit node UUIDs and internal edges. Visible labels may contain titles, descriptions, owner/status labels and simple process assumptions. Raw datasets, source files, arbitrary metadata, simulation execution/results, live capacity copies, presentation audio and vault data are not included. This is an editable drawing, not a full-fidelity native backup. Review warnings before sharing. VSDX compatibility is preview and requires verification in Microsoft Visio; package/schema tests do not establish real Visio fidelity. Every request needs accepted storage, an unlocked workspace and at least Read only MCP access. Jobs retain their original vault session and MCP grant. Lock, explicit grant changes, cache clearing, stop or reload invalidate them. Jobs/results are transient local RAM, not IndexedDB or bridge files. Invalidated, evicted, expired or cancelled jobs return 404 after current authorization; locked requests return 423 first. Result retrieval before success returns 409. Offsets/limit use raw bytes, not UTF-16 or base64 characters. Retrieve only after success. Follow nextOffset and decode each data chunk separately before concatenating binary bytes; padding can occur in any chunk. Offsets beyond totalBytes return 422. Exported text remains readable information even when source IndexedDB is encrypted.",
+        "properties": {
+          "complete": {
+            "description": "True when nextOffset equals totalBytes.",
+            "type": "boolean"
+          },
+          "data": {
+            "description": "Standard padded base64 for this binary chunk only. Decode every chunk separately, then concatenate decoded bytes. Do not concatenate base64 strings.",
+            "format": "byte",
+            "maxLength": 1048576,
+            "type": "string"
+          },
+          "encoding": {
+            "enum": [
+              "base64"
+            ],
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "drawio",
+              "vsdx"
+            ],
+            "type": "string"
+          },
+          "jobId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "mimeType": {
+            "description": "MIME type of the complete editable document.",
+            "type": "string"
+          },
+          "nextOffset": {
+            "maximum": 67108864,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "offset": {
+            "maximum": 67108864,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "totalBytes": {
+            "maximum": 67108864,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/DiagramExportWarning"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "jobId",
+          "format",
+          "mimeType",
+          "encoding",
+          "offset",
+          "nextOffset",
+          "totalBytes",
+          "data",
+          "complete",
+          "warnings"
+        ],
+        "type": "object"
+      },
+      "DiagramExportWarning": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "type": "object"
+      },
       "DiagramFileFormat": {
         "enum": [
           "drawio",
@@ -2468,7 +2981,7 @@
             "type": "boolean"
           },
           "capabilities": {
-            "description": "Supported bridge capabilities. Version 0.5.0 advertises operations-v1, endpoint-docs-v1, fork-join-v1 and async-svg-export-v1; this is software discovery, not permission or workspace status.",
+            "description": "Supported bridge capabilities. Version 0.6.0 advertises operations-v1, endpoint-docs-v1, fork-join-v1, async-svg-export-v1 and exchange-export-v1; this is software discovery, not permission or workspace status.",
             "items": {
               "type": "string"
             },
@@ -11898,8 +12411,11 @@
       },
       "SvgExportCapabilities": {
         "additionalProperties": false,
-        "description": "Read-only background SVG export in the connected browser's local Web Worker. It snapshots the canonical 2D diagram without opening or mutating the project; a 3D view exports its corresponding 2D layout. The same renderer powers UI and API exports. Jobs and results are transient RAM, not IndexedDB or server files. Every request requires accepted storage, an unlocked workspace and at least Read only MCP access. A job retains its original vault session and MCP grant; lock, grant change, cache clear or bridge stop invalidates it rather than rerouting it to another authority. Expired, evicted or cancelled jobs return 404; after reauthorization, an invalidated original job is unavailable. Authorization errors, including 423 while locked, take precedence. Status may report failed with error details; result retrieval requires succeeded and otherwise returns 409 SVG_JOB_NOT_READY.",
+        "description": "Read-only background SVG export in the connected browser's local Web Worker. It snapshots the canonical 2D diagram without opening or mutating the project; a 3D view exports its corresponding 2D layout. The same renderer powers UI and API exports. Jobs and results are transient RAM, not IndexedDB or server files. Every request requires accepted storage, an unlocked workspace and at least Read only MCP access. A job retains its original vault session and MCP grant; lock, grant change, cache clear or bridge stop invalidates it rather than rerouting it to another authority. Expired, evicted or cancelled jobs return 404; after reauthorization, an invalidated original job is unavailable. Authorization errors, including 423 while locked, take precedence. Status may report failed with error details; result retrieval requires succeeded and otherwise returns 409 SVG_JOB_NOT_READY. The additive diagrams field discovers separate editable diagram exchange capabilities. Read-only editable diagram exchange in the connected browser's local Web Worker. POST /exports/diagrams snapshots saved logical nodes, internal connections and canonical 2D geometry into drawio XML or a vsdx ZIP package without opening or changing the diagram. A 3D view exports the saved 2D layout. Complete scope includes stored logical nodes, including nodes hidden in a temporary CSV or overview view; selected scope contains only explicit node UUIDs and internal edges. Visible labels may contain titles, descriptions, owner/status labels and simple process assumptions. Raw datasets, source files, arbitrary metadata, simulation execution/results, live capacity copies, presentation audio and vault data are not included. This is an editable drawing, not a full-fidelity native backup. Review warnings before sharing. VSDX compatibility is preview and requires verification in Microsoft Visio; package/schema tests do not establish real Visio fidelity. Every request needs accepted storage, an unlocked workspace and at least Read only MCP access. Jobs retain their original vault session and MCP grant. Lock, explicit grant changes, cache clearing, stop or reload invalidate them. Jobs/results are transient local RAM, not IndexedDB or bridge files. Invalidated, evicted, expired or cancelled jobs return 404 after current authorization; locked requests return 423 first. Result retrieval before success returns 409.",
         "properties": {
+          "diagrams": {
+            "$ref": "#/components/schemas/DiagramExportCapabilities"
+          },
           "execution": {
             "enum": [
               "local-web-worker"
@@ -11962,7 +12478,8 @@
           "limits",
           "resultOffsetUnit",
           "requiresOriginalSessionAndGrant",
-          "persistence"
+          "persistence",
+          "diagrams"
         ],
         "type": "object"
       },
@@ -12593,9 +13110,9 @@
     }
   },
   "info": {
-    "description": "IndexedDB in the browser is authoritative and is the only database. This optional API forwards commands through a WebSocket bridge to an open browser with explicit storage acceptance and MCP access set to Read only or Read + write (default Off). Read-only access permits GET, POST /export, exact POST /exports/svg and DELETE /exports/svg/{jobId} for transient vector jobs, exact POST /sql/preview, /code/preview, /code/project/preview or /diagram-files/preview and exact diagram questions/build-brief previews, rejecting mutations with 403. Semantic overview, evidence-backed multi-level questions, local version history, editable storyboard scenes and reviewed app specifications share the same canonical graph and browser-local persistence. Draw.io XML and base64 Visio .vsdx ZIP files are analyzed locally without executing or fetching embedded content; POST /import saves only a selected native page and requires write access. Multipage imports require pageId from preview. Original XML/ZIP is transient. SQL SELECT/WITH visualization retains scoped aliases, expressions, joins and clauses locally; it never executes SQL or connects to a database. POST /sql/diagrams and POST /code/diagrams save and open validated graphs and require write access. GET /code/languages discovers 50 code languages plus Markdown. POST /code/project/preview and /code/project/diagrams accept strict base64 ZIP projects and files/symbols/folders modes, using the same local analysis engine. Project preview permits read-only access; saving requires write access. Code diagrams retain identifiers, paths, source lines and confidence; original source and nonstructural string values are discarded. The public static host provides no content API; endpoints target a loopback bridge only. Start the static server with --bridge. No application records are stored in the server. PATCH requires version; graph replacement requires baseVersion. Optional VISUAL_NERVE_BRIDGE_TOKEN protects all integration requests. PNG/PDF render in the browser. MCP is available at /mcp. Its initialize instructions advertise Process Simulator, native 2D and opt-in 3D. Process Simulator is a first-class local document with separately typed schemaVersion 1 semantics and the same deterministic worker engine for UI, API and MCP. Seeded runs return asynchronous IDs; headless execution needs no active canvas or animation but still requires a connected browser. Shared resources, queues, scaling, economics, replay and scenario results are semantically inspectable.  visual_nerve_api_docs provides a compact guide by default and the full bundled OpenAPI with document=openapi; the same documents are MCP resources. Documentation discovery requires no connected browser. The production browser workspace is at https://app.visualnerve.com/; https://www.visualnerve.com/ is the public product website. Former public /app paths redirect to the app root, while /app on the app origin returns 404. Browser records remain bound to their original origin and are never automatically moved or deleted. Local source-development builds may retain a development-only /app fixture. The exact app origin https://app.visualnerve.com without a path is the allowed production browser origin; Settings shows a separate local MCP HTTP URL for Codex and WebSocket URL for the browser. Public GET /mcp/ is setup documentation; local MCP POST /mcp and REST /api/v1 endpoints remain unchanged. GET /workspace/security reports safe versioned metadata for the connected browser's actual storage backend without reading private records or unlocking it. Encrypted app workspaces use AES-256-GCM in IndexedDB and require a human password/recovery action in the browser; existing legacy workspaces are explicitly mode:legacy. Logical workspace schemaVersion 8 is separate from vault schemaVersion 1. Private UI/API/MCP operations share the same revocable unlocked-session storage boundary. An already authorized live socket remains restricted to safe status while locked; it is not reconnected after closure. Cold locked startup creates no connection. Connected locked content requests return 423 WORKSPACE_LOCKED; an absent/disconnected browser remains 503. API/MCP requests do not renew idle timeout. Lock cancels jobs and invalidates originating requests, even after a later unlock. POST /workspace/lock accepts only an empty object or no arguments. It requires current fresh Read + write access while unlocked, waits for pending saves, and returns safe status after revocation; save failure does not silently discard edits. A durable revision fence rejects concurrent grant or saved-data changes with 409 without invalidating local keys; inspect current state before a fresh request. A locked retained connection returns idempotent status without revoking again; after unlock a fresh human grant is required. There are no password, recovery, unlock or session-policy control endpoints; /settings/vault-* writes are rejected. Documentation discovery through visual_nerve_api_docs and MCP resources needs no connected/unlocked browser. Explicit authorized API/AI requests and diagram exports return readable content; GET /workspace/export is a readable semantic WorkspaceBackup, not the browser's encrypted backup download. Downloaded encrypted backups retain their own credentials after the live workspace password changes. After each encrypted-session unlock access starts Off; the human must choose a fresh Read only or Read + write grant in Settings. The app interface supports en, da, nb, sv, fi, de, es and fr, selected in browser Settings; English is the default. This display-only technical preference does not change canonical API/MCP field names, enum values, errors, schemas, source data or deterministic results. It is not a private workspace setting, is excluded from backups, and does not change narration voice. Help and API documentation remain in English. visual_nerve_api_docs also supports document:endpoint with an exact documented path template and uppercase method, returning that operation with shared path parameters and its complete transitive component/security dependencies. No browser, external fetch or schema truncation is involved. Canonical IDs are UUIDs; externalId is an optional client-defined integration string. Bulk updates match externalId only; use versioned PATCH to edit by canonical UUID. Recoverable write operations use a server-issued opaque operationId, not a graph UUID. POST /operations with exactly {} reserves an ID before submitting a write. Pass it in X-Visual-Nerve-Operation-Id for REST or the operationId argument of visual_nerve_request for MCP. Successful command bodies remain unchanged; the response header or MCP structuredContent.operationId identifies the operation. GET /operations/{operationId} reads the original browser's receipt. Reuse the same ID only with the exact method, path and JSON data, including absent versus null; conflicting reuse returns 409 OPERATION_CONFLICT. A timeout or lost acknowledgement after dispatch returns OPERATION_OUTCOME_UNKNOWN with state:unknown: the write may still commit. Inspect that operation or retry the identical command with the same ID, never blindly repeat it under a new ID. Identity is bound to the original workspace, origin, browser instance and access grant; another tab or grant cannot reroute it. Bridge restart returns 409 OPERATION_OUTCOME_UNKNOWN; expired receipts return 410 OPERATION_EXPIRED. Reconcile saved model state manually before fresh work when recovery is unavailable. Browser-only transient receipts are bounded to 15 minutes, 256 entries and 8 MiB of readable results; bridge RAM retains only opaque routing/fingerprint metadata, bounded to 15 minutes and 1024 entries. Nothing is persisted to IndexedDB or the server's disk. Lock, reload, grant revocation or storage loss can remove recovery data. Older browser tabs without operations-v1 remain one-shot and cannot reserve/recover IDs: refresh the browser and use a current bridge. Check bridge health/version/capabilities; static health contains no workspace records or grants.",
+    "description": "IndexedDB in the browser is authoritative and is the only database. This optional API forwards commands through a WebSocket bridge to an open browser with explicit storage acceptance and MCP access set to Read only or Read + write (default Off). Read-only access permits GET, POST /export, exact POST /exports/svg and /exports/diagrams, and exact DELETE /exports/svg/{jobId} or /exports/diagrams/{jobId} for transient export jobs, exact POST /sql/preview, /code/preview, /code/project/preview or /diagram-files/preview and exact diagram questions/build-brief previews, rejecting mutations with 403. Semantic overview, evidence-backed multi-level questions, local version history, editable storyboard scenes and reviewed app specifications share the same canonical graph and browser-local persistence. Draw.io XML and base64 Visio .vsdx ZIP files are analyzed locally without executing or fetching embedded content; POST /import saves only a selected native page and requires write access. Multipage imports require pageId from preview. Original XML/ZIP is transient. SQL SELECT/WITH visualization retains scoped aliases, expressions, joins and clauses locally; it never executes SQL or connects to a database. POST /sql/diagrams and POST /code/diagrams save and open validated graphs and require write access. GET /code/languages discovers 50 code languages plus Markdown. POST /code/project/preview and /code/project/diagrams accept strict base64 ZIP projects and files/symbols/folders modes, using the same local analysis engine. Project preview permits read-only access; saving requires write access. Code diagrams retain identifiers, paths, source lines and confidence; original source and nonstructural string values are discarded. The public static host provides no content API; endpoints target a loopback bridge only. Start the static server with --bridge. No application records are stored in the server. PATCH requires version; graph replacement requires baseVersion. Optional VISUAL_NERVE_BRIDGE_TOKEN protects all integration requests. PNG/PDF render in the browser. MCP is available at /mcp. Its initialize instructions advertise Process Simulator, native 2D and opt-in 3D. Process Simulator is a first-class local document with separately typed schemaVersion 1 semantics and the same deterministic worker engine for UI, API and MCP. Seeded runs return asynchronous IDs; headless execution needs no active canvas or animation but still requires a connected browser. Shared resources, queues, scaling, economics, replay and scenario results are semantically inspectable.  visual_nerve_api_docs provides a compact guide by default and the full bundled OpenAPI with document=openapi; the same documents are MCP resources. Documentation discovery requires no connected browser. The production browser workspace is at https://app.visualnerve.com/; https://www.visualnerve.com/ is the public product website. Former public /app paths redirect to the app root, while /app on the app origin returns 404. Browser records remain bound to their original origin and are never automatically moved or deleted. Local source-development builds may retain a development-only /app fixture. The exact app origin https://app.visualnerve.com without a path is the allowed production browser origin; Settings shows a separate local MCP HTTP URL for Codex and WebSocket URL for the browser. Public GET /mcp/ is setup documentation; local MCP POST /mcp and REST /api/v1 endpoints remain unchanged. GET /workspace/security reports safe versioned metadata for the connected browser's actual storage backend without reading private records or unlocking it. Encrypted app workspaces use AES-256-GCM in IndexedDB and require a human password/recovery action in the browser; existing legacy workspaces are explicitly mode:legacy. Logical workspace schemaVersion 8 is separate from vault schemaVersion 1. Private UI/API/MCP operations share the same revocable unlocked-session storage boundary. An already authorized live socket remains restricted to safe status while locked; it is not reconnected after closure. Cold locked startup creates no connection. Connected locked content requests return 423 WORKSPACE_LOCKED; an absent/disconnected browser remains 503. API/MCP requests do not renew idle timeout. Lock cancels jobs and invalidates originating requests, even after a later unlock. POST /workspace/lock accepts only an empty object or no arguments. It requires current fresh Read + write access while unlocked, waits for pending saves, and returns safe status after revocation; save failure does not silently discard edits. A durable revision fence rejects concurrent grant or saved-data changes with 409 without invalidating local keys; inspect current state before a fresh request. A locked retained connection returns idempotent status without revoking again; after unlock a fresh human grant is required. There are no password, recovery, unlock or session-policy control endpoints; /settings/vault-* writes are rejected. Documentation discovery through visual_nerve_api_docs and MCP resources needs no connected/unlocked browser. Explicit authorized API/AI requests and diagram exports return readable content; GET /workspace/export is a readable semantic WorkspaceBackup, not the browser's encrypted backup download. Downloaded encrypted backups retain their own credentials after the live workspace password changes. After each encrypted-session unlock access starts Off; the human must choose a fresh Read only or Read + write grant in Settings. The app interface supports en, da, nb, sv, fi, de, es and fr, selected in browser Settings; English is the default. This display-only technical preference does not change canonical API/MCP field names, enum values, errors, schemas, source data or deterministic results. It is not a private workspace setting, is excluded from backups, and does not change narration voice. Help and API documentation remain in English. visual_nerve_api_docs also supports document:endpoint with an exact documented path template and uppercase method, returning that operation with shared path parameters and its complete transitive component/security dependencies. No browser, external fetch or schema truncation is involved. Canonical IDs are UUIDs; externalId is an optional client-defined integration string. Bulk updates match externalId only; use versioned PATCH to edit by canonical UUID. Recoverable write operations use a server-issued opaque operationId, not a graph UUID. POST /operations with exactly {} reserves an ID before submitting a write. Pass it in X-Visual-Nerve-Operation-Id for REST or the operationId argument of visual_nerve_request for MCP. Successful command bodies remain unchanged; the response header or MCP structuredContent.operationId identifies the operation. GET /operations/{operationId} reads the original browser's receipt. Reuse the same ID only with the exact method, path and JSON data, including absent versus null; conflicting reuse returns 409 OPERATION_CONFLICT. A timeout or lost acknowledgement after dispatch returns OPERATION_OUTCOME_UNKNOWN with state:unknown: the write may still commit. Inspect that operation or retry the identical command with the same ID, never blindly repeat it under a new ID. Identity is bound to the original workspace, origin, browser instance and access grant; another tab or grant cannot reroute it. Bridge restart returns 409 OPERATION_OUTCOME_UNKNOWN; expired receipts return 410 OPERATION_EXPIRED. Reconcile saved model state manually before fresh work when recovery is unavailable. Browser-only transient receipts are bounded to 15 minutes, 256 entries and 8 MiB of readable results; bridge RAM retains only opaque routing/fingerprint metadata, bounded to 15 minutes and 1024 entries. Nothing is persisted to IndexedDB or the server's disk. Lock, reload, grant revocation or storage loss can remove recovery data. Older browser tabs without operations-v1 remain one-shot and cannot reserve/recover IDs: refresh the browser and use a current bridge. Check bridge health/version/capabilities; static health contains no workspace records or grants.",
     "title": "Visual Nerve local API",
-    "version": "0.5.0"
+    "version": "0.6.0"
   },
   "openapi": "3.0.3",
   "paths": {
@@ -25510,7 +26027,7 @@
     },
     "/exports/capabilities": {
       "get": {
-        "description": "Read-only background SVG export in the connected browser's local Web Worker. It snapshots the canonical 2D diagram without opening or mutating the project; a 3D view exports its corresponding 2D layout. The same renderer powers UI and API exports. Jobs and results are transient RAM, not IndexedDB or server files. Every request requires accepted storage, an unlocked workspace and at least Read only MCP access. A job retains its original vault session and MCP grant; lock, grant change, cache clear or bridge stop invalidates it rather than rerouting it to another authority. Expired, evicted or cancelled jobs return 404; after reauthorization, an invalidated original job is unavailable. Authorization errors, including 423 while locked, take precedence. Status may report failed with error details; result retrieval requires succeeded and otherwise returns 409 SVG_JOB_NOT_READY.",
+        "description": "Read-only background SVG export in the connected browser's local Web Worker. It snapshots the canonical 2D diagram without opening or mutating the project; a 3D view exports its corresponding 2D layout. The same renderer powers UI and API exports. Jobs and results are transient RAM, not IndexedDB or server files. Every request requires accepted storage, an unlocked workspace and at least Read only MCP access. A job retains its original vault session and MCP grant; lock, grant change, cache clear or bridge stop invalidates it rather than rerouting it to another authority. Expired, evicted or cancelled jobs return 404; after reauthorization, an invalidated original job is unavailable. Authorization errors, including 423 while locked, take precedence. Status may report failed with error details; result retrieval requires succeeded and otherwise returns 409 SVG_JOB_NOT_READY. Existing SVG fields are preserved; diagrams adds independent drawio/vsdx formats, scope, binary chunk units, limits and compatibility metadata. Read-only editable diagram exchange in the connected browser's local Web Worker. POST /exports/diagrams snapshots saved logical nodes, internal connections and canonical 2D geometry into drawio XML or a vsdx ZIP package without opening or changing the diagram. A 3D view exports the saved 2D layout. Complete scope includes stored logical nodes, including nodes hidden in a temporary CSV or overview view; selected scope contains only explicit node UUIDs and internal edges. Visible labels may contain titles, descriptions, owner/status labels and simple process assumptions. Raw datasets, source files, arbitrary metadata, simulation execution/results, live capacity copies, presentation audio and vault data are not included. This is an editable drawing, not a full-fidelity native backup. Review warnings before sharing. VSDX compatibility is preview and requires verification in Microsoft Visio; package/schema tests do not establish real Visio fidelity. Every request needs accepted storage, an unlocked workspace and at least Read only MCP access. Jobs retain their original vault session and MCP grant. Lock, explicit grant changes, cache clearing, stop or reload invalidate them. Jobs/results are transient local RAM, not IndexedDB or bridge files. Invalidated, evicted, expired or cancelled jobs return 404 after current authorization; locked requests return 423 first. Result retrieval before success returns 409.",
         "operationId": "get_exports_capabilities",
         "responses": {
           "200": {
@@ -25640,7 +26157,632 @@
           },
           {}
         ],
-        "summary": "Discover read-only background SVG export scopes and browser-local limits"
+        "summary": "Discover existing SVG and additive editable diagram export capabilities"
+      }
+    },
+    "/exports/diagrams": {
+      "post": {
+        "description": "Read-only editable diagram exchange in the connected browser's local Web Worker. POST /exports/diagrams snapshots saved logical nodes, internal connections and canonical 2D geometry into drawio XML or a vsdx ZIP package without opening or changing the diagram. A 3D view exports the saved 2D layout. Complete scope includes stored logical nodes, including nodes hidden in a temporary CSV or overview view; selected scope contains only explicit node UUIDs and internal edges. Visible labels may contain titles, descriptions, owner/status labels and simple process assumptions. Raw datasets, source files, arbitrary metadata, simulation execution/results, live capacity copies, presentation audio and vault data are not included. This is an editable drawing, not a full-fidelity native backup. Review warnings before sharing. VSDX compatibility is preview and requires verification in Microsoft Visio; package/schema tests do not establish real Visio fidelity. Every request needs accepted storage, an unlocked workspace and at least Read only MCP access. Jobs retain their original vault session and MCP grant. Lock, explicit grant changes, cache clearing, stop or reload invalidate them. Jobs/results are transient local RAM, not IndexedDB or bridge files. Invalidated, evicted, expired or cancelled jobs return 404 after current authorization; locked requests return 423 first. Result retrieval before success returns 409. Returns 201 promptly with a job status, never file bytes. Two exchange jobs may run concurrently; exhaustion returns 429. Unknown fields, invalid IDs, unsupported formats/scopes and invalid selected IDs return 422.",
+        "operationId": "post_exports_diagrams",
+        "parameters": [
+          {
+            "description": "Optional reserved operation identity for this non-GET command. Reuse only for the same method, path and exact JSON data. Omit on initial POST /operations reservation.",
+            "in": "header",
+            "name": "X-Visual-Nerve-Operation-Id",
+            "required": false,
+            "schema": {
+              "description": "Opaque server-issued operation token returned by POST /operations or an earlier write. Not a graph UUID; never invent or alter it.",
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiagramExportJobInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiagramExportJobStatus"
+                }
+              }
+            },
+            "description": "Success",
+            "headers": {
+              "X-Visual-Nerve-Operation-Id": {
+                "description": "Server-issued identity for this operation when the current browser supports recoverable operations. Successful response bodies are unchanged.",
+                "schema": {
+                  "description": "Opaque server-issued operation token returned by POST /operations or an earlier write. Not a graph UUID; never invent or alter it.",
+                  "minLength": 1,
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "410": {
+            "$ref": "#/components/responses/OperationExpired"
+          },
+          "422": {
+            "$ref": "#/components/responses/OperationValidation"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
+          "426": {
+            "$ref": "#/components/responses/OperationProtocolRequired"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "429": {
+            "$ref": "#/components/responses/OperationLimit"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "502": {
+            "$ref": "#/components/responses/OperationInvalidAcknowledgment"
+          },
+          "503": {
+            "$ref": "#/components/responses/OperationUnavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/OperationTimeout"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Start an editable drawio or preview vsdx export in a local worker"
+      }
+    },
+    "/exports/diagrams/{jobId}": {
+      "delete": {
+        "description": "Read-only editable diagram exchange in the connected browser's local Web Worker. POST /exports/diagrams snapshots saved logical nodes, internal connections and canonical 2D geometry into drawio XML or a vsdx ZIP package without opening or changing the diagram. A 3D view exports the saved 2D layout. Complete scope includes stored logical nodes, including nodes hidden in a temporary CSV or overview view; selected scope contains only explicit node UUIDs and internal edges. Visible labels may contain titles, descriptions, owner/status labels and simple process assumptions. Raw datasets, source files, arbitrary metadata, simulation execution/results, live capacity copies, presentation audio and vault data are not included. This is an editable drawing, not a full-fidelity native backup. Review warnings before sharing. VSDX compatibility is preview and requires verification in Microsoft Visio; package/schema tests do not establish real Visio fidelity. Every request needs accepted storage, an unlocked workspace and at least Read only MCP access. Jobs retain their original vault session and MCP grant. Lock, explicit grant changes, cache clearing, stop or reload invalidate them. Jobs/results are transient local RAM, not IndexedDB or bridge files. Invalidated, evicted, expired or cancelled jobs return 404 after current authorization; locked requests return 423 first. Result retrieval before success returns 409. This exact DELETE permits Read only access, without general permission to delete diagrams. No arguments or exactly {}. Returns cancelled status once, then removes status and file; subsequent requests return 404.",
+        "operationId": "delete_exports_diagrams_jobId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional reserved operation identity for this non-GET command. Reuse only for the same method, path and exact JSON data. Omit on initial POST /operations reservation.",
+            "in": "header",
+            "name": "X-Visual-Nerve-Operation-Id",
+            "required": false,
+            "schema": {
+              "description": "Opaque server-issued operation token returned by POST /operations or an earlier write. Not a graph UUID; never invent or alter it.",
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SvgExportEmptyInput"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiagramExportJobStatus"
+                }
+              }
+            },
+            "description": "Success",
+            "headers": {
+              "X-Visual-Nerve-Operation-Id": {
+                "description": "Server-issued identity for this operation when the current browser supports recoverable operations. Successful response bodies are unchanged.",
+                "schema": {
+                  "description": "Opaque server-issued operation token returned by POST /operations or an earlier write. Not a graph UUID; never invent or alter it.",
+                  "minLength": 1,
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "410": {
+            "$ref": "#/components/responses/OperationExpired"
+          },
+          "422": {
+            "$ref": "#/components/responses/OperationValidation"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
+          "426": {
+            "$ref": "#/components/responses/OperationProtocolRequired"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "429": {
+            "$ref": "#/components/responses/OperationLimit"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "502": {
+            "$ref": "#/components/responses/OperationInvalidAcknowledgment"
+          },
+          "503": {
+            "$ref": "#/components/responses/OperationUnavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/OperationTimeout"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Cancel and discard an editable diagram export job"
+      },
+      "get": {
+        "description": "Read-only editable diagram exchange in the connected browser's local Web Worker. POST /exports/diagrams snapshots saved logical nodes, internal connections and canonical 2D geometry into drawio XML or a vsdx ZIP package without opening or changing the diagram. A 3D view exports the saved 2D layout. Complete scope includes stored logical nodes, including nodes hidden in a temporary CSV or overview view; selected scope contains only explicit node UUIDs and internal edges. Visible labels may contain titles, descriptions, owner/status labels and simple process assumptions. Raw datasets, source files, arbitrary metadata, simulation execution/results, live capacity copies, presentation audio and vault data are not included. This is an editable drawing, not a full-fidelity native backup. Review warnings before sharing. VSDX compatibility is preview and requires verification in Microsoft Visio; package/schema tests do not establish real Visio fidelity. Every request needs accepted storage, an unlocked workspace and at least Read only MCP access. Jobs retain their original vault session and MCP grant. Lock, explicit grant changes, cache clearing, stop or reload invalidate them. Jobs/results are transient local RAM, not IndexedDB or bridge files. Invalidated, evicted, expired or cancelled jobs return 404 after current authorization; locked requests return 423 first. Result retrieval before success returns 409.",
+        "operationId": "get_exports_diagrams_jobId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiagramExportJobStatus"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Inspect editable diagram export progress and warnings"
+      }
+    },
+    "/exports/diagrams/{jobId}/result": {
+      "get": {
+        "description": "Read-only editable diagram exchange in the connected browser's local Web Worker. POST /exports/diagrams snapshots saved logical nodes, internal connections and canonical 2D geometry into drawio XML or a vsdx ZIP package without opening or changing the diagram. A 3D view exports the saved 2D layout. Complete scope includes stored logical nodes, including nodes hidden in a temporary CSV or overview view; selected scope contains only explicit node UUIDs and internal edges. Visible labels may contain titles, descriptions, owner/status labels and simple process assumptions. Raw datasets, source files, arbitrary metadata, simulation execution/results, live capacity copies, presentation audio and vault data are not included. This is an editable drawing, not a full-fidelity native backup. Review warnings before sharing. VSDX compatibility is preview and requires verification in Microsoft Visio; package/schema tests do not establish real Visio fidelity. Every request needs accepted storage, an unlocked workspace and at least Read only MCP access. Jobs retain their original vault session and MCP grant. Lock, explicit grant changes, cache clearing, stop or reload invalidate them. Jobs/results are transient local RAM, not IndexedDB or bridge files. Invalidated, evicted, expired or cancelled jobs return 404 after current authorization; locked requests return 423 first. Result retrieval before success returns 409. Only offset and limit query parameters are supported; repeated/noninteger/unsafe values return 422. Limit defaults to 786,432 raw bytes and may be 1..786,432. Decode each base64 data chunk separately and concatenate binary bytes in offset order until complete=true. Retain returned format, mimeType and warnings.",
+        "operationId": "get_exports_diagrams_jobId_result",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 67108864,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 786432,
+              "maximum": 786432,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiagramExportResultChunk"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Retrieve one bounded base64 binary chunk from an editable diagram export"
       }
     },
     "/exports/svg": {

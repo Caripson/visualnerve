@@ -2,7 +2,8 @@ import type { Graph } from '../model/types';
 import type { RenderOptions } from './rendered';
 import { download, safeName } from './semantic';
 import { vectorSVG } from './vector-svg';
-import { ProcessHierarchy } from '../simulation/process-hierarchy';
+import { canonicalSVGSelection } from './selection';
+export { canonicalSVGSelection } from './selection';
 import { shouldUseBackgroundSVG, svgExportController } from './svg-jobs';
 import type { SvgJobStatus } from './svg-job-types';
 import { assertExportActive, checkExportActive, waitForExport, type ExportGuard } from './guard';
@@ -68,28 +69,4 @@ export async function exportSVG(
   await checkExportActive(guard);
   assertExportActive(guard);
   download(`${safeName(graph.diagram.name)}.svg`, svg, 'image/svg+xml');
-}
-
-/** Virtual capacity/process cards select actual logical objects, never a second model. */
-export function canonicalSVGSelection(graph: Graph, selection: string[]) {
-  const known = new Set(graph.nodes.map((node) => node.id));
-  const selected = new Set<string>();
-  const hierarchy = graph.simulation ? new ProcessHierarchy(graph.simulation) : undefined;
-  for (const id of selection) {
-    if (known.has(id)) {
-      selected.add(id);
-      continue;
-    }
-    const capacity = id.match(/^simulation-capacity:([^:]+):\d+$/);
-    if (capacity && known.has(capacity[1])) {
-      selected.add(capacity[1]);
-      continue;
-    }
-    const process = id.startsWith('simulation-process:')
-      ? id.slice('simulation-process:'.length)
-      : undefined;
-    if (process && hierarchy?.processes.has(process))
-      for (const member of hierarchy.nodeIds(process)) if (known.has(member)) selected.add(member);
-  }
-  return [...selected];
 }

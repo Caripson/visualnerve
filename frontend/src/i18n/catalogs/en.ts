@@ -1,4 +1,16 @@
 const catalog = {
+  'dialogs.exportEditableFullHint':
+    'Complete export includes all stored nodes, even those hidden by filters or views. Use a selection to limit shared content.',
+  'dialogs.exportDrawioOption': 'draw.io · editable diagram',
+  'dialogs.exportVisioOption': 'Visio (.vsdx) · preview',
+  'dialogs.exportEditableHint':
+    'Exports editable shapes, text, basic colors, groups and attached connectors. Icons, pen strokes and rich formatting are simplified or omitted. Long labels may need resizing. This is an unencrypted file, not a complete workspace backup.',
+  'dialogs.exportVisioPreviewHint':
+    'Visio preview: the package is checked automatically, but compatibility must still be verified in Microsoft Visio. Keep your Visual Nerve JSON backup.',
+  'dialogs.exportEditable2DHint':
+    'Uses saved 2D layout and logical process nodes. Simulation execution and 3D remain in Visual Nerve.',
+  'dialogs.exportEditableProgress': 'Preparing editable export · {percent}%',
+
   'dialogs.exportSvgSourceHint':
     'Clipped source text can remain in the SVG file. Review it before sharing.',
   'simulator.parallel.deleteBlock': 'Remove parallel block and all its tasks',

@@ -26,11 +26,17 @@ it('checks actual advertised tools and capabilities rather than trusting a versi
   expect(diagnostic.snapshot()).toEqual({ state: 'update-required', version: '99.0.0' });
   diagnostic.receive({
     type: 'bridge-info',
-    version: '0.5.0',
+    version: '0.6.0',
     tools: ['visual_nerve_request', 'visual_nerve_api_docs'],
-    capabilities: ['operations-v1', 'endpoint-docs-v1', 'fork-join-v1', 'async-svg-export-v1'],
+    capabilities: [
+      'operations-v1',
+      'endpoint-docs-v1',
+      'fork-join-v1',
+      'async-svg-export-v1',
+      'exchange-export-v1',
+    ],
   });
-  expect(diagnostic.snapshot()).toEqual({ state: 'current', version: '0.5.0' });
+  expect(diagnostic.snapshot()).toEqual({ state: 'current', version: '0.6.0' });
   expect(diagnostic.receive({ id: 'command', path: '/diagrams' })).toBe(false);
   diagnostic.disconnect();
 });

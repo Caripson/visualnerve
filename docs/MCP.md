@@ -42,7 +42,7 @@ On the isolated encrypted app, the deployed Content Security Policy also restric
 
 ## Recover a write without creating duplicates
 
-Use a current bridge and refreshed app tab. Bridge version 0.5.0 reports `operations-v1`, `endpoint-docs-v1`, `fork-join-v1` and `async-svg-export-v1` in health and its browser handshake, together with supported tool names. This reports software support; it does not reveal workspace data or grant access. Older browser tabs remain one-shot and cannot reserve or recover operation receipts.
+Use a current bridge and refreshed app tab. Bridge version 0.6.0 reports `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1` and `exchange-export-v1` in health and its browser handshake, together with supported tool names. This reports software support; it does not reveal workspace data or grant access. Older browser tabs remain one-shot and cannot reserve or recover operation receipts.
 
 Read bridge software health through direct HTTP `GET /api/v1/health` (`/health` relative to the REST base). MCP `visual_nerve_request` with `path:"/health"` instead reads the connected browser's semantic IndexedDB health, without bridge-only tool/capability fields. Their absence in that browser response is not evidence of an outdated bridge.
 
@@ -72,6 +72,7 @@ Read only is an explicit route allowlist, not general permission for POST:
 | ----------------------------------- | ------------------------------------------ |
 | `/export`                           | Current graph JSON, Markdown or SVG export |
 | `/exports/svg`                      | Transient background SVG export job        |
+| `/exports/diagrams`                 | Editable Draw.io or preview Visio export job |
 | `/sql/preview`                      | Unsaved SQL query/schema analysis          |
 | `/code/preview`                     | Unsaved code analysis                      |
 | `/code/project/preview`             | Unsaved ZIP project analysis               |
@@ -80,7 +81,7 @@ Read only is an explicit route allowlist, not general permission for POST:
 | `/diagrams/{id}/build-brief`        | Reviewed unsent Lovable brief              |
 | `/diagrams/{id}/simulation/compare` | Comparison of saved runs                   |
 
-The exact `DELETE /exports/svg/{jobId}` cancellation route also permits Read only; it removes the temporary job/result without changing the model. This does not grant general DELETE permission. The normal command validation, structure/transport limits and connected-browser requirement still apply. Paths omit `/api/v1`. Creation, settings changes, saved-definition changes and presentation/simulation controls require Read + write.
+The exact `DELETE /exports/svg/{jobId}` and `DELETE /exports/diagrams/{jobId}` cancellation routes also permit Read only; they remove the temporary job/result without changing the model. This does not grant general DELETE permission. The normal command validation, structure/transport limits and connected-browser requirement still apply. Paths omit `/api/v1`. Creation, settings changes, saved-definition changes and presentation/simulation controls require Read + write.
 
 ## Export a native vector diagram
 
@@ -89,6 +90,20 @@ Call `visual_nerve_request` with `{path:"/export",method:"POST",data:{diagramId:
 SVG preserves native paths, shapes, text, icons, connections and visible saved pen strokes from the canonical 2D projection, including when the diagram is in 3D. It contains no embedded raster screenshot, `foreignObject`, script or active external link. Fonts are referenced rather than embedded. Source text can retain clipped content, so review the file before sharing. Viewport scope crops the full projected scene; it does not remove off-screen XML content or reduce node/text budgets. Use selected scope to reduce the scene.
 
 The synchronous `/export` route accepts source graphs with at most 100 nodes and 20,000 cumulative title, description and serialized metadata characters before projection, including when exporting a selection. Larger sources return `409 SVG_BACKGROUND_REQUIRED`; use the [background SVG job](#parallel-cases-and-background-exports). Small synchronous exports additionally retain 100,000 rendered DOM-element, 250,000 source-text-character and 16 MiB XML limits, subject to bridge envelope/time limits. Background jobs support up to 20,000 rendered nodes, 100,000 rendered edges, 5,000,000 source text characters and 64 MiB XML. JSON and Markdown exports accept only `diagramId` and `format`. See [export formats](../EXPORT_FORMAT.md).
+
+## Export an editable Draw.io or Visio diagram
+
+Bridge 0.6.0 advertises `exchange-export-v1`. `GET /exports/capabilities` keeps all SVG fields and adds `diagrams`: formats, scopes, independent budgets, byte chunk units and preview compatibility. Use the existing request tool:
+
+```json
+{"path":"/exports/diagrams","method":"POST","data":{"diagramId":"DIAGRAM_UUID","format":"drawio","scope":"complete"}}
+```
+
+The `201` response is a job status, not the file. Poll `GET /exports/diagrams/{jobId}` for real progress, state and warnings. After `succeeded`, retrieve `/exports/diagrams/{jobId}/result?offset=0&limit=786432`. Chunks contain `{jobId,format,mimeType,encoding:"base64",offset,nextOffset,totalBytes,data,complete,warnings}`. **Decode each padded base64 data chunk separately**, concatenate binary bytes and advance with `nextOffset` until complete. Offsets count raw bytes; never concatenate base64 strings or use SVG's UTF-16 offsets. Save `.drawio` or `.vsdx` and review warnings. Starting, inspecting, retrieving and exact DELETE cancellation permit Read only. Cancellation accepts no arguments or `{}`, returns cancelled status once and then removes the job/result.
+
+Exports use saved logical nodes and canonical 2D geometry. Basic text/shapes/colors/groups and attached connectors are editable. Complete includes stored nodes hidden by temporary views. Selected requires 1–20,000 explicit existing canonical node UUIDs and includes only internal connections; include descendant IDs yourself for process hierarchies. Viewport is unsupported. Visible titles/descriptions, owner/status labels and simple process assumptions are readable; raw datasets, source files, arbitrary metadata and simulation execution/results are excluded. Icons, rich formatting and drawing can be simplified or omitted. Native JSON/workspace backup remains the full model transfer.
+
+**VSDX is a preview requiring Microsoft Visio verification.** Automatic package checks do not prove real Visio rendering/editing fidelity. Inspect the file there and retain native JSON. Transient local jobs retain their original session/grant and disappear on lock, reload, stop, cache clearing or explicit grant changes. Independent limits are 100,000 source nodes/500,000 source edges, 20,000 scoped nodes/100,000 internal edges, 5,000,000 text characters, 64 MiB output, two active/four terminal jobs, 128 MiB retained bytes, 15-minute retention and a two-minute deadline. Results before success return 409; invalid chunks return 422; unavailable original jobs return 404 after authorization. See [the complete binary contract](../API.md#editable-diagram-exchange).
 
 ## Inspect and control hierarchical processes
 
@@ -231,7 +246,7 @@ Explicit authorized AI/API requests and ordinary exports expose readable content
 
 ## Parallel cases and background exports
 
-Bridge 0.5.0 bundles discoverable fork/join and asynchronous SVG contracts. The live browser must also be current. Inspect `GET /simulation/capabilities` and `GET /exports/capabilities`; transport health lists software, not grants. All supported MCP clients use the same `visual_nerve_request` tool and semantic endpoints.
+Bridge 0.6.0 bundles discoverable fork/join and asynchronous SVG contracts. The live browser must also be current. Inspect `GET /simulation/capabilities` and `GET /exports/capabilities`; transport health lists software, not grants. All supported MCP clients use the same `visual_nerve_request` tool and semantic endpoints.
 
 Create complete paired `fork`/`join` regions atomically through a versioned full-model PUT. All fork outgoing edges are mandatory tasks for one original case; a join waits for that case’s tasks, with one revenue outcome and actual shared resource allocations. UI, animated/MAX runs, API/MCP and replay share `SimulationEngine`. See [parallel fields and state](../API.md#parallel-processes-through-the-api).
 

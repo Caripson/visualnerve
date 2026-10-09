@@ -1,6 +1,17 @@
 import type { Catalog } from '../types';
 
 const catalog = {
+  'dialogs.exportEditableFullHint':
+    'La exportación completa incluye todos los nodos guardados, incluso los ocultos por filtros o vistas. Usa una selección para limitar el contenido compartido.',
+  'dialogs.exportDrawioOption': 'draw.io · diagrama editable',
+  'dialogs.exportVisioOption': 'Visio (.vsdx) · versión preliminar',
+  'dialogs.exportEditableHint':
+    'Exporta formas, texto, colores básicos, grupos y conexiones vinculadas editables. Los iconos, trazos de lápiz y formatos complejos se simplifican u omiten. Los textos largos pueden requerir nodos más grandes. El archivo no está cifrado y no es una copia de seguridad completa.',
+  'dialogs.exportVisioPreviewHint':
+    'Versión preliminar de Visio: el paquete se comprueba automáticamente, pero la compatibilidad aún debe verificarse en Microsoft Visio. Conserva tu copia de seguridad JSON de Visual Nerve.',
+  'dialogs.exportEditable2DHint':
+    'Usa el diseño 2D guardado y los nodos lógicos del proceso. La simulación y el 3D permanecen en Visual Nerve.',
+  'dialogs.exportEditableProgress': 'Preparando exportación editable · {percent}%',
   'dialogs.exportSvgSourceHint':
     'El texto fuente recortado puede permanecer en el SVG. Revísalo antes de compartirlo.',
   'simulator.parallel.deleteBlock': 'Eliminar el bloque paralelo y todas sus tareas',

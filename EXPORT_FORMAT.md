@@ -32,6 +32,20 @@ The UI automatically prepares larger exports in a local Web Worker with progress
 
 Background jobs accept at most 100,000 source nodes and 500,000 source connections before snapshotting. The rendered selection/projection is limited to 20,000 nodes, 100,000 connections, 5,000,000 source text characters, 64 MiB XML and 16,777,216 coordinate/dimension units. Two jobs can run simultaneously, with four terminal jobs and 128 MiB of results retained for at most 15 minutes from creation; workers have a two-minute deadline. Lock, reload, workspace stop, app-cache clearing or an explicit MCP grant change removes temporary jobs/results. Limits fail explicitly; use a selection, semantic overview or separate diagrams to reduce oversized scenes. Viewport cropping does not bypass the budgets. Clipping follows the visible card body, but clipped text can remain readable in XML. Illegal XML control characters and unpaired surrogates are replaced with U+FFFD. Diagram exports remain readable files even when the workspace is encrypted.
 
+## Draw.io and Visio editable documents
+
+Choose **draw.io · editable diagram** for `.drawio` XML or **Visio (.vsdx) · preview** for a `.vsdx` ZIP package. Basic text, shapes, colors, groups and attached connectors remain editable. Both use saved canonical 2D layout, including in 3D. Choose Complete diagram or Selected nodes; viewport and bitmap resolution do not apply.
+
+Complete includes stored logical nodes hidden by temporary CSV/overview views. Selected contains the chosen nodes and connections whose endpoints are both included; the UI expands selected process groups to actual descendants, while API clients supply descendant IDs explicitly. Titles/descriptions, owner/status labels and simple process assumptions are readable document text. Live capacity copies, simulation execution/results/scenarios, source files, raw datasets and arbitrary metadata are excluded. Icons, custom stencils, pen strokes, rich formatting and 3D relief may be simplified or omitted. Long labels can need resizing. Review warnings and retain native JSON or an encrypted workspace backup for faithful model transfer.
+
+**VSDX is a compatibility preview.** Package structure is checked automatically; Microsoft Visio rendering/editing fidelity requires native verification. A Visual Nerve re-import does not substitute for opening it in Visio. Check the file in its intended editor and keep native JSON.
+
+Cancellable local workers show progress. Independent budgets are 100,000 source nodes/500,000 source edges, 20,000 scoped nodes/100,000 internal edges, 5,000,000 exported characters, 64 MiB output, two active/four terminal jobs, 128 MiB retained results, 15-minute retention and a two-minute deadline. Limits fail explicitly, without silently dropping objects. A selection reduces the scene; source ceilings still apply before snapshotting.
+
+API/MCP `POST /exports/diagrams` starts a job. GET status exposes progress/warnings; GET result returns bounded raw-byte chunks encoded as standard padded base64. **Decode each chunk separately before concatenating bytes**, following `nextOffset` until complete. Exact DELETE removes it; all these routes permit Read only. [Editable diagram exchange](API.md#editable-diagram-exchange) documents the 786,432-byte chunk limit, compatibility metadata and errors. Existing SVG/legacy exports are unchanged.
+
+Results are transient browser RAM tied to the original workspace session. Lock, reload, cancellation or app-cache clearing erase them; API/MCP jobs additionally retain their original integration grant and are erased when it is changed or stopped. Later unlock/grants cannot recover old plaintext. UI export works with MCP disabled. Downloaded files are **readable and unencrypted**, even when source IndexedDB uses AES-256-GCM. Review descriptions and scope before sharing.
+
 ## PNG and PDF
 
 The client uses React Flow rendering plus `html-to-image` with graph bounds and viewport transforms. Choose current viewport, selected nodes (with internal connections), or the complete graph, and 1×/2×/4× resolution. Complete export includes off-screen nodes and expands collapsed branches in an isolated export canvas. Canvas search filters do not remove objects from complete exports. CSV image/PDF exports show the current analysis view, including its measures and visible relationships; historical groups hidden by CSV analysis remain in lossless JSON and backups.
@@ -70,7 +84,11 @@ geometry, text, safe links and bounded source provenance. Original XML/ZIP,
 embedded image bytes and unselected pages are excluded. Markdown and Lovable
 share ordinary node text and relationships; custom provenance is not inserted
 into those summaries. PNG/PDF render the converted 2D layout, including imported
-connection styles. There is no export back to `.drawio` or `.vsdx`.
+connection styles. Editable `.drawio` and preview `.vsdx` exports create new
+drawings from the converted native graph; they do not reconstruct the original
+source package, custom stencils, embedded images or omitted pages. See
+[editable diagram exports](#drawio-and-visio-editable-documents) for fidelity
+and compatibility limits.
 See [diagram file import](docs/DIAGRAM_IMPORT.md) for conversion limits.
 
 ## Overview, storyboard, specification and history

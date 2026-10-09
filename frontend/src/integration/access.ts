@@ -17,12 +17,16 @@ export function assertMcpAccess(access: McpAccess, path: string, method: string)
       [
         '/export',
         '/exports/svg',
+        '/exports/diagrams',
         '/sql/preview',
         '/code/preview',
         '/code/project/preview',
         '/diagram-files/preview',
       ].includes(path.replace(/^\/api\/v1/, ''))) ||
-    (method === 'DELETE' && /^\/exports\/svg\/[\da-f-]{36}$/i.test(path.replace(/^\/api\/v1/, '')));
+    (method === 'DELETE' &&
+      /^\/exports\/(svg|diagrams)\/[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(
+        path.replace(/^\/api\/v1/, ''),
+      ));
   if (access === 'read' && !reading)
     throw new StorageError(
       403,

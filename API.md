@@ -53,7 +53,7 @@ Use `visual_nerve_request` for graph commands. HTTP documentation paths `/api/do
 
 ## Recover writes after a timeout
 
-Bridge version 0.5.0 advertises `operations-v1`, `endpoint-docs-v1`, `fork-join-v1` and `async-svg-export-v1` through direct HTTP `GET /api/v1/health` (`/health` relative to the REST base) and its browser handshake; that transport response also lists supported MCP tools. These identify supported software, not workspace access. In contrast, `visual_nerve_request` with `{"path":"/health","method":"GET"}` reads semantic browser/IndexedDB health through the connected workspace. It does not expose bridge-only tools or capabilities, so their absence there does not mean that the bridge is outdated. Check the direct HTTP transport response when a newly documented bridge capability is unavailable. A current bridge and refreshed browser tab are needed for recoverable operations; older tabs remain one-shot and cannot reserve or recover receipts.
+Bridge version 0.6.0 advertises `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1` and `exchange-export-v1` through direct HTTP `GET /api/v1/health` (`/health` relative to the REST base) and its browser handshake; that transport response also lists supported MCP tools. These identify supported software, not workspace access. In contrast, `visual_nerve_request` with `{"path":"/health","method":"GET"}` reads semantic browser/IndexedDB health through the connected workspace. It does not expose bridge-only tools or capabilities, so their absence there does not mean that the bridge is outdated. Check the direct HTTP transport response when a newly documented bridge capability is unavailable. A current bridge and refreshed browser tab are needed for recoverable operations; older tabs remain one-shot and cannot reserve or recover receipts.
 
 1. Reserve identity with `POST /operations` and exactly `{}` before sending a write. This requires an unlocked, connected browser with accepted storage and Read + write access.
 2. Read the returned `operationId`. It is an opaque server-issued token, distinct from graph UUIDs.
@@ -412,3 +412,50 @@ The `201` response includes `jobId`, `diagramId`, `state`, `progress` (0–100),
 Jobs are transient browser memory, with at most two running jobs, four retained terminal jobs and 128 MiB of retained SVG results. Limits are 20,000 rendered nodes, 100,000 rendered connections, 5,000,000 source characters, 64 MiB XML, 16,777,216 pixels per dimension and a 120-second worker deadline. A scoped export can snapshot up to 100,000 source nodes and 500,000 source edges, while its projected scene must remain within the rendered limits. Results expire 15 minutes after job creation. Lock, reload, workspace stop, app-cache clearing or an explicit MCP grant change cancels/removes jobs; a later unlock or grant cannot restore old plaintext. Start a fresh export. The POST's short-lived bridge lease ending does **not** cancel an otherwise authorized job. Individual result chunks stay below the 32 MiB transport envelope. Unknown fields, duplicate query parameters and invalid ranges are rejected rather than guessed.
 
 The existing `POST /export` JSON/Markdown behavior is unchanged. Source graphs with at most 100 nodes and 20,000 title/description/serialized metadata characters before projection retain its SVG JSON-string response and 16 MiB limit. Larger sources return `409 SVG_BACKGROUND_REQUIRED` even for a small selection, with instructions to use `/exports/svg`, avoiding a command timeout with an uncertain export result. The UI chooses the background route automatically, displays progress and offers Cancel. Review SVG source before sharing: an encrypted workspace does not encrypt diagram exports.
+
+
+## Editable diagram exchange
+
+API 0.6.0 adds editable Draw.io and preview Visio exports without changing JSON, Markdown or SVG routes. `GET /exports/capabilities` retains every top-level SVG field and adds `diagrams` with formats, scopes, compatibility metadata, byte chunk units and independent limits. Bridge discovery advertises `exchange-export-v1`; update the local bridge and refresh the browser before using it.
+
+All job routes permit **Read only** access and use the same local worker and authoritative saved model as the UI:
+
+| Method | Route | Result |
+| --- | --- | --- |
+| POST | `/exports/diagrams` | `201` job status |
+| GET | `/exports/diagrams/{jobId}` | Real state, progress, format, counts, warnings and optional error |
+| DELETE | `/exports/diagrams/{jobId}` | `200` cancelled status, then removes the job/file |
+| GET | `/exports/diagrams/{jobId}/result?offset=0&limit=786432` | Base64-encoded binary chunk after success |
+
+```json
+{"diagramId":"YOUR_DIAGRAM_UUID","format":"drawio","scope":"complete"}
+```
+
+`format` is required: `drawio` or `vsdx`. `scope` defaults to `complete`; `selected` requires 1–20,000 unique existing canonical node UUIDs in `nodeIds`. `nodeIds` is rejected outside selected scope, including `[]`. Unknown fields, unsupported/duplicate query parameters, invalid references and unsafe integer ranges are rejected. Creation/status/cancellation take no query parameters; cancellation accepts no body or exactly `{}`.
+
+The immutable snapshot contains saved logical nodes, internal connections and canonical 2D geometry, including when the app is in 3D. **Complete includes stored nodes hidden by temporary CSV/overview views.** Selected includes only explicit nodes and edges with both endpoints selected. API exchange selection does not implicitly expand process groups: include actual descendant node IDs read from the hierarchy. Basic shapes, text, colors, groups and attached connectors remain editable. Titles, descriptions, owner/status labels and simple process assumptions are deliberately readable. Icons, custom stencils, pen strokes, rich formatting and 3D relief may be simplified or omitted; long labels may need resizing in the destination editor.
+
+Raw datasets, original source files, arbitrary metadata, simulation execution/results/scenarios, live capacity copies, audio and vault data are excluded. This is an editable drawing, not a full backup. Native JSON or workspace backup remains the faithful model transfer. **VSDX is a compatibility preview:** automatic package/schema tests do not establish Microsoft Visio rendering/editing fidelity. Capabilities explicitly report `requiresMicrosoftVisioVerification:true`; verify there before relying on the file and retain native JSON.
+
+Status includes `jobId`, `diagramId`, `format`, `state`, `progress` (0–100), `phase`, timestamps, node/edge counts, `warnings:[{code,message}]` and optional `bytes`/`error`. Phases are `queued`, `projection`, `nodes`, `edges`, `packaging` and `complete`. Poll with a short backoff until `succeeded`, `failed` or `cancelled`. A failed job remains inspectable with structured errors; result before success returns `409 EXCHANGE_JOB_NOT_READY`.
+
+```json
+{
+  "jobId":"YOUR_JOB_UUID",
+  "format":"vsdx",
+  "mimeType":"application/vnd.ms-visio.drawing",
+  "encoding":"base64",
+  "offset":0,
+  "nextOffset":3,
+  "totalBytes":3,
+  "data":"UEsD",
+  "complete":true,
+  "warnings":[]
+}
+```
+
+Result offsets and limits count **raw binary bytes**, separately from SVG's UTF-16 offsets. Limit defaults to and cannot exceed **786,432 bytes**, producing at most 1,048,576 base64 characters per chunk. Decode every `data` chunk separately, concatenate decoded bytes in order and request `nextOffset` until `complete:true`. **Never concatenate base64 strings:** each chunk can carry its own padding. Preserve format, MIME type and warnings, then save `.drawio` or `.vsdx`. Offset equal to `totalBytes` returns an empty final chunk; greater offsets return 422.
+
+Independent exchange limits are 100,000 source nodes/500,000 source edges before snapshotting; 20,000 scoped nodes/100,000 internal edges; 5,000,000 exported text characters; 64 MiB output; and 16,777,216 coordinate/dimension units. Two jobs may run concurrently, with four terminal jobs/128 MiB retained results. Retention lasts 15 minutes from creation; worker execution has a 120-second deadline. Busy starts return `429 EXCHANGE_JOB_BUSY`. Limits fail explicitly without silent truncation; use a selection or separate diagrams.
+
+Jobs retain their original workspace session and MCP grant beyond the POST response. Lock, explicit grant changes, reload, workspace stop or app-cache clearing removes jobs/results; later unlock or grants cannot revive them. Locked requests return 423 before exposing content. Authorized requests for invalidated, expired, evicted or cancelled jobs return 404. The data stays in transient browser RAM, never IndexedDB or bridge disk. **Downloaded files remain readable**, even when source IndexedDB uses AES-256-GCM encryption. Review scope and text before sharing.

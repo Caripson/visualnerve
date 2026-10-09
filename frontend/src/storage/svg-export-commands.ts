@@ -2,6 +2,7 @@ import type { Repository } from './repository';
 import { StorageError } from '../model/errors';
 import { svgExportController } from '../export/svg-jobs';
 import { SvgExportError, svgJobLimits, type SvgJobAuthority } from '../export/svg-job-types';
+import { exchangeExportCapabilities } from './exchange-export-commands';
 
 const idPattern = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 const chunkLimit = 1024 * 1024;
@@ -14,6 +15,7 @@ export const svgExportCapabilities = {
   resultOffsetUnit: 'utf-16-code-units',
   requiresOriginalSessionAndGrant: true,
   persistence: 'transient-memory',
+  diagrams: exchangeExportCapabilities,
 } as const;
 function object(value: unknown): Record<string, unknown> {
   if (

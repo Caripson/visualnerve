@@ -28,7 +28,9 @@ export function bridgeResponseStatus(path: string, method: string): number {
   const endpoint = path.replace(/^\/api\/v1/, '');
   return method === 'DELETE' &&
     endpoint !== '/presentation/video' &&
-    !/^\/exports\/svg\/[\da-f-]{36}$/i.test(endpoint)
+    !/^\/exports\/(svg|diagrams)\/[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(
+      endpoint,
+    )
     ? 204
     : method === 'POST' &&
         (endpoint === '/exports/svg' ||

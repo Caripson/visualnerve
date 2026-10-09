@@ -97,7 +97,7 @@ function blankModel(): SimulationModel {
 
 describe('hierarchical simulation API and canonical persistence', () => {
   it('discovers additive hierarchy semantics without changing the API/schema versions', () => {
-    expect(simulationCapabilities).toMatchObject({ apiVersion: '0.5.0', schemaVersion: 1 });
+    expect(simulationCapabilities).toMatchObject({ apiVersion: '0.6.0', schemaVersion: 1 });
     expect(simulationCapabilities.features).toEqual(
       expect.arrayContaining(['hierarchical-processes', 'process-drilldown']),
     );

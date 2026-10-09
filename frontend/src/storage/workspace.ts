@@ -1062,6 +1062,14 @@ export class Workspace {
     const endpoint = path.replace(/^\/api\/v1/, '');
     if (endpoint.startsWith('/exports/')) {
       await authorize();
+      if (endpoint === '/exports/diagrams' || endpoint.startsWith('/exports/diagrams/')) {
+        const { ExchangeExportCommands } = await import('./exchange-export-commands');
+        return (await new ExchangeExportCommands(
+          job.repo,
+          () => authorize(),
+          () => this.svgAuthority(accessChoice, job.lifecycle),
+        ).request(endpoint, method, data)) as T;
+      }
       const { SvgExportCommands } = await import('./svg-export-commands');
       return (await new SvgExportCommands(
         job.repo,
