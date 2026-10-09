@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import type { ScalingRule } from './types';
 
 export function NumberField({
@@ -41,10 +42,11 @@ export function ScalingFields({
   change: (rule?: ScalingRule) => void;
   capacity: number;
 }) {
+  const { t } = useI18n();
   const patch = (partial: Partial<ScalingRule>) => change({ ...value!, ...partial });
   return (
     <fieldset>
-      <legend>Automatic scaling</legend>
+      <legend>{t('simulator.scaling.title')}</legend>
       <label>
         <input
           type="checkbox"
@@ -63,46 +65,46 @@ export function ScalingFields({
             )
           }
         />{' '}
-        Enable scaling
+        {t('simulator.scaling.enableScaling')}{' '}
       </label>
       {value && (
         <div className="simulation-grid">
           <NumberField
-            label="Minimum capacity"
+            label={t('simulator.scaling.minimumCapacity')}
             value={value.minCapacity ?? 1}
             step={1}
             change={(v) => patch({ minCapacity: v })}
           />
           <NumberField
-            label="Maximum capacity"
+            label={t('simulator.scaling.maximumCapacity')}
             value={value.maxCapacity}
             step={1}
             change={(v) => patch({ maxCapacity: v ?? 1 })}
           />
           <NumberField
-            label="Scale increment"
+            label={t('simulator.scaling.scaleIncrement')}
             value={value.increment ?? 1}
             min={1}
             step={1}
             change={(v) => patch({ increment: v })}
           />
           <NumberField
-            label="Scale up when queue exceeds"
+            label={t('simulator.scaling.scaleUpWhenQueueExceeds')}
             value={value.queueAbove}
             change={(v) => patch({ queueAbove: v })}
           />
           <NumberField
-            label="Scale up utilization (%)"
+            label={t('simulator.scaling.scaleUpUtilization')}
             value={value.utilizationAbove === undefined ? undefined : value.utilizationAbove * 100}
             change={(v) => patch({ utilizationAbove: v === undefined ? undefined : v / 100 })}
           />
           <NumberField
-            label="Scale down utilization (%)"
+            label={t('simulator.scaling.scaleDownUtilization')}
             value={value.utilizationBelow === undefined ? undefined : value.utilizationBelow * 100}
             change={(v) => patch({ utilizationBelow: v === undefined ? undefined : v / 100 })}
           />
           <NumberField
-            label="Low utilization hold (minutes)"
+            label={t('simulator.scaling.lowUtilizationHoldMinutes')}
             value={
               value.scaleDownAfterSeconds === undefined
                 ? undefined
@@ -111,28 +113,28 @@ export function ScalingFields({
             change={(v) => patch({ scaleDownAfterSeconds: v === undefined ? undefined : v * 60 })}
           />
           <NumberField
-            label="Startup delay (minutes)"
+            label={t('simulator.scaling.startupDelayMinutes')}
             value={(value.startupSeconds ?? 0) / 60}
             change={(v) => patch({ startupSeconds: (v ?? 0) * 60 })}
           />
           <NumberField
-            label="Shutdown delay (minutes)"
+            label={t('simulator.scaling.shutdownDelayMinutes')}
             value={(value.shutdownSeconds ?? 0) / 60}
             change={(v) => patch({ shutdownSeconds: (v ?? 0) * 60 })}
           />
           <NumberField
-            label="Scaling cooldown (minutes)"
+            label={t('simulator.scaling.scalingCooldownMinutes')}
             value={(value.cooldownSeconds ?? 60) / 60}
             change={(v) => patch({ cooldownSeconds: (v ?? 0) * 60 })}
           />
           <NumberField
-            label="Scale up one-off cost"
+            label={t('simulator.scaling.scaleUpOneOffCost')}
             value={value.scaleUpCost ?? 0}
             change={(v) => patch({ scaleUpCost: v ?? 0 })}
           />
           <NumberField
-            label="Extra unit cost / hour"
-            help="Scaling surcharge per extra unit, added to its regular hourly cost."
+            label={t('simulator.scaling.extraUnitCostHour')}
+            help={t('simulator.scaling.scalingSurchargePerExtraUnitAddedToItsRegularHourlyCost')}
             value={value.additionalCostPerHour ?? 0}
             change={(v) => patch({ additionalCostPerHour: v ?? 0 })}
           />

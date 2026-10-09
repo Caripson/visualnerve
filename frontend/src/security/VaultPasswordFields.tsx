@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { useId } from 'react';
 
 export function VaultPasswordFields({
@@ -15,11 +16,16 @@ export function VaultPasswordFields({
   disabled: boolean;
   confirm?: boolean;
 }) {
+  const { t } = useI18n();
   const id = useId();
   return (
     <>
       <label className="field" htmlFor={`${id}-password`}>
-        <span>{confirm ? 'New workspace password' : 'Workspace password'}</span>
+        <span>
+          {confirm
+            ? t('security.credential.newWorkspacePassword')
+            : t('security.credential.workspacePassword')}
+        </span>
         <input
           id={`${id}-password`}
           type="password"
@@ -34,11 +40,9 @@ export function VaultPasswordFields({
       </label>
       {confirm && (
         <>
-          <p className="muted">
-            Use at least 12 characters. A long, unique passphrase is easier to remember.
-          </p>
+          <p className="muted">{t('security.password.passphraseHint')}</p>
           <label className="field" htmlFor={`${id}-confirmation`}>
-            <span>Confirm new password</span>
+            <span>{t('security.credential.confirmNewPassword')}</span>
             <input
               id={`${id}-confirmation`}
               type="password"

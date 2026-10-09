@@ -1,6 +1,43 @@
+import type { MessageId } from '../i18n';
+import { simulationDiagnosticLabel } from './display';
+import { useI18n } from '../i18n';
 import type { SimulationState } from './types';
 import { simulationTrafficColors } from './traffic';
 import './simulation-shell.css';
+
+// Canonical identities never depend on the selected interface language.
+const metricMessages: Record<string, MessageId> = {
+  Created: 'simulator.common.created',
+  Completed: 'simulator.common.completed',
+  'In system': 'simulator.metrics.inSystem',
+  Abandoned: 'simulator.common.abandoned',
+  Failed: 'simulator.metrics.failed',
+  'Current queue': 'simulator.metrics.currentQueue',
+  'Average queue': 'simulator.metrics.averageQueue',
+  'Maximum queue': 'simulator.results.maximumQueue',
+  'Throughput / hour': 'simulator.metrics.throughputHour',
+  Revenue: 'simulator.common.revenue',
+  'Expected revenue': 'simulator.metrics.expectedRevenue',
+  Cost: 'simulator.common.cost',
+  Contribution: 'simulator.results.contribution',
+  'Lost revenue': 'simulator.metrics.lostRevenue',
+  'Average wait': 'simulator.results.averageWait',
+  'Median wait': 'simulator.metrics.medianWait',
+  'P95 wait': 'simulator.metrics.p95Wait',
+  'P99 wait': 'simulator.metrics.p99Wait',
+  'Average TTR': 'simulator.results.averageTtr',
+  'Median TTR': 'simulator.metrics.medianTtr',
+  'P95 TTR': 'simulator.metrics.p95Ttr',
+  'P99 TTR': 'simulator.metrics.p99Ttr',
+  'Cycle time': 'simulator.metrics.cycleTime',
+  Investment: 'simulator.metrics.investment',
+  'Cash impact': 'simulator.metrics.cashImpact',
+};
+const metricGroupMessages: Record<string, MessageId> = {
+  'Work & queues': 'simulator.metrics.workQueues',
+  Economics: 'simulator.editor.section.economics.mobile',
+  'Waiting & time to revenue': 'simulator.metrics.waitingTimeToRevenue',
+};
 
 export function MetricsDashboard({
   state,
@@ -11,9 +48,9 @@ export function MetricsDashboard({
   currency: string;
   compact?: boolean;
 }) {
+  const { t, number } = useI18n();
   const metrics = state.metrics;
-  const money = (value: number) =>
-    `${value.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}`;
+  const money = (value: number) => `${number(value, { maximumFractionDigits: 2 })} ${currency}`;
   const minutes = (value: number | null) =>
     value === null ? '—' : `${(value / 60).toFixed(2)} min`;
   const entries = [
@@ -58,28 +95,40 @@ export function MetricsDashboard({
   const facts = (items: typeof entries) =>
     items.map(([label, value]) => (
       <div key={label}>
-        <dt>{label}</dt>
+        <dt>{t(metricMessages[String(label)])}</dt>
         <dd data-metric={label}>{value}</dd>
       </div>
     ));
   return (
-    <div className="simulation-dashboard" role="region" aria-label="Simulation metrics">
-      <div className="simulation-traffic-legend" aria-label="Process traffic legend">
+    <div className="simulation-dashboard" role="region" aria-label={t('simulator.metrics.region')}>
+      <div className="simulation-traffic-legend" aria-label={t('simulator.traffic.legend')}>
         {(['clear', 'busy', 'congested'] as const).map((level) => (
           <span key={level}>
             <i style={{ background: simulationTrafficColors[level] }} aria-hidden="true" />
-            {level === 'clear' ? 'Clear' : level === 'busy' ? 'Busy / queue building' : 'Congested'}
+            {level === 'clear'
+              ? t('simulator.metrics.clear')
+              : level === 'busy'
+                ? t('simulator.metrics.busyQueueBuilding')
+                : t('simulator.metrics.congested')}
           </span>
         ))}
         <small>
-          Queue and shared capacity determine traffic. Particle shapes identify work types.
+          {t(
+            'simulator.metrics.queueAndSharedCapacityDetermineTrafficParticleShapesIdentifyWorkTypes',
+          )}
         </small>
       </div>
       {!compact && (
         <div className="simulation-bottleneck" role="status">
-          <strong>Current bottleneck</strong>
-          <span title={state.bottlenecks[0]?.reason}>
-            {state.bottlenecks[0]?.name ?? 'No constraint observed'}
+          <strong>{t('simulator.metrics.currentBottleneck')}</strong>
+          <span
+            title={
+              state.bottlenecks[0]?.reason
+                ? simulationDiagnosticLabel(t, state.bottlenecks[0].reason)
+                : undefined
+            }
+          >
+            {state.bottlenecks[0]?.name ?? t('simulator.metrics.noConstraintObserved')}
           </span>
         </div>
       )}
@@ -128,13 +177,13 @@ export function MetricsDashboard({
             ],
           ].map(([title, labels]) => (
             <section key={title as string} className="simulation-metric-group">
-              <h4>{title}</h4>
+              <h4>{t(metricGroupMessages[title as string])}</h4>
               <dl>
                 {entries
                   .filter(([label]) => (labels as string[]).includes(label as string))
                   .map(([label, value]) => (
                     <div key={label}>
-                      <dt>{label}</dt>
+                      <dt>{t(metricMessages[String(label)])}</dt>
                       <dd data-metric={label}>{value}</dd>
                     </div>
                   ))}
@@ -148,16 +197,19 @@ export function MetricsDashboard({
             {facts(entries.filter(([label]) => primary.has(label as string)))}
           </dl>
           <details className="simulation-extra-metrics">
-            <summary>More metrics</summary>
+            <summary>{t('simulator.metrics.moreMetrics')}</summary>
             <dl>{facts(entries.filter(([label]) => !primary.has(label as string)))}</dl>
           </details>
         </>
       )}
       <details>
-        <summary>Bottlenecks, shared resources and particle types</summary>
+        <summary>{t('simulator.metrics.bottlenecksSharedResourcesAndParticleTypes')}</summary>
         <p>
-          Current bottleneck: {state.bottlenecks[0]?.name ?? 'None observed'}.{' '}
-          {state.bottlenecks[0]?.reason}
+          {t('simulator.metrics.currentBottleneck.')}{' '}
+          {state.bottlenecks[0]?.name ?? t('simulator.metrics.noneObserved')}.{' '}
+          {state.bottlenecks[0]?.reason
+            ? simulationDiagnosticLabel(t, state.bottlenecks[0].reason)
+            : undefined}
         </p>
         {compact ? (
           <div className="simulation-resource-cards">
@@ -166,21 +218,21 @@ export function MetricsDashboard({
                 <h4>{resource.name}</h4>
                 <dl className="simulation-card-facts">
                   <div>
-                    <dt>Capacity / busy</dt>
+                    <dt>{t('simulator.metrics.capacityBusy')}</dt>
                     <dd>
                       {resource.capacity} / {resource.busy}
                     </dd>
                   </div>
                   <div>
-                    <dt>Utilization</dt>
+                    <dt>{t('simulator.common.utilization')}</dt>
                     <dd>{(resource.utilization * 100).toFixed(1)}%</dd>
                   </div>
                   <div>
-                    <dt>Waiting</dt>
+                    <dt>{t('simulator.common.waiting')}</dt>
                     <dd>{resource.queue.current}</dd>
                   </div>
                   <div>
-                    <dt>Cost</dt>
+                    <dt>{t('simulator.common.cost')}</dt>
                     <dd>{money(resource.cost)}</dd>
                   </div>
                 </dl>
@@ -192,11 +244,11 @@ export function MetricsDashboard({
             <table>
               <thead>
                 <tr>
-                  <th>Resource</th>
-                  <th>Capacity / busy</th>
-                  <th>Utilization</th>
-                  <th>Waiting</th>
-                  <th>Cost</th>
+                  <th>{t('simulator.common.resource')}</th>
+                  <th>{t('simulator.metrics.capacityBusy')}</th>
+                  <th>{t('simulator.common.utilization')}</th>
+                  <th>{t('simulator.common.waiting')}</th>
+                  <th>{t('simulator.common.cost')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -222,31 +274,31 @@ export function MetricsDashboard({
                 <h4>{type.name}</h4>
                 <dl className="simulation-card-facts">
                   <div>
-                    <dt>Created</dt>
+                    <dt>{t('simulator.common.created')}</dt>
                     <dd>{type.created}</dd>
                   </div>
                   <div>
-                    <dt>Completed</dt>
+                    <dt>{t('simulator.common.completed')}</dt>
                     <dd>{type.completed}</dd>
                   </div>
                   <div>
-                    <dt>Abandoned</dt>
+                    <dt>{t('simulator.common.abandoned')}</dt>
                     <dd>{type.abandoned}</dd>
                   </div>
                   <div>
-                    <dt>Wait</dt>
+                    <dt>{t('simulator.metrics.wait')}</dt>
                     <dd>{minutes(type.wait.average)}</dd>
                   </div>
                   <div>
-                    <dt>TTR</dt>
+                    <dt>{t('simulator.metrics.ttr')}</dt>
                     <dd>{minutes(type.ttr.average)}</dd>
                   </div>
                   <div>
-                    <dt>Revenue</dt>
+                    <dt>{t('simulator.common.revenue')}</dt>
                     <dd>{money(type.realizedRevenue)}</dd>
                   </div>
                   <div>
-                    <dt>Lost revenue</dt>
+                    <dt>{t('simulator.metrics.lostRevenue')}</dt>
                     <dd>{money(type.lostRevenue)}</dd>
                   </div>
                 </dl>
@@ -258,14 +310,14 @@ export function MetricsDashboard({
             <table>
               <thead>
                 <tr>
-                  <th>Particle type</th>
-                  <th>Created</th>
-                  <th>Completed</th>
-                  <th>Abandoned</th>
-                  <th>Wait</th>
-                  <th>TTR</th>
-                  <th>Revenue</th>
-                  <th>Lost revenue</th>
+                  <th>{t('simulator.common.particleType')}</th>
+                  <th>{t('simulator.common.created')}</th>
+                  <th>{t('simulator.common.completed')}</th>
+                  <th>{t('simulator.common.abandoned')}</th>
+                  <th>{t('simulator.metrics.wait')}</th>
+                  <th>{t('simulator.metrics.ttr')}</th>
+                  <th>{t('simulator.common.revenue')}</th>
+                  <th>{t('simulator.metrics.lostRevenue')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -286,10 +338,14 @@ export function MetricsDashboard({
           </div>
         )}
         <p>
-          Showing a bounded particle sample; metrics include every simulated item. Retained events:{' '}
-          {state.retained.events}, earlier events discarded: {state.retained.droppedEvents}.{' '}
+          {t('simulator.metrics.retention.summary', {
+            retainedEvents: state.retained.events,
+            discardedEvents: state.retained.droppedEvents,
+          })}{' '}
           {metrics.ttr.approximate &&
-            `TTR percentiles use a deterministic histogram (${metrics.ttr.resolutionSeconds}s buckets).`}
+            t('simulator.metrics.ttr.approximation', {
+              bucketSeconds: metrics.ttr.resolutionSeconds ?? 0,
+            })}
         </p>
       </details>
     </div>

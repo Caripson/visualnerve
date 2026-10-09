@@ -1,6 +1,6 @@
 ---
 title: "Settings, local data and backups"
-summary: "Control appearance, imports, voices, storage and integration permissions in this browser."
+summary: "Choose your app language and control appearance, imports, voices, storage and integration permissions in this browser."
 weight: 14
 ---
 
@@ -26,6 +26,22 @@ The public website and `app.visualnerve.com` keep separate appearance choices. O
 
 Appearance changes the interface, not your saved node colors, diagram geometry or simulation assumptions. Select **Done** to close Settings after making changes.
 
+## App language
+
+Under **Settings → App language**, choose **English**, **Dansk**, **Norsk bokmål**, **Svenska**, **Suomi**, **Deutsch**, **Español** or **Français**. English is the default, regardless of the browser's preferred language. The app uses the normal language codes `en`, `da`, `nb`, `sv`, `fi`, `de`, `es` and `fr`.
+
+![App language selector with eight interface languages.](/help/images/app-language.webp "The interface language is independent of authored content and the narrator.")
+
+The choice applies immediately without reopening your workspace. Open form drafts, selected objects, the camera, undo history and simulation results stay in place. Other app tabs at the same origin follow the selection. You can also choose a language on the password and recovery screens before unlocking.
+
+This translates the **app interface and its controls**, including accessible labels and security notices. Diagram names, descriptions, subtitles, narration text, imported data, code and SQL remain exactly as authored. Changing App language does **not** change the selected narrator; choose the voice separately under **Presentation voice settings**. Alan remains the default voice.
+
+**Help, API reference and website text are in English.** This guide uses the English control names; you can temporarily select English when following a procedure.
+
+The browser stores only an allowlisted language identifier outside the encrypted workspace, alongside its technical Appearance choice, so the locked screen can use it. It contains no password, key or workspace content. The language identifier is not copied into workspace backups or migration files. Help and policy pages remain in English and do not open private records to find this preference.
+
+After offline app caching has completed, all eight interface languages can be selected offline. If a language file cannot load before that, the current interface and work stay usable; choose **Retry**. If browser storage is blocked, the language still applies in the current tab, and the app explains that it could not save the choice for your next visit.
+
 ## What Saved means
 
 Diagrams, objects, connections, owners, notes, templates, preferences and applicable imported data live in **IndexedDB in this browser profile**. **Saved** means the local transaction finished. It does not mean an upload or cloud backup completed.
@@ -33,7 +49,7 @@ Diagrams, objects, connections, owners, notes, templates, preferences and applic
 | Workspace                                            | Protection of saved private records                                                           | Complete workspace backup                                         |
 | ---------------------------------------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
 | Existing `www.visualnerve.com/app/`                  | Readable local records; browser/device access controls protect the profile                    | Readable `visual-nerve-workspace` JSON, format version 1          |
-| Isolated `app.visualnerve.com`, under release review | AES-256-GCM encrypted records; opening private work requires a local password or recovery key | Authenticated encrypted `visualnerve-backup` container, version 1 |
+| Isolated `app.visualnerve.com` | AES-256-GCM encrypted records; opening private work requires a local password or recovery key | Authenticated encrypted `visualnerve-backup` container, version 1 |
 
 The filename ends in `.json` in both cases. A JSON filename alone does not tell you whether a backup is encrypted. The existing address also offers a separate **Export encrypted transfer**, using the same encrypted container format as the isolated app's backups. This protects that file, while its source workspace remains readable. Individual diagram exports remain readable on both addresses.
 

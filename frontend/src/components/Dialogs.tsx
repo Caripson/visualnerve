@@ -1,3 +1,7 @@
+import { presentationMessage } from '../presentation/display-messages';
+import { diagramModeLabel, templateLabel } from '../ui/editor-labels';
+import { ownerKindKeys } from './ui-labels';
+import { APP_LOCALES, useI18n, type AppLocale } from '../i18n';
 import { VoiceSettings } from './VoiceSettings';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -10,7 +14,7 @@ import {
   Users,
 } from 'lucide-react';
 import { Modal } from './Modal';
-import { Field } from './Properties';
+import { Field } from './Field';
 import { useEditor } from '../state/editor';
 import { flushSpatialCamera, workspace } from '../storage/workspace';
 import { templates } from '../templates/templates';
@@ -37,12 +41,13 @@ import { VaultSettings } from '../security/VaultSettings';
 import { vaultSession } from '../storage/runtime';
 import { isEncryptedWorkspaceSurface } from '../security/surface';
 export function NewDiagram({ close }: { close: () => void }) {
+  const { t: translate } = useI18n();
   const [name, setName] = useState('Untitled diagram');
   const [template, setTemplate] = useState('blank');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   return (
-    <Modal title="New diagram" close={close} wide>
+    <Modal title={translate('workspace.newDiagram')} close={close} wide>
       <form
         onSubmit={async (e) => {
           e.preventDefault();
@@ -57,9 +62,9 @@ export function NewDiagram({ close }: { close: () => void }) {
           }
         }}
       >
-        <Field title="Name">
+        <Field title={translate('dialogs.nameField')}>
           <input
-            aria-label="New diagram name"
+            aria-label={translate('dialogs.newDiagramName')}
             autoFocus
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -67,7 +72,7 @@ export function NewDiagram({ close }: { close: () => void }) {
             required
           />
         </Field>
-        <div className="eyebrow template-label">START WITH A TEMPLATE</div>
+        <div className="eyebrow template-label">{translate('dialogs.templateHeading')}</div>
         <div className="template-grid">
           {templates.map((t) => (
             <button
@@ -82,28 +87,31 @@ export function NewDiagram({ close }: { close: () => void }) {
                 <i />
                 <i />
               </div>
-              <b>{t.name}</b>
+              <b>{templateLabel(translate, t.key, t.name)}</b>
               <small>
                 {t.key === 'process-simulator-blank'
-                  ? 'Guided setup for your own process'
+                  ? translate('dialogs.templateGuidedProcessHint')
                   : t.key === 'process-simulator'
-                    ? 'Example · shared staff, queues and scenarios'
+                    ? translate('dialogs.templateKioskHint')
                     : t.key === 'delivery-network-simulator'
-                      ? 'Example · nested processes and shared resources'
+                      ? translate('dialogs.templateNestedProcessHint')
                       : t.nodes
-                        ? `${t.nodes} nodes · ${t.type}`
-                        : 'An open space for your ideas'}
+                        ? translate('dialogs.templateCounts', {
+                            count: t.nodes,
+                            type: diagramModeLabel(translate, t.type),
+                          })
+                        : translate('dialogs.blankTemplateHint')}
               </small>
             </button>
           ))}
         </div>
-        {error && <p className="form-error">{error}</p>}
+        {error && <p className="form-error">{presentationMessage(error, translate)}</p>}
         <div className="modal-actions">
           <button type="button" onClick={close}>
-            Cancel
+            {translate('dialogs.cancel')}
           </button>
           <button className="primary" disabled={busy || !name.trim()}>
-            {busy ? 'Creating…' : 'Create diagram'}
+            {busy ? translate('dialogs.creating') : translate('dialogs.createDiagram')}
           </button>
         </div>
       </form>
@@ -111,6 +119,7 @@ export function NewDiagram({ close }: { close: () => void }) {
   );
 }
 export function ExportDialog({ close }: { close: () => void }) {
+  const { t } = useI18n();
   const mounted = useRef(true);
   const exporting = useRef<AbortController | undefined>(undefined);
   useEffect(() => {
@@ -140,29 +149,27 @@ export function ExportDialog({ close }: { close: () => void }) {
   const [error, setError] = useState('');
   const set = (patch: Partial<RenderOptions>) => setOptions((v) => ({ ...v, ...patch }));
   const targetField = (
-    <Field title="Export">
+    <Field title={t('dialogs.exportField')}>
       <select
-        aria-label="Export target"
+        aria-label={t('dialogs.exportTarget')}
         value={target}
         onChange={(event) => setTarget(event.target.value)}
       >
-        <option value="diagram">Export diagram</option>
-        <option value="workspace">Export all data / backup</option>
+        <option value="diagram">{t('dialogs.exportDiagram')}</option>
+        <option value="workspace">{t('dialogs.exportAllBackupLabel')}</option>
       </select>
     </Field>
   );
   if (target === 'workspace')
     return (
-      <Modal title="Export all data / backup" close={close}>
+      <Modal title={t('dialogs.exportAllBackupLabel')} close={close}>
         {targetField}
-        <p>
-          One portable Visual Nerve backup contains all diagrams, owners, preferences and templates.
-        </p>
+        <p>{t('dialogs.exportPortableBackupHint')}</p>
         <StorageNotice />
         <BackupSecurityNotice encrypted={isEncryptedWorkspaceSurface()} />
-        {error && <p className="form-error">{error}</p>}
+        {error && <p className="form-error">{presentationMessage(error, t)}</p>}
         <div className="modal-actions">
-          <button onClick={close}>Cancel</button>
+          <button onClick={close}>{t('dialogs.cancel')}</button>
           <button
             className="primary"
             disabled={busy}
@@ -178,25 +185,25 @@ export function ExportDialog({ close }: { close: () => void }) {
             }}
           >
             <Download size={15} />
-            Export all data
+            {t('dialogs.exportAllDataAction')}
           </button>
         </div>
       </Modal>
     );
   return (
-    <Modal title="Export diagram" close={cancel}>
+    <Modal title={t('dialogs.exportDiagram')} close={cancel}>
       {targetField}
-      <Field title="Format">
+      <Field title={t('dialogs.formatField')}>
         <select
-          aria-label="Export format"
+          aria-label={t('dialogs.exportFormat')}
           value={format}
           onChange={(e) => setFormat(e.target.value as typeof format)}
         >
-          <option value="json">JSON · complete graph</option>
-          <option value="markdown">Markdown · semantic outline</option>
-          <option value="svg">SVG · vector diagram</option>
-          <option value="png">PNG · rendered diagram</option>
-          <option value="pdf">PDF · printable diagram</option>
+          <option value="json">{t('dialogs.exportJsonOption')}</option>
+          <option value="markdown">{t('dialogs.exportMarkdownOption')}</option>
+          <option value="svg">{t('dialogs.exportSvgOption')}</option>
+          <option value="png">{t('dialogs.exportPngOption')}</option>
+          <option value="pdf">{t('dialogs.exportPdfOption')}</option>
         </select>
       </Field>
       {(format === 'json' || format === 'markdown') && (
@@ -204,29 +211,31 @@ export function ExportDialog({ close }: { close: () => void }) {
       )}
       {(format === 'svg' || format === 'png' || format === 'pdf') && (
         <>
-          <Field title="Area">
+          <Field title={t('dialogs.exportAreaField')}>
             <select
-              aria-label="Export area"
+              aria-label={t('dialogs.exportAreaAria')}
               value={options.scope}
               onChange={(e) => set({ scope: e.target.value as RenderOptions['scope'] })}
             >
-              <option value="complete">Complete diagram</option>
+              <option value="complete">{t('dialogs.exportCompleteArea')}</option>
               <option value="viewport">
-                {spatial || format === 'svg' ? 'Saved 2D viewport' : 'Current viewport'}
+                {spatial || format === 'svg'
+                  ? t('dialogs.exportSaved2DViewport')
+                  : t('dialogs.exportCurrentViewport')}
               </option>
-              <option value="selected">Selected nodes</option>
+              <option value="selected">{t('dialogs.exportSelectedNodes')}</option>
             </select>
           </Field>
           {format !== 'svg' && (
-            <Field title="Resolution">
+            <Field title={t('dialogs.exportResolutionField')}>
               <select
-                aria-label="Export resolution"
+                aria-label={t('dialogs.exportResolutionAria')}
                 value={options.multiplier}
                 onChange={(e) => set({ multiplier: Number(e.target.value) as 1 | 2 | 4 })}
               >
                 {[1, 2, 4].map((v) => (
                   <option key={v} value={v}>
-                    {v}×
+                    {t('dialogs.exportMultiplier', { multiplier: v })}
                   </option>
                 ))}
               </select>
@@ -237,9 +246,9 @@ export function ExportDialog({ close }: { close: () => void }) {
       {format === 'pdf' && (
         <>
           <div className="field-row">
-            <Field title="Paper">
+            <Field title={t('dialogs.exportPaperField')}>
               <select
-                aria-label="PDF paper"
+                aria-label={t('dialogs.exportPaperAria')}
                 value={options.page}
                 onChange={(e) => set({ page: e.target.value as 'a4' | 'a3' })}
               >
@@ -247,45 +256,45 @@ export function ExportDialog({ close }: { close: () => void }) {
                 <option value="a3">A3</option>
               </select>
             </Field>
-            <Field title="Orientation">
+            <Field title={t('dialogs.exportOrientationField')}>
               <select
-                aria-label="PDF orientation"
+                aria-label={t('dialogs.exportOrientationAria')}
                 value={options.orientation}
                 onChange={(e) =>
                   set({ orientation: e.target.value as RenderOptions['orientation'] })
                 }
               >
-                <option value="landscape">Landscape</option>
-                <option value="portrait">Portrait</option>
+                <option value="landscape">{t('dialogs.exportLandscape')}</option>
+                <option value="portrait">{t('dialogs.exportPortrait')}</option>
               </select>
             </Field>
           </div>
           <label className="check-field">
             <input
-              aria-label="Tile across pages"
+              aria-label={t('dialogs.exportTileAria')}
               type="checkbox"
               checked={options.tiled}
               onChange={(e) => set({ tiled: e.target.checked })}
             />
-            Tile across multiple pages
+            {t('dialogs.exportTileLabel')}
           </label>
         </>
       )}
       <p className="muted">
         {format === 'json'
-          ? 'Includes nodes, relationships, owners, metadata, layout and view settings. Import this file to restore the diagram.'
+          ? t('dialogs.exportJsonHint')
           : format === 'markdown'
-            ? 'Exports graph meaning as headings, process steps and relationships.'
+            ? t('dialogs.exportMarkdownHint')
             : format === 'svg'
-              ? 'Exports the canonical 2D diagram as editable vector shapes, text, icons, connections and drawing marks. Viewport uses the saved 2D crop. Fonts are referenced by name; shadows may be simplified.'
+              ? t('dialogs.exportSvgHint')
               : spatial
-                ? 'PNG and PDF use the 2D diagram, including drawing marks. Complete includes off-screen and collapsed nodes. Saved 2D viewport uses your last 2D crop, or fits the diagram if none is saved.'
-                : 'Rendered locally from the canvas. Complete export includes off-screen and collapsed nodes.'}
+                ? t('dialogs.exportSpatialHint')
+                : t('dialogs.exportRenderedHint')}
       </p>
       <StorageNotice />
-      {error && <p className="form-error">{error}</p>}
+      {error && <p className="form-error">{presentationMessage(error, t)}</p>}
       <div className="modal-actions">
-        <button onClick={cancel}>Cancel</button>
+        <button onClick={cancel}>{t('dialogs.cancel')}</button>
         <button
           className="primary"
           disabled={busy}
@@ -353,13 +362,14 @@ export function ExportDialog({ close }: { close: () => void }) {
           }}
         >
           <Download size={15} />
-          {busy ? 'Rendering…' : 'Export'}
+          {busy ? t('dialogs.exportRendering') : t('dialogs.exportField')}
         </button>
       </div>
     </Modal>
   );
 }
 export function OwnersDialog({ close }: { close: () => void }) {
+  const { t } = useI18n();
   const owners = useEditor((s) => s.owners);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Owner | null>(null);
@@ -382,18 +392,18 @@ export function OwnersDialog({ close }: { close: () => void }) {
     setError('');
   };
   return (
-    <Modal title="Owners" close={close} wide>
+    <Modal title={t('workspace.owners')} close={close} wide>
       <div className="owner-dialog">
         <div className="owner-list">
           <input
-            aria-label="Search owners"
-            placeholder="Search owners…"
+            aria-label={t('dialogs.searchOwners')}
+            placeholder={t('dialogs.searchOwnersPlaceholder')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
           <button className="full" onClick={() => choose(null)}>
             <Plus size={14} />
-            New owner
+            {t('dialogs.newOwner')}
           </button>
           {owners
             .filter((o) =>
@@ -412,13 +422,11 @@ export function OwnersDialog({ close }: { close: () => void }) {
                 </span>
                 <span>
                   <b>{o.name}</b>
-                  <small>{o.team || o.kind}</small>
+                  <small>{o.team || t(ownerKindKeys[o.kind])}</small>
                 </span>
               </button>
             ))}
-          {!owners.length && (
-            <p className="muted">People, teams and systems can own steps in your diagram.</p>
-          )}
+          {!owners.length && <p className="muted">{t('dialogs.ownersHint')}</p>}
         </div>
         <form
           onSubmit={async (e) => {
@@ -450,52 +458,68 @@ export function OwnersDialog({ close }: { close: () => void }) {
             }
           }}
         >
-          <h3>{selected ? 'Edit owner' : 'New owner'}</h3>
-          <Field title="Name">
+          <h3>{selected ? t('dialogs.editOwner') : t('dialogs.newOwner')}</h3>
+          <Field title={t('dialogs.nameField')}>
             <input
-              aria-label="Owner name"
+              aria-label={t('dialogs.ownerNameAria')}
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
             />
           </Field>
-          <Field title="Kind">
+          <Field title={t('dialogs.ownerKindField')}>
             <select
-              aria-label="Owner kind"
+              aria-label={t('dialogs.ownerKindAria')}
               value={kind}
               onChange={(e) => setKind(e.target.value as typeof kind)}
             >
-              {['person', 'team', 'department', 'system', 'organization', 'external'].map((v) => (
-                <option key={v}>{v}</option>
+              {(
+                ['person', 'team', 'department', 'system', 'organization', 'external'] as const
+              ).map((v) => (
+                <option key={v} value={v}>
+                  {t(ownerKindKeys[v])}
+                </option>
               ))}
             </select>
           </Field>
-          <Field title="Team">
-            <input aria-label="Owner team" value={team} onChange={(e) => setTeam(e.target.value)} />
-          </Field>
-          <Field title="Role">
-            <input aria-label="Owner role" value={role} onChange={(e) => setRole(e.target.value)} />
-          </Field>
-          <Field title="Email">
+          <Field title={t('dialogs.ownerTeamField')}>
             <input
-              aria-label="Owner email"
+              aria-label={t('dialogs.ownerTeamAria')}
+              value={team}
+              onChange={(e) => setTeam(e.target.value)}
+            />
+          </Field>
+          <Field title={t('dialogs.ownerRoleField')}>
+            <input
+              aria-label={t('dialogs.ownerRoleAria')}
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+            />
+          </Field>
+          <Field title={t('dialogs.ownerEmailField')}>
+            <input
+              aria-label={t('dialogs.ownerEmailAria')}
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </Field>
-          <Field title="Color">
+          <Field title={t('dialogs.ownerColorField')}>
             <input
-              aria-label="Owner color"
+              aria-label={t('dialogs.ownerColorAria')}
               type="color"
               value={color}
               onChange={(e) => setColor(e.target.value)}
             />
           </Field>
-          {error && <p className="form-error">{error}</p>}
+          {error && <p className="form-error">{presentationMessage(error, t)}</p>}
           <button className="primary full" disabled={busy || !name.trim()}>
             <Users size={14} />
-            {busy ? 'Saving…' : selected ? 'Save owner' : 'Create owner'}
+            {busy
+              ? t('workspace.saving')
+              : selected
+                ? t('dialogs.saveOwner')
+                : t('dialogs.createOwner')}
           </button>
         </form>
       </div>
@@ -503,6 +527,7 @@ export function OwnersDialog({ close }: { close: () => void }) {
   );
 }
 export function SearchDialog({ close }: { close: () => void }) {
+  const { t } = useI18n();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<
     { diagramId: string; nodeId?: string; title: string; kind: string }[]
@@ -533,18 +558,18 @@ export function SearchDialog({ close }: { close: () => void }) {
     };
   }, [query]);
   return (
-    <Modal title="Search your workspace" close={close}>
+    <Modal title={t('dialogs.searchWorkspaceTitle')} close={close}>
       <div className="search-input">
         <SearchIcon size={17} />
         <input
-          aria-label="Global search"
+          aria-label={t('dialogs.globalSearchAria')}
           autoFocus
-          placeholder="Diagrams, nodes, tags, owners, metadata…"
+          placeholder={t('dialogs.globalSearchPlaceholder')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
       </div>
-      {error && <p className="muted">{error}</p>}
+      {error && <p className="muted">{presentationMessage(error, t)}</p>}
       <div className="search-results">
         {results.map((r, i) => (
           <button
@@ -564,7 +589,9 @@ export function SearchDialog({ close }: { close: () => void }) {
             <span className="muted">↵</span>
           </button>
         ))}
-        {query && !results.length && <p className="muted">No results for “{query}”.</p>}
+        {query && !results.length && (
+          <p className="muted">{t('dialogs.globalNoResults', { query })}</p>
+        )}
       </div>
     </Modal>
   );
@@ -582,13 +609,53 @@ export function SettingsDialog({
   restore: (backup: WorkspaceBackup) => void;
   onReadBackup?: (file: File) => Promise<WorkspaceBackup>;
 }) {
+  const {
+    t,
+    requestedLocale,
+    selectLocale,
+    loading,
+    error: languageError,
+    persistenceError,
+    retry,
+  } = useI18n();
   return (
-    <Modal title="Settings" close={close}>
-      <Field title="Appearance">
-        <select aria-label="Theme" value={theme} onChange={(e) => setTheme(e.target.value)}>
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-          <option value="system">System</option>
+    <Modal title={t('app.settings')} close={close}>
+      <section className="app-language-settings" aria-label={t('settings.appLanguage')}>
+        <Field title={t('settings.appLanguage')}>
+          <select
+            aria-label={t('settings.appLanguage')}
+            data-testid="app-language"
+            value={requestedLocale}
+            onChange={(event) => selectLocale(event.target.value as AppLocale)}
+          >
+            {APP_LOCALES.map(({ id, name }) => (
+              <option key={id} value={id}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <p className="muted">{t('settings.languageHelp')}</p>
+        {loading && <p role="status">{t('settings.languageLoading')}</p>}
+        {languageError && (
+          <div role="alert">
+            <p>{t('settings.languageLoadFailed')}</p>
+            <button type="button" onClick={retry}>
+              {t('settings.retryLanguage')}
+            </button>
+          </div>
+        )}
+        {persistenceError && <p role="status">{t('settings.languageSaveFailed')}</p>}
+      </section>
+      <Field title={t('settings.appearanceField')}>
+        <select
+          aria-label={t('settings.themeField')}
+          value={theme}
+          onChange={(e) => setTheme(e.target.value)}
+        >
+          <option value="light">{t('settings.themeLight')}</option>
+          <option value="dark">{t('settings.themeDark')}</option>
+          <option value="system">{t('settings.themeSystem')}</option>
         </select>
       </Field>
       <DataPrivacy restore={restore} deleted={close} onReadBackup={onReadBackup} />
@@ -597,21 +664,21 @@ export function SettingsDialog({
       <ProjectFileLimitSettings />
       <VoiceSettings />
       <McpSettings />
-      <div className="property-section">Keyboard shortcuts</div>
+      <div className="property-section">{t('settings.shortcutsTitle')}</div>
       <div className="shortcuts">
         {[
-          ['Undo', '⌘ / Ctrl Z'],
-          ['Redo', '⌘ / Ctrl Shift Z'],
-          ['Copy / paste', '⌘ / Ctrl C / V'],
-          ['Duplicate', '⌘ / Ctrl D'],
-          ['Group', '⌘ / Ctrl G'],
-          ['Find', '⌘ / Ctrl F'],
-          ['Fit diagram', 'F'],
-          ['Rename project / topic', 'F2'],
-          ['Add child / sibling', 'Tab / Enter'],
-          ['Delete selection / branch', 'Delete / Shift Delete'],
-          ['Pan', 'Space + drag'],
-          ['Nudge selection', 'Arrow keys'],
+          [t('toolbar.undo'), '⌘ / Ctrl Z'],
+          [t('toolbar.redo'), '⌘ / Ctrl Shift Z'],
+          [t('settings.shortcutCopyPaste'), '⌘ / Ctrl C / V'],
+          [t('settings.shortcutDuplicate'), '⌘ / Ctrl D'],
+          [t('settings.shortcutGroup'), '⌘ / Ctrl G'],
+          [t('settings.shortcutFind'), '⌘ / Ctrl F'],
+          [t('toolbar.fitDiagram'), 'F'],
+          [t('settings.shortcutRename'), 'F2'],
+          [t('settings.shortcutAddRelative'), 'Tab / Enter'],
+          [t('settings.shortcutDelete'), 'Delete / Shift Delete'],
+          [t('settings.shortcutPan'), t('settings.keySpaceDrag')],
+          [t('settings.shortcutNudge'), t('settings.keyArrowKeys')],
         ].map(([label, key]) => (
           <div key={label}>
             <span>{label}</span>
@@ -621,19 +688,19 @@ export function SettingsDialog({
       </div>
       <div className="modal-actions">
         <a href="/help/" target="_blank" rel="noopener noreferrer">
-          Help & documentation
+          {t('settings.helpDocumentation')}
         </a>
         <a
           href="https://github.com/Caripson/visualnerve/issues/new/choose"
           target="_blank"
           rel="noopener noreferrer"
         >
-          Report an issue
+          {t('settings.reportIssue')}
         </a>
-        <button onClick={close}>Done</button>
+        <button onClick={close}>{t('dialogs.done')}</button>
       </div>
       <p className="author-credit">
-        Created by Johan Caripson ·{' '}
+        {t('settings.createdBy', { author: 'Johan Caripson' })} ·{' '}
         <a href="/license/" target="_blank" rel="noopener noreferrer">
           MPL-2.0
         </a>{' '}
@@ -646,18 +713,17 @@ export function SettingsDialog({
   );
 }
 export function DeleteDialog({ close }: { close: () => void }) {
+  const { t } = useI18n();
   const g = useEditor((s) => s.graph);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   return (
-    <Modal title="Delete diagram" close={close}>
-      <p>Delete “{g?.diagram.name}” and its nodes and connections?</p>
-      <p className="muted">
-        Export JSON first if you want a restorable copy. Owners remain in your workspace.
-      </p>
-      {error && <p className="form-error">{error}</p>}
+    <Modal title={t('dialogs.deleteDiagramTitle')} close={close}>
+      <p>{t('dialogs.deleteDiagramQuestion', { name: g?.diagram.name ?? '' })}</p>
+      <p className="muted">{t('dialogs.deleteDiagramHint')}</p>
+      {error && <p className="form-error">{presentationMessage(error, t)}</p>}
       <div className="modal-actions">
-        <button onClick={close}>Cancel</button>
+        <button onClick={close}>{t('dialogs.cancel')}</button>
         <button
           className="danger"
           disabled={busy}
@@ -674,23 +740,24 @@ export function DeleteDialog({ close }: { close: () => void }) {
           }}
         >
           <Trash2 size={14} />
-          Delete permanently
+          {t('dialogs.deletePermanently')}
         </button>
       </div>
     </Modal>
   );
 }
 export function ConnectDialog({ close }: { close: () => void }) {
+  const { t } = useI18n();
   const g = useEditor((s) => s.graph);
   const selected = useEditor((s) => s.selectedNodes);
   const [source, setSource] = useState(selected[0] ?? g?.nodes[0]?.id ?? '');
   const [target, setTarget] = useState(selected[1] ?? g?.nodes[1]?.id ?? '');
   return (
-    <Modal title="Connect nodes" close={close}>
-      <p className="muted">You can also drag between handles on the canvas.</p>
-      <Field title="From">
+    <Modal title={t('toolbar.connectNodes')} close={close}>
+      <p className="muted">{t('dialogs.connectCanvasHint')}</p>
+      <Field title={t('dialogs.connectFromField')}>
         <select
-          aria-label="Connection from"
+          aria-label={t('dialogs.connectFromAria')}
           value={source}
           onChange={(e) => setSource(e.target.value)}
         >
@@ -701,9 +768,9 @@ export function ConnectDialog({ close }: { close: () => void }) {
           ))}
         </select>
       </Field>
-      <Field title="To">
+      <Field title={t('dialogs.connectToField')}>
         <select
-          aria-label="Connection to"
+          aria-label={t('dialogs.connectToAria')}
           value={target}
           onChange={(e) => setTarget(e.target.value)}
         >
@@ -715,7 +782,7 @@ export function ConnectDialog({ close }: { close: () => void }) {
         </select>
       </Field>
       <div className="modal-actions">
-        <button onClick={close}>Cancel</button>
+        <button onClick={close}>{t('dialogs.cancel')}</button>
         <button
           className="primary"
           disabled={!source || !target}
@@ -724,7 +791,7 @@ export function ConnectDialog({ close }: { close: () => void }) {
             close();
           }}
         >
-          Connect
+          {t('dialogs.connectAction')}
         </button>
       </div>
     </Modal>

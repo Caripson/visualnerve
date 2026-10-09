@@ -1,3 +1,6 @@
+import { TranslatedText } from './TranslatedText';
+import { localizedFeedback } from './localized-feedback';
+import { useI18n } from '../i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { Network, Bookmark } from 'lucide-react';
 import { useEditor } from '../state/editor';
@@ -11,6 +14,7 @@ import { Modal } from './Modal';
 import './analysis-tools.css';
 
 export function AnalysisDialog({ close, startId }: { close: () => void; startId?: string }) {
+  const { t } = useI18n();
   const graph = useEditor((state) => state.graph);
   const result = useEditor((state) => state.explorationResult);
   const working = useEditor((state) => state.explorationBusy);
@@ -73,92 +77,98 @@ export function AnalysisDialog({ close, startId }: { close: () => void; startId?
     }
   };
   return (
-    <Modal title="Relationships and analysis views" close={close} wide>
+    <Modal title={t('data.analysis.title')} close={close} wide>
       <div className="analysis-dialog">
-        <section aria-label="Relationship exploration">
+        <section aria-label={t('data.analysis.explorationAccessible')}>
           <h3>
             <Network size={17} />
-            Explore relationships
+            {t('data.analysis.exploreAction')}
           </h3>
           <p>
-            Start from {start ? <strong>{start.title}</strong> : 'an object selected on the canvas'}
-            . Exploration changes the displayed objects; your diagram and connections stay intact.
+            {start ? (
+              <TranslatedText
+                messageId="data.analysis.startFromObject"
+                slots={{ title: <strong>{start.title}</strong> }}
+              />
+            ) : (
+              t('data.analysis.startFromSelection')
+            )}
           </p>
           <label className="field">
-            Explore
+            {t('data.analysis.modeLabel')}
             <select
-              aria-label="Relationship exploration mode"
+              aria-label={t('data.analysis.modeAccessible')}
               value={mode}
               onChange={(event) => setMode(event.target.value as typeof mode)}
             >
-              <option value="neighbors">Connected neighbors</option>
-              <option value="path">Shortest path</option>
+              <option value="neighbors">{t('data.analysis.neighbors')}</option>
+              <option value="path">{t('data.analysis.shortestPath')}</option>
             </select>
           </label>
           {mode === 'neighbors' ? (
             <div className="analysis-fields">
               <label className="field">
-                Relationships
+                {t('data.analysis.relationshipsLabel')}
                 <select
-                  aria-label="Neighbor direction"
+                  aria-label={t('data.analysis.directionAccessible')}
                   value={direction}
                   onChange={(event) => setDirection(event.target.value as typeof direction)}
                 >
-                  <option value="all">All relationships</option>
-                  <option value="incoming">Incoming</option>
-                  <option value="outgoing">Outgoing</option>
+                  <option value="all">{t('data.analysis.allDirections')}</option>
+                  <option value="incoming">{t('data.analysis.incoming')}</option>
+                  <option value="outgoing">{t('data.analysis.outgoing')}</option>
                 </select>
               </label>
               <label className="field">
-                Distance
+                {t('data.analysis.distanceLabel')}
                 <select
-                  aria-label="Neighbor steps"
+                  aria-label={t('data.analysis.stepsAccessible')}
                   value={steps}
                   onChange={(event) => setSteps(Number(event.target.value) as 1 | 2)}
                 >
-                  <option value={1}>One step</option>
-                  <option value={2}>Two steps</option>
+                  <option value={1}>{t('data.analysis.oneStep')}</option>
+                  <option value={2}>{t('data.analysis.twoSteps')}</option>
                 </select>
               </label>
             </div>
           ) : (
             <>
               <label className="field">
-                Find destination
+                {t('data.analysis.findDestination')}
                 <input
-                  aria-label="Find path destination"
+                  aria-label={t('data.analysis.findDestinationAccessible')}
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search object titles"
+                  placeholder={t('data.analysis.searchPlaceholder')}
                 />
               </label>
               <label className="field">
-                Destination
+                {t('data.analysis.destinationLabel')}
                 <select
-                  aria-label="Path destination"
+                  aria-label={t('data.analysis.destinationAccessible')}
                   value={target}
                   onChange={(event) => setTarget(event.target.value)}
                 >
-                  <option value="">Choose another object</option>
+                  <option value="">{t('data.analysis.chooseDestination')}</option>
                   {destinations.map((node) => (
                     <option key={node.id} value={node.id}>
                       {node.title} · {node.id.slice(0, 8)}
-                      {getCsvNode(node)?.visible === false ? ' · outside current data view' : ''}
+                      {getCsvNode(node)?.visible === false
+                        ? t('data.analysis.outsideViewSuffix')
+                        : ''}
                     </option>
                   ))}
                 </select>
               </label>
-              <p className="muted">
-                Shows at most 100 search matches. Refine the search to find another object.
-              </p>
+              <p className="muted">{t('data.analysis.searchBound')}</p>
               <label className="analysis-check">
                 <input
                   type="checkbox"
-                  aria-label="Follow relationship directions"
+                  aria-label={t('data.analysis.followDirections')}
                   checked={directed}
                   onChange={(event) => setDirected(event.target.checked)}
                 />
-                Follow relationship directions
+                {t('data.analysis.followDirections')}
               </label>
             </>
           )}
@@ -168,19 +178,12 @@ export function AnalysisDialog({ close, startId }: { close: () => void; startId?
               checked={includeHidden}
               onChange={(event) => setIncludeHidden(event.target.checked)}
             />
-            Include groups outside the current data view
+            {t('data.analysis.includeOutsideView')}
           </label>
           {includeHidden && (
-            <p className="analysis-warning">
-              These retained CSV groups may contain earlier measures. They are marked “Outside
-              current data view” on the canvas.
-            </p>
+            <p className="analysis-warning">{t('data.analysis.earlierMeasures')}</p>
           )}
-          <p className="muted">
-            Directed exploration follows arrowheads. Relationships without arrows can be traversed
-            with All relationships or an undirected path. Object filters and collapsed branches are
-            temporarily overridden. Views are limited to 500 objects and 2,000 connections.
-          </p>
+          <p className="muted">{t('data.analysis.explorationRules')}</p>
           <div className="analysis-actions">
             <button
               className="primary"
@@ -201,42 +204,43 @@ export function AnalysisDialog({ close, startId }: { close: () => void; startId?
                 });
               }}
             >
-              Explore relationships
+              {t('data.analysis.exploreAction')}
             </button>
             <button disabled={!previous || busy} onClick={() => useEditor.getState().explore()}>
-              Reset exploration
+              {t('data.analysis.resetAction')}
             </button>
           </div>
           {previous && (
             <p role="status">
               {working
-                ? 'Exploring…'
+                ? t('data.analysis.exploring')
                 : result
                   ? result.found
-                    ? `${result.nodeIds.length} objects shown.${result.truncated ? ' The result exceeds the view limit; refine your exploration.' : ''}`
-                    : 'No path found with these directions and visibility settings.'
-                  : useEditor.getState().explorationError}
+                    ? t(
+                        result.truncated
+                          ? 'data.analysis.truncatedCount'
+                          : 'data.analysis.shownCount',
+                        { count: result.nodeIds.length },
+                      )
+                    : t('data.analysis.noPath')
+                  : localizedFeedback(useEditor.getState().explorationError ?? '', t)}
             </p>
           )}
         </section>
-        <section aria-label="Saved analysis views">
+        <section aria-label={t('data.analysis.savedAccessible')}>
           <h3>
             <Bookmark size={17} />
-            Named analysis views
+            {t('data.analysis.savedTitle')}
           </h3>
-          <p>
-            Save filters, source analyses, relationship configuration, layout, collapsed branches
-            and viewport over the same shared sources. Notes, statuses, drawing marks and manual
-            connections remain current when switching views.
-          </p>
+          <p>{t('data.analysis.sharedViewsExplanation')}</p>
           <label className="field">
-            View name
+            {t('data.analysis.viewNameLabel')}
             <input
-              aria-label="Analysis view name"
+              aria-label={t('data.analysis.viewNameAccessible')}
               maxLength={100}
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="For example, blocked customer dependencies"
+              placeholder={t('data.analysis.viewNamePlaceholder')}
             />
           </label>
           <div className="analysis-actions">
@@ -244,20 +248,20 @@ export function AnalysisDialog({ close, startId }: { close: () => void; startId?
               disabled={busy || !name.trim()}
               onClick={() => action(() => useEditor.getState().saveView(name))}
             >
-              Save current view
+              {t('data.analysis.saveAction')}
             </button>
           </div>
           <label className="field">
-            Saved view
+            {t('data.analysis.savedLabel')}
             <select
-              aria-label="Saved analysis view"
+              aria-label={t('data.analysis.savedSelectAccessible')}
               value={viewId}
               onChange={(event) => {
                 setViewId(event.target.value);
                 setName(views.find((view) => view.id === event.target.value)?.name ?? '');
               }}
             >
-              <option value="">Choose a saved view ({views.length})</option>
+              <option value="">{t('data.analysis.chooseSaved', { count: views.length })}</option>
               {views.map((view) => (
                 <option value={view.id} key={view.id}>
                   {view.name}
@@ -267,13 +271,13 @@ export function AnalysisDialog({ close, startId }: { close: () => void; startId?
           </label>
           <div className="analysis-actions">
             <button className="primary" disabled={busy || !viewId} onClick={() => void load()}>
-              Load view
+              {t('data.analysis.loadAction')}
             </button>
             <button
               disabled={busy || !viewId || !name.trim()}
               onClick={() => action(() => useEditor.getState().saveView(name, viewId))}
             >
-              Update saved view
+              {t('data.analysis.updateAction')}
             </button>
             <button
               className="danger"
@@ -283,17 +287,14 @@ export function AnalysisDialog({ close, startId }: { close: () => void; startId?
                 setNotice('Saved view deleted.');
               }}
             >
-              Delete saved view
+              {t('data.analysis.deleteAction')}
             </button>
           </div>
-          <p className="muted">
-            Source rows are shared, never copied into a view. Saving and loading views can be
-            undone.
-          </p>
+          <p className="muted">{t('data.analysis.sourceSharingUndo')}</p>
         </section>
         {!!notice && (
           <p role="status" className="analysis-notice">
-            {notice}
+            {localizedFeedback(notice, t)}
           </p>
         )}
       </div>

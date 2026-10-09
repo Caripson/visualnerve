@@ -1,3 +1,5 @@
+import { paletteLabel, statusLabel as displayStatus } from './editor-labels';
+import { useI18n } from '../i18n';
 import {
   Copy,
   Pencil,
@@ -12,9 +14,10 @@ import { useLayoutEffect, useRef } from 'react';
 import { useEditor } from '../state/editor';
 import { colorPalette } from './colors';
 import { IconPicker, iconKey, withIcon } from './icons';
-import { nodeStatuses, statusLabel } from './status';
+import { nodeStatuses } from './status';
 
 export function SelectionTools() {
+  const { t } = useI18n();
   const graph = useEditor((state) => state.graph);
   const nodes = useEditor((state) => state.selectedNodes);
   const edges = useEditor((state) => state.selectedEdges);
@@ -59,10 +62,14 @@ export function SelectionTools() {
       nodes: g.nodes.map((node) => (selected.has(node.id) ? { ...node, status: value } : node)),
     }));
   return (
-    <div ref={tools} className="selection-tools" aria-label="Selection actions">
+    <div
+      ref={tools}
+      className="selection-tools"
+      aria-label={t('editor.selection.selectionActions')}
+    >
       <button
-        aria-label="Edit selected item"
-        title="Edit item"
+        aria-label={t('editor.selection.editSelectedItem')}
+        title={t('editor.selection.editItem')}
         onClick={() => {
           useEditor.setState({ mobilePanel: 'details' });
           requestAnimationFrame(() => {
@@ -71,20 +78,25 @@ export function SelectionTools() {
         }}
       >
         <Pencil size={17} />
-        <span>Edit</span>
+        <span>{t('editor.selection.edit')}</span>
       </button>
       {first && (
         <>
           <details className="quick-picker status-picker">
-            <summary aria-label="Choose status" title="Status">
+            <summary
+              aria-label={t('editor.selection.chooseStatus')}
+              title={t('editor.properties.status')}
+            >
               <ListTodo size={17} />
-              <span>Status</span>
+              <span>{t('editor.properties.status')}</span>
             </summary>
             <div className="picker-panel status-picker-panel">
               <label>
-                Status for {objects.length === 1 ? 'this object' : `${objects.length} objects`}
+                {objects.length === 1
+                  ? t('editor.selection.status.one')
+                  : t('editor.selection.status.other', { count: objects.length })}
                 <select
-                  aria-label="Selection status"
+                  aria-label={t('editor.selection.selectionStatus')}
                   value={statuses.length > 1 ? mixedValue : statuses[0]}
                   onChange={(e) => {
                     status(e.target.value);
@@ -95,13 +107,13 @@ export function SelectionTools() {
                 >
                   {statuses.length > 1 && (
                     <option value={mixedValue} disabled>
-                      Mixed statuses
+                      {t('editor.selection.mixedStatuses')}
                     </option>
                   )}
-                  <option value="">None</option>
+                  <option value="">{t('editor.properties.none')}</option>
                   {nodeStatuses.map((choice) => (
                     <option key={choice.value} value={choice.value}>
-                      {choice.label}
+                      {displayStatus(t, choice.value)}
                     </option>
                   ))}
                   {statuses
@@ -110,7 +122,7 @@ export function SelectionTools() {
                     )
                     .map((value) => (
                       <option key={value} value={value}>
-                        {statusLabel(value)}
+                        {displayStatus(t, value)}
                       </option>
                     ))}
                 </select>
@@ -119,25 +131,36 @@ export function SelectionTools() {
           </details>
           <button
             className={`completion-action ${allDone ? 'is-done' : ''}`}
-            aria-label={allDone ? 'Reopen selected objects' : 'Mark selected objects done'}
-            title={allDone ? 'Reopen as In progress' : 'Mark as Done'}
+            aria-label={
+              allDone
+                ? t('editor.selection.reopenSelectedObjects')
+                : t('editor.selection.markSelectedObjectsDone')
+            }
+            title={
+              allDone ? t('editor.selection.reopenAsInProgress') : t('editor.selection.markAsDone')
+            }
             onClick={() => status(allDone ? 'in-progress' : 'done')}
           >
             {allDone ? <RotateCcw size={17} /> : <CircleCheck size={17} />}
-            <span>{allDone ? 'Reopen' : 'Done'}</span>
+            <span>{allDone ? t('editor.selection.reopen') : t('editor.selection.done')}</span>
           </button>
           <details className="quick-picker color-picker">
-            <summary aria-label="Choose color" title="Color">
+            <summary
+              aria-label={t('editor.selection.chooseColor')}
+              title={t('editor.properties.color')}
+            >
               <Palette size={17} />
-              <span>Color</span>
+              <span>{t('editor.properties.color')}</span>
             </summary>
-            <div className="picker-panel" role="group" aria-label="Colors">
+            <div className="picker-panel" role="group" aria-label={t('editor.selection.colors')}>
               <div className="color-grid">
                 {colorPalette.map((choice) => (
                   <button
                     key={choice.value}
-                    aria-label={`Color: ${choice.name}`}
-                    title={choice.name}
+                    aria-label={t('editor.selection.color', {
+                      colorLabel: paletteLabel(t, choice.value),
+                    })}
+                    title={paletteLabel(t, choice.value)}
                     style={{ background: choice.value }}
                     onClick={(e) => {
                       color(choice.value);
@@ -147,9 +170,9 @@ export function SelectionTools() {
                 ))}
               </div>
               <label className="custom-color">
-                Custom color
+                {t('editor.selection.customColor')}{' '}
                 <input
-                  aria-label="Custom selection color"
+                  aria-label={t('editor.selection.customSelectionColor')}
                   type="color"
                   value={first.color || '#23664d'}
                   onChange={(e) => color(e.target.value)}
@@ -171,8 +194,8 @@ export function SelectionTools() {
             }
           />
           <button
-            aria-label="Duplicate selection"
-            title="Duplicate (Ctrl/Cmd D)"
+            aria-label={t('editor.selection.duplicateSelection')}
+            title={t('editor.selection.duplicateCtrlCmdD')}
             onClick={() => {
               const clip = useEditor.getState().copy();
               if (clip) useEditor.getState().paste(clip);
@@ -184,18 +207,18 @@ export function SelectionTools() {
       )}
       <button
         className="danger"
-        aria-label="Delete selection"
-        title="Delete selection (Delete / Backspace)"
+        aria-label={t('editor.properties.deleteSelection')}
+        title={t('editor.selection.deleteSelectionDeleteBackspace')}
         onClick={() => useEditor.getState().remove()}
       >
         <Trash2 size={17} />
-        <span>Delete</span>
+        <span>{t('editor.selection.delete')}</span>
       </button>
       {canBranch && (
         <button
           className="danger delete-branch"
-          aria-label="Delete branch"
-          title="Delete topic and all subtopics (Shift Delete)"
+          aria-label={t('editor.selection.deleteBranch')}
+          title={t('editor.selection.deleteTopicAndAllSubtopicsShiftDelete')}
           onClick={() => useEditor.getState().remove(true)}
         >
           <GitBranch size={17} />

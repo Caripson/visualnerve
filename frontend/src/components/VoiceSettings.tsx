@@ -1,3 +1,6 @@
+import { voiceDisplayLabel } from '../presentation/voice-labels';
+import { presentationMessage } from '../presentation/display-messages';
+import { useI18n } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { workspaceStorage } from '../storage/runtime';
 import { workspace } from '../storage/workspace';
@@ -15,6 +18,7 @@ import {
 } from '../presentation/speech/voices';
 
 export function VoiceSettings() {
+  const { t } = useI18n();
   const [active, setActive] = useState<VoiceId>(DEFAULT_VOICE_ID);
   const [draft, setDraft] = useState<VoiceId>(DEFAULT_VOICE_ID);
   const [saving, setSaving] = useState(false);
@@ -143,12 +147,12 @@ export function VoiceSettings() {
   }
 
   return (
-    <section className="voice-settings" aria-label="Presentation voice settings">
-      <div className="property-section">Presentation voice</div>
+    <section className="voice-settings" aria-label={t('voice.settingsRegion')}>
+      <div className="property-section">{t('voice.settingsTitle')}</div>
       <label className="field">
-        <span>Narration voice</span>
+        <span>{t('voice.narrationVoiceField')}</span>
         <select
-          aria-label="Narration voice"
+          aria-label={t('voice.narrationVoiceField')}
           value={draft}
           disabled={saving || previewing}
           onChange={(event) => {
@@ -160,71 +164,74 @@ export function VoiceSettings() {
         >
           {VOICES.map((item) => (
             <option value={item.id} key={item.id}>
-              {item.label}
+              {voiceDisplayLabel(item.id, t)}
             </option>
           ))}
         </select>
       </label>
+      <p className="muted">{t('voice.defaultLocalHint')}</p>
       <p className="muted">
-        Alan, a British male voice, is the default. Neural speech runs locally in your browser;
-        descriptions are never sent to a speech service.
-      </p>
-      <p className="muted">
-        Model quality: {voice.quality}. Medium and high are the available Piper tiers; there is no
-        high+ tier. A voice reads your text; it does not translate it.
+        {t('voice.qualityHint', {
+          quality: t(voice.quality === 'high' ? 'voice.qualityHigh' : 'voice.qualityMedium'),
+        })}
       </p>
       <p className="muted">
         {cached.includes(draft)
-          ? 'Voice downloaded and available offline.'
-          : `First audio playback or preload downloads this voice model (${Math.ceil(voice.modelBytes / 1024 / 1024)} MB) from Hugging Face.`}{' '}
-        Runtime files load from this website. Downloads can be cancelled; browser storage may be
-        reclaimed.
+          ? t('voice.availableOffline')
+          : t('voice.firstDownloadHint', {
+              megabytes: Math.ceil(voice.modelBytes / 1024 / 1024),
+            })}{' '}
+        {t('voice.runtimeDownloadHint')}
       </p>
       <p className="muted">
         {voice.license}.{' '}
         <a href={voice.source} target="_blank" rel="noreferrer">
-          Voice source and license
+          {t('voice.sourceLicenseLink')}
         </a>
       </p>
       <div className="storage-actions">
         <button type="button" disabled={saving || draft === active} onClick={() => void save()}>
-          {saving ? 'Saving…' : 'Save voice'}
+          {saving ? t('presentation.voiceSaving') : t('voice.saveAction')}
         </button>
         <button
           type="button"
           disabled={saving}
           onClick={() => (previewing ? stopPreview() : void playPreview())}
         >
-          {previewing ? 'Cancel voice preview' : 'Preview voice'}
+          {previewing ? t('voice.cancelPreview') : t('voice.preview')}
         </button>
         <button type="button" disabled={saving || previewing} onClick={() => void clearModels()}>
-          Clear downloaded voices
+          {t('voice.clearModelsAction')}
         </button>
       </div>
       {progress && (
         <>
           <progress
-            aria-label="Voice preparation"
+            aria-label={t('presentation.voicePreparation')}
             max={progress.total || undefined}
             value={progress.total ? progress.loaded : undefined}
           />
           <p role="status">
-            {progress.message}
-            {progress.total > 0 ? ` ${Math.round((progress.loaded / progress.total) * 100)}%` : ''}
+            {presentationMessage(progress.message, t)}
+            {progress.total > 0
+              ? t('voice.progressPercentSuffix', {
+                  percent: Math.round((progress.loaded / progress.total) * 100),
+                })
+              : ''}
             {progress.elapsedMs && progress.elapsedMs >= 1000
-              ? ` (${Math.floor(progress.elapsedMs / 1000)}s)`
+              ? t('voice.progressSecondsSuffix', { seconds: Math.floor(progress.elapsedMs / 1000) })
               : ''}
           </p>
         </>
       )}
       {error && (
         <p className="form-error" role="alert">
-          {error}
+          {presentationMessage(error, t)}
         </p>
       )}
       {message && (
         <p className="settings-message" role="status">
-          {message}
+          {presentationMessage(message, t)}
         </p>
       )}
     </section>

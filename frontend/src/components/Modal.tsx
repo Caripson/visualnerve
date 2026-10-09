@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 import './modal.css';
@@ -16,6 +17,7 @@ export function Modal({
   dismissible?: boolean;
   className?: string;
 }) {
+  const { t } = useI18n();
   const ref = useRef<HTMLDivElement>(null);
   const options = useRef({ close, dismissible });
   options.current = { close, dismissible };
@@ -106,7 +108,7 @@ export function Modal({
         <div className="modal-heading">
           <h2>{title}</h2>
           {dismissible && (
-            <button className="icon-button" aria-label="Close dialog" onClick={close}>
+            <button className="icon-button" aria-label={t('shared.closeDialog')} onClick={close}>
               <X size={18} />
             </button>
           )}

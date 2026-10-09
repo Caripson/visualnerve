@@ -1,3 +1,4 @@
+import { useI18n } from '../../i18n';
 import { EntityCollection } from './EntityCollection';
 import { NumberField, ScalingFields } from '../fields';
 import { JsonField } from './JsonField';
@@ -15,6 +16,7 @@ export function ResourceEditor({
   addNode: (type: SimulationNode['type']) => void;
   setTab: (tab: string) => void;
 }) {
+  const { t } = useI18n();
   const patchResource = (id: string, partial: Partial<Resource>) =>
     setDraft((model) => ({
       ...model,
@@ -24,48 +26,63 @@ export function ResourceEditor({
     }));
   return (
     <>
-      <EntityCollection items={draft.resources} label="Resource to edit">
+      <EntityCollection
+        items={draft.resources}
+        label={t('simulator.editor.resource.resourceToEdit')}
+      >
         {(resource) => (
           <fieldset key={resource.id}>
             <legend>{resource.name}</legend>
             <label>
-              Name
+              {t('simulator.common.name')}{' '}
               <input
-                aria-label={`Resource name ${resource.id}`}
+                aria-label={t('simulator.editor.resource.resourceName', {
+                  id: String(resource.id),
+                })}
                 value={resource.name}
                 onChange={(event) => patchResource(resource.id, { name: event.target.value })}
               />
             </label>
             <label>
-              Unit
+              {t('simulator.editor.resource.unit')}{' '}
               <input
-                aria-label={`Resource unit ${resource.id}`}
+                aria-label={t('simulator.editor.resource.resourceUnit', {
+                  id: String(resource.id),
+                })}
                 value={resource.unit}
                 onChange={(event) => patchResource(resource.id, { unit: event.target.value })}
               />
             </label>
             <div className="simulation-grid">
               <NumberField
-                label={`Resource capacity ${resource.name}`}
+                label={t('simulator.editor.resource.resourceCapacity', {
+                  name: String(resource.name),
+                })}
                 value={resource.capacity}
                 step={1}
                 change={(value) => patchResource(resource.id, { capacity: value ?? 0 })}
               />
               <NumberField
-                label={`Resource minimum ${resource.name}`}
+                label={t('simulator.editor.resource.resourceMinimum', {
+                  name: String(resource.name),
+                })}
                 value={resource.minCapacity}
                 step={1}
                 change={(value) => patchResource(resource.id, { minCapacity: value })}
               />
               <NumberField
-                label={`Resource maximum ${resource.name}`}
+                label={t('simulator.editor.resource.resourceMaximum', {
+                  name: String(resource.name),
+                })}
                 value={resource.maxCapacity}
                 step={1}
                 change={(value) => patchResource(resource.id, { maxCapacity: value })}
               />
               <NumberField
-                label={`Resource cost ${resource.name} / hour`}
-                help="Per available resource unit, including idle time."
+                label={t('simulator.editor.resource.resourceCostHour', {
+                  name: String(resource.name),
+                })}
+                help={t('simulator.editor.resource.perAvailableResourceUnitIncludingIdleTime')}
                 value={resource.costPerHour ?? 0}
                 change={(value) => patchResource(resource.id, { costPerHour: value })}
               />
@@ -76,12 +93,15 @@ export function ResourceEditor({
               change={(value) => patchResource(resource.id, { scaling: value })}
             />
             <ScheduleFields
-              label={`${resource.name} availability`}
+              label={t('simulator.editor.resource.availability', { name: String(resource.name) })}
               value={resource.schedule}
               change={(schedule) => patchResource(resource.id, { schedule })}
             />
             <JsonField
-              label={`Availability ${resource.name}`}
+              fieldId={`resource-schedule:${resource.id}`}
+              label={t('simulator.editor.resource.availability.name', {
+                name: String(resource.name),
+              })}
               value={resource.schedule}
               change={(value) =>
                 patchResource(resource.id, { schedule: value as typeof resource.schedule })
@@ -90,15 +110,16 @@ export function ResourceEditor({
             {!scenarioId && (
               <>
                 <p>
-                  Deleting also disconnects Work nodes and removes this resource's displays and
-                  investments.
+                  {t(
+                    'simulator.editor.resource.deletingAlsoDisconnectsWorkNodesAndRemovesThisResourceSDisplaysAnd',
+                  )}
                 </p>
                 <button
                   onClick={() =>
                     setDraft((model) => removeSimulationEntity(model, 'resources', resource.id))
                   }
                 >
-                  Delete resource
+                  {t('simulator.editor.resource.deleteResource')}
                 </button>
               </>
             )}
@@ -112,7 +133,7 @@ export function ResourceEditor({
             setTab('resources');
           }}
         >
-          Add shared resource
+          {t('simulator.editor.resource.addSharedResource')}
         </button>
       )}
     </>

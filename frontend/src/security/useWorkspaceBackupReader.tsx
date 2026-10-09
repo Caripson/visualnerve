@@ -1,3 +1,5 @@
+import { localizedFeedback } from '../components/localized-feedback';
+import { useI18n } from '../i18n';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Modal } from '../components/Modal';
 import { assertImportBytes } from '../imports/limits';
@@ -71,6 +73,7 @@ function BackupCredentials({
   decrypt: (request: PendingRead, kind: CredentialKind, secret: string) => Promise<void>;
   cancel: (request: PendingRead) => void;
 }) {
+  const { t } = useI18n();
   const [kind, setKind] = useState<CredentialKind>('password');
   const [secret, setSecret] = useState('');
   const [busy, setBusy] = useState(false);
@@ -87,7 +90,7 @@ function BackupCredentials({
     cancel(request);
   };
   return (
-    <Modal title="Unlock encrypted backup" close={close}>
+    <Modal title={t('security.backupReader.title')} close={close}>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -108,18 +111,12 @@ function BackupCredentials({
             });
         }}
       >
-        <p>
-          Use the password or recovery key from when this backup was exported. Your current
-          workspace password may be different.
-        </p>
-        <p className="muted">
-          The credential is used only in this browser. It is not sent to Visual Nerve, the
-          integration bridge or an AI agent.
-        </p>
+        <p>{t('security.backupReader.originalCredentialNotice')}</p>
+        <p className="muted">{t('security.backupReader.localCredentialNotice')}</p>
         <label className="field">
-          <span>Unlock backup with</span>
+          <span>{t('security.backupReader.unlockWith')}</span>
           <select
-            aria-label="Backup credential type"
+            aria-label={t('security.backupReader.credentialType')}
             value={kind}
             disabled={busy}
             onChange={(event) => {
@@ -128,12 +125,16 @@ function BackupCredentials({
               setError('');
             }}
           >
-            <option value="password">Original export password</option>
-            <option value="recovery">Original export recovery key</option>
+            <option value="password">{t('security.backupReader.originalPasswordOption')}</option>
+            <option value="recovery">{t('security.backupReader.originalRecoveryOption')}</option>
           </select>
         </label>
         <label className="field">
-          <span>{kind === 'password' ? 'Backup password' : 'Backup recovery key'}</span>
+          <span>
+            {kind === 'password'
+              ? t('security.backupReader.passwordLabel')
+              : t('security.backupReader.recoveryLabel')}
+          </span>
           <input
             type="password"
             autoComplete="off"
@@ -148,15 +149,15 @@ function BackupCredentials({
         <BackupSecurityNotice encrypted />
         {error && (
           <p className="form-error" role="alert">
-            {error}
+            {localizedFeedback(error, t)}
           </p>
         )}
         <div className="modal-actions">
           <button type="button" onClick={close}>
-            Cancel backup import
+            {t('security.backupReader.cancel')}
           </button>
           <button className="primary" type="submit" disabled={busy || !secret}>
-            {busy ? 'Verifying entire backup…' : 'Read backup'}
+            {busy ? t('security.backupReader.verifying') : t('security.backupReader.read')}
           </button>
         </div>
       </form>

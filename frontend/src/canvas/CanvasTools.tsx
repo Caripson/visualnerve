@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { Crosshair, Grid3X3, Magnet, Map, Pencil, Settings2 } from 'lucide-react';
 import { useReactFlow } from '@xyflow/react';
 import type { Graph } from '../model/types';
@@ -21,6 +22,7 @@ export function CanvasTools({
   setMinimap: (value: boolean) => void;
   toggle: (key: 'grid' | 'snap') => void;
 }) {
+  const { t } = useI18n();
   const compact = useCompactLayout();
   const drawingTool = useEditor((state) => state.drawingTool);
   const selectedNodes = useEditor((state) => state.selectedNodes);
@@ -29,37 +31,37 @@ export function CanvasTools({
     <>
       <button
         className={graph.diagram.settings.grid !== false ? 'active' : ''}
-        title="Toggle grid"
-        aria-label="Toggle grid"
+        title={t('editor.canvas.tools.toggleGrid')}
+        aria-label={t('editor.canvas.tools.toggleGrid')}
         aria-pressed={graph.diagram.settings.grid !== false}
         onClick={() => toggle('grid')}
       >
         <Grid3X3 size={16} />
-        {compact && <span>Grid</span>}
+        {compact && <span>{t('editor.canvas.tools.grid')}</span>}
       </button>
       <button
         className={graph.diagram.settings.snap ? 'active' : ''}
-        title="Snap to grid"
-        aria-label="Snap to grid"
+        title={t('editor.canvas.tools.snapToGrid')}
+        aria-label={t('editor.canvas.tools.snapToGrid')}
         aria-pressed={!!graph.diagram.settings.snap}
         onClick={() => toggle('snap')}
       >
         <Magnet size={16} />
-        {compact && <span>Snap to grid</span>}
+        {compact && <span>{t('editor.canvas.tools.snapToGrid')}</span>}
       </button>
       {!compact && (
         <button
           className={minimap ? 'active' : ''}
-          title="Toggle minimap"
-          aria-label="Toggle minimap"
+          title={t('editor.canvas.tools.toggleMinimap')}
+          aria-label={t('editor.canvas.tools.toggleMinimap')}
           onClick={() => setMinimap(!minimap)}
         >
           <Map size={16} />
         </button>
       )}
       <button
-        title="Center selection"
-        aria-label="Center selection"
+        title={t('editor.canvas.tools.centerSelection')}
+        aria-label={t('editor.canvas.tools.centerSelection')}
         disabled={!selectedNodes.length}
         onClick={() =>
           void flow.fitView({
@@ -70,7 +72,7 @@ export function CanvasTools({
         }
       >
         <Crosshair size={16} />
-        {compact && <span>Center selection</span>}
+        {compact && <span>{t('editor.canvas.tools.centerSelection')}</span>}
       </button>
     </>
   );
@@ -78,8 +80,8 @@ export function CanvasTools({
     <div className="canvas-toggles">
       <button
         className={drawingTool !== 'none' ? 'active' : ''}
-        title="Draw on diagram"
-        aria-label="Draw on diagram"
+        title={t('editor.canvas.tools.drawOnDiagram')}
+        aria-label={t('editor.canvas.tools.drawOnDiagram')}
         aria-pressed={drawingTool !== 'none'}
         disabled={overview}
         onClick={() => {
@@ -97,8 +99,12 @@ export function CanvasTools({
         <Pencil size={16} />
       </button>
       {compact ? (
-        <ToolbarMenu label="Canvas options" icon={<Settings2 size={16} />} text={false}>
-          <h3>Canvas</h3>
+        <ToolbarMenu
+          label={t('editor.canvas.tools.canvasOptions')}
+          icon={<Settings2 size={16} />}
+          text={false}
+        >
+          <h3>{t('editor.canvas.tools.canvas')}</h3>
           {tools}
         </ToolbarMenu>
       ) : (

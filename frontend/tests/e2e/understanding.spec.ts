@@ -114,7 +114,7 @@ test('asks a source/manual path, focuses original objects, saves a reviewed app 
   const answers = dialog.getByRole('region', { name: 'Question answers' });
   await expect(answers.getByText('Customer dashboard', { exact: true })).toBeVisible();
   await answers.getByText('Why is this connected?', { exact: true }).click();
-  await expect(answers.getByText('sql · foreign-key · explicit', { exact: true })).toBeVisible();
+  await expect(answers.getByText('SQL · foreign-key · explicit', { exact: true })).toBeVisible();
   await expect(
     answers.getByText('diagram · relationship · explicit', { exact: true }),
   ).toBeVisible();
@@ -264,7 +264,7 @@ test('saves a named snapshot, reviews an API edit and restores stable IDs with a
     .getByRole('combobox', { name: 'Snapshot', exact: true })
     .selectOption(snapshots[0].id);
   await dialog.getByRole('button', { name: 'Review changes', exact: true }).click();
-  await expect(dialog.getByText('1 meaningful changes', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('1 meaningful change', { exact: true })).toBeVisible();
   await expect(dialog.getByText('Approved production plan', { exact: true })).toBeVisible();
   const restore = dialog.getByRole('button', { name: 'Restore reviewed snapshot', exact: true });
   await expect(restore).toBeDisabled();

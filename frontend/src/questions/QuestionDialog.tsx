@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { useMemo, useState } from 'react';
 import { Modal } from '../components/Modal';
 import { useEditor } from '../state/editor';
@@ -5,6 +6,7 @@ import { askDiagram } from './client';
 import { questionGraph } from './evidence';
 import type { Graph } from '../model/types';
 import type { DiagramQuestion, DiagramQuestionResult } from './types';
+import { questionDisplayMessage, questionSummary, questionEvidenceLabel } from './display';
 import '../components/analysis-tools.css';
 import './questions.css';
 
@@ -13,6 +15,7 @@ const fingerprint = (graph: Graph) => {
   return JSON.stringify(content);
 };
 export function QuestionDialog({ close }: { close: () => void }) {
+  const { t, number } = useI18n();
   const graph = useEditor((state) => state.graph);
   const selected = useEditor((state) => state.selectedNodes);
   const [startId, setStartId] = useState(selected[0] ?? graph?.nodes[0]?.id ?? '');
@@ -102,26 +105,23 @@ export function QuestionDialog({ close }: { close: () => void }) {
     );
   };
   return (
-    <Modal title="Ask about this diagram" close={close} wide>
+    <Modal title={t('questions.title')} close={close} wide>
       <div className="analysis-dialog question-dialog">
-        <p>
-          Investigate modeled connections and inspect the evidence behind each path. AI can use the
-          same questions through MCP.
-        </p>
+        <p>{t('questions.introduction')}</p>
         <label className="field">
-          Find objects
+          {t('questions.find')}
           <input
-            aria-label="Find question objects"
+            aria-label={t('questions.findAria')}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search titles; up to 100 matches"
+            placeholder={t('questions.searchHint')}
           />
         </label>
         <div className="analysis-fields">
           <label className="field">
-            Start object
+            {t('questions.start')}
             <select
-              aria-label="Question start object"
+              aria-label={t('questions.startAria')}
               value={startId}
               onChange={(event) => setStartId(event.target.value)}
             >
@@ -133,27 +133,27 @@ export function QuestionDialog({ close }: { close: () => void }) {
             </select>
           </label>
           <label className="field">
-            Question
+            {t('questions.question')}
             <select
-              aria-label="Diagram question"
+              aria-label={t('questions.questionAria')}
               value={kind}
               onChange={(event) => setKind(event.target.value as DiagramQuestion['kind'])}
             >
-              <option value="downstream">What is downstream of this object?</option>
-              <option value="upstream">What is upstream of this object?</option>
-              <option value="path">How are these objects connected?</option>
+              <option value="downstream">{t('questions.downstream')}</option>
+              <option value="upstream">{t('questions.upstream')}</option>
+              <option value="path">{t('questions.path')}</option>
             </select>
           </label>
         </div>
         {kind === 'path' && (
           <label className="field">
-            Destination
+            {t('questions.destination')}
             <select
-              aria-label="Question destination"
+              aria-label={t('questions.destinationAria')}
               value={targetId}
               onChange={(event) => setTargetId(event.target.value)}
             >
-              <option value="">Choose destination</option>
+              <option value="">{t('questions.chooseDestination')}</option>
               {objects.map((node) => (
                 <option key={node.id} value={node.id}>
                   {node.title} · {node.id.slice(0, 8)}
@@ -164,9 +164,9 @@ export function QuestionDialog({ close }: { close: () => void }) {
         )}
         <div className="analysis-fields">
           <label className="field">
-            Maximum steps
+            {t('questions.maximumSteps')}
             <input
-              aria-label="Question maximum steps"
+              aria-label={t('questions.maximumStepsAria')}
               type="number"
               min={1}
               max={64}
@@ -175,15 +175,17 @@ export function QuestionDialog({ close }: { close: () => void }) {
             />
           </label>
           <label className="field">
-            Relationship type
+            {t('questions.relationshipType')}
             <select
-              aria-label="Question relationship type"
+              aria-label={t('questions.relationshipTypeAria')}
               value={edgeType}
               onChange={(event) => setEdgeType(event.target.value)}
             >
-              <option value="">All types</option>
+              <option value="">{t('questions.allTypes')}</option>
               {types.map((type) => (
-                <option key={type}>{type}</option>
+                <option key={type} value={type}>
+                  {type}
+                </option>
               ))}
             </select>
           </label>
@@ -194,7 +196,7 @@ export function QuestionDialog({ close }: { close: () => void }) {
             checked={includeUncertain}
             onChange={(event) => setIncludeUncertain(event.target.checked)}
           />
-          Include heuristic and unresolved connections
+          {t('questions.includeUncertain')}
         </label>
         <label className="analysis-check">
           <input
@@ -202,39 +204,40 @@ export function QuestionDialog({ close }: { close: () => void }) {
             checked={includeHidden}
             onChange={(event) => setIncludeHidden(event.target.checked)}
           />
-          Include retained CSV groups outside the current view
+          {t('questions.includeHidden')}
         </label>
         <button
           className="primary"
           disabled={busy || !startId || (kind === 'path' && !targetId)}
           onClick={() => void ask()}
         >
-          {busy ? 'Investigating…' : 'Ask diagram'}
+          {busy ? t('questions.busy') : t('questions.ask')}
         </button>
-        {notice && <p role="status">{notice}</p>}
-        {stale && (
-          <p role="alert">The relationships changed. Ask again before focusing these results.</p>
-        )}
+        {notice && <p role="status">{questionDisplayMessage(notice, t)}</p>}
+        {stale && <p role="alert">{t('questions.stale')}</p>}
         {response && (
-          <section aria-label="Question answers">
-            <h3>{response.result.summary}</h3>
+          <section aria-label={t('questions.answers')}>
+            <h3>{questionSummary(response.result, graph, t)}</h3>
             {response.result.warnings.map((warning) => (
               <p className="muted" key={warning}>
-                {warning}
+                {questionDisplayMessage(warning, t, response.result.question.maxDepth)}
               </p>
             ))}
             <button disabled={busy || stale || !response.result.found} onClick={() => focus()}>
-              Focus related objects
+              {t('questions.focusRelated')}
             </button>
             <ol className="question-answers" start={response.result.offset + 1}>
               {response.result.answers.map((answer) => (
                 <li key={answer.nodeId}>
                   <strong>{answer.title}</strong>
                   <span>
-                    {answer.distance} steps · {answer.confidence}
+                    {t('questions.distance', {
+                      steps: number(answer.distance),
+                      confidence: questionEvidenceLabel(answer.confidence, t),
+                    })}
                   </span>
                   <details>
-                    <summary>Why is this connected?</summary>
+                    <summary>{t('questions.why')}</summary>
                     <ol>
                       {answer.edgeIds.map((id, index) => {
                         const evidence = response.result.evidence.find(
@@ -251,7 +254,8 @@ export function QuestionDialog({ close }: { close: () => void }) {
                               {response.result.question.kind === 'upstream' ? '←' : '→'} {to?.title}
                             </strong>
                             <p>
-                              {evidence.source} · {evidence.kind} · {evidence.confidence}
+                              {questionEvidenceLabel(evidence.source, t)} · {evidence.kind} ·{' '}
+                              {questionEvidenceLabel(evidence.confidence, t)}
                             </p>
                             <p>{evidence.description}</p>
                             {evidence.path && (
@@ -260,19 +264,14 @@ export function QuestionDialog({ close }: { close: () => void }) {
                                 {evidence.line ? `:${evidence.line}` : ''}
                               </code>
                             )}
-                            {evidence.shortened && (
-                              <p>
-                                Expression shortened. The complete expression is available on the
-                                connection.
-                              </p>
-                            )}
+                            {evidence.shortened && <p>{t('questions.shortened')}</p>}
                           </li>
                         );
                       })}
                     </ol>
                   </details>
                   <button disabled={stale || busy} onClick={() => focus(answer.nodeId)}>
-                    Focus this path
+                    {t('questions.focusPath')}
                   </button>
                 </li>
               ))}
@@ -284,14 +283,14 @@ export function QuestionDialog({ close }: { close: () => void }) {
                   void ask(Math.max(0, response.result.offset - 25), response.result.question)
                 }
               >
-                Previous answers
+                {t('questions.previous')}
               </button>
-              <span>{response.result.total} matching objects</span>
+              <span>{t('questions.matches', { count: number(response.result.total) })}</span>
               <button
                 disabled={busy || stale || !response.result.hasMore}
                 onClick={() => void ask(response.result.offset + 25, response.result.question)}
               >
-                Next answers
+                {t('questions.next')}
               </button>
             </div>
           </section>

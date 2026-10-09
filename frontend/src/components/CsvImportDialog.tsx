@@ -1,9 +1,13 @@
+import { filterOperationLabel, metricOperationLabel } from './data-ui-text';
+import { TranslatedText } from './TranslatedText';
+import { localizedFeedback } from './localized-feedback';
+import { useI18n } from '../i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { utf8Bytes } from '../imports/limits';
 import { ImportSizeNotice } from './ImportSizeNotice';
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
 import { Modal } from './Modal';
-import { Field } from './Properties';
+import { Field } from './Field';
 import { defaultAnalysis, getCsvAnalysis, getCsvNode } from '../data/csv';
 import { analyzeCsv, previewCsvRows, profileCsvAsync } from '../data/client';
 import {
@@ -12,35 +16,11 @@ import {
   type CsvAnalysis,
   type CsvDataset,
   type CsvFilter,
-  type CsvMetric,
   type MetricOperation,
+  type CsvMetric,
 } from '../data/types';
 import type { Graph } from '../model/types';
 import './csv-import.css';
-
-const operations: Record<MetricOperation, string> = {
-  count: 'Row count',
-  sum: 'Sum',
-  avg: 'Average',
-  median: 'Median',
-  min: 'Minimum',
-  max: 'Maximum',
-  distinct: 'Distinct count',
-};
-const filters: Record<CsvFilter['operation'], string> = {
-  equals: 'Equals',
-  notEquals: 'Does not equal',
-  startsWith: 'Starts with',
-  contains: 'Contains',
-  gt: 'Greater than',
-  gte: 'At least',
-  lt: 'Less than',
-  lte: 'At most',
-  empty: 'Is empty',
-  notEmpty: 'Is not empty',
-};
-const number = (value: number) =>
-  new Intl.NumberFormat(undefined, { maximumFractionDigits: 4 }).format(value);
 
 export function CsvImportDialog({
   dataset,
@@ -57,6 +37,8 @@ export function CsvImportDialog({
   apply: (analysis: CsvAnalysis, name: string) => Promise<void>;
   legacyImport?: () => Promise<void>;
 }) {
+  const { t, number: formatNumber } = useI18n();
+  const number = (value: number) => formatNumber(value, { maximumFractionDigits: 4 });
   const [name, setName] = useState(previous?.diagram.name ?? dataset.name);
   const sourceBytes = useMemo(() => {
     let bytes = dataset.columns.reduce((sum, column) => sum + utf8Bytes(column.label), 0);
@@ -168,7 +150,7 @@ export function CsvImportDialog({
 
   return (
     <Modal
-      title={previous ? 'Explore CSV data' : 'Import CSV data'}
+      title={previous ? t('data.csv.exploreTitle') : t('data.csv.importTitle')}
       close={close}
       wide
       dismissible={!busy}
@@ -183,13 +165,16 @@ export function CsvImportDialog({
         }}
       >
         <p className="muted">
-          {dataset.fileName} · {number(dataset.rows.length)} rows · {dataset.columns.length}{' '}
-          columns. Saved in this browser when you apply.
+          {t('data.csv.importSummary', {
+            fileName: dataset.fileName,
+            rows: number(dataset.rows.length),
+            columns: dataset.columns.length,
+          })}
         </p>
         <ImportSizeNotice bytes={sourceBytes} />
-        <Field title="Diagram name">
+        <Field title={t('data.csv.nameLabel')}>
           <input
-            aria-label="CSV diagram name"
+            aria-label={t('data.csv.nameAccessible')}
             value={name}
             required
             maxLength={500}
@@ -199,30 +184,29 @@ export function CsvImportDialog({
         {analysis.focusPath.length > 0 && (
           <div className="csv-focus-note">
             <span>
-              Exploring:{' '}
-              {analysis.focusPath
-                .map(
-                  (part) =>
-                    `${dataset.columns.find((column) => column.id === part.columnId)?.label}: ${part.value || '(Empty)'}`,
-                )
-                .join(' / ')}
+              {t('data.csv.focusSummary', {
+                path: analysis.focusPath
+                  .map(
+                    (part) =>
+                      `${dataset.columns.find((column) => column.id === part.columnId)?.label}: ${part.value || '(Empty)'}`,
+                  )
+                  .join(' / '),
+              })}
             </span>
             <button type="button" onClick={() => changeView({ focusPath: [] })}>
-              All data
+              {t('data.csv.allData')}
             </button>
           </div>
         )}
 
         <fieldset>
-          <legend>1. Clean columns</legend>
-          <p className="muted">
-            Original cells are kept. Cleanup is applied before filtering, grouping and calculations.
-          </p>
+          <legend>{t('data.csv.cleanTitle')}</legend>
+          <p className="muted">{t('data.csv.cleanupOrder')}</p>
           {analysis.columnRules.map((rule, index) => (
             <div className="csv-rule" key={index}>
               <div className="csv-control-row">
                 <select
-                  aria-label={`Cleanup column ${index + 1}`}
+                  aria-label={t('data.csv.controls.cleanupColumn', { index: index + 1 })}
                   value={rule.columnId}
                   onChange={(event) =>
                     changeView({
@@ -235,7 +219,7 @@ export function CsvImportDialog({
                   {columnOptions}
                 </select>
                 <select
-                  aria-label={`Number format ${index + 1}`}
+                  aria-label={t('data.csv.controls.numberFormat', { index: index + 1 })}
                   value={rule.numberFormat ?? 'auto'}
                   onChange={(event) =>
                     changeView({
@@ -250,13 +234,13 @@ export function CsvImportDialog({
                     })
                   }
                 >
-                  <option value="auto">Number format: Auto</option>
-                  <option value="dot">Decimal dot (1,234.56)</option>
-                  <option value="comma">Decimal comma (1.234,56)</option>
+                  <option value="auto">{t('data.csv.numberFormatAuto')}</option>
+                  <option value="dot">{t('data.csv.numberFormatDot')}</option>
+                  <option value="comma">{t('data.csv.numberFormatComma')}</option>
                 </select>
                 <button
                   type="button"
-                  aria-label={`Remove cleanup ${index + 1}`}
+                  aria-label={t('data.csv.controls.removeCleanup', { index: index + 1 })}
                   onClick={() =>
                     changeView({ columnRules: analysis.columnRules.filter((_, i) => i !== index) })
                   }
@@ -266,8 +250,10 @@ export function CsvImportDialog({
               </div>
               <div className="csv-control-row">
                 <input
-                  aria-label={`Cleanup regex ${index + 1}`}
-                  placeholder="Regex, e.g. ^\s*\d+\s*[-–—]\s*"
+                  aria-label={t('data.csv.controls.cleanupRegex', { index: index + 1 })}
+                  placeholder={t('data.csv.regexPlaceholder', {
+                    example: '^\\s*\\d+\\s*[-–—]\\s*',
+                  })}
                   value={rule.pattern ?? ''}
                   onChange={(event) =>
                     changeView({
@@ -278,8 +264,8 @@ export function CsvImportDialog({
                   }
                 />
                 <input
-                  aria-label={`Cleanup replacement ${index + 1}`}
-                  placeholder="Replace with (blank removes matches)"
+                  aria-label={t('data.csv.controls.cleanupReplacement', { index: index + 1 })}
+                  placeholder={t('data.csv.replacementHint')}
                   value={rule.replacement ?? ''}
                   onChange={(event) =>
                     changeView({
@@ -302,7 +288,7 @@ export function CsvImportDialog({
                     })
                   }
                 />
-                Trim spaces
+                {t('data.csv.trim')}
               </label>
             </div>
           ))}
@@ -330,21 +316,18 @@ export function CsvImportDialog({
             }}
           >
             <Plus size={14} />
-            Add column cleanup
+            {t('data.csv.addCleanup')}
           </button>
-          <p className="muted">
-            Auto accepts unambiguous formats. For values such as 1,234, choose a decimal format
-            explicitly.
-          </p>
+          <p className="muted">{t('data.csv.autoNumberHint')}</p>
         </fieldset>
 
         <fieldset>
-          <legend>2. Filter rows</legend>
-          <p className="muted">All conditions must match. For example, Company starts with AAA.</p>
+          <legend>{t('data.csv.filterTitle')}</legend>
+          <p className="muted">{t('data.csv.allFiltersMustMatch')}</p>
           {analysis.filters.map((filter, index) => (
             <div className="csv-control-row" key={filter.id}>
               <select
-                aria-label={`Filter column ${index + 1}`}
+                aria-label={t('data.csv.controls.filterColumn', { index: index + 1 })}
                 value={filter.columnId}
                 onChange={(event) =>
                   changeView({
@@ -357,7 +340,7 @@ export function CsvImportDialog({
                 {columnOptions}
               </select>
               <select
-                aria-label={`Filter operator ${index + 1}`}
+                aria-label={t('data.csv.controls.filterOperator', { index: index + 1 })}
                 value={filter.operation}
                 onChange={(event) =>
                   changeView({
@@ -371,13 +354,13 @@ export function CsvImportDialog({
               >
                 {filterOperations.map((operation) => (
                   <option key={operation} value={operation}>
-                    {filters[operation]}
+                    {filterOperationLabel(operation, t)}
                   </option>
                 ))}
               </select>
               {!['empty', 'notEmpty'].includes(filter.operation) && (
                 <input
-                  aria-label={`Filter value ${index + 1}`}
+                  aria-label={t('data.csv.controls.filterValue', { index: index + 1 })}
                   placeholder="AAA"
                   value={filter.value}
                   onChange={(event) =>
@@ -391,7 +374,7 @@ export function CsvImportDialog({
               )}
               <button
                 type="button"
-                aria-label={`Remove filter ${index + 1}`}
+                aria-label={t('data.csv.controls.removeFilter', { index: index + 1 })}
                 onClick={() =>
                   changeView({
                     filters: analysis.filters.filter((entry) => entry.id !== filter.id),
@@ -420,20 +403,18 @@ export function CsvImportDialog({
             }
           >
             <Plus size={14} />
-            Add filter
+            {t('data.csv.addFilter')}
           </button>
         </fieldset>
 
         <fieldset>
-          <legend>3. Group into a diagram</legend>
-          <p className="muted">
-            Choose columns in order. Each level becomes connected objects in the diagram.
-          </p>
+          <legend>{t('data.csv.groupTitle')}</legend>
+          <p className="muted">{t('data.csv.groupingExplanation')}</p>
           {analysis.levels.map((level, index) => (
             <div className="csv-control-row" key={index}>
               <span className="csv-level-number">{index + 1}</span>
               <select
-                aria-label={`Grouping level ${index + 1}`}
+                aria-label={t('data.csv.controls.groupingLevel', { index: index + 1 })}
                 value={level}
                 onChange={(event) =>
                   changeView({
@@ -454,7 +435,7 @@ export function CsvImportDialog({
               </select>
               <button
                 type="button"
-                aria-label={`Move grouping level ${index + 1} up`}
+                aria-label={t('data.csv.controls.moveLevelUp', { index: index + 1 })}
                 disabled={index === 0}
                 onClick={() => {
                   const levels = [...analysis.levels];
@@ -466,7 +447,7 @@ export function CsvImportDialog({
               </button>
               <button
                 type="button"
-                aria-label={`Move grouping level ${index + 1} down`}
+                aria-label={t('data.csv.controls.moveLevelDown', { index: index + 1 })}
                 disabled={index === analysis.levels.length - 1}
                 onClick={() => {
                   const levels = [...analysis.levels];
@@ -478,7 +459,7 @@ export function CsvImportDialog({
               </button>
               <button
                 type="button"
-                aria-label={`Remove grouping level ${index + 1}`}
+                aria-label={t('data.csv.controls.removeLevel', { index: index + 1 })}
                 onClick={() =>
                   changeView({
                     levels: analysis.levels.filter((_, i) => i !== index),
@@ -499,16 +480,16 @@ export function CsvImportDialog({
             }}
           >
             <Plus size={14} />
-            Add grouping level
+            {t('data.csv.addLevel')}
           </button>
         </fieldset>
 
         <fieldset>
-          <legend>4. Show measures</legend>
+          <legend>{t('data.csv.measuresTitle')}</legend>
           {analysis.metrics.map((entry, index) => (
             <div className="csv-control-row" key={entry.id}>
               <select
-                aria-label={`Measure ${index + 1}`}
+                aria-label={t('data.csv.controls.measure', { index: index + 1 })}
                 value={entry.operation}
                 onChange={(event) => {
                   const operation = event.target.value as MetricOperation;
@@ -521,13 +502,13 @@ export function CsvImportDialog({
               >
                 {metricOperations.map((operation) => (
                   <option value={operation} key={operation}>
-                    {operations[operation]}
+                    {metricOperationLabel(operation, t)}
                   </option>
                 ))}
               </select>
               {entry.operation !== 'count' && (
                 <select
-                  aria-label={`Measure column ${index + 1}`}
+                  aria-label={t('data.csv.controls.measureColumn', { index: index + 1 })}
                   value={entry.columnId}
                   onChange={(event) => metric(entry.id, { columnId: event.target.value })}
                 >
@@ -536,7 +517,7 @@ export function CsvImportDialog({
               )}
               <button
                 type="button"
-                aria-label={`Remove measure ${index + 1}`}
+                aria-label={t('data.csv.controls.removeMeasure', { index: index + 1 })}
                 onClick={() =>
                   changeView({ metrics: analysis.metrics.filter((value) => value.id !== entry.id) })
                 }
@@ -567,20 +548,17 @@ export function CsvImportDialog({
             }}
           >
             <Plus size={14} />
-            Add measure
+            {t('data.csv.addMeasure')}
           </button>
-          <p className="muted">
-            Empty and invalid numbers are excluded from numeric measures, not treated as zero. Row
-            count includes every matching row.
-          </p>
+          <p className="muted">{t('data.csv.numericExclusions')}</p>
         </fieldset>
 
         <fieldset>
-          <legend>5. Keep the diagram readable</legend>
+          <legend>{t('data.csv.readabilityTitle')}</legend>
           <div className="csv-control-row">
-            <Field title="Groups per level">
+            <Field title={t('data.csv.groupsPerLevel')}>
               <select
-                aria-label="Groups per level"
+                aria-label={t('data.csv.groupsPerLevel')}
                 value={analysis.limit}
                 onChange={(event) => changeView({ limit: Number(event.target.value) })}
               >
@@ -591,34 +569,34 @@ export function CsvImportDialog({
                 ))}
               </select>
             </Field>
-            <Field title="Sort groups by">
+            <Field title={t('data.csv.sortBy')}>
               <select
-                aria-label="Sort groups by"
+                aria-label={t('data.csv.sortBy')}
                 value={analysis.sortBy}
                 onChange={(event) => changeView({ sortBy: event.target.value })}
               >
-                <option value="count">Row count</option>
-                <option value="label">Name</option>
+                <option value="count">{t('data.measure.count')}</option>
+                <option value="label">{t('data.csv.sortName')}</option>
                 {analysis.metrics
                   .filter((entry) => entry.operation !== 'count')
                   .map((entry) => (
                     <option key={entry.id} value={entry.id}>
-                      {operations[entry.operation]} ·{' '}
+                      {metricOperationLabel(entry.operation, t)} ·{' '}
                       {dataset.columns.find((column) => column.id === entry.columnId)?.label}
                     </option>
                   ))}
               </select>
             </Field>
-            <Field title="Order">
+            <Field title={t('data.csv.order')}>
               <select
-                aria-label="Group sort order"
+                aria-label={t('data.csv.sortOrderAccessible')}
                 value={analysis.sortDirection}
                 onChange={(event) =>
                   changeView({ sortDirection: event.target.value as 'asc' | 'desc' })
                 }
               >
-                <option value="desc">Descending</option>
-                <option value="asc">Ascending</option>
+                <option value="desc">{t('data.csv.descending')}</option>
+                <option value="asc">{t('data.csv.ascending')}</option>
               </select>
             </Field>
           </div>
@@ -626,22 +604,26 @@ export function CsvImportDialog({
 
         <section
           className="csv-analysis-preview"
-          aria-label="CSV analysis preview"
+          aria-label={t('data.csv.previewRegion')}
           aria-busy={working}
         >
-          <h3>Preview</h3>
-          {working && <p role="status">Analyzing in the background…</p>}
+          <h3>{t('data.csv.previewTitle')}</h3>
+          {working && <p role="status">{t('data.csv.analyzing')}</p>}
           {!working && summary && (
             <>
               <p>
-                <b>{number(summary.rowCount)}</b> matching rows · {number(visibleNodes)} diagram
-                objects.
+                <TranslatedText
+                  messageId="data.csv.previewCounts"
+                  parameters={{ objects: number(visibleNodes) }}
+                  slots={{ rows: <b>{number(summary.rowCount)}</b> }}
+                />
               </p>
               {summary.hiddenChildren > 0 && (
                 <p>
-                  {number(summary.totalChildren - summary.hiddenChildren)} of{' '}
-                  {number(summary.totalChildren)} top-level groups shown. Measures use all matching
-                  rows.
+                  {t('data.csv.shownGroups', {
+                    shown: number(summary.totalChildren - summary.hiddenChildren),
+                    total: number(summary.totalChildren),
+                  })}
                 </p>
               )}
               <dl className="csv-preview-measures">
@@ -651,7 +633,10 @@ export function CsvImportDialog({
                     <dd>{entry.value === null ? '—' : number(entry.value)}</dd>
                     {entry.invalidCount + entry.missingCount > 0 && (
                       <small>
-                        {number(entry.missingCount)} empty · {number(entry.invalidCount)} invalid
+                        {t('data.csv.invalidCounts', {
+                          empty: number(entry.missingCount),
+                          invalid: number(entry.invalidCount),
+                        })}
                       </small>
                     )}
                   </div>
@@ -661,19 +646,19 @@ export function CsvImportDialog({
           )}
           {error && (
             <p className="form-error" role="alert">
-              {error}
+              {localizedFeedback(error, t)}
             </p>
           )}
           {samples && (
             <details open>
-              <summary>First {samples.rows.length} matching rows · before / after cleanup</summary>
+              <summary>{t('data.csv.sampleRows', { count: samples.rows.length })}</summary>
               <label className="csv-check">
                 <input
                   type="checkbox"
                   checked={original}
                   onChange={(event) => setOriginal(event.target.checked)}
                 />
-                Original values
+                {t('data.csv.originalValues')}
               </label>
               <div className="csv-import-table">
                 <table>
@@ -705,18 +690,22 @@ export function CsvImportDialog({
             disabled={busy}
             onClick={() => void run(true)}
           >
-            Import as existing diagram rows instead
+            {t('data.csv.legacyRowsImport')}
           </button>
         )}
         <div className="modal-actions">
           <button type="button" disabled={busy} onClick={close}>
-            Cancel
+            {t('data.action.cancel')}
           </button>
           <button
             className="primary"
             disabled={busy || working || !!error || !preview || !name.trim()}
           >
-            {busy ? 'Applying…' : previous ? 'Apply data view' : 'Create data diagram'}
+            {busy
+              ? t('data.csv.applying')
+              : previous
+                ? t('data.csv.applyView')
+                : t('data.csv.createDiagram')}
           </button>
         </div>
       </form>

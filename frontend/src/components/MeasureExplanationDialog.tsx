@@ -1,3 +1,6 @@
+import { cleanupRuleText, measureRuleText } from './data-ui-text';
+import { localizedFeedback } from './localized-feedback';
+import { useI18n } from '../i18n';
 import { useEffect, useMemo, useState } from 'react';
 import type { CsvAnalysis, CsvDataset, CsvPathEntry } from '../data/types';
 import type { Graph } from '../model/types';
@@ -22,6 +25,7 @@ export function MeasureExplanationDialog({
   model?: Graph;
   onClose(): void;
 }) {
+  const { t, number } = useI18n();
   const client = useMemo(() => new QualityClient(), []);
   const [offset, setOffset] = useState(0);
   const [original, setOriginal] = useState(false);
@@ -60,7 +64,7 @@ export function MeasureExplanationDialog({
     };
   }, [client, dataset, analysis, path, metricId, offset, disposition, model]);
   return (
-    <Modal title="Explain measure" close={onClose} wide>
+    <Modal title={t('data.measureEvidence.title')} close={onClose} wide>
       <div className="data-inspection" aria-busy={busy}>
         <p className="muted">
           {dataset.fileName} ·{' '}
@@ -69,65 +73,73 @@ export function MeasureExplanationDialog({
               (entry) =>
                 `${dataset.columns.find((column) => column.id === entry.columnId)?.label}: ${entry.value}`,
             )
-            .join(' → ') || 'All matching rows'}
+            .join(' → ') || t('data.measureEvidence.allMatching')}
         </p>
-        {busy && <p role="status">Tracing source rows…</p>}
+        {busy && <p role="status">{t('data.measureEvidence.tracing')}</p>}
         {error && (
           <p role="alert" className="form-error">
-            {error}
+            {localizedFeedback(error, t)}
           </p>
         )}
         {result && (
           <>
             <RelatedDataScope graph={model} />
             <h3>
-              {result.measure.label}: {formatCsvMeasure(result.measure.value)}
+              {result.measure.label}: {formatCsvMeasure(result.measure.value, number)}
             </h3>
-            <p>{result.rule}</p>
+            <p>{measureRuleText(result.measure.operation, result.rule, t)}</p>
             <p>
-              {result.matchingRows.toLocaleString()} matching rows ·{' '}
-              {result.contributingRows.toLocaleString()} contributing ·{' '}
-              {result.ignoredRows.toLocaleString()} excluded or repeated
+              {t('data.measureEvidence.counts', {
+                matching: number(result.matchingRows),
+                contributing: number(result.contributingRows),
+                excluded: number(result.ignoredRows),
+              })}
             </p>
             <details>
-              <summary>Filters and cleanup used</summary>
-              <p className="muted">
-                All these filters must match. Display limits do not limit the calculation.
-              </p>
+              <summary>{t('data.measureEvidence.rulesTitle')}</summary>
+              <p className="muted">{t('data.measureEvidence.allFiltersRequired')}</p>
               <ul>
                 {analysis.filters.map((filter) => (
                   <li key={filter.id}>
-                    {dataset.columns.find((column) => column.id === filter.columnId)?.label}{' '}
-                    {filter.operation} {filter.value} (
-                    {filter.caseSensitive ? 'case sensitive' : 'ignores case'})
+                    {t('data.measureEvidence.filterRow', {
+                      column:
+                        dataset.columns.find((column) => column.id === filter.columnId)?.label ??
+                        '',
+                      operation: filter.operation,
+                      value: filter.value,
+                      caseRule: t(
+                        filter.caseSensitive
+                          ? 'data.measureEvidence.caseSensitive'
+                          : 'data.measureEvidence.ignoresCase',
+                      ),
+                    })}
                   </li>
                 ))}
-                {!analysis.filters.length && <li>No row filters.</li>}
+                {!analysis.filters.length && <li>{t('data.measureEvidence.noFilters')}</li>}
                 {analysis.columnRules.map((rule) => (
                   <li key={rule.columnId}>
-                    {dataset.columns.find((column) => column.id === rule.columnId)?.label}:{' '}
-                    {rule.trim !== false ? 'trim whitespace; ' : ''}
-                    {rule.pattern
-                      ? `replace /${rule.pattern}/${rule.flags ?? ''} with ${JSON.stringify(rule.replacement ?? '')}; `
-                      : ''}
-                    numbers: {rule.numberFormat ?? 'auto (ambiguous values excluded)'}
+                    {cleanupRuleText(
+                      rule,
+                      dataset.columns.find((column) => column.id === rule.columnId)?.label ?? '',
+                      t,
+                    )}
                   </li>
                 ))}
               </ul>
             </details>
             <label className="field">
-              <span>Rows to inspect</span>
+              <span>{t('data.measureEvidence.rowsLabel')}</span>
               <select
-                aria-label="Measure evidence rows"
+                aria-label={t('data.measureEvidence.rowsAccessible')}
                 value={disposition}
                 onChange={(event) => {
                   setOffset(0);
                   setDisposition(event.target.value as typeof disposition);
                 }}
               >
-                <option value="all">All matching rows</option>
-                <option value="included">Contributing rows</option>
-                <option value="excluded">Excluded or repeated rows</option>
+                <option value="all">{t('data.measureEvidence.allMatching')}</option>
+                <option value="included">{t('data.measureEvidence.contributing')}</option>
+                <option value="excluded">{t('data.measureEvidence.excluded')}</option>
               </select>
             </label>
             <DataEvidence

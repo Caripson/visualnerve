@@ -1,3 +1,6 @@
+import { nodeKindLabel, statusLabel } from '../ui/editor-labels';
+import { timelineScaleKeys } from './ui-labels';
+import { useI18n } from '../i18n';
 import { presentation } from '../presentation/service';
 import { useEffect, useState } from 'react';
 import { useReactFlow, useStoreApi } from '@xyflow/react';
@@ -34,7 +37,6 @@ import { layoutGraph, type Direction } from '../layouts/layout';
 import type { NodeKind, TimelineScale } from '../model/types';
 import type { DialogName } from '../App';
 import { DocumentTitle } from '../ui/DocumentTitle';
-import { statusLabel } from '../ui/status';
 import { getSpatialView, setSpatialView } from '../spatial/types';
 import { createSpatialExample } from '../spatial/examples';
 import { workspace } from '../storage/workspace';
@@ -52,6 +54,7 @@ export function Toolbar({
   showFilters: boolean;
   toggleFilters: () => void;
 }) {
+  const { t } = useI18n();
   const graph = useEditor((s) => s.graph);
   const history = useEditor((s) => s.history);
   const future = useEditor((s) => s.future);
@@ -183,7 +186,8 @@ export function Toolbar({
       <div className="document-bar">
         <button
           className="mobile-only project-menu"
-          aria-label="Open projects"
+          data-mobile-panel-trigger="projects"
+          aria-label={t('workspace.openProjects')}
           onClick={() => useEditor.setState({ mobilePanel: 'projects' })}
         >
           <Menu size={19} />
@@ -194,103 +198,116 @@ export function Toolbar({
             <StatusIcon size={13} className={status === 'saving' ? 'spin' : ''} />
             {
               {
-                saved: 'Saved',
-                saving: 'Saving…',
-                error: 'Error',
-                conflict: 'Conflict',
+                saved: t('workspace.saved'),
+                saving: t('workspace.saving'),
+                error: t('workspace.error'),
+                conflict: t('workspace.conflict'),
               }[status]
             }
           </span>
           <button
-            aria-label="Diagram player"
+            aria-label={t('toolbar.playerAria')}
             onClick={() => {
               useEditor.getState().finishEditing();
               presentation.open();
             }}
           >
             <Clapperboard size={15} />
-            <span>Player</span>
+            <span>{t('toolbar.playerLabel')}</span>
           </button>
-          <button aria-label="Export" onClick={() => open('export')}>
+          <button aria-label={t('dialogs.exportField')} onClick={() => open('export')}>
             <Download size={14} />
-            <span>Export</span>
+            <span>{t('dialogs.exportField')}</span>
           </button>
           <button
             className="desktop-tools"
-            aria-label="Build with Lovable"
+            aria-label={t('toolbar.buildLovable')}
             onClick={() => open('lovable')}
           >
             <Sparkles size={14} />
-            <span>Build with Lovable</span>
+            <span>{t('toolbar.buildLovable')}</span>
           </button>
           <button
             className="mobile-only"
-            aria-label="Open properties"
+            data-mobile-panel-trigger="details"
+            aria-label={t('workspace.openProperties')}
             onClick={() => useEditor.setState({ mobilePanel: 'details' })}
           >
             <PanelRight size={18} />
           </button>
           <button
             className="icon-button"
-            aria-label="Delete diagram"
-            title="Delete diagram"
+            aria-label={t('dialogs.deleteDiagramTitle')}
+            title={t('dialogs.deleteDiagramTitle')}
             onClick={() => open('delete')}
           >
             <Trash2 size={15} />
           </button>
         </div>
       </div>
-      <div className="spatial-view-bar" role="group" aria-label="Diagram view">
-        <button aria-label="2D view" aria-pressed={!spatial} onClick={() => switchView('2d')}>
+      <div className="spatial-view-bar" role="group" aria-label={t('toolbar.diagramViewGroup')}>
+        <button
+          aria-label={t('toolbar.view2DAria')}
+          aria-pressed={!spatial}
+          onClick={() => switchView('2d')}
+        >
           2D
         </button>
-        <button aria-label="3D view" aria-pressed={spatial} onClick={() => switchView('3d')}>
+        <button
+          aria-label={t('toolbar.view3DAria')}
+          aria-pressed={spatial}
+          onClick={() => switchView('3d')}
+        >
           3D
         </button>
-        <span>{spatial ? 'Rotate to explore · export uses 2D' : 'Overview · draw and export'}</span>
+        <span>{spatial ? t('toolbar.spatialViewHint') : t('toolbar.overviewViewHint')}</span>
       </div>
       <div className="editor-toolbar">
         <div className="toolbar-group">
           {mindmap ? (
             <>
-              <button className="add-node" title="Add subtopic (Tab)" onClick={() => addTopic()}>
+              <button
+                className="add-node"
+                title={t('toolbar.addSubtopicHint')}
+                onClick={() => addTopic()}
+              >
                 <Plus size={15} />
-                {graph.nodes.length ? 'Add subtopic' : 'Central idea'}
+                {graph.nodes.length ? t('toolbar.addSubtopic') : t('toolbar.centralIdea')}
               </button>
               <button
                 className="sibling-button"
-                title="Add sibling (Enter)"
+                title={t('toolbar.addSiblingHint')}
                 disabled={!selectionCount}
                 onClick={() => addTopic(true)}
               >
                 <GitBranch size={14} />
-                <span>Sibling</span>
+                <span>{t('toolbar.sibling')}</span>
               </button>
             </>
           ) : (
             <>
               <select
                 className="desktop-tools"
-                aria-label="New node type"
+                aria-label={t('toolbar.nodeTypeField')}
                 value={kind}
                 onChange={(e) => setKind(e.target.value as NodeKind)}
               >
-                {Object.entries(nodeRegistry).map(([k, v]) => (
+                {Object.entries(nodeRegistry).map(([k]) => (
                   <option key={k} value={k}>
-                    {v.label}
+                    {nodeKindLabel(t, k)}
                   </option>
                 ))}
               </select>
               <button className="add-node" onClick={addNode}>
                 <Plus size={15} />
-                Add node
+                {t('toolbar.addNode')}
               </button>
             </>
           )}
           <button
             className="desktop-tools"
-            title="Connect nodes"
-            aria-label="Connect nodes"
+            title={t('toolbar.connectNodes')}
+            aria-label={t('toolbar.connectNodes')}
             disabled={graph.nodes.length < 2}
             onClick={() => open('connect')}
           >
@@ -300,16 +317,16 @@ export function Toolbar({
         <div className="toolbar-divider" />
         <div className="toolbar-group">
           <button
-            title="Undo (Ctrl/Cmd Z)"
-            aria-label="Undo"
+            title={t('toolbar.undoHint')}
+            aria-label={t('toolbar.undo')}
             disabled={!history.length}
             onClick={() => useEditor.getState().undo()}
           >
             <Undo2 size={16} />
           </button>
           <button
-            title="Redo (Ctrl/Cmd Shift Z)"
-            aria-label="Redo"
+            title={t('toolbar.redoHint')}
+            aria-label={t('toolbar.redo')}
             disabled={!future.length}
             onClick={() => useEditor.getState().redo()}
           >
@@ -317,8 +334,8 @@ export function Toolbar({
           </button>
           <button
             className="desktop-tools"
-            title="Group selection (Ctrl/Cmd G)"
-            aria-label="Group selection"
+            title={t('toolbar.groupHint')}
+            aria-label={t('toolbar.groupSelection')}
             disabled={selectionCount < 2}
             onClick={() => useEditor.getState().group()}
           >
@@ -328,32 +345,32 @@ export function Toolbar({
         <div className="toolbar-divider" />
         <div className="toolbar-group layout-group desktop-tools">
           <select
-            aria-label="Layout direction"
+            aria-label={t('toolbar.layoutDirection')}
             value={direction}
             onChange={(e) => setDirection(e.target.value as Direction)}
           >
-            {mindmap && <option value="BALANCED">Balanced branches</option>}
-            <option value="RIGHT">Left → Right</option>
-            <option value="DOWN">Top → Bottom</option>
-            <option value="LEFT">Right → Left</option>
-            <option value="UP">Bottom → Top</option>
-            <option value="RADIAL">Radial</option>
+            {mindmap && <option value="BALANCED">{t('toolbar.balancedLayout')}</option>}
+            <option value="RIGHT">{t('toolbar.leftRightLayout')}</option>
+            <option value="DOWN">{t('toolbar.topBottomLayout')}</option>
+            <option value="LEFT">{t('toolbar.rightLeftLayout')}</option>
+            <option value="UP">{t('toolbar.bottomTopLayout')}</option>
+            <option value="RADIAL">{t('toolbar.radialLayout')}</option>
           </select>
           <button
             disabled={spatial || busy || !graph.nodes.length}
             onClick={runLayout}
-            title={spatial ? 'Switch to 2D to arrange the overview' : undefined}
+            title={spatial ? t('toolbar.arrangeNeeds2DHint') : undefined}
           >
             <GitBranch size={14} />
-            {busy ? 'Laying out…' : 'Auto layout'}
+            {busy ? t('toolbar.layingOut') : t('toolbar.autoLayout')}
           </button>
         </div>
         <div className="toolbar-spacer" />
         {mindmap && (
           <button
             className={`desktop-tools ${focusMap ? 'active' : ''}`}
-            aria-label={focusMap ? 'Exit map focus' : 'Focus map'}
-            title={focusMap ? 'Show workspace panels' : 'Give the map the whole workspace'}
+            aria-label={focusMap ? t('toolbar.exitMapFocus') : t('toolbar.focusMap')}
+            title={focusMap ? t('toolbar.showPanelsHint') : t('toolbar.focusMapHint')}
             onClick={() => {
               useEditor.setState({ focusMap: !focusMap });
               setTimeout(() => {
@@ -367,12 +384,12 @@ export function Toolbar({
             }}
           >
             {focusMap ? <Minimize2 size={14} /> : <Expand size={14} />}
-            <span>{focusMap ? 'Exit focus' : 'Focus map'}</span>
+            <span>{focusMap ? t('toolbar.exitFocusLabel') : t('toolbar.focusMap')}</span>
           </button>
         )}
         {graph.diagram.type === 'timeline' && (
           <select
-            aria-label="Timeline zoom"
+            aria-label={t('toolbar.timelineZoom')}
             value={graph.diagram.settings.timelineScale ?? 'month'}
             onChange={(e) =>
               useEditor.getState().command('Timeline zoom', (g) => ({
@@ -387,26 +404,32 @@ export function Toolbar({
               }))
             }
           >
-            {['day', 'week', 'month', 'quarter', 'year'].map((v) => (
-              <option key={v}>{v}</option>
+            {(['day', 'week', 'month', 'quarter', 'year'] as const).map((v) => (
+              <option key={v} value={v}>
+                {t(timelineScaleKeys[v])}
+              </option>
             ))}
           </select>
         )}
         <button className={`desktop-tools ${showFilters ? 'active' : ''}`} onClick={toggleFilters}>
           <SlidersHorizontal size={14} />
-          Filters
+          {t('toolbar.filters')}
         </button>
         <ToolbarDataTools graph={graph} open={open} />
         <UnderstandingTools open={open} />
-        <ToolbarMenu label="Examples" icon={<LayoutTemplate size={15} />} className="desktop-tools">
-          <h3>Diagram examples</h3>
-          <p>Start a separate diagram to explore an example.</p>
+        <ToolbarMenu
+          label={t('toolbar.examples')}
+          icon={<LayoutTemplate size={15} />}
+          className="desktop-tools"
+        >
+          <h3>{t('toolbar.examplesTitle')}</h3>
+          <p>{t('toolbar.examplesHint')}</p>
           <button className="full" onClick={() => void newSpatialExample()}>
-            New 3D truck lifecycle example
+            {t('toolbar.truckExampleAction')}
           </button>
         </ToolbarMenu>
         <ToolbarMenu
-          label="More tools"
+          label={t('toolbar.moreTools')}
           icon={<MoreHorizontal size={20} />}
           className="mobile-only mobile-more"
           text={false}
@@ -418,34 +441,34 @@ export function Toolbar({
               void newSpatialExample();
             }}
           >
-            New 3D truck lifecycle example
+            {t('toolbar.truckExampleAction')}
           </button>
           <DataToolActions graph={graph} open={open} />
           <UnderstandingActions open={open} />
-          <h3>Import and build</h3>
+          <h3>{t('toolbar.importBuildTitle')}</h3>
           <button className="full" onClick={() => open('code')}>
             <Code2 size={17} />
-            Visualize code
+            {t('toolbar.visualizeCode')}
           </button>
           <button className="full" onClick={() => open('sql')}>
             <Database size={17} />
-            Import SQL script
+            {t('toolbar.importSql')}
           </button>
           <button className="full" onClick={() => open('lovable')}>
             <Sparkles size={17} />
-            Build with Lovable
+            {t('toolbar.buildLovable')}
           </button>
           <select
-            aria-label="Mobile layout direction"
+            aria-label={t('toolbar.mobileLayoutDirection')}
             value={direction}
             onChange={(e) => setDirection(e.target.value as Direction)}
           >
-            {mindmap && <option value="BALANCED">Balanced branches</option>}
-            <option value="RIGHT">Left → Right</option>
-            <option value="LEFT">Right → Left</option>
-            <option value="DOWN">Top → Bottom</option>
-            <option value="UP">Bottom → Top</option>
-            <option value="RADIAL">Radial</option>
+            {mindmap && <option value="BALANCED">{t('toolbar.balancedLayout')}</option>}
+            <option value="RIGHT">{t('toolbar.leftRightLayout')}</option>
+            <option value="LEFT">{t('toolbar.rightLeftLayout')}</option>
+            <option value="DOWN">{t('toolbar.topBottomLayout')}</option>
+            <option value="UP">{t('toolbar.bottomTopLayout')}</option>
+            <option value="RADIAL">{t('toolbar.radialLayout')}</option>
           </select>
           <button
             className="full"
@@ -456,7 +479,7 @@ export function Toolbar({
             }}
           >
             <GitBranch size={17} />
-            Auto layout
+            {t('toolbar.autoLayout')}
           </button>
           <button
             className="full"
@@ -464,7 +487,7 @@ export function Toolbar({
             onClick={() => open('connect')}
           >
             <ArrowRight size={17} />
-            Connect nodes
+            {t('toolbar.connectNodes')}
           </button>
           <button
             className="full"
@@ -474,7 +497,7 @@ export function Toolbar({
             }}
           >
             <SlidersHorizontal size={17} />
-            Filters
+            {t('toolbar.filters')}
           </button>
           <button
             className="full"
@@ -485,20 +508,20 @@ export function Toolbar({
             }}
           >
             <PanelRight size={17} />
-            Project properties
+            {t('toolbar.projectProperties')}
           </button>
           <button className="full" onClick={() => open('settings')}>
             <Settings size={17} />
-            Settings
+            {t('app.settings')}
           </button>
           <button className="full danger" onClick={() => open('delete')}>
             <Trash2 size={17} />
-            Delete diagram
+            {t('dialogs.deleteDiagramTitle')}
           </button>
         </ToolbarMenu>
         <button
-          aria-label="Fit diagram"
-          title="Fit diagram (F)"
+          aria-label={t('toolbar.fitDiagram')}
+          title={t('toolbar.fitHint')}
           disabled={spatial}
           onClick={() =>
             void fitDiagram(flow, graph, mindmap ? 0.14 : 0.25, 0, undefined, flowStore.getState())
@@ -511,6 +534,7 @@ export function Toolbar({
   );
 }
 export function FilterBar() {
+  const { t } = useI18n();
   const filters = useEditor((s) => s.filters);
   const owners = useEditor((s) => s.owners);
   const graph = useEditor((s) => s.graph);
@@ -519,11 +543,11 @@ export function FilterBar() {
   return (
     <div className="filter-bar">
       <select
-        aria-label="Filter owner"
+        aria-label={t('toolbar.filterOwner')}
         value={filters.owner}
         onChange={(e) => set({ owner: e.target.value })}
       >
-        <option value="">All owners</option>
+        <option value="">{t('toolbar.allOwners')}</option>
         {owners.map((o) => (
           <option key={o.id} value={o.id}>
             {o.name}
@@ -531,61 +555,61 @@ export function FilterBar() {
         ))}
       </select>
       <select
-        aria-label="Filter status"
+        aria-label={t('toolbar.filterStatus')}
         value={filters.status}
         onChange={(e) => set({ status: e.target.value })}
       >
-        <option value="">All statuses</option>
+        <option value="">{t('toolbar.allStatuses')}</option>
         {[...new Set(graph?.nodes.map((n) => n.status).filter(Boolean))].map((v) => (
           <option key={v} value={v}>
-            {statusLabel(v)}
+            {statusLabel(t, v ?? '')}
           </option>
         ))}
       </select>
       <select
-        aria-label="Filter node type"
+        aria-label={t('toolbar.filterNodeType')}
         value={filters.kind}
         onChange={(e) => set({ kind: e.target.value })}
       >
-        <option value="">All types</option>
-        {Object.entries(nodeRegistry).map(([k, v]) => (
+        <option value="">{t('toolbar.allTypes')}</option>
+        {Object.entries(nodeRegistry).map(([k]) => (
           <option key={k} value={k}>
-            {v.label}
+            {nodeKindLabel(t, k)}
           </option>
         ))}
       </select>
       <select
-        aria-label="Filter node tags"
+        aria-label={t('toolbar.filterNodeTags')}
         value={filters.tag}
         onChange={(e) => set({ tag: e.target.value })}
       >
-        <option value="">All tags</option>
+        <option value="">{t('workspace.allTags')}</option>
         {[...new Set(graph?.nodes.flatMap((n) => n.tags))].filter(Boolean).map((t) => (
           <option key={t}>{t}</option>
         ))}
       </select>
       <input
-        aria-label="Filter dates from"
+        aria-label={t('toolbar.filterDatesFrom')}
         type="date"
         value={filters.from}
         onChange={(e) => set({ from: e.target.value })}
       />
       <input
-        aria-label="Filter dates to"
+        aria-label={t('toolbar.filterDatesTo')}
         type="date"
         value={filters.to}
         onChange={(e) => set({ to: e.target.value })}
       />
       <select
-        aria-label="Filter visibility"
+        aria-label={t('toolbar.filterVisibility')}
         value={filters.mode}
         onChange={(e) => set({ mode: e.target.value as 'dim' | 'hide' })}
       >
-        <option value="dim">Dim unrelated</option>
-        <option value="hide">Hide unrelated</option>
+        <option value="dim">{t('toolbar.dimUnrelated')}</option>
+        <option value="hide">{t('toolbar.hideUnrelated')}</option>
       </select>
       <button onClick={() => set({ owner: '', status: '', kind: '', tag: '', from: '', to: '' })}>
-        Reset
+        {t('toolbar.resetFilters')}
       </button>
     </div>
   );

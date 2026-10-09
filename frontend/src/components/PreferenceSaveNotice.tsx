@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { useState } from 'react';
 import { useEditor } from '../state/editor';
 import { workspace, type Workspace } from '../storage/workspace';
@@ -10,12 +11,13 @@ export function PreferenceSaveNotice({
   settings: () => void;
   controller?: Pick<Workspace, 'retryPreference'>;
 }) {
+  const { t } = useI18n();
   const error = useEditor((state) => state.preferenceError);
   const [saving, setSaving] = useState(false);
   if (!error) return null;
   return (
     <div className="notice error-notice" role="alert">
-      <span>Settings could not be saved: {error.message}</span>
+      <span>{t('preferences.save.failed', { error: error.message })}</span>
       <button
         disabled={saving}
         onClick={async () => {
@@ -29,9 +31,9 @@ export function PreferenceSaveNotice({
           }
         }}
       >
-        {saving ? 'Saving…' : 'Retry save'}
+        {saving ? t('security.action.saving') : t('preferences.save.retry')}
       </button>
-      <button onClick={settings}>Settings</button>
+      <button onClick={settings}>{t('preferences.save.settings')}</button>
     </div>
   );
 }

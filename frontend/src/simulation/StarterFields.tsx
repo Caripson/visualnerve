@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import type { ProcessStarterDraft } from './starter';
 import { StarterProcessFields } from './StarterProcessFields';
 
@@ -43,38 +44,42 @@ function StarterField({
 }
 
 export function WorkloadStep(props: Props) {
+  const { t } = useI18n();
   const { draft, change } = props;
   return (
     <>
       <div className="process-wizard-intro">
-        <h3>What moves through your process?</h3>
+        <h3>{t('simulator.wizard.fields.whatMovesThroughYourProcess')}</h3>
         <p>
-          One particle represents one real work item. Give it a familiar name and choose how it
-          arrives.
+          {t('simulator.wizard.fields.oneParticleRepresentsOneRealWorkItemGiveItAFamiliarName')}
         </p>
       </div>
       <StarterField
         {...props}
         field="itemName"
-        label="Work item name"
-        help="For example: Customer, Order, Package or Support case."
+        label={t('simulator.wizard.fields.workItemName')}
+        help={t('simulator.wizard.fields.forExampleCustomerOrderPackageOrSupportCase')}
       />
-      <div className="process-arrival-options" role="group" aria-label="Arrival pattern">
+      <div
+        className="process-arrival-options"
+        role="group"
+        aria-label={t('simulator.wizard.fields.arrivalPattern')}
+      >
         <button
           type="button"
           aria-pressed={draft.arrivalMode === 'regular'}
           onClick={() => change({ arrivalMode: 'regular' })}
         >
-          <b>Continuous arrivals</b>
-          <span>Items arrive evenly throughout the run.</span>
+          <b>{t('simulator.wizard.fields.continuousArrivals')}</b>
+          <span>{t('simulator.wizard.fields.itemsArriveEvenlyThroughoutTheRun')}</span>
         </button>
         <button
           type="button"
           aria-pressed={draft.arrivalMode === 'batch'}
           onClick={() => change({ arrivalMode: 'batch' })}
         >
-          <b>A fixed batch</b>
-          <span>All items arrive together at the start.</span>
+          <b>{t('simulator.wizard.fields.aFixedBatch')}</b>
+          <span>{t('simulator.wizard.fields.allItemsArriveTogetherAtTheStart')}</span>
         </button>
       </div>
       <div className="process-wizard-grid">
@@ -82,7 +87,7 @@ export function WorkloadStep(props: Props) {
           <StarterField
             {...props}
             field="arrivalsPerHour"
-            label="Arrival rate (items/hour)"
+            label={t('simulator.wizard.fields.arrivalRateItemsHour')}
             number
             min={0.001}
           />
@@ -90,23 +95,25 @@ export function WorkloadStep(props: Props) {
           <StarterField
             {...props}
             field="batchCount"
-            label="Batch size (items)"
+            label={t('simulator.wizard.fields.batchSizeItems')}
             number
             min={1}
             step="1"
-            help="Up to 100,000 items in this starter. Adjust larger models in Assumptions."
+            help={t('simulator.wizard.fields.upTo100000ItemsInThisStarterAdjustLargerModelsIn')}
           />
         )}
         <StarterField
           {...props}
           field="durationHours"
-          label="Simulation length (hours)"
+          label={t('simulator.wizard.fields.simulationLengthHours')}
           number
           min={0.001}
           help={
             draft.arrivalMode === 'batch'
-              ? 'The run also finishes the generated batch. You can change this after setup.'
-              : 'Arrivals continue for this simulated period.'
+              ? t(
+                  'simulator.wizard.fields.theRunAlsoFinishesTheGeneratedBatchYouCanChangeThisAfter',
+                )
+              : t('simulator.wizard.fields.arrivalsContinueForThisSimulatedPeriod')
           }
         />
       </div>
@@ -115,32 +122,38 @@ export function WorkloadStep(props: Props) {
 }
 
 export function ProcessingStep(props: Props) {
+  const { t } = useI18n();
   const { draft, change } = props;
   return (
     <>
       <div className="process-wizard-intro">
-        <h3>Where does the work happen?</h3>
+        <h3>{t('simulator.wizard.fields.whereDoesTheWorkHappen')}</h3>
         <p>
-          Start with one work step or a main process containing independently configured
-          subprocesses. Work waits when capacity or a shared resource is busy.
+          {t(
+            'simulator.wizard.fields.startWithOneWorkStepOrAMainProcessContainingIndependentlyConfigured',
+          )}
         </p>
       </div>
-      <div className="process-arrival-options" role="group" aria-label="Process structure">
+      <div
+        className="process-arrival-options"
+        role="group"
+        aria-label={t('simulator.wizard.fields.processStructure')}
+      >
         <button
           type="button"
           aria-pressed={draft.structure === 'single'}
           onClick={() => change({ structure: 'single' })}
         >
-          <b>One work step</b>
-          <span>A simple starting point you can extend later.</span>
+          <b>{t('simulator.wizard.fields.oneWorkStep')}</b>
+          <span>{t('simulator.wizard.fields.aSimpleStartingPointYouCanExtendLater')}</span>
         </button>
         <button
           type="button"
           aria-pressed={draft.structure === 'hierarchical'}
           onClick={() => change({ structure: 'hierarchical' })}
         >
-          <b>Main process and subprocesses</b>
-          <span>Set separate capacity, time and cost for each stage.</span>
+          <b>{t('simulator.wizard.fields.mainProcessAndSubprocesses')}</b>
+          <span>{t('simulator.wizard.fields.setSeparateCapacityTimeAndCostForEachStage')}</span>
         </button>
       </div>
       {draft.structure === 'hierarchical' ? (
@@ -150,25 +163,25 @@ export function ProcessingStep(props: Props) {
           <StarterField
             {...props}
             field="workName"
-            label="Work step name"
-            help="Use an action, such as Pack order or Serve customer."
+            label={t('simulator.wizard.fields.workStepName')}
+            help={t('simulator.wizard.fields.useAnActionSuchAsPackOrderOrServeCustomer')}
           />
           <div className="process-wizard-grid">
             <StarterField
               {...props}
               field="processingMinutes"
-              label="Processing time (minutes/item)"
+              label={t('simulator.wizard.fields.processingTimeMinutesItem')}
               number
               min={0.001}
             />
             <StarterField
               {...props}
               field="capacity"
-              label="Parallel capacity (slots)"
+              label={t('simulator.wizard.fields.parallelCapacitySlots')}
               number
               min={1}
               step="1"
-              help="How many items this step can process at once."
+              help={t('simulator.wizard.fields.howManyItemsThisStepCanProcessAtOnce')}
             />
           </div>
         </>
@@ -177,9 +190,11 @@ export function ProcessingStep(props: Props) {
         <StarterField
           {...props}
           field="transferSeconds"
-          label="Travel time per connection (seconds)"
+          label={t('simulator.wizard.fields.travelTimePerConnectionSeconds')}
           number
-          help="Real simulated transfer time between steps. Zero means instant transfer."
+          help={t(
+            'simulator.wizard.fields.realSimulatedTransferTimeBetweenStepsZeroMeansInstantTransfer',
+          )}
         />
       </div>
       <label className="process-wizard-check">
@@ -189,21 +204,29 @@ export function ProcessingStep(props: Props) {
           onChange={(event) => change({ sharedResource: event.target.checked })}
         />
         <span>
-          <b>Use a shared resource</b>
-          <small>Staff or equipment that other work steps can compete for.</small>
+          <b>{t('simulator.wizard.fields.useASharedResource')}</b>
+          <small>
+            {t('simulator.wizard.fields.staffOrEquipmentThatOtherWorkStepsCanCompeteFor')}
+          </small>
         </span>
       </label>
       {draft.sharedResource && (
         <div className="process-wizard-resource">
-          <StarterField {...props} field="resourceName" label="Shared resource name" />
+          <StarterField
+            {...props}
+            field="resourceName"
+            label={t('simulator.wizard.fields.sharedResourceName')}
+          />
           <StarterField
             {...props}
             field="resourceCapacity"
-            label="Shared resource capacity (units)"
+            label={t('simulator.wizard.fields.sharedResourceCapacityUnits')}
             number
             min={1}
             step="1"
-            help="Each processing item needs one unit. The resource appears as a separate connected card."
+            help={t(
+              'simulator.wizard.fields.eachProcessingItemNeedsOneUnitTheResourceAppearsAsASeparate',
+            )}
           />
         </div>
       )}
@@ -212,65 +235,78 @@ export function ProcessingStep(props: Props) {
 }
 
 export function EconomicsStep(props: Props) {
+  const { t } = useI18n();
   const { draft, change } = props;
   return (
     <>
       <div className="process-wizard-intro">
-        <h3>What is the business impact?</h3>
+        <h3>{t('simulator.wizard.fields.whatIsTheBusinessImpact')}</h3>
         <p>
-          Revenue is realized when an item completes. Hourly costs apply to available capacity,
-          including idle time. Set zero when money is not relevant.
+          {t(
+            'simulator.wizard.fields.revenueIsRealizedWhenAnItemCompletesHourlyCostsApplyToAvailable',
+          )}
         </p>
       </div>
       <label className="process-wizard-field">
-        <span>Currency</span>
+        <span>{t('simulator.common.currency')}</span>
         <input
-          aria-label="Currency"
+          aria-label={t('simulator.common.currency')}
           value={draft.currency}
           maxLength={3}
           required
           pattern="[A-Z]{3}"
           onChange={(event) => change({ currency: event.target.value.toUpperCase() })}
         />
-        <small>A three-letter code, such as SEK, EUR or USD.</small>
+        <small>{t('simulator.wizard.fields.aThreeLetterCodeSuchAsSekEurOrUsd')}</small>
       </label>
       <div className="process-wizard-grid">
         <StarterField
           {...props}
           field="revenue"
-          label={`Revenue per completed item (${draft.currency})`}
+          label={t('simulator.wizard.fields.revenuePerCompletedItem', {
+            currency: String(draft.currency),
+          })}
           number
         />
         {draft.structure === 'single' && (
           <StarterField
             {...props}
             field="workCostPerHour"
-            label={`Work cost per slot/hour (${draft.currency})`}
+            label={t('simulator.wizard.fields.workCostPerSlotHour', {
+              currency: String(draft.currency),
+            })}
             number
-            help="Use this for the work step itself. Add staff costs separately below to avoid counting them twice."
+            help={t(
+              'simulator.wizard.fields.useThisForTheWorkStepItselfAddStaffCostsSeparatelyBelow',
+            )}
           />
         )}
         {draft.sharedResource && (
           <StarterField
             {...props}
             field="resourceCostPerHour"
-            label={`Shared resource cost per unit/hour (${draft.currency})`}
+            label={t('simulator.wizard.fields.sharedResourceCostPerUnitHour', {
+              currency: String(draft.currency),
+            })}
             number
           />
         )}
         <StarterField
           {...props}
           field="patienceMinutes"
-          label="Maximum queue wait (minutes)"
+          label={t('simulator.wizard.fields.maximumQueueWaitMinutes')}
           number
           min={0.001}
           optional
-          help="Optional. Leave blank if items never abandon the queue. Abandoned items lose their expected revenue."
+          help={t(
+            'simulator.wizard.fields.optionalLeaveBlankIfItemsNeverAbandonTheQueueAbandonedItemsLose',
+          )}
         />
       </div>
       <p className="process-wizard-note">
-        The starter uses FIFO queues and equal item complexity. Advanced routing, priorities,
-        schedules, scaling and investments remain available in Assumptions.
+        {t(
+          'simulator.wizard.fields.theStarterUsesFifoQueuesAndEqualItemComplexityAdvancedRoutingPriorities',
+        )}
       </p>
     </>
   );

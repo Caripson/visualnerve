@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { useMemo, useRef, useState } from 'react';
 import { Copy, Download, ExternalLink } from 'lucide-react';
 import { Modal } from './Modal';
@@ -11,6 +12,7 @@ import { buildLovablePrompt, lovableLink, type LovableScope } from '../export/lo
 import { download, safeName } from '../export/semantic';
 import './lovable.css';
 import { BuildSpecificationEditor } from './BuildSpecificationEditor';
+import { lovableDisplayMessage } from './lovable-display';
 
 const scopes: LovableScope[] = ['diagram', 'selected', 'csv-view'];
 type Draft = { version: 1; instructions: string; scope: LovableScope };
@@ -33,6 +35,7 @@ function readDraft(graph: Graph, defaultScope: LovableScope): Draft {
 }
 
 export function LovableDialog({ close }: { close: () => void }) {
+  const { t, number } = useI18n();
   const graph = useEditor((state) => state.graph);
   const owners = useEditor((state) => state.owners);
   const selectedNodes = useEditor((state) => state.selectedNodes);
@@ -98,105 +101,94 @@ export function LovableDialog({ close }: { close: () => void }) {
   };
 
   return (
-    <Modal title="Build with Lovable" close={close} wide>
+    <Modal title={t('lovable.title')} close={close} wide>
       <div className="lovable-dialog">
-        <p className="lovable-intro">
-          Turn your diagram into an app specification. Lovable opens with a prefilled prompt; review
-          it and Send there to build.
-        </p>
+        <p className="lovable-intro">{t('lovable.introduction')}</p>
         <label className="field lovable-instructions">
-          App instructions
+          {t('lovable.instructions')}
           <textarea
-            aria-label="App instructions"
+            aria-label={t('lovable.instructions')}
             value={instructions}
             rows={4}
-            placeholder="Describe the app, its audience, and anything the diagram does not explain."
+            placeholder={t('lovable.instructionsHint')}
             onChange={(event) => update({ instructions: event.target.value })}
           />
-          <span className="muted">Your instructions are saved locally with this diagram.</span>
+          <span className="muted">{t('lovable.localInstructions')}</span>
         </label>
         <label className="field">
-          Include
+          {t('lovable.include')}
           <select
-            aria-label="Lovable scope"
+            aria-label={t('lovable.scope')}
             value={scope}
             onChange={(event) => update({ scope: event.target.value as LovableScope })}
           >
-            <option value="diagram">Entire diagram</option>
+            <option value="diagram">{t('lovable.entireDiagram')}</option>
             <option value="selected" disabled={!selectedIds.length}>
-              Selected objects{selectedIds.length ? ` (${selectedIds.length})` : ' · none selected'}
+              {selectedIds.length
+                ? t('lovable.selected', { count: number(selectedIds.length) })
+                : t('lovable.noneSelected')}
             </option>
             <option value="csv-view" disabled={!hasCsv}>
-              Current CSV groups
+              {t('lovable.csvGroups')}
             </option>
           </select>
         </label>
         <p className="lovable-scope-note">
           {scope === 'diagram'
-            ? 'Includes every object, including collapsed branches and objects outside the current view.'
+            ? t('lovable.scopeDiagram')
             : scope === 'selected'
-              ? 'Includes exactly the selected objects. Connections to other objects appear as boundary context.'
-              : 'Includes visible CSV groups and all manual objects. Other groups appear only where needed as boundary context.'}
+              ? t('lovable.scopeSelected')
+              : t('lovable.scopeCsv')}
         </p>
-        <dl className="lovable-counts" aria-label="Build brief contents">
+        <dl className="lovable-counts" aria-label={t('lovable.contents')}>
           <div>
-            <dt>Objects</dt>
-            <dd>{prompt.nodeCount}</dd>
+            <dt>{t('lovable.objects')}</dt>
+            <dd>{number(prompt.nodeCount)}</dd>
           </div>
           <div>
-            <dt>Relationships</dt>
-            <dd>{prompt.edgeCount}</dd>
+            <dt>{t('lovable.relationships')}</dt>
+            <dd>{number(prompt.edgeCount)}</dd>
           </div>
           <div>
-            <dt>Boundary connections</dt>
-            <dd>{prompt.boundaryCount}</dd>
+            <dt>{t('lovable.boundary')}</dt>
+            <dd>{number(prompt.boundaryCount)}</dd>
           </div>
         </dl>
-        <p className="lovable-disclosure">
-          The prompt includes user descriptions, notes and imported SQL schemas. Source CSV rows,
-          SQL data rows and arbitrary metadata are excluded. Review the exact text below before
-          sharing it with Lovable.
-        </p>
+        <p className="lovable-disclosure">{t('lovable.disclosure')}</p>
         {graph.nodes.some((node) => getSqlQuerySource(node) || getSqlQueryResult(node)) && (
-          <p className="lovable-disclosure">
-            SQL query expressions and conditions, including literal values, are included in the
-            prompt. Review them before sharing.
-          </p>
+          <p className="lovable-disclosure">{t('lovable.sqlDisclosure')}</p>
         )}
         {(getCodeAnalysis(graph) ||
           graph.nodes.some((node) => getCodeObject(node) || getProjectDirectory(node))) && (
-          <p className="lovable-disclosure">
-            Code identifiers, file paths, source locations and relationship confidence are included.
-            Original source is excluded. Review the paths and unresolved behavior before sharing.
-          </p>
+          <p className="lovable-disclosure">{t('lovable.codeDisclosure')}</p>
         )}
         {!!getDrawingLayer(graph.diagram.settings.drawing)?.strokes.length && (
-          <p className="lovable-drawing-note">
-            Drawing marks are visual notes. Describe anything important in your instructions.
-          </p>
+          <p className="lovable-drawing-note">{t('lovable.drawingNote')}</p>
         )}
         <BuildSpecificationEditor specification={prompt.specification} />
         <label className="field lovable-preview">
-          Exact build prompt
+          {t('lovable.exactPrompt')}
           <textarea
             ref={preview}
-            aria-label="Lovable build prompt"
+            aria-label={t('lovable.promptAria')}
             readOnly
             value={prompt.text}
             rows={10}
             spellCheck={false}
           />
         </label>
-        {link.reason && <p className="lovable-link-note">{link.reason}</p>}
+        {link.reason && (
+          <p className="lovable-link-note">{lovableDisplayMessage(link.reason, t, number)}</p>
+        )}
         {notice && (
           <p role="status" className="lovable-copy-notice">
-            {notice}
+            {lovableDisplayMessage(notice, t, number)}
           </p>
         )}
         <div className="modal-actions lovable-actions">
           <button type="button" onClick={() => void copy()}>
             <Copy size={16} />
-            Copy build prompt
+            {t('lovable.copy')}
           </button>
           <button
             type="button"
@@ -209,17 +201,17 @@ export function LovableDialog({ close }: { close: () => void }) {
             }
           >
             <Download size={16} />
-            Download build brief
+            {t('lovable.download')}
           </button>
           {link.url ? (
             <a className="lovable-open" href={link.url} target="_blank" rel="noopener noreferrer">
               <ExternalLink size={16} />
-              Open in Lovable
+              {t('lovable.open')}
             </a>
           ) : (
             <button type="button" className="primary" disabled>
               <ExternalLink size={16} />
-              Open in Lovable
+              {t('lovable.open')}
             </button>
           )}
         </div>
@@ -231,7 +223,7 @@ export function LovableDialog({ close }: { close: () => void }) {
             rel="noopener noreferrer"
           >
             <ExternalLink size={16} />
-            Open Lovable and paste the prompt
+            {t('lovable.openManual')}
           </a>
         )}
       </div>

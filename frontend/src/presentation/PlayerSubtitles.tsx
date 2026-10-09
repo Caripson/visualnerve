@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { PresentationRuntimeState } from './types';
 import { subtitlePages } from './video-subtitles';
@@ -23,6 +24,7 @@ export function PlayerSubtitles({
   getPlaybackTime,
   bottom,
 }: PlayerSubtitlesProps) {
+  const { t } = useI18n();
   const caption = useRef<HTMLDivElement>(null);
   const playbackTime = useRef(getPlaybackTime);
   const measuredPages = useRef<string[][]>([]);
@@ -118,7 +120,7 @@ export function PlayerSubtitles({
         ref={caption}
         className="presentation-caption"
         role="region"
-        aria-label="Walkthrough subtitles"
+        aria-label={t('presentation.subtitlesRegion')}
         aria-description={narration}
         data-page={current + 1}
         data-page-count={pages.length}

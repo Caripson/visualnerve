@@ -1,3 +1,5 @@
+import { localizedFeedback } from './localized-feedback';
+import { useI18n } from '../i18n';
 import { lazy, useEffect, useState } from 'react';
 import type { Graph, GraphNode } from '../model/types';
 import type { CsvAnalysis, CsvNodeData, CsvPathEntry } from '../data/types';
@@ -29,6 +31,7 @@ export function CsvProperties({
   onFocusCsv?: (path: CsvPathEntry[], datasetId?: string) => void;
   onPageCsv?: (direction: 'next' | 'previous', datasetId?: string) => void;
 }) {
+  const { t, number: numberFormat } = useI18n();
   const [sourceOpen, setSourceOpen] = useState(false);
   const [explainId, setExplainId] = useState<string>();
   const [sourceBusy, setSourceBusy] = useState(false);
@@ -115,29 +118,34 @@ export function CsvProperties({
 
   if (!node)
     return (
-      <section className="csv-properties" aria-label="CSV data">
-        <div className="property-section">CSV data</div>
+      <section className="csv-properties" aria-label={t('data.csvProperties.title')}>
+        <div className="property-section">{t('data.csvProperties.title')}</div>
         <p className="csv-source-name">{dataset!.fileName}</p>
         <p className="muted">
-          {numberFormat(dataset!.rows.length)} rows · {dataset!.columns.length} columns
+          {t('data.csvProperties.sourceCounts', {
+            rows: numberFormat(dataset!.rows.length),
+            columns: dataset!.columns.length,
+          })}
         </p>
         {analysis && (
           <p className="csv-grouping-path">
-            Grouped by{' '}
-            {analysis.levels
-              .map((id) => dataset!.columns.find((column) => column.id === id)?.label ?? id)
-              .join(' → ') || 'all rows'}
+            {t('data.csvProperties.groupedBy', {
+              path:
+                analysis.levels
+                  .map((id) => dataset!.columns.find((column) => column.id === id)?.label ?? id)
+                  .join(' → ') || t('data.csvProperties.allRows'),
+            })}
           </p>
         )}
         {focusedGroup && (
           <p className="muted">
-            {numberFormat(focusedGroup.rowCount)} matching rows in the current view.
+            {t('data.csvProperties.matchingRows', { count: numberFormat(focusedGroup.rowCount) })}
           </p>
         )}
         {navigation}
         {onEditCsv && (
           <button className="full" onClick={() => onEditCsv(dataset?.id)}>
-            Change grouping and measures
+            {t('data.csvProperties.editAnalysis')}
           </button>
         )}
       </section>
@@ -153,19 +161,23 @@ export function CsvProperties({
         .filter((column) => selectedColumns.has(column.id))
     : [];
   return (
-    <section className="csv-properties" aria-label="CSV group data">
-      <div className="property-section">Group measures</div>
-      <p className="muted">{numberFormat(data!.rowCount)} source rows in this group.</p>
+    <section className="csv-properties" aria-label={t('data.csvProperties.groupRegion')}>
+      <div className="property-section">{t('data.csvProperties.measuresTitle')}</div>
+      <p className="muted">
+        {t('data.csvProperties.groupRows', { count: numberFormat(data!.rowCount) })}
+      </p>
       {data!.hiddenChildren > 0 && (
         <p className="csv-group-notice">
-          {numberFormat(data!.hiddenChildren)} more groups. Measures include all{' '}
-          {numberFormat(data!.rowCount)} matching rows, including groups outside this view.
+          {t('data.csvProperties.hiddenGroupsIncluded', {
+            groups: numberFormat(data!.hiddenChildren),
+            rows: numberFormat(data!.rowCount),
+          })}
         </p>
       )}
       {navigation}
       {sourceAvailable && onEditCsv && (
         <button className="full" onClick={() => onEditCsv(dataset?.id)}>
-          Change grouping and measures
+          {t('data.csvProperties.editAnalysis')}
         </button>
       )}
       <div className="csv-measure-controls">
@@ -174,7 +186,7 @@ export function CsvProperties({
             <label className="check-field">
               <input
                 type="checkbox"
-                aria-label={`Show ${measure.label}`}
+                aria-label={t('data.csvProperties.showMeasure', { label: measure.label })}
                 checked={!hidden.has(measure.id)}
                 onChange={(event) => {
                   const next = new Set(hidden);
@@ -184,47 +196,50 @@ export function CsvProperties({
                 }}
               />
               <span>{measure.label}</span>
-              <b>{formatCsvMeasure(measure.value)}</b>
+              <b>{formatCsvMeasure(measure.value, numberFormat)}</b>
             </label>
             {sourceAvailable &&
               data!.visible !== false &&
               analysis?.metrics.some((metric) => metric.id === measure.id) && (
                 <button
                   className="quiet"
-                  aria-label={`Explain ${measure.label}`}
+                  aria-label={t('data.csvProperties.explainMeasure', { label: measure.label })}
                   onClick={() => setExplainId(measure.id)}
                 >
-                  Why this value?
+                  {t('data.csvProperties.explainValue')}
                 </button>
               )}
             {(measure.missingCount > 0 || measure.invalidCount > 0) && (
               <small className="csv-measure-quality">
-                {measure.missingCount} empty · {measure.invalidCount} non-numeric
+                {t('data.csvProperties.invalidCounts', {
+                  empty: measure.missingCount,
+                  invalid: measure.invalidCount,
+                })}
               </small>
             )}
           </div>
         ))}
       </div>
-      <p className="csv-measure-help muted">
-        These checkboxes control the measures shown on this object and in image exports. Numeric
-        measures skip empty and non-numeric cells; — means no valid values. Count includes every
-        source row. Distinct counts unique non-empty values.
-      </p>
+      <p className="csv-measure-help muted">{t('data.csvProperties.measureInvariants')}</p>
       {sourceAvailable ? (
         <details
           className="csv-source-rows"
           aria-busy={sourceBusy}
           onToggle={(event) => setSourceOpen(event.currentTarget.open)}
         >
-          <summary>Source rows ({numberFormat(data!.rowCount)})</summary>
+          <summary>
+            {t('data.csvProperties.sourceRowsSummary', { count: numberFormat(data!.rowCount) })}
+          </summary>
           <details className="csv-source-columns">
-            <summary>Columns shown ({visibleColumns.length})</summary>
+            <summary>
+              {t('data.csvProperties.columnsSummary', { count: visibleColumns.length })}
+            </summary>
             <div className="csv-column-controls">
               {dataset!.columns.map((column) => (
                 <label className="check-field" key={column.id}>
                   <input
                     type="checkbox"
-                    aria-label={`Show source column ${column.label}`}
+                    aria-label={t('data.csvProperties.showColumn', { label: column.label })}
                     checked={selectedColumns.has(column.id)}
                     onChange={(event) => {
                       const next = new Set(selectedColumns);
@@ -247,33 +262,43 @@ export function CsvProperties({
               <label className="check-field">
                 <input
                   type="checkbox"
-                  aria-label="Original values"
+                  aria-label={t('data.csv.originalValues')}
                   checked={originalValues}
                   onChange={(event) => setOriginalValues(event.target.checked)}
                 />
-                Original values
+                {t('data.csv.originalValues')}
               </label>
               {sourceBusy && (
                 <p className="muted" role="status">
-                  Loading source rows…
+                  {t('data.csvProperties.loadingRows')}
                 </p>
               )}
               {sourceError && (
                 <p className="form-error" role="alert">
-                  {sourceError}
+                  {localizedFeedback(sourceError, t)}
                 </p>
               )}
               {preview && (
                 <>
                   <p className="muted">
-                    Showing {preview.rows.length} of {numberFormat(preview.total)} rows.
+                    {t('data.csvProperties.shownRows', {
+                      shown: preview.rows.length,
+                      total: numberFormat(preview.total),
+                    })}
                     {originalValues
-                      ? ' Original CSV cells are preserved.'
-                      : ' Cleaned values used in the analysis.'}
+                      ? t('data.csvProperties.originalNotice')
+                      : t('data.csvProperties.cleanedNotice')}
                   </p>
                   {visibleColumns.length ? (
-                    <div className="csv-table-scroll" tabIndex={0} aria-label="Scroll source rows">
-                      <table className="csv-source-table" aria-label="Source rows">
+                    <div
+                      className="csv-table-scroll"
+                      tabIndex={0}
+                      aria-label={t('data.csvProperties.scrollRows')}
+                    >
+                      <table
+                        className="csv-source-table"
+                        aria-label={t('data.csvProperties.rowsAccessible')}
+                      >
                         <thead>
                           <tr>
                             {visibleColumns.map((column) => (
@@ -297,7 +322,7 @@ export function CsvProperties({
                       </table>
                     </div>
                   ) : (
-                    <p className="muted">Choose a column above to show its values.</p>
+                    <p className="muted">{t('data.csvProperties.noColumns')}</p>
                   )}
                 </>
               )}
@@ -305,7 +330,7 @@ export function CsvProperties({
           )}
         </details>
       ) : (
-        <p className="muted">The CSV source is unavailable for this object.</p>
+        <p className="muted">{t('data.csvProperties.sourceUnavailable')}</p>
       )}
       {explainId && dataset && analysis && (
         <LazyDialogBoundary
@@ -339,29 +364,34 @@ function CsvNavigation({
   onFocus?: (path: CsvPathEntry[]) => void;
   onPage?: (direction: 'next' | 'previous') => void;
 }) {
+  const { t, number: numberFormat } = useI18n();
   return (
     <div className="csv-navigation">
       {onFocus && (
         <div className="csv-navigation-actions">
-          <button onClick={() => onFocus([])}>All data</button>
+          <button onClick={() => onFocus([])}>{t('data.csv.allData')}</button>
           {group && group.path.length > 0 && (
-            <button onClick={() => onFocus(group.path)}>Explore this group</button>
+            <button onClick={() => onFocus(group.path)}>
+              {t('data.csvProperties.exploreGroup')}
+            </button>
           )}
         </div>
       )}
       {analysis && focusedGroup && onPage && focusedGroup.hiddenChildren > 0 && (
         <>
           <p className="muted">
-            Current view: groups {Math.min(analysis.offset + 1, focusedGroup.totalChildren)}–
-            {Math.min(
-              analysis.offset + focusedGroup.totalChildren - focusedGroup.hiddenChildren,
-              focusedGroup.totalChildren,
-            )}{' '}
-            of {numberFormat(focusedGroup.totalChildren)}.
+            {t('data.csvProperties.groupRange', {
+              first: Math.min(analysis.offset + 1, focusedGroup.totalChildren),
+              last: Math.min(
+                analysis.offset + focusedGroup.totalChildren - focusedGroup.hiddenChildren,
+                focusedGroup.totalChildren,
+              ),
+              total: numberFormat(focusedGroup.totalChildren),
+            })}
           </p>
           <div className="csv-navigation-actions">
             <button disabled={!analysis.offset} onClick={() => onPage('previous')}>
-              Previous groups
+              {t('data.csvProperties.previousGroups')}
             </button>
             <button
               disabled={
@@ -370,15 +400,11 @@ function CsvNavigation({
               }
               onClick={() => onPage('next')}
             >
-              Next groups
+              {t('data.csvProperties.nextGroups')}
             </button>
           </div>
         </>
       )}
     </div>
   );
-}
-
-function numberFormat(value: number) {
-  return new Intl.NumberFormat().format(value);
 }

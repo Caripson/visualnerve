@@ -1,3 +1,5 @@
+import { localizedFeedback } from '../components/localized-feedback';
+import { useI18n } from '../i18n';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Modal } from '../components/Modal';
 import type { WorkspaceBackup } from '../storage/database';
@@ -152,6 +154,7 @@ function WorkspaceTransfer({
   closing: boolean;
   closeError: string;
 }) {
+  const { t, plural } = useI18n();
   const [replace, setReplace] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -167,40 +170,41 @@ function WorkspaceTransfer({
     };
   }, []);
   return (
-    <Modal title="Move an existing workspace" close={() => close()} dismissible={!busy && !closing}>
+    <Modal
+      title={t('security.transfer.title')}
+      close={() => close()}
+      dismissible={!busy && !closing}
+    >
       {result ? (
         <>
           <p role="status">
-            Transfer verified: {result.counts.diagrams} diagrams, {result.counts.nodes} nodes and{' '}
-            {result.counts.edges} connections. All stored content was decrypted and checked against
-            the imported snapshot, including source rows, history and simulation archives.
+            {t('security.transfer.verifiedSummary', {
+              diagrams: result.counts.diagrams,
+              nodes: result.counts.nodes,
+              edges: result.counts.edges,
+            })}
           </p>
-          <p>
-            Your original workspace and its backup are unchanged. Open several diagrams and create a
-            new encrypted backup here before deciding whether to retire the original copies.
-          </p>
+          <p>{t('security.transfer.verifyBeforeRetiringSource')}</p>
           <div className="modal-actions">
             <button
               className="primary"
               disabled={closing}
               onClick={() => close(result.firstDiagramId)}
             >
-              Open transferred workspace
+              {t('security.transfer.open')}
             </button>
           </div>
         </>
       ) : (
         <>
           <p>
-            Transfer {backup.diagrams.length} diagram{backup.diagrams.length === 1 ? '' : 's'} with
-            their original identifiers, versions, source data, history and simulation archives. This
-            is a complete workspace transfer, separate from merging individual diagrams.
+            {plural(
+              'security.transfer.contents.one',
+              'security.transfer.contents.other',
+              backup.diagrams.length,
+            )}
           </p>
-          <p className="muted">
-            Keep your original workspace and a verified backup. Close its other tabs and stop any
-            agents so you do not keep editing two independent copies. The old website is not read,
-            redirected or deleted by this action. API/MCP access is now Off.
-          </p>
+          <p className="muted">{t('security.transfer.independentOrigins')}</p>
           <BackupSecurityNotice encrypted />
           <label className="check-field">
             <input
@@ -209,8 +213,7 @@ function WorkspaceTransfer({
               disabled={busy || closing}
               onChange={(event) => setReplace(event.target.checked)}
             />
-            Replace existing work in this destination, if any. This cannot be undone without its own
-            backup; the source workspace is preserved.
+            {t('security.transfer.replaceAcknowledgement')}
           </label>
           <label className="check-field">
             <input
@@ -219,11 +222,11 @@ function WorkspaceTransfer({
               disabled={busy || closing}
               onChange={(event) => setAcknowledged(event.target.checked)}
             />
-            I have kept the source workspace and understand that the two copies do not synchronize.
+            {t('security.transfer.sourceKeptAcknowledgement')}
           </label>
           <div className="modal-actions">
             <button disabled={busy || closing} onClick={() => close()}>
-              Cancel
+              {t('security.action.cancel')}
             </button>
             <button
               className="primary"
@@ -260,26 +263,21 @@ function WorkspaceTransfer({
                 })();
               }}
             >
-              {busy ? 'Encrypting and verifying…' : 'Transfer and verify'}
+              {busy ? t('security.transfer.encryptingVerifying') : t('security.transfer.start')}
             </button>
           </div>
-          {busy && (
-            <p role="status">
-              Keep this tab open. Verification reads the saved encrypted copy before opening the
-              editor.
-            </p>
-          )}
+          {busy && <p role="status">{t('security.transfer.keepOpen')}</p>}
           {error && (
             <p className="form-error" role="alert">
-              {error}
+              {localizedFeedback(error, t)}
             </p>
           )}
         </>
       )}
-      {closing && <p role="status">Checking the encrypted workspace before reopening…</p>}
+      {closing && <p role="status">{t('security.transfer.checkingBeforeReopen')}</p>}
       {closeError && (
         <p className="form-error" role="alert">
-          {closeError}
+          {localizedFeedback(closeError, t)}
         </p>
       )}
     </Modal>

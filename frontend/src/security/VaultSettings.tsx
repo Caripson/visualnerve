@@ -1,3 +1,5 @@
+import { localizedFeedback } from '../components/localized-feedback';
+import { useI18n } from '../i18n';
 import { useEffect, useState } from 'react';
 import { VaultPasswordChange } from './VaultPasswordChange';
 import type { VaultSession } from './vault-session';
@@ -5,6 +7,7 @@ import { workspace } from '../storage/workspace';
 import { useVaultKeyRotation } from './workspace-maintenance-context';
 
 export function VaultSettings({ session }: { session: VaultSession }) {
+  const { t } = useI18n();
   const [idle, setIdle] = useState(15);
   const [absolute, setAbsolute] = useState(8);
   const [busy, setBusy] = useState(false);
@@ -30,16 +33,10 @@ export function VaultSettings({ session }: { session: VaultSession }) {
     };
   }, [session]);
   return (
-    <section className="data-privacy" aria-label="Workspace security">
-      <div className="property-section">Workspace security</div>
-      <p>
-        Local records and workspace backups use AES-256-GCM encryption. Unlocking happens in this
-        browser; there is no server password reset.
-      </p>
-      <p className="muted">
-        Locking stops API/MCP access to your content and background work. Only your interaction with
-        the app keeps the inactivity session alive.
-      </p>
+    <section className="data-privacy" aria-label={t('security.settings.title')}>
+      <div className="property-section">{t('security.settings.title')}</div>
+      <p>{t('security.settings.encryptionBoundary')}</p>
+      <p className="muted">{t('security.settings.idleAndIntegrationBoundary')}</p>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -56,7 +53,7 @@ export function VaultSettings({ session }: { session: VaultSession }) {
         }}
       >
         <label className="field">
-          <span>Lock after inactivity (minutes)</span>
+          <span>{t('security.settings.idleMinutes')}</span>
           <input
             type="number"
             min="1"
@@ -69,7 +66,7 @@ export function VaultSettings({ session }: { session: VaultSession }) {
           />
         </label>
         <label className="field">
-          <span>Maximum session (hours)</span>
+          <span>{t('security.settings.absoluteHours')}</span>
           <input
             type="number"
             min={Math.max(1 / 60, idle / 60)}
@@ -81,16 +78,13 @@ export function VaultSettings({ session }: { session: VaultSession }) {
             disabled={busy}
           />
         </label>
-        <p className="muted">
-          A shorter limit may lock all workspace tabs immediately. Save your recovery key separately
-          from your backups.
-        </p>
+        <p className="muted">{t('security.settings.shorterPolicyWarning')}</p>
         <div className="storage-actions">
           <button type="submit" disabled={busy}>
-            {busy ? 'Saving…' : 'Save session limits'}
+            {busy ? t('security.action.saving') : t('security.settings.savePolicy')}
           </button>
           <button type="button" disabled={busy} onClick={() => setChangePassword(true)}>
-            Change password
+            {t('security.settings.changePassword')}
           </button>
           <button
             type="button"
@@ -108,7 +102,7 @@ export function VaultSettings({ session }: { session: VaultSession }) {
                 .finally(() => setBusy(false));
             }}
           >
-            Lock now
+            {t('security.settings.lockNow')}
           </button>
         </div>
       </form>
@@ -119,18 +113,14 @@ export function VaultSettings({ session }: { session: VaultSession }) {
             void session.lock().catch((error: unknown) => setMessage((error as Error).message));
           }}
         >
-          Lock and discard unsaved changes
+          {t('security.settings.lockDiscard')}
         </button>
       )}
-      {message && <p role="status">{message}</p>}
+      {message && <p role="status">{localizedFeedback(message, t)}</p>}
       {rotateKey && (
         <details className="storage-danger">
-          <summary>Suspected content-key exposure</summary>
-          <p>
-            A normal password change keeps the content key. If that key may have been exposed,
-            rotate it to encrypt all current records again. Copied backups and older readable files
-            remain outside this protection.
-          </p>
+          <summary>{t('security.settings.keyExposureTitle')}</summary>
+          <p>{t('security.settings.keyExposureExplanation')}</p>
           <button
             disabled={busy}
             onClick={() => {
@@ -141,15 +131,11 @@ export function VaultSettings({ session }: { session: VaultSession }) {
                 .finally(() => setBusy(false));
             }}
           >
-            Rotate workspace content key
+            {t('security.settings.rotateKey')}
           </button>
         </details>
       )}
-      <p className="muted">
-        Encryption protects saved data while locked. It cannot protect work from a compromised
-        device, browser extension or malicious code running while you have unlocked the app. Diagram
-        exports and information shared with an agent leave the vault as readable content.
-      </p>
+      <p className="muted">{t('security.settings.threatBoundary')}</p>
       {changePassword && (
         <VaultPasswordChange session={session} close={() => setChangePassword(false)} />
       )}

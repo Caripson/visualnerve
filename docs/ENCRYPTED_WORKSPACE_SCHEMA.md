@@ -1,6 +1,6 @@
 # Encrypted workspace storage and session schema
 
-Status: integrated implementation under release review for the [active encrypted workspace plan](ENCRYPTED_WORKSPACE_PLAN.md). The isolated app runtime uses the encrypted storage adapter for the editor, history, simulation, API and MCP. Cryptographic, storage and lifecycle tests and real Chrome encrypted-workspace checks cover this implementation. The manual release requires exact-revision CI and staging review; consult Actions for publication evidence. The existing `www.visualnerve.com/app/` address retains its plaintext backend and transfer entry. Source changes do not encrypt existing browser records.
+Status: implemented and published after the [encrypted workspace plan](ENCRYPTED_WORKSPACE_PLAN.md) passed exact-revision CI, manual staging/app/www publication and actual production checks on 2026-10-09. The isolated app runtime uses the encrypted storage adapter for the editor, history, simulation, API and MCP. Cryptographic, storage and lifecycle tests and real Chrome encrypted-workspace checks cover this implementation. The manual release requires exact-revision CI and staging review; consult Actions for publication evidence. The existing `www.visualnerve.com/app/` address retains its plaintext backend and transfer entry. Source changes do not encrypt existing browser records.
 
 ## Module boundaries
 
@@ -16,6 +16,12 @@ Status: integrated implementation under release review for the [active encrypted
 All cryptographic operations are asynchronous. Fetch ciphertext in a short read transaction and decrypt afterward; prepare ciphertext before a short atomic write transaction. The storage/session modules check the persisted revocation epoch and whole-workspace revision at commit and before publishing results. `vault-coordination.ts` serializes official journal preparation and credential/policy changes with an abortable Web Lock named using only the technical database name. This prevents unrelated app writes from causing false conflicts and prevents mixed read snapshots without replaying domain callbacks. Browsers without Web Locks serialize same-realm callers; cross-realm conflicts are safely rejected by the native revision fence. A queued operation captures its original session before waiting, so it cannot inherit a later unlock. Revocation bypasses this preparation lock and aborts queued/in-flight work immediately. Cryptographic primitives alone do not supply that transaction or cross-tab policy.
 
 ## Keys and password derivation
+
+The technical `visualnerve-app-language` localStorage preference holds only an
+allowlisted interface identifier (`en`, `da`, `nb`, `sv`, `fi`, `de`, `es`, `fr`),
+outside encrypted private records so the locked screen can render it. Like the
+separate Appearance choice, it contains no work or usable key, is excluded from
+backups/transfers and cannot renew or unlock a session. [UI boundaries](UI_LANGUAGES.md).
 
 Each vault has a random 256-bit content key generated with `crypto.getRandomValues`. The content key is imported as a nonextractable AES-GCM key. A private in-memory copy supports rewrapping; it is not exposed on the public `VaultKeys` capability.
 
@@ -215,4 +221,4 @@ crypto.destroyKeys(rotated.keys);
 
 Structured errors include `INVALID_SCHEMA`, `UNSAFE_KDF`, `INVALID_PASSWORD`, `INVALID_RECOVERY_KEY`, `AUTHENTICATION_FAILED`, `KEY_DESTROYED`, `UNSUPPORTED_CRYPTO` and `LIMIT_EXCEEDED`. No raw Web Crypto authentication error, password, recovery key or content is incorporated in their messages. These internal cryptographic contracts feed the integrated storage/session boundary. REST/MCP exposes safe `GET /workspace/security` discovery and structured `WORKSPACE_LOCKED` responses; it does not expose credentials, keys or an unlock endpoint. See [the API contract](../API.md#encrypted-workspace-security).
 
-Unit coverage exercises real Node Web Crypto, including incorrect credentials, authenticated header/record substitution, KDF bounds before work, format/resource rejection, protected token domain separation, rewrapping/rotation, async key destruction and complete multi-chunk backup corruption. Browser performance and release acceptance remain separate work in the active plan.
+Unit coverage exercises real Node Web Crypto, including incorrect credentials, authenticated header/record substitution, KDF bounds before work, format/resource rejection, protected token domain separation, rewrapping/rotation, async key destruction and complete multi-chunk backup corruption. Browser performance and completed exact-revision release acceptance are documented separately in the dated evidence report; later changes retain those release gates.

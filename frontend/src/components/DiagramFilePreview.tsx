@@ -1,9 +1,11 @@
+import { useI18n } from '../i18n';
 import { useId } from 'react';
 import type { Graph } from '../model/types';
 import { importedConnectionStyle } from '../imports/diagram/presentation';
 
 /** Bounded thumbnail of native geometry; the editable canvas opens after import. */
 export function DiagramFilePreview({ graph }: { graph: Graph }) {
+  const { t } = useI18n();
   const marker = useId().replace(/:/g, '');
   const nodes = graph.nodes.slice(0, 200);
   const ids = new Map(nodes.map((node) => [node.id, node]));
@@ -15,7 +17,7 @@ export function DiagramFilePreview({ graph }: { graph: Graph }) {
     <figure className="diagram-file-preview">
       <svg
         role="img"
-        aria-label="Diagram page preview"
+        aria-label={t('import.diagramPreview.region')}
         viewBox={`${left - 20} ${top - 20} ${right - left + 40} ${bottom - top + 40}`}
       >
         <defs>
@@ -87,8 +89,8 @@ export function DiagramFilePreview({ graph }: { graph: Graph }) {
       </svg>
       <figcaption>
         {graph.nodes.length > nodes.length
-          ? 'Preview shows the first 200 objects. All objects are retained on import.'
-          : 'Native layout preview. Objects and connections become editable.'}
+          ? t('import.diagramPreview.bounded')
+          : t('import.diagramPreview.editable')}
       </figcaption>
     </figure>
   );

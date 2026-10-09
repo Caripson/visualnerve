@@ -1,3 +1,5 @@
+import { localizedFeedback } from './localized-feedback';
+import { useI18n } from '../i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal } from './Modal';
 import { useEditor } from '../state/editor';
@@ -104,6 +106,7 @@ export function DataSourcesDialog({
   onClose: () => void;
   initialFiles?: File[];
 }) {
+  const { t, number } = useI18n();
   const initial = useRef(useEditor.getState().graph);
   const [draft, setDraft] = useState<Graph | null>(initial.current);
   const [relationship, setRelationship] = useState<CsvSourceRelationship | null>(null);
@@ -275,7 +278,7 @@ export function DataSourcesDialog({
     }
   };
   return (
-    <Modal title="Data sources" close={close} wide>
+    <Modal title={t('data.sources.title')} close={close} wide>
       <div
         className="data-sources"
         aria-busy={working}
@@ -294,14 +297,11 @@ export function DataSourcesDialog({
           else setError('Drop CSV or TSV files to add diagram sources.');
         }}
       >
-        <p>
-          Add CSV files to this diagram, then explicitly match columns. Each source keeps its own
-          filters, grouping and totals. Matching never duplicates source rows in sums.
-        </p>
+        <p>{t('data.sources.independentTotals')}</p>
         <label className="field">
-          Add CSV sources
+          {t('data.sources.addCsv')}
           <input
-            aria-label="Add CSV sources"
+            aria-label={t('data.sources.addCsv')}
             type="file"
             accept=".csv,.tsv,text/csv,text/tab-separated-values"
             multiple
@@ -319,8 +319,11 @@ export function DataSourcesDialog({
               <span>
                 <strong>{dataset.name}</strong>
                 <small>
-                  {dataset.rows.length.toLocaleString()} rows · {dataset.columns.length} columns
-                  {dataset.id === draft.dataset?.id ? ' · Primary source' : ''}
+                  {t('data.csvProperties.sourceCounts', {
+                    rows: number(dataset.rows.length),
+                    columns: dataset.columns.length,
+                  })}
+                  {dataset.id === draft.dataset?.id ? t('data.sources.primarySuffix') : ''}
                 </small>
               </span>
               <button
@@ -335,12 +338,12 @@ export function DataSourcesDialog({
                   setDirty(true);
                 }}
               >
-                Remove source {dataset.name}
+                {t('data.sources.removeSource', { name: dataset.name })}
               </button>
             </li>
           ))}
         </ul>
-        <h3>Column relationships</h3>
+        <h3>{t('data.sources.relationshipsTitle')}</h3>
         {(draft.diagram.settings.csvRelationships ?? []).map((link) => {
           const a = sources.find((source) => source.id === link.sourceDatasetId),
             b = sources.find((source) => source.id === link.targetDatasetId);
@@ -371,7 +374,7 @@ export function DataSourcesDialog({
                   setDirty(true);
                 }}
               >
-                Remove relationship
+                {t('data.sources.removeRelationship')}
               </button>
             </div>
           );
@@ -382,16 +385,16 @@ export function DataSourcesDialog({
             disabled={working || sources.length < 2}
             onClick={beginRelationship}
           >
-            Match columns
+            {t('data.sources.matchColumns')}
           </button>
         )}
         {relationship && (
           <fieldset disabled={working} className="data-source-matching">
-            <legend>Preview a column match</legend>
+            <legend>{t('data.sources.previewTitle')}</legend>
             <label className="field">
-              From source
+              {t('data.sources.fromSource')}
               <select
-                aria-label="Relationship source"
+                aria-label={t('data.sources.sourceAccessible')}
                 value={relationship.sourceDatasetId}
                 onChange={(event) => {
                   const dataset = sources.find((s) => s.id === event.target.value)!;
@@ -415,9 +418,9 @@ export function DataSourcesDialog({
               </select>
             </label>
             <label className="field">
-              From column
+              {t('data.sources.fromColumn')}
               <select
-                aria-label="Source matching column"
+                aria-label={t('data.sources.sourceColumnAccessible')}
                 value={relationship.sourceColumnId}
                 onChange={(event) => choose({ sourceColumnId: event.target.value })}
               >
@@ -429,9 +432,9 @@ export function DataSourcesDialog({
               </select>
             </label>
             <label className="field">
-              To source
+              {t('data.sources.toSource')}
               <select
-                aria-label="Relationship target"
+                aria-label={t('data.sources.targetAccessible')}
                 value={relationship.targetDatasetId}
                 onChange={(event) => {
                   const dataset = sources.find((s) => s.id === event.target.value)!;
@@ -455,9 +458,9 @@ export function DataSourcesDialog({
               </select>
             </label>
             <label className="field">
-              To column
+              {t('data.sources.toColumn')}
               <select
-                aria-label="Target matching column"
+                aria-label={t('data.sources.targetColumnAccessible')}
                 value={relationship.targetColumnId}
                 onChange={(event) => choose({ targetColumnId: event.target.value })}
               >
@@ -469,59 +472,52 @@ export function DataSourcesDialog({
               </select>
             </label>
             <label className="field">
-              Match values
+              {t('data.sources.matchValues')}
               <select
-                aria-label="Column match mode"
+                aria-label={t('data.sources.matchModeAccessible')}
                 value={relationship.matchMode ?? 'trim'}
                 onChange={(event) =>
                   choose({ matchMode: event.target.value as CsvSourceRelationship['matchMode'] })
                 }
               >
-                <option value="trim">Trim whitespace</option>
-                <option value="exact">Exact text</option>
-                <option value="case-insensitive">Trim and ignore case</option>
+                <option value="trim">{t('data.sources.trimMode')}</option>
+                <option value="exact">{t('data.sources.exactMode')}</option>
+                <option value="case-insensitive">{t('data.sources.ignoreCaseMode')}</option>
               </select>
             </label>
             <button type="button" onClick={() => void previewRelationship()}>
-              Preview match
+              {t('data.sources.previewMatch')}
             </button>
             {preview && (
               <div className="data-match-preview" role="status">
                 <strong>{preview.cardinality}</strong>
                 <dl>
-                  <dt>Matched source rows</dt>
+                  <dt>{t('data.sources.matchedSourceRows')}</dt>
                   <dd>
-                    {preview.matchedSourceRows.toLocaleString()} /{' '}
-                    {preview.sourceRows.toLocaleString()}
+                    {number(preview.matchedSourceRows)} / {number(preview.sourceRows)}
                   </dd>
-                  <dt>Matched target rows</dt>
+                  <dt>{t('data.sources.matchedTargetRows')}</dt>
                   <dd>
-                    {preview.matchedTargetRows.toLocaleString()} /{' '}
-                    {preview.targetRows.toLocaleString()}
+                    {number(preview.matchedTargetRows)} / {number(preview.targetRows)}
                   </dd>
-                  <dt>Unmatched source / target rows</dt>
+                  <dt>{t('data.sources.unmatchedRows')}</dt>
                   <dd>
-                    {preview.unmatchedSourceRows.toLocaleString()} /{' '}
-                    {preview.unmatchedTargetRows.toLocaleString()}
+                    {number(preview.unmatchedSourceRows)} / {number(preview.unmatchedTargetRows)}
                   </dd>
-                  <dt>Missing source / target keys</dt>
+                  <dt>{t('data.sources.missingKeys')}</dt>
                   <dd>
-                    {preview.missingSourceRows.toLocaleString()} /{' '}
-                    {preview.missingTargetRows.toLocaleString()}
+                    {number(preview.missingSourceRows)} / {number(preview.missingTargetRows)}
                   </dd>
-                  <dt>Duplicate source / target keys</dt>
+                  <dt>{t('data.sources.duplicateKeys')}</dt>
                   <dd>
-                    {preview.duplicateSourceKeys.toLocaleString()} /{' '}
-                    {preview.duplicateTargetKeys.toLocaleString()}
+                    {number(preview.duplicateSourceKeys)} / {number(preview.duplicateTargetKeys)}
                   </dd>
-                  <dt>Matching row pairs</dt>
-                  <dd>{preview.matchedPairs.toLocaleString()}</dd>
+                  <dt>{t('data.sources.rowPairs')}</dt>
+                  <dd>{number(preview.matchedPairs)}</dd>
                 </dl>
-                <p>
-                  Totals use each original row once, regardless of the number of matching pairs.
-                </p>
+                <p>{t('data.sources.countEachRowOnce')}</p>
                 <button type="button" onClick={addRelationship}>
-                  Add this relationship
+                  {t('data.sources.addRelationship')}
                 </button>
               </div>
             )}
@@ -529,12 +525,12 @@ export function DataSourcesDialog({
         )}
         {error && (
           <p className="data-source-error" role="alert">
-            {error}
+            {localizedFeedback(error, t)}
           </p>
         )}
         <div className="data-source-actions">
           <button type="button" onClick={close}>
-            {working ? 'Cancel' : 'Close'}
+            {working ? t('data.sources.cancel') : t('data.sources.close')}
           </button>
           <button
             className="primary"
@@ -542,7 +538,7 @@ export function DataSourcesDialog({
             disabled={working || !dirty || !!relationship}
             onClick={() => void apply()}
           >
-            {working ? 'Working…' : 'Apply data model'}
+            {working ? t('data.sources.working') : t('data.sources.apply')}
           </button>
         </div>
       </div>

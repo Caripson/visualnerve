@@ -1,3 +1,5 @@
+import { routingModeLabel } from '../display';
+import { useI18n } from '../../i18n';
 import { NumberField, ScalingFields } from '../fields';
 import { JsonField } from './JsonField';
 import { RoutingRules } from './RoutingRules';
@@ -8,12 +10,13 @@ export function RouterEditor({
   node,
   patchNode,
 }: NodeSectionProps & { node: Extract<SimulationNode, { type: 'router' }> }) {
+  const { t } = useI18n();
   return (
     <>
       <label className="simulation-field">
-        Routing strategy
+        {t('simulator.editor.router.strategyLabel')}{' '}
         <select
-          aria-label="Routing strategy"
+          aria-label={t('simulator.editor.router.strategyLabel')}
           value={node.router.mode}
           onChange={(event) =>
             patchNode({
@@ -22,7 +25,9 @@ export function RouterEditor({
           }
         >
           {['first-match', 'weighted', 'least-queue', 'available-capacity'].map((mode) => (
-            <option key={mode}>{mode}</option>
+            <option key={mode} value={mode}>
+              {routingModeLabel(t, mode)}
+            </option>
           ))}
         </select>
       </label>
@@ -33,16 +38,17 @@ export function RouterEditor({
         change={(rules) => patchNode({ router: { ...node.router, rules } })}
       />
       <JsonField
-        label="Routing rules"
+        fieldId={`routing-rules:${node.id}`}
+        label={t('simulator.editor.router.routingRules')}
         value={node.router.rules ?? []}
         change={(value) =>
           patchNode({ router: { ...node.router, rules: value as typeof node.router.rules } })
         }
       />
       <label>
-        Fallback connection
+        {t('simulator.editor.router.fallbackConnection')}{' '}
         <select
-          aria-label="Fallback connection"
+          aria-label={t('simulator.editor.router.fallbackConnection')}
           value={node.router.fallbackEdgeId ?? ''}
           onChange={(event) =>
             patchNode({
@@ -50,7 +56,7 @@ export function RouterEditor({
             })
           }
         >
-          <option value="">First valid outgoing connection</option>
+          <option value="">{t('simulator.editor.router.firstValidOutgoingConnection')}</option>
           {draft.edges
             .filter((edge) => edge.sourceNodeId === node.id)
             .map((edge) => (

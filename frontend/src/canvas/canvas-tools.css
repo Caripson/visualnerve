@@ -33,8 +33,8 @@
     height: 44px;
   }
   /* Pinch is the primary zoom gesture. Keep one large Fit control on the canvas. */
-  .react-flow__controls-button[aria-label='Zoom In'],
-  .react-flow__controls-button[aria-label='Zoom Out'] {
+  .react-flow__controls-zoomin,
+  .react-flow__controls-zoomout {
     display: none;
   }
   .canvas-shell:has(.selection-tools) .react-flow__controls {

@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { codeLanguages } from '../code/catalog';
 import type { CodeLanguage } from '../code/types';
 
@@ -12,6 +13,7 @@ export function CodeLanguageSelect({
   disabled?: boolean;
   onChange: (language: CodeLanguage) => void;
 }) {
+  const { t } = useI18n();
   return (
     <select
       aria-label={label}
@@ -19,7 +21,7 @@ export function CodeLanguageSelect({
       disabled={disabled}
       onChange={(event) => onChange(event.target.value as CodeLanguage)}
     >
-      {!value && <option value="">Choose language…</option>}
+      {!value && <option value="">{t('import.codeLanguage.choose')}</option>}
       {codeLanguages.map((language) => (
         <option key={language.id} value={language.id}>
           {language.name}

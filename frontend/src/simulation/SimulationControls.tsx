@@ -1,3 +1,5 @@
+import { runStatusLabel } from './display';
+import { useI18n } from '../i18n';
 import { Play, Pause, Square, RotateCcw, Settings2, SlidersHorizontal } from 'lucide-react';
 import type { SimulationSpeed } from './protocol';
 import type { SimulationModel } from './types';
@@ -21,31 +23,36 @@ export function SimulationActions({
   compact = false,
   ...props
 }: ActionProps & { compact?: boolean }) {
+  const { t } = useI18n();
   return (
     <>
       <button
         className="simulation-play primary"
         aria-label={
           props.canResume
-            ? 'Resume simulation'
+            ? t('simulator.run.resumeAccessible')
             : props.active
-              ? 'Rerun simulation'
-              : 'Play simulation'
+              ? t('simulator.run.rerunAccessible')
+              : t('simulator.run.playAccessible')
         }
         disabled={props.busy}
         onClick={props.play}
       >
         <Play size={compact ? 19 : 15} />
-        {props.canResume ? 'Resume' : props.active ? 'Rerun' : 'Play'}
+        {props.canResume
+          ? t('simulator.run.resume')
+          : props.active
+            ? t('simulator.run.rerun')
+            : t('simulator.run.play')}
       </button>
       <button
         className={compact ? 'simulation-icon-action' : undefined}
-        aria-label="Pause simulation"
+        aria-label={t('simulator.run.pauseAccessible')}
         disabled={props.busy || !props.active || props.paused}
         onClick={props.pause}
       >
         <Pause size={compact ? 19 : 15} />
-        {!compact && 'Pause'}
+        {!compact && t('simulator.run.pause')}
       </button>
       {!compact && <SimulationStopActions {...props} />}
     </>
@@ -53,23 +60,24 @@ export function SimulationActions({
 }
 
 export function SimulationStopActions(props: ActionProps) {
+  const { t } = useI18n();
   return (
     <>
       <button
-        aria-label="Stop simulation"
+        aria-label={t('simulator.run.stopAccessible')}
         disabled={props.busy || !props.active}
         onClick={props.stop}
       >
         <Square size={15} />
-        Stop
+        {t('simulator.run.stop')}{' '}
       </button>
       <button
-        aria-label="Reset simulation"
+        aria-label={t('simulator.run.resetAccessible')}
         disabled={props.busy || !props.hasRun}
         onClick={props.reset}
       >
         <RotateCcw size={15} />
-        Reset
+        {t('simulator.run.reset')}{' '}
       </button>
     </>
   );
@@ -85,24 +93,25 @@ export function SimulationDock({
   status: string;
   openDetails: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="simulation-dock">
       <SimulationActions {...actions} compact />
       <div className="simulation-dock-clock">
-        <output aria-label="Simulated time" title={simulationTime(seconds)}>
+        <output aria-label={t('simulator.run.simulatedTime')} title={simulationTime(seconds)}>
           {simulationTime(seconds)}
         </output>
         <span className="simulation-run-status" role="status">
-          {status}
+          {runStatusLabel(t, status)}
         </span>
       </div>
       <button
-        aria-label="Open simulation details"
+        aria-label={t('simulator.run.openSimulationDetails')}
         className="simulation-details-action"
         onClick={openDetails}
       >
         <SlidersHorizontal size={19} />
-        <span>Details</span>
+        <span>{t('simulator.run.details')}</span>
       </button>
     </div>
   );
@@ -137,12 +146,13 @@ export function SimulationRunSettings({
   createScenario: () => void;
   configure: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <>
       <label>
-        Speed
+        {t('simulator.run.speed')}{' '}
         <select
-          aria-label="Simulation speed"
+          aria-label={t('simulator.run.simulationSpeed')}
           value={speed}
           onChange={(event) =>
             setSpeed(
@@ -154,32 +164,34 @@ export function SimulationRunSettings({
         >
           {[1, 10, 100, 'max'].map((value) => (
             <option key={value} value={value}>
-              {value === 'max' ? 'MAX' : `${value}×`}
+              {value === 'max'
+                ? t('simulator.run.max')
+                : t('simulator.run.', { value: String(value) })}
             </option>
           ))}
         </select>
       </label>
       <label>
-        Duration
+        {t('simulator.run.duration')}{' '}
         <select
-          aria-label="Simulation duration preset"
+          aria-label={t('simulator.run.simulationDurationPreset')}
           value={[3600, 86400, 604800, 2592000, 31536000].includes(duration) ? duration : 'custom'}
           onChange={(event) =>
             event.target.value !== 'custom' && setDuration(Number(event.target.value))
           }
         >
-          <option value={3600}>1 hour</option>
-          <option value={86400}>1 day</option>
-          <option value={604800}>1 week</option>
-          <option value={2592000}>1 month (30 days)</option>
-          <option value={31536000}>1 year (365 days)</option>
-          <option value="custom">Custom</option>
+          <option value={3600}>{t('simulator.run.1Hour')}</option>
+          <option value={86400}>{t('simulator.run.1Day')}</option>
+          <option value={604800}>{t('simulator.run.1Week')}</option>
+          <option value={2592000}>{t('simulator.run.1Month30Days')}</option>
+          <option value={31536000}>{t('simulator.run.1Year365Days')}</option>
+          <option value="custom">{t('simulator.run.custom')}</option>
         </select>
       </label>
       <label>
-        Hours
+        {t('simulator.run.hours')}{' '}
         <input
-          aria-label="Simulation duration hours"
+          aria-label={t('simulator.run.durationHoursAccessible')}
           type="number"
           min={0.001}
           step="any"
@@ -188,9 +200,9 @@ export function SimulationRunSettings({
         />
       </label>
       <label>
-        Seed
+        {t('simulator.run.seed')}{' '}
         <input
-          aria-label="Simulation random seed"
+          aria-label={t('simulator.run.seedAccessible')}
           type="number"
           min={0}
           step={1}
@@ -199,22 +211,22 @@ export function SimulationRunSettings({
         />
       </label>
       <label className="simulation-finish-field">
-        <span>Finish workload</span>
+        <span>{t('simulator.run.finishWorkload')}</span>
         <input
-          aria-label="Finish all generated work"
+          aria-label={t('simulator.run.finishAllGeneratedWork')}
           type="checkbox"
           checked={untilComplete}
           onChange={(event) => setUntilComplete(event.target.checked)}
         />
       </label>
       <label className="simulation-scenario-field">
-        Scenario
+        {t('simulator.run.scenario')}{' '}
         <select
-          aria-label="Simulation scenario"
+          aria-label={t('simulator.run.simulationScenario')}
           value={scenarioId}
           onChange={(event) => setScenarioId(event.target.value)}
         >
-          <option value="">Base model</option>
+          <option value="">{t('simulator.run.baseModel')}</option>
           {model.scenarios.map((scenario) => (
             <option key={scenario.id} value={scenario.id}>
               {scenario.name}
@@ -222,10 +234,10 @@ export function SimulationRunSettings({
           ))}
         </select>
       </label>
-      <button onClick={createScenario}>New scenario</button>
-      <button aria-label="Assumptions: configure simulation" onClick={configure}>
+      <button onClick={createScenario}>{t('simulator.run.newScenario')}</button>
+      <button aria-label={t('simulator.run.assumptionsConfigureSimulation')} onClick={configure}>
         <Settings2 size={15} />
-        Assumptions
+        {t('simulator.run.assumptions')}{' '}
       </button>
     </>
   );

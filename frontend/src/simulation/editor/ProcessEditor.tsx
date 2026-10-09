@@ -1,3 +1,4 @@
+import { useI18n } from '../../i18n';
 import { EntityCollection } from './EntityCollection';
 import { ProcessHierarchy } from '../process-hierarchy';
 import { removeSimulationEntity } from '../deletion';
@@ -64,29 +65,30 @@ export class ProcessModelEditor {
   }
 }
 export function ProcessEditor({ draft, setDraft, scenarioId }: EditorSectionProps) {
+  const { t } = useI18n();
   const processes = draft.processes ?? [];
   const edit = (action: (editor: ProcessModelEditor) => SimulationModel) =>
     setDraft((model) => action(new ProcessModelEditor(model)));
   return (
     <>
       <p>
-        Main processes group real steps. Add subprocesses to reveal more detail. Each Work step
-        keeps its own processing time, capacity, cost and shared resources; a group adds no extra
-        processing charge.
+        {t(
+          'simulator.editor.process.mainProcessesGroupRealStepsAddSubprocessesToRevealMoreDetailEach',
+        )}
       </p>
       {!processes.length && (
         <p className="simulation-notice">
-          No process groups yet. Add a main process, then assign existing steps below.
+          {t('simulator.editor.process.noProcessGroupsYetAddAMainProcessThenAssignExistingSteps')}
         </p>
       )}
-      <EntityCollection items={processes} label="Process group to edit">
+      <EntityCollection items={processes} label={t('simulator.editor.process.processGroupToEdit')}>
         {(process) => (
           <fieldset aria-label={process.name}>
             <legend>{process.name}</legend>
             <label>
-              Name
+              {t('simulator.common.name')}{' '}
               <input
-                aria-label={`Process name ${process.id}`}
+                aria-label={t('simulator.editor.process.processName', { id: String(process.id) })}
                 value={process.name}
                 onChange={(event) =>
                   edit((editor) => editor.update(process.id, { name: event.target.value }))
@@ -94,9 +96,11 @@ export function ProcessEditor({ draft, setDraft, scenarioId }: EditorSectionProp
               />
             </label>
             <label>
-              Description
+              {t('simulator.common.description')}{' '}
               <textarea
-                aria-label={`Process description ${process.id}`}
+                aria-label={t('simulator.editor.process.processDescription', {
+                  id: String(process.id),
+                })}
                 value={process.description ?? ''}
                 onChange={(event) =>
                   edit((editor) => editor.update(process.id, { description: event.target.value }))
@@ -104,9 +108,11 @@ export function ProcessEditor({ draft, setDraft, scenarioId }: EditorSectionProp
               />
             </label>
             <label>
-              Parent process
+              {t('simulator.editor.process.parentProcess')}{' '}
               <select
-                aria-label={`Parent process ${process.id}`}
+                aria-label={t('simulator.editor.process.parentProcess.id', {
+                  id: String(process.id),
+                })}
                 value={process.parentId ?? ''}
                 onChange={(event) =>
                   edit((editor) =>
@@ -114,7 +120,7 @@ export function ProcessEditor({ draft, setDraft, scenarioId }: EditorSectionProp
                   )
                 }
               >
-                <option value="">Main process (top level)</option>
+                <option value="">{t('simulator.editor.process.mainProcessTopLevel')}</option>
                 {new ProcessModelEditor(draft).parentChoices(process.id).map((parent) => (
                   <option key={parent.id} value={parent.id}>
                     {parent.name}
@@ -123,19 +129,20 @@ export function ProcessEditor({ draft, setDraft, scenarioId }: EditorSectionProp
               </select>
             </label>
             <p>
-              {draft.nodes.filter((node) => node.processId === process.id).length} steps assigned
-              directly. Child steps also contribute to the parent’s observed metrics.
+              {t('simulator.editor.process.assignedSteps', {
+                count: draft.nodes.filter((node) => node.processId === process.id).length,
+              })}
             </p>
             {!scenarioId && (
               <div className="simulation-row">
                 <button onClick={() => edit((editor) => editor.create(process.id))}>
-                  Add subprocess to {process.name}
+                  {t('simulator.editor.process.addSubprocess', { processName: process.name })}
                 </button>
                 <button
                   className="danger"
                   onClick={() => edit((editor) => editor.remove(process.id))}
                 >
-                  Delete process group {process.name}
+                  {t('simulator.editor.process.deleteGroup', { processName: process.name })}
                 </button>
               </div>
             )}
@@ -143,26 +150,31 @@ export function ProcessEditor({ draft, setDraft, scenarioId }: EditorSectionProp
         )}
       </EntityCollection>
       {!scenarioId && (
-        <button onClick={() => edit((editor) => editor.create())}>Add main process</button>
+        <button onClick={() => edit((editor) => editor.create())}>
+          {t('simulator.editor.process.addMainProcess')}
+        </button>
       )}
       {processes.length > 0 && (
         <fieldset className="simulation-process-editor-members">
-          <legend>Assign steps to a process</legend>
+          <legend>{t('simulator.editor.process.assignStepsToAProcess')}</legend>
           <p>
-            Shared resources keep one global pool even when used by several subprocesses. Deleting a
-            group preserves its steps and lifts them and its subprocesses to its parent.
+            {t(
+              'simulator.editor.process.sharedResourcesKeepOneGlobalPoolEvenWhenUsedBySeveralSubprocesses',
+            )}
           </p>
           {draft.nodes.map((node) => (
             <label key={node.id}>
               {node.name}
               <select
-                aria-label={`Process membership ${node.name}`}
+                aria-label={t('simulator.editor.process.processMembership', {
+                  name: String(node.name),
+                })}
                 value={node.processId ?? ''}
                 onChange={(event) =>
                   edit((editor) => editor.assign(node.id, event.target.value || undefined))
                 }
               >
-                <option value="">Outside process groups</option>
+                <option value="">{t('simulator.editor.node.outsideProcessGroups')}</option>
                 {processes.map((process) => (
                   <option key={process.id} value={process.id}>
                     {process.name}

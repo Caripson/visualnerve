@@ -1,3 +1,5 @@
+import { localizedFeedback } from '../components/localized-feedback';
+import { useI18n } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Modal } from '../components/Modal';
 import { workspace } from '../storage/workspace';
@@ -15,6 +17,7 @@ export function LegacyEncryptedBackup({
   close: () => void;
   complete?: (filename: string) => void;
 }) {
+  const { t } = useI18n();
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [busy, setBusy] = useState(false);
@@ -40,22 +43,14 @@ export function LegacyEncryptedBackup({
     close();
   };
   return (
-    <Modal title="Encrypted transfer backup" close={cancel}>
-      <p>
-        Create an encrypted copy to move this workspace to the dedicated encrypted app or keep a
-        protected backup. This action does not encrypt, migrate or delete the existing local
-        workspace.
-      </p>
-      <p className="muted">
-        The transfer has its own password and recovery key. Later changes to your workspace or its
-        credentials do not update this file. Plaintext exports and older readable backups remain
-        readable.
-      </p>
+    <Modal title={t('security.legacyTransfer.title')} close={cancel}>
+      <p>{t('security.legacyTransfer.sourceUnchanged')}</p>
+      <p className="muted">{t('security.legacyTransfer.independentCredentials')}</p>
       {prepared ? (
         <VaultRecoveryNotice
           recoveryKey={prepared.recoveryKey}
           subject="backup"
-          continueLabel="Download encrypted backup"
+          continueLabel={t('security.legacyTransfer.download')}
           continue={() => {
             if (busy) return;
             setBusy(true);
@@ -126,7 +121,7 @@ export function LegacyEncryptedBackup({
           }}
         >
           <label className="field">
-            <span>Transfer backup password</span>
+            <span>{t('security.legacyTransfer.password')}</span>
             <input
               type="password"
               autoComplete="new-password"
@@ -138,12 +133,9 @@ export function LegacyEncryptedBackup({
               onChange={(event) => setPassword(event.target.value)}
             />
           </label>
-          <p className="muted">
-            Use at least 12 characters. Choose a long, unique passphrase and keep it in a protected
-            location.
-          </p>
+          <p className="muted">{t('security.legacyTransfer.passphraseHint')}</p>
           <label className="field">
-            <span>Confirm transfer password</span>
+            <span>{t('security.legacyTransfer.confirmPassword')}</span>
             <input
               type="password"
               autoComplete="new-password"
@@ -156,16 +148,18 @@ export function LegacyEncryptedBackup({
           </label>
           <div className="modal-actions">
             <button className="primary" disabled={busy} type="submit">
-              {busy ? 'Encrypting backup…' : 'Prepare encrypted backup'}
+              {busy
+                ? t('security.legacyTransfer.encrypting')
+                : t('security.legacyTransfer.prepare')}
             </button>
           </div>
         </form>
       )}
       <div className="modal-actions">
-        <button onClick={cancel}>Cancel</button>
+        <button onClick={cancel}>{t('security.action.cancel')}</button>
       </div>
-      {busy && prepared && <p role="status">Checking the original workspace before download…</p>}
-      {message && <p role="alert">{message}</p>}
+      {busy && prepared && <p role="status">{t('security.legacyTransfer.checkingDownload')}</p>}
+      {message && <p role="alert">{localizedFeedback(message, t)}</p>}
     </Modal>
   );
 }

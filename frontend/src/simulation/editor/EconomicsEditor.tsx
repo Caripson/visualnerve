@@ -1,21 +1,23 @@
+import { useI18n } from '../../i18n';
 import { NumberField, ScalingFields } from '../fields';
 import { JsonField } from './JsonField';
 import type { ParticleType, Resource, Improvement, SimulationNode } from '../types';
 import type { EditorSectionProps } from './types';
 export function EconomicsEditor({ draft, setDraft, scenarioId }: EditorSectionProps) {
+  const { t } = useI18n();
   return (
     <>
       <label className="simulation-field">
-        Currency
+        {t('simulator.common.currency')}{' '}
         <input
-          aria-label="Simulation currency"
+          aria-label={t('simulator.editor.economics.simulationCurrency')}
           disabled={!!scenarioId}
           value={draft.currency}
           onChange={(event) => setDraft((model) => ({ ...model, currency: event.target.value }))}
         />
       </label>
       <NumberField
-        label="Maximum budget"
+        label={t('simulator.editor.economics.maximumBudget')}
         value={draft.economics?.maximumBudget}
         change={(value) =>
           setDraft((model) => ({
@@ -25,9 +27,9 @@ export function EconomicsEditor({ draft, setDraft, scenarioId }: EditorSectionPr
         }
       />
       <label className="simulation-field">
-        Assumptions
+        {t('simulator.run.assumptions')}{' '}
         <textarea
-          aria-label="Simulation assumptions"
+          aria-label={t('simulator.editor.economics.simulationAssumptions')}
           disabled={!!scenarioId}
           rows={5}
           value={draft.description ?? ''}
@@ -35,8 +37,9 @@ export function EconomicsEditor({ draft, setDraft, scenarioId }: EditorSectionPr
         />
       </label>
       <p>
-        Contribution = realized revenue − operating, resource and scaling costs. Cash impact also
-        deducts investment. Lost revenue is reported separately.
+        {t(
+          'simulator.editor.economics.contributionRealizedRevenueOperatingResourceAndScalingCostsCashImpactAlsoDeducts',
+        )}
       </p>
     </>
   );

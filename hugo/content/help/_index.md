@@ -6,6 +6,8 @@ outputs: ["HTML", "JSON"]
 
 Visual Nerve turns ideas, data and code into diagrams you can explore, annotate, simulate and explain. Start with one task, then follow the related guides as your diagram grows.
 
+**The app is available in eight languages:** English, Danish, Norwegian Bokmål, Swedish, Finnish, German, Spanish and French. Choose [App language in Settings](/help/settings/#app-language). This Help and the API reference are in English; diagram content and narration are independent of the interface language.
+
 ## Start with your goal
 
 | I want to… | Start here |

@@ -1,3 +1,5 @@
+import { routingFieldLabel, routingOperatorLabel } from '../display';
+import { useI18n } from '../../i18n';
 import { NumberField } from '../fields';
 import type { RoutingCondition, RoutingRule, SimulationModel } from '../types';
 
@@ -26,24 +28,30 @@ export function RoutingRules({
   rules: RoutingRule[];
   change: (rules: RoutingRule[]) => void;
 }) {
+  const { t } = useI18n();
   const edges = model.edges.filter((edge) => edge.sourceNodeId === nodeId);
   const patch = (index: number, partial: Partial<RoutingRule>) =>
     change(rules.map((rule, i) => (i === index ? { ...rule, ...partial } : rule)));
   return (
     <fieldset>
-      <legend>Routing rules</legend>
+      <legend>{t('simulator.editor.router.routingRules')}</legend>
       <p>
-        Rules select a valid outgoing connection. Weighted routing uses the relative weights of
-        matching rules.
+        {t(
+          'simulator.editor.routingRules.rulesSelectAValidOutgoingConnectionWeightedRoutingUsesTheRelativeWeights',
+        )}
       </p>
       {rules.map((rule, index) => (
         <fieldset key={index}>
-          <legend>Rule {index + 1}</legend>
+          <legend>
+            {t('simulator.editor.routingRules.rule.value1', { ruleNumber: index + 1 })}
+          </legend>
           <div className="simulation-grid">
             <label>
-              Destination
+              {t('simulator.editor.routingRules.destination')}{' '}
               <select
-                aria-label={`Rule ${index + 1} destination`}
+                aria-label={t('simulator.editor.routingRules.ruleDestination', {
+                  ruleNumber: String(index + 1),
+                })}
                 value={rule.edgeId}
                 onChange={(event) => patch(index, { edgeId: event.target.value })}
               >
@@ -55,20 +63,24 @@ export function RoutingRules({
               </select>
             </label>
             <NumberField
-              label={`Rule ${index + 1} weight`}
+              label={t('simulator.editor.routingRules.ruleWeight', {
+                ruleNumber: String(index + 1),
+              })}
               value={rule.weight ?? 1}
               change={(weight) => patch(index, { weight })}
             />
             <label>
-              Condition
+              {t('simulator.editor.routingRules.condition')}{' '}
               <select
-                aria-label={`Rule ${index + 1} condition`}
+                aria-label={t('simulator.editor.routingRules.ruleCondition', {
+                  ruleNumber: String(index + 1),
+                })}
                 value={rule.condition?.field ?? ''}
                 onChange={(event) =>
                   patch(index, { condition: newCondition(event.target.value, model) })
                 }
               >
-                <option value="">Always matches</option>
+                <option value="">{t('simulator.editor.routingRules.alwaysMatches')}</option>
                 {[
                   'particleTypeId',
                   'complexity',
@@ -79,7 +91,9 @@ export function RoutingRules({
                   'availableCapacity',
                   'utilization',
                 ].map((field) => (
-                  <option key={field}>{field}</option>
+                  <option key={field} value={field}>
+                    {routingFieldLabel(t, field)}
+                  </option>
                 ))}
               </select>
             </label>
@@ -87,12 +101,14 @@ export function RoutingRules({
               <ConditionFields
                 model={model}
                 value={rule.condition}
-                label={`Rule ${index + 1}`}
+                label={t('simulator.editor.routingRules.rule.value1', {
+                  ruleNumber: String(index + 1),
+                })}
                 change={(condition) => patch(index, { condition })}
               />
             )}
             <button onClick={() => change(rules.filter((_, i) => i !== index))}>
-              Remove rule {index + 1}
+              {t('simulator.editor.router.removeRule', { ruleNumber: index + 1 })}
             </button>
           </div>
         </fieldset>
@@ -101,9 +117,13 @@ export function RoutingRules({
         disabled={!edges.length}
         onClick={() => change([...rules, { edgeId: edges[0].id, weight: 1 }])}
       >
-        Add routing rule
+        {t('simulator.editor.routingRules.addRoutingRule')}
       </button>
-      {!edges.length && <p>Add an outgoing connection before configuring routing rules.</p>}
+      {!edges.length && (
+        <p>
+          {t('simulator.editor.routingRules.addAnOutgoingConnectionBeforeConfiguringRoutingRules')}
+        </p>
+      )}
     </fieldset>
   );
 }
@@ -118,14 +138,15 @@ function ConditionFields({
   label: string;
   change: (condition: RoutingCondition) => void;
 }) {
+  const { t } = useI18n();
   const patch = (partial: Record<string, unknown>) =>
     change({ ...value, ...partial } as RoutingCondition);
   return (
     <>
       <label>
-        Comparison
+        {t('simulator.editor.routingRules.comparison')}{' '}
         <select
-          aria-label={`${label} comparison`}
+          aria-label={t('simulator.editor.routingRules.comparison.label', { label: String(label) })}
           value={value.operator}
           onChange={(event) => patch({ operator: event.target.value })}
         >
@@ -133,15 +154,17 @@ function ConditionFields({
             ? ['eq', 'neq']
             : ['eq', 'neq', 'gt', 'gte', 'lt', 'lte']
           ).map((operator) => (
-            <option key={operator}>{operator}</option>
+            <option key={operator} value={operator}>
+              {routingOperatorLabel(t, operator)}
+            </option>
           ))}
         </select>
       </label>
       {value.field === 'attribute' && (
         <label>
-          Attribute name
+          {t('simulator.editor.routingRules.attributeName')}{' '}
           <input
-            aria-label={`${label} attribute`}
+            aria-label={t('simulator.editor.routingRules.attribute', { label: String(label) })}
             value={value.key}
             onChange={(event) => patch({ key: event.target.value })}
           />
@@ -151,9 +174,9 @@ function ConditionFields({
         value.field === 'availableCapacity' ||
         value.field === 'utilization') && (
         <label>
-          Inspect node / resource
+          {t('simulator.editor.routingRules.inspectNodeResource')}{' '}
           <select
-            aria-label={`${label} state target`}
+            aria-label={t('simulator.editor.routingRules.stateTarget', { label: String(label) })}
             value={value.resourceId ? `res:${value.resourceId}` : `node:${value.nodeId ?? ''}`}
             onChange={(event) =>
               patch(
@@ -180,9 +203,9 @@ function ConditionFields({
       )}
       {value.field === 'particleTypeId' ? (
         <label>
-          Particle type
+          {t('simulator.common.particleType')}{' '}
           <select
-            aria-label={`${label} particle type`}
+            aria-label={t('simulator.editor.routingRules.particleType', { label: String(label) })}
             value={value.value}
             onChange={(event) => patch({ value: event.target.value })}
           >
@@ -196,9 +219,11 @@ function ConditionFields({
       ) : value.field === 'attribute' ? (
         <>
           <label>
-            Value type
+            {t('simulator.editor.routingRules.valueType')}{' '}
             <select
-              aria-label={`${label} value type`}
+              aria-label={t('simulator.editor.routingRules.valueType.label', {
+                label: String(label),
+              })}
               value={typeof value.value}
               onChange={(event) =>
                 patch({
@@ -211,25 +236,29 @@ function ConditionFields({
                 })
               }
             >
-              <option value="string">Text</option>
-              <option value="number">Number</option>
-              <option value="boolean">Yes/no</option>
+              <option value="string">{t('simulator.editor.routingRules.text')}</option>
+              <option value="number">{t('simulator.editor.routingRules.number')}</option>
+              <option value="boolean">{t('simulator.editor.routingRules.yesNo')}</option>
             </select>
           </label>
           <label>
-            Value
+            {t('simulator.editor.routingRules.value')}{' '}
             {typeof value.value === 'boolean' ? (
               <select
-                aria-label={`${label} value`}
+                aria-label={t('simulator.editor.routingRules.value.label', {
+                  label: String(label),
+                })}
                 value={String(value.value)}
                 onChange={(event) => patch({ value: event.target.value === 'true' })}
               >
-                <option value="true">Yes</option>
-                <option value="false">No</option>
+                <option value="true">{t('simulator.common.yes')}</option>
+                <option value="false">{t('simulator.common.no')}</option>
               </select>
             ) : (
               <input
-                aria-label={`${label} value`}
+                aria-label={t('simulator.editor.routingRules.value.label', {
+                  label: String(label),
+                })}
                 type={typeof value.value === 'number' ? 'number' : 'text'}
                 value={value.value}
                 onChange={(event) =>
@@ -246,7 +275,7 @@ function ConditionFields({
         </>
       ) : (
         <NumberField
-          label={`${label} threshold`}
+          label={t('simulator.editor.routingRules.threshold', { label: String(label) })}
           value={value.value}
           change={(number) => patch({ value: number ?? 0 })}
         />

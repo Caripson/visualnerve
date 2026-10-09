@@ -1,3 +1,5 @@
+import { controlLabel, controlModeKeys } from './ui-labels';
+import { useI18n } from '../i18n';
 import { useEffect, useId, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent, PointerEvent } from 'react';
 import type { SpatialCamera, SpatialPoint } from './types';
@@ -71,12 +73,6 @@ function circlePoint(axis: (typeof axes)[number], angle: number): SpatialPoint {
       ? { x: b, y: 0, z: a }
       : { x: a, y: b, z: 0 };
 }
-function controlLabel(mode: SpatialNavigationMode, axis: SpatialNavigationAxis) {
-  const verb = mode[0].toUpperCase() + mode.slice(1);
-  return axis === 'free'
-    ? `${verb} view freely`
-    : `${verb} view ${mode === 'rotate' ? 'around' : 'along'} ${axis.toUpperCase()} axis`;
-}
 function ModeIcon({ mode }: { mode: SpatialNavigationMode }) {
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -139,6 +135,7 @@ export function NavigationGizmo({
   onNavigate,
   onGestureEnd,
 }: NavigationGizmoProps) {
+  const { t } = useI18n();
   const [mode, setMode] = useState<SpatialNavigationMode>('rotate');
   const compact = useCompactLayout();
   const [expanded, setExpanded] = useState(false);
@@ -216,7 +213,7 @@ export function NavigationGizmo({
     return {
       role: 'button',
       tabIndex: disabled ? -1 : 0,
-      'aria-label': controlLabel(mode, axis),
+      'aria-label': controlLabel(t, mode, axis),
       'aria-disabled': disabled,
       'aria-describedby': instructionsId,
       'data-axis': axis,
@@ -235,7 +232,7 @@ export function NavigationGizmo({
       role="group"
       data-testid="spatial-navigation-gizmo"
       data-mode={mode}
-      aria-label="3D view controls"
+      aria-label={t('spatial.viewControlsGroup')}
       aria-disabled={disabled}
       data-compact={compact}
       data-expanded={expanded}
@@ -243,7 +240,7 @@ export function NavigationGizmo({
       {compact && (
         <button
           className="spatial-gizmo-toggle"
-          aria-label={expanded ? 'Hide 3D handles' : 'Show 3D handles'}
+          aria-label={expanded ? t('spatial.hideHandles') : t('spatial.showHandles')}
           aria-expanded={expanded}
           onClick={() => {
             finish();
@@ -251,17 +248,21 @@ export function NavigationGizmo({
           }}
         >
           <ModeIcon mode={mode} />
-          {expanded ? 'Close' : 'Handles'}
+          {expanded ? t('spatial.closeHandles') : t('spatial.handlesToggle')}
         </button>
       )}
       {(!compact || expanded) && (
         <>
-          <div className="spatial-gizmo-modes" role="toolbar" aria-label="3D control mode">
+          <div
+            className="spatial-gizmo-modes"
+            role="toolbar"
+            aria-label={t('spatial.controlModeToolbar')}
+          >
             {(['move', 'rotate', 'scale'] as const).map((item) => (
               <button
                 key={item}
                 type="button"
-                aria-label={`${item[0].toUpperCase()}${item.slice(1)} view`}
+                aria-label={t(controlModeKeys[item].aria)}
                 aria-pressed={mode === item}
                 disabled={disabled}
                 onClick={() => {
@@ -270,17 +271,14 @@ export function NavigationGizmo({
                 }}
               >
                 <ModeIcon mode={item} />
-                <span>
-                  {item[0].toUpperCase()}
-                  {item.slice(1)}
-                </span>
+                <span>{t(controlModeKeys[item].label)}</span>
               </button>
             ))}
           </div>
           <svg
             className="spatial-gizmo-space"
             viewBox="0 0 156 126"
-            aria-label={`${mode[0].toUpperCase()}${mode.slice(1)} view handles`}
+            aria-label={t(controlModeKeys[mode].handles)}
           >
             <path className="spatial-gizmo-ground" d="M78 89 32 68 78 47 124 68Z" />
             {axes.map((axis, index) => {
@@ -355,11 +353,11 @@ export function NavigationGizmo({
           </svg>
           <p id={instructionsId}>
             {mode === 'move'
-              ? 'Drag axes to pan the view'
+              ? t('spatial.panHandleHint')
               : mode === 'rotate'
-                ? 'Drag rings to rotate the view'
-                : 'Drag to zoom the view'}
-            <span>Arrow keys fine-tune · Shift speeds up</span>
+                ? t('spatial.rotateHandleHint')
+                : t('spatial.zoomHandleHint')}
+            <span>{t('spatial.keyboardFineTuneHint')}</span>
           </p>
         </>
       )}

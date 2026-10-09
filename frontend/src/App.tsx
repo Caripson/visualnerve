@@ -1,3 +1,4 @@
+import { useI18n } from './i18n';
 import { PresentationFeature } from './presentation/PresentationFeature';
 import { SimulationFeature } from './simulation/SimulationFeature';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -7,7 +8,7 @@ import { Sidebar } from './components/Sidebar';
 import { LazyDialogBoundary } from './components/LazyDialogBoundary';
 import { PreferenceSaveNotice } from './components/PreferenceSaveNotice';
 import { Toolbar, FilterBar } from './components/Toolbar';
-import { Properties } from './components/Properties';
+import { PropertiesFeature as Properties } from './components/PropertiesFeature';
 import { Canvas } from './canvas/Canvas';
 import { LocalBadge, PrivacyIntro, RestoreBackup } from './components/DataPrivacy';
 import { useEditor } from './state/editor';
@@ -115,7 +116,22 @@ type AppOperation = {
   assertCurrent: () => void;
 };
 export function App() {
+  const { t, plural } = useI18n();
   const compact = useCompactLayout();
+  const displayMessage = (value: string) => {
+    if (
+      value ===
+      'Collapse the overview before opening more groups; at most 2,000 expansions can be saved.'
+    )
+      return t('overview.expansionLimit');
+    if (value === 'The diagram changed during layout. Run layout again.')
+      return t('toolbar.layoutDiagramChanged');
+    if (value === 'Drawing limit reached. Erase some strokes or draw shorter lines.')
+      return t('editor.drawing.drawingLimitReachedEraseSomeStrokesOrDrawShorterLines');
+    if (value === 'Drawing limit reached. Erase some strokes before adding more.')
+      return t('editor.drawing.drawingLimitReachedEraseSomeStrokesBeforeAddingMore');
+    return value;
+  };
   const [dialog, setDialog] = useState<DialogName | null>(null);
   const [ready, setReady] = useState(false);
   const [backup, setBackup] = useState<WorkspaceBackup | null>(null);
@@ -630,8 +646,8 @@ export function App() {
             <GitBranch size={31} />
           </div>
           <h1>Visual Nerve</h1>
-          <p>Accept local browser storage to open your workspace.</p>
-          {status === 'error' && <p className="form-error">{message}</p>}
+          <p>{t('app.storageGateHint')}</p>
+          {status === 'error' && <p className="form-error">{displayMessage(message)}</p>}
         </main>
         {ready && status !== 'error' && <PrivacyIntro />}
       </div>
@@ -647,14 +663,15 @@ export function App() {
         {compact && mobilePanel && (
           <button
             className="mobile-scrim"
-            aria-label="Close panel"
+            aria-label={t('app.closePanel')}
             tabIndex={-1}
             onClick={closeMobilePanel}
           />
         )}
         <MobileWorkspacePanel
           className="projects-shell"
-          label="Projects"
+          panelKind="projects"
+          label={t('workspace.projects')}
           compact={compact}
           active={compact && mobilePanel === 'projects'}
           close={closeMobilePanel}
@@ -679,21 +696,21 @@ export function App() {
               {filters && <FilterBar />}
               {status === 'conflict' && (
                 <div className="notice conflict-notice">
-                  <span>{message || 'Another tab changed this project.'}</span>
+                  <span>{message || t('app.conflictFallback')}</span>
                   <button onClick={() => reportFailure(() => workspace.resolve('copy'))}>
-                    Save local copy
+                    {t('app.saveLocalCopy')}
                   </button>
                   <button onClick={() => reportFailure(() => workspace.resolve('discard'))}>
-                    Use saved version
+                    {t('app.useSavedVersion')}
                   </button>
                   <button onClick={() => reportFailure(() => workspace.resolve('retry'))}>
-                    Replace saved version
+                    {t('app.replaceSavedVersion')}
                   </button>
                 </div>
               )}
               {(commandError || (status === 'error' && message)) && (
                 <div className="notice error-notice" role="alert">
-                  <span>{commandError || message}</span>
+                  <span>{displayMessage(commandError || message)}</span>
                   {commandError ? (
                     <button
                       onClick={() =>
@@ -705,14 +722,14 @@ export function App() {
                         }))
                       }
                     >
-                      Dismiss edit error
+                      {t('app.dismissEditError')}
                     </button>
                   ) : (
                     <>
                       <button onClick={() => reportFailure(() => workspace.settled())}>
-                        Retry save
+                        {t('app.retrySave')}
                       </button>
-                      <button onClick={() => open('settings')}>Settings</button>
+                      <button onClick={() => open('settings')}>{t('app.settings')}</button>
                     </>
                   )}
                 </div>
@@ -722,29 +739,28 @@ export function App() {
               <PresentationFeature />
               <div className="canvas-statusbar">
                 <span>
-                  <LocalBadge onClick={() => open('settings')} /> {viewCounts.nodes}{' '}
-                  {graph.dataset ? 'visible nodes' : 'nodes'} <i>·</i> {viewCounts.edges}{' '}
-                  connections
+                  <LocalBadge onClick={() => open('settings')} />{' '}
+                  {plural(
+                    graph.dataset ? 'app.visibleNodeCountOne' : 'app.nodeCountOne',
+                    graph.dataset ? 'app.visibleNodeCount' : 'app.nodeCount',
+                    viewCounts.nodes,
+                  )}{' '}
+                  <i>·</i>{' '}
+                  {plural('app.connectionCountOne', 'app.connectionCount', viewCounts.edges)}
                   {viewCounts.hidden > 0 && (
                     <>
                       {' '}
-                      <i>·</i> {viewCounts.hidden} hidden
+                      <i>·</i> {t('app.hiddenCount', { count: viewCounts.hidden })}
                     </>
                   )}
                 </span>
                 <span>
                   {getSpatialView(graph).mode === '3d' ? (
-                    <>
-                      Drag: rotate <i>·</i> Scroll: zoom <i>·</i> Select: inspect
-                    </>
+                    <>{t('app.spatialStatusHint')}</>
                   ) : graph.diagram.type === 'mindmap' ? (
-                    <>
-                      Tab: subtopic <i>·</i> Enter: sibling <i>·</i> Double-click: edit
-                    </>
+                    <>{t('app.mindmapStatusHint')}</>
                   ) : (
-                    <>
-                      Drag to select <i>·</i> Space to pan <i>·</i> F to fit
-                    </>
+                    <>{t('app.selectionStatusHint')}</>
                   )}
                 </span>
               </div>
@@ -755,71 +771,72 @@ export function App() {
                 <GitBranch size={31} />
               </div>
               <span className="eyebrow">VISUAL NERVE</span>
-              <h1>
-                Give your thinking
-                <br />a place to connect.
-              </h1>
+              <h1>{t('app.welcomeTitle')}</h1>
               <p>
-                From a first idea to the whole picture.
+                {t('app.welcomeIntro')}
                 <br />
-                Your work is saved only in this browser. No account or cloud storage.
+                {t('app.welcomeLocalHint')}
               </p>
               <LocalBadge onClick={() => open('settings')} />
               <div className="welcome-actions">
                 <button className="primary" onClick={() => open('new')}>
                   <Plus size={16} />
-                  Create a diagram
+                  {t('app.createDiagram')}
                 </button>
                 <button onClick={() => open('sql')}>
                   <Database size={16} />
-                  Import SQL script
+                  {t('toolbar.importSql')}
                 </button>
                 <button onClick={() => open('code')}>
                   <Code2 size={16} />
-                  Visualize code
+                  {t('toolbar.visualizeCode')}
                 </button>
                 <a href="/help/">
-                  Explore the guide
+                  {t('app.exploreGuide')}
                   <ArrowUpRight size={14} />
                 </a>
               </div>
               <button
                 className="mobile-only"
-                aria-label="Open projects"
+                data-mobile-panel-trigger="projects"
+                aria-label={t('workspace.openProjects')}
                 onClick={() => useEditor.setState({ mobilePanel: 'projects' })}
               >
                 <Menu size={18} />
-                Projects
+                {t('workspace.projects')}
               </button>
               <div className="welcome-bottom">
-                <span>Mind maps</span>
+                <span>{t('app.mindmapsCategory')}</span>
                 <i>·</i>
-                <span>Flows</span>
+                <span>{t('app.flowsCategory')}</span>
                 <i>·</i>
-                <span>Timelines</span>
+                <span>{t('app.timelinesCategory')}</span>
                 <i>·</i>
-                <span>Systems</span>
+                <span>{t('app.systemsCategory')}</span>
               </div>
-              {!ready && <p className="muted">Opening local workspace…</p>}
-              {status === 'error' && <p className="form-error">{message}</p>}
+              {!ready && <p className="muted">{t('app.openingLocalWorkspace')}</p>}
+              {status === 'error' && <p className="form-error">{displayMessage(message)}</p>}
             </div>
           )}
         </main>
         <MobileWorkspacePanel
           className="properties-shell"
-          label="Properties"
+          panelKind="details"
+          label={t('workspace.properties')}
           compact={compact}
           active={compact && mobilePanel === 'details'}
           close={closeMobilePanel}
         >
           <button
             className="mobile-only mobile-sheet-close"
-            aria-label="Close properties"
+            data-mobile-panel-dismiss="details"
+            aria-label={t('app.closeProperties')}
             onClick={() => useEditor.setState({ mobilePanel: null })}
           >
             <X size={19} />
           </button>
           <Properties
+            active={!compact || mobilePanel === 'details'}
             editCsv={(datasetId) => {
               const dataset =
                 graph &&
@@ -863,7 +880,7 @@ export function App() {
       </div>
       <input
         ref={file}
-        aria-label="Import file"
+        aria-label={t('app.importFilePicker')}
         className="file-input"
         type="file"
         accept={importFileAccept}
@@ -970,15 +987,13 @@ export function App() {
       </LazyDialogBoundary>
       {draggingFile && (
         <div className="csv-drop-overlay">
-          <strong>Drop a file to create a diagram</strong>
-          <span>
-            Explore CSV data, SQL queries, source code and dependencies, or import a diagram.
-          </span>
+          <strong>{t('app.dropFileTitle')}</strong>
+          <span>{t('app.dropFileHint')}</span>
         </div>
       )}
       {importing && (
         <div className="csv-import-progress" role="status">
-          Preparing data in the background…
+          {t('app.preparingImportBackground')}
         </div>
       )}
     </ReactFlowProvider>

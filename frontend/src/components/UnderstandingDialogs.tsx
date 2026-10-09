@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { lazy, Suspense } from 'react';
 import type { DialogName } from '../App';
 import { useEditor } from '../state/editor';
@@ -20,10 +21,11 @@ export function UnderstandingDialogs({
   name: DialogName | null;
   close: () => void;
 }) {
+  const { t } = useI18n();
   const graph = useEditor((state) => state.graph);
   if (!graph || !['overview', 'questions', 'history'].includes(name ?? '')) return null;
   return (
-    <Suspense fallback={<p role="status">Opening diagram tools…</p>}>
+    <Suspense fallback={<p role="status">{t('shared.openingDiagramTools')}</p>}>
       {name === 'overview' && <Overview key={graph.diagram.id} close={close} />}
       {name === 'questions' && <Questions key={graph.diagram.id} close={close} />}
       {name === 'history' && (

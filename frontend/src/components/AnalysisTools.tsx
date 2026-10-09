@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { lazy, useState } from 'react';
 import { Network } from 'lucide-react';
 import { useEditor } from '../state/editor';
@@ -11,6 +12,7 @@ const RelationshipDialog = lazy(() =>
 );
 
 export function AnalysisTools({ onOpen }: { onOpen?: () => void } = {}) {
+  const { t } = useI18n();
   const graph = useEditor((state) => state.graph);
   const selected = useEditor((state) => state.selectedNodes);
   const [open, setOpen] = useState(false);
@@ -19,11 +21,11 @@ export function AnalysisTools({ onOpen }: { onOpen?: () => void } = {}) {
     <div className="analysis-tools">
       <button className="full" onClick={() => (onOpen ? onOpen() : setOpen(true))}>
         <Network size={16} />
-        Explore relationships and views
+        {t('toolbar.exploreRelationshipsAction')}
       </button>
       {!!getExploration(graph) && (
         <button className="full" onClick={() => useEditor.getState().explore()}>
-          Reset exploration
+          {t('toolbar.resetExplorationAction')}
         </button>
       )}
       {!onOpen && open && (

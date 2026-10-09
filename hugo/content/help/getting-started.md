@@ -6,6 +6,8 @@ weight: 1
 
 You do not need AI, an account or an integration to use Visual Nerve. You can create, edit, analyze and present diagrams through the interface. The optional API and MCP connection add another way to work with the same diagrams.
 
+The app interface is available in English, Danish, Norwegian Bokmål, Swedish, Finnish, German, Spanish and French. Choose **App language** on the locked screen or in **Settings**. This guide uses English control names. Your diagram text and narrator voice stay unchanged. [Language settings](/help/settings/#app-language).
+
 ## Open your local workspace
 
 1. [Open the encrypted workspace](https://app.visualnerve.com/) in the browser and profile you intend to use for your work. On first use, complete the password and recovery steps below before accepting storage.

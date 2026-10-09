@@ -1,3 +1,5 @@
+import { processTrafficReason, trafficStatusLabel } from './display';
+import { useI18n } from '../i18n';
 import type { CSSProperties } from 'react';
 import type { GraphNode } from '../model/types';
 import { useSimulationSummary } from './summary-context';
@@ -14,6 +16,7 @@ export function ProcessSummary({
   node: GraphNode;
   exporting?: boolean;
 }) {
+  const { t, plural } = useI18n();
   const { diagramId, model, view } = useSimulationSummary();
   const id = getSimulationProcessId(node);
   if (!id || !model) return null;
@@ -29,6 +32,12 @@ export function ProcessSummary({
     metrics?.currentBottleneck &&
     (view?.state?.nodes[metrics.currentBottleneck] ??
       view?.state?.resources[metrics.currentBottleneck]);
+  const trafficLabel = trafficStatusLabel(t, traffic.label);
+  const trafficReason = processTrafficReason(
+    t,
+    traffic,
+    bottleneck ? bottleneck.name : (metrics?.currentBottleneck ?? undefined),
+  );
   return (
     <div
       className="simulation-process-summary"
@@ -36,7 +45,7 @@ export function ProcessSummary({
       data-traffic={traffic.level}
       data-queue={metrics?.queue.current ?? 0}
     >
-      <span className="simulation-traffic-badge" title={traffic.reason}>
+      <span className="simulation-traffic-badge" title={trafficReason}>
         <span aria-hidden="true">
           {traffic.level === 'congested'
             ? '!'
@@ -46,44 +55,59 @@ export function ProcessSummary({
                 ? '·'
                 : '✓'}
         </span>{' '}
-        {traffic.label}
+        {trafficLabel}
       </span>
       {!boundary && (
         <span className="simulation-process-members">
-          {nodeCount} {nodeCount === 1 ? 'step' : 'steps'}
-          {childCount ? ` · ${childCount} ${childCount === 1 ? 'subprocess' : 'subprocesses'}` : ''}
+          {plural(
+            'simulator.hierarchy.members.steps.one',
+            'simulator.hierarchy.members.steps.other',
+            nodeCount,
+          )}
+          {childCount
+            ? plural(
+                'simulator.hierarchy.members.subprocesses.one',
+                'simulator.hierarchy.members.subprocesses.other',
+                childCount,
+              )
+            : ''}
         </span>
       )}
       {node.metadata.simulationProcessBoundary === true && (
         <span className="simulation-process-context">
           {node.metadata.simulationProcessBoundaryKind === 'ancestor'
-            ? 'Parent context · includes this process'
-            : 'Connected process outside this view'}
+            ? t('simulator.hierarchy.summary.parentContextIncludesThisProcess')
+            : t('simulator.hierarchy.summary.connectedProcessOutsideThisView')}
         </span>
       )}
       {boundary ? (
         <span>
-          Queue {metrics?.queue.current ?? 0} · in process {metrics?.inSystem ?? 0}
+          {t('simulator.hierarchy.queue.summary', {
+            queueCount: metrics?.queue.current ?? 0,
+            inSystemCount: metrics?.inSystem ?? 0,
+          })}
         </span>
       ) : metrics ? (
         <>
           <div className="simulation-process-values">
             <span>
-              <small>Queue</small>
+              <small>{t('simulator.common.queue')}</small>
               <strong>{metrics.queue.current}</strong>
             </span>
             <span>
-              <small>In process</small>
+              <small>{t('simulator.hierarchy.summary.inProcess.')}</small>
               <strong>{metrics.inSystem}</strong>
             </span>
             <span>
-              <small>Completed</small>
+              <small>{t('simulator.common.completed')}</small>
               <strong>{metrics.completed}</strong>
             </span>
           </div>
           <span>
-            {(metrics.currentUtilization * 100).toFixed(0)}% busy · avg wait{' '}
-            {(metrics.queue.wait.average / 60).toFixed(1)} min
+            {t('simulator.hierarchy.utilization.summary', {
+              utilizationPercent: (metrics.currentUtilization * 100).toFixed(0),
+              minutes: (metrics.queue.wait.average / 60).toFixed(1),
+            })}
           </span>
           <span
             className="simulation-utilization-track"
@@ -96,31 +120,44 @@ export function ProcessSummary({
           >
             <span />
           </span>
-          <span title="Child step operations and occupied shared-resource units. Parent totals include subprocesses; do not add parent and child totals. Idle shared-resource costs remain in system totals.">
-            Cycle {(metrics.cycleTime.average / 60).toFixed(1)} min · cost {metrics.cost.toFixed(2)}{' '}
-            {model.currency}
+          <span
+            title={t(
+              'simulator.hierarchy.summary.childStepOperationsAndOccupiedSharedResourceUnitsParentTotalsIncludeSubprocesses',
+            )}
+          >
+            {t('simulator.hierarchy.cycleCost.summary', {
+              minutes: (metrics.cycleTime.average / 60).toFixed(1),
+              cost: metrics.cost.toFixed(2),
+              currency: model.currency,
+            })}
           </span>
-          <span className="simulation-process-bottleneck" title={traffic.reason}>
-            Constraint:{' '}
-            {bottleneck ? bottleneck.name : (metrics.currentBottleneck ?? 'none observed')}
+          <span className="simulation-process-bottleneck" title={trafficReason}>
+            {t('simulator.hierarchy.summary.constraint')}
+            {bottleneck
+              ? bottleneck.name
+              : (metrics.currentBottleneck ?? t('simulator.hierarchy.summary.noneObserved'))}
           </span>
         </>
       ) : (
         <p className="simulation-process-description">
           {process?.description ||
-            'Open this process to configure each step and inspect where work waits.'}
+            t(
+              'simulator.hierarchy.summary.openThisProcessToConfigureEachStepAndInspectWhereWorkWaits',
+            )}
         </p>
       )}
       {!exporting && diagramId && (
         <button
           className="nodrag nopan"
-          aria-label={`Open process ${process?.name ?? node.title}`}
+          aria-label={t('simulator.hierarchy.summary.openProcess', {
+            title: String(process?.name ?? node.title),
+          })}
           onClick={(event) => {
             event.stopPropagation();
             openSimulationProcess(diagramId, id);
           }}
         >
-          Open process <span aria-hidden="true">→</span>
+          {t('simulator.hierarchy.summary.openProcess.')} <span aria-hidden="true">→</span>
         </button>
       )}
     </div>

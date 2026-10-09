@@ -1,8 +1,11 @@
+import { diagramModeLabel } from './editor-labels';
+import { useI18n } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { GitBranch, Pencil } from 'lucide-react';
 import { useEditor } from '../state/editor';
 import { IconPicker, iconKey, withIcon } from './icons';
 export function DocumentTitle() {
+  const { t } = useI18n();
   const graph = useEditor((state) => state.graph)!;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(graph.diagram.name);
@@ -57,7 +60,7 @@ export function DocumentTitle() {
         <IconPicker
           compact
           fallback={GitBranch}
-          label="Project icon"
+          label={t('editor.properties.projectIcon')}
           value={iconKey(graph.diagram.metadata)}
           onChange={(icon) =>
             useEditor.getState().command('Project icon', (g) => ({
@@ -71,7 +74,7 @@ export function DocumentTitle() {
         <input
           ref={input}
           className="project-title-input"
-          aria-label="Project name"
+          aria-label={t('editor.document.projectName')}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={() => finish(true)}
@@ -90,8 +93,10 @@ export function DocumentTitle() {
         <h1 aria-label={graph.diagram.name}>
           <button
             className="project-title-button"
-            aria-label={`Rename project: ${graph.diagram.name}`}
-            title="Rename project (F2)"
+            aria-label={t('editor.document.renameProject', {
+              projectName: String(graph.diagram.name),
+            })}
+            title={t('editor.document.renameProjectF2')}
             onClick={begin}
           >
             {graph.diagram.name}
@@ -99,7 +104,7 @@ export function DocumentTitle() {
           </button>
         </h1>
       )}
-      <span className="mode-badge">{graph.diagram.type}</span>
+      <span className="mode-badge">{diagramModeLabel(t, graph.diagram.type)}</span>
     </div>
   );
 }

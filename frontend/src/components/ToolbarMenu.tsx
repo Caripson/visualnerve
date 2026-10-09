@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import './toolbar-menu.css';
@@ -16,6 +17,7 @@ export function ToolbarMenu({
   className?: string;
   text?: boolean;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0, maxHeight: 0 });
   const trigger = useRef<HTMLButtonElement>(null);
@@ -100,7 +102,7 @@ export function ToolbarMenu({
             ref={panel}
             className="toolbar-menu-panel"
             role="dialog"
-            aria-label={`${label} menu`}
+            aria-label={t('shared.toolbarMenuRegion', { label })}
             style={{
               top: position.top,
               left: position.left,

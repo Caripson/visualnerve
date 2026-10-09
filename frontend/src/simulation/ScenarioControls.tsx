@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import type { Graph } from '../model/types';
 import { useEditor } from '../state/editor';
 import { setSimulationModel } from './document';
@@ -11,6 +12,7 @@ export function ScenarioControls({
   id: string;
   select: (id: string) => void;
 }) {
+  const { t } = useI18n();
   const scenario = graph.simulation?.scenarios.find((entry) => entry.id === id);
   if (!scenario) return null;
   const change = (patch: Partial<typeof scenario>) =>
@@ -24,12 +26,15 @@ export function ScenarioControls({
     );
   return (
     <details className="simulation-scenario-options">
-      <summary>Scenario assumptions: {scenario.name}</summary>
+      <summary>
+        {' '}
+        {t('simulator.scenario.scenarioAssumptions')} {scenario.name}
+      </summary>
       <div className="simulation-row">
         <label>
-          Demand multiplier
+          {t('simulator.scenario.demandMultiplier')}{' '}
           <input
-            aria-label="Scenario demand multiplier"
+            aria-label={t('simulator.scenario.scenarioDemandMultiplier')}
             type="number"
             min={0}
             step={0.1}
@@ -42,11 +47,11 @@ export function ScenarioControls({
         </label>
         <button
           onClick={() => {
-            const name = window.prompt('Scenario name', scenario.name)?.trim();
+            const name = window.prompt(t('simulator.scenario.scenarioName'), scenario.name)?.trim();
             if (name) change({ name });
           }}
         >
-          Rename scenario
+          {t('simulator.scenario.renameScenario')}
         </button>
         <button
           onClick={() => {
@@ -59,11 +64,12 @@ export function ScenarioControls({
             select('');
           }}
         >
-          Delete scenario
+          {t('simulator.scenario.deleteScenario')}
         </button>
         <p>
-          Demand multiplier scales all sources in this scenario. Change a single source in
-          Assumptions to scale one business flow.
+          {t(
+            'simulator.scenario.demandMultiplierScalesAllSourcesInThisScenarioChangeASingleSource',
+          )}
         </p>
       </div>
     </details>

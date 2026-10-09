@@ -1,3 +1,5 @@
+import { nodeKindLabel } from '../ui/editor-labels';
+import { useI18n } from '../i18n';
 import { memo, useCallback } from 'react';
 import {
   Handle,
@@ -71,6 +73,7 @@ function renderer(kind: NodeKind) {
   const config = nodeRegistry[kind];
   const Icon = config.icon;
   const Component = memo(({ id, data, selected }: NodeProps<CanvasNode>) => {
+    const { t } = useI18n();
     const { node, owners, exporting } = data;
     const projected = node.metadata.simulationProjected === true;
     const readonly = isReadonlyCanvasNode(node);
@@ -121,7 +124,9 @@ function renderer(kind: NodeKind) {
         {data.presentationNumber && (
           <span
             className="presentation-node-number"
-            aria-label={`Presentation step ${data.presentationNumber}`}
+            aria-label={t('editor.nodes.typeLabel.presentationStep', {
+              presentationNumber: String(data.presentationNumber),
+            })}
           >
             {data.presentationNumber}
           </span>
@@ -158,7 +163,9 @@ function renderer(kind: NodeKind) {
         {!overview && (
           <div className="node-topline">
             <AreaIcon metadata={node.metadata} fallback={directory ? Folder : Icon} size={13} />
-            <span className="node-kind">{directory ? 'Folder' : config.label}</span>
+            <span className="node-kind">
+              {directory ? t('editor.nodes.directory.label') : nodeKindLabel(t, kind)}
+            </span>
             <NodeStatus status={node.status} />
           </div>
         )}
@@ -186,7 +193,11 @@ function renderer(kind: NodeKind) {
             {data.childCount > 0 && !exporting && (
               <button
                 className="nodrag nopan branch-toggle"
-                aria-label={node.collapsed ? 'Expand branch' : 'Collapse branch'}
+                aria-label={
+                  node.collapsed
+                    ? t('editor.nodes.typeLabel.expandBranch')
+                    : t('editor.nodes.typeLabel.collapseBranch')
+                }
                 onClick={(e) => {
                   e.stopPropagation();
                   updateNode(id, { collapsed: !node.collapsed });

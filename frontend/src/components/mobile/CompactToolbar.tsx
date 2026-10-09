@@ -1,3 +1,4 @@
+import { useI18n } from '../../i18n';
 import { Maximize, Menu, PanelRight, Plus, Redo2, Undo2 } from 'lucide-react';
 import { useEditor } from '../../state/editor';
 import { DocumentTitle } from '../../ui/DocumentTitle';
@@ -5,17 +6,24 @@ import { CompactDiagramActions } from './CompactDiagramActions';
 import type { CompactToolbarProps } from './compact-toolbar-types';
 
 export function CompactToolbar(props: CompactToolbarProps) {
+  const { t } = useI18n();
   const { graph, spatial, mindmap, canUndo, canRedo, status, statusIcon, switchView, add, fit } =
     props;
   const statusText =
-    { saved: 'Saved', saving: 'Saving…', error: 'Error', conflict: 'Conflict' }[status] ?? status;
+    {
+      saved: t('workspace.saved'),
+      saving: t('workspace.saving'),
+      error: t('workspace.error'),
+      conflict: t('workspace.conflict'),
+    }[status] ?? status;
   const mobilePanel = useEditor((state) => state.mobilePanel);
   return (
     <>
       <header className="document-bar compact-document-bar">
         <button
           className="project-menu"
-          aria-label="Open projects"
+          data-mobile-panel-trigger="projects"
+          aria-label={t('workspace.openProjects')}
           aria-haspopup="dialog"
           aria-expanded={mobilePanel === 'projects'}
           onClick={() => useEditor.setState({ mobilePanel: 'projects' })}
@@ -34,44 +42,75 @@ export function CompactToolbar(props: CompactToolbarProps) {
         </span>
         <button
           className="compact-edit-button"
-          aria-label="Open properties"
+          data-mobile-panel-trigger="details"
+          aria-label={t('workspace.openProperties')}
           aria-haspopup="dialog"
           aria-expanded={mobilePanel === 'details'}
           onClick={() => useEditor.setState({ mobilePanel: 'details' })}
         >
           <PanelRight size={18} />
-          <span>Edit</span>
+          <span>{t('mobile.edit')}</span>
         </button>
         <CompactDiagramActions {...props} />
       </header>
-      <nav className="editor-toolbar compact-editor-toolbar" aria-label="Diagram tools">
+      <nav
+        className="editor-toolbar compact-editor-toolbar"
+        aria-label={t('mobile.diagramToolsNav')}
+      >
         <div
           className="spatial-view-bar compact-view-toggle"
           role="group"
-          aria-label="Diagram view"
+          aria-label={t('toolbar.diagramViewGroup')}
         >
-          <button aria-label="2D view" aria-pressed={!spatial} onClick={() => switchView('2d')}>
+          <button
+            aria-label={t('toolbar.view2DAria')}
+            aria-pressed={!spatial}
+            onClick={() => switchView('2d')}
+          >
             2D
           </button>
-          <button aria-label="3D view" aria-pressed={spatial} onClick={() => switchView('3d')}>
+          <button
+            aria-label={t('toolbar.view3DAria')}
+            aria-pressed={spatial}
+            onClick={() => switchView('3d')}
+          >
             3D
           </button>
         </div>
         <button
           className="add-node"
-          aria-label={mindmap ? (graph.nodes.length ? 'Add subtopic' : 'Central idea') : 'Add node'}
+          aria-label={
+            mindmap
+              ? graph.nodes.length
+                ? t('toolbar.addSubtopic')
+                : t('toolbar.centralIdea')
+              : t('toolbar.addNode')
+          }
           onClick={add}
         >
           <Plus size={19} />
-          <span>{mindmap ? 'Topic' : 'Node'}</span>
+          <span>{mindmap ? t('mobile.topic') : t('mobile.node')}</span>
         </button>
-        <button aria-label="Fit diagram" title="Fit diagram" disabled={spatial} onClick={fit}>
+        <button
+          aria-label={t('toolbar.fitDiagram')}
+          title={t('toolbar.fitDiagram')}
+          disabled={spatial}
+          onClick={fit}
+        >
           <Maximize size={19} />
         </button>
-        <button aria-label="Undo" disabled={!canUndo} onClick={() => useEditor.getState().undo()}>
+        <button
+          aria-label={t('toolbar.undo')}
+          disabled={!canUndo}
+          onClick={() => useEditor.getState().undo()}
+        >
           <Undo2 size={19} />
         </button>
-        <button aria-label="Redo" disabled={!canRedo} onClick={() => useEditor.getState().redo()}>
+        <button
+          aria-label={t('toolbar.redo')}
+          disabled={!canRedo}
+          onClick={() => useEditor.getState().redo()}
+        >
           <Redo2 size={19} />
         </button>
       </nav>

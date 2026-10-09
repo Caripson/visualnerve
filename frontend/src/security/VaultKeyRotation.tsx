@@ -1,3 +1,5 @@
+import { localizedFeedback } from '../components/localized-feedback';
+import { useI18n } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Modal } from '../components/Modal';
 import { BackupSecurityNotice } from './BackupSecurityNotice';
@@ -18,6 +20,7 @@ export function VaultKeyRotation({
   closing: boolean;
   closeError: string;
 }) {
+  const { t } = useI18n();
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -51,26 +54,17 @@ export function VaultKeyRotation({
   };
   return (
     <Modal
-      title="Rotate the workspace content key"
+      title={t('security.rotation.title')}
       close={cancel}
       dismissible={!activating && !closing}
     >
-      <p>
-        Use this if you suspect that a workspace encryption key was exposed. Every saved record will
-        be encrypted again with a new random content key. A normal password change only replaces the
-        password protection around the existing key.
-      </p>
-      <p className="muted">
-        The editor, simulations and integrations are stopped. Keep a verified backup before
-        continuing. This operation can take time and needs browser storage and memory headroom. If
-        preparation, authentication or storage fails, the original encrypted workspace remains
-        available. All workspace tabs lock after successful activation.
-      </p>
+      <p>{t('security.rotation.effect')}</p>
+      <p className="muted">{t('security.rotation.preconditionsAndFailure')}</p>
       <BackupSecurityNotice encrypted />
       {prepared ? (
         <VaultRecoveryNotice
           recoveryKey={recoveryKey}
-          continueLabel="Rotate content key and lock"
+          continueLabel={t('security.rotation.activateAndLock')}
           continue={() => {
             if (busy || closing) return;
             const candidate = prepared;
@@ -152,7 +146,7 @@ export function VaultKeyRotation({
             confirm
           />
           <label className="field">
-            <span>Current workspace password</span>
+            <span>{t('security.credential.currentWorkspacePassword')}</span>
             <input
               type="password"
               autoComplete="current-password"
@@ -166,28 +160,24 @@ export function VaultKeyRotation({
           <div className="modal-actions">
             <button className="primary" type="submit" disabled={busy || closing}>
               {activating
-                ? 'Encrypting and verifying all records…'
+                ? t('security.rotation.encryptingVerifying')
                 : busy
-                  ? 'Preparing new key…'
-                  : 'Prepare new content key'}
+                  ? t('security.rotation.preparingKey')
+                  : t('security.rotation.prepare')}
             </button>
           </div>
         </form>
       )}
       <div className="modal-actions">
         <button onClick={cancel} disabled={activating || closing}>
-          Cancel
+          {t('security.action.cancel')}
         </button>
       </div>
-      {activating && (
-        <p role="status">
-          Keep this tab open. The new key becomes active only after every record has been verified.
-        </p>
-      )}
-      {closing && <p role="status">Checking the workspace before reopening…</p>}
+      {activating && <p role="status">{t('security.rotation.keepOpen')}</p>}
+      {closing && <p role="status">{t('security.rotation.checkingBeforeReopen')}</p>}
       {(error || closeError) && (
         <p className="form-error" role="alert">
-          {error || closeError}
+          {localizedFeedback(error || closeError, t)}
         </p>
       )}
     </Modal>

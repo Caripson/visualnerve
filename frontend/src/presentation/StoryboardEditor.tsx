@@ -1,3 +1,5 @@
+import { presentationMessage } from './display-messages';
+import { useI18n } from '../i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, Camera, Plus, Save, Trash2, Eye } from 'lucide-react';
 import { useEditor } from '../state/editor';
@@ -24,6 +26,7 @@ import {
 
 /** All edits use normal graph commands; narration/camera belong to a scene, never a node. */
 export function StoryboardEditor({ disabled = false }: { disabled?: boolean }) {
+  const { t, number } = useI18n();
   const graph = useEditor((state) => state.graph),
     selectedNodes = useEditor((state) => state.selectedNodes),
     selectedEdges = useEditor((state) => state.selectedEdges);
@@ -139,26 +142,23 @@ export function StoryboardEditor({ disabled = false }: { disabled?: boolean }) {
     change(field, ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id]);
   };
   return (
-    <div className="storyboard-editor" aria-label="Storyboard editor">
+    <div className="storyboard-editor" aria-label={t('presentation.storyboardRegion')}>
       <fieldset disabled={disabled}>
         <div className="storyboard-actions">
           <button
             onClick={() => void create()}
             disabled={!selectedNodes.length && !selectedEdges.length}
           >
-            <Plus size={15} /> New scene from selection
+            <Plus size={15} /> {t('presentation.newSceneFromSelection')}
           </button>
           <button
             onClick={() => void fromNumbered()}
             disabled={!getPresentation(graph).nodeIds.length}
           >
-            Add numbered nodes as scenes
+            {t('presentation.addNumberedScenes')}
           </button>
         </div>
-        <small className="muted">
-          Scenes group nodes and links without moving them. Each scene has its own narration,
-          duration and optional saved camera. Changes support Undo.
-        </small>
+        <small className="muted">{t('presentation.storyboardIntro')}</small>
         {definition.scenes.length > 0 && (
           <>
             <ol start={page * 25 + 1} className="storyboard-scenes">
@@ -172,7 +172,7 @@ export function StoryboardEditor({ disabled = false }: { disabled?: boolean }) {
                     {value.name}
                   </button>
                   <button
-                    aria-label={`Move scene ${value.name} earlier`}
+                    aria-label={t('presentation.sceneEarlier', { name: value.name })}
                     disabled={page * 25 + offset === 0}
                     onClick={() =>
                       void run(() =>
@@ -187,7 +187,7 @@ export function StoryboardEditor({ disabled = false }: { disabled?: boolean }) {
                     <ArrowUp size={14} />
                   </button>
                   <button
-                    aria-label={`Move scene ${value.name} later`}
+                    aria-label={t('presentation.sceneLater', { name: value.name })}
                     disabled={page * 25 + offset + 1 === definition.scenes.length}
                     onClick={() =>
                       void run(() =>
@@ -202,7 +202,7 @@ export function StoryboardEditor({ disabled = false }: { disabled?: boolean }) {
                     <ArrowDown size={14} />
                   </button>
                   <button
-                    aria-label={`Delete scene ${value.name}`}
+                    aria-label={t('presentation.sceneDelete', { name: value.name })}
                     onClick={() =>
                       void run(() =>
                         useEditor
@@ -221,16 +221,19 @@ export function StoryboardEditor({ disabled = false }: { disabled?: boolean }) {
             {definition.scenes.length > 25 && (
               <div className="storyboard-actions">
                 <button disabled={!page} onClick={() => setPage(page - 1)}>
-                  Previous scenes
+                  {t('presentation.previousScenes')}
                 </button>
                 <span>
-                  {page + 1} / {Math.ceil(definition.scenes.length / 25)}
+                  {t('presentation.scenePageCounter', {
+                    current: page + 1,
+                    total: Math.ceil(definition.scenes.length / 25),
+                  })}
                 </span>
                 <button
                   disabled={(page + 1) * 25 >= definition.scenes.length}
                   onClick={() => setPage(page + 1)}
                 >
-                  Next scenes
+                  {t('presentation.nextScenes')}
                 </button>
               </div>
             )}
@@ -239,18 +242,18 @@ export function StoryboardEditor({ disabled = false }: { disabled?: boolean }) {
         {draft && (
           <div className="storyboard-draft">
             <label>
-              Scene name
+              {t('presentation.sceneNameField')}
               <input
-                aria-label="Scene name"
+                aria-label={t('presentation.sceneNameField')}
                 value={draft.name}
                 maxLength={200}
                 onChange={(event) => change('name', event.target.value)}
               />
             </label>
             <label>
-              Scene narration
+              {t('presentation.sceneNarrationField')}
               <textarea
-                aria-label="Scene narration"
+                aria-label={t('presentation.sceneNarrationField')}
                 rows={4}
                 value={draft.narration}
                 maxLength={STORYBOARD_NARRATION_LIMIT}
@@ -258,14 +261,14 @@ export function StoryboardEditor({ disabled = false }: { disabled?: boolean }) {
               />
             </label>
             <small className="muted">
-              Read aloud and shown as subtitles. Node descriptions remain separate.{' '}
-              {draft.narration.length.toLocaleString()} / 12,000 characters.
+              {t('presentation.sceneNarrationHint')}{' '}
+              {t('presentation.sceneCharacterCounter', { count: number(draft.narration.length) })}
             </small>
             <div className="storyboard-timing">
               <label>
-                Seconds
+                {t('presentation.seconds')}
                 <input
-                  aria-label="Scene seconds"
+                  aria-label={t('presentation.sceneSecondsAria')}
                   type="number"
                   min={2}
                   max={600}
@@ -274,9 +277,9 @@ export function StoryboardEditor({ disabled = false }: { disabled?: boolean }) {
                 />
               </label>
               <label>
-                Transition (ms)
+                {t('presentation.sceneTransitionField')}
                 <input
-                  aria-label="Scene transition milliseconds"
+                  aria-label={t('presentation.sceneTransitionAria')}
                   type="number"
                   min={0}
                   max={10000}
@@ -286,17 +289,20 @@ export function StoryboardEditor({ disabled = false }: { disabled?: boolean }) {
               </label>
             </div>
             <div className="storyboard-actions">
-              <button onClick={useSelection}>Use current selection</button>
+              <button onClick={useSelection}>{t('presentation.sceneUseSelection')}</button>
               <span>
-                {draft.nodeIds.length} nodes · {draft.edgeIds.length} links
+                {t('presentation.sceneObjectCounts', {
+                  nodes: draft.nodeIds.length,
+                  links: draft.edgeIds.length,
+                })}
               </span>
             </div>
             <details>
-              <summary>Choose scene objects</summary>
+              <summary>{t('presentation.sceneChooseObjects')}</summary>
               <label>
-                Find nodes
+                {t('presentation.sceneFindNodes')}
                 <input
-                  aria-label="Find scene nodes"
+                  aria-label={t('presentation.sceneFindNodesAria')}
                   value={nodeSearch}
                   onChange={(event) => setNodeSearch(event.target.value)}
                 />
@@ -315,14 +321,13 @@ export function StoryboardEditor({ disabled = false }: { disabled?: boolean }) {
               </div>
               {nodeResults.length > 150 && (
                 <small>
-                  Showing 150 of {nodeResults.length.toLocaleString()} nodes. Search to narrow the
-                  list.
+                  {t('presentation.sceneNodeResultsLimit', { total: number(nodeResults.length) })}
                 </small>
               )}
               <label>
-                Find links
+                {t('presentation.sceneFindLinks')}
                 <input
-                  aria-label="Find scene links"
+                  aria-label={t('presentation.sceneFindLinksAria')}
                   value={edgeSearch}
                   onChange={(event) => setEdgeSearch(event.target.value)}
                 />
@@ -344,8 +349,7 @@ export function StoryboardEditor({ disabled = false }: { disabled?: boolean }) {
               </div>
               {edgeResults.length > 150 && (
                 <small>
-                  Showing 150 of {edgeResults.length.toLocaleString()} links. Search to narrow the
-                  list.
+                  {t('presentation.sceneLinkResultsLimit', { total: number(edgeResults.length) })}
                 </small>
               )}
             </details>
@@ -362,25 +366,25 @@ export function StoryboardEditor({ disabled = false }: { disabled?: boolean }) {
                   })
                 }
               >
-                <Camera size={15} /> Capture current view
+                <Camera size={15} /> {t('presentation.sceneCaptureView')}
               </button>
               <button disabled={!draft.view} onClick={() => change('view', undefined)}>
-                Auto-fit objects
+                {t('presentation.sceneAutoFit')}
               </button>
               <span>
                 {draft.view
-                  ? `Saved ${draft.view.mode.toUpperCase()} view`
-                  : 'Fits objects in the current 2D or 3D view'}
+                  ? t('presentation.sceneSavedView', { mode: draft.view.mode.toUpperCase() })
+                  : t('presentation.sceneAutoFitHint')}
               </span>
             </div>
             {overview && (
               <small className="muted" role="note">
-                {STORYBOARD_OVERVIEW_VIEW_MESSAGE}
+                {presentationMessage(STORYBOARD_OVERVIEW_VIEW_MESSAGE, t)}
               </small>
             )}
             <div className="storyboard-actions">
               <button className="primary" onClick={() => void save()}>
-                <Save size={15} /> Save scene
+                <Save size={15} /> {t('presentation.sceneSave')}
               </button>
               <button
                 onClick={() =>
@@ -392,17 +396,14 @@ export function StoryboardEditor({ disabled = false }: { disabled?: boolean }) {
                   })
                 }
               >
-                <Eye size={15} /> Preview saved scene
+                <Eye size={15} /> {t('presentation.scenePreview')}
               </button>
             </div>
-            <small className="muted">
-              Preview uses the saved scene. A captured view plays in its matching 2D or 3D mode; use
-              Auto-fit to play the scene in either mode.
-            </small>
+            <small className="muted">{t('presentation.scenePreviewHint')}</small>
           </div>
         )}
       </fieldset>
-      {error && <p role="alert">{error}</p>}
+      {error && <p role="alert">{presentationMessage(error, t)}</p>}
     </div>
   );
 }

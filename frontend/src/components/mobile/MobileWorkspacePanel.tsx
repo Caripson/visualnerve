@@ -6,6 +6,7 @@ const FOCUSABLE =
 /** Keeps the desktop panels mounted while providing modal navigation on small screens. */
 export function MobileWorkspacePanel({
   className,
+  panelKind,
   label,
   active,
   compact,
@@ -13,6 +14,7 @@ export function MobileWorkspacePanel({
   children,
 }: {
   className: string;
+  panelKind: 'projects' | 'details';
   label: string;
   active: boolean;
   compact: boolean;
@@ -20,6 +22,8 @@ export function MobileWorkspacePanel({
   children: ReactNode;
 }) {
   const panel = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(close);
+  closeRef.current = close;
   useEffect(() => {
     if (!active) return;
     const previous = document.activeElement as HTMLElement | null;
@@ -28,14 +32,16 @@ export function MobileWorkspacePanel({
         (element) => element.getClientRects().length > 0 && !element.closest('[inert]'),
       );
     const frame = requestAnimationFrame(() => {
-      const dismiss = panel.current?.querySelector<HTMLElement>('button[aria-label^="Close "]');
+      const dismiss = focusable().find((element) =>
+        element.matches(`[data-mobile-panel-dismiss="${panelKind}"]`),
+      );
       (dismiss ?? focusable()[0] ?? panel.current)?.focus();
     });
     const keydown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
         event.stopPropagation();
-        close();
+        closeRef.current();
       } else if (event.key === 'Tab') {
         const items = focusable();
         const first = items[0];
@@ -62,19 +68,26 @@ export function MobileWorkspacePanel({
     return () => {
       cancelAnimationFrame(frame);
       document.removeEventListener('keydown', keydown, true);
-      const trigger = document.querySelector<HTMLElement>(
-        label === 'Projects' ? '[aria-label="Open projects"]' : '[aria-label="Open properties"]',
+      const trigger = Array.from(
+        document.querySelectorAll<HTMLElement>(`[data-mobile-panel-trigger="${panelKind}"]`),
+      ).find(
+        (element) =>
+          !element.matches(':disabled') &&
+          !element.closest('[inert], [hidden], [aria-hidden="true"]') &&
+          element.getClientRects().length > 0,
       );
       if (
         previous &&
         previous !== document.body &&
         previous.isConnected &&
+        !previous.matches(':disabled') &&
+        !previous.closest('[inert], [hidden], [aria-hidden="true"]') &&
         previous.getClientRects().length > 0
       )
         previous.focus();
       else trigger?.focus();
     };
-  }, [active, close, label]);
+  }, [active, panelKind]);
   return (
     <div
       ref={panel}

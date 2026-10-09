@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import type { CodeFile, CodeLanguage } from '../code/types';
 import { CodeFilesList } from './CodeFilesList';
 import { CodeLanguageSelect } from './CodeLanguageSelect';
@@ -29,15 +30,16 @@ export function CodeSourceFields({
   changeLanguage: (language: CodeLanguage) => void;
   changeText: (text: string) => void;
 }) {
+  const { t } = useI18n();
   const activeProjectLimit = useEditor((state) => state.projectSourceFileLimit);
   const zipFileLimit = projectSourceFileLimit(projectFileLimit ?? activeProjectLimit);
   return (
     <>
       <div className="code-loaders">
         <label>
-          Load ZIP project
+          {t('import.codeSources.zip')}
           <input
-            aria-label="Load ZIP project"
+            aria-label={t('import.codeSources.zip')}
             type="file"
             accept=".zip,application/zip"
             disabled={disabled}
@@ -49,9 +51,9 @@ export function CodeSourceFields({
           />
         </label>
         <label>
-          Load source files
+          {t('import.codeSources.files')}
           <input
-            aria-label="Load source files"
+            aria-label={t('import.codeSources.files')}
             type="file"
             multiple
             disabled={disabled}
@@ -63,9 +65,9 @@ export function CodeSourceFields({
           />
         </label>
         <label>
-          Load source folder
+          {t('import.codeSources.folder')}
           <input
-            aria-label="Load source folder"
+            aria-label={t('import.codeSources.folder')}
             type="file"
             multiple
             {...{ webkitdirectory: '' }}
@@ -79,11 +81,7 @@ export function CodeSourceFields({
         </label>
       </div>
       <p className="code-note">
-        Source-file and folder imports allow up to 500 files. ZIP project source-file limit:{' '}
-        {zipFileLimit.toLocaleString('en-US')} analyzed files (Settings). The import size setting
-        applies to each file and the complete project; its default is 50 MB. ZIP and folder
-        selection skip dependencies and build output. ZIP expansion is checked against the same
-        limit.
+        {t('import.codeSources.projectLimits', { fileLimit: zipFileLimit.toLocaleString('en-US') })}
       </p>
       {zipFileLimit > 500 && (
         <p className="import-limit-warning" role="note" data-testid="project-import-file-warning">
@@ -101,23 +99,23 @@ export function CodeSourceFields({
       ) : (
         <>
           <label className="field">
-            Source language
+            {t('import.codeSources.language')}
             <CodeLanguageSelect
-              label="Source language"
+              label={t('import.codeSources.language')}
               value={language}
               disabled={disabled}
               onChange={changeLanguage}
             />
           </label>
           <label className="field code-source">
-            Source code
+            {t('import.codeSources.code')}
             <textarea
-              aria-label="Source code"
+              aria-label={t('import.codeSources.code')}
               rows={8}
               value={text}
               disabled={disabled}
               spellCheck={false}
-              placeholder="Paste source to explore how its parts connect…"
+              placeholder={t('import.codeSources.pasteHint')}
               onChange={(event) => changeText(event.target.value)}
             />
           </label>

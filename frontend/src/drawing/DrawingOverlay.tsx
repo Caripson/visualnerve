@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import { Panel, useReactFlow, ViewportPortal } from '@xyflow/react';
 import { Eraser, Eye, EyeOff, Pencil, Trash2, X } from 'lucide-react';
@@ -19,6 +20,7 @@ type Gesture = {
 };
 
 export function DrawingOverlay() {
+  const { t } = useI18n();
   const graph = useEditor((state) => state.graph);
   const tool = useEditor((state) => state.drawingTool);
   const color = useEditor((state) => state.drawingColor);
@@ -203,7 +205,7 @@ export function DrawingOverlay() {
           ref={surface}
           className={`drawing-surface drawing-${tool}`}
           data-testid="drawing-surface"
-          aria-label="Drawing surface"
+          aria-label={t('editor.drawing.drawingSurface')}
           tabIndex={-1}
           onPointerDown={begin}
           onPointerMove={collect}
@@ -218,10 +220,14 @@ export function DrawingOverlay() {
       )}
       {active && (
         <Panel position="top-left" className="drawing-panel">
-          <div className="drawing-tools" role="toolbar" aria-label="Drawing tools">
+          <div
+            className="drawing-tools"
+            role="toolbar"
+            aria-label={t('editor.drawing.drawingTools')}
+          >
             <button
-              aria-label="Pen"
-              title="Pen"
+              aria-label={t('editor.drawing.pen')}
+              title={t('editor.drawing.pen')}
               aria-pressed={tool === 'pen'}
               className={tool === 'pen' ? 'active' : ''}
               onClick={() => useEditor.getState().setDrawingTool('pen')}
@@ -229,8 +235,8 @@ export function DrawingOverlay() {
               <Pencil size={17} />
             </button>
             <button
-              aria-label="Eraser"
-              title="Erase whole strokes"
+              aria-label={t('editor.drawing.eraser')}
+              title={t('editor.drawing.eraseWholeStrokes')}
               aria-pressed={tool === 'eraser'}
               className={tool === 'eraser' ? 'active' : ''}
               onClick={() => useEditor.getState().setDrawingTool('eraser')}
@@ -239,14 +245,14 @@ export function DrawingOverlay() {
             </button>
             <input
               type="color"
-              aria-label="Drawing color"
-              title="Drawing color"
+              aria-label={t('editor.drawing.drawingColor')}
+              title={t('editor.drawing.drawingColor')}
               value={color}
               onChange={(event) => useEditor.setState({ drawingColor: event.target.value })}
             />
             <select
-              aria-label="Drawing width"
-              title="Drawing width"
+              aria-label={t('editor.drawing.drawingWidth')}
+              title={t('editor.drawing.drawingWidth')}
               value={width}
               onChange={(event) => useEditor.setState({ drawingWidth: Number(event.target.value) })}
             >
@@ -257,8 +263,8 @@ export function DrawingOverlay() {
               ))}
             </select>
             <button
-              aria-label={shown ? 'Hide drawing' : 'Show drawing'}
-              title={shown ? 'Hide drawing' : 'Show drawing'}
+              aria-label={shown ? t('editor.drawing.hideDrawing') : t('editor.drawing.showDrawing')}
+              title={shown ? t('editor.drawing.hideDrawing') : t('editor.drawing.showDrawing')}
               disabled={!layer?.strokes.length}
               onClick={() => {
                 discard();
@@ -269,8 +275,8 @@ export function DrawingOverlay() {
               {shown ? <Eye size={17} /> : <EyeOff size={17} />}
             </button>
             <button
-              aria-label="Clear drawing"
-              title="Clear drawing (can be undone)"
+              aria-label={t('editor.drawing.clearAccessible')}
+              title={t('editor.drawing.clearDrawingCanBeUndone')}
               disabled={!layer?.strokes.length}
               onClick={() => {
                 discard();
@@ -280,8 +286,8 @@ export function DrawingOverlay() {
               <Trash2 size={17} />
             </button>
             <button
-              aria-label="Done drawing"
-              title="Done drawing (Escape)"
+              aria-label={t('editor.drawing.doneDrawing')}
+              title={t('editor.drawing.doneDrawingEscape')}
               onClick={() => useEditor.getState().setDrawingTool('none')}
             >
               <X size={17} />
@@ -289,17 +295,17 @@ export function DrawingOverlay() {
           </div>
           <p className="drawing-hint">
             {tool === 'eraser'
-              ? 'Touch a stroke to erase it.'
-              : 'Draw with your mouse, finger or pen.'}{' '}
-            Escape finishes drawing.
+              ? t('editor.drawing.touchAStrokeToEraseIt')
+              : t('editor.drawing.drawWithYourMouseFingerOrPen')}{' '}
+            {t('editor.drawing.escapeFinishesDrawing')}{' '}
           </p>
         </Panel>
       )}
       {!active && !!layer?.strokes.length && (
         <Panel position="top-right" className="drawing-visibility">
           <button
-            aria-label={shown ? 'Hide drawing' : 'Show drawing'}
-            title={shown ? 'Hide drawing' : 'Show drawing'}
+            aria-label={shown ? t('editor.drawing.hideDrawing') : t('editor.drawing.showDrawing')}
+            title={shown ? t('editor.drawing.hideDrawing') : t('editor.drawing.showDrawing')}
             onClick={() => useEditor.getState().toggleDrawingVisibility()}
           >
             {shown ? <Eye size={17} /> : <EyeOff size={17} />}

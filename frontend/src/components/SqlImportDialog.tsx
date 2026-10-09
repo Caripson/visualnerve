@@ -1,3 +1,5 @@
+import { localizedFeedback } from './localized-feedback';
+import { useI18n } from '../i18n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FileUp } from 'lucide-react';
 import { Modal } from './Modal';
@@ -11,7 +13,6 @@ import { getSqlTable } from '../sql/schema';
 import { getSqlQueryResult, getSqlQuerySource } from '../sql/query-schema';
 import './sql-import.css';
 
-const number = (value: number) => value.toLocaleString();
 const message = (error: unknown) =>
   error instanceof Error ? error.message : 'Unable to import this SQL script.';
 
@@ -57,6 +58,7 @@ export function SqlImportDialog({
   close: () => void;
   create: (graph: Graph) => Promise<void>;
 }) {
+  const { t, number } = useI18n();
   const [name, setName] = useState(initial?.name ?? 'SQL diagram');
   const [text, setText] = useState(initial?.text ?? '');
   const [preview, setPreview] = useState<SqlImportResult | null>(null);
@@ -189,7 +191,7 @@ export function SqlImportDialog({
     }) ?? [];
 
   return (
-    <Modal title="Import SQL" close={dismiss} wide dismissible={!creating}>
+    <Modal title={t('import.sql.title')} close={dismiss} wide dismissible={!creating}>
       <form
         className="sql-import"
         aria-busy={working || creating}
@@ -198,16 +200,12 @@ export function SqlImportDialog({
           void previewSchema();
         }}
       >
-        <p className="sql-import-intro">
-          Visualize SELECT sources, joins, expressions and filters, or CREATE TABLE definitions and
-          foreign keys. Parsing happens locally. SQL is never executed and result rows are not
-          fetched.
-        </p>
+        <p className="sql-import-intro">{t('import.sql.localNoExecution')}</p>
         <ImportSizeNotice bytes={sourceBytes} />
         <label className="field">
-          Diagram name
+          {t('data.csv.nameLabel')}
           <input
-            aria-label="SQL diagram name"
+            aria-label={t('import.sql.nameAccessible')}
             required
             maxLength={500}
             value={name}
@@ -220,9 +218,9 @@ export function SqlImportDialog({
         </label>
         <label className="sql-file-picker">
           <FileUp size={16} aria-hidden="true" />
-          Load SQL file
+          {t('import.sql.loadFile')}
           <input
-            aria-label="Load SQL file"
+            aria-label={t('import.sql.loadFile')}
             type="file"
             accept=".sql,.ddl,text/plain,application/sql"
             disabled={creating}
@@ -234,9 +232,9 @@ export function SqlImportDialog({
           />
         </label>
         <label className="field sql-script-field">
-          SQL script
+          {t('import.sql.scriptLabel')}
           <textarea
-            aria-label="SQL script"
+            aria-label={t('import.sql.scriptLabel')}
             rows={10}
             spellCheck={false}
             value={text}
@@ -248,22 +246,23 @@ export function SqlImportDialog({
             }}
           />
         </label>
-        <p className="sql-import-note">
-          The full script is a temporary draft. Schema imports save definitions only. Query diagrams
-          save expressions and conditions, including literal values, locally with the diagram.
-        </p>
-        {working && <p role="status">Preparing {isQueryDraft ? 'query' : 'schema'} preview…</p>}
+        <p className="sql-import-note">{t('import.sql.retentionBoundary')}</p>
+        {working && (
+          <p role="status">
+            {t(isQueryDraft ? 'import.sql.preparingQuery' : 'import.sql.preparingSchema')}
+          </p>
+        )}
         {error && (
           <p role="alert" className="sql-import-error">
-            {error}
+            {localizedFeedback(error, t)}
           </p>
         )}
         {preview && (
           <section
             className="sql-schema-preview"
-            aria-label={isQuery ? 'SQL query preview' : 'SQL schema preview'}
+            aria-label={isQuery ? t('import.sql.queryRegion') : t('import.sql.schemaRegion')}
           >
-            <h3>{isQuery ? 'Query preview' : 'Schema preview'}</h3>
+            <h3>{isQuery ? t('import.sql.queryTitle') : t('import.sql.schemaTitle')}</h3>
             <dl className="sql-preview-counts">
               {(isQuery
                 ? [
@@ -298,35 +297,44 @@ export function SqlImportDialog({
             </dl>
             {isQuery ? (
               <>
-                <p>
-                  Aliases of the same table remain separate objects. Nested SELECT statements have
-                  their own result cards.
-                </p>
-                <ul className="sql-preview-tables" aria-label="Preview query sources">
+                <p>{t('import.sql.aliasesRemainSeparate')}</p>
+                <ul
+                  className="sql-preview-tables"
+                  aria-label={t('import.sql.querySourcesAccessible')}
+                >
                   {sources.slice(0, 30).map(({ id, source }) => (
                     <li key={id}>
                       <strong>{source.alias}</strong>
                       <span>
                         {source.kind === 'table'
                           ? source.qualifiedName.join('.')
-                          : `${source.kind === 'cte' ? 'CTE' : 'Derived query'} · ${source.queryScope}`}
+                          : `${source.kind === 'cte' ? 'CTE' : t('import.sql.derivedQuery')} · ${source.queryScope}`}
                       </span>
                       <span>
-                        {source.scope} · {number(source.columns.length)} referenced columns
+                        {t('import.sql.referencedColumns', {
+                          scope: source.scope,
+                          count: number(source.columns.length),
+                        })}
                       </span>
                     </li>
                   ))}
                 </ul>
                 {sources.length > 30 && (
-                  <p>Showing 30 of {number(sources.length)} source aliases.</p>
+                  <p>{t('import.sql.shownAliases', { total: number(sources.length) })}</p>
                 )}
-                <ul className="sql-preview-tables" aria-label="Preview query results">
+                <ul
+                  className="sql-preview-tables"
+                  aria-label={t('import.sql.queryResultsAccessible')}
+                >
                   {queries.slice(0, 10).map(({ id, query }) => (
                     <li key={id}>
                       <strong>{query.name}</strong>
                       <span>
-                        SELECT{query.distinct ? ' DISTINCT' : ''} · {number(query.columns.length)}{' '}
-                        outputs · {query.scope}
+                        {t('import.sql.outputLine', {
+                          select: query.distinct ? 'SELECT DISTINCT' : 'SELECT',
+                          count: number(query.columns.length),
+                          scope: query.scope,
+                        })}
                       </span>
                       {query.clauses.where && (
                         <span>
@@ -337,41 +345,50 @@ export function SqlImportDialog({
                     </li>
                   ))}
                 </ul>
-                {queries.length > 10 && <p>Showing 10 of {number(queries.length)} query blocks.</p>}
+                {queries.length > 10 && (
+                  <p>{t('import.sql.shownQueries', { total: number(queries.length) })}</p>
+                )}
               </>
             ) : (
               <>
-                <ul className="sql-preview-tables" aria-label="Preview tables">
+                <ul className="sql-preview-tables" aria-label={t('import.sql.tablesAccessible')}>
                   {tables.slice(0, 30).map(({ id, table }) => (
                     <li key={id}>
                       <strong>{table.qualifiedName.join('.')}</strong>
                       <span>
                         {table.external
-                          ? 'Referenced table not defined in this script'
-                          : `${number(table.columns.length)} columns`}
+                          ? t('import.sql.undefinedTable')
+                          : t('import.sql.columnCount', { count: number(table.columns.length) })}
                       </span>
                     </li>
                   ))}
                 </ul>
-                {tables.length > 30 && <p>Showing 30 of {number(tables.length)} table objects.</p>}
+                {tables.length > 30 && (
+                  <p>{t('import.sql.shownTables', { total: number(tables.length) })}</p>
+                )}
               </>
             )}
             {preview.ignoredStatementCount > 0 && (
               <p>
-                {number(preview.ignoredStatementCount)} other statements ignored. Data rows are not
-                imported.
+                {t('import.sql.ignoredStatements', {
+                  count: number(preview.ignoredStatementCount),
+                })}
               </p>
             )}
             {preview.warnings.length > 0 && (
               <div className="sql-preview-warnings">
-                <h4>Import notes</h4>
+                <h4>{t('import.sql.notesLabel')}</h4>
                 <ul>
                   {preview.warnings.slice(0, 20).map((warning, index) => (
                     <li key={index}>{warning}</li>
                   ))}
                 </ul>
                 {preview.warnings.length > 20 && (
-                  <p>{number(preview.warnings.length - 20)} additional notes.</p>
+                  <p>
+                    {t('import.sql.additionalNotes', {
+                      count: number(preview.warnings.length - 20),
+                    })}
+                  </p>
                 )}
               </div>
             )}
@@ -379,10 +396,10 @@ export function SqlImportDialog({
         )}
         <div className="modal-actions sql-import-actions">
           <button type="button" disabled={creating} onClick={dismiss}>
-            Cancel
+            {t('data.action.cancel')}
           </button>
           <button type="submit" disabled={!text.trim() || !name.trim() || working || creating}>
-            Preview {isQueryDraft ? 'query' : 'schema'}
+            {t(isQueryDraft ? 'import.sql.previewQuery' : 'import.sql.previewSchema')}
           </button>
           <button
             type="button"
@@ -390,7 +407,7 @@ export function SqlImportDialog({
             disabled={!preview || working || creating}
             onClick={() => void createDiagram()}
           >
-            {creating ? 'Creating diagram…' : 'Create diagram'}
+            {creating ? t('import.action.creatingDiagram') : t('import.action.createDiagram')}
           </button>
         </div>
       </form>

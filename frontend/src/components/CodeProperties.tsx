@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import {
   getCodeAnalysis,
   getCodeObject,
@@ -11,40 +12,38 @@ import './code-summary.css';
 const languageName = (id: string) =>
   codeLanguages.find((language) => language.id === id)?.name ?? id;
 export function CodeObjectProperties({ node }: { node: GraphNode }) {
+  const { t } = useI18n();
   const object = getCodeObject(node);
   const directory = getProjectDirectory(node);
   if (directory)
     return (
-      <section className="code-details" aria-label="Project folder details">
-        <div className="property-section">Project folder</div>
+      <section className="code-details" aria-label={t('data.code.folderRegion')}>
+        <div className="property-section">{t('data.code.folderTitle')}</div>
         <dl>
-          <dt>Folder</dt>
-          <dd>{directory.path === '.' ? 'Project root' : directory.path}</dd>
-          <dt>Source files</dt>
+          <dt>{t('data.code.folderLabel')}</dt>
+          <dd>{directory.path === '.' ? t('data.code.projectRoot') : directory.path}</dd>
+          <dt>{t('data.code.sourceFilesLabel')}</dt>
           <dd>{directory.fileCount}</dd>
-          <dt>Languages</dt>
+          <dt>{t('data.code.languagesLabel')}</dt>
           <dd>{directory.languages.map(languageName).join(', ')}</dd>
         </dl>
-        <p>
-          Counts include nested folders. Connections combine file dependencies between their
-          containing folders; they do not prove runtime behavior.
-        </p>
+        <p>{t('data.code.folderAggregationBoundary')}</p>
       </section>
     );
   if (!object) return null;
   return (
-    <section className="code-details" aria-label="Code object details">
-      <div className="property-section">Source structure</div>
+    <section className="code-details" aria-label={t('data.code.objectRegion')}>
+      <div className="property-section">{t('data.code.sourceStructureTitle')}</div>
       <dl>
-        <dt>Language</dt>
+        <dt>{t('data.code.languageLabel')}</dt>
         <dd>{languageName(object.language)}</dd>
-        <dt>Object</dt>
+        <dt>{t('data.code.objectLabel')}</dt>
         <dd>{object.kind}</dd>
-        <dt>Source file</dt>
+        <dt>{t('data.code.sourceFileLabel')}</dt>
         <dd>{object.path}</dd>
         {object.line && (
           <>
-            <dt>Source lines</dt>
+            <dt>{t('data.code.sourceLinesLabel')}</dt>
             <dd>
               {object.line}
               {object.endLine && object.endLine !== object.line ? `–${object.endLine}` : ''}
@@ -52,14 +51,12 @@ export function CodeObjectProperties({ node }: { node: GraphNode }) {
           </>
         )}
       </dl>
-      {object.external && (
-        <p>
-          External or unresolved object. Its implementation was not resolved from the loaded source.
-        </p>
-      )}
+      {object.external && <p>{t('data.code.externalObjectNotice')}</p>}
       {!!object.summary?.length && (
         <details>
-          <summary>Declarations ({object.summary.length})</summary>
+          <summary>
+            {t('data.code.declarationsWithCount', { count: object.summary.length })}
+          </summary>
           <ul>
             {object.summary.map((name, index) => (
               <li key={index}>{name}</li>
@@ -67,36 +64,37 @@ export function CodeObjectProperties({ node }: { node: GraphNode }) {
           </ul>
         </details>
       )}
-      <p>Original source is not stored. Paths and line numbers refer to the imported version.</p>
+      <p>{t('data.code.originalSourceNotStored')}</p>
     </section>
   );
 }
 export function CodeRelationProperties({ edge }: { edge: GraphEdge }) {
+  const { t } = useI18n();
   const relation = getCodeRelation(edge);
   if (!relation) return null;
   return (
-    <section className="code-details" aria-label="Code connection details">
-      <div className="property-section">Code relationship</div>
+    <section className="code-details" aria-label={t('data.code.relationRegion')}>
+      <div className="property-section">{t('data.code.relationTitle')}</div>
       <dl>
-        <dt>Relationship</dt>
+        <dt>{t('data.code.relationLabel')}</dt>
         <dd>{relation.kind}</dd>
-        <dt>Confidence</dt>
+        <dt>{t('data.code.confidenceLabel')}</dt>
         <dd>
           {relation.confidence === 'syntax'
-            ? 'Syntax'
+            ? t('data.code.confidenceSyntax')
             : relation.confidence === 'heuristic'
-              ? 'Inferred'
-              : 'Unresolved'}
+              ? t('data.code.confidenceInferred')
+              : t('data.code.confidenceUnresolved')}
         </dd>
         {relation.occurrences !== undefined && (
           <>
-            <dt>Source relationships</dt>
+            <dt>{t('data.code.sourceRelationsLabel')}</dt>
             <dd>{relation.occurrences}</dd>
           </>
         )}
         {relation.evidence && (
           <>
-            <dt>Evidence</dt>
+            <dt>{t('data.code.evidenceLabel')}</dt>
             <dd>
               {relation.evidence.path}:{relation.evidence.line}
             </dd>
@@ -105,44 +103,53 @@ export function CodeRelationProperties({ edge }: { edge: GraphEdge }) {
       </dl>
       <p>
         {relation.confidence === 'syntax'
-          ? 'Identified from explicit source syntax. Runtime behavior and dynamic dispatch may differ.'
+          ? t('data.code.syntaxExplanation')
           : relation.confidence === 'heuristic'
-            ? 'Inferred from names or source patterns. Check the source before treating this as a confirmed dependency.'
-            : 'The target could not be resolved unambiguously from the loaded files.'}
+            ? t('data.code.inferredExplanation')
+            : t('data.code.unresolvedExplanation')}
       </p>
     </section>
   );
 }
 export function CodeAnalysisProperties({ graph }: { graph: Graph }) {
+  const { t } = useI18n();
   const analysis = getCodeAnalysis(graph);
   if (!analysis) return null;
   return (
-    <section className="code-details" aria-label="Code analysis details">
-      <div className="property-section">Code analysis</div>
+    <section className="code-details" aria-label={t('data.code.analysisRegion')}>
+      <div className="property-section">{t('data.code.analysisTitle')}</div>
       <p>{analysis.languages.map(languageName).join(', ')}</p>
       <p>
-        {analysis.fileCount} files · {analysis.symbolCount} symbols · {analysis.dependencyCount}{' '}
-        dependencies · {analysis.unresolvedCount} unresolved
+        {t('data.code.analysisCounts', {
+          files: analysis.fileCount,
+          symbols: analysis.symbolCount,
+          dependencies: analysis.dependencyCount,
+          unresolved: analysis.unresolvedCount,
+        })}
       </p>
       <p>
         {analysis.mode === 'folders'
-          ? 'Folder relationships'
+          ? t('import.code.modeFolders')
           : analysis.mode === 'files'
-            ? 'File overview'
-            : 'Declarations and dependencies'}
-        {analysis.focus ? ` · focus: ${analysis.focus}` : ''}
+            ? t('import.code.modeFiles')
+            : t('import.code.modeSymbols')}
+        {analysis.focus ? t('data.code.focusSuffix', { focus: analysis.focus }) : ''}
       </p>
-      {analysis.directoryCount !== undefined && <p>{analysis.directoryCount} folders</p>}
+      {analysis.directoryCount !== undefined && (
+        <p>{t('data.code.folderCount', { count: analysis.directoryCount })}</p>
+      )}
       {analysis.project && (
         <p>
-          ZIP project: {analysis.project.name} ·{' '}
-          {(analysis.project.expandedBytes / 1024 / 1024).toFixed(1)} MB expanded ·{' '}
-          {analysis.project.ignoredEntries} excluded entries
+          {t('data.code.zipDetails', {
+            name: analysis.project.name,
+            size: (analysis.project.expandedBytes / 1024 / 1024).toFixed(1),
+            count: analysis.project.ignoredEntries,
+          })}
         </p>
       )}
       {analysis.warnings.length > 0 && (
         <details>
-          <summary>Analysis notes ({analysis.warnings.length})</summary>
+          <summary>{t('import.codePreview.notes', { count: analysis.warnings.length })}</summary>
           <ul>
             {analysis.warnings.map((warning, index) => (
               <li key={index}>{warning}</li>
@@ -150,10 +157,7 @@ export function CodeAnalysisProperties({ graph }: { graph: Graph }) {
           </ul>
         </details>
       )}
-      <p>
-        Structural analysis of imported source. Connections show syntax, inferred or unresolved
-        evidence; they do not represent a runtime trace.
-      </p>
+      <p>{t('data.code.structuralNotTrace')}</p>
     </section>
   );
 }

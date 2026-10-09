@@ -8,7 +8,7 @@ Visual Nerve saves locally. Export creates a file you control; it does not autom
 
 Open **Export** on desktop or **Diagram actions → Export** on a phone.
 
-The existing `www.visualnerve.com/app/` workspace stores readable records and exports. A separate encrypted workspace at `app.visualnerve.com` is being prepared for release review. On that isolated address, only **Export all data / backup** produces an encrypted workspace file. Individual diagram JSON/Markdown, images, SVG, PDF, video and copied text remain readable. Review them before sharing, even if the workspace itself is password protected.
+The existing `www.visualnerve.com/app/` workspace stores readable records and exports. The separate encrypted workspace at `app.visualnerve.com` protects private records with a local password. On that isolated address, only **Export all data / backup** produces an encrypted workspace file. Individual diagram JSON/Markdown, images, SVG, PDF, video and copied text remain readable. Review them before sharing, even if the workspace itself is password protected.
 
 ## Choose the right output
 
@@ -89,7 +89,7 @@ Nothing is uploaded. Keep the downloaded file somewhere independent of this brow
 | Backup source | File protection | Reading it later |
 | --- | --- | --- |
 | Existing plaintext workspace | Readable `visual-nerve-workspace` JSON, format version 1 | Review the restore preview; no backup password is required |
-| Isolated encrypted workspace, under release review | Authenticated `visualnerve-backup` container, version 1 | Unlock the destination workspace, then use this file's original export password or recovery key in **Unlock encrypted backup** |
+| Isolated encrypted workspace | Authenticated `visualnerve-backup` container, version 1 | Unlock the destination workspace, then use this file's original export password or recovery key in **Unlock encrypted backup** |
 
 Both use a `.json` filename. Your current workspace password is not automatically tried on an old encrypted backup. Choose **Original export password** or **Original export recovery key**, then **Read backup**. The complete container is verified before its contents become a restore preview; cancelling or a workspace lock cancels the reader. Keep the original credential securely and verify a backup before depending on it.
 

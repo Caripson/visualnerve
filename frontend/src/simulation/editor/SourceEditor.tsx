@@ -1,3 +1,4 @@
+import { useI18n } from '../../i18n';
 import { NumberField, ScalingFields } from '../fields';
 import { JsonField } from './JsonField';
 import { ScheduleFields, openingHours } from './ScheduleFields';
@@ -8,12 +9,13 @@ export function SourceEditor({
   node,
   patchNode,
 }: NodeSectionProps & { node: Extract<SimulationNode, { type: 'source' }> }) {
+  const { t } = useI18n();
   return (
     <>
       <label className="simulation-field">
-        Particle type
+        {t('simulator.common.particleType')}{' '}
         <select
-          aria-label="Source particle type"
+          aria-label={t('simulator.editor.source.sourceParticleType')}
           value={node.source.particleTypeId}
           onChange={(event) =>
             patchNode({ source: { ...node.source, particleTypeId: event.target.value } })
@@ -28,12 +30,12 @@ export function SourceEditor({
       </label>
       <div className="simulation-grid">
         <NumberField
-          label="Arrivals / hour"
+          label={t('simulator.editor.source.arrivalsPerHour')}
           value={node.source.ratePerHour}
           change={(value) => patchNode({ source: { ...node.source, ratePerHour: value } })}
         />
         <NumberField
-          label="Arrivals / opening day"
+          label={t('simulator.editor.source.arrivalsPerDay')}
           value={(node.source.ratePerHour ?? 0) * openingHours(node.source.schedule)}
           change={(value) =>
             patchNode({
@@ -46,28 +48,28 @@ export function SourceEditor({
           }
         />
         <NumberField
-          label="Initial burst"
+          label={t('simulator.editor.source.initialBurst')}
           value={node.source.burst ?? 0}
           step={1}
           change={(value) => patchNode({ source: { ...node.source, burst: value } })}
         />
         <NumberField
-          label="Maximum arrivals"
+          label={t('simulator.editor.source.maximumArrivals')}
           value={node.source.maxCount}
           step={1}
           change={(value) => patchNode({ source: { ...node.source, maxCount: value } })}
         />
         <NumberField
-          label="Source start (minutes)"
+          label={t('simulator.editor.source.sourceStartMinutes')}
           value={(node.source.startSeconds ?? 0) / 60}
           change={(value) =>
             patchNode({ source: { ...node.source, startSeconds: (value ?? 0) * 60 } })
           }
         />
         <label>
-          Arrival pattern
+          {t('simulator.wizard.fields.arrivalPattern')}{' '}
           <select
-            aria-label="Arrival distribution"
+            aria-label={t('simulator.editor.source.arrivalDistribution')}
             value={node.source.distribution ?? 'regular'}
             onChange={(event) =>
               patchNode({
@@ -78,18 +80,19 @@ export function SourceEditor({
               })
             }
           >
-            <option value="regular">Evenly spaced</option>
-            <option value="poisson">Random arrivals (seeded)</option>
+            <option value="regular">{t('simulator.editor.source.evenlySpaced')}</option>
+            <option value="poisson">{t('simulator.editor.source.randomArrivalsSeeded')}</option>
           </select>
         </label>
       </div>
       <ScheduleFields
-        label="Opening hours"
+        label={t('simulator.editor.source.openingHours')}
         value={node.source.schedule}
         change={(value) => patchNode({ source: { ...node.source, schedule: value } })}
       />
       <JsonField
-        label="Opening schedule (seconds)"
+        fieldId={`source-schedule:${node.id}`}
+        label={t('simulator.editor.source.openingScheduleSeconds')}
         value={node.source.schedule}
         change={(value) =>
           patchNode({ source: { ...node.source, schedule: value as typeof node.source.schedule } })

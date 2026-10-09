@@ -1,3 +1,4 @@
+import { useI18n } from '../../i18n';
 import { NumberField, ScalingFields } from '../fields';
 import { JsonField } from './JsonField';
 import { ScheduleFields } from './ScheduleFields';
@@ -8,48 +9,49 @@ export function WorkEditor({
   node,
   patchNode,
 }: NodeSectionProps & { node: Extract<SimulationNode, { type: 'work' }> }) {
+  const { t } = useI18n();
   return (
     <>
       <div className="simulation-grid">
         <NumberField
-          label="Work capacity"
+          label={t('simulator.editor.work.capacity')}
           value={node.work.capacity}
           step={1}
           change={(value) => patchNode({ work: { ...node.work, capacity: value ?? 0 } })}
         />
         <NumberField
-          label="Processing time (minutes)"
+          label={t('simulator.editor.work.processingTimeMinutes')}
           value={node.work.processingSeconds / 60}
           change={(value) =>
             patchNode({ work: { ...node.work, processingSeconds: (value ?? 0) * 60 } })
           }
         />
         <NumberField
-          label="Work cost / hour"
-          help="Per available capacity unit, including idle time."
+          label={t('simulator.editor.work.workCostHour')}
+          help={t('simulator.editor.work.perAvailableCapacityUnitIncludingIdleTime')}
           value={node.work.costPerHour ?? 0}
           change={(value) => patchNode({ work: { ...node.work, costPerHour: value } })}
         />
         <NumberField
-          label="Cost / processed item"
+          label={t('simulator.editor.work.costProcessedItem')}
           value={node.work.costPerParticle ?? 0}
           change={(value) => patchNode({ work: { ...node.work, costPerParticle: value } })}
         />
         <NumberField
-          label="Maximum queue"
+          label={t('simulator.results.maximumQueue')}
           value={node.work.queueLimit}
           step={1}
           change={(value) => patchNode({ work: { ...node.work, queueLimit: value } })}
         />
         <NumberField
-          label="Complexity multiplier"
+          label={t('simulator.editor.work.complexityMultiplier')}
           value={node.work.complexityMultiplier ?? 1}
           change={(value) => patchNode({ work: { ...node.work, complexityMultiplier: value } })}
         />
         <label>
-          Queue order
+          {t('simulator.editor.work.queueOrder')}{' '}
           <select
-            aria-label="Queue order"
+            aria-label={t('simulator.editor.work.queueOrder')}
             value={node.work.queueDiscipline ?? 'fifo'}
             onChange={(event) =>
               patchNode({
@@ -57,20 +59,20 @@ export function WorkEditor({
               })
             }
           >
-            <option value="fifo">First in, first out</option>
-            <option value="priority">Particle priority</option>
+            <option value="fifo">{t('simulator.editor.work.firstInFirstOut')}</option>
+            <option value="priority">{t('simulator.editor.work.particlePriority')}</option>
           </select>
         </label>
         <label>
-          Overflow route
+          {t('simulator.editor.work.overflowRoute')}{' '}
           <select
-            aria-label="Queue overflow route"
+            aria-label={t('simulator.editor.work.queueOverflowRoute')}
             value={node.work.overflowNodeId ?? ''}
             onChange={(event) =>
               patchNode({ work: { ...node.work, overflowNodeId: event.target.value || undefined } })
             }
           >
-            <option value="">Abandon when full</option>
+            <option value="">{t('simulator.editor.work.abandonWhenFull')}</option>
             {draft.nodes
               .filter((target) =>
                 draft.edges.some(
@@ -86,7 +88,7 @@ export function WorkEditor({
         </label>
       </div>
       <fieldset>
-        <legend>Shared resources required together</legend>
+        <legend>{t('simulator.editor.work.sharedResourcesRequiredTogether')}</legend>
         {draft.resources.map((resource) => {
           const requirement = node.work.resourceRequirements?.find(
             (entry) => entry.resourceId === resource.id,
@@ -117,7 +119,7 @@ export function WorkEditor({
               </label>
               {requirement && (
                 <NumberField
-                  label={`${resource.name} units required`}
+                  label={t('simulator.editor.work.unitsRequired', { name: String(resource.name) })}
                   value={requirement.units}
                   min={0.001}
                   change={(value) =>
@@ -139,7 +141,7 @@ export function WorkEditor({
         })}
       </fieldset>
       <fieldset>
-        <legend>Accepted particle types (all when empty)</legend>
+        <legend>{t('simulator.editor.work.acceptedParticleTypesAllWhenEmpty')}</legend>
         {draft.particleTypes.map((type) => (
           <label key={type.id}>
             <input
@@ -166,12 +168,13 @@ export function WorkEditor({
         change={(value) => patchNode({ work: { ...node.work, scaling: value } })}
       />
       <ScheduleFields
-        label="Work availability"
+        label={t('simulator.editor.work.workAvailability')}
         value={node.work.schedule}
         change={(value) => patchNode({ work: { ...node.work, schedule: value } })}
       />
       <JsonField
-        label="Work availability schedule"
+        fieldId={`work-schedule:${node.id}`}
+        label={t('simulator.editor.work.workAvailabilitySchedule')}
         value={node.work.schedule}
         change={(value) =>
           patchNode({ work: { ...node.work, schedule: value as typeof node.work.schedule } })

@@ -1,3 +1,5 @@
+import { localizedFeedback } from './localized-feedback';
+import { useI18n } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Modal } from './Modal';
 import { DiagramFilePreview } from './DiagramFilePreview';
@@ -16,6 +18,7 @@ export function DiagramFileImportDialog({
   close: () => void;
   create: (graph: Graph) => Promise<void>;
 }) {
+  const { t, number } = useI18n();
   const [result, setResult] = useState<DiagramImportResult>();
   const [pageId, setPageId] = useState('');
   const [name, setName] = useState('');
@@ -60,27 +63,26 @@ export function DiagramFileImportDialog({
     }
   };
   return (
-    <Modal title="Import diagram file" wide close={dismiss} dismissible={!creating}>
+    <Modal title={t('import.diagramFile.title')} wide close={dismiss} dismissible={!creating}>
       <div className="diagram-file-import">
         <p className="muted">
           {file.name} · {/\.vsdx$/i.test(file.name) ? 'Visio' : 'draw.io'}
           <br />
-          Choose a page to import as editable objects and connections. Your file stays in this
-          browser.
+          {t('import.diagramFile.localPageChoice')}
         </p>
         <ImportSizeNotice bytes={file.size} />
-        {!result && !error && <p role="status">Reading diagram pages…</p>}
+        {!result && !error && <p role="status">{t('import.diagramFile.reading')}</p>}
         {error && (
           <p role="alert" className="diagram-file-error">
-            {error}
+            {localizedFeedback(error, t)}
           </p>
         )}
         {result && (
           <>
             <label className="field">
-              <span>Diagram page</span>
+              <span>{t('import.diagramFile.pageLabel')}</span>
               <select
-                aria-label="Diagram page"
+                aria-label={t('import.diagramFile.pageLabel')}
                 value={pageId}
                 disabled={creating}
                 onChange={(event) => {
@@ -92,16 +94,19 @@ export function DiagramFileImportDialog({
               >
                 {result.pages.map((page) => (
                   <option key={page.id} value={page.id}>
-                    {page.name} ({page.graph.nodes.length} objects, {page.graph.edges.length}{' '}
-                    connections)
+                    {t('import.diagramFile.pageChoice', {
+                      name: page.name,
+                      objects: page.graph.nodes.length,
+                      connections: page.graph.edges.length,
+                    })}
                   </option>
                 ))}
               </select>
             </label>
             <label className="field">
-              <span>Diagram name</span>
+              <span>{t('data.csv.nameLabel')}</span>
               <input
-                aria-label="Imported diagram name"
+                aria-label={t('import.diagramFile.nameAccessible')}
                 value={name}
                 maxLength={500}
                 disabled={creating}
@@ -111,15 +116,17 @@ export function DiagramFileImportDialog({
             {page && (
               <>
                 <p className="diagram-file-counts">
-                  {page.graph.nodes.length.toLocaleString()} objects ·{' '}
-                  {page.graph.edges.length.toLocaleString()} connections
+                  {t('import.diagramFile.counts', {
+                    objects: number(page.graph.nodes.length),
+                    connections: number(page.graph.edges.length),
+                  })}
                 </p>
                 <DiagramFilePreview graph={page.graph} />
               </>
             )}
             {warnings.length > 0 && (
               <details className="diagram-file-notices" open>
-                <summary>Import notices ({warnings.length})</summary>
+                <summary>{t('import.diagramFile.notices', { count: warnings.length })}</summary>
                 <ul>
                   {warnings.map((warning, index) => (
                     <li key={index}>{warning}</li>
@@ -127,22 +134,19 @@ export function DiagramFileImportDialog({
                 </ul>
               </details>
             )}
-            <p className="muted">
-              Shapes use Visual Nerve's native styles. Special stencils, pictures and custom line
-              paths may be simplified. Other pages can be imported separately.
-            </p>
+            <p className="muted">{t('import.diagramFile.simplificationNotice')}</p>
           </>
         )}
         <div className="dialog-actions">
           <button onClick={dismiss} disabled={creating}>
-            Cancel
+            {t('data.action.cancel')}
           </button>
           <button
             className="primary"
             disabled={!page || creating || !name.trim() || [...name].length > 500}
             onClick={() => void save()}
           >
-            {creating ? 'Creating…' : 'Create diagram'}
+            {creating ? t('import.diagramFile.creating') : t('import.action.createDiagram')}
           </button>
         </div>
       </div>

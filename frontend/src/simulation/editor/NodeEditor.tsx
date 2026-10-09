@@ -1,3 +1,5 @@
+import { simulationNodeTypeLabel } from '../display';
+import { useI18n } from '../../i18n';
 import type { SimulationNode } from '../types';
 import type { EditorSectionProps } from './types';
 import type { Dispatch, SetStateAction } from 'react';
@@ -18,6 +20,7 @@ export function NodeEditor({
   setSelected: Dispatch<SetStateAction<string | undefined>>;
   addNode: (type: SimulationNode['type']) => void;
 }) {
+  const { t } = useI18n();
   const node = draft.nodes.find((entry) => entry.id === selected);
   const patchNode = (partial: Partial<SimulationNode>) =>
     setDraft((model) => ({
@@ -30,32 +33,34 @@ export function NodeEditor({
     <>
       <div className="simulation-row">
         <label>
-          Process node{' '}
+          {t('simulator.editor.improvement.processNode')}{' '}
           <select
-            aria-label="Simulation node"
+            aria-label={t('simulator.editor.node.simulationNode')}
             value={selected ?? ''}
             onChange={(event) => setSelected(event.target.value)}
           >
             {draft.nodes.map((entry) => (
               <option key={entry.id} value={entry.id}>
-                {entry.name} ({entry.type})
+                {entry.name} ({simulationNodeTypeLabel(t, entry.type)})
               </option>
             ))}
           </select>
         </label>
         {!scenarioId && (
           <label>
-            Add node{' '}
+            {t('simulator.editor.node.addNode')}{' '}
             <select
-              aria-label="Add simulation node"
+              aria-label={t('simulator.editor.node.addSimulationNode')}
               value=""
               onChange={(event) =>
                 event.target.value && addNode(event.target.value as SimulationNode['type'])
               }
             >
-              <option value="">Choose type…</option>
+              <option value="">{t('simulator.editor.node.chooseType')}</option>
               {['source', 'work', 'router', 'resource', 'outcome'].map((type) => (
-                <option key={type}>{type}</option>
+                <option key={type} value={type}>
+                  {simulationNodeTypeLabel(t, type)}
+                </option>
               ))}
             </select>
           </label>
@@ -64,30 +69,30 @@ export function NodeEditor({
       {node && (
         <>
           <label className="simulation-field">
-            Name
+            {t('simulator.common.name')}{' '}
             <input
-              aria-label="Simulation node name"
+              aria-label={t('simulator.editor.node.simulationNodeName')}
               value={node.name}
               onChange={(event) => patchNode({ name: event.target.value })}
             />
           </label>
           <label className="simulation-field">
-            Description
+            {t('simulator.common.description')}{' '}
             <textarea
-              aria-label="Simulation node description"
+              aria-label={t('simulator.editor.node.simulationNodeDescription')}
               value={node.description ?? ''}
               onChange={(event) => patchNode({ description: event.target.value })}
             />
           </label>
           {(draft.processes?.length ?? 0) > 0 && (
             <label className="simulation-field">
-              Process group
+              {t('simulator.common.processGroup')}{' '}
               <select
-                aria-label="Node process group"
+                aria-label={t('simulator.editor.node.nodeProcessGroup')}
                 value={node.processId ?? ''}
                 onChange={(event) => patchNode({ processId: event.target.value || undefined })}
               >
-                <option value="">Outside process groups</option>
+                <option value="">{t('simulator.editor.node.outsideProcessGroups')}</option>
                 {draft.processes?.map((process) => (
                   <option key={process.id} value={process.id}>
                     {process.name}
@@ -105,7 +110,7 @@ export function NodeEditor({
           )}
           {node.type === 'resource' && (
             <p>
-              Configure this resource in the Resources section. Resource:{' '}
+              {t('simulator.editor.node.configureThisResourceInTheResourcesSectionResource')}{' '}
               {draft.resources.find((resource) => resource.id === node.resourceId)?.name}
             </p>
           )}
@@ -120,7 +125,7 @@ export function NodeEditor({
                 setSelected(undefined);
               }}
             >
-              Delete process node
+              {t('simulator.editor.node.deleteProcessNode')}
             </button>
           )}
         </>

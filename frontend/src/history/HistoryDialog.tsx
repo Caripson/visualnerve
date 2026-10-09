@@ -1,3 +1,10 @@
+import {
+  historyKindLabel,
+  historyEntityLabel,
+  historyChangeKindLabel,
+  historyWarningLabel,
+} from '../ui/editor-labels';
+import { useI18n } from '../i18n';
 import { useEffect, useState } from 'react';
 import { Modal } from '../components/Modal';
 import type { Graph } from '../model/types';
@@ -19,6 +26,7 @@ export function HistoryDialog({
   onRestored,
   beforeAction,
 }: HistoryDialogProps) {
+  const { t, plural, date } = useI18n();
   const [snapshots, setSnapshots] = useState<HistorySnapshot[]>([]);
   const [selected, setSelected] = useState('');
   const [target, setTarget] = useState('current');
@@ -28,6 +36,10 @@ export function HistoryDialog({
   const [deleteReady, setDeleteReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const [notice, setNotice] = useState<{
+    kind: 'created' | 'restored' | 'removed';
+    snapshotName?: string;
+  }>();
   useEffect(() => {
     let active = true;
     store
@@ -51,6 +63,7 @@ export function HistoryDialog({
     if (busy) return;
     setBusy(true);
     setMessage('');
+    setNotice(undefined);
     try {
       await beforeAction?.();
       await operation();
@@ -71,7 +84,7 @@ export function HistoryDialog({
       await reload();
       setSelected(snapshot.id);
       setName('');
-      setMessage('Named snapshot saved locally.');
+      setNotice({ kind: 'created' });
     });
   const review = () =>
     act(async () => {
@@ -88,7 +101,7 @@ export function HistoryDialog({
       await reload();
       setComparison(null);
       setAcknowledged(false);
-      setMessage(`Restored. Your previous work is preserved as “${result.safetySnapshot.name}”.`);
+      setNotice({ kind: 'restored', snapshotName: result.safetySnapshot.name });
     });
   const remove = () =>
     act(async () => {
@@ -99,14 +112,13 @@ export function HistoryDialog({
       await store.remove(diagramId, selected);
       setSelected('');
       await reload();
-      setMessage('Snapshot deleted. The current diagram is unchanged.');
+      setNotice({ kind: 'removed' });
     });
   return (
-    <Modal title="Diagram history" close={onClose} wide dismissible={!busy}>
+    <Modal title={t('editor.history.title')} close={onClose} wide dismissible={!busy}>
       <div className="history-dialog">
         <p>
-          Named snapshots and checkpoints before source refresh or restore are saved in this
-          browser. Ordinary autosaves do not create snapshots. Workspace backups include history.
+          {t('editor.history.namedSnapshotsAndCheckpointsBeforeSourceRefreshOrRestoreAreSavedIn')}
         </p>
         <form
           onSubmit={(event) => {
@@ -116,7 +128,7 @@ export function HistoryDialog({
           className="history-create"
         >
           <label>
-            Snapshot name
+            {t('editor.history.snapshotName')}{' '}
             <input
               value={name}
               maxLength={200}
@@ -125,30 +137,39 @@ export function HistoryDialog({
             />
           </label>
           <button disabled={busy || !name.trim()} type="submit">
-            Save snapshot
+            {t('editor.history.saveSnapshot')}
           </button>
         </form>
         <p className="history-capacity">
-          Up to {store.limits.snapshotsPerDiagram} snapshots per diagram and{' '}
-          {Math.round(store.limits.bytes / 1024 / 1024)} MiB of shared history. Delete snapshots
-          explicitly to free space; named snapshots are never evicted automatically.
+          {t('editor.history.limits', {
+            snapshotLimit: store.limits.snapshotsPerDiagram,
+            historyMiB: Math.round(store.limits.bytes / 1024 / 1024),
+          })}
         </p>
         {!snapshots.length ? (
-          <p>No snapshots yet.</p>
+          <p>{t('editor.history.noSnapshotsYet')}</p>
         ) : (
           <>
             <label>
-              Snapshot
+              {t('editor.history.snapshot')}{' '}
               <select
                 value={selected}
                 disabled={busy}
                 onChange={(event) => setSelected(event.target.value)}
               >
-                <option value="">Choose a snapshot</option>
+                <option value="">{t('editor.history.chooseASnapshot')}</option>
                 {snapshots.map((snapshot) => (
                   <option key={snapshot.id} value={snapshot.id}>
-                    {snapshot.name} · {new Date(snapshot.createdAt).toLocaleString()} ·{' '}
-                    {snapshot.kind}
+                    {snapshot.name} ·{' '}
+                    {date(new Date(snapshot.createdAt), {
+                      year: 'numeric',
+                      month: 'numeric',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: 'numeric',
+                      second: 'numeric',
+                    })}{' '}
+                    · {historyKindLabel(t, snapshot.kind)}
                   </option>
                 ))}
               </select>
@@ -156,13 +177,13 @@ export function HistoryDialog({
             {selected && (
               <>
                 <label>
-                  Compare with
+                  {t('editor.history.compareWith')}{' '}
                   <select
                     value={target}
                     disabled={busy}
                     onChange={(event) => setTarget(event.target.value)}
                   >
-                    <option value="current">Current diagram</option>
+                    <option value="current">{t('editor.history.currentDiagram')}</option>
                     {snapshots
                       .filter((snapshot) => snapshot.id !== selected)
                       .map((snapshot) => (
@@ -174,10 +195,12 @@ export function HistoryDialog({
                 </label>
                 <div className="history-actions">
                   <button onClick={() => void review()} disabled={busy}>
-                    Review changes
+                    {t('editor.history.reviewChanges')}
                   </button>
                   <button onClick={() => void remove()} disabled={busy}>
-                    {deleteReady ? 'Confirm delete snapshot' : 'Delete snapshot'}
+                    {deleteReady
+                      ? t('editor.history.confirmDeleteSnapshot')
+                      : t('editor.history.deleteSnapshot')}
                   </button>
                 </div>
               </>
@@ -185,26 +208,34 @@ export function HistoryDialog({
           </>
         )}
         {comparison && (
-          <section aria-label="Snapshot comparison">
-            <h3>{comparison.totalChanges} meaningful changes</h3>
+          <section aria-label={t('editor.history.snapshotComparison')}>
+            <h3>
+              {plural(
+                'editor.history.comparison.count.one',
+                'editor.history.comparison.count.other',
+                comparison.totalChanges,
+              )}
+            </h3>
             <p>
-              Changes run from the selected snapshot to{' '}
-              {target === 'current' ? 'your current diagram' : 'the comparison snapshot'}. Restoring
-              reverses these changes.
+              {t(
+                target === 'current'
+                  ? 'editor.history.comparison.direction.current'
+                  : 'editor.history.comparison.direction.snapshot',
+              )}
             </p>
             <table>
               <thead>
                 <tr>
-                  <th>Content</th>
-                  <th>Added</th>
-                  <th>Removed</th>
-                  <th>Changed</th>
+                  <th>{t('editor.history.content')}</th>
+                  <th>{t('editor.history.added')}</th>
+                  <th>{t('editor.history.removed')}</th>
+                  <th>{t('editor.history.changed')}</th>
                 </tr>
               </thead>
               <tbody>
                 {Object.entries(comparison.counts).map(([entity, count]) => (
                   <tr key={entity}>
-                    <th>{entity}</th>
+                    <th>{historyEntityLabel(t, entity)}</th>
                     <td>{count.added}</td>
                     <td>{count.removed}</td>
                     <td>{count.changed}</td>
@@ -212,28 +243,23 @@ export function HistoryDialog({
                 ))}
               </tbody>
             </table>
-            <p>
-              {comparison.affectedTotal} objects may be affected through modeled connections. Camera
-              movements and save timestamps are ignored.
-            </p>
+            <p>{t('editor.history.comparison.affected', { count: comparison.affectedTotal })}</p>
             {comparison.warnings.map((warning) => (
-              <p key={warning}>{warning}</p>
+              <p key={warning}>{historyWarningLabel(t, warning)}</p>
             ))}
             {comparison.changesTruncated && (
               <p>
-                Showing the first {comparison.changes.length} changes; counts include all changes.
+                {t('editor.history.comparison.truncated', { count: comparison.changes.length })}
               </p>
             )}
             {comparison.affectedTruncated && (
-              <p>
-                Affected references are limited to 2,000 nodes and 2,000 connections; the total is
-                shown above.
-              </p>
+              <p>{t('editor.history.affectedReferencesAreLimitedTo2000NodesAnd2000Connections')}</p>
             )}
             <ul className="history-changes">
               {comparison.changes.map((change) => (
                 <li key={`${change.entity}:${change.id}`}>
-                  <strong>{change.label}</strong> · {change.entity} {change.kind}
+                  <strong>{change.label}</strong> · {historyEntityLabel(t, change.entity)}{' '}
+                  {historyChangeKindLabel(t, change.kind)}
                   {change.fields.length
                     ? ` · ${change.fields.slice(0, 12).join(', ')}${change.fields.length > 12 ? '…' : ''}`
                     : ''}
@@ -243,9 +269,9 @@ export function HistoryDialog({
             {target === 'current' && (
               <>
                 <p>
-                  Restore preserves diagram and object IDs and creates a checkpoint of your current
-                  work first. Shared owner profiles retain their current details. Another tab
-                  changing this diagram requires a new review.
+                  {t(
+                    'editor.history.restorePreservesDiagramAndObjectIdsAndCreatesACheckpointOfYour',
+                  )}
                 </p>
                 <label className="history-ack">
                   <input
@@ -254,17 +280,28 @@ export function HistoryDialog({
                     disabled={busy}
                     onChange={(event) => setAcknowledged(event.target.checked)}
                   />
-                  I reviewed the changes and want to restore this snapshot.
+                  {t('editor.history.iReviewedTheChangesAndWantToRestoreThisSnapshot')}{' '}
                 </label>
                 <button disabled={busy || !acknowledged} onClick={() => void restore()}>
-                  Restore reviewed snapshot
+                  {t('editor.history.restoreReviewedSnapshot')}
                 </button>
               </>
             )}
           </section>
         )}
+        {notice && (
+          <p role="status">
+            {notice.kind === 'created'
+              ? t('editor.history.namedSnapshotSavedLocally')
+              : notice.kind === 'removed'
+                ? t('editor.history.snapshotDeletedTheCurrentDiagramIsUnchanged')
+                : t('editor.history.restoredYourPreviousWorkIsPreservedAs', {
+                    snapshotName: notice.snapshotName ?? '',
+                  })}
+          </p>
+        )}
         {message && <p role="status">{message}</p>}
-        {busy && <p role="status">Working…</p>}
+        {busy && <p role="status">{t('editor.history.workingStatus')}</p>}
       </div>
     </Modal>
   );

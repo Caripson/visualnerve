@@ -1,3 +1,4 @@
+import { useI18n } from '../../i18n';
 import { useState } from 'react';
 import type { SimulationModel } from '../types';
 export function ConnectionForm({
@@ -7,18 +8,19 @@ export function ConnectionForm({
   model: SimulationModel;
   add: (source: string, target: string) => void;
 }) {
+  const { t } = useI18n();
   const [source, setSource] = useState(
     model.nodes.find((node) => node.type !== 'resource')?.id ?? '',
   );
   const [target, setTarget] = useState(model.nodes.find((node) => node.type === 'work')?.id ?? '');
   return (
     <fieldset>
-      <legend>Add a process connection</legend>
+      <legend>{t('simulator.common.addAProcessConnection')}</legend>
       <div className="simulation-row">
         <label>
-          From
+          {t('simulator.common.from')}{' '}
           <select
-            aria-label="Connection from"
+            aria-label={t('simulator.common.connectionFrom')}
             value={source}
             onChange={(event) => setSource(event.target.value)}
           >
@@ -32,9 +34,9 @@ export function ConnectionForm({
           </select>
         </label>
         <label>
-          To
+          {t('simulator.common.to')}{' '}
           <select
-            aria-label="Connection to"
+            aria-label={t('simulator.common.connectionTo')}
             value={target}
             onChange={(event) => setTarget(event.target.value)}
           >
@@ -51,7 +53,7 @@ export function ConnectionForm({
           disabled={!source || !target || source === target}
           onClick={() => add(source, target)}
         >
-          Connect process nodes
+          {t('simulator.common.connectProcessNodes')}
         </button>
       </div>
     </fieldset>

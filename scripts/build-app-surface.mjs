@@ -83,6 +83,7 @@ export async function buildAppSurface(
     if (!root) throw new Error("The source is missing the workspace mount.");
     const app = appDocument("Workspace", "/", root, brand, options, {
       modules: ["/editor/app.js"],
+      workspaceChrome: true,
     });
     put(output, "index.html", app);
     put(output, "app/index.html", app);

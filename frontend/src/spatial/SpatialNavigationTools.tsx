@@ -1,3 +1,5 @@
+import { orientationKeys } from './ui-labels';
+import { useI18n } from '../i18n';
 import { ArrowLeft, CircleHelp, Focus, Maximize, Move, Settings2 } from 'lucide-react';
 import { ToolbarMenu } from '../components/ToolbarMenu';
 import { useCompactLayout } from '../hooks/useCompactLayout';
@@ -34,12 +36,13 @@ export function SpatialNavigationTools({
   orient: (value: Orientation) => void;
   tilt: (value: number) => void;
 }) {
+  const { t } = useI18n();
   const compact = useCompactLayout();
   const options = (
     <>
       <button disabled={movementDisabled} aria-pressed={moving} onClick={toggleMovement}>
         <Move size={16} />
-        Move objects
+        {t('spatial.moveObjects')}
       </button>
       <div className="spatial-orientations">
         {(['front', 'back', 'left', 'right', 'top'] as const).map((value) => (
@@ -47,30 +50,33 @@ export function SpatialNavigationTools({
             key={value}
             disabled={!ready}
             onClick={() => orient(value)}
-            aria-label={`${value[0].toUpperCase()}${value.slice(1)} view`}
+            aria-label={t(orientationKeys[value].aria)}
           >
-            {value[0].toUpperCase()}
-            {value.slice(1)}
+            {t(orientationKeys[value].label)}
           </button>
         ))}
       </div>
       <button
         disabled={!ready}
         onClick={() => tilt(-Math.PI / 18)}
-        aria-label="Tilt diagram left 10 degrees"
+        aria-label={t('spatial.tiltLeft')}
       >
         −10°
       </button>
       <button
         disabled={!ready}
         onClick={() => tilt(Math.PI / 18)}
-        aria-label="Tilt diagram right 10 degrees"
+        aria-label={t('spatial.tiltRight')}
       >
         +10°
       </button>
-      <button disabled={!ready || !selected} onClick={focus} aria-label="Focus selected object">
+      <button
+        disabled={!ready || !selected}
+        onClick={focus}
+        aria-label={t('spatial.focusSelected')}
+      >
         <Focus size={16} />
-        Focus
+        {t('spatial.focus')}
       </button>
       <label>
         <input
@@ -78,34 +84,34 @@ export function SpatialNavigationTools({
           checked={labels}
           onChange={(event) => setLabels(event.target.checked)}
         />
-        Labels
+        {t('spatial.labelsToggle')}
       </label>
     </>
   );
   return (
     <>
-      <button className="spatial-return" aria-label="Return to 2D" onClick={returnTo2D}>
+      <button className="spatial-return" aria-label={t('spatial.return2D')} onClick={returnTo2D}>
         <ArrowLeft size={16} />
-        {compact ? '2D' : 'Return to 2D'}
+        {compact ? '2D' : t('spatial.return2D')}
       </button>
       {!compact && options}
-      <button onClick={fit} disabled={!ready} aria-label="Fit 3D diagram">
+      <button onClick={fit} disabled={!ready} aria-label={t('spatial.fitDiagramAria')}>
         <Maximize size={16} />
-        Fit
+        {t('spatial.fit')}
       </button>
       <button
-        aria-label="3D help"
+        aria-label={t('spatial.helpAria')}
         aria-expanded={help}
         aria-controls="spatial-help"
         data-spatial-help-control
         onClick={toggleHelp}
       >
         <CircleHelp size={16} />
-        {!compact && 'Help'}
+        {!compact && t('spatial.help')}
       </button>
       {compact && (
-        <ToolbarMenu label="3D tools" icon={<Settings2 size={16} />} text={false}>
-          <h3>3D navigation</h3>
+        <ToolbarMenu label={t('spatial.toolsMenu')} icon={<Settings2 size={16} />} text={false}>
+          <h3>{t('spatial.navigationRegion')}</h3>
           {options}
         </ToolbarMenu>
       )}

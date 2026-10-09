@@ -24,7 +24,7 @@
   const setPreference = value => {
     revision++;
     preference = normalize(value);
-    // The only unencrypted app preference is a harmless appearance choice.
+    // Appearance and the allowlisted UI-language identifier are technical preferences.
     // Reference pages never open the private vault or a plaintext workspace.
     if (isolated) { try { window.localStorage.setItem(appearanceKey, preference); } catch {} }
     paint();

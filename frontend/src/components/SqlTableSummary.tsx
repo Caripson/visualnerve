@@ -1,9 +1,12 @@
+import { sqlColumnRuleLabel } from '../ui/editor-labels';
+import { useI18n } from '../i18n';
 import { useEffect, useState } from 'react';
 import type { GraphEdge, GraphNode } from '../model/types';
 import { getSqlRelationship, getSqlTable, type SqlColumn } from '../sql/schema';
 import './sql-table.css';
 
 function ColumnRules({ column, compact = false }: { column: SqlColumn; compact?: boolean }) {
+  const { t } = useI18n();
   const rules = [
     ...(column.primaryKey ? [{ short: 'PK', label: 'Primary key' }] : []),
     ...(column.foreignKey ? [{ short: 'FK', label: 'Foreign key' }] : []),
@@ -13,8 +16,16 @@ function ColumnRules({ column, compact = false }: { column: SqlColumn; compact?:
   return (
     <span className="sql-column-rules">
       {rules.map((rule) => (
-        <span key={rule.short} className="sql-column-rule" title={rule.label}>
-          {compact ? <abbr title={rule.label}>{rule.short}</abbr> : rule.label}
+        <span
+          key={rule.short}
+          className="sql-column-rule"
+          title={sqlColumnRuleLabel(t, rule.label)}
+        >
+          {compact ? (
+            <abbr title={sqlColumnRuleLabel(t, rule.label)}>{rule.short}</abbr>
+          ) : (
+            sqlColumnRuleLabel(t, rule.label)
+          )}
         </span>
       ))}
     </span>
@@ -22,13 +33,19 @@ function ColumnRules({ column, compact = false }: { column: SqlColumn; compact?:
 }
 
 function Columns({ columns, compact = false }: { columns: SqlColumn[]; compact?: boolean }) {
+  const { t } = useI18n();
   return (
-    <table className="sql-columns" aria-label={compact ? 'SQL table columns' : 'All SQL columns'}>
+    <table
+      className="sql-columns"
+      aria-label={
+        compact ? t('editor.sql.table.sqlTableColumns') : t('editor.sql.table.allSqlColumns')
+      }
+    >
       <thead>
         <tr>
-          <th scope="col">Column</th>
-          <th scope="col">Type</th>
-          <th scope="col">Rules</th>
+          <th scope="col">{t('editor.sql.table.column')}</th>
+          <th scope="col">{t('editor.properties.type')}</th>
+          <th scope="col">{t('editor.sql.table.rules')}</th>
         </tr>
       </thead>
       <tbody>
@@ -49,28 +66,36 @@ function Columns({ columns, compact = false }: { columns: SqlColumn[]; compact?:
 }
 
 export function SqlTableSummary({ node }: { node: GraphNode }) {
+  const { t, plural } = useI18n();
   const table = getSqlTable(node);
   if (!table) return null;
   if (table.external)
     return (
       <div className="sql-table-summary sql-external-table" data-testid="sql-table-summary">
-        External table · definition missing
+        {t('editor.sql.table.externalTableDefinitionMissing')}
       </div>
     );
   return (
     <div className="sql-table-summary" data-testid="sql-table-summary">
       <Columns columns={table.columns.slice(0, 12)} compact />
       {table.columns.length > 12 && (
-        <p className="sql-columns-overflow">+{table.columns.length - 12} more columns</p>
+        <p className="sql-columns-overflow">
+          {plural(
+            'editor.sql.table.moreColumns.one',
+            'editor.sql.table.moreColumns.other',
+            table.columns.length - 12,
+          )}
+        </p>
       )}
       <p className="sql-column-legend">
-        PK primary · FK foreign · UQ unique · ? nullable · NN not null
+        {t('editor.sql.table.pkPrimaryFkForeignUqUniqueNullableNnNotNull')}
       </p>
     </div>
   );
 }
 
 export function SqlTableDetails({ node }: { node: GraphNode }) {
+  const { t } = useI18n();
   const table = getSqlTable(node);
   const [page, setPage] = useState(0);
   const pageSize = 100;
@@ -81,13 +106,12 @@ export function SqlTableDetails({ node }: { node: GraphNode }) {
   const first = currentPage * pageSize;
   const columns = table.columns.slice(first, first + pageSize);
   return (
-    <section className="sql-table-details" aria-label="SQL table schema">
-      <h3 className="property-section">SQL table schema</h3>
+    <section className="sql-table-details" aria-label={t('editor.sql.table.sqlTableSchema')}>
+      <h3 className="property-section">{t('editor.sql.table.sqlTableSchema')}</h3>
       <p className="sql-qualified-name">{table.qualifiedName.join('.')}</p>
       {table.external ? (
         <p className="sql-schema-notice">
-          External table · definition missing. Its columns and keys were not supplied in this
-          schema.
+          {t('editor.sql.table.externalTableDefinitionMissingItsColumnsAndKeysWereNotSuppliedIn')}
         </p>
       ) : (
         <>
@@ -95,32 +119,41 @@ export function SqlTableDetails({ node }: { node: GraphNode }) {
             <Columns columns={columns} />
           </div>
           {table.columns.length > pageSize && (
-            <nav className="sql-schema-pagination" aria-label="SQL column pages">
+            <nav
+              className="sql-schema-pagination"
+              aria-label={t('editor.sql.table.sqlColumnPages')}
+            >
               <button
                 type="button"
                 disabled={currentPage === 0}
                 onClick={() => setPage(currentPage - 1)}
               >
-                Previous columns
+                {t('editor.sql.table.previousColumns')}
               </button>
-              <span aria-label="SQL column range">
-                Columns {first + 1}–{first + columns.length} of {table.columns.length}
+              <span aria-label={t('editor.sql.table.sqlColumnRange')}>
+                {t('editor.sql.table.columnRange', {
+                  firstColumn: first + 1,
+                  lastColumn: first + columns.length,
+                  totalColumns: table.columns.length,
+                })}
               </span>
               <button
                 type="button"
                 disabled={currentPage + 1 === pageCount}
                 onClick={() => setPage(currentPage + 1)}
               >
-                Next columns
+                {t('editor.sql.table.nextColumns')}
               </button>
             </nav>
           )}
           <dl className="sql-schema-keys">
-            <dt>Primary key</dt>
+            <dt>{t('editor.sql.table.primaryKey')}</dt>
             <dd>
-              {table.primaryKey.length ? `(${table.primaryKey.join(', ')})` : 'None declared'}
+              {table.primaryKey.length
+                ? `(${table.primaryKey.join(', ')})`
+                : t('editor.sql.table.noneDeclared')}
             </dd>
-            <dt>Unique keys</dt>
+            <dt>{t('editor.sql.table.uniqueKeys')}</dt>
             <dd>
               {table.uniqueKeys.length ? (
                 <ul>
@@ -129,7 +162,7 @@ export function SqlTableDetails({ node }: { node: GraphNode }) {
                   ))}
                 </ul>
               ) : (
-                'None declared'
+                t('editor.sql.table.noneDeclared')
               )}
             </dd>
           </dl>
@@ -140,45 +173,46 @@ export function SqlTableDetails({ node }: { node: GraphNode }) {
 }
 
 export function SqlRelationshipDetails({ edge }: { edge: GraphEdge }) {
+  const { t } = useI18n();
   const relationship = getSqlRelationship(edge);
   if (!relationship) return null;
   return (
-    <section className="sql-table-details" aria-label="SQL foreign key">
-      <h3 className="property-section">SQL foreign key</h3>
+    <section className="sql-table-details" aria-label={t('editor.sql.table.sqlForeignKey')}>
+      <h3 className="property-section">{t('editor.sql.table.sqlForeignKey')}</h3>
       <p className="sql-schema-notice">
-        The stored reference runs from the child table (source) to the parent table (target). It is
-        a data relationship, not an execution step.
+        {t('editor.sql.table.theStoredReferenceRunsFromTheChildTableSourceToTheParent')}
       </p>
       {relationship.unresolved && (
         <p className="sql-schema-notice">
-          Referenced columns unknown. The external table definition and its primary key were not
-          supplied.
+          {t(
+            'editor.sql.table.referencedColumnsUnknownTheExternalTableDefinitionAndItsPrimaryKeyWere',
+          )}
         </p>
       )}
       <dl className="sql-schema-keys">
         {relationship.name && (
           <>
-            <dt>Constraint</dt>
+            <dt>{t('editor.sql.table.constraint')}</dt>
             <dd>{relationship.name}</dd>
           </>
         )}
-        <dt>Column references</dt>
+        <dt>{t('editor.sql.table.columnReferences')}</dt>
         <dd>
           <ul>
             {relationship.columns.map((column, index) => (
               <li key={index}>
                 {column} →{' '}
                 {relationship.unresolved
-                  ? 'Unknown referenced column'
+                  ? t('editor.sql.table.unknownReferencedColumn')
                   : relationship.referencedColumns[index]}
               </li>
             ))}
           </ul>
         </dd>
-        <dt>On delete</dt>
-        <dd>{relationship.onDelete || 'Not specified'}</dd>
-        <dt>On update</dt>
-        <dd>{relationship.onUpdate || 'Not specified'}</dd>
+        <dt>{t('editor.sql.table.onDelete')}</dt>
+        <dd>{relationship.onDelete || t('editor.sql.table.notSpecified')}</dd>
+        <dt>{t('editor.sql.table.onUpdate')}</dt>
+        <dd>{relationship.onUpdate || t('editor.sql.table.notSpecified')}</dd>
       </dl>
     </section>
   );

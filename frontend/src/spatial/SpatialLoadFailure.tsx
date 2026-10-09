@@ -1,3 +1,5 @@
+import { presentationMessage } from '../presentation/display-messages';
+import { useI18n } from '../i18n';
 import { workspace } from '../storage/workspace';
 import { useEffect, useState } from 'react';
 import { useEditor } from '../state/editor';
@@ -11,6 +13,7 @@ export function SpatialLoadFailure({
   onReturnTo2D(): void;
   onReload?: () => void;
 }) {
+  const { t } = useI18n();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   useEffect(() => {
@@ -40,13 +43,13 @@ export function SpatialLoadFailure({
   return (
     <div className="canvas-shell spatial-canvas">
       <div className="spatial-load-failure">
-        <p role="status">The 3D view could not be loaded. Continue editing in 2D.</p>
-        <p>After your connection recovers, reload this tab to retry 3D.</p>
-        <button onClick={onReturnTo2D}>Return to 2D</button>
+        <p role="status">{t('spatial.loadFailedEditing')}</p>
+        <p>{t('spatial.retryAfterConnectionHint')}</p>
+        <button onClick={onReturnTo2D}>{t('spatial.return2D')}</button>
         <button disabled={saving} onClick={() => void retry()}>
-          {saving ? 'Saving before reload…' : 'Reload to retry 3D'}
+          {saving ? t('spatial.savingBeforeReload') : t('spatial.reloadRetry')}
         </button>
-        {error && <p role="alert">{error}</p>}
+        {error && <p role="alert">{presentationMessage(error, t)}</p>}
       </div>
     </div>
   );

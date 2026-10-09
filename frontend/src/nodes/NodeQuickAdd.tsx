@@ -1,3 +1,6 @@
+import { nodeKindLabel } from '../ui/editor-labels';
+import type { MessageId } from '../i18n';
+import { useI18n } from '../i18n';
 import { NodeToolbar, Position } from '@xyflow/react';
 import { createPortal } from 'react-dom';
 import { ArrowRight, Diamond, Flag, Layers, Plus, Square, StickyNote } from 'lucide-react';
@@ -6,6 +9,55 @@ import { useEditor } from '../state/editor';
 import { connectedNodeChoices, type ConnectedNodeType } from './connected-node';
 import { useQuickAddPlacement } from './quick-add-placement';
 import './quick-add.css';
+
+const choiceMessages: Partial<
+  Record<ConnectedNodeType, { label: MessageId; description: MessageId }>
+> = {
+  work: {
+    label: 'editor.nodes.quickAdd.choice.workStep',
+    description: 'editor.nodes.quickAdd.choice.processWorkWithACapacityAndQueue',
+  },
+  router: {
+    label: 'editor.nodes.typeLabel.decision',
+    description: 'editor.nodes.quickAdd.choice.chooseWhichPathWorkFollows',
+  },
+  outcome: {
+    label: 'editor.nodes.quickAdd.choice.outcome',
+    description: 'editor.nodes.quickAdd.choice.completeWorkAndOptionallyRealizeRevenue',
+  },
+  source: {
+    label: 'editor.nodes.quickAdd.choice.arrivals',
+    description: 'editor.nodes.quickAdd.choice.generateWorkThatEntersThisStep',
+  },
+  resource: {
+    label: 'editor.nodes.quickAdd.choice.sharedResource',
+    description: 'editor.nodes.quickAdd.choice.addStaffOrEquipmentRequiredByThisStep',
+  },
+  timeline: {
+    label: 'editor.nodes.typeLabel.timelineItem',
+    description: 'editor.nodes.quickAdd.choice.addTheNextEvent',
+  },
+  process: {
+    label: 'editor.nodes.typeLabel.process',
+    description: 'editor.nodes.quickAdd.choice.addTheNextStep',
+  },
+  generic: {
+    label: 'editor.nodes.quickAdd.choice.node',
+    description: 'editor.nodes.quickAdd.choice.addAConnectedObject',
+  },
+  decision: {
+    label: 'editor.nodes.typeLabel.decision',
+    description: 'editor.nodes.quickAdd.choice.addABranchingPoint',
+  },
+  end: {
+    label: 'editor.nodes.typeLabel.end',
+    description: 'editor.nodes.quickAdd.choice.addTheFinalStep',
+  },
+  note: {
+    label: 'editor.nodes.typeLabel.note',
+    description: 'editor.nodes.quickAdd.choice.attachAnExplanation',
+  },
+};
 
 const choiceIcon = (type: ConnectedNodeType) =>
   type === 'decision' || type === 'router'
@@ -22,6 +74,7 @@ const choiceIcon = (type: ConnectedNodeType) =>
 
 /** Screen-sized controls remain usable at any canvas zoom and on touch screens. */
 export function NodeQuickAdd({ id, above = false }: { id: string; above?: boolean }) {
+  const { t } = useI18n();
   const graph = useEditor((state) => state.graph);
   const singleSelection = useEditor((state) => state.selectedNodes.length === 1);
   const choices = graph ? connectedNodeChoices(graph, id) : [];
@@ -32,10 +85,10 @@ export function NodeQuickAdd({ id, above = false }: { id: string; above?: boolea
   const semantic = graph.simulation?.nodes.find((item) => item.id === id);
   const label =
     semantic?.type === 'outcome'
-      ? 'Add previous'
+      ? t('editor.nodes.quickAdd.addPrevious')
       : semantic?.type === 'resource'
-        ? 'Add work'
-        : 'Add next';
+        ? t('editor.nodes.quickAdd.addWork')
+        : t('editor.nodes.quickAdd.addNext');
   const control = (
     <div
       ref={placement.control}
@@ -54,35 +107,52 @@ export function NodeQuickAdd({ id, above = false }: { id: string; above?: boolea
     >
       <ToolbarMenu label={label} icon={<Plus size={16} />}>
         <h3 className="node-quick-add-title">
-          {label}: {node.title}
+          {t('editor.nodes.quickAdd.heading', { actionLabel: label, nodeTitle: node.title })}
         </h3>
         <p>
           {graph.simulation && semantic?.type !== 'router' && semantic?.type !== 'resource'
-            ? 'Insert a step into the flow, or start a new path. Existing routing is retained.'
-            : 'A new node and its connection are added together. Undo removes both.'}
+            ? t('editor.nodes.quickAdd.insertAStepIntoTheFlowOrStartANewPathExisting')
+            : t('editor.nodes.quickAdd.aNewNodeAndItsConnectionAreAddedTogetherUndoRemovesBoth')}
         </p>
         {choices.map((choice) => {
           const Icon = choiceIcon(choice.type);
+          const copy = choiceMessages[choice.type];
+          const outgoing = graph.simulation?.edges.filter((edge) => edge.sourceNodeId === id) ?? [];
+          const insertion =
+            graph.simulation &&
+            (choice.type === 'work' || choice.type === 'router') &&
+            (semantic?.type === 'outcome'
+              ? graph.simulation.edges.some((edge) => edge.targetNodeId === id)
+              : semantic?.type !== 'router' && outgoing.length === 1);
+          const choiceLabel = insertion
+            ? t(
+                choice.type === 'work'
+                  ? 'editor.nodes.quickAdd.insertWork'
+                  : 'editor.nodes.quickAdd.insertDecision',
+              )
+            : copy
+              ? t(copy.label)
+              : nodeKindLabel(t, choice.type);
+          const description = copy ? t(copy.description) : choice.description;
           return (
             <button
               key={choice.type}
               className="node-quick-add-choice"
-              aria-label={choice.label}
-              aria-description={choice.description}
+              aria-label={choiceLabel}
+              aria-description={description}
               onClick={() => useEditor.getState().addConnectedNode(id, choice.type)}
             >
               <Icon size={17} aria-hidden="true" />
               <span>
-                <strong>{choice.label}</strong>
-                <small>{choice.description}</small>
+                <strong>{choiceLabel}</strong>
+                <small>{description}</small>
               </span>
             </button>
           );
         })}
         {graph.simulation && (
           <p className="toolbar-menu-hint">
-            New Work steps start with capacity 1 and one minute processing. New flow connections use
-            3 seconds transfer. Change these values in Assumptions.
+            {t('editor.nodes.quickAdd.newWorkStepsStartWithCapacity1AndOneMinuteProcessingNew')}
           </p>
         )}
       </ToolbarMenu>

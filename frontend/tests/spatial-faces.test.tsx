@@ -5,6 +5,9 @@ import { projectGraph, type CanvasNode } from '../src/canvas/projection';
 import { base, blankGraph, newNode } from '../src/model/types';
 import { useEditor } from '../src/state/editor';
 import { captureSpatialNodeFaces, SPATIAL_FACE_CAPTURE_LIMIT } from '../src/spatial/faces';
+import { appLocaleController } from '../src/i18n/runtime';
+import { MessageFormatter } from '../src/i18n/message-formatter';
+import swedish from '../src/i18n/catalogs/sv';
 
 const mocks = vi.hoisted(() => ({
   toSvg: vi.fn(),
@@ -208,6 +211,57 @@ it('captures the actual 2D node renderer with its icon, owner, status, CSV and S
   );
   expect(useEditor.getState()).toBe(before);
   expect(document.querySelector('.spatial-face-capture')).toBeNull();
+});
+
+it('captures localized card metadata while retaining private text, canonical status and both camera layouts', async () => {
+  const graph = blankGraph('My own diagram');
+  graph.nodes = [
+    newNode(graph.diagram.id, {
+      title: 'My private title',
+      description: 'My unchanged narration',
+      status: 'done',
+      x: 150,
+      y: 250,
+      width: 320,
+      height: 120,
+    }),
+  ];
+  graph.diagram.settings.spatialView = {
+    version: 1,
+    mode: '3d',
+    camera: {
+      position: { x: 14, y: 18, z: 31 },
+      target: { x: 0, y: 0, z: 0 },
+    },
+  };
+  const original = structuredClone(graph);
+  const markup: string[] = [];
+  mocks.toSvg.mockImplementation(async (element: HTMLElement) => {
+    markup.push(element.outerHTML);
+    return 'card-svg';
+  });
+  try {
+    await captureSpatialNodeFaces(graph, projectGraph(graph, []).nodes);
+    await appLocaleController.selectLocale('sv');
+    await captureSpatialNodeFaces(graph, projectGraph(graph, []).nodes);
+    const labels = markup.map((value) => {
+      const container = document.createElement('div');
+      container.innerHTML = value;
+      expect(container.textContent).toContain('My private title');
+      return container.querySelector('[data-testid="node-status"]')?.getAttribute('aria-label');
+    });
+    const translated = new MessageFormatter('sv', swedish);
+    expect(labels).toEqual([
+      'Status: Done',
+      translated.t('editor.status.accessible', {
+        label: translated.t('editor.selection.done'),
+      }),
+    ]);
+    expect(graph).toEqual(original);
+    expect(document.querySelector('.spatial-face-capture')).toBeNull();
+  } finally {
+    await appLocaleController.selectLocale('en');
+  }
 });
 
 it('uses the actual inherited mind-map styling and icons without changing its 2D positions', async () => {

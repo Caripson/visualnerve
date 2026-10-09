@@ -1,3 +1,5 @@
+import { runStatusLabel } from './display';
+import { useI18n } from '../i18n';
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useCompactLayout } from '../hooks/useCompactLayout';
 import { useEditor } from '../state/editor';
@@ -7,7 +9,6 @@ import { setSimulationModel } from './document';
 import { simulationService } from './service';
 import { useSimulationCanvasLifecycle } from './useSimulationCanvasLifecycle';
 import { SimulationModelDialogs } from './SimulationModelDialogs';
-import { MetricsDashboard } from './MetricsDashboard';
 import { ScenarioControls } from './ScenarioControls';
 import { cloneScenario } from './scenario-patch';
 import type { SimulationSpeed } from './protocol';
@@ -18,10 +19,16 @@ import {
   SimulationStopActions,
   simulationTime,
 } from './SimulationControls';
-import { SimulationWorkbench } from './SimulationWorkbench';
 import { simulationSetupEvent } from './setup-event';
 import { SimulationUIActions, type SimulationUIAction } from './ui-action';
 import './simulation.css';
+
+const MetricsDashboard = lazy(() =>
+  import('./MetricsDashboard').then((module) => ({ default: module.MetricsDashboard })),
+);
+const SimulationWorkbench = lazy(() =>
+  import('./SimulationWorkbench').then((module) => ({ default: module.SimulationWorkbench })),
+);
 
 const SimulationResults = lazy(() =>
   import('./SimulationResults').then((module) => ({ default: module.SimulationResults })),
@@ -29,6 +36,7 @@ const SimulationResults = lazy(() =>
 
 export { simulationTime } from './SimulationControls';
 export function SimulationFeature() {
+  const { t } = useI18n();
   const graph = useEditor((state) => state.graph);
   const {
     view,
@@ -271,19 +279,17 @@ export function SimulationFeature() {
     <>
       {getSpatialView(graph).mode === '3d' && (
         <p className="simulation-notice">
-          Use 2D view to see live particles, queues and capacity units. Metrics remain live in 3D.
+          {t('simulator.feature.use2dViewToSeeLiveParticlesQueuesAndCapacityUnitsMetrics')}
         </p>
       )}
       {topologyChanged && (
         <p className="simulation-notice" role="status">
-          The process structure has changed. The previous run is kept in Results and is no longer
-          overlaid on this diagram. Play starts a run with the new structure.
+          {t('simulator.feature.theProcessStructureHasChangedThePreviousRunIsKeptInResults')}
         </p>
       )}
       {view && (!sameModel || !sameRunSettings) && (
         <p className="simulation-notice">
-          The assumptions have changed. Play starts a new run; the displayed metrics belong to the
-          original run.
+          {t('simulator.feature.theAssumptionsHaveChangedPlayStartsANewRunTheDisplayedMetrics')}
         </p>
       )}
       {(visibleError || view?.run.error || view?.state?.message) && (
@@ -294,13 +300,21 @@ export function SimulationFeature() {
     </>
   );
   const metrics = view?.state && (
-    <MetricsDashboard state={view.state} currency={view.run.model.currency} compact={compact} />
+    <Suspense
+      fallback={
+        <p className="simulation-notice" role="status">
+          {t('simulator.feature.loadingMetrics')}
+        </p>
+      }
+    >
+      <MetricsDashboard state={view.state} currency={view.run.model.currency} compact={compact} />
+    </Suspense>
   );
   const results = (
     <Suspense
       fallback={
         <p className="simulation-notice" role="status">
-          Loading replay and comparison controls…
+          {t('simulator.feature.loadingReplayAndComparisonControls')}
         </p>
       }
     >
@@ -318,7 +332,7 @@ export function SimulationFeature() {
   return (
     <section
       className={`simulation-feature${compact ? ' simulation-feature-compact' : ''}`}
-      aria-label="Process Simulator"
+      aria-label={t('simulator.feature.processSimulator')}
     >
       {compact ? (
         <>
@@ -330,8 +344,7 @@ export function SimulationFeature() {
           />
           {!details && topologyChanged && (
             <p className="simulation-notice" role="status">
-              Process structure changed. Previous run kept in Results. Play to run the new
-              structure.
+              {t('simulator.feature.processStructureChangedPreviousRunKeptInResultsPlayToRunThe')}
             </p>
           )}
           {!details && (visibleError || view?.run.error || view?.state?.message) && (
@@ -340,51 +353,63 @@ export function SimulationFeature() {
             </p>
           )}
           {details && (
-            <SimulationWorkbench
-              close={() => changeControls(() => setDetails(false))}
-              busy={busy}
-              play={play}
-              runSettings={
-                <>
-                  <div className="simulation-run-settings">{runSettings}</div>
-                  <ScenarioControls
-                    graph={graph}
-                    id={scenarioId}
-                    select={(next) => changeControls(() => setScenarioId(next))}
-                  />
-                </>
+            <Suspense
+              fallback={
+                <p className="simulation-notice" role="status">
+                  {t('simulator.feature.loadingDetails')}
+                </p>
               }
-              metrics={metrics}
-              results={results}
-              notices={notices}
-              stopActions={<SimulationStopActions {...actions} />}
-            />
+            >
+              <SimulationWorkbench
+                close={() => changeControls(() => setDetails(false))}
+                busy={busy}
+                play={play}
+                runSettings={
+                  <>
+                    <div className="simulation-run-settings">{runSettings}</div>
+                    <ScenarioControls
+                      graph={graph}
+                      id={scenarioId}
+                      select={(next) => changeControls(() => setScenarioId(next))}
+                    />
+                  </>
+                }
+                metrics={metrics}
+                results={results}
+                notices={notices}
+                stopActions={<SimulationStopActions {...actions} />}
+              />
+            </Suspense>
           )}
         </>
       ) : (
         <>
           <div className="simulation-controls">
             <div className="simulation-transport">
-              <strong>Process Simulator</strong>
+              <strong>{t('simulator.feature.processSimulator')}</strong>
               {view?.state && (
                 <button
-                  aria-label={`${metricsOpen ? 'Hide' : 'Show'} simulation metrics`}
+                  aria-label={t(
+                    metricsOpen ? 'simulator.run.metrics.hide' : 'simulator.run.metrics.show',
+                  )}
                   aria-pressed={metricsOpen}
-                  title="Show or hide live metrics to give the process canvas more space"
+                  title={t(
+                    'simulator.feature.showOrHideLiveMetricsToGiveTheProcessCanvasMoreSpace',
+                  )}
                   onClick={() => setMetricsOpen((open) => !open)}
                 >
-                  Metrics
+                  {t('simulator.feature.metrics')}
                 </button>
               )}
               <div className="simulation-playback">
                 <SimulationActions {...actions} />
               </div>
               <div className="simulation-time">
-                <output aria-label="Simulated time">
+                <output aria-label={t('simulator.run.simulatedTime')}>
                   {simulationTime(view?.state?.timeSeconds ?? 0)}
                 </output>
                 <span className="simulation-run-status" role="status">
-                  {view?.run.status ?? 'ready'}
+                  {runStatusLabel(t, view?.run.status ?? 'ready')}
                 </span>
               </div>
             </div>

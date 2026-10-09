@@ -1,3 +1,5 @@
+import { iconLabel } from './editor-labels';
+import { useI18n } from '../i18n';
 import { useState } from 'react';
 import {
   BriefcaseBusiness,
@@ -81,7 +83,7 @@ export function AreaIcon({
 export function IconPicker({
   value,
   onChange,
-  label = 'Choose icon',
+  label,
   compact = false,
   fallback = Shapes,
 }: {
@@ -91,25 +93,35 @@ export function IconPicker({
   compact?: boolean;
   fallback?: LucideIcon;
 }) {
+  const { t } = useI18n();
   const [query, setQuery] = useState('');
   const Icon = areaIcons[value]?.icon ?? fallback;
   return (
     <details className={`quick-picker ${compact ? 'compact-picker' : ''}`}>
-      <summary aria-label={label} title={label}>
+      <summary
+        aria-label={label ?? t('editor.icons.chooseIcon')}
+        title={label ?? t('editor.icons.chooseIcon')}
+      >
         <Icon size={17} />
-        <span>{areaIcons[value]?.label ?? 'Icon'}</span>
+        <span>{areaIcons[value] ? iconLabel(t, value) : t('editor.icons.genericLabel')}</span>
       </summary>
-      <div className="picker-panel icon-picker" role="group" aria-label="Area icons">
+      <div
+        className="picker-panel icon-picker"
+        role="group"
+        aria-label={t('editor.icons.areaIcons')}
+      >
         <input
-          aria-label="Search icons"
-          placeholder="Find an area…"
+          aria-label={t('editor.icons.searchIcons')}
+          placeholder={t('editor.icons.findAnArea')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
         <div className="icon-grid">
           {Object.entries(areaIcons)
-            .filter(([, choice]) =>
-              `${choice.label} ${choice.keywords}`.toLowerCase().includes(query.toLowerCase()),
+            .filter(([key, choice]) =>
+              `${iconLabel(t, key)} ${choice.label} ${choice.keywords}`
+                .toLowerCase()
+                .includes(query.toLowerCase()),
             )
             .map(([key, choice]) => {
               const Choice = choice.icon;
@@ -117,15 +129,15 @@ export function IconPicker({
                 <button
                   key={key}
                   className={key === value ? 'active' : ''}
-                  aria-label={`Icon: ${choice.label}`}
-                  title={choice.label}
+                  aria-label={t('editor.icons.icon', { iconLabel: iconLabel(t, key) })}
+                  title={iconLabel(t, key)}
                   onClick={(e) => {
                     onChange(key);
                     e.currentTarget.closest('details')?.removeAttribute('open');
                   }}
                 >
                   <Choice size={21} />
-                  <span>{choice.label}</span>
+                  <span>{iconLabel(t, key)}</span>
                 </button>
               );
             })}
@@ -138,7 +150,7 @@ export function IconPicker({
           }}
         >
           <X size={14} />
-          Automatic icon
+          {t('editor.icons.automaticIcon')}{' '}
         </button>
       </div>
     </details>

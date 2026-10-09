@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import type { KeyboardEvent } from 'react';
 import type { GraphNode } from '../model/types';
 import { getCodeObject, getProjectDirectory } from '../code/schema';
@@ -30,34 +31,41 @@ export function CodeSummary({
   exporting?: boolean;
   selected?: boolean;
 }) {
+  const { t } = useI18n();
   const object = getCodeObject(node);
   const directory = getProjectDirectory(node);
   if (directory)
     return (
-      <div className="code-summary" aria-label="Project folder summary" data-exporting={exporting}>
-        <div className="code-object-kind">Folder · {directory.fileCount} files</div>
+      <div
+        className="code-summary"
+        aria-label={t('data.codeSummary.folderRegion')}
+        data-exporting={exporting}
+      >
+        <div className="code-object-kind">
+          {t('data.codeSummary.folderCount', { count: directory.fileCount })}
+        </div>
         <div
           className="code-object-scroll nodrag nopan nowheel"
           data-node-scroll
           role="region"
-          aria-label={`Folder details for ${node.title}`}
+          aria-label={t('data.codeSummary.folderDetailsFor', { title: node.title })}
           tabIndex={exporting ? undefined : 0}
           onKeyDown={protectReading}
         >
           <div className="code-object-path">
-            {directory.path === '.' ? 'Project root' : directory.path}
+            {directory.path === '.' ? t('data.code.projectRoot') : directory.path}
           </div>
           <div>
             {directory.languages
               .map((id) => codeLanguages.find((item) => item.id === id)?.name ?? id)
               .join(', ')}
           </div>
-          <p>Includes nested folders. Connections aggregate file relationships.</p>
+          <p>{t('data.codeSummary.aggregateFolders')}</p>
         </div>
         {!exporting && (
           <div className="code-summary-footer">
             <span className="code-resize-hint">
-              {selected ? 'Drag a corner to resize' : 'Select to resize'}
+              {selected ? t('data.codeSummary.dragResize') : t('data.codeSummary.selectResize')}
             </span>
           </div>
         )}
@@ -65,23 +73,27 @@ export function CodeSummary({
     );
   if (!object) return null;
   return (
-    <div className="code-summary" aria-label="Code object summary" data-exporting={exporting}>
+    <div
+      className="code-summary"
+      aria-label={t('data.codeSummary.objectRegion')}
+      data-exporting={exporting}
+    >
       <div className="code-object-kind">
         {codeLanguages.find((language) => language.id === object.language)?.name ?? object.language}{' '}
         · {object.kind}
-        {object.external && <span> · unresolved</span>}
+        {object.external && <span> {t('data.codeSummary.unresolvedSuffix')}</span>}
       </div>
       <div
         className="code-object-scroll nodrag nopan nowheel"
         data-node-scroll
         role="region"
-        aria-label={`Code details for ${node.title}`}
+        aria-label={t('data.codeSummary.codeDetailsFor', { title: node.title })}
         tabIndex={exporting ? undefined : 0}
         onKeyDown={protectReading}
       >
         {object.kind !== 'file' && (
           <div className="code-object-name">
-            <span>Symbol</span> {object.name}
+            <span>{t('data.codeSummary.symbolLabel')}</span> {object.name}
           </div>
         )}
         <div className="code-object-path">
@@ -90,7 +102,7 @@ export function CodeSummary({
           {object.endLine && object.endLine !== object.line ? `–${object.endLine}` : ''}
         </div>
         {!!object.summary?.length && (
-          <ul aria-label="Declarations">
+          <ul aria-label={t('data.codeSummary.declarationsAccessible')}>
             {object.summary.map((name, index) => (
               <li key={index}>{name}</li>
             ))}
@@ -98,13 +110,12 @@ export function CodeSummary({
         )}
       </div>
       <div className="code-summary-footer">
-        {!!object.summary?.length && <span>{object.summary.length} declarations</span>}
+        {!!object.summary?.length && (
+          <span>{t('data.codeSummary.declarationCount', { count: object.summary.length })}</span>
+        )}
         {!exporting && (
-          <span
-            className="code-resize-hint"
-            title="Scroll to read the details. Select this node and drag a corner to enlarge it."
-          >
-            {selected ? 'Drag a corner to resize' : 'Select to resize'}
+          <span className="code-resize-hint" title={t('data.codeSummary.readResizeHint')}>
+            {selected ? t('data.codeSummary.dragResize') : t('data.codeSummary.selectResize')}
           </span>
         )}
       </div>

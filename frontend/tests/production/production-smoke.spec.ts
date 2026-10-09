@@ -10,6 +10,7 @@ import {
 import { appResponseHeaders } from '../../../deployment/app-policy.mjs';
 import type { Graph } from '../../src/model/types';
 import type { WorkspaceSecurityStatus } from '../../src/storage/security-status';
+import { APP_LOCALES } from '../../src/i18n/types';
 
 // Run only after the reviewed release has been deployed. All browser contexts
 // below are fresh, disposable profiles; never use launchPersistentContext.
@@ -279,6 +280,15 @@ test('live encrypted app saves and reloads offline, then enforces the same human
     await expect
       .poll(() => page.evaluate(() => !!navigator.serviceWorker.controller), { timeout: 60000 })
       .toBe(true);
+    expect(
+      await page.evaluate(async () => {
+        const name = (await caches.keys()).find((key) => key.startsWith('visual-nerve-app-shell-'));
+        if (!name) return 0;
+        return (await (await caches.open(name)).keys()).filter((request) =>
+          /\/assets\/(?:en|da|nb|sv|fi|de|es|fr)-[\w-]+\.js$/.test(new URL(request.url).pathname),
+        ).length;
+      }),
+    ).toBe(8);
     await context.setOffline(true);
     try {
       await page.reload();
@@ -362,6 +372,25 @@ test('live encrypted app saves and reloads offline, then enforces the same human
     expect(
       (await call<GraphSummary[]>(privateApi, workspaceId, '/diagrams')).structuredContent.body,
     ).toEqual(summaries);
+    const canonicalGraph = await body<Graph>(
+      await privateApi.get(`/api/v1/diagrams/${diagram!.id}`),
+    );
+    const language = page.getByTestId('app-language');
+    await expect(language.locator('option')).toHaveCount(8);
+    for (const { id } of APP_LOCALES) {
+      await language.selectOption(id);
+      await expect(page.locator('html')).toHaveAttribute('lang', id);
+      await expect(page.locator('.voice-settings select')).toHaveValue('en_GB-alan-medium');
+      expect(await body<Graph>(await privateApi.get(`/api/v1/diagrams/${diagram!.id}`))).toEqual(
+        canonicalGraph,
+      );
+      expect(
+        (await call<Graph>(privateApi, workspaceId, `/diagrams/${diagram!.id}`)).structuredContent
+          .body,
+      ).toEqual(canonicalGraph);
+    }
+    await language.selectOption('en');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
     expect(
       (await call(privateApi, workspaceId, '/workspace/lock', 'POST', {})).structuredContent.status,
     ).toBe(403);

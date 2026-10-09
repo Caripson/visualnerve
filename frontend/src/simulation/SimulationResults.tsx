@@ -1,3 +1,5 @@
+import { runStatusLabel, simulationDiagnosticLabel } from './display';
+import { useI18n } from '../i18n';
 import { useState } from 'react';
 import type { SimulationModel, SimulationComparison } from './types';
 import type { SimulationView } from './service';
@@ -20,6 +22,7 @@ export function SimulationResults({
   perform: (action: (job: SimulationUIAction) => Promise<unknown>) => Promise<void>;
   compact?: boolean;
 }) {
+  const { t } = useI18n();
   const [selectedRuns, setSelectedRuns] = useState<string[]>([]);
   const [comparisons, setComparisons] = useState<(SimulationComparison & { currency: string })[]>(
     [],
@@ -31,19 +34,19 @@ export function SimulationResults({
     <>
       <div className="simulation-row">
         <label>
-          Saved run
+          {t('simulator.results.savedRun')}{' '}
           <select
-            aria-label="Replay run"
+            aria-label={t('simulator.results.replayRun')}
             value={view?.run.id ?? ''}
             onChange={(event) => {
               const runId = event.target.value;
               void perform(() => simulationService.selectRun(runId));
             }}
           >
-            <option value="">Choose a run…</option>
+            <option value="">{t('simulator.results.chooseARun')}</option>
             {runs.map((run) => (
               <option key={run.id} value={run.id}>
-                {run.scenarioName} · {run.createdAt.slice(11, 19)} · {run.status}
+                {run.scenarioName} · {run.createdAt.slice(11, 19)} · {runStatusLabel(t, run.status)}
               </option>
             ))}
           </select>
@@ -51,9 +54,9 @@ export function SimulationResults({
         {view && (
           <>
             <label>
-              Replay time
+              {t('simulator.results.replayTime')}{' '}
               <input
-                aria-label="Replay simulated time"
+                aria-label={t('simulator.results.replayTimeAccessible')}
                 type="range"
                 min={0}
                 max={replayMaximum}
@@ -71,7 +74,7 @@ export function SimulationResults({
                 )
               }
             >
-              Inspect this moment
+              {t('simulator.results.inspectThisMoment')}
             </button>
           </>
         )}
@@ -90,7 +93,7 @@ export function SimulationResults({
             })
           }
         >
-          Compare selected runs
+          {t('simulator.results.compareSelectedRuns')}
         </button>
       </div>
       {!compact && (
@@ -98,17 +101,17 @@ export function SimulationResults({
           <table>
             <thead>
               <tr>
-                <th>Compare</th>
-                <th>Run / scenario</th>
-                <th>Completed</th>
-                <th>Abandoned</th>
-                <th>Max queue</th>
-                <th>Wait (min)</th>
-                <th>TTR (min)</th>
-                <th>Revenue</th>
-                <th>Cost</th>
-                <th>Contribution</th>
-                <th>Lost revenue</th>
+                <th>{t('simulator.results.compare')}</th>
+                <th>{t('simulator.results.runScenario')}</th>
+                <th>{t('simulator.common.completed')}</th>
+                <th>{t('simulator.common.abandoned')}</th>
+                <th>{t('simulator.results.maxQueue')}</th>
+                <th>{t('simulator.results.waitMin')}</th>
+                <th>{t('simulator.results.ttrMin')}</th>
+                <th>{t('simulator.common.revenue')}</th>
+                <th>{t('simulator.common.cost')}</th>
+                <th>{t('simulator.results.contribution')}</th>
+                <th>{t('simulator.metrics.lostRevenue')}</th>
               </tr>
             </thead>
             <tbody>
@@ -116,7 +119,7 @@ export function SimulationResults({
                 <tr key={run.id}>
                   <td>
                     <input
-                      aria-label={`Compare run ${run.id}`}
+                      aria-label={t('simulator.results.compareRun', { id: String(run.id) })}
                       type="checkbox"
                       checked={selectedRuns.includes(run.id)}
                       disabled={!run.metrics}
@@ -149,12 +152,14 @@ export function SimulationResults({
       )}
       {compact && (
         <div className="simulation-run-cards">
-          {runs.length === 0 && <p>No saved runs yet. Play the simulation to create one.</p>}
+          {runs.length === 0 && (
+            <p>{t('simulator.results.noSavedRunsYetPlayTheSimulationToCreateOne')}</p>
+          )}
           {runs.map((run) => (
             <article key={run.id} className="simulation-run-card">
               <label className="simulation-run-choice">
                 <input
-                  aria-label={`Compare run ${run.id}`}
+                  aria-label={t('simulator.results.compareRun', { id: String(run.id) })}
                   type="checkbox"
                   checked={selectedRuns.includes(run.id)}
                   disabled={!run.metrics}
@@ -169,53 +174,54 @@ export function SimulationResults({
                 <span>
                   <strong>{run.scenarioName}</strong>
                   <small>
-                    {run.createdAt.slice(0, 10)} · {run.createdAt.slice(11, 19)} · {run.status}
+                    {run.createdAt.slice(0, 10)} · {run.createdAt.slice(11, 19)} ·{' '}
+                    {runStatusLabel(t, run.status)}
                   </small>
                 </span>
               </label>
               <dl className="simulation-card-facts">
                 <div>
-                  <dt>Completed</dt>
+                  <dt>{t('simulator.common.completed')}</dt>
                   <dd>{run.metrics?.completed ?? '—'}</dd>
                 </div>
                 <div>
-                  <dt>Abandoned</dt>
+                  <dt>{t('simulator.common.abandoned')}</dt>
                   <dd>{run.metrics?.abandoned ?? '—'}</dd>
                 </div>
                 <div>
-                  <dt>Maximum queue</dt>
+                  <dt>{t('simulator.results.maximumQueue')}</dt>
                   <dd>{run.metrics?.queue.maximum ?? '—'}</dd>
                 </div>
                 <div>
-                  <dt>Average wait</dt>
+                  <dt>{t('simulator.results.averageWait')}</dt>
                   <dd>
                     {run.metrics ? (run.metrics.queue.wait.average / 60).toFixed(2) + ' min' : '—'}
                   </dd>
                 </div>
                 <div>
-                  <dt>Average TTR</dt>
+                  <dt>{t('simulator.results.averageTtr')}</dt>
                   <dd>{run.metrics ? (run.metrics.ttr.average / 60).toFixed(2) + ' min' : '—'}</dd>
                 </div>
                 <div>
-                  <dt>Contribution</dt>
+                  <dt>{t('simulator.results.contribution')}</dt>
                   <dd>
                     {run.metrics?.contribution.toFixed(2) ?? '—'} {run.currency}
                   </dd>
                 </div>
                 <div>
-                  <dt>Revenue</dt>
+                  <dt>{t('simulator.common.revenue')}</dt>
                   <dd>
                     {run.metrics?.realizedRevenue.toFixed(2) ?? '—'} {run.currency}
                   </dd>
                 </div>
                 <div>
-                  <dt>Cost</dt>
+                  <dt>{t('simulator.common.cost')}</dt>
                   <dd>
                     {run.metrics?.cost.toFixed(2) ?? '—'} {run.currency}
                   </dd>
                 </div>
                 <div>
-                  <dt>Lost revenue</dt>
+                  <dt>{t('simulator.metrics.lostRevenue')}</dt>
                   <dd>
                     {run.metrics?.lostRevenue.toFixed(2) ?? '—'} {run.currency}
                   </dd>
@@ -227,13 +233,22 @@ export function SimulationResults({
       )}
       {comparisons.map((comparison) => (
         <p key={comparison.scenarioRunId}>
-          Scenario {comparison.scenarioRunId.slice(0, 8)}: contribution change{' '}
-          {comparison.delta.contribution.toFixed(2)} {comparison.currency}; incremental cash{' '}
-          {comparison.incrementalCashImpact.toFixed(2)} {comparison.currency};{' '}
-          {comparison.paybackReached
-            ? `payback at ${simulationTime(comparison.paybackTimeSeconds!)}`
-            : 'investment has not paid back within this run'}
-          . {comparison.warnings.join(' ')}
+          {t(
+            comparison.paybackReached
+              ? 'simulator.results.comparison.payback'
+              : 'simulator.results.comparison.noPayback',
+            {
+              runLabel: comparison.scenarioRunId.slice(0, 8),
+              contributionDelta: comparison.delta.contribution.toFixed(2),
+              currency: comparison.currency,
+              cashDelta: comparison.incrementalCashImpact.toFixed(2),
+              paybackTime:
+                comparison.paybackTimeSeconds === null
+                  ? ''
+                  : simulationTime(comparison.paybackTimeSeconds!),
+            },
+          )}{' '}
+          {comparison.warnings.map((warning) => simulationDiagnosticLabel(t, warning)).join(' ')}
         </p>
       ))}
     </>
@@ -242,7 +257,7 @@ export function SimulationResults({
     <div className="simulation-results simulation-results-compact">{content}</div>
   ) : (
     <details className="simulation-results">
-      <summary>Replay and compare runs ({runs.length})</summary>
+      <summary>{t('simulator.results.summary', { runCount: runs.length })}</summary>
       {content}
     </details>
   );

@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { useEffect, useMemo, useState } from 'react';
 import type { Graph, GraphNode } from '../model/types';
 import { useEditor } from '../state/editor';
@@ -11,6 +12,7 @@ import {
 } from '../spatial/types';
 
 export function SpatialProperties({ graph, node }: { graph: Graph; node?: GraphNode }) {
+  const { t } = useI18n();
   const spatial = node ? getSpatialNode(node) : undefined;
   const position = useMemo(
     () => (node ? spatialPositions(graph).get(node.id) : undefined),
@@ -54,17 +56,16 @@ export function SpatialProperties({ graph, node }: { graph: Graph; node?: GraphN
   if (!node) return null;
   return (
     <details className="spatial-properties" open={getSpatialView(graph).mode === '3d'}>
-      <summary>3D placement</summary>
+      <summary>{t('editor.spatial.3dPlacement')}</summary>
       <p className="muted">
-        3D placement leaves the 2D overview intact. Moving a card in 2D also shifts this placement.
-        Y is up; Z points toward the front.
+        {t('editor.spatial.3dPlacementLeavesThe2dOverviewIntactMovingACardIn2d')}
       </p>
       <div className="field-row">
         {(['x', 'y', 'z'] as const).map((axis) => (
           <label className="field" key={axis}>
             <span>{axis.toUpperCase()}</span>
             <input
-              aria-label={`3D ${axis.toUpperCase()}`}
+              aria-label={t('editor.spatial.axis.accessible', { axis: axis.toUpperCase() })}
               type="number"
               step="0.1"
               value={draft[axis]}
@@ -81,11 +82,11 @@ export function SpatialProperties({ graph, node }: { graph: Graph; node?: GraphN
       </div>
       {error && (
         <p className="form-error" role="alert">
-          {error}
+          {t('editor.spatial.enterFiniteCoordinatesBetween1000000And1000000')}
         </p>
       )}
       <button disabled={!spatial?.position} onClick={() => update({ version: 1 })}>
-        Automatic 3D position
+        {t('editor.spatial.automatic3dPosition')}
       </button>
     </details>
   );

@@ -1,3 +1,5 @@
+import { wizardStepLabel, simulationDiagnosticLabel } from './display';
+import { useI18n } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, CircleCheck } from 'lucide-react';
 import { Modal } from '../components/Modal';
@@ -21,6 +23,7 @@ export function ProcessWizard({
   close: () => void;
   created?: (options: { durationSeconds: number; untilComplete: boolean }) => void;
 }) {
+  const { t } = useI18n();
   const [draft, setDraft] = useState(() => starterDefaults(graph.simulation?.currency));
   const [step, setStep] = useState(0);
   const [error, setError] = useState('');
@@ -74,7 +77,7 @@ export function ProcessWizard({
     }
   }
   return (
-    <Modal title="Set up your process" close={close} wide className="process-wizard-dialog">
+    <Modal title={t('simulator.wizard.title')} close={close} wide className="process-wizard-dialog">
       <form
         className="process-wizard"
         onSubmit={(event) => {
@@ -82,7 +85,7 @@ export function ProcessWizard({
           proceed();
         }}
       >
-        <ol className="process-wizard-progress" aria-label="Setup progress">
+        <ol className="process-wizard-progress" aria-label={t('simulator.wizard.setupProgress')}>
           {steps.map((label, index) => (
             <li
               key={label}
@@ -90,7 +93,7 @@ export function ProcessWizard({
               data-complete={index < step}
             >
               <span>{index < step ? <CircleCheck size={16} /> : index + 1}</span>
-              <b>{label}</b>
+              <b>{wizardStepLabel(t, label)}</b>
             </li>
           ))}
         </ol>
@@ -102,7 +105,7 @@ export function ProcessWizard({
         </div>
         {error && (
           <p className="process-wizard-error" role="alert">
-            {error}
+            {simulationDiagnosticLabel(t, error)}
           </p>
         )}
         <footer className="process-wizard-actions">
@@ -117,13 +120,18 @@ export function ProcessWizard({
                 : close
             }
           >
-            {step ? 'Back' : 'Set up later'}
+            {step ? t('simulator.common.back') : t('simulator.wizard.setUpLater')}
           </button>
           <span>
-            Step {step + 1} of {steps.length}
+            {t('simulator.wizard.progress.position', {
+              stepNumber: step + 1,
+              stepCount: steps.length,
+            })}
           </span>
           <button className="primary" type="submit">
-            {step === steps.length - 1 ? 'Create process' : 'Continue'}
+            {step === steps.length - 1
+              ? t('simulator.wizard.createProcess')
+              : t('simulator.common.continue')}
             <ArrowRight size={16} />
           </button>
         </footer>

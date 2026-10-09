@@ -18,8 +18,8 @@ export function appBrand(source) {
   return brand;
 }
 
-export function appHeader(brand, options) {
-  return `<header class="site-shell"><a class="site-brand" href="/">${brand}</a><nav aria-label="Site"><a href="/">Workspace</a><a href="/help/">Guide</a><a href="/api/docs/">API reference</a><a href="/privacy/">Privacy</a><a href="/license/">Johan Caripson · MPL-2.0</a><a href="${escape(options.websiteOrigin)}/" target="_blank" rel="noopener noreferrer">Website ↗</a></nav></header>`;
+export function appHeader(brand, options, workspace = false) {
+  return `<header class="site-shell"${workspace ? ' data-app-chrome' : ''}><a class="site-brand" href="/">${brand}</a><nav aria-label="Site" data-app-chrome-label="site"><a href="/"><span data-app-chrome-text="workspace">Workspace</span></a><a href="/help/"><span data-app-chrome-text="guide">Guide</span></a><a href="/api/docs/"><span data-app-chrome-text="apiReference">API reference</span></a><a href="/privacy/"><span data-app-chrome-text="privacy">Privacy</span></a><a href="/license/">Johan Caripson · MPL-2.0</a><a href="${escape(options.websiteOrigin)}/" target="_blank" rel="noopener noreferrer"><span data-app-chrome-text="website">Website</span> <span aria-hidden="true">↗</span></a></nav></header>`;
 }
 
 export function appDocument(title, path, body, brand, options, assets = {}) {
@@ -34,7 +34,7 @@ export function appDocument(title, path, body, brand, options, assets = {}) {
     ...(assets.styles ?? []),
   ];
   const scripts = ["/appearance.js", ...(assets.scripts ?? [])];
-  return `<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="robots" content="noindex, nofollow"><meta name="referrer" content="no-referrer"><meta name="visualnerve-surface" content="isolated-app"><meta name="visualnerve-vault-required" content="true"><meta name="visualnerve-app-origin" content="${escape(options.appOrigin)}"><meta http-equiv="Content-Security-Policy" content="${escape(metaCsp)}"><title>${escape(title)} · Visual Nerve</title><link rel="canonical" href="${escape(new URL(path, options.appOrigin).href)}"><link rel="icon" href="/site/mark.svg">${styles.map((path) => `<link rel="stylesheet" href="${path}">`).join("")}${scripts.map((path) => `<script src="${path}"${path === "/appearance.js" ? "" : " defer"}></script>`).join("")}${(assets.modules ?? []).map((path) => `<script type="module" src="${path}"></script>`).join("")}</head><body${assets.bodyClass ? ` class="${escape(assets.bodyClass)}"` : ""}>${appHeader(brand, options)}${body}</body></html>\n`;
+  return `<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="robots" content="noindex, nofollow"><meta name="referrer" content="no-referrer"><meta name="visualnerve-surface" content="isolated-app"><meta name="visualnerve-vault-required" content="true"><meta name="visualnerve-app-origin" content="${escape(options.appOrigin)}"><meta http-equiv="Content-Security-Policy" content="${escape(metaCsp)}"><title>${escape(title)} · Visual Nerve</title><link rel="canonical" href="${escape(new URL(path, options.appOrigin).href)}"><link rel="icon" href="/site/mark.svg">${styles.map((path) => `<link rel="stylesheet" href="${path}">`).join("")}${scripts.map((path) => `<script src="${path}"${path === "/appearance.js" ? "" : " defer"}></script>`).join("")}${(assets.modules ?? []).map((path) => `<script type="module" src="${path}"></script>`).join("")}</head><body${assets.bodyClass ? ` class="${escape(assets.bodyClass)}"` : ""}>${appHeader(brand, options, assets.workspaceChrome === true)}${body}</body></html>\n`;
 }
 
 export function rewriteAppLinks(html, options) {

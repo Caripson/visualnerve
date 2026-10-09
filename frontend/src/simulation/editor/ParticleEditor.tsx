@@ -1,3 +1,5 @@
+import { particleShapeLabel } from '../display';
+import { useI18n } from '../../i18n';
 import { EntityCollection } from './EntityCollection';
 import { NumberField, ScalingFields } from '../fields';
 import { JsonField } from './JsonField';
@@ -5,6 +7,7 @@ import type { ParticleType, Resource, Improvement, SimulationNode } from '../typ
 import type { EditorSectionProps } from './types';
 import { removeSimulationEntity } from '../deletion';
 export function ParticleEditor({ draft, setDraft, scenarioId }: EditorSectionProps) {
+  const { t } = useI18n();
   const patchType = (id: string, partial: Partial<ParticleType>) =>
     setDraft((model) => ({
       ...model,
@@ -14,68 +17,77 @@ export function ParticleEditor({ draft, setDraft, scenarioId }: EditorSectionPro
     }));
   return (
     <>
-      <EntityCollection items={draft.particleTypes} label="Particle type to edit">
+      <EntityCollection
+        items={draft.particleTypes}
+        label={t('simulator.editor.particle.particleTypeToEdit')}
+      >
         {(type) => (
           <fieldset key={type.id}>
             <legend>{type.name}</legend>
             <label>
-              Name
+              {t('simulator.common.name')}{' '}
               <input
-                aria-label={`Particle name ${type.id}`}
+                aria-label={t('simulator.editor.particle.particleName', { id: String(type.id) })}
                 value={type.name}
                 onChange={(event) => patchType(type.id, { name: event.target.value })}
               />
             </label>
             <div className="simulation-grid">
               <label>
-                Color
+                {t('simulator.editor.particle.color')}{' '}
                 <input
-                  aria-label={`Particle color ${type.id}`}
+                  aria-label={t('simulator.editor.particle.particleColor', { id: String(type.id) })}
                   type="color"
                   value={type.color}
                   onChange={(event) => patchType(type.id, { color: event.target.value })}
                 />
               </label>
               <label>
-                Shape
+                {t('simulator.editor.particle.shape')}{' '}
                 <select
-                  aria-label={`Particle shape ${type.id}`}
+                  aria-label={t('simulator.editor.particle.particleShape', { id: String(type.id) })}
                   value={type.shape ?? 'circle'}
                   onChange={(event) =>
                     patchType(type.id, { shape: event.target.value as typeof type.shape })
                   }
                 >
                   {['circle', 'square', 'triangle'].map((shape) => (
-                    <option key={shape}>{shape}</option>
+                    <option key={shape} value={shape}>
+                      {particleShapeLabel(t, shape)}
+                    </option>
                   ))}
                 </select>
               </label>
               <NumberField
-                label={`Revenue ${type.name}`}
+                label={t('simulator.editor.particle.revenue', { name: String(type.name) })}
                 value={type.revenue}
                 change={(value) => patchType(type.id, { revenue: value ?? 0 })}
               />
               <NumberField
-                label={`Minimum complexity ${type.name}`}
+                label={t('simulator.editor.particle.minimumComplexity', {
+                  name: String(type.name),
+                })}
                 value={type.complexity.min}
                 change={(value) =>
                   patchType(type.id, { complexity: { ...type.complexity, min: value ?? 1 } })
                 }
               />
               <NumberField
-                label={`Maximum complexity ${type.name}`}
+                label={t('simulator.editor.particle.maximumComplexity', {
+                  name: String(type.name),
+                })}
                 value={type.complexity.max}
                 change={(value) =>
                   patchType(type.id, { complexity: { ...type.complexity, max: value ?? 1 } })
                 }
               />
               <NumberField
-                label={`Priority ${type.name}`}
+                label={t('simulator.editor.particle.priority', { name: String(type.name) })}
                 value={type.priority}
                 change={(value) => patchType(type.id, { priority: value ?? 0 })}
               />
               <NumberField
-                label={`Patience ${type.name} (minutes)`}
+                label={t('simulator.editor.particle.patienceMinutes', { name: String(type.name) })}
                 value={type.patienceSeconds === undefined ? undefined : type.patienceSeconds / 60}
                 change={(value) =>
                   patchType(type.id, {
@@ -85,7 +97,8 @@ export function ParticleEditor({ draft, setDraft, scenarioId }: EditorSectionPro
               />
             </div>
             <JsonField
-              label={`Attributes ${type.name}`}
+              fieldId={`particle-attributes:${type.id}`}
+              label={t('simulator.editor.particle.attributes', { name: String(type.name) })}
               value={type.attributes}
               change={(value) =>
                 patchType(type.id, { attributes: value as typeof type.attributes })
@@ -93,13 +106,17 @@ export function ParticleEditor({ draft, setDraft, scenarioId }: EditorSectionPro
             />
             {!scenarioId && (
               <>
-                <p>Deleting also removes sources that generate this particle type.</p>
+                <p>
+                  {t(
+                    'simulator.editor.particle.deletingAlsoRemovesSourcesThatGenerateThisParticleType',
+                  )}
+                </p>
                 <button
                   onClick={() =>
                     setDraft((model) => removeSimulationEntity(model, 'particleTypes', type.id))
                   }
                 >
-                  Delete particle type
+                  {t('simulator.editor.particle.deleteParticleType')}
                 </button>
               </>
             )}
@@ -125,7 +142,7 @@ export function ParticleEditor({ draft, setDraft, scenarioId }: EditorSectionPro
             }))
           }
         >
-          Add particle type
+          {t('simulator.editor.particle.addParticleType')}
         </button>
       )}
     </>

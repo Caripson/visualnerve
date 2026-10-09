@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { useEffect, useMemo, useRef } from 'react';
 import { getSmoothStepPath, Position, useViewport } from '@xyflow/react';
 import { useEditor } from '../state/editor';
@@ -29,6 +30,7 @@ export function ParticleOverlay({
   renderGraph?: Graph;
   visibility?: SimulationParticleVisibility;
 }) {
+  const { t } = useI18n();
   const baseGraph = useEditor((state) => state.graph);
   const graph = renderGraph ?? baseGraph;
   const view = useSimulation(baseGraph?.simulation ? baseGraph.diagram.id : undefined);
@@ -291,7 +293,9 @@ export function ParticleOverlay({
       ref={canvas}
       className="simulation-particles"
       data-testid="simulation-particles"
-      aria-label="Actual work particles and traffic: green clear, yellow busy, red congested. Dashed lines share resources. Queue counts and labeled congestion indicators appear on each node."
+      aria-label={t(
+        'simulator.canvas.particles.actualWorkParticlesAndTrafficGreenClearYellowBusyRedCongestedDashed',
+      )}
     />
   );
 }

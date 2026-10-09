@@ -1,3 +1,5 @@
+import { canvasAriaLabels } from './aria-labels';
+import { useI18n } from '../i18n';
 import {
   lazy,
   Suspense,
@@ -107,6 +109,8 @@ const pendingExploration = {
 };
 
 export function Canvas() {
+  const { t, plural } = useI18n();
+  const ariaLabels = useMemo(() => canvasAriaLabels(t), [t]);
   const graph = useEditor((s) => s.graph);
   const owners = useEditor((s) => s.owners);
   const selectedNodes = useEditor((s) => s.selectedNodes);
@@ -834,8 +838,8 @@ export function Canvas() {
         <Suspense
           fallback={
             <div className="canvas-shell spatial-canvas">
-              <p role="status">Loading 3D view…</p>
-              <button onClick={returnTo2D}>Return to 2D</button>
+              <p role="status">{t('editor.canvas.loading3dView')}</p>
+              <button onClick={returnTo2D}>{t('editor.canvas.returnTo2d')}</button>
             </div>
           }
         >
@@ -907,6 +911,7 @@ export function Canvas() {
         </div>
       )}
       <ReactFlow<CanvasNode>
+        ariaLabelConfig={ariaLabels}
         style={showProcessNavigation ? { flex: 1, minHeight: 0, height: 'auto' } : undefined}
         nodes={nodes}
         edges={edges}
@@ -1000,8 +1005,8 @@ export function Canvas() {
         <Controls showInteractive={false} showFitView={false}>
           {processProjection?.active && (
             <ControlButton
-              aria-label="Fit view"
-              title="Fit process view"
+              aria-label={t('editor.canvas.fitView')}
+              title={t('editor.canvas.fitProcessView')}
               onClick={() =>
                 void flow.fitView({
                   nodes: touch
@@ -1019,8 +1024,8 @@ export function Canvas() {
           )}
           {!processProjection?.active && (
             <ControlButton
-              aria-label="Fit view"
-              title="Fit view"
+              aria-label={t('editor.canvas.fitView')}
+              title={t('editor.canvas.fitView')}
               onClick={() =>
                 void fitDiagram(
                   flow,
@@ -1044,22 +1049,40 @@ export function Canvas() {
         {!!exploration && (
           <Panel position="top-left" className="analysis-canvas-notice">
             <strong>
-              {exploration.mode === 'path' ? 'Relationship path' : 'Relationship neighborhood'}
+              {exploration.mode === 'path'
+                ? t('editor.canvas.relationshipPath')
+                : t('editor.canvas.relationshipNeighborhood')}
             </strong>
             <span role="status">
               {explorationBusy
-                ? 'Exploring…'
+                ? t('editor.canvas.exploring')
                 : explorationError ||
                   (!explorationResult?.found
-                    ? 'No matching path or visible starting object.'
-                    : `${explorationResult.nodeIds.length} objects shown${explorationResult.truncated ? ' · bounded view; refine the exploration' : ''}`)}
+                    ? t('editor.canvas.noMatchingPathOrVisibleStartingObject')
+                    : plural(
+                        explorationResult.truncated
+                          ? 'editor.canvas.exploration.bounded.one'
+                          : 'editor.canvas.exploration.count.one',
+                        explorationResult.truncated
+                          ? 'editor.canvas.exploration.bounded.other'
+                          : 'editor.canvas.exploration.count.other',
+                        explorationResult.nodeIds.length,
+                      ))}
             </span>
             {!!(
               (explorationResult?.outsideViewIds.length ?? 0) +
               (explorationResult?.outsideViewEdgeIds.length ?? 0)
-            ) && <span>Groups marked “Outside current data view” retain earlier measures.</span>}
-            <span>Object filters and collapsed branches are temporarily overridden.</span>
-            <button onClick={() => useEditor.getState().explore()}>Reset exploration</button>
+            ) && (
+              <span>
+                {t('editor.canvas.groupsMarkedOutsideCurrentDataViewRetainEarlierMeasures')}
+              </span>
+            )}
+            <span>
+              {t('editor.canvas.objectFiltersAndCollapsedBranchesAreTemporarilyOverridden')}
+            </span>
+            <button onClick={() => useEditor.getState().explore()}>
+              {t('editor.canvas.resetExploration')}
+            </button>
           </Panel>
         )}
         {minimap && (
@@ -1092,16 +1115,16 @@ export function Canvas() {
             ) : (
               <>
                 <BoxIcon />
-                <h2>A little space for your next idea.</h2>
+                <h2>{t('editor.canvas.aLittleSpaceForYourNextIdea')}</h2>
                 <p>
                   {graph.diagram.type === 'mindmap'
-                    ? 'Start with a central idea, then branch out.'
-                    : 'Add a node, then connect the dots.'}
+                    ? t('editor.canvas.startWithACentralIdeaThenBranchOut')
+                    : t('editor.canvas.addANodeThenConnectTheDots')}
                 </p>
                 <button className="primary" onClick={() => useEditor.getState().addNode()}>
                   {graph.diagram.type === 'mindmap'
-                    ? 'Add your central idea'
-                    : 'Add your first node'}
+                    ? t('editor.canvas.addYourCentralIdea')
+                    : t('editor.canvas.addYourFirstNode')}
                 </button>
               </>
             )}
@@ -1114,6 +1137,7 @@ function BoxIcon() {
   return <div className="empty-cross">＋</div>;
 }
 function TimelineRuler({ graph }: { graph: Graph }) {
+  const { date: formatDate } = useI18n();
   const view = useViewport();
   const timeline = timelineGeometry(graph.nodes, graph.diagram.settings.timelineScale ?? 'month');
   const step = { day: 1, week: 7, month: 30, quarter: 91, year: 365 }[
@@ -1131,7 +1155,7 @@ function TimelineRuler({ graph }: { graph: Graph }) {
         const date = new Date(timeline.origin + day * dayMS);
         return (
           <span key={day} style={{ left: view.x + day * timeline.pixelsPerDay * view.zoom }}>
-            {date.toLocaleDateString('en-GB', {
+            {formatDate(date, {
               day: 'numeric',
               month: 'short',
               year: graph.diagram.settings.timelineScale === 'year' ? 'numeric' : undefined,

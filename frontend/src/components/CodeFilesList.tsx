@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { useState } from 'react';
 import type { CodeFile, CodeLanguage } from '../code/types';
 import { CodeLanguageSelect } from './CodeLanguageSelect';
@@ -14,19 +15,19 @@ export function CodeFilesList({
   change: (index: number, language: CodeLanguage) => void;
   clear: () => void;
 }) {
+  const { t, plural } = useI18n();
   const [page, setPage] = useState(0);
   const offset = Math.min(page, Math.max(0, Math.ceil(files.length / pageSize) - 1)) * pageSize;
   return (
-    <div className="code-file-list" aria-label="Loaded source files">
+    <div className="code-file-list" aria-label={t('import.codeFiles.region')}>
       <p>
-        {files.length} source {files.length === 1 ? 'file' : 'files'}. Review detected languages and
-        choose one for any unidentified file.
+        {plural('import.codeFiles.summary.one', 'import.codeFiles.summary.other', files.length)}
       </p>
       {files.slice(offset, offset + pageSize).map((file, index) => (
         <label key={file.path} className="code-file-language">
           <span>{file.path}</span>
           <CodeLanguageSelect
-            label={`Language for ${file.path}`}
+            label={t('import.codeFiles.fileLanguage', { path: file.path })}
             value={file.language ?? ''}
             disabled={disabled}
             onChange={(language) => change(offset + index, language)}
@@ -41,22 +42,26 @@ export function CodeFilesList({
               disabled={disabled || offset === 0}
               onClick={() => setPage(page - 1)}
             >
-              Previous files
+              {t('import.codeFiles.previous')}
             </button>
             <span>
-              {offset + 1}–{Math.min(files.length, offset + pageSize)} of {files.length}
+              {t('import.codeFiles.pageRange', {
+                first: offset + 1,
+                last: Math.min(files.length, offset + pageSize),
+                total: files.length,
+              })}
             </span>
             <button
               type="button"
               disabled={disabled || offset + pageSize >= files.length}
               onClick={() => setPage(page + 1)}
             >
-              Next files
+              {t('import.codeFiles.next')}
             </button>
           </>
         )}
         <button type="button" disabled={disabled} onClick={clear}>
-          Use pasted source instead
+          {t('import.codeFiles.pastedInstead')}
         </button>
       </div>
     </div>

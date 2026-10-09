@@ -1,9 +1,12 @@
+import { presentationMessage } from '../presentation/display-messages';
+import { useI18n } from '../i18n';
 import { useEffect, useState } from 'react';
 import { useEditor } from '../state/editor';
 import { workspace } from '../storage/workspace';
-import { assertImportLimitMb, IMPORT_LIMIT_SETTING, LARGE_IMPORT_WARNING } from '../imports/limits';
+import { assertImportLimitMb, IMPORT_LIMIT_SETTING } from '../imports/limits';
 
 export function ImportSettings() {
+  const { t } = useI18n();
   const active = useEditor((state) => state.importFileLimitMb);
   const [draft, setDraft] = useState(String(active));
   const [busy, setBusy] = useState(false);
@@ -29,13 +32,17 @@ export function ImportSettings() {
   }
 
   return (
-    <section className="import-settings" aria-label="Import settings" data-testid="import-settings">
-      <div className="property-section">Import file size</div>
+    <section
+      className="import-settings"
+      aria-label={t('imports.settingsRegion')}
+      data-testid="import-settings"
+    >
+      <div className="property-section">{t('imports.sizeTitle')}</div>
       <label className="field">
-        <span>Maximum import file size (MB)</span>
+        <span>{t('imports.sizeField')}</span>
         <input
           type="number"
-          aria-label="Maximum import file size (MB)"
+          aria-label={t('imports.sizeField')}
           min={50}
           max={1024}
           step={1}
@@ -48,13 +55,11 @@ export function ImportSettings() {
           }}
         />
       </label>
-      <p className="muted">
-        Default: 50 MB. Maximum: 1024 MB (1 GB). This setting stays in this browser.
-      </p>
-      <p className="muted">Only imports up to 50 MB are supported and guaranteed.</p>
+      <p className="muted">{t('imports.sizeDefaultsHint')}</p>
+      <p className="muted">{t('imports.sizeGuarantee')}</p>
       {largerLimit && (
         <p className="import-limit-warning" role="note" data-testid="import-limit-warning">
-          {LARGE_IMPORT_WARNING}
+          {t('imports.largeWarning')}
         </p>
       )}
       <div className="storage-actions">
@@ -63,17 +68,17 @@ export function ImportSettings() {
           disabled={busy || Number(draft) === active}
           onClick={() => void save()}
         >
-          {busy ? 'Saving…' : 'Save import limit'}
+          {busy ? t('presentation.importSaving') : t('imports.saveSizeAction')}
         </button>
       </div>
       {error && (
         <p className="form-error" role="alert">
-          {error}
+          {presentationMessage(error, t)}
         </p>
       )}
       {message && (
         <p className="settings-message" role="status">
-          {message}
+          {presentationMessage(message, t)}
         </p>
       )}
     </section>

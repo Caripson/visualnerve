@@ -1,27 +1,39 @@
+import { useI18n } from '../i18n';
 import { ArrowRight, CircleCheck, Inbox, Users, Workflow } from 'lucide-react';
 import type { ProcessStarterDraft } from './starter';
 import { ProcessStarterAnalysis } from './starter-analysis';
 
 export function StarterReview({ draft, seed = 42 }: { draft: ProcessStarterDraft; seed?: number }) {
+  const { t, plural } = useI18n();
   const analysis = new ProcessStarterAnalysis(draft);
   const value = analysis.values;
   return (
     <>
       <div className="process-wizard-intro">
-        <h3>Your first working process</h3>
+        <h3>{t('simulator.wizard.review.yourFirstWorkingProcess')}</h3>
         <p>
-          Review the assumptions, then create an editable diagram. Press Play to watch real work
-          move and queues form.
+          {t(
+            'simulator.wizard.review.reviewTheAssumptionsThenCreateAnEditableDiagramPressPlayToWatch',
+          )}
         </p>
       </div>
-      <div className="process-starter-preview" aria-label="Process preview">
+      <div
+        className="process-starter-preview"
+        aria-label={t('simulator.wizard.review.processPreview')}
+      >
         <div>
           <Inbox size={20} />
-          <b>{value.itemName} arrivals</b>
+          <b>{t('simulator.wizard.review.arrivals', { itemName: value.itemName })}</b>
           <small>
             {draft.arrivalMode === 'batch'
-              ? `${value.batchCount} ${value.batchCount === 1 ? 'item' : 'items'} at the start`
-              : `${value.arrivalsPerHour} items/hour`}
+              ? plural(
+                  'simulator.wizard.review.batch.one',
+                  'simulator.wizard.review.batch.other',
+                  value.batchCount,
+                )
+              : t('simulator.wizard.review.itemsHour', {
+                  arrivalsPerHour: String(value.arrivalsPerHour),
+                })}
           </small>
         </div>
         <ArrowRight aria-hidden size={18} />
@@ -30,35 +42,58 @@ export function StarterReview({ draft, seed = 42 }: { draft: ProcessStarterDraft
           <b>{value.workName}</b>
           <small>
             {draft.structure === 'hierarchical'
-              ? `${value.steps.length} subprocesses with independent settings`
-              : `${value.processingSeconds / 60} min/item · ${value.capacity} ${value.capacity === 1 ? 'slot' : 'slots'}`}
+              ? t('simulator.wizard.review.subprocessesWithIndependentSettings', {
+                  count: String(value.steps.length),
+                })
+              : plural(
+                  'simulator.wizard.review.capacity.one',
+                  'simulator.wizard.review.capacity.other',
+                  value.capacity,
+                  { minutes: value.processingSeconds / 60 },
+                )}
           </small>
         </div>
         <ArrowRight aria-hidden size={18} />
         <div>
           <CircleCheck size={20} />
-          <b>Completed</b>
+          <b>{t('simulator.common.completed')}</b>
           <small>
-            {value.revenue} {draft.currency}/item
+            {t('simulator.wizard.review.revenueRate', {
+              revenue: value.revenue,
+              currency: draft.currency,
+            })}
           </small>
         </div>
       </div>
       {draft.structure === 'hierarchical' && (
-        <ol className="process-starter-review-steps" aria-label="Subprocess review">
+        <ol
+          className="process-starter-review-steps"
+          aria-label={t('simulator.wizard.review.subprocessReview')}
+        >
           {value.steps.map((step, index) => (
             <li key={index}>
               <strong>
                 {index + 1}. {step.name}
               </strong>
               <span>
-                {step.workName} · {step.processingSeconds / 60} min/item · {step.capacity}{' '}
-                {step.capacity === 1 ? 'slot' : 'slots'} · {step.costPerHour} {draft.currency}
-                /slot/hour
+                {plural(
+                  'simulator.wizard.review.workStep.one',
+                  'simulator.wizard.review.workStep.other',
+                  step.capacity,
+                  {
+                    workName: step.workName,
+                    minutes: step.processingSeconds / 60,
+                    cost: step.costPerHour,
+                    currency: draft.currency,
+                  },
+                )}
               </span>
               <span>
                 {draft.sharedResource && step.usesSharedResource
-                  ? `Shared pool: ${value.resourceName}`
-                  : 'No shared pool required'}
+                  ? t('simulator.wizard.review.sharedPool', {
+                      resourceName: String(value.resourceName),
+                    })
+                  : t('simulator.wizard.review.noSharedPoolRequired')}
               </span>
             </li>
           ))}
@@ -67,65 +102,82 @@ export function StarterReview({ draft, seed = 42 }: { draft: ProcessStarterDraft
       {draft.sharedResource && (
         <p className="process-wizard-resource-summary">
           <Users size={17} />
-          {value.resourceName}: {value.resourceCapacity}{' '}
-          {value.resourceCapacity === 1 ? 'unit' : 'units'}, shared by connected work steps.
+          {plural(
+            'simulator.wizard.review.sharedCapacity.one',
+            'simulator.wizard.review.sharedCapacity.other',
+            value.resourceCapacity,
+            { resourceName: value.resourceName },
+          )}
         </p>
       )}
       {draft.sharedResource && !value.steps.some((step) => step.usesSharedResource) && (
         <p className="process-wizard-warning">
-          No step uses this pool. Its available capacity still incurs the configured hourly cost. Go
-          back to assign steps or turn off the shared pool.
+          {t(
+            'simulator.wizard.review.noStepUsesThisPoolItsAvailableCapacityStillIncursTheConfigured',
+          )}
         </p>
       )}
       <dl className="process-wizard-facts">
         <div>
-          <dt>Transfer between steps</dt>
-          <dd>{value.transferSeconds} simulated seconds per connection</dd>
+          <dt>{t('simulator.wizard.review.transferBetweenSteps')}</dt>
+          <dd>{t('simulator.wizard.review.transfer', { seconds: value.transferSeconds })}</dd>
         </div>
         <div>
-          <dt>Estimated flow capacity</dt>
+          <dt>{t('simulator.wizard.review.estimatedFlowCapacity')}</dt>
           <dd>
-            Up to {Number(analysis.throughputPerHour.toFixed(2))} items/hour across these steps. Run
-            the model to measure waits and transfers.
+            {t('simulator.wizard.review.flowCapacity', {
+              itemsPerHour: Number(analysis.throughputPerHour.toFixed(2)),
+            })}
           </dd>
         </div>
         <div>
-          <dt>New capacity cost per hour</dt>
+          <dt>{t('simulator.wizard.review.newCapacityCostPerHour')}</dt>
           <dd>
-            {analysis.hourlyOperatingCost} {draft.currency}/hour
-            <small>Existing model resources and improvements keep their configured costs.</small>
+            {t('simulator.wizard.review.operatingRate', {
+              cost: analysis.hourlyOperatingCost,
+              currency: draft.currency,
+            })}
+            <small>
+              {t(
+                'simulator.wizard.review.existingModelResourcesAndImprovementsKeepTheirConfiguredCosts',
+              )}
+            </small>
           </dd>
         </div>
         <div>
-          <dt>Queue patience</dt>
+          <dt>{t('simulator.wizard.review.queuePatience')}</dt>
           <dd>
             {value.patienceSeconds === undefined
-              ? 'No abandonment limit'
-              : `${value.patienceSeconds / 60} minutes`}
+              ? t('simulator.wizard.review.noAbandonmentLimit')
+              : t('simulator.wizard.review.minutes', {
+                  minutes: String(value.patienceSeconds / 60),
+                })}
           </dd>
         </div>
         <div>
-          <dt>Run</dt>
+          <dt>{t('simulator.wizard.review.run')}</dt>
           <dd>
-            {draft.arrivalMode === 'batch'
-              ? `Finish the batch; arrival window ${value.durationSeconds / 3600} hours`
-              : `${value.durationSeconds / 3600} simulated hours`}{' '}
-            · seed {seed}
+            {t(
+              draft.arrivalMode === 'batch'
+                ? 'simulator.wizard.review.runBatch'
+                : 'simulator.wizard.review.runRegular',
+              { hours: value.durationSeconds / 3600, seed },
+            )}
           </dd>
         </div>
       </dl>
       {analysis.overloaded && (
         <p className="process-wizard-warning" role="status">
-          Demand exceeds processing capacity. A queue is expected: this is a useful starting point
-          for testing extra capacity or shared resources.
+          {t(
+            'simulator.wizard.review.demandExceedsProcessingCapacityAQueueIsExpectedThisIsAUseful',
+          )}
         </p>
       )}
       <p className="process-wizard-note">
         {draft.structure === 'hierarchical'
-          ? 'After setup, open the main process, then a subprocess to select or add Work steps. '
-          : 'After setup, select a node to extend the process. '}
-        Use Assumptions to refine it, create a scenario to try a change, then compare runs. Your
-        model and results stay in this browser.
+          ? t('simulator.wizard.review.afterSetupOpenTheMainProcessThenASubprocessToSelectOr')
+          : t('simulator.wizard.review.afterSetupSelectANodeToExtendTheProcess')}
+        {t('simulator.wizard.review.useAssumptionsToRefineItCreateAScenarioToTryAChange')}{' '}
       </p>
     </>
   );

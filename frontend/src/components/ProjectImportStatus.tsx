@@ -1,22 +1,29 @@
+import { useI18n, type MessageId } from '../i18n';
 import type { ProjectArchiveProgress } from '../code/project/types';
 import type { ProjectArchiveSummary } from '../code/project/analysis';
 
-const labels: Record<string, [string, string]> = {
-  dependency: ['dependency', 'dependencies'],
-  build: ['build output entry', 'build output entries'],
-  vcs: ['version-control entry', 'version-control entries'],
-  private: ['private file', 'private files'],
-  binary: ['binary file', 'binary files'],
-  generated: ['generated file', 'generated files'],
-  unsupported: ['unsupported file', 'unsupported files'],
-  directory: ['directory entry', 'directory entries'],
-};
-const size = (bytes: number) =>
-  bytes >= 1024 * 1024
-    ? `${(bytes / (1024 * 1024)).toFixed(2)} MB`
-    : bytes >= 1024
-      ? `${(bytes / 1024).toFixed(2)} KB`
-      : `${bytes} ${bytes === 1 ? 'byte' : 'bytes'}`;
+const labels = {
+  dependency: [
+    'data.projectStatus.excluded.dependency.one',
+    'data.projectStatus.excluded.dependency.other',
+  ],
+  build: ['data.projectStatus.excluded.build.one', 'data.projectStatus.excluded.build.other'],
+  vcs: ['data.projectStatus.excluded.vcs.one', 'data.projectStatus.excluded.vcs.other'],
+  private: ['data.projectStatus.excluded.private.one', 'data.projectStatus.excluded.private.other'],
+  binary: ['data.projectStatus.excluded.binary.one', 'data.projectStatus.excluded.binary.other'],
+  generated: [
+    'data.projectStatus.excluded.generated.one',
+    'data.projectStatus.excluded.generated.other',
+  ],
+  unsupported: [
+    'data.projectStatus.excluded.unsupported.one',
+    'data.projectStatus.excluded.unsupported.other',
+  ],
+  directory: [
+    'data.projectStatus.excluded.directory.one',
+    'data.projectStatus.excluded.directory.other',
+  ],
+} as const satisfies Record<string, readonly [MessageId, MessageId]>;
 
 export function ProjectImportStatus({
   project,
@@ -25,49 +32,66 @@ export function ProjectImportStatus({
   project: ProjectArchiveSummary | null;
   progress: ProjectArchiveProgress | null;
 }) {
+  const { t, plural, number } = useI18n();
   const percent =
     progress && progress.total > 0
       ? Math.min(100, Math.floor((progress.completed / progress.total) * 100))
       : 0;
+  const size = (bytes: number) =>
+    bytes >= 1024 * 1024
+      ? `${number(bytes / (1024 * 1024), { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MB`
+      : bytes >= 1024
+        ? `${number(bytes / 1024, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} KB`
+        : plural('data.projectStatus.byteSize.one', 'data.projectStatus.byteSize.other', bytes);
   return (
     <>
       {progress && (
         <div className="code-archive-progress" role="status">
           <p>
-            {progress.stage === 'scan' ? 'Scanning ZIP project' : 'Reading project files'} ·{' '}
-            {percent}%
+            {t(
+              progress.stage === 'scan'
+                ? 'data.projectStatus.scanning'
+                : 'data.projectStatus.reading',
+              { percent },
+            )}
           </p>
-          <progress aria-label="Project scan progress" value={percent} max={100} />
+          <progress
+            aria-label={t('data.projectStatus.progressAccessible')}
+            value={percent}
+            max={100}
+          />
           {progress.path && <span>{progress.path}</span>}
         </div>
       )}
       {project && (
-        <aside className="code-project-info" aria-label="Project scan summary">
+        <aside className="code-project-info" aria-label={t('data.projectStatus.summaryAccessible')}>
           <strong>{project.name}</strong>
           <p>
-            {size(project.expandedBytes)} expanded · {project.ignored.total} archive entries
-            excluded
+            {t('data.projectStatus.summary', {
+              size: size(project.expandedBytes),
+              count: project.ignored.total,
+            })}
           </p>
           {project.fileLimit !== undefined && (
-            <p>
-              Captured ZIP project source-file limit: {project.fileLimit.toLocaleString('en-US')}{' '}
-              files.
-            </p>
+            <p>{t('data.projectStatus.capturedLimit', { count: number(project.fileLimit) })}</p>
           )}
           {project.ignored.total > 0 && (
             <ul>
               {Object.entries(project.ignored.reasons)
                 .filter(([, count]) => count > 0)
-                .map(([reason, count]) => (
-                  <li key={reason}>
-                    {count} {labels[reason]?.[count === 1 ? 0 : 1] ?? reason}
-                  </li>
-                ))}
+                .map(([reason, count]) => {
+                  const pair = Object.hasOwn(labels, reason)
+                    ? labels[reason as keyof typeof labels]
+                    : undefined;
+                  return (
+                    <li key={reason}>
+                      {pair ? plural(pair[0], pair[1], count) : `${number(count)} ${reason}`}
+                    </li>
+                  );
+                })}
             </ul>
           )}
-          <p>
-            Review detected languages. Uncertain files need an explicit language before preview.
-          </p>
+          <p>{t('data.projectStatus.reviewLanguages')}</p>
         </aside>
       )}
     </>

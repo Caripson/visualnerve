@@ -1,5 +1,11 @@
 # MCP processes, understanding and diagram presentations
 
+The app interface offers eight languages with English as default; see
+[App interface languages](UI_LANGUAGES.md). This display-only choice does not
+change API/MCP fields, enum values, schemas, diagnostics, source data, simulation
+results or narrator voice. Help and API documentation remain English. The language
+identifier is technical browser metadata, not a private API setting or backup field.
+
 Connect a standard MCP client to the local HTTP(S) `/mcp` server and keep the Visual Nerve workspace at `/app/` open with local storage accepted. The browser stores the diagrams in IndexedDB. Enable **Settings → MCP access → Read + write** to save or control a presentation. Read only permits GET discovery/state and the exact unsaved preview, export, question, app-brief and simulation-comparison routes below; other POST requests still require Read + write. The public website serves app files and documentation; the MCP bridge runs on the user's computer.
 
 Saved access and connection changes take effect without reloading the browser page. Temporary connection failures retry every three seconds while access is enabled; Off disconnects and cancels retries. An invalid local address must be corrected, and the bridge's allowed origin, trusted certificate, local-network permission and optional token still need to match the browser setup. See [connection setup and troubleshooting](https://www.visualnerve.com/help/api-mcp/).

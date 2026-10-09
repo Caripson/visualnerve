@@ -55,7 +55,7 @@ For the separate **staging** workspace at `https://visualnerve.caripson.com/app/
 
 Use your actual app origin in that final argument. Browser local-network rules can require permission or trusted local TLS. The bridge supports `--tls-cert` and `--tls-key`; configure matching `wss`/HTTPS addresses when required. The bridge remains loopback-only.
 
-The dedicated encrypted app at `app.visualnerve.com` is under release review. When using that surface, allow `https://app.visualnerve.com` instead, unlock in the browser and grant access there. It does not share the old website's browser storage; [transfer the existing workspace explicitly](/help/settings/#transfer-an-existing-workspace).
+The dedicated encrypted app at `app.visualnerve.com` is available. When using that surface, allow `https://app.visualnerve.com` instead, unlock in the browser and grant access there. It does not share the old website's browser storage; [transfer the existing workspace explicitly](/help/settings/#transfer-an-existing-workspace).
 
 ## Choose your local MCP client
 
@@ -69,11 +69,11 @@ The default **4317** listener serves MCP, the browser connection and REST togeth
 | Claude Code    | [HTTP command](/help/api-mcp/#claude-code)                                 |
 | Cursor         | [Local IDE `mcp.json`](/help/api-mcp/#cursor)                              |
 | Gemini CLI     | [HTTP command and `settings.json`](/help/api-mcp/#gemini-cli)              |
-| Claude Desktop | [Local stdio adapter, under release review](/help/api-mcp/#claude-desktop) |
+| Claude Desktop | [Local stdio adapter](/help/api-mcp/#claude-desktop) |
 
 These examples follow each client's official configuration documentation. They are not a claim that every installed version or vendor interface has been tested. A cloud agent runs on a different computer and cannot reach your laptop through its own `127.0.0.1`. **Gemini CLI** is the local command-line client; these instructions do not describe the Gemini website.
 
-The release under review also offers `visual-nerve --mcp-stdio` for a client that launches local stdio processes. It forwards to the same existing loopback HTTP bridge; it does not start another browser service or create a vendor-specific implementation. Stop that adapter without stopping the shared bridge. The browser's `/bridge` WebSocket and older SSE transports are not MCP alternatives exposed by this server.
+Visual Nerve also offers `visual-nerve --mcp-stdio` for a client that launches local stdio processes. It forwards to the same existing loopback HTTP bridge; it does not start another browser service or create a vendor-specific implementation. Stop that adapter without stopping the shared bridge. The browser's `/bridge` WebSocket and older SSE transports are not MCP alternatives exposed by this server.
 
 On the isolated encrypted app, the deployed Content Security Policy also restricts browser bridge connections to explicitly approved ports. A custom port must be included in that app build and its response-header policy; changing Settings alone cannot override it. The reviewed default is 4317.
 

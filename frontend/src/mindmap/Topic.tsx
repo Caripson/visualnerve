@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { Fragment, memo, useCallback, useEffect, useRef, type CSSProperties } from 'react';
 import {
   Handle,
@@ -16,6 +17,7 @@ import { MetricSummary } from '../components/MetricSummary';
 import { NodeStatus } from '../ui/NodeStatus';
 
 export const MindmapNode = memo(({ id, data, selected }: NodeProps<CanvasNode>) => {
+  const { t, plural } = useI18n();
   const { node, mindmap: topic, exporting, owners } = data;
   const resize = useCallback(
     (_: unknown, p: ResizeParams) =>
@@ -60,12 +62,18 @@ export const MindmapNode = memo(({ id, data, selected }: NodeProps<CanvasNode>) 
       onDoubleClick={() => {
         if (!exporting) useEditor.getState().beginEditing(id);
       }}
-      title={exporting ? undefined : `${node.title} · Double-click or F2 to edit`}
+      title={
+        exporting
+          ? undefined
+          : t('editor.mindmap.doubleClickOrF2ToEdit', { topicTitle: String(node.title) })
+      }
     >
       {data.presentationNumber && (
         <span
           className="presentation-node-number"
-          aria-label={`Presentation step ${data.presentationNumber}`}
+          aria-label={t('editor.nodes.typeLabel.presentationStep', {
+            presentationNumber: String(data.presentationNumber),
+          })}
         >
           {data.presentationNumber}
         </span>
@@ -99,7 +107,7 @@ export const MindmapNode = memo(({ id, data, selected }: NodeProps<CanvasNode>) 
         <textarea
           ref={input}
           className="topic-edit nodrag nopan nowheel"
-          aria-label="Edit topic"
+          aria-label={t('editor.mindmap.editTopic')}
           value={title}
           onChange={(e) => useEditor.setState({ editingTitle: e.target.value })}
           onBlur={() => finish(true)}
@@ -146,20 +154,28 @@ export const MindmapNode = memo(({ id, data, selected }: NodeProps<CanvasNode>) 
           {data.childCount > 0 && (
             <button
               className="topic-collapse"
-              aria-label={node.collapsed ? 'Expand branch' : 'Collapse branch'}
+              aria-label={
+                node.collapsed
+                  ? t('editor.nodes.typeLabel.expandBranch')
+                  : t('editor.nodes.typeLabel.collapseBranch')
+              }
               onClick={(e) => {
                 e.stopPropagation();
                 useEditor.getState().updateNode(id, { collapsed: !node.collapsed });
               }}
-              title={`${data.childCount} subtopics`}
+              title={plural(
+                'editor.mindmap.subtopics.one',
+                'editor.mindmap.subtopics.other',
+                data.childCount,
+              )}
             >
               {node.collapsed ? <span>{data.childCount}</span> : <Minus size={11} />}
             </button>
           )}
           <button
             className="topic-add"
-            aria-label={`Add subtopic to ${node.title}`}
-            title="Add subtopic (Tab)"
+            aria-label={t('editor.mindmap.addSubtopicTo', { topicTitle: String(node.title) })}
+            title={t('editor.mindmap.addSubtopicTab')}
             onClick={(e) => {
               e.stopPropagation();
               add();

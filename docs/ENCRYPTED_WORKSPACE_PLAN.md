@@ -1,6 +1,6 @@
 # Encrypted local workspace implementation plan
 
-Status: implemented controls with acceptance and manual release gates. The [dated evidence report](acceptance/2026-10-08-encrypted-workspace.md) records verification and its limits; GitHub Actions records exact-revision CI and manual publication. Existing workspaces are not migrated or replaced automatically.
+Status: implemented and manually released on 9 October 2026 after exact-revision CI and real production acceptance; subsequent changes retain the same manual release gates. The [dated evidence report](acceptance/2026-10-08-encrypted-workspace.md) records verification and its limits; GitHub Actions records exact-revision CI and manual publication. Existing workspaces are not migrated or replaced automatically.
 
 ## Agreed scope
 
@@ -116,4 +116,4 @@ Only documented technical bootstrap metadata may remain readable while locked: f
 - [OWASP Application Security Verification Standard](https://owasp.org/projects/asvs)
 - [Dexie transaction guidance](https://dexie.org/docs/Dexie/Dexie.transaction/)
 
-This plan sets release requirements. It does not mean the current production workspace is encrypted or independently certified.
+The isolated `app.visualnerve.com` release meets the implementation acceptance gates recorded in the dated report. Existing legacy workspaces are not retroactively encrypted. This plan does not establish independent certification.

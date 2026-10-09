@@ -1,7 +1,10 @@
+import { localizedFeedback } from './localized-feedback';
+import { useI18n } from '../i18n';
 import { useRef, useState } from 'react';
 import { mcpServerUrl, mcpSetupNote } from '../integration/setup';
 
 export function McpConnectionInfo({ endpoint }: { endpoint: string }) {
+  const { t } = useI18n();
   const website = location.origin;
   const reference = new URL('/api/docs/', website).href;
   const preview = useRef<HTMLTextAreaElement>(null);
@@ -26,47 +29,39 @@ export function McpConnectionInfo({ endpoint }: { endpoint: string }) {
     }
   };
   return (
-    <section aria-label="MCP connection addresses">
+    <section aria-label={t('integration.addresses.region')}>
       <label className="field">
-        <span>Visual Nerve website</span>
-        <input aria-label="Visual Nerve website" readOnly value={website} />
+        <span>{t('integration.addresses.websiteLabel')}</span>
+        <input aria-label={t('integration.addresses.websiteLabel')} readOnly value={website} />
       </label>
       <p className="muted">
-        This is the website your local bridge must allow.{' '}
+        {t('integration.addresses.originExplanation')}{' '}
         <a href={reference} target="_blank" rel="noopener noreferrer">
-          API documentation — 2D and 3D
+          {t('integration.addresses.apiDocsLink')}
         </a>
       </p>
       <label className="field">
-        <span>MCP server URL</span>
-        <input aria-label="MCP server URL" readOnly value={server} />
+        <span>{t('integration.addresses.serverUrlLabel')}</span>
+        <input aria-label={t('integration.addresses.serverUrlLabel')} readOnly value={server} />
       </label>
-      <p className="muted">
-        Your MCP client connects to this service on your computer. The website address identifies
-        the app; this local address connects the tools to it.
-      </p>
-      {!server && (
-        <p className="muted">Save a valid local bridge address below to show the MCP server URL.</p>
-      )}
+      <p className="muted">{t('integration.addresses.serviceNotWebsite')}</p>
+      {!server && <p className="muted">{t('integration.addresses.saveValidLocal')}</p>}
       {server && (
         <details className="storage-details">
-          <summary>Instructions for your MCP client</summary>
-          <p className="muted">
-            Ask your client to call visual_nerve_api_docs first for the 2D/3D guide. The same tool
-            provides the complete API contract when needed.
-          </p>
+          <summary>{t('integration.instructions.title')}</summary>
+          <p className="muted">{t('integration.instructions.docsFirst')}</p>
           <label className="field">
-            <span>Connection instructions</span>
+            <span>{t('integration.instructions.label')}</span>
             <textarea
               ref={preview}
-              aria-label="Connection instructions"
+              aria-label={t('integration.instructions.label')}
               readOnly
               rows={7}
               value={instructions}
             />
           </label>
-          <button onClick={() => void copy()}>Copy MCP instructions</button>
-          {message && <p role="status">{message}</p>}
+          <button onClick={() => void copy()}>{t('integration.instructions.copy')}</button>
+          {message && <p role="status">{localizedFeedback(message, t)}</p>}
         </details>
       )}
     </section>

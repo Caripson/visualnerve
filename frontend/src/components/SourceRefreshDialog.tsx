@@ -1,3 +1,5 @@
+import { localizedFeedback } from './localized-feedback';
+import { useI18n } from '../i18n';
 import { repository } from '../storage/repository';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { assertImportBytes, utf8Bytes } from '../imports/limits';
@@ -21,9 +23,9 @@ import './source-refresh.css';
 type Capture = { graph: Graph; revision: number; generation: number };
 const readable = (error: unknown) =>
   error instanceof Error ? error.message : 'Source refresh failed.';
-const number = (value: number) => value.toLocaleString();
 
 export function SourceRefreshDialog({ onClose }: { onClose: () => void }) {
+  const { t, number } = useI18n();
   const graph = useEditor((state) => state.graph);
   const revision = useEditor((state) => state.editRevision);
   const initialDiagramId = useRef(graph?.diagram.id);
@@ -266,17 +268,14 @@ export function SourceRefreshDialog({ onClose }: { onClose: () => void }) {
     (sourceId === 'sql' ? !!sql.trim() : !!source && !!incoming && keys.length > 0);
   const summary = result?.summary;
   return (
-    <Modal title="Refresh source" close={dismiss} wide dismissible={!applying}>
+    <Modal title={t('data.refresh.title')} close={dismiss} wide dismissible={!applying}>
       <div className="source-refresh" aria-busy={working || applying}>
-        <p className="source-refresh-intro">
-          Review changes before replacing source data. Matching objects retain their IDs, positions,
-          notes, status and manual connections. SQL is parsed locally and never executed.
-        </p>
+        <p className="source-refresh-intro">{t('data.refresh.reviewBeforeReplace')}</p>
         <ImportSizeNotice bytes={displayedBytes} />
         <label className="field">
-          Source to refresh
+          {t('data.refresh.sourceLabel')}
           <select
-            aria-label="Source to refresh"
+            aria-label={t('data.refresh.sourceLabel')}
             value={sourceId}
             disabled={applying}
             onChange={(event) => {
@@ -299,13 +298,13 @@ export function SourceRefreshDialog({ onClose }: { onClose: () => void }) {
                 {dataset.name} · {dataset.fileName}
               </option>
             ))}
-            {hasSql && <option value="sql">SQL schema</option>}
+            {hasSql && <option value="sql">{t('import.sql.schemaChoice')}</option>}
           </select>
         </label>
         <label className="field">
-          Replacement source file
+          {t('data.refresh.fileLabel')}
           <input
-            aria-label="Replacement source file"
+            aria-label={t('data.refresh.fileLabel')}
             type="file"
             accept={sourceId === 'sql' ? '.sql,.ddl' : '.csv'}
             disabled={applying}
@@ -318,9 +317,9 @@ export function SourceRefreshDialog({ onClose }: { onClose: () => void }) {
         </label>
         {sourceId === 'sql' ? (
           <label className="field">
-            Replacement SQL script
+            {t('data.refresh.sqlLabel')}
             <textarea
-              aria-label="Replacement SQL script"
+              aria-label={t('data.refresh.sqlLabel')}
               rows={8}
               value={sql}
               disabled={applying}
@@ -336,22 +335,22 @@ export function SourceRefreshDialog({ onClose }: { onClose: () => void }) {
             <>
               {incoming && (
                 <p className="muted">
-                  {incoming.fileName} · {number(incoming.rows.length)} replacement rows ·{' '}
-                  {incoming.columns.length} columns
+                  {t('data.refresh.replacementCounts', {
+                    fileName: incoming.fileName,
+                    rows: number(incoming.rows.length),
+                    columns: incoming.columns.length,
+                  })}
                 </p>
               )}
               <fieldset>
-                <legend>Identity keys</legend>
-                <p>
-                  Choose one or more stable columns that uniquely identify every row in both files.
-                  Empty or duplicate keys block refresh. Keys use trimmed original cells.
-                </p>
+                <legend>{t('data.refresh.identityTitle')}</legend>
+                <p>{t('data.refresh.identityUnique')}</p>
                 <div className="source-key-columns">
                   {source.columns.map((column) => (
                     <label key={column.id} className="check-field">
                       <input
                         type="checkbox"
-                        aria-label={`Identity key ${column.label}`}
+                        aria-label={t('data.refresh.identityAccessible', { label: column.label })}
                         checked={keys.includes(column.id)}
                         disabled={applying || loading}
                         onChange={(event) => {
@@ -370,16 +369,15 @@ export function SourceRefreshDialog({ onClose }: { onClose: () => void }) {
               </fieldset>
               {incoming && (
                 <details className="source-column-map" open>
-                  <summary>Map replacement columns</summary>
-                  <p>
-                    Matching labels keep existing column IDs. Map renamed headers explicitly;
-                    columns used by analyses, relationships or saved views must remain mapped.
-                  </p>
+                  <summary>{t('data.refresh.mappingTitle')}</summary>
+                  <p>{t('data.refresh.mapInvariants')}</p>
                   {source.columns.map((column) => (
                     <label className="field source-map-row" key={column.id}>
                       {column.label}
                       <select
-                        aria-label={`Replacement column for ${column.label}`}
+                        aria-label={t('data.refresh.replacementAccessible', {
+                          label: column.label,
+                        })}
                         value={mapping[column.id] ?? ''}
                         disabled={applying || loading}
                         onChange={(event) => {
@@ -387,7 +385,7 @@ export function SourceRefreshDialog({ onClose }: { onClose: () => void }) {
                           setMapping({ ...mapping, [column.id]: event.target.value || null });
                         }}
                       >
-                        <option value="">Column removed</option>
+                        <option value="">{t('data.refresh.columnRemoved')}</option>
                         {incoming.columns.map((item) => (
                           <option key={item.id} value={item.id}>
                             {item.label}
@@ -402,9 +400,9 @@ export function SourceRefreshDialog({ onClose }: { onClose: () => void }) {
           )
         )}
         <label className="field">
-          Removed source objects
+          {t('data.refresh.removedLabel')}
           <select
-            aria-label="Removed source objects"
+            aria-label={t('data.refresh.removedLabel')}
             value={policy}
             disabled={applying || loading}
             onChange={(event) => {
@@ -412,39 +410,51 @@ export function SourceRefreshDialog({ onClose }: { onClose: () => void }) {
               setPolicy(event.target.value as RemovedSourcePolicy);
             }}
           >
-            <option value="retain">Keep as annotations</option>
-            <option value="remove">Remove objects and attached connections</option>
+            <option value="retain">{t('data.refresh.retainChoice')}</option>
+            <option value="remove">{t('data.refresh.removeChoice')}</option>
           </select>
         </label>
         <p className="source-removal-note">
           {policy === 'retain'
-            ? 'Removed objects remain visible as annotations without live source bindings. CSV measures become snapshots; obsolete SQL foreign keys become manual annotation links. Existing manual connections and the drawing layer are retained.'
-            : 'Removed objects and every connection attached to them will be deleted. Matching objects, their manual connections and the drawing layer are retained.'}
+            ? t('data.refresh.retainExplanation')
+            : t('data.refresh.removeExplanation')}
         </p>
-        {working && <p role="status">Preparing source changes…</p>}
+        {working && <p role="status">{t('data.refresh.preparing')}</p>}
         {error && (
           <p role="alert" className="source-refresh-error">
-            {error}
+            {localizedFeedback(error, t)}
           </p>
         )}
         {summary && (
-          <section className="source-change-preview" aria-label="Source changes preview">
-            <h3>Review source changes</h3>
+          <section
+            className="source-change-preview"
+            aria-label={t('data.refresh.previewAccessible')}
+          >
+            <h3>{t('data.refresh.reviewTitle')}</h3>
             <dl className="source-change-counts">
               {[
-                [`${sourceId === 'sql' ? 'Tables' : 'Rows'} added`, summary.added],
-                [`${sourceId === 'sql' ? 'Tables' : 'Rows'} changed`, summary.changed],
-                [`${sourceId === 'sql' ? 'Tables' : 'Rows'} removed`, summary.removed],
-                ['Unchanged', summary.unchanged],
-                ['Columns added', summary.columnsAdded],
-                ['Columns removed', summary.columnsRemoved],
-                ['Objects added', summary.objectsAdded],
-                ['Objects removed', summary.objectsRemoved],
-                ['Annotations retained', summary.retainedAnnotations],
-                ['Relationships added', summary.relationshipsAdded],
-                ['Relationships changed', summary.relationshipsChanged],
-                ['Relationships removed', summary.relationshipsRemoved],
-                ['Manual connections affected', summary.affectedManualRelationships],
+                [
+                  t(sourceId === 'sql' ? 'data.refresh.tablesAdded' : 'data.refresh.rowsAdded'),
+                  summary.added,
+                ],
+                [
+                  t(sourceId === 'sql' ? 'data.refresh.tablesChanged' : 'data.refresh.rowsChanged'),
+                  summary.changed,
+                ],
+                [
+                  t(sourceId === 'sql' ? 'data.refresh.tablesRemoved' : 'data.refresh.rowsRemoved'),
+                  summary.removed,
+                ],
+                [t('data.refresh.unchanged'), summary.unchanged],
+                [t('data.refresh.columnsAdded'), summary.columnsAdded],
+                [t('data.refresh.columnsRemoved'), summary.columnsRemoved],
+                [t('data.refresh.objectsAdded'), summary.objectsAdded],
+                [t('data.refresh.objectsRemoved'), summary.objectsRemoved],
+                [t('data.refresh.annotationsRetained'), summary.retainedAnnotations],
+                [t('data.refresh.relationshipsAdded'), summary.relationshipsAdded],
+                [t('data.refresh.relationshipsChanged'), summary.relationshipsChanged],
+                [t('data.refresh.relationshipsRemoved'), summary.relationshipsRemoved],
+                [t('data.refresh.manualConnectionsAffected'), summary.affectedManualRelationships],
               ].map(([label, value]) => (
                 <div key={label}>
                   <dt>{label}</dt>
@@ -455,12 +465,12 @@ export function SourceRefreshDialog({ onClose }: { onClose: () => void }) {
             {!!summary.affectedManualRelationships && (
               <p>
                 {policy === 'retain'
-                  ? 'These manual connections remain attached to the retained annotations.'
-                  : 'These manual connections will be deleted with the removed objects.'}
+                  ? t('data.refresh.connectionsRetained')
+                  : t('data.refresh.connectionsDeleted')}
               </p>
             )}
             {summary.changes.length > 0 && (
-              <ul aria-label="Source change samples">
+              <ul aria-label={t('data.refresh.samplesAccessible')}>
                 {summary.changes.slice(0, 50).map((change, index) => (
                   <li key={index}>
                     <b>{change.kind}</b> {change.label}
@@ -469,34 +479,36 @@ export function SourceRefreshDialog({ onClose }: { onClose: () => void }) {
               </ul>
             )}
             {summary.added + summary.changed + summary.removed > 50 && (
-              <p>Showing at most 50 sample changes. Counts include the whole source.</p>
+              <p>{t('data.refresh.sampleBound')}</p>
             )}
             {summary.warnings.length > 0 && (
               <div className="source-refresh-warnings">
-                <h4>Review notes</h4>
+                <h4>{t('data.refresh.reviewNotes')}</h4>
                 <ul>
                   {summary.warnings.slice(0, 20).map((warning, index) => (
                     <li key={index}>{warning}</li>
                   ))}
                 </ul>
-                {summary.warnings.length > 20 && <p>{summary.warnings.length - 20} more notes.</p>}
+                {summary.warnings.length > 20 && (
+                  <p>{t('data.refresh.moreNotes', { count: summary.warnings.length - 20 })}</p>
+                )}
               </div>
             )}
           </section>
         )}
         <div className="modal-actions source-refresh-actions">
           <button disabled={applying} onClick={dismiss}>
-            Cancel
+            {t('data.refresh.cancel')}
           </button>
           <button disabled={!ready || working || applying} onClick={() => void preview()}>
-            Preview changes
+            {t('data.refresh.previewAction')}
           </button>
           <button
             className="primary"
             disabled={!result || working || applying || !!error}
             onClick={() => void apply()}
           >
-            {applying ? 'Applying source refresh…' : 'Apply source refresh'}
+            {applying ? t('data.refresh.applying') : t('data.refresh.applyAction')}
           </button>
         </div>
       </div>

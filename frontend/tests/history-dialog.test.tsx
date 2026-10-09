@@ -48,7 +48,7 @@ it('requires comparison and an explicit restore choice, then preserves current w
     screen.queryByRole('button', { name: 'Restore reviewed snapshot' }),
   ).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Review changes' }));
-  await screen.findByText('1 meaningful changes');
+  await screen.findByText('1 meaningful change');
   const restore = screen.getByRole('button', { name: 'Restore reviewed snapshot' });
   expect(restore).toBeDisabled();
   fireEvent.click(
@@ -79,7 +79,7 @@ it('uses the reviewed baseVersion and rejects another tab changing the graph aft
   );
   fireEvent.change(await screen.findByLabelText('Snapshot'), { target: { value: snapshot.id } });
   fireEvent.click(screen.getByRole('button', { name: 'Review changes' }));
-  await screen.findByText('1 meaningful changes');
+  await screen.findByText('1 meaningful change');
   await repo.saveGraph(
     { ...current, nodes: [{ ...current.nodes[0], title: 'Other writer' }] },
     current.diagram.version,

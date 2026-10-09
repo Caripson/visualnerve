@@ -1,3 +1,5 @@
+import { evidenceDispositionLabel } from './data-ui-text';
+import { useI18n } from '../i18n';
 import { useState } from 'react';
 import type { CsvDataset } from '../data/types';
 import type { EvidencePage } from '../data/quality';
@@ -6,22 +8,23 @@ import { graphDatasets, analysisForDataset } from '../data/model';
 import './data-inspection.css';
 
 export function RelatedDataScope({ graph }: { graph?: Graph }) {
+  const { t } = useI18n();
   const focus = graph?.diagram.settings.csvEntityFocus;
   if (!graph || !focus) return null;
   const sources = graphDatasets(graph);
   return (
     <details>
-      <summary>Related data scope</summary>
+      <summary>{t('data.evidence.relatedScopeTitle')}</summary>
       <p>
-        Connected rows are selected from{' '}
-        {sources.find((source) => source.id === focus.datasetId)?.name}:{' '}
-        {focus.path
-          .map(
-            (entry) =>
-              `${sources.find((source) => source.id === focus.datasetId)?.columns.find((column) => column.id === entry.columnId)?.label}: ${entry.value}`,
-          )
-          .join(' → ')}
-        . Each source row contributes once.
+        {t('data.evidence.relatedRowsScope', {
+          source: sources.find((source) => source.id === focus.datasetId)?.name ?? '',
+          path: focus.path
+            .map(
+              (entry) =>
+                `${sources.find((source) => source.id === focus.datasetId)?.columns.find((column) => column.id === entry.columnId)?.label}: ${entry.value}`,
+            )
+            .join(' → '),
+        })}
       </p>
       <ul>
         {sources.flatMap((source) =>
@@ -52,6 +55,7 @@ export function DataEvidence({
   originalValues?: boolean;
   onOriginalChange?: (value: boolean) => void;
 }) {
+  const { t, number } = useI18n();
   const [localOriginal, setLocalOriginal] = useState(false);
   const original = originalValues ?? localOriginal;
   return (
@@ -62,19 +66,23 @@ export function DataEvidence({
           checked={original}
           onChange={(event) => (onOriginalChange ?? setLocalOriginal)(event.target.checked)}
         />
-        Show original cells
+        {t('data.evidence.originalCells')}
       </label>
       <p className="muted">
-        Rows {page.total ? page.offset + 1 : 0}–
-        {Math.min(page.offset + page.rows.length, page.total)} of {page.total.toLocaleString()}.
-        Source row numbers exclude the CSV header.
+        {t('data.evidence.rowRange', {
+          first: page.total ? page.offset + 1 : 0,
+          last: Math.min(page.offset + page.rows.length, page.total),
+          total: number(page.total),
+        })}
       </p>
-      <div className="data-evidence-scroll" tabIndex={0} aria-label="Scroll evidence rows">
-        <table aria-label="Evidence rows">
+      <div className="data-evidence-scroll" tabIndex={0} aria-label={t('data.evidence.scrollRows')}>
+        <table aria-label={t('data.evidence.rowsAccessible')}>
           <thead>
             <tr>
-              <th>Source row</th>
-              {page.rows.some((row) => row.disposition) && <th>Contribution</th>}
+              <th>{t('data.evidence.sourceRowLabel')}</th>
+              {page.rows.some((row) => row.disposition) && (
+                <th>{t('data.evidence.contributionLabel')}</th>
+              )}
               {dataset.columns.map((column) => (
                 <th key={column.id} className={column.id === highlight ? 'evidence-highlight' : ''}>
                   {column.label}
@@ -88,7 +96,7 @@ export function DataEvidence({
                 <th scope="row">{row.rowNumber}</th>
                 {row.disposition && (
                   <td>
-                    {row.disposition}
+                    {evidenceDispositionLabel(row.disposition, t)}
                     {row.numericValue !== undefined && row.numericValue !== null
                       ? ` (${row.numericValue})`
                       : ''}
@@ -109,13 +117,13 @@ export function DataEvidence({
       </div>
       <div className="data-inspection-actions">
         <button disabled={page.offset === 0} onClick={() => onPage(Math.max(0, page.offset - 100))}>
-          Previous rows
+          {t('data.evidence.previousRows')}
         </button>
         <button
           disabled={page.offset + page.rows.length >= page.total}
           onClick={() => onPage(page.offset + 100)}
         >
-          Next rows
+          {t('data.evidence.nextRows')}
         </button>
       </div>
     </div>

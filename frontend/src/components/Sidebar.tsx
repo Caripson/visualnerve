@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { useMemo, useState } from 'react';
 import {
   Clock3,
@@ -29,6 +30,7 @@ export function Sidebar({
   open: (name: DialogName) => void;
   importFile: () => void;
 }) {
+  const { t } = useI18n();
   const diagrams = useEditor((s) => s.diagrams);
   const current = useEditor((s) => s.graph?.diagram.id);
   const [section, setSection] = useState<'all' | 'recent' | 'favorites'>('all');
@@ -60,7 +62,7 @@ export function Sidebar({
   );
   const folders = new Map<string, typeof list>();
   for (const d of list) {
-    const folder = d.folder || 'Unfiled';
+    const folder = d.folder || '';
     folders.set(folder, [...(folders.get(folder) ?? []), d]);
   }
   return (
@@ -68,13 +70,14 @@ export function Sidebar({
       <div className="workspace-label">
         <span className="workspace-symbol">VN</span>
         <div>
-          <b>Personal workspace</b>
-          <small>Stored in this browser</small>
+          <b>{t('workspace.personalTitle')}</b>
+          <small>{t('workspace.storedBrowser')}</small>
         </div>
-        <span className="local-dot" title="Local workspace" />
+        <span className="local-dot" title={t('workspace.localWorkspaceTooltip')} />
         <button
           className="mobile-only"
-          aria-label="Close projects"
+          data-mobile-panel-dismiss="projects"
+          aria-label={t('workspace.closeProjects')}
           onClick={() => useEditor.setState({ mobilePanel: null })}
         >
           <X size={18} />
@@ -82,50 +85,53 @@ export function Sidebar({
       </div>
       <button className="primary new-diagram" onClick={() => open('new')}>
         <Plus size={16} />
-        New diagram<span>⌘ N</span>
+        {t('workspace.newDiagram')}
+        <span>⌘ N</span>
       </button>
       <nav className="workspace-nav">
         <button className={section === 'all' ? 'active' : ''} onClick={() => setSection('all')}>
           <GitBranch size={16} />
-          Diagrams<span>{diagrams.length}</span>
+          {t('workspace.diagrams')}
+          <span>{diagrams.length}</span>
         </button>
         <button onClick={() => open('search')}>
           <Search size={16} />
-          Search<span>⌘ K</span>
+          {t('workspace.search')}
+          <span>⌘ K</span>
         </button>
         <button
           className={section === 'recent' ? 'active' : ''}
           onClick={() => setSection('recent')}
         >
           <Clock3 size={16} />
-          Recently edited
+          {t('workspace.recentlyEdited')}
         </button>
         <button
           className={section === 'favorites' ? 'active' : ''}
           onClick={() => setSection('favorites')}
         >
           <Star size={16} />
-          Favorites
+          {t('workspace.favorites')}
         </button>
         <button onClick={() => open('owners')}>
           <Users size={16} />
-          Owners
+          {t('workspace.owners')}
         </button>
         <button onClick={() => open('new')}>
           <LayoutTemplate size={16} />
-          Templates
+          {t('workspace.templates')}
         </button>
       </nav>
       <div className="sidebar-section-title">
         {section === 'favorites'
-          ? 'FAVORITES'
+          ? t('workspace.favoriteSectionTitle')
           : section === 'recent'
-            ? 'RECENT DIAGRAMS'
-            : 'YOUR DIAGRAMS'}
+            ? t('workspace.recentSectionTitle')
+            : t('workspace.allSectionTitle')}
         <button
           className="icon-button"
-          title="New diagram"
-          aria-label="Add diagram"
+          title={t('workspace.newDiagram')}
+          aria-label={t('workspace.addDiagram')}
           onClick={() => open('new')}
         >
           <Plus size={14} />
@@ -134,25 +140,29 @@ export function Sidebar({
       <div className="diagram-filter">
         <Search size={13} />
         <input
-          aria-label="Filter diagrams"
+          aria-label={t('workspace.filterDiagrams')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Filter diagrams…"
+          placeholder={t('workspace.filterPlaceholder')}
         />
       </div>
       <div className="list-filters">
-        <select aria-label="Sort diagrams" value={sort} onChange={(e) => setSort(e.target.value)}>
-          <option value="updated">Last edited</option>
-          <option value="name">Name</option>
-          <option value="created">Newest created</option>
+        <select
+          aria-label={t('workspace.sortDiagrams')}
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
+        >
+          <option value="updated">{t('workspace.sortLastEdited')}</option>
+          <option value="name">{t('workspace.sortName')}</option>
+          <option value="created">{t('workspace.sortCreated')}</option>
         </select>
         {tags.length > 0 && (
           <select
-            aria-label="Filter diagram tags"
+            aria-label={t('workspace.filterTags')}
             value={tag}
             onChange={(e) => setTag(e.target.value)}
           >
-            <option value="">All tags</option>
+            <option value="">{t('workspace.allTags')}</option>
             {tags.map((t) => (
               <option key={t}>{t}</option>
             ))}
@@ -177,7 +187,7 @@ export function Sidebar({
               >
                 {collapsed.has(folder) ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
                 {collapsed.has(folder) ? <Folder size={13} /> : <FolderOpen size={13} />}
-                <span>{folder}</span>
+                <span>{folder || t('workspace.unfiledDisplay')}</span>
                 <small>{items.length}</small>
               </button>
               {!collapsed.has(folder) &&
@@ -200,9 +210,7 @@ export function Sidebar({
           ))}
         {!list.length && (
           <div className="list-empty">
-            {diagrams.length
-              ? 'No matching diagrams.'
-              : 'Your ideas start here.\nCreate your first diagram.'}
+            {diagrams.length ? t('workspace.noMatchingDiagrams') : t('workspace.emptyIntro')}
           </div>
         )}
       </div>
@@ -210,23 +218,23 @@ export function Sidebar({
         <BackupNudge settings={() => open('settings')} />
         <button onClick={importFile}>
           <Upload size={15} />
-          Import
+          {t('workspace.import')}
         </button>
         <button onClick={() => open('sql')}>
           <Database size={15} />
-          Import SQL script
+          {t('toolbar.importSql')}
         </button>
         <button onClick={() => open('code')}>
           <Code2 size={15} />
-          Visualize code
+          {t('toolbar.visualizeCode')}
         </button>
         <button onClick={() => open('settings')}>
           <Settings size={15} />
-          Settings
+          {t('app.settings')}
         </button>
         <div className="local-note">
           <span className="local-dot" />
-          Your diagrams stay in this browser.
+          {t('workspace.localFooterHint')}
         </div>
         <a className="author-credit" href="/license/">
           Johan Caripson · MPL-2.0

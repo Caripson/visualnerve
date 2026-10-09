@@ -1,3 +1,4 @@
+import { useI18n } from '../../i18n';
 import { NumberField } from '../fields';
 import type { ScheduleWindow } from '../types';
 
@@ -17,6 +18,7 @@ export function ScheduleFields({
   value?: ScheduleWindow[];
   change: (value?: ScheduleWindow[]) => void;
 }) {
+  const { t } = useI18n();
   return (
     <fieldset>
       <legend>{label}</legend>
@@ -32,7 +34,7 @@ export function ScheduleFields({
             )
           }
         />{' '}
-        Use opening / availability hours
+        {t('simulator.editor.scheduleFields.useOpeningAvailabilityHours')}{' '}
       </label>
       {value?.map((window, index) => {
         const patch = (partial: Partial<ScheduleWindow>) =>
@@ -40,36 +42,45 @@ export function ScheduleFields({
         return (
           <div className="simulation-grid" key={index}>
             <NumberField
-              label={`${label} start hour ${index + 1}`}
+              label={t('simulator.editor.scheduleFields.startHour', {
+                label: String(label),
+                windowNumber: String(index + 1),
+              })}
               value={window.startSeconds / 3600}
               change={(hours) => patch({ startSeconds: (hours ?? 0) * 3600 })}
             />
             <NumberField
-              label={`${label} end hour ${index + 1}`}
+              label={t('simulator.editor.scheduleFields.endHour', {
+                label: String(label),
+                windowNumber: String(index + 1),
+              })}
               value={window.endSeconds / 3600}
               change={(hours) => patch({ endSeconds: (hours ?? 0) * 3600 })}
             />
             <label>
-              Repeat
+              {t('simulator.editor.scheduleFields.repeat')}{' '}
               <select
-                aria-label={`${label} repeat ${index + 1}`}
+                aria-label={t('simulator.editor.scheduleFields.repeat.label_value1', {
+                  label: String(label),
+                  windowNumber: String(index + 1),
+                })}
                 value={window.repeatSeconds ?? 0}
                 onChange={(event) =>
                   patch({ repeatSeconds: Number(event.target.value) || undefined })
                 }
               >
-                <option value={0}>Once</option>
-                <option value={86400}>Daily</option>
-                <option value={604800}>Weekly</option>
+                <option value={0}>{t('simulator.editor.scheduleFields.once')}</option>
+                <option value={86400}>{t('simulator.editor.scheduleFields.daily')}</option>
+                <option value={604800}>{t('simulator.editor.scheduleFields.weekly')}</option>
                 {window.repeatSeconds && ![86400, 604800].includes(window.repeatSeconds) && (
                   <option value={window.repeatSeconds}>
-                    Every {window.repeatSeconds / 3600} hours
+                    {t('simulator.schedule.repeatEvery', { hours: window.repeatSeconds / 3600 })}
                   </option>
                 )}
               </select>
             </label>
             <button onClick={() => change(value.filter((_, i) => i !== index))}>
-              Remove time window
+              {t('simulator.editor.scheduleFields.removeTimeWindow')}
             </button>
           </div>
         );
@@ -80,7 +91,7 @@ export function ScheduleFields({
             change([...value, { startSeconds: 0, endSeconds: 43200, repeatSeconds: 86400 }])
           }
         >
-          Add time window
+          {t('simulator.editor.scheduleFields.addTimeWindow')}
         </button>
       )}
     </fieldset>

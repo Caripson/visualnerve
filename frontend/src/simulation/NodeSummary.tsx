@@ -1,3 +1,5 @@
+import { nodeTrafficReason, simulationNodeTypeLabel, trafficStatusLabel } from './display';
+import { useI18n } from '../i18n';
 import type { CSSProperties } from 'react';
 import { useSimulationSummary } from './summary-context';
 import type { SimulationModel, SimulationNode, Resource } from './types';
@@ -24,6 +26,7 @@ function index(model: SimulationModel) {
 }
 
 export function SimulationNodeSummary({ id, node }: { id: string; node?: GraphNode }) {
+  const { t, plural } = useI18n();
   const { model, view } = useSimulationSummary();
   if (!model) return null;
   const lookup = index(model);
@@ -35,6 +38,8 @@ export function SimulationNodeSummary({ id, node }: { id: string; node?: GraphNo
   const resource =
     config.type === 'resource' ? view?.state?.resources[config.resourceId] : undefined;
   const traffic = simulationNodeTraffic(config, view?.state, model);
+  const trafficLabel = trafficStatusLabel(t, traffic.label);
+  const trafficReason = nodeTrafficReason(t, traffic);
   const capacity =
     resource?.capacity ??
     metric?.capacity ??
@@ -79,11 +84,11 @@ export function SimulationNodeSummary({ id, node }: { id: string; node?: GraphNo
       }
     >
       <span className="simulation-node-state">
-        <span className="simulation-node-kind">{config.type}</span>
+        <span className="simulation-node-kind">{simulationNodeTypeLabel(t, config.type)}</span>
         <span
           className="simulation-traffic-badge"
-          title={traffic.reason}
-          aria-label={`${traffic.label}: ${traffic.reason}`}
+          title={trafficReason}
+          aria-label={t('simulator.canvas.node.', { label: trafficLabel, reason: trafficReason })}
         >
           <span className="simulation-traffic-symbol" aria-hidden="true">
             {traffic.level === 'congested'
@@ -94,14 +99,16 @@ export function SimulationNodeSummary({ id, node }: { id: string; node?: GraphNo
                   ? '✓'
                   : '·'}
           </span>
-          {traffic.label}
+          {trafficLabel}
         </span>
       </span>
       <div
         className="simulation-node-details nodrag nopan nowheel"
         data-node-scroll
         role="region"
-        aria-label={`Simulation details for ${node?.title ?? config.name}`}
+        aria-label={t('simulator.canvas.node.simulationDetailsFor', {
+          name: String(node?.title ?? config.name),
+        })}
         tabIndex={0}
         onKeyDown={(event) => {
           if (
@@ -123,30 +130,42 @@ export function SimulationNodeSummary({ id, node }: { id: string; node?: GraphNo
         {resourceNames.length > 0 && (
           <span
             className="simulation-node-resources"
-            title={`Required resources: ${fullResourceNames}`}
-            aria-label={`Required resources: ${fullResourceNames}`}
+            title={t('simulator.canvas.node.requiredResources', {
+              fullResourceNames: String(fullResourceNames),
+            })}
+            aria-label={t('simulator.canvas.node.requiredResources', {
+              fullResourceNames: String(fullResourceNames),
+            })}
           >
-            Resources: {fullResourceNames}
+            {t('simulator.node.resources.summary', { resourceNames: fullResourceNames })}
           </span>
         )}
         {config.type === 'source' && (
           <span>
             {metric
-              ? `Created ${metric.started}`
-              : `${(config.source.ratePerHour ?? 0).toFixed(2)} arrivals / hour`}
+              ? t('simulator.canvas.node.created', { started: String(metric.started) })
+              : t('simulator.canvas.node.arrivalsHour', {
+                  arrivalsPerHour: String((config.source.ratePerHour ?? 0).toFixed(2)),
+                })}
           </span>
         )}
         {config.type === 'outcome' && metric && (
           <span>
-            {metric.realizedRevenue.toFixed(2)} {model.currency} revenue
+            {t('simulator.node.outcome.revenue', {
+              revenue: metric.realizedRevenue.toFixed(2),
+              currency: model.currency,
+            })}
           </span>
         )}
         {(config.type === 'work' || config.type === 'resource') && capacity !== undefined && (
           <>
             <span className="simulation-node-capacity">
-              Capacity {capacity} ·{' '}
-              {((resource?.currentUtilization ?? metric?.currentUtilization ?? 0) * 100).toFixed(0)}
-              % busy
+              {t('simulator.node.capacity.summary', {
+                capacity,
+                utilizationPercent: (
+                  (resource?.currentUtilization ?? metric?.currentUtilization ?? 0) * 100
+                ).toFixed(0),
+              })}
             </span>
             <span
               className="simulation-utilization-track"
@@ -166,17 +185,35 @@ export function SimulationNodeSummary({ id, node }: { id: string; node?: GraphNo
                   data-capacity-occupied={capacity > 0 ? !!occupied : undefined}
                 >
                   {capacity > 0
-                    ? `Unit ${card.unit} of ${capacity} · ${occupied ? 'occupied' : 'idle'}`
-                    : 'No active capacity'}
+                    ? t(
+                        occupied
+                          ? 'simulator.node.capacity.occupied'
+                          : 'simulator.node.capacity.idle',
+                        { unitNumber: card.unit, capacity },
+                      )
+                    : t('simulator.canvas.node.noActiveCapacity')}
                 </span>
                 {card.hidden > 0 && (
-                  <span aria-label={`${card.hidden} additional capacity units aggregated`}>
-                    +{card.hidden} units aggregated
+                  <span
+                    aria-label={t('simulator.canvas.node.additionalCapacityUnitsAggregated', {
+                      hidden: String(card.hidden),
+                    })}
+                  >
+                    {plural(
+                      'simulator.node.capacity.aggregated.one',
+                      'simulator.node.capacity.aggregated.other',
+                      card.hidden,
+                    )}
                   </span>
                 )}
               </>
             ) : (
-              <div className="simulation-capacity-units" aria-label={`${capacity} capacity units`}>
+              <div
+                className="simulation-capacity-units"
+                aria-label={t('simulator.canvas.node.capacityUnits', {
+                  capacity: String(capacity),
+                })}
+              >
                 {Array.from({ length: Math.min(8, capacity) }, (_, index) => (
                   <i
                     key={index}
@@ -195,8 +232,14 @@ export function SimulationNodeSummary({ id, node }: { id: string; node?: GraphNo
         (config.type === 'work' || config.type === 'resource') &&
         (!card || card.unit === 1) && (
           <span className="simulation-node-queue" data-has-queue={traffic.queue > 0}>
-            Queue {resource?.queue.current ?? metric?.queue.current ?? 0}
-            {metric && config.type === 'work' ? ` · done ${metric.completed}` : ''}
+            {metric && config.type === 'work'
+              ? t('simulator.node.queue.summary', {
+                  queueCount: metric.queue.current,
+                  completedCount: metric.completed,
+                })
+              : t('simulator.node.resourceQueue', {
+                  queueCount: resource?.queue.current ?? metric?.queue.current ?? 0,
+                })}
           </span>
         )}
     </div>

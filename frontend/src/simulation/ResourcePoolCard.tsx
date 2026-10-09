@@ -1,3 +1,5 @@
+import { nodeTrafficReason, trafficStatusLabel } from './display';
+import { useI18n } from '../i18n';
 import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { Users } from 'lucide-react';
@@ -9,6 +11,7 @@ import './process-hierarchy.css';
 
 /** One shared pool, with genuine occupied units; no duplicated resource or logical Work. */
 export const ResourcePoolCard = memo(({ id, data }: NodeProps<CanvasNode>) => {
+  const { t } = useI18n();
   const { model, view } = useSimulationSummary();
   if (!model) return null;
   const logicalId = logicalNodeId(data.node);
@@ -37,7 +40,7 @@ export const ResourcePoolCard = memo(({ id, data }: NodeProps<CanvasNode>) => {
       <Handle type="source" position={Position.Top} id="out-top" isConnectable={false} />
       <div className="node-topline">
         <Users size={12} />
-        <span className="node-kind">Shared pool</span>
+        <span className="node-kind">{t('simulator.canvas.resource.sharedPool')}</span>
       </div>
       <div className="node-title" title={resource?.name}>
         {resource?.name ?? data.node.title}
@@ -49,27 +52,30 @@ export const ResourcePoolCard = memo(({ id, data }: NodeProps<CanvasNode>) => {
         data-traffic={traffic.level}
         data-queue={metric?.queue.current ?? 0}
       >
-        <span className="simulation-traffic-badge" title={traffic.reason}>
+        <span className="simulation-traffic-badge" title={nodeTrafficReason(t, traffic)}>
           {traffic.level === 'congested' ? '! ' : traffic.level === 'busy' ? '◷ ' : ''}
-          {traffic.label}
+          {trafficStatusLabel(t, traffic.label)}
         </span>
         <div className="simulation-pool-values">
           <span>
-            <small>Capacity</small>
+            <small>{t('simulator.common.capacity')}</small>
             <strong>{capacity}</strong>
           </span>
           <span>
-            <small>Busy</small>
+            <small>{t('simulator.canvas.resource.busy')}</small>
             <strong>{busy}</strong>
           </span>
           <span>
-            <small>Queued</small>
+            <small>{t('simulator.canvas.resource.queued')}</small>
             <strong>{metric?.queue.current ?? 0}</strong>
           </span>
         </div>
         <div
           className="simulation-pool-units"
-          aria-label={`${busy} busy of ${capacity} capacity units`}
+          aria-label={t('simulator.canvas.resource.busyOfCapacityUnits', {
+            busy: String(busy),
+            capacity: String(capacity),
+          })}
         >
           {Array.from({ length: Math.min(capacity, 8) }, (_, index) => (
             <i key={index} data-occupied={index < busy} />

@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DataPrivacy, PrivacyIntro } from '../src/components/DataPrivacy';
+import { PrivacyIntro } from '../src/components/DataPrivacy';
+import { DataPrivacy } from '../src/components/DataPrivacySettings';
 import type { WorkspaceBackup } from '../src/storage/database';
 import { isEncryptedWorkspaceSurface } from '../src/security/surface';
 import { exportAllData } from '../src/storage/backup';

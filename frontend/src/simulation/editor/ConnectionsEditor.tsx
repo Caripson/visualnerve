@@ -1,3 +1,4 @@
+import { useI18n } from '../../i18n';
 import { EntityCollection } from './EntityCollection';
 import { NumberField, ScalingFields } from '../fields';
 import { JsonField } from './JsonField';
@@ -6,6 +7,7 @@ import type { EditorSectionProps } from './types';
 import { ConnectionForm } from './ConnectionForm';
 import { removeSimulationEntity } from '../deletion';
 export function ConnectionsEditor({ draft, setDraft, scenarioId }: EditorSectionProps) {
+  const { t } = useI18n();
   return (
     <>
       <EntityCollection
@@ -13,7 +15,7 @@ export function ConnectionsEditor({ draft, setDraft, scenarioId }: EditorSection
           ...edge,
           name: `${draft.nodes.find((node) => node.id === edge.sourceNodeId)?.name ?? edge.sourceNodeId} → ${draft.nodes.find((node) => node.id === edge.targetNodeId)?.name ?? edge.targetNodeId}`,
         }))}
-        label="Connection to edit"
+        label={t('simulator.editor.connections.connectionToEdit')}
       >
         {(edge) => (
           <fieldset key={edge.id}>
@@ -22,7 +24,7 @@ export function ConnectionsEditor({ draft, setDraft, scenarioId }: EditorSection
               {draft.nodes.find((node) => node.id === edge.targetNodeId)?.name}
             </legend>
             <NumberField
-              label={`Travel time ${edge.id} (seconds)`}
+              label={t('simulator.editor.connections.travelTimeSeconds', { id: String(edge.id) })}
               value={edge.travelSeconds ?? 0}
               change={(value) =>
                 setDraft((model) => ({
@@ -37,7 +39,7 @@ export function ConnectionsEditor({ draft, setDraft, scenarioId }: EditorSection
               <button
                 onClick={() => setDraft((model) => removeSimulationEntity(model, 'edges', edge.id))}
               >
-                Remove connection
+                {t('simulator.editor.connections.removeConnection')}
               </button>
             )}
           </fieldset>

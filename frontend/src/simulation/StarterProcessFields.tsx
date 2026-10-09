@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import type { ProcessStarterDraft, ProcessStarterStepDraft } from './starter';
 
 export function StarterProcessFields({
@@ -7,62 +8,79 @@ export function StarterProcessFields({
   draft: ProcessStarterDraft;
   change: (patch: Partial<ProcessStarterDraft>) => void;
 }) {
+  const { t } = useI18n();
   function update(id: string, patch: Partial<ProcessStarterStepDraft>) {
     change({ steps: draft.steps.map((step) => (step.id === id ? { ...step, ...patch } : step)) });
   }
   return (
-    <section className="process-starter-subprocesses" aria-label="Subprocess configuration">
+    <section
+      className="process-starter-subprocesses"
+      aria-label={t('simulator.wizard.subprocess.subprocessConfiguration')}
+    >
       <label className="process-wizard-field">
-        <span>Main process name</span>
+        <span>{t('simulator.wizard.subprocess.mainProcessName')}</span>
         <input
-          aria-label="Main process name"
+          aria-label={t('simulator.wizard.subprocess.mainProcessName')}
           value={draft.mainProcessName}
           required
           onChange={(event) => change({ mainProcessName: event.target.value })}
         />
         <small>
-          Open this process on the canvas to inspect its subprocesses and real bottlenecks.
+          {t(
+            'simulator.wizard.subprocess.openThisProcessOnTheCanvasToInspectItsSubprocessesAndReal',
+          )}
         </small>
       </label>
       <ol>
         {draft.steps.map((step, index) => (
           <li key={step.id}>
             <header>
-              <strong>Subprocess {index + 1}</strong>
+              <strong>
+                {' '}
+                {t('simulator.wizard.subprocess.subprocess')} {index + 1}
+              </strong>
               <button
                 type="button"
                 disabled={draft.steps.length === 1}
-                aria-label={`Remove subprocess ${index + 1}`}
+                aria-label={t('simulator.wizard.subprocess.removeSubprocess', {
+                  stepNumber: String(index + 1),
+                })}
                 onClick={() =>
                   change({ steps: draft.steps.filter((entry) => entry.id !== step.id) })
                 }
               >
-                Remove
+                {t('simulator.common.remove')}
               </button>
             </header>
             <div className="process-wizard-grid">
               <label className="process-wizard-field">
-                <span>Subprocess name</span>
+                <span>{t('simulator.wizard.subprocess.subprocessName')}</span>
                 <input
-                  aria-label={`Subprocess ${index + 1} name`}
+                  aria-label={t('simulator.wizard.subprocess.subprocessName.value1', {
+                    stepNumber: String(index + 1),
+                  })}
                   required
                   value={step.name}
                   onChange={(event) => update(step.id, { name: event.target.value })}
                 />
               </label>
               <label className="process-wizard-field">
-                <span>Work step name</span>
+                <span>{t('simulator.wizard.fields.workStepName')}</span>
                 <input
-                  aria-label={`Subprocess ${index + 1} work step name`}
+                  aria-label={t('simulator.wizard.subprocess.subprocessWorkStepName', {
+                    stepNumber: String(index + 1),
+                  })}
                   required
                   value={step.workName}
                   onChange={(event) => update(step.id, { workName: event.target.value })}
                 />
               </label>
               <label className="process-wizard-field">
-                <span>Minutes per item</span>
+                <span>{t('simulator.wizard.subprocess.minutesPerItem')}</span>
                 <input
-                  aria-label={`Subprocess ${index + 1} processing minutes`}
+                  aria-label={t('simulator.wizard.subprocess.subprocessProcessingMinutes', {
+                    stepNumber: String(index + 1),
+                  })}
                   type="number"
                   min="0.001"
                   step="any"
@@ -72,9 +90,11 @@ export function StarterProcessFields({
                 />
               </label>
               <label className="process-wizard-field">
-                <span>Parallel capacity</span>
+                <span>{t('simulator.wizard.subprocess.parallelCapacity')}</span>
                 <input
-                  aria-label={`Subprocess ${index + 1} capacity`}
+                  aria-label={t('simulator.wizard.subprocess.subprocessCapacity', {
+                    stepNumber: String(index + 1),
+                  })}
                   type="number"
                   min="1"
                   step="1"
@@ -84,9 +104,13 @@ export function StarterProcessFields({
                 />
               </label>
               <label className="process-wizard-field">
-                <span>Cost / slot / hour ({draft.currency})</span>
+                <span>
+                  {t('simulator.wizard.subprocess.costLabel', { currency: draft.currency })}
+                </span>
                 <input
-                  aria-label={`Subprocess ${index + 1} hourly cost`}
+                  aria-label={t('simulator.wizard.subprocess.subprocessHourlyCost', {
+                    stepNumber: String(index + 1),
+                  })}
                   type="number"
                   min="0"
                   step="any"
@@ -98,15 +122,20 @@ export function StarterProcessFields({
               <label className="process-wizard-check">
                 <input
                   type="checkbox"
-                  aria-label={`Subprocess ${index + 1} (${step.name}): use shared resource`}
+                  aria-label={t('simulator.wizard.subprocess.subprocessUseSharedResource', {
+                    stepNumber: String(index + 1),
+                    name: String(step.name),
+                  })}
                   checked={step.usesSharedResource}
                   onChange={(event) =>
                     update(step.id, { usesSharedResource: event.target.checked })
                   }
                 />
                 <span>
-                  <b>Use shared resource in this step</b>
-                  <small>Applies when the shared pool below is enabled.</small>
+                  <b>{t('simulator.wizard.subprocess.useSharedResourceInThisStep')}</b>
+                  <small>
+                    {t('simulator.wizard.subprocess.appliesWhenTheSharedPoolBelowIsEnabled')}
+                  </small>
                 </span>
               </label>
             </div>
@@ -133,12 +162,12 @@ export function StarterProcessFields({
           })
         }
       >
-        Add subprocess
+        {t('simulator.wizard.subprocess.addSubprocess')}
       </button>
       <p className="process-wizard-note">
-        Items follow these steps in order. Each subprocess starts with one editable Work node. Add
-        branches, more steps or deeper levels in Assumptions afterwards. Containers summarize their
-        children and add no processing time or cost.
+        {t(
+          'simulator.wizard.subprocess.itemsFollowTheseStepsInOrderEachSubprocessStartsWithOneEditable',
+        )}
       </p>
     </section>
   );

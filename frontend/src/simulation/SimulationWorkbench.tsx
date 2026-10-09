@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { useState, type ReactNode } from 'react';
 import { Play } from 'lucide-react';
 import { Modal } from '../components/Modal';
@@ -21,42 +22,56 @@ export function SimulationWorkbench({
   busy: boolean;
   play: () => Promise<void>;
 }) {
+  const { t } = useI18n();
   const [panel, setPanel] = useState('run');
   return (
-    <Modal title="Simulation details" close={close} wide className="simulation-workbench-dialog">
+    <Modal
+      title={t('simulator.workbench.title')}
+      close={close}
+      wide
+      className="simulation-workbench-dialog"
+    >
       <div className="simulation-workbench">
         <label className="simulation-panel-choice">
-          Simulation panel
+          {t('simulator.workbench.simulationPanel')}{' '}
           <select
-            aria-label="Simulation panel"
+            aria-label={t('simulator.workbench.simulationPanel')}
             value={panel}
             onChange={(event) => setPanel(event.target.value)}
           >
-            <option value="run">Run settings</option>
-            <option value="metrics">Metrics</option>
-            <option value="results">Replay &amp; compare</option>
+            <option value="run">{t('simulator.workbench.runSettings')}</option>
+            <option value="metrics">{t('simulator.feature.metrics')}</option>
+            <option value="results">{t('simulator.workbench.replayAndCompare')}</option>
           </select>
         </label>
         <div className="simulation-workbench-body">
           {notices}
           <div hidden={panel !== 'run'}>
-            <h3>Run settings</h3>
-            <p>Choose a scenario and duration, then watch work move through the diagram.</p>
+            <h3>{t('simulator.workbench.runSettings')}</h3>
+            <p>
+              {t(
+                'simulator.workbench.chooseAScenarioAndDurationThenWatchWorkMoveThroughTheDiagram',
+              )}
+            </p>
             {runSettings}
             <div className="simulation-stop-actions">{stopActions}</div>
           </div>
           <div hidden={panel !== 'metrics'}>
-            <h3>Live metrics</h3>
-            {metrics || <p>Play the simulation to see queues, throughput and economics here.</p>}
+            <h3>{t('simulator.workbench.liveMetrics')}</h3>
+            {metrics || (
+              <p>
+                {t('simulator.workbench.playTheSimulationToSeeQueuesThroughputAndEconomicsHere')}
+              </p>
+            )}
           </div>
           <div hidden={panel !== 'results'}>
-            <h3>Replay &amp; compare</h3>
-            <p>Inspect a saved run or select two or more runs to compare their outcomes.</p>
+            <h3>{t('simulator.workbench.replayAndCompare')}</h3>
+            <p>{t('simulator.workbench.inspectASavedRunOrSelectTwoOrMoreRunsToCompare')}</p>
             {results}
           </div>
         </div>
         <footer className="simulation-sheet-actions">
-          <button onClick={close}>Back to diagram</button>
+          <button onClick={close}>{t('simulator.workbench.backToDiagram')}</button>
           {panel === 'run' && (
             <button
               className="primary"
@@ -67,7 +82,7 @@ export function SimulationWorkbench({
               }}
             >
               <Play size={18} />
-              Run simulation
+              {t('simulator.workbench.runSimulation')}{' '}
             </button>
           )}
         </footer>

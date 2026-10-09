@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { useEffect, useState, useSyncExternalStore, type ComponentType } from 'react';
 import type { VaultSession, VaultSessionOperation } from './vault-session';
 
@@ -13,6 +14,7 @@ export function WorkspaceLoader({
   session?: VaultSession;
   load: () => Promise<{ default: ComponentType }>;
 }) {
+  const { t } = useI18n();
   const snapshot = useSyncExternalStore(
     session?.subscribe ?? noSubscription,
     session?.getSnapshot ?? legacyState,
@@ -51,12 +53,10 @@ export function WorkspaceLoader({
   if (ready?.epoch === snapshot.epoch && ready?.failed)
     return (
       <div className="workspace-loading" role="alert">
-        <p>
-          The workspace could not be opened. Reload to retry loading its local application files.
-        </p>
-        <button onClick={() => window.location.reload()}>Reload</button>
+        <p>{t('security.loader.failed')}</p>
+        <button onClick={() => window.location.reload()}>{t('security.loader.reload')}</button>
       </div>
     );
   const Surface = ready?.epoch === snapshot.epoch ? ready?.Surface : undefined;
-  return Surface ? <Surface /> : <p role="status">Loading workspace…</p>;
+  return Surface ? <Surface /> : <p role="status">{t('security.loader.loading')}</p>;
 }

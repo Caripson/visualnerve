@@ -1,3 +1,5 @@
+import { modelSectionLabel, simulationDiagnosticLabel } from './display';
+import { useI18n } from '../i18n';
 import { useCallback, useState } from 'react';
 import { Modal } from '../components/Modal';
 import { useCompactLayout } from '../hooks/useCompactLayout';
@@ -37,6 +39,7 @@ export function ModelEditor({
   scenarioId?: string;
   close: () => void;
 }) {
+  const { t } = useI18n();
   const compact = useCompactLayout();
   const base = graph.simulation!;
   const [draft, setDraft] = useState<SimulationModel>(() =>
@@ -49,13 +52,14 @@ export function ModelEditor({
   );
   const [error, setError] = useState('');
   const [jsonError, setJsonError] = useState(false);
-  const [invalidFields, setInvalidFields] = useState<Set<string>>(() => new Set());
+  const [invalidFields, setInvalidFields] = useState<Map<string, string>>(() => new Map());
   const fieldValidity = useCallback(
-    (field: string, invalid: boolean) =>
+    (field: string, invalid: boolean, label: string) =>
       setInvalidFields((previous) => {
-        if (previous.has(field) === invalid) return previous;
-        const next = new Set(previous);
-        if (invalid) next.add(field);
+        if (previous.has(field) === invalid && (!invalid || previous.get(field) === label))
+          return previous;
+        const next = new Map(previous);
+        if (invalid) next.set(field, label);
         else next.delete(field);
         return next;
       }),
@@ -97,7 +101,7 @@ export function ModelEditor({
   }
   return (
     <Modal
-      title="Process Simulator settings"
+      title={t('simulator.editor.model.title')}
       close={close}
       wide
       className="simulation-settings-dialog"
@@ -106,33 +110,37 @@ export function ModelEditor({
         <section className="simulation-modal">
           <p className="simulation-edit-context">
             {scenarioId
-              ? `Editing ${base.scenarios.find((entry) => entry.id === scenarioId)?.name}. Baseline stays unchanged.`
-              : 'Editing the baseline. Existing run results keep their original assumptions.'}
+              ? t('simulator.editor.model.editingBaselineStaysUnchanged', {
+                  name: String(base.scenarios.find((entry) => entry.id === scenarioId)?.name),
+                })
+              : t(
+                  'simulator.editor.model.editingTheBaselineExistingRunResultsKeepTheirOriginalAssumptions',
+                )}
           </p>
           {compact ? (
             <label className="simulation-panel-choice">
-              Settings section
+              {t('simulator.editor.model.settingsSection')}{' '}
               <select
-                aria-label="Settings section"
+                aria-label={t('simulator.editor.model.settingsSection')}
                 value={tab}
                 onChange={(event) => setTab(event.target.value)}
               >
                 {sections.map((section) => (
                   <option key={section} value={section}>
-                    {section.charAt(0).toUpperCase() + section.slice(1)}
+                    {modelSectionLabel(t, section, true)}
                   </option>
                 ))}
               </select>
             </label>
           ) : (
-            <nav aria-label="Simulation settings sections">
+            <nav aria-label={t('simulator.editor.model.simulationSettingsSections')}>
               {sections.map((section) => (
                 <button
                   key={section}
                   aria-pressed={tab === section}
                   onClick={() => setTab(section)}
                 >
-                  {section}
+                  {modelSectionLabel(t, section)}
                 </button>
               ))}
             </nav>
@@ -175,11 +183,12 @@ export function ModelEditor({
             {tab === 'complete model' && (
               <>
                 <p>
-                  All semantic properties are available here and through the local API/MCP.
-                  Structured editors cover the common assumptions.
+                  {t(
+                    'simulator.editor.model.allSemanticPropertiesAreAvailableHereAndThroughTheLocalApiMcp',
+                  )}
                 </p>
                 <textarea
-                  aria-label="Complete simulation model"
+                  aria-label={t('simulator.editor.model.completeSimulationModel')}
                   rows={24}
                   defaultValue={JSON.stringify(draft, null, 2)}
                   onChange={(event) => {
@@ -200,22 +209,24 @@ export function ModelEditor({
           </div>
           {error && (
             <p role="alert" className="error-notice">
-              {error}
+              {simulationDiagnosticLabel(t, error)}
             </p>
           )}
           {invalidFields.size > 0 && (
             <p role="alert" className="error-notice">
-              Fix invalid JSON in: {[...invalidFields].join(', ')}.
+              {t('simulator.editor.model.invalidJsonFields', {
+                fields: [...invalidFields.values()].join(', '),
+              })}
             </p>
           )}
           <footer className="simulation-sheet-actions">
-            <button onClick={close}>Cancel</button>
+            <button onClick={close}>{t('simulator.common.cancel')}</button>
             <button
               className="primary"
               onClick={apply}
               disabled={jsonError || invalidFields.size > 0}
             >
-              Apply assumptions
+              {t('simulator.editor.model.apply')}
             </button>
           </footer>
         </section>

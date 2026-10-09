@@ -316,7 +316,7 @@ describe('simulation UI originating-session continuations', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open simulation details' }));
     const settled = deferred<void>();
     vi.spyOn(fixture.workspace, 'settled').mockReturnValueOnce(settled.promise);
-    fireEvent.click(screen.getByRole('button', { name: 'Run simulation' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Run simulation' }));
     await waitFor(() => expect(fixture.workspace.settled).toHaveBeenCalledOnce());
     fireEvent.click(screen.getByRole('button', { name: 'Back to diagram' }));
     fireEvent.click(screen.getByRole('button', { name: 'Open simulation details' }));

@@ -1,3 +1,6 @@
+import { nodeKindLabel } from '../../ui/editor-labels';
+import { timelineScaleKeys } from '../ui-labels';
+import { useI18n } from '../../i18n';
 import { ArrowRight, GitBranch, Layers, SlidersHorizontal } from 'lucide-react';
 import type { Direction } from '../../layouts/layout';
 import type { NodeKind, TimelineScale } from '../../model/types';
@@ -21,20 +24,21 @@ export function CompactArrangementTools({
   addSibling,
   runLayout,
 }: CompactToolbarProps) {
+  const { t } = useI18n();
   return (
     <>
-      <h3>Edit and arrange</h3>
+      <h3>{t('mobile.editArrangeHeading')}</h3>
       {!mindmap && (
         <label className="field">
-          New node type
+          {t('toolbar.nodeTypeField')}
           <select
-            aria-label="New node type"
+            aria-label={t('toolbar.nodeTypeField')}
             value={kind}
             onChange={(event) => setKind(event.target.value as NodeKind)}
           >
-            {Object.entries(nodeRegistry).map(([key, value]) => (
+            {Object.entries(nodeRegistry).map(([key]) => (
               <option key={key} value={key}>
-                {value.label}
+                {nodeKindLabel(t, key)}
               </option>
             ))}
           </select>
@@ -43,12 +47,12 @@ export function CompactArrangementTools({
       {mindmap && (
         <button className="full" disabled={!selectionCount} onClick={addSibling}>
           <GitBranch size={17} />
-          Add sibling
+          {t('toolbar.addSibling')}
         </button>
       )}
       <button className="full" disabled={graph.nodes.length < 2} onClick={() => open('connect')}>
         <ArrowRight size={17} />
-        Connect nodes
+        {t('toolbar.connectNodes')}
       </button>
       <button
         className="full"
@@ -56,21 +60,21 @@ export function CompactArrangementTools({
         onClick={() => useEditor.getState().group()}
       >
         <Layers size={17} />
-        Group selection
+        {t('toolbar.groupSelection')}
       </button>
       <label className="field">
-        Layout direction
+        {t('toolbar.layoutDirection')}
         <select
-          aria-label="Mobile layout direction"
+          aria-label={t('toolbar.mobileLayoutDirection')}
           value={direction}
           onChange={(event) => setDirection(event.target.value as Direction)}
         >
-          {mindmap && <option value="BALANCED">Balanced branches</option>}
-          <option value="RIGHT">Left → Right</option>
-          <option value="LEFT">Right → Left</option>
-          <option value="DOWN">Top → Bottom</option>
-          <option value="UP">Bottom → Top</option>
-          <option value="RADIAL">Radial</option>
+          {mindmap && <option value="BALANCED">{t('toolbar.balancedLayout')}</option>}
+          <option value="RIGHT">{t('toolbar.leftRightLayout')}</option>
+          <option value="LEFT">{t('toolbar.rightLeftLayout')}</option>
+          <option value="DOWN">{t('toolbar.topBottomLayout')}</option>
+          <option value="UP">{t('toolbar.bottomTopLayout')}</option>
+          <option value="RADIAL">{t('toolbar.radialLayout')}</option>
         </select>
       </label>
       <button
@@ -79,17 +83,17 @@ export function CompactArrangementTools({
         onClick={() => void runLayout()}
       >
         <GitBranch size={17} />
-        {busy ? 'Laying out…' : 'Auto layout'}
+        {busy ? t('toolbar.layingOut') : t('toolbar.autoLayout')}
       </button>
       <button className={`full ${showFilters ? 'active' : ''}`} onClick={toggleFilters}>
         <SlidersHorizontal size={17} />
-        Filters
+        {t('toolbar.filters')}
       </button>
       {graph.diagram.type === 'timeline' && (
         <label className="field">
-          Timeline zoom
+          {t('toolbar.timelineZoom')}
           <select
-            aria-label="Timeline zoom"
+            aria-label={t('toolbar.timelineZoom')}
             value={graph.diagram.settings.timelineScale ?? 'month'}
             onChange={(event) =>
               useEditor.getState().command('Timeline zoom', (current) => ({
@@ -104,8 +108,10 @@ export function CompactArrangementTools({
               }))
             }
           >
-            {['day', 'week', 'month', 'quarter', 'year'].map((value) => (
-              <option key={value}>{value}</option>
+            {(['day', 'week', 'month', 'quarter', 'year'] as const).map((value) => (
+              <option key={value} value={value}>
+                {t(timelineScaleKeys[value])}
+              </option>
             ))}
           </select>
         </label>

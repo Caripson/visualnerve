@@ -1,8 +1,9 @@
+import { useI18n } from '../i18n';
 import { Layers, ChevronRight } from 'lucide-react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import type { CanvasNode } from '../canvas/projection';
 import { useEditor } from '../state/editor';
-import { statusLabel } from '../ui/status';
+import { statusLabel } from '../ui/editor-labels';
 import { getOverviewConfig, overviewLimits, overviewNodeGroup, setOverviewConfig } from './types';
 import { OVERVIEW_RESET_VIEW } from './Controls';
 import './overview.css';
@@ -28,6 +29,7 @@ export function expandOverviewGroup(id: string) {
   window.dispatchEvent(new Event(OVERVIEW_RESET_VIEW));
 }
 export function OverviewNode({ data }: NodeProps<CanvasNode>) {
+  const { t, number } = useI18n();
   const group = overviewNodeGroup({ data } as CanvasNode);
   if (!group) return null;
   const states = Object.entries(group.statusCounts).sort(
@@ -47,32 +49,34 @@ export function OverviewNode({ data }: NodeProps<CanvasNode>) {
         <Layers size={18} />
         <span>
           {group.reason === 'partition'
-            ? 'Bounded partition'
+            ? t('overview.partition')
             : group.reason === 'area'
-              ? 'Layout area'
-              : 'Semantic group'}
+              ? t('overview.layoutArea')
+              : t('overview.semanticGroup')}
         </span>
       </div>
       <div className="node-title">{group.label}</div>
       <strong className="overview-card-count">
-        {group.nodeIds.length.toLocaleString()} <span>objects</span>
+        {t('overview.objectCount', { count: number(group.nodeIds.length) })}
       </strong>
-      <div className="overview-card-status" aria-label="Group status counts">
+      <div className="overview-card-status" aria-label={t('overview.statusCounts')}>
         {states.slice(0, 3).map(([status, count]) => (
           <span
             key={status}
             className={`overview-status-${status === 'done' ? 'done' : status === 'blocked' ? 'blocked' : 'other'}`}
           >
-            {statusLabel(status === 'none' ? undefined : status)} <b>{count.toLocaleString()}</b>
+            {statusLabel(t, status === 'none' ? '' : status)} <b>{number(count)}</b>
           </span>
         ))}
-        {states.length > 3 && <span>+{states.length - 3} statuses</span>}
+        {states.length > 3 && (
+          <span>{t('overview.moreStatuses', { count: number(states.length - 3) })}</span>
+        )}
       </div>
       {group.matchingNodeCount < group.nodeIds.length && (
-        <small>{group.matchingNodeCount.toLocaleString()} match the filters</small>
+        <small>{t('overview.filterMatches', { count: number(group.matchingNodeCount) })}</small>
       )}
       {group.internalEdgeCount > 0 && (
-        <small>{group.internalEdgeCount.toLocaleString()} internal relationships</small>
+        <small>{t('overview.internalRelations', { count: number(group.internalEdgeCount) })}</small>
       )}
       {!data.exporting && (
         <button
@@ -81,10 +85,10 @@ export function OverviewNode({ data }: NodeProps<CanvasNode>) {
             event.stopPropagation();
             expandOverviewGroup(group.id);
           }}
-          aria-label={`Expand overview group ${group.label}`}
+          aria-label={t('overview.expandGroup', { name: group.label })}
         >
           <ChevronRight size={14} />
-          Expand one level
+          {t('overview.expandLevel')}
         </button>
       )}
     </div>

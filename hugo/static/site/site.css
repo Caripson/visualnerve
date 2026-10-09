@@ -259,6 +259,10 @@ input:focus-visible {
   color: var(--muted);
   margin: 20px 0 0;
 }
+.hero-note a {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
 .device-showcase {
   position: relative;
   max-width: 1080px;

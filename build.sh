@@ -8,6 +8,7 @@ if [[ ! -d node_modules ]]; then npm ci; fi
 node "$VN_ROOT/scripts/speech-assets.mjs"
 node "$VN_ROOT/scripts/consent-assets.mjs"
 npm run build
+node "$VN_ROOT/scripts/audit-editor-bundle.mjs" "$VN_ROOT/hugo/static/editor"
 mkdir -p "$VN_ROOT/hugo/static/swagger"
 cp node_modules/swagger-ui-dist/swagger-ui.css node_modules/swagger-ui-dist/swagger-ui-bundle.js "$VN_ROOT/hugo/static/swagger/"
 cp "$VN_ROOT/docs/openapi.yaml" "$VN_ROOT/hugo/static/openapi.yaml"

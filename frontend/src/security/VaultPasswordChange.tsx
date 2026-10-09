@@ -1,3 +1,5 @@
+import { localizedFeedback } from '../components/localized-feedback';
+import { useI18n } from '../i18n';
 import { useState } from 'react';
 import { Modal } from '../components/Modal';
 import { BackupSecurityNotice } from './BackupSecurityNotice';
@@ -11,13 +13,14 @@ export function VaultPasswordChange({
   session: VaultSession;
   close: () => void;
 }) {
+  const { t } = useI18n();
   const [password, setPassword] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   return (
-    <Modal title="Change workspace password" close={close} dismissible={!busy}>
+    <Modal title={t('security.password.changeTitle')} close={close} dismissible={!busy}>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -40,10 +43,7 @@ export function VaultPasswordChange({
             });
         }}
       >
-        <p>
-          The current workspace stays encrypted with the same content key. All workspace tabs lock
-          after this change; unlock using the new password.
-        </p>
+        <p>{t('security.password.changeEffect')}</p>
         <VaultPasswordFields
           password={password}
           confirmation={confirmation}
@@ -53,7 +53,7 @@ export function VaultPasswordChange({
           confirm
         />
         <label className="field">
-          <span>Current workspace password</span>
+          <span>{t('security.credential.currentWorkspacePassword')}</span>
           <input
             type="password"
             autoComplete="current-password"
@@ -66,15 +66,15 @@ export function VaultPasswordChange({
         <BackupSecurityNotice encrypted />
         {error && (
           <p className="form-error" role="alert">
-            {error}
+            {localizedFeedback(error, t)}
           </p>
         )}
         <div className="modal-actions">
           <button type="button" disabled={busy} onClick={close}>
-            Cancel
+            {t('security.action.cancel')}
           </button>
           <button className="primary" disabled={busy} type="submit">
-            {busy ? 'Changing password…' : 'Change password and lock'}
+            {busy ? t('security.password.changing') : t('security.password.changeAndLock')}
           </button>
         </div>
       </form>

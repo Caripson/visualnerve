@@ -1,3 +1,5 @@
+import { localizedFeedback } from './localized-feedback';
+import { useI18n } from '../i18n';
 import { useState } from 'react';
 import { useEditor } from '../state/editor';
 import { workspace } from '../storage/workspace';
@@ -5,6 +7,7 @@ import type { McpAccess } from '../integration/access';
 import { McpConnectionInfo } from './McpConnectionInfo';
 
 export function McpSettings() {
+  const { t } = useI18n();
   const access = useEditor((state) => state.mcpAccess);
   const state = useEditor((state) => state.bridgeStatus);
   const endpoint = useEditor((state) => state.bridgeUrl);
@@ -12,17 +15,13 @@ export function McpSettings() {
   const [token, setToken] = useState(sessionStorage.getItem('vn-token') ?? '');
   const [message, setMessage] = useState('');
   return (
-    <section aria-label="MCP and API integration">
-      <div className="property-section">MCP / API integration</div>
-      <p className="muted">
-        Optionally let an MCP client such as Codex, Cursor, Claude or Gemini CLI read or edit
-        diagrams in your active browser session. Your work stays in this browser; connected tools
-        receive the content you authorize and may use their own hosted services.
-      </p>
+    <section aria-label={t('integration.settings.region')}>
+      <div className="property-section">{t('integration.settings.title')}</div>
+      <p className="muted">{t('integration.settings.authorizedSharing')}</p>
       <label className="field">
-        <span>Access</span>
+        <span>{t('integration.settings.accessLabel')}</span>
         <select
-          aria-label="MCP access"
+          aria-label={t('integration.settings.accessAccessible')}
           value={access}
           onChange={(event) => {
             void workspace
@@ -30,53 +29,46 @@ export function McpSettings() {
               .catch((error) => setMessage(error.message));
           }}
         >
-          <option value="off">Off</option>
-          <option value="read">Read only</option>
-          <option value="write">Read + write</option>
+          <option value="off">{t('integration.access.off')}</option>
+          <option value="read">{t('integration.access.read')}</option>
+          <option value="write">{t('integration.access.write')}</option>
         </select>
       </label>
       <p className="mcp-state" role="status">
-        MCP connection:{' '}
-        {state === 'connected'
-          ? 'Connected'
-          : state === 'disabled'
-            ? 'Disabled'
-            : state === 'error'
-              ? 'Error'
-              : 'Waiting'}
+        {t('integration.connection.status', {
+          status:
+            state === 'connected'
+              ? t('integration.connection.connected')
+              : state === 'disabled'
+                ? t('integration.connection.disabled')
+                : state === 'error'
+                  ? t('integration.connection.error')
+                  : t('integration.connection.waiting'),
+        })}
       </p>
-      <p className="muted">Visual Nerve must stay open for MCP access to work.</p>
+      <p className="muted">{t('integration.settings.keepOpen')}</p>
       <McpConnectionInfo endpoint={endpoint} />
-      {state === 'error' && (
-        <p className="muted">
-          Cannot reach the local bridge. Start it, allow this website's origin, and check the local
-          address. Your browser may require local network permission or a secure local connection.
-        </p>
-      )}
+      {state === 'error' && <p className="muted">{t('integration.settings.bridgeUnavailable')}</p>}
       <details className="storage-details">
-        <summary>Local connection details</summary>
-        <p className="muted">
-          This WebSocket connects the browser to the local service. Your MCP client uses the server
-          URL shown above. The website domain is configured as an allowed origin when starting the
-          bridge.
-        </p>
+        <summary>{t('integration.settings.localDetails')}</summary>
+        <p className="muted">{t('integration.settings.websocketExplanation')}</p>
         <label className="field">
-          <span>Local bridge address</span>
+          <span>{t('integration.settings.bridgeAddress')}</span>
           <input
-            aria-label="Local bridge address"
+            aria-label={t('integration.settings.bridgeAddress')}
             value={address}
             onChange={(event) => setAddress(event.target.value)}
           />
         </label>
         <label className="field">
-          <span>Integration token</span>
+          <span>{t('integration.settings.token')}</span>
           <input
             type="password"
-            aria-label="Integration token"
+            aria-label={t('integration.settings.token')}
             autoComplete="off"
             value={token}
             onChange={(event) => setToken(event.target.value)}
-            placeholder="If required by your local bridge"
+            placeholder={t('integration.settings.tokenPlaceholder')}
           />
         </label>
         <button
@@ -92,17 +84,16 @@ export function McpSettings() {
             }
           }}
         >
-          Save connection
+          {t('integration.settings.saveConnection')}
         </button>
         <p className="muted">
-          Connections are restricted to this computer. A publicly hosted app needs its exact address
-          allowed by your local bridge.{' '}
+          {t('integration.settings.localRestriction')}{' '}
           <a href="/help/api-mcp/" target="_blank" rel="noopener noreferrer">
-            Setup guide
+            {t('integration.settings.setupGuide')}
           </a>
         </p>
       </details>
-      {message && <p className="settings-message">{message}</p>}
+      {message && <p className="settings-message">{localizedFeedback(message, t)}</p>}
     </section>
   );
 }

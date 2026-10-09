@@ -1,3 +1,6 @@
+import { VaultLanguageSelect } from './VaultLanguageSelect';
+import { localizedFeedback } from '../components/localized-feedback';
+import { useI18n } from '../i18n';
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Modal } from '../components/Modal';
 import { BackupSecurityNotice } from './BackupSecurityNotice';
@@ -15,6 +18,7 @@ export function VaultGate({
   openWorkspace: () => Promise<void>;
   children: ReactNode;
 }) {
+  const { t } = useI18n();
   const snapshot = useSyncExternalStore(session.subscribe, session.getSnapshot);
   const [initialized, setInitialized] = useState(false);
   const [ready, setReady] = useState(false);
@@ -79,16 +83,17 @@ export function VaultGate({
   const setup =
     snapshot.status === 'uninitialized' || (snapshot.status === 'unlocking' && !snapshot.vaultId);
   const title = newRecovery
-    ? 'Save your recovery key'
+    ? t('security.gate.saveRecoveryTitle')
     : setup
-      ? 'Protect your local workspace'
+      ? t('security.gate.setupTitle')
       : recovering
-        ? 'Recover your workspace'
-        : 'Unlock your workspace';
+        ? t('security.gate.recoverTitle')
+        : t('security.gate.unlockTitle');
   return (
     <Modal title={title} close={() => {}} dismissible={false}>
+      <VaultLanguageSelect />
       {!initialized ? (
-        <p role="status">{error || 'Checking local workspace…'}</p>
+        <p role="status">{error ? localizedFeedback(error, t) : t('security.gate.checking')}</p>
       ) : newRecovery ? (
         <VaultRecoveryNotice
           recoveryKey={newRecovery}
@@ -99,7 +104,7 @@ export function VaultGate({
           }}
         />
       ) : snapshot.status === 'unlocked' ? (
-        <p role="status">Opening encrypted workspace…</p>
+        <p role="status">{t('security.gate.opening')}</p>
       ) : (
         <form
           onSubmit={(event) => {
@@ -132,12 +137,12 @@ export function VaultGate({
         >
           <p>
             {setup
-              ? 'Your workspace is encrypted in this browser. Choose a password before creating or importing private work.'
-              : 'Enter your password locally. It is not sent to Visual Nerve, the integration bridge or an AI agent.'}
+              ? t('security.gate.setupExplanation')
+              : t('security.gate.localPasswordExplanation')}
           </p>
           {recovering && (
             <label className="field">
-              <span>Recovery key</span>
+              <span>{t('security.credential.recoveryKey')}</span>
               <input
                 type="password"
                 autoComplete="off"
@@ -159,7 +164,7 @@ export function VaultGate({
           {(setup || recovering) && <BackupSecurityNotice encrypted />}
           {error && (
             <p role="alert" className="form-error">
-              {error}
+              {localizedFeedback(error, t)}
             </p>
           )}
           <div className="modal-actions">
@@ -175,17 +180,17 @@ export function VaultGate({
                   setRecoveryInput('');
                 }}
               >
-                {recovering ? 'Use password' : 'Use recovery key'}
+                {recovering ? t('security.gate.usePassword') : t('security.gate.useRecoveryKey')}
               </button>
             )}
             <button className="primary" type="submit" disabled={busy}>
               {busy
-                ? 'Please wait…'
+                ? t('security.gate.wait')
                 : setup
-                  ? 'Create encrypted workspace'
+                  ? t('security.gate.create')
                   : recovering
-                    ? 'Set new password'
-                    : 'Unlock'}
+                    ? t('security.gate.setNewPassword')
+                    : t('security.gate.unlock')}
             </button>
           </div>
         </form>

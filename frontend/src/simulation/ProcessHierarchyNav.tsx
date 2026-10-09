@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { useMemo } from 'react';
 import type { Graph } from '../model/types';
 import { useEditor } from '../state/editor';
@@ -14,6 +15,7 @@ export function ProcessHierarchyNav({
   graph: Graph;
   spatial?: boolean;
 }) {
+  const { t } = useI18n();
   const model = graph.simulation;
   const hierarchy = useMemo(() => model && new ProcessHierarchy(model), [model]);
   const view = useProcessNavigation((state) => state.views[graph.diagram.id] ?? processOverview);
@@ -21,13 +23,16 @@ export function ProcessHierarchyNav({
   const id = view.processId && hierarchy.processes.has(view.processId) ? view.processId : undefined;
   const path = id ? [...hierarchy.ancestry(id)].reverse() : [];
   return (
-    <nav className="simulation-process-navigation" aria-label="Process navigation">
+    <nav
+      className="simulation-process-navigation"
+      aria-label={t('simulator.hierarchy.navigation.processNavigation')}
+    >
       <div className="simulation-process-breadcrumbs">
         <button
           aria-current={view.mode === 'hierarchy' && !id ? 'page' : undefined}
           onClick={() => openSimulationProcess(graph.diagram.id)}
         >
-          Process overview
+          {t('simulator.hierarchy.navigation.processOverview')}
         </button>
         {view.mode === 'hierarchy' &&
           path.map((processId) => (
@@ -44,15 +49,23 @@ export function ProcessHierarchyNav({
       </div>
       {!spatial && hierarchy.children(id).length > 0 && (
         <label className="simulation-process-choice">
-          <span>{id ? 'Open subprocess' : 'Open main process'}</span>
+          <span>
+            {id
+              ? t('simulator.hierarchy.navigation.openSubprocess')
+              : t('simulator.hierarchy.navigation.openMainProcess')}
+          </span>
           <select
-            aria-label={id ? 'Open subprocess' : 'Open main process'}
+            aria-label={
+              id
+                ? t('simulator.hierarchy.navigation.openSubprocess')
+                : t('simulator.hierarchy.navigation.openMainProcess')
+            }
             value=""
             onChange={(event) => {
               if (event.target.value) openSimulationProcess(graph.diagram.id, event.target.value);
             }}
           >
-            <option value="">Choose a process…</option>
+            <option value="">{t('simulator.hierarchy.navigation.chooseAProcess')}</option>
             {hierarchy.children(id).map((processId) => (
               <option key={processId} value={processId}>
                 {hierarchy.processes.get(processId)?.name}
@@ -63,7 +76,9 @@ export function ProcessHierarchyNav({
       )}
       {!spatial && view.mode === 'hierarchy' && id && (
         <button
-          aria-label={`Add step to ${hierarchy.processes.get(id)?.name}`}
+          aria-label={t('simulator.hierarchy.navigation.addStepTo', {
+            name: String(hierarchy.processes.get(id)?.name),
+          })}
           onClick={() => {
             const current = useEditor.getState().graph;
             if (!current?.simulation?.processes?.some((process) => process.id === id)) return;
@@ -78,7 +93,7 @@ export function ProcessHierarchyNav({
             });
           }}
         >
-          Add step
+          {t('simulator.hierarchy.navigation.addStep')}
         </button>
       )}
       <button
@@ -91,11 +106,13 @@ export function ProcessHierarchyNav({
           })
         }
       >
-        {view.mode === 'all' ? 'Return to process view' : 'Show all steps'}
+        {view.mode === 'all'
+          ? t('simulator.hierarchy.navigation.returnToProcessView')
+          : t('simulator.hierarchy.navigation.showAllSteps')}
       </button>
       {spatial && view.mode !== 'all' && (
         <span className="simulation-process-spatial-note">
-          3D displays all steps. Return to 2D to open a process.
+          {t('simulator.hierarchy.navigation.3dDisplaysAllStepsReturnTo2dToOpenAProcess')}
         </span>
       )}
     </nav>

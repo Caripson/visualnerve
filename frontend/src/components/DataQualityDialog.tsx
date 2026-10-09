@@ -1,3 +1,6 @@
+import { qualityIssueLabel } from './data-ui-text';
+import { localizedFeedback } from './localized-feedback';
+import { useI18n } from '../i18n';
 import { useEffect, useMemo, useState } from 'react';
 import type { Graph } from '../model/types';
 import { graphDatasets, analysisForDataset } from '../data/model';
@@ -10,6 +13,7 @@ import { Modal } from './Modal';
 import { DataEvidence, RelatedDataScope } from './DataEvidence';
 
 export function DataQualityDialog({ graph, onClose }: { graph: Graph; onClose(): void }) {
+  const { t, number } = useI18n();
   const datasets = useMemo(() => graphDatasets(graph), [graph]);
   const [sourceId, setSourceId] = useState(datasets[0]?.id ?? '');
   const dataset = datasets.find((source) => source.id === sourceId) ?? datasets[0];
@@ -105,14 +109,14 @@ export function DataQualityDialog({ graph, onClose }: { graph: Graph; onClose():
   const external = sqlNodes.filter((node) => getSqlTable(node)!.external);
   const unresolved = graph.edges.filter((edge) => getSqlRelationship(edge)?.unresolved);
   return (
-    <Modal title="Data quality" close={onClose} wide>
+    <Modal title={t('data.quality.title')} close={onClose} wide>
       <div className="data-inspection" aria-busy={busy}>
         {dataset && (
           <>
             <label className="field">
-              <span>Source</span>
+              <span>{t('data.quality.source')}</span>
               <select
-                aria-label="Quality source"
+                aria-label={t('data.quality.sourceAccessible')}
                 value={dataset.id}
                 onChange={(event) => {
                   setSourceId(event.target.value);
@@ -129,17 +133,14 @@ export function DataQualityDialog({ graph, onClose }: { graph: Graph; onClose():
               </select>
             </label>
             <details>
-              <summary>Check identity keys</summary>
-              <p className="muted">
-                Choose columns expected to identify one row. Repeated keys can be valid in order or
-                transaction data; this check does not remove anything.
-              </p>
+              <summary>{t('data.quality.identityTitle')}</summary>
+              <p className="muted">{t('data.quality.identityExplanation')}</p>
               <div className="data-inspection-key-columns">
                 {dataset.columns.map((column) => (
                   <label className="check-field" key={column.id}>
                     <input
                       type="checkbox"
-                      aria-label={`Identity key ${column.label}`}
+                      aria-label={t('data.refresh.identityAccessible', { label: column.label })}
                       checked={keys.includes(column.id)}
                       onChange={(event) => {
                         setIssueId('');
@@ -156,26 +157,27 @@ export function DataQualityDialog({ graph, onClose }: { graph: Graph; onClose():
                 ))}
               </div>
             </details>
-            {busy && <p role="status">Inspecting data…</p>}
+            {busy && <p role="status">{t('data.quality.inspecting')}</p>}
             {error && (
               <p className="form-error" role="alert">
-                {error}
+                {localizedFeedback(error, t)}
               </p>
             )}
             {report && (
               <>
                 <RelatedDataScope graph={graph} />
                 <p>
-                  {report.matchingRows.toLocaleString()} rows in the current filters and focus ·{' '}
-                  {report.sourceRows.toLocaleString()} source rows.
+                  {t('data.quality.scopeCounts', {
+                    matching: number(report.matchingRows),
+                    source: number(report.sourceRows),
+                  })}
                 </p>
-                <p className="muted">
-                  Numeric checks use columns in numeric measures or an explicit number format.
-                  Cleanup collisions flag different original names that now look identical.
-                  Reference checks use the entire target file. A row can appear in several checks.
-                </p>
-                {!report.issues.length && <p>No issues found by the configured checks.</p>}
-                <div className="data-inspection-issues" aria-label="Quality checks">
+                <p className="muted">{t('data.quality.checkScope')}</p>
+                {!report.issues.length && <p>{t('data.quality.noneFound')}</p>}
+                <div
+                  className="data-inspection-issues"
+                  aria-label={t('data.quality.checksAccessible')}
+                >
                   {report.issues.map((entry) => (
                     <button
                       key={entry.id}
@@ -186,18 +188,18 @@ export function DataQualityDialog({ graph, onClose }: { graph: Graph; onClose():
                       }}
                     >
                       <span>
-                        {entry.label}
+                        {qualityIssueLabel(entry, dataset, t)}
                         {entry.groups !== undefined
-                          ? ` (${entry.groups.toLocaleString()} groups)`
+                          ? t('data.quality.groupsSuffix', { count: number(entry.groups) })
                           : ''}
                       </span>
-                      <b>{entry.count.toLocaleString()} rows</b>
+                      <b>{t('data.quality.rowCount', { count: number(entry.count) })}</b>
                     </button>
                   ))}
                 </div>
                 {issue && page && (
                   <>
-                    <h3>{issue.label}</h3>
+                    <h3>{qualityIssueLabel(issue, dataset, t)}</h3>
                     <DataEvidence
                       dataset={dataset}
                       page={page}
@@ -213,37 +215,35 @@ export function DataQualityDialog({ graph, onClose }: { graph: Graph; onClose():
           </>
         )}
         {!!sqlNodes.length && (
-          <section aria-label="SQL quality checks">
-            <h3>SQL schema checks</h3>
+          <section aria-label={t('data.quality.sqlAccessible')}>
+            <h3>{t('data.quality.sqlTitle')}</h3>
             <p>
-              {sqlNodes.length} tables · {external.length} referenced tables without a definition ·{' '}
-              {unresolved.length} relationships with unknown referenced columns.
+              {t('data.quality.sqlCounts', {
+                tables: sqlNodes.length,
+                external: external.length,
+                unresolved: unresolved.length,
+              })}
             </p>
-            <p className="muted">
-              These are schema diagnostics. SQL imports contain no table rows, so duplicate values
-              and numeric data cannot be checked.
-            </p>
+            <p className="muted">{t('data.quality.noSqlRows')}</p>
             {external.map((node) => (
               <p key={node.id}>
-                {getSqlTable(node)!.qualifiedName.join('.')}: definition missing from the imported
-                script.
+                {t('data.quality.definitionMissing', {
+                  qualifiedName: getSqlTable(node)!.qualifiedName.join('.'),
+                })}
               </p>
             ))}
             {unresolved.map((edge) => (
               <p key={edge.id}>
-                {graph.nodes.find((node) => node.id === edge.sourceNodeId)?.title} →{' '}
-                {graph.nodes.find((node) => node.id === edge.targetNodeId)?.title}: referenced
-                columns unknown.
+                {t('data.quality.columnsUnknown', {
+                  source: graph.nodes.find((node) => node.id === edge.sourceNodeId)?.title ?? '',
+                  target: graph.nodes.find((node) => node.id === edge.targetNodeId)?.title ?? '',
+                })}
               </p>
             ))}
           </section>
         )}
         <SqlQueryQualityChecks graph={graph} />
-        {!dataset && !sqlNodes.length && !hasQuery && (
-          <p>
-            Import CSV data, a SQL schema or a SELECT query to inspect its structure and quality.
-          </p>
-        )}
+        {!dataset && !sqlNodes.length && !hasQuery && <p>{t('data.quality.importFirst')}</p>}
       </div>
     </Modal>
   );

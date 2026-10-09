@@ -1,3 +1,5 @@
+import { statusLabel } from '../ui/editor-labels';
+import { useI18n } from '../i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -204,6 +206,7 @@ function focusSpatialObjects(current: Runtime, ids: string[]) {
 }
 
 export function SpatialCanvas(props: SpatialCanvasProps) {
+  const { t, number, locale } = useI18n();
   const { graph, nodes, edges } = props;
   const selectedNodes = useEditor((state) => state.selectedNodes);
   const selectedEdges = useEditor((state) => state.selectedEdges);
@@ -216,6 +219,10 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
   const [rendererState, setRendererState] = useState<'starting' | 'ready' | 'unavailable' | 'lost'>(
     'starting',
   );
+  // Update only the accessible description; language changes never rebuild the WebGL scene.
+  useEffect(() => {
+    runtime.current?.renderer.domElement.setAttribute('aria-label', t('spatial.canvasDescription'));
+  }, [t, rendererState]);
   useEffect(() => {
     if (rendererState === 'ready') return;
     const focus = (event: Event) => {
@@ -350,10 +357,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     canvas.dataset.testid = 'spatial-canvas';
     canvas.tabIndex = 0;
     canvas.setAttribute('role', 'img');
-    canvas.setAttribute(
-      'aria-label',
-      'Interactive 3D diagram. Drag to rotate, scroll to zoom. Enable Move objects to drag cards.',
-    );
+    canvas.setAttribute('aria-label', t('spatial.canvasDescription'));
     canvas.setAttribute('aria-describedby', 'spatial-instructions');
     container.appendChild(canvas);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -1147,7 +1151,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
         const points = current.batches.edgePoints.get(edge.id);
         if (!points) continue;
         wanted.set(`edge:${edge.id}`, {
-          text: String(edge.label || 'Connection'),
+          text: String(edge.label || t('workspace.connection')),
           position: points[Math.floor(points.length / 2)]
             .clone()
             .add(new THREE.Vector3(0, 0.13 * current.glyphScale, 0.003)),
@@ -1166,6 +1170,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     }
     const signature = (label: { text: string; options: object }) =>
       JSON.stringify([
+        locale,
         label.text,
         label.options,
         document.documentElement.dataset.theme,
@@ -1281,7 +1286,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
           );
         }
       });
-  }, [sceneKey, showLabels, renderSelection, faceRevision]);
+  }, [sceneKey, showLabels, renderSelection, faceRevision, locale]);
 
   const cameraKey = JSON.stringify(view.camera);
   useEffect(() => {
@@ -1382,7 +1387,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
   return (
     <section
       className="canvas-shell spatial-canvas"
-      aria-label="3D diagram"
+      aria-label={t('spatial.diagramRegion')}
       data-testid="spatial-view"
       data-renderer={rendererState}
       data-rendered-nodes={renderedCounts.nodes}
@@ -1405,7 +1410,12 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
         onGestureEnd={endNavigation}
       />
       <div className="spatial-hud">
-        <div ref={toolbar} className="spatial-toolbar" role="toolbar" aria-label="3D navigation">
+        <div
+          ref={toolbar}
+          className="spatial-toolbar"
+          role="toolbar"
+          aria-label={t('spatial.navigationRegion')}
+        >
           <SpatialNavigationTools
             ready={ready}
             moving={moveObjects}
@@ -1432,11 +1442,11 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
         >
           <div className="spatial-help-content" id="spatial-help" hidden={!showHelp}>
             <div className="spatial-caption-header">
-              <strong>Diagram relief</strong>
+              <strong>{t('spatial.reliefHelpTitle')}</strong>
               <button
                 className="icon-button"
-                aria-label="Hide 3D help"
-                title="Hide 3D help"
+                aria-label={t('spatial.hideHelp')}
+                title={t('spatial.hideHelp')}
                 data-spatial-help-control
                 onClick={() => {
                   setShowHelp(false);
@@ -1452,40 +1462,30 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
               </button>
             </div>
             <span id="spatial-instructions">
-              {moveObjects
-                ? 'Drag a card to move selected objects in X/Y at their saved depth. Shift-click adds objects; Escape cancels. 3D placement is saved separately from the 2D overview.'
-                : 'The same diagram with depth. Drag to tilt · scroll or pinch to zoom · right drag or two fingers to pan. Enable Move objects to drag cards.'}{' '}
-              The Move, Rotate and Scale handles control the camera. Keyboard: arrows rotate, +/−
-              zoom, Home fits.
+              {moveObjects ? t('spatial.moveObjectsHelp') : t('spatial.orbitHelp')}{' '}
+              {t('spatial.cameraControlsHelp')}
             </span>
             {showLabels && projected.nodes.length > SPATIAL_LABEL_LIMIT && (
-              <small>
-                Text stays on the card faces and follows the perspective. Zoom or select an object
-                to read it, or find any object in the list below.
-              </small>
+              <small>{t('spatial.readCardHelp')}</small>
             )}
           </div>
           {outsideDataView > 0 && (
-            <small>
-              {outsideDataView} objects are outside the current data view and show their retained
-              values. They were included by relationship exploration.
-            </small>
+            <small>{t('spatial.outsideDataHelp', { count: outsideDataView })}</small>
           )}
-          {faceCaptureError && (
-            <small role="status">
-              The original card appearance could not be loaded. Return to 2D to continue.
-            </small>
+          {faceCaptureError && <small role="status">{t('spatial.originalAppearanceFailed')}</small>}
+          {faceCaptureBusy && (
+            <small role="status">{t('spatial.originalAppearancePreparing')}</small>
           )}
-          {faceCaptureBusy && <small role="status">Preparing the original node appearance…</small>}
         </div>
         {props.overview && <OverviewControls projection={props.overview} />}
         <details className="spatial-object-list">
           <summary>
-            Objects and relationships <span>{visibleNodes.length.toLocaleString()} objects</span>
+            {t('spatial.objectsRelationshipsSummary')}
+            <span>{t('spatial.objectCount', { count: number(visibleNodes.length) })}</span>
           </summary>
           <div className="spatial-list-content">
             <label>
-              Find a 3D object
+              {t('spatial.findObject')}
               <input
                 value={listQuery}
                 onChange={(event) => {
@@ -1495,11 +1495,11 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
                 type="search"
               />
             </label>
-            <div role="list" aria-label="3D objects">
+            <div role="list" aria-label={t('spatial.objectsList')}>
               {listed.map((view) => (
                 <div key={view.id} role="listitem">
                   <button
-                    aria-label={`Select object ${view.data.node.title}`}
+                    aria-label={t('spatial.selectObject', { title: view.data.node.title })}
                     aria-pressed={selectedNodes.includes(view.id)}
                     data-node-id={view.id}
                     data-node-status={view.data.node.status ?? ''}
@@ -1511,7 +1511,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
                   >
                     <span>{view.data.node.title}</span>
                     {view.className === 'analysis-outside-data-view' && (
-                      <small>Outside data view</small>
+                      <small>{t('spatial.outsideDataBadge')}</small>
                     )}
                     {view.data.node.status && (
                       <small
@@ -1520,7 +1520,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
                         }
                       >
                         {isCompletedStatus(view.data.node.status) ? '✓ ' : ''}
-                        {view.data.node.status}
+                        {statusLabel(t, view.data.node.status)}
                       </small>
                     )}
                   </button>
@@ -1528,25 +1528,30 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
               ))}
             </div>
             {matches.length > 50 && (
-              <nav aria-label="3D object pages">
+              <nav aria-label={t('spatial.objectPages')}>
                 <button disabled={!listPage} onClick={() => setListPage(Math.max(0, listPage - 1))}>
-                  Previous
+                  {t('spatial.previousPage')}
                 </button>
                 <span>
-                  {listPage + 1} / {Math.ceil(matches.length / 50)}
+                  {t('spatial.pageCounter', {
+                    current: listPage + 1,
+                    total: Math.ceil(matches.length / 50),
+                  })}
                 </span>
                 <button
                   disabled={(listPage + 1) * 50 >= matches.length}
                   onClick={() => setListPage(listPage + 1)}
                 >
-                  Next
+                  {t('spatial.nextPage')}
                 </button>
               </nav>
             )}
             <details>
-              <summary>Relationships ({visibleEdges.length.toLocaleString()})</summary>
+              <summary>
+                {t('spatial.relationshipCount', { count: number(visibleEdges.length) })}
+              </summary>
               <label>
-                Find a 3D relationship
+                {t('spatial.findRelationship')}
                 <input
                   type="search"
                   value={relationshipQuery}
@@ -1556,12 +1561,16 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
                   }}
                 />
               </label>
-              <div role="list" aria-label="3D relationships">
+              <div role="list" aria-label={t('spatial.relationshipsList')}>
                 {listedRelationships.map((edge) => (
                   <div role="listitem" key={edge.id}>
                     <button
                       disabled={edge.id.startsWith('hierarchy:') || isOverviewEdgeId(edge.id)}
-                      aria-label={`Select relationship ${edge.label || 'connection'} from ${nodeNames.get(edge.source)} to ${nodeNames.get(edge.target)}`}
+                      aria-label={t('spatial.selectRelationship', {
+                        relationship: String(edge.label || t('spatial.connectionFallback')),
+                        source: nodeNames.get(edge.source) ?? '',
+                        target: nodeNames.get(edge.target) ?? '',
+                      })}
                       aria-pressed={selectedEdges.includes(edge.id)}
                       onClick={() => useEditor.getState().select([], [edge.id])}
                     >
@@ -1580,21 +1589,24 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
                 ))}
               </div>
               {relationshipMatches.length > 50 && (
-                <nav aria-label="3D relationship pages">
+                <nav aria-label={t('spatial.relationshipPages')}>
                   <button
                     disabled={!relationshipPage}
                     onClick={() => setRelationshipPage(Math.max(0, relationshipPage - 1))}
                   >
-                    Previous
+                    {t('spatial.previousPage')}
                   </button>
                   <span>
-                    {relationshipPage + 1} / {Math.ceil(relationshipMatches.length / 50)}
+                    {t('spatial.pageCounter', {
+                      current: relationshipPage + 1,
+                      total: Math.ceil(relationshipMatches.length / 50),
+                    })}
                   </span>
                   <button
                     disabled={(relationshipPage + 1) * 50 >= relationshipMatches.length}
                     onClick={() => setRelationshipPage(relationshipPage + 1)}
                   >
-                    Next
+                    {t('spatial.nextPage')}
                   </button>
                 </nav>
               )}
@@ -1607,30 +1619,31 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
           <RotateCcw size={24} />
           <h2>
             {rendererState === 'lost'
-              ? 'The 3D graphics connection was interrupted'
-              : '3D graphics are unavailable in this browser'}
+              ? t('spatial.graphicsInterrupted')
+              : t('spatial.graphicsUnavailable')}
           </h2>
-          <p>
-            Your diagram is saved locally. You can still inspect objects below and continue in 2D.
-          </p>
-          <button onClick={returnTo2D}>Return to 2D</button>
+          <p>{t('spatial.graphicsFallbackHint')}</p>
+          <button onClick={returnTo2D}>{t('spatial.return2D')}</button>
         </div>
       )}
       {projected.truncated && (
         <p className="spatial-limit" role="status">
-          Showing {projected.nodes.length.toLocaleString()} of{' '}
-          {projected.totalNodes.toLocaleString()} objects and{' '}
-          {projected.edges.length.toLocaleString()} of {projected.totalEdges.toLocaleString()}{' '}
-          relationships. Narrow your filters or explore a smaller area; selected objects take
-          priority.
+          {t('spatial.visualLimitHint', {
+            shownObjects: number(projected.nodes.length),
+            totalObjects: number(projected.totalNodes),
+            shownRelationships: number(projected.edges.length),
+            totalRelationships: number(projected.totalEdges),
+          })}
         </p>
       )}
       <div className="canvas-statusbar">
         <span>
-          {projected.nodes.length.toLocaleString()} objects ·{' '}
-          {projected.edges.length.toLocaleString()} relationships
+          {t('spatial.visibleCounts', {
+            objects: number(projected.nodes.length),
+            relationships: number(projected.edges.length),
+          })}
         </span>
-        <span>The same diagram, with depth and perspective</span>
+        <span>{t('spatial.perspectiveTagline')}</span>
       </div>
     </section>
   );

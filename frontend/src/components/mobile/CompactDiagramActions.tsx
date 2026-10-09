@@ -1,3 +1,4 @@
+import { useI18n } from '../../i18n';
 import {
   Clapperboard,
   Code2,
@@ -20,32 +21,37 @@ import { CompactArrangementTools } from './CompactArrangementTools';
 import type { CompactToolbarProps } from './compact-toolbar-types';
 
 export function CompactDiagramActions(props: CompactToolbarProps) {
+  const { t } = useI18n();
   const { graph, open, newSpatialExample } = props;
   return (
-    <ToolbarMenu label="Diagram actions" icon={<MoreHorizontal size={21} />} text={false}>
-      <h3>Diagram</h3>
+    <ToolbarMenu
+      label={t('mobile.diagramActionsMenu')}
+      icon={<MoreHorizontal size={21} />}
+      text={false}
+    >
+      <h3>{t('mobile.diagramTitle')}</h3>
       <button className="full" onClick={() => open('new')}>
         <Plus size={17} />
-        New diagram
+        {t('workspace.newDiagram')}
       </button>
       <button className="full" onClick={() => open('search')}>
         <Search size={17} />
-        Search
+        {t('workspace.search')}
       </button>
       <button
         className="full"
-        aria-label="Diagram player"
+        aria-label={t('toolbar.playerAria')}
         onClick={() => {
           useEditor.getState().finishEditing();
           presentation.open();
         }}
       >
         <Clapperboard size={17} />
-        Diagram player
+        {t('toolbar.playerAria')}
       </button>
-      <button className="full" aria-label="Export" onClick={() => open('export')}>
+      <button className="full" aria-label={t('dialogs.exportField')} onClick={() => open('export')}>
         <Download size={17} />
-        Export
+        {t('dialogs.exportField')}
       </button>
       <button
         className="full"
@@ -55,53 +61,53 @@ export function CompactDiagramActions(props: CompactToolbarProps) {
         }}
       >
         <PanelRight size={17} />
-        Project properties
+        {t('toolbar.projectProperties')}
       </button>
       <CompactArrangementTools {...props} />
       <DataToolActions graph={graph} open={open} />
       <UnderstandingActions open={open} />
-      <h3>Import and build</h3>
+      <h3>{t('toolbar.importBuildTitle')}</h3>
       <button className="full" onClick={() => open('code')}>
         <Code2 size={17} />
-        Visualize code
+        {t('toolbar.visualizeCode')}
       </button>
       <button className="full" onClick={() => open('sql')}>
         <Database size={17} />
-        Import SQL script
+        {t('toolbar.importSql')}
       </button>
       <button className="full" onClick={() => open('lovable')}>
         <Sparkles size={17} />
-        Build with Lovable
+        {t('toolbar.buildLovable')}
       </button>
       <button className="full" onClick={() => void newSpatialExample()}>
-        New 3D truck lifecycle example
+        {t('toolbar.truckExampleAction')}
       </button>
-      <h3>Workspace</h3>
+      <h3>{t('mobile.workspaceTitle')}</h3>
       <button className="full" onClick={() => open('settings')}>
         <Settings size={17} />
-        Settings
+        {t('app.settings')}
       </button>
       <a className="compact-menu-link" href="/help/">
-        User guide
+        {t('mobile.userGuide')}
       </a>
       <a className="compact-menu-link" href="/api/docs">
-        API documentation
+        {t('mobile.apiDocs')}
       </a>
       <a className="compact-menu-link" href="/license/">
-        About and license
+        {t('mobile.aboutLicense')}
       </a>
       <a
         className="compact-menu-link"
         href="https://github.com/Caripson/visualnerve/issues/new/choose"
-        aria-label="Report an issue on GitHub"
+        aria-label={t('mobile.reportIssueGitHub')}
         target="_blank"
         rel="noopener noreferrer"
       >
-        Report an issue
+        {t('settings.reportIssue')}
       </a>
       <button className="full danger" onClick={() => open('delete')}>
         <Trash2 size={17} />
-        Delete diagram
+        {t('dialogs.deleteDiagramTitle')}
       </button>
     </ToolbarMenu>
   );

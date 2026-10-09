@@ -1,3 +1,5 @@
+import { localizedFeedback } from './localized-feedback';
+import { useI18n } from '../i18n';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { utf8Bytes } from '../imports/limits';
 import { ImportSizeNotice } from './ImportSizeNotice';
@@ -29,6 +31,7 @@ export function CodeImportDialog({
   close: () => void;
   create: (graph: Graph) => Promise<void>;
 }) {
+  const { t } = useI18n();
   const [name, setName] = useState('Code diagram');
   const [language, setLanguage] = useState<CodeLanguage>('typescript');
   const [text, setText] = useState('');
@@ -198,7 +201,7 @@ export function CodeImportDialog({
   const canPreview =
     name.trim() && (files.length ? files.every((file) => !!file.language) : text.trim());
   return (
-    <Modal title="Visualize code" close={dismiss} wide dismissible={!creating}>
+    <Modal title={t('import.code.title')} close={dismiss} wide dismissible={!creating}>
       <form
         className="code-import"
         aria-busy={working || creating}
@@ -207,16 +210,12 @@ export function CodeImportDialog({
           void analyze();
         }}
       >
-        <p>
-          Map a code or documentation project from a ZIP, a folder or source files. Identify
-          languages and explore imports, calls and internal Markdown links. Analysis runs locally;
-          source code is never executed.
-        </p>
+        <p>{t('import.code.localStructuralOnly')}</p>
         <ImportSizeNotice bytes={sourceBytes} />
         <label className="field">
-          Diagram name
+          {t('data.csv.nameLabel')}
           <input
-            aria-label="Code diagram name"
+            aria-label={t('import.code.nameAccessible')}
             value={name}
             maxLength={500}
             disabled={creating}
@@ -256,9 +255,9 @@ export function CodeImportDialog({
         />
         <div className="code-view-settings">
           <label className="field">
-            Diagram detail
+            {t('import.code.detailLabel')}
             <select
-              aria-label="Code diagram detail"
+              aria-label={t('import.code.detailAccessible')}
               aria-describedby={detailHelpId}
               value={mode}
               disabled={creating}
@@ -267,19 +266,19 @@ export function CodeImportDialog({
                 setChosenMode(event.target.value as typeof mode);
               }}
             >
-              <option value="files">File overview</option>
-              <option value="folders">Folder relationships</option>
-              <option value="symbols">Declarations and dependencies</option>
+              <option value="files">{t('import.code.modeFiles')}</option>
+              <option value="folders">{t('import.code.modeFolders')}</option>
+              <option value="symbols">{t('import.code.modeSymbols')}</option>
             </select>
           </label>
           <label className="field">
-            Focus on name or path
+            {t('import.code.focusLabel')}
             <input
-              aria-label="Code focus"
+              aria-label={t('import.code.focusAccessible')}
               value={focus}
               maxLength={500}
               disabled={creating}
-              placeholder="e.g. customer or src/payments"
+              placeholder={t('import.code.focusHint')}
               onChange={(event) => {
                 invalidate();
                 setFocus(event.target.value);
@@ -289,24 +288,17 @@ export function CodeImportDialog({
         </div>
         <p className="code-note" id={detailHelpId}>
           {mode === 'folders'
-            ? 'Combines files into directory objects and shows relationships between folders. Counts include files in nested folders.'
+            ? t('import.code.folderModeExplanation')
             : mode === 'symbols'
-              ? 'Creates separate objects for recognized functions, paragraphs, types and resources, with their connections.'
-              : 'Creates one object per source file. Choose Declarations and dependencies to show functions, paragraphs and resources separately.'}
+              ? t('import.code.symbolModeExplanation')
+              : t('import.code.fileModeExplanation')}
         </p>
-        <p className="code-note">
-          Focus keeps matching names or paths and their immediate connections. Inferred and
-          unresolved relationships are marked; this is structural analysis, not a compiler or
-          runtime trace. Use Import SQL for detailed SELECT joins and column lineage.
-        </p>
-        <p className="code-note">
-          Original source is a temporary draft. Only names, source paths, line numbers and
-          relationship evidence are saved locally when you create the diagram.
-        </p>
+        <p className="code-note">{t('import.code.inferenceBoundary')}</p>
+        <p className="code-note">{t('import.code.sourceRetention')}</p>
         <ProjectImportStatus project={project} progress={progress} />
         {working && (
           <div className="code-import-progress">
-            {!progress && <p role="status">Preparing code preview…</p>}
+            {!progress && <p role="status">{t('import.code.preparing')}</p>}
             <button
               type="button"
               onClick={() => {
@@ -314,22 +306,22 @@ export function CodeImportDialog({
                 setProgress(null);
               }}
             >
-              Cancel preparation
+              {t('import.code.cancelPreparation')}
             </button>
           </div>
         )}
         {error && (
           <p role="alert" className="code-error">
-            {error}
+            {localizedFeedback(error, t)}
           </p>
         )}
         {preview && <CodeImportPreview preview={preview} />}
         <div className="modal-actions code-actions">
           <button type="button" disabled={creating} onClick={dismiss}>
-            Cancel
+            {t('data.action.cancel')}
           </button>
           <button type="submit" disabled={!canPreview || working || creating}>
-            Preview code
+            {t('import.code.preview')}
           </button>
           <button
             type="button"
@@ -337,7 +329,7 @@ export function CodeImportDialog({
             disabled={!preview || working || creating}
             onClick={() => void save()}
           >
-            {creating ? 'Creating diagram…' : 'Create diagram'}
+            {creating ? t('import.action.creatingDiagram') : t('import.action.createDiagram')}
           </button>
         </div>
       </form>

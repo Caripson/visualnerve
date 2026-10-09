@@ -1,9 +1,12 @@
+import { presentationMessage } from './display-messages';
+import { useI18n } from '../i18n';
 import { Film, Download, X } from 'lucide-react';
 import { startVideo, videoExport, useVideoExport, saveVideo } from './video-service';
 import { videoActive } from './video-types';
 import { useState } from 'react';
 
 export function VideoControls({ disabled }: { disabled: boolean }) {
+  const { t } = useI18n();
   const video = useVideoExport();
   const active = videoActive(video);
   const [error, setError] = useState('');
@@ -11,13 +14,16 @@ export function VideoControls({ disabled }: { disabled: boolean }) {
     <div className="presentation-video">
       <div className="presentation-controls">
         {active ? (
-          <button onClick={() => videoExport.cancel()} aria-label="Cancel video export">
-            <X size={16} /> Cancel video
+          <button
+            onClick={() => videoExport.cancel()}
+            aria-label={t('presentation.videoCancelAria')}
+          >
+            <X size={16} /> {t('presentation.videoCancel')}
           </button>
         ) : (
           <button
             disabled={disabled || videoExport.isBusy()}
-            aria-label="Export walkthrough video"
+            aria-label={t('presentation.videoExportAria')}
             onClick={() => {
               try {
                 setError('');
@@ -27,31 +33,28 @@ export function VideoControls({ disabled }: { disabled: boolean }) {
               }
             }}
           >
-            <Film size={16} /> Export video
+            <Film size={16} /> {t('presentation.videoExport')}
           </button>
         )}
         {video.status === 'complete' && (
           <button onClick={saveVideo}>
-            <Download size={16} /> Save video again
+            <Download size={16} /> {t('presentation.videoSaveAgain')}
           </button>
         )}
-        <small className="muted">
-          720p · 30 fps · MP4 when supported · current audio/text settings
-        </small>
+        <small className="muted">{t('presentation.videoFormatHint')}</small>
       </div>
-      {active && <progress aria-label="Video export progress" max={1} value={video.progress} />}
+      {active && (
+        <progress aria-label={t('presentation.videoProgressAria')} max={1} value={video.progress} />
+      )}
       {(error || video.message) && (
         <p
           className="presentation-message"
           role={error || video.status === 'error' ? 'alert' : 'status'}
         >
-          {error || video.message}
+          {presentationMessage(error || video.message, t)}
         </p>
       )}
-      <small className="muted">
-        Keep this tab visible. Up to 30 minutes / 256 MiB. WebM is used if MP4 encoding is
-        unavailable.
-      </small>
+      <small className="muted">{t('presentation.videoLimitsHint')}</small>
     </div>
   );
 }

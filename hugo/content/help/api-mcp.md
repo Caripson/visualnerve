@@ -10,7 +10,7 @@ The bridge forwards commands to your connected browser. It has no separate diagr
 
 ## Unlocking and tool access are separate permissions
 
-The dedicated encrypted app surface at `https://app.visualnerve.com/` is under release review. It requires a password in the browser before its workspace opens. On the first visit, create the password and keep the recovery key separately. Later visits unlock that browser's local vault. No account, SSO service or mandatory backend performs this step.
+The dedicated encrypted app surface at `https://app.visualnerve.com/` requires a password in the browser before its workspace opens. On the first visit, create the password and keep the recovery key separately. Later visits unlock that browser's local vault. No account, SSO service or mandatory backend performs this step.
 
 Unlocking does not enable MCP or restore a previous tool grant. After each encrypted-session unlock, choose **Read only** or **Read + write** again in Settings. An agent cannot supply a password, use a recovery key, unlock the vault, change its password or change session limits through API/MCP. Never paste those credentials into an agent prompt or tool request.
 
@@ -208,7 +208,7 @@ Use **`httpUrl`**, not `url`: Gemini CLI uses `url` for the older SSE transport.
 
 ### Claude Desktop
 
-The release under review includes a native **stdio adapter** for local clients. It forwards newline-delimited MCP messages to the same already-running HTTP bridge; it does not start a bridge, open a browser, store diagrams or grant access. Start the bridge and enable the browser connection first.
+Visual Nerve includes a native **stdio adapter** for local clients. It forwards newline-delimited MCP messages to the same already-running HTTP bridge; it does not start a bridge, open a browser, store diagrams or grant access. Start the bridge and enable the browser connection first.
 
 In Claude Desktop's local developer configuration, merge an entry like this into `claude_desktop_config.json`:
 
