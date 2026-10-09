@@ -14,8 +14,9 @@ import type { SimulationResult } from '../../src/simulation/types';
 const app = 'https://public-app.test:4341';
 const password = 'Isolated capabilities test protected passphrase';
 
-// Playwright's browser launch is a worker fixture, so graphics options belong at file scope.
-test.use({
+// Only relief rendering needs software WebGL. This separate worker fixture keeps
+// CSV, native simulation and speech acceptance on the browser's normal path.
+const graphicsTest = test.extend({
   launchOptions: {
     ...browserLaunchOptions,
     args: [
@@ -188,7 +189,8 @@ test('isolated CSP permits real CSV grouping and encrypted source persistence, i
     await page.reload();
     await unlock(page, name);
     startup.push(await readEncryptedStartupDiagnostics(page, 'after-first-online-unlock'));
-    await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+    // Prove offline readiness by restoring the encrypted diagram with the
+    // network disabled, after the initial activated/claimed check above.
     await context.setOffline(true);
     await page.reload();
     await unlock(page, name);
@@ -279,7 +281,8 @@ test('isolated kiosk MAX uses the actual worker and restores the same encrypted 
   }
 });
 
-test.describe('isolated graphics under the deployed CSP', () => {
+graphicsTest.describe('isolated graphics under the deployed CSP', () => {
+  const test = graphicsTest;
   test.use({
     actionTimeout: 45000,
   });

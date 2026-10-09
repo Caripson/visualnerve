@@ -124,19 +124,29 @@ for (const device of [
     const base = `/api/v1/diagrams/${model.diagram.id}/simulation`;
     await page.getByRole('button', { name: 'Play simulation', exact: true }).tap();
     await expect(page.getByRole('button', { name: 'Pause simulation', exact: true })).toBeEnabled();
+    // Discover this UI-created run once; live progress belongs to its exact
+    // state endpoint rather than repeatedly querying the run archive.
+    const runsResponse = await request.get(`${base}/runs`);
+    expect(runsResponse.ok()).toBe(true);
+    const runs = await runsResponse.json();
+    expect(runs).toHaveLength(1);
+    const firstRun = runs[0];
+    expect(firstRun).toMatchObject({
+      id: expect.any(String),
+      diagramId: model.diagram.id,
+      status: 'running',
+    });
     await expect
-      .poll(async () => {
-        const run = (await (await request.get(`${base}/runs`)).json()).at(-1);
-        if (!run) return 0;
-        return (await (await request.get(`${base}/runs/${run.id}/state`)).json()).metrics.queue
-          .current;
-      })
+      .poll(
+        async () =>
+          (await (await request.get(`${base}/runs/${firstRun.id}/state`)).json()).metrics.queue
+            .current,
+      )
       .toBeGreaterThan(0);
     await page.getByRole('button', { name: 'Pause simulation', exact: true }).tap();
     await expect
-      .poll(async () => (await (await request.get(`${base}/runs`)).json()).at(-1)?.status)
+      .poll(async () => (await (await request.get(`${base}/runs/${firstRun.id}`)).json()).status)
       .toBe('paused');
-    const firstRun = (await (await request.get(`${base}/runs`)).json()).at(-1);
     const frozen = await (await request.get(`${base}/runs/${firstRun.id}/state`)).json();
     await page.waitForTimeout(200);
     expect(
