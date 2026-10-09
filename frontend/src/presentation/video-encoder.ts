@@ -259,7 +259,10 @@ export async function createVideoEncoder(
   async function sample(values: Float32Array<ArrayBuffer>, startFrame: number) {
     check();
     const sample = new AudioSample({
-      data: values,
+      // Mediabunny 1.61.3 converts this sample to AudioData using the backing
+      // ArrayBuffer. Give each bounded block its own offset-zero storage so
+      // later narration blocks cannot encode the beginning of the clip again.
+      data: values.slice(),
       format: 'f32-planar',
       numberOfChannels: 1,
       sampleRate: SAMPLE_RATE,

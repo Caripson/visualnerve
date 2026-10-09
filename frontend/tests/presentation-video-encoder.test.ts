@@ -302,6 +302,36 @@ it('rejects narration overlap and a video ending before its full narration', asy
   await expect(encoder.finish()).rejects.toThrow('ends before');
   await encoder.cancel();
 });
+it('preserves later PCM blocks when native AudioData reads the sample backing buffer', async () => {
+  const frames = 4096 * 2 + 321;
+  const values = Float32Array.from({ length: frames }, (_, index) => (index / frames) * 0.8);
+  vi.stubGlobal(
+    'OfflineAudioContext',
+    class {
+      decodeAudioData = async () => ({
+        sampleRate: 48000,
+        numberOfChannels: 1,
+        duration: frames / 48000,
+        getChannelData: () => values,
+      });
+    },
+  );
+  const encoder = await createVideoEncoder(options, canvas());
+  await encoder.addAudio(wav(), 0);
+  const nativeValues = mocks.samples.flatMap(({ init }) =>
+    // The pinned encoder converts AudioSample to AudioData using data.buffer.
+    // Model that native boundary, rather than reading the Float32Array view.
+    Array.from(new Float32Array(init.data.buffer, 0, init.numberOfFrames)),
+  );
+  expect(nativeValues).toEqual(Array.from(values));
+  for (const { init } of mocks.samples) {
+    expect(init.data.byteOffset).toBe(0);
+    expect(init.data.buffer.byteLength).toBe(init.numberOfFrames * 4);
+    expect(init.numberOfFrames).toBeLessThanOrEqual(4096);
+  }
+  expect(values.at(-1)).toBeGreaterThan(0.79);
+  await encoder.cancel();
+});
 it('closes samples even when native audio encoding fails', async () => {
   const encoder = await createVideoEncoder(options, canvas());
   mocks.audioAdd.mockRejectedValueOnce(new Error('Audio encoder failed'));
