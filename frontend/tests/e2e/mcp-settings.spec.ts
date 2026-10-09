@@ -49,8 +49,7 @@ test('MCP automatically recovers from one temporary WebSocket constructor failur
   await access.selectOption('read');
   await expect(page.getByText('MCP connection: Error', { exact: true })).toBeVisible();
   // No second setting change or page navigation is allowed to trigger recovery.
-  await connected(request, 1);
-  await expect(page.getByText('MCP connection: Connected', { exact: true })).toBeVisible();
+  await liveGrant(page, request, 'read');
   expect(await page.evaluate(() => Reflect.get(window, '__mcpConstructorProbe'))).toEqual({
     attempts: 2,
     failures: 1,
@@ -73,6 +72,26 @@ async function connected(request: APIRequestContext, count: number) {
   await expect
     .poll(async () => (await (await request.get('/api/v1/health')).json()).connected)
     .toBe(count);
+}
+
+async function liveGrant(page: Page, request: APIRequestContext, access: 'read' | 'write') {
+  // A saved grant reconnects asynchronously. Health may still count the previous
+  // socket, so also require the committed UI choice and a live browser round trip.
+  await expect(page.getByLabel('MCP access', { exact: true })).toHaveValue(access);
+  await expect(page.getByText('MCP connection: Connected', { exact: true })).toBeVisible();
+  await connected(request, 1);
+  await expect
+    .poll(
+      async () => {
+        const response = await request.get('/api/v1/settings/mcp-access');
+        return {
+          status: response.status(),
+          access: response.ok() ? await response.json() : undefined,
+        };
+      },
+      { message: `The active browser must acknowledge the committed ${access} MCP grant.` },
+    )
+    .toEqual({ status: 200, access });
 }
 
 async function mcp(request: APIRequestContext, path: string, method = 'GET', data?: unknown) {
@@ -177,8 +196,7 @@ for (const origin of [
         }
 
         await access.selectOption(initial);
-        await connected(request, 1);
-        await expect(page.getByText('MCP connection: Connected', { exact: true })).toBeVisible();
+        await liveGrant(page, request, initial);
         if (initial === 'read') await readAccess(request);
         else await writeAccess(request, 'First live MCP grant');
         await samePage();
@@ -188,12 +206,11 @@ for (const origin of [
         await expect(page.getByText('MCP connection: Connected', { exact: true })).toBeVisible();
 
         await access.selectOption('write');
-        await connected(request, 1);
+        await liveGrant(page, request, 'write');
         const id = await writeAccess(request, 'Live MCP permission change');
         await access.selectOption('read');
         // The grant change reconnects the socket; the new connection must enforce read-only.
-        await connected(request, 1);
-        await expect(page.getByText('MCP connection: Connected', { exact: true })).toBeVisible();
+        await liveGrant(page, request, 'read');
         const denied = await request.post(`/api/v1/diagrams/${id}/nodes`, {
           data: { title: 'Denied immediately after downgrade' },
         });
@@ -210,10 +227,10 @@ for (const origin of [
         await expect(access).toHaveValue('off');
 
         await access.selectOption('read');
-        await connected(request, 1);
+        await liveGrant(page, request, 'read');
         await readAccess(request);
         await access.selectOption('write');
-        await connected(request, 1);
+        await liveGrant(page, request, 'write');
         await writeAccess(request, 'Live MCP re-enabled');
         await closeSettings(page);
         await expect(

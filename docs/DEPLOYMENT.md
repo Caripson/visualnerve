@@ -167,7 +167,21 @@ IndexedDB belongs to one browser profile and exact origin. The staging and produ
 
 The production editor is at the isolated app root. The retired website `/app` redirects there; it does not migrate, encrypt or delete the old origin's IndexedDB. Local development/staging fixtures retain their `/app/` editor. Database upgrades preserve records. Do not reset local databases during deployment.
 
-The service worker caches app files only after storage acceptance. Existing tabs keep their version until they close; the new shell activates after that. Complete a first online visit before relying on offline reload and keep a backup independent of the browser.
+The service worker caches app files only after storage acceptance. Complete a first online visit before relying on offline reload and keep a backup independent of the browser. Installing or activating an application update does not open, clear, restore or migrate workspace IndexedDB, change its password or recovery key, or reset saved diagrams, source data, history, simulation archives and settings.
+
+### Controlled app update protocol
+
+The app checks its existing same-origin service-worker registration in the background every 15 minutes and on online, window-focus and visible-tab events. The update request fetches `sw.js`; it contains no workspace content or analytics. Offline checks fail without blocking editing or requiring an unlock. A fully installed waiting worker produces **An update is ready** in the app. **Later** leaves the currently loaded application code in use.
+
+**Update now** is a user-authorized lifecycle operation. The client rejects activation while a modal, import/export or active simulation needs attention, then waits for pending local workspace saves. Resident simulation workers, including paused runs, must finish or be stopped so their terminal results can be saved; a paused in-memory execution state is not a resumable persisted checkpoint. Simulation archive write failures are explicitly checked and retried before activation. If any local save still fails, the restart remains blocked. The client obtains the prepared worker's public cache-version identifier through an `app-update-info` MessageChannel request and requests activation using `app-update-activate` with that exact version. The worker checks that the sender is a live, same-origin, in-scope window and rejects stale version identifiers before `skipWaiting()`. No password, recovery key, private model, MCP token or unlock capability is included in this protocol.
+
+Failed autosave retries retain the repository's optimistic version checks and stop on a conflict instead of overwriting another tab's committed changes.
+
+After controlled activation, only the requesting tab reloads. Other tabs are not forcibly restarted; the app can tell them that another tab installed an update so they can finish their current work before reloading. Reload discards the tab's in-memory encryption keys and integration grants: the user unlocks with the existing password and explicitly grants fresh API/MCP access. The semantic workspace model and API/MCP schema do not change merely because a service worker is updated.
+
+Activation preserves older app-shell caches so already open tabs can still resolve their hashed lazy modules. The active worker can fall back to retained static assets from a prior app-shell cache. Publication continues to upload hashed assets before HTML and `sw.js` and keeps older hashed S3 objects; do not use sync-delete or discard old caches during activation. Explicit **Clear app cache** remains a separate, coordinated cleanup operation and is not required to update the app.
+
+For first adoption, a tab loaded before the update-notice code was released cannot display that new feature. Finish and save its work, close all app tabs and reopen online if an ordinary reload continues to use the old shell. Do not clear site data or ask the user to export and reimport the workspace to obtain an app release. Backups remain important for browser storage loss and migration, independently of updating code.
 
 ## Equivalent static hosts
 

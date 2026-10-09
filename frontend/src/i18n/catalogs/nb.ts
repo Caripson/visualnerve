@@ -1,6 +1,24 @@
 import type { Catalog } from '../types';
 
 const catalog = {
+  'appUpdate.title': 'En oppdatering er klar',
+  'appUpdate.hint':
+    'Nye rettelser og funksjoner er klare. Oppdater når det passer deg; arbeidsområdet ditt blir i denne nettleseren.',
+  'appUpdate.apply': 'Oppdater nå',
+  'appUpdate.later': 'Senere',
+  'appUpdate.applying': 'Lagrer og oppdaterer…',
+  'appUpdate.failed':
+    'Oppdateringen kunne ikke brukes. Arbeidsområdet ditt er fortsatt åpent. {detail}',
+  'appUpdate.finishTask':
+    'Fullfør eller avbryt den aktuelle dialogen, importen eller eksporten før du oppdaterer.',
+  'appUpdate.waitForRun': 'Stopp eller fullfør aktive simuleringer før du oppdaterer.',
+  'appUpdate.unlockAgain':
+    'Lås opp arbeidsområdet med passordet etter at siden er lastet inn på nytt. Du trenger ingen sikkerhetskopi eller ny import.',
+  'appUpdate.changedElsewhere':
+    'En annen fane har installert en oppdatering. Last inn denne fanen på nytt når du er klar.',
+  'appUpdate.savedWork':
+    'Lagrede diagrammer, kildedata, historikk, simuleringsresultater og innstillinger beholdes.',
+  'appUpdate.retry': 'Prøv oppdateringen igjen',
   'app.closePanel': 'Lukk panel',
   'app.closeProperties': 'Lukk egenskaper',
   'app.conflictFallback': 'En annen fane endret dette prosjektet.',

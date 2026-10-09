@@ -130,16 +130,69 @@ self.addEventListener("install", (event) =>
     download(async (signal, check) => {
       const cache = await caches.open(cacheName);
       await new StaticAssetPrecache(cache, signal, check).run();
-      // A retired entry must stop being served by an older worker after this
-      // complete public-asset installation. No private records are removed.
-      if (retiredAppPaths) await self.skipWaiting();
+      // Public retirement replaces the legacy entry after complete installation.
+      // Private app upgrades wait for a client approval; no records are removed.
+      if (retiredAppPaths === "site") await self.skipWaiting();
     }),
   ),
 );
 self.addEventListener("activate", (event) =>
   event.waitUntil(self.clients.claim()),
 );
+/** Updates replace static assets only after an in-scope window opts in. */
+async function updateClient(event) {
+  const source = event.source;
+  if (source?.type !== "window" || typeof source.id !== "string") return null;
+  try {
+    const client = await self.clients.get(source.id);
+    if (!client || client.type !== "window") return null;
+    const url = new URL(client.url);
+    const scope = new URL(self.registration.scope);
+    if (url.origin !== self.location.origin || !url.href.startsWith(scope.href))
+      return null;
+    return client;
+  } catch {
+    // A closed/revoked client cannot approve activation.
+    return null;
+  }
+}
+async function appUpdate(event) {
+  if (!(await updateClient(event))) return;
+  const port = event.ports[0];
+  if (event.data.type === "app-update-info") {
+    port.postMessage({ type: "app-update-info", version: cacheName });
+    return;
+  }
+  if (event.data.version !== cacheName) {
+    port.postMessage({
+      type: "app-update-error",
+      error: "version-mismatch",
+      version: cacheName,
+    });
+    return;
+  }
+  await self.skipWaiting();
+  port.postMessage({ type: "app-update-activated", version: cacheName });
+}
+async function previousStaticAsset(path) {
+  const prefix = cacheName.startsWith("visual-nerve-app-shell-")
+    ? "visual-nerve-app-shell-"
+    : "visual-nerve-shell-";
+  for (const name of (await caches.keys()).reverse()) {
+    if (name === cacheName || !name.startsWith(prefix)) continue;
+    const stored = await (await caches.open(name)).match(path);
+    if (stored) return stored;
+  }
+}
 self.addEventListener("message", (event) => {
+  if (
+    (event.data?.type === "app-update-info" ||
+      event.data?.type === "app-update-activate") &&
+    event.ports?.[0]
+  ) {
+    event.waitUntil(appUpdate(event));
+    return;
+  }
   if (
     event.data?.type !== "app-cache-clear" ||
     typeof event.data.begin !== "boolean" ||
@@ -188,7 +241,14 @@ self.addEventListener("fetch", (event) => {
       : url.pathname === "/index.html"
         ? "/"
         : url.pathname;
-  if (!assets.includes(path) && !lazyAssets.includes(path)) return;
+  const managed = assets.includes(path) || lazyAssets.includes(path);
+  // Other tabs may still run the previous code after one window opts in. Keep
+  // their already-cached immutable imports usable offline; never reuse an old
+  // entry page, unhashed bundle, narration cache or private workspace record.
+  const previousChunk =
+    !managed &&
+    /^\/editor\/assets\/[^/]+-[A-Za-z0-9_-]{8,}\.(?:js|css)$/.test(path);
+  if (!managed && !previousChunk) return;
   let deliver;
   let reject;
   const response = new Promise((resolve, fail) => {
@@ -197,7 +257,9 @@ self.addEventListener("fetch", (event) => {
   });
   const task = download(async (signal, check) => {
     const cache = await caches.open(cacheName);
-    const stored = await cache.match(path);
+    const stored = previousChunk
+      ? await previousStaticAsset(path)
+      : await cache.match(path);
     await check();
     if (stored) {
       deliver(stored);

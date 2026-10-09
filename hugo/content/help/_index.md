@@ -80,6 +80,9 @@ These entry points keep earlier links and bookmarks useful.
 ### Save and work offline
 [Understand local saves, offline use and conflicts](/help/settings/).
 
+### Update the app
+[Apply new fixes and features when you are ready, while keeping your saved workspace](/help/settings/#apply-an-app-update-when-you-are-ready).
+
 ### Exchange and backups
 [Choose an export format](/help/sharing/) or [back up and restore the whole workspace](/help/settings/).
 

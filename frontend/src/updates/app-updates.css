@@ -1,0 +1,63 @@
+.app-update-workspace {
+  display: contents;
+}
+.app-update-notice {
+  position: fixed;
+  z-index: 130;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  width: min(440px, calc(100vw - 40px));
+  max-height: calc(100dvh - 40px);
+  overflow: auto;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+.app-update-copy p,
+.app-update-progress p {
+  margin: 10px 0 0;
+  line-height: 1.5;
+}
+.app-update-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+.app-update-actions button {
+  min-height: 44px;
+}
+.app-update-overlay {
+  position: fixed;
+  z-index: 150;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: #15251bd9;
+}
+.app-update-progress {
+  width: min(420px, 100%);
+  padding: 24px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+@media (max-width: 600px) {
+  .app-update-notice {
+    right: max(12px, env(safe-area-inset-right));
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    width: calc(100vw - 24px);
+    padding: 16px;
+  }
+  .app-update-actions button {
+    flex: 1;
+    justify-content: center;
+  }
+}

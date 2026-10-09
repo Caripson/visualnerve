@@ -146,6 +146,12 @@ it('activates retirement only after the new public assets have installed and pre
   expect(await (await development.request('/app/'))?.text()).toBe('Old cached editor shell');
   await development.install();
   expect(development.skipWaiting).not.toHaveBeenCalled();
+  const isolated = worker('app');
+  await isolated.install();
+  expect(isolated.cachePut).toHaveBeenCalledOnce();
+  // Retiring the isolated /app alias must not replace a user's open workspace
+  // worker until that client has explicitly approved the new app release.
+  expect(isolated.skipWaiting).not.toHaveBeenCalled();
 });
 
 it('CloudFront retirement uses 308 on the public site and 404 on the isolated app, rejects writes and leaves neighboring routes untouched', () => {

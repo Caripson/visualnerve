@@ -1,6 +1,24 @@
 import type { Catalog } from '../types';
 
 const catalog = {
+  'appUpdate.title': 'Hay una actualización lista',
+  'appUpdate.hint':
+    'Hay nuevas correcciones y funciones disponibles. Actualiza cuando te convenga; tu espacio de trabajo permanece en este navegador.',
+  'appUpdate.apply': 'Actualizar ahora',
+  'appUpdate.later': 'Más tarde',
+  'appUpdate.applying': 'Guardando y actualizando…',
+  'appUpdate.failed':
+    'No se pudo aplicar la actualización. Tu espacio de trabajo sigue abierto. {detail}',
+  'appUpdate.finishTask':
+    'Finaliza o cancela el diálogo, la importación o la exportación actual antes de actualizar.',
+  'appUpdate.waitForRun': 'Detén o finaliza las simulaciones activas antes de actualizar.',
+  'appUpdate.unlockAgain':
+    'Tras recargar, desbloquea tu espacio de trabajo con tu contraseña. No necesitas una copia de seguridad ni volver a importar.',
+  'appUpdate.changedElsewhere':
+    'Otra pestaña instaló una actualización. Recarga esta pestaña cuando estés listo.',
+  'appUpdate.savedWork':
+    'Se conservan los diagramas guardados, los datos de origen, el historial, los resultados de simulación y la configuración.',
+  'appUpdate.retry': 'Reintentar actualización',
   'app.closePanel': 'Cerrar panel',
   'app.closeProperties': 'Cerrar propiedades',
   'app.conflictFallback': 'Otra pestaña ha cambiado este proyecto.',

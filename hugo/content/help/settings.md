@@ -125,6 +125,27 @@ Rotation protects the current saved workspace with a new key. It cannot recall o
 
 After storage acceptance and a completed first visit, app files are cached for offline use. Diagrams remain in IndexedDB. App updates replace application files without intentionally resetting your diagrams.
 
+### Apply an app update when you are ready
+
+The app checks for new application files in the background every 15 minutes while open, and when you reconnect, return to the tab or focus the window. You can see **An update is ready** without first reloading the page. A check requests the app's own `sw.js` on the same origin; it does not upload diagrams, send analytics or require the workspace to be unlocked. Offline work continues when no connection or update is available.
+
+![Desktop workspace showing the update notice with Later and Update now controls.](/help/images/app-update.webp "A prepared update appears beside your current work. Later keeps this tab running; Update now starts a controlled restart after local saves finish.")
+
+1. Choose **Later** to keep working with the currently loaded app code. Nothing reloads automatically.
+2. Before choosing **Update now**, finish or cancel any open dialog, import or export. Let active simulations finish, or choose **Stop** to save their partial results. A paused simulation still keeps its execution state in memory, so pause alone does not make it safe to restart; stop that run too. This prevents a restart from interrupting work that is still in progress.
+3. Choose **Update now**. The app waits for pending local saves and verifies that completed or stopped simulation results have been saved before activating the prepared update and reloading this tab. If a save fails or a task still needs your attention, it explains the problem instead of forcing the update. Resolve it, then choose **Retry update**; failed simulation archive writes are retried, and activation remains blocked if they still cannot be saved.
+4. After the reload, unlock with your workspace password. Your saved diagrams, imported source data, history, simulation results and settings remain in IndexedDB. The password and recovery key do not change. Grant an agent fresh API/MCP access if you want to reconnect it.
+
+Retrying a failed autosave keeps the normal version checks: if another tab changed the diagram, resolve that conflict before updating; the retry does not overwrite its changes.
+
+![Phone workspace showing the same update notice and two touch-friendly choices.](/help/images/app-update-mobile.webp "On a phone, the update notice keeps Later and Update now within reach. You choose when to restart; discovering an update does not interrupt your diagram.")
+
+Another tab is not forcibly reloaded. If it reports that another tab installed an update, finish its current work before reloading it. Saved work stays in the same browser profile and origin throughout an ordinary update.
+
+**You do not need to clear the app cache, export and reimport a backup, or reset browser data to install an ordinary update.** Those actions are separate storage and recovery tools. Keep independent backups for browser data loss, device changes and other recovery needs.
+
+An already open tab running a version from before the update notice existed cannot show this new notice. To load the first release that includes it, finish and save your work, close all app tabs and reopen the app online if a normal reload still shows the older version. Keep browser data intact; do not delete IndexedDB or use backup restore as an update procedure.
+
 On the isolated app, initial offline setup includes the editor, Help pages and screenshots, API reference, license inventory and primary project/runtime notices. Other individual dependency notice files are cached when opened online; an unopened notice may require a connection. Voice runtime and model downloads retain their separate, explicit audio controls.
 
 Browser clearing, profile reset or browser removal can erase local work. Private/incognito data may disappear when its session ends. Export a backup to keep a copy independent of those browser records. Offline app caches and downloaded voices are separate from the diagram database and are not replacements for a backup.

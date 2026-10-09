@@ -156,11 +156,28 @@ test('isolated CSP permits real CSV grouping and encrypted source persistence, i
     expect(workers.some((url) => /\/editor\/assets\/worker-/.test(url))).toBe(true);
     await cleanCsp(page);
 
+    // Initial installation precaches the complete app. An activated registration
+    // alone can precede clients.claim(); do not reload into that uncontrolled gap.
     await expect
-      .poll(() =>
-        page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.active?.state),
+      .poll(
+        () =>
+          page.evaluate(async () => {
+            const registration = await navigator.serviceWorker.getRegistration();
+            const controller = navigator.serviceWorker.controller;
+            return {
+              installing: registration?.installing?.state ?? null,
+              waiting: registration?.waiting?.state ?? null,
+              active: registration?.active?.state ?? null,
+              controller: controller?.state ?? null,
+              controlledByActive: !!controller && controller === registration?.active,
+            };
+          }),
+        {
+          timeout: 30000,
+          message: 'The complete offline app must activate and claim this page before reload.',
+        },
       )
-      .toBe('activated');
+      .toMatchObject({ active: 'activated', controller: 'activated', controlledByActive: true });
     await page.reload();
     await unlock(page, name);
     await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);

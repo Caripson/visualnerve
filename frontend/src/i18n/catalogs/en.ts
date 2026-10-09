@@ -1,4 +1,20 @@
 const catalog = {
+  'appUpdate.title': 'An update is ready',
+  'appUpdate.hint':
+    'New fixes and features are ready. Update when it suits you; your workspace stays in this browser.',
+  'appUpdate.apply': 'Update now',
+  'appUpdate.later': 'Later',
+  'appUpdate.applying': 'Saving and updating…',
+  'appUpdate.failed': 'The update could not be applied. Your workspace is still open. {detail}',
+  'appUpdate.finishTask': 'Finish or cancel the current dialog, import or export before updating.',
+  'appUpdate.waitForRun': 'Stop or finish active simulations before updating.',
+  'appUpdate.unlockAgain':
+    'After the reload, unlock your workspace with your password. No backup or reimport is needed.',
+  'appUpdate.changedElsewhere':
+    'Another tab installed an update. Reload this tab when you are ready.',
+  'appUpdate.savedWork':
+    'Saved diagrams, source data, history, simulation results and settings are retained.',
+  'appUpdate.retry': 'Retry update',
   'app.closePanel': 'Close panel',
   'app.closeProperties': 'Close properties',
   'app.conflictFallback': 'Another tab changed this project.',

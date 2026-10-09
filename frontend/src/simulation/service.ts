@@ -3,6 +3,7 @@ import { asWorkspaceStorage } from '../storage/adapter';
 import { workspaceStorage } from '../storage/runtime';
 import type { WorkspaceStorage, WorkspaceOperation } from '../storage/contracts';
 import { StorageError } from '../model/validation';
+import { AppUpdateBlockedError } from '../updates/errors';
 import { SimulationClient } from './client';
 import { SimulationRunStore, simulationRetentionLimits } from './run-store';
 import { assertSimulationModel, resolveScenario } from './schema';
@@ -44,6 +45,7 @@ interface LiveRun {
   operation: WorkspaceOperation;
   release?: () => void;
   replayReject?: (error: Error) => void;
+  unsavedArchive?: { run: SimulationRunInfo; state?: SimulationState };
 }
 export const simulationRuntimeLimits = { cachedRuns: 60, activeRuns: 4 };
 
@@ -81,6 +83,32 @@ export class SimulationService {
     };
   };
   version = () => this.revision;
+  /** A restart may retain archives, but cannot silently discard running work. */
+  async settleBeforeAppUpdate() {
+    const busy = () =>
+      this.pendingWorkers > 0 ||
+      [...this.runs.values()].some((live) => !!live.client || !!live.replayReject);
+    if (busy()) {
+      throw new AppUpdateBlockedError('waitForRun');
+    }
+    await Promise.all([...this.runs.values()].map((live) => live.writes));
+    if (busy()) {
+      throw new AppUpdateBlockedError('waitForRun');
+    }
+    // The background writer retains failures for the UI instead of rejecting
+    // its queue. Retry any retained terminal archive; a second failure must
+    // reject this preflight, preserving the RAM-only result in the open tab.
+    let retried = false;
+    try {
+      for (const [id, live] of this.runs)
+        if (live.unsavedArchive) {
+          await this.archiveLive(id, live, live.unsavedArchive);
+          retried = true;
+        }
+    } finally {
+      if (retried) this.emit();
+    }
+  }
   private emit() {
     this.revision++;
     for (const listener of this.listeners) listener();
@@ -395,37 +423,10 @@ export class SimulationService {
       live.view = { run, state: update.state };
     }
     if (['completed', 'stopped', 'failed'].includes(run.status)) {
+      const archive = { run, state: live.view.state };
+      live.unsavedArchive = archive;
       live.writes = live.writes
-        .then(async () => {
-          await live.operation.check();
-          if (this.runs.get(id) !== live)
-            throw new StorageError(409, 'Simulation service was closed.');
-          await live.operation.storage.atomic(
-            'rw',
-            ['settings', 'diagrams', 'simulationRuns', 'simulationCheckpoints'],
-            async (scope) => {
-              if ((await scope.settings.get('storage-consent'))?.value !== true)
-                throw new StorageError(
-                  403,
-                  'Local storage consent was revoked before the result could be saved.',
-                );
-              if (!(await scope.diagrams.get(run.diagramId)))
-                throw new StorageError(
-                  404,
-                  'Simulation document was deleted before the result could be saved.',
-                );
-              if (
-                live.origin === 'api' &&
-                (await scope.settings.get('mcp-access'))?.value !== 'write'
-              )
-                throw new StorageError(403, 'Simulation execution requires MCP write access.');
-              const store = new SimulationRunStore(scope);
-              await store.put(run);
-              if (live.view.state)
-                await store.putCheckpoint(id, live.view.state.timeSeconds, live.view.state);
-            },
-          );
-        })
+        .then(() => this.archiveLive(id, live, archive))
         .catch((error) => {
           if (this.runs.get(id) !== live || live.operation.signal.aborted) return;
           const message = `Result could not be saved: ${(error as Error).message}`;
@@ -443,6 +444,41 @@ export class SimulationService {
           this.emit();
         });
     } else this.emit();
+  }
+  private async archiveLive(
+    id: string,
+    live: LiveRun,
+    archive: NonNullable<LiveRun['unsavedArchive']>,
+  ) {
+    await live.operation.check();
+    if (this.runs.get(id) !== live) throw new StorageError(409, 'Simulation service was closed.');
+    await live.operation.storage.atomic(
+      'rw',
+      ['settings', 'diagrams', 'simulationRuns', 'simulationCheckpoints'],
+      async (scope) => {
+        if ((await scope.settings.get('storage-consent'))?.value !== true)
+          throw new StorageError(
+            403,
+            'Local storage consent was revoked before the result could be saved.',
+          );
+        if (!(await scope.diagrams.get(archive.run.diagramId)))
+          throw new StorageError(
+            404,
+            'Simulation document was deleted before the result could be saved.',
+          );
+        if (live.origin === 'api' && (await scope.settings.get('mcp-access'))?.value !== 'write')
+          throw new StorageError(403, 'Simulation execution requires MCP write access.');
+        const store = new SimulationRunStore(scope);
+        await store.put(archive.run);
+        if (archive.state) await store.putCheckpoint(id, archive.state.timeSeconds, archive.state);
+      },
+    );
+    await live.operation.check();
+    if (this.runs.get(id) !== live) throw new StorageError(409, 'Simulation service was closed.');
+    if (live.unsavedArchive === archive) {
+      live.unsavedArchive = undefined;
+      live.view = { run: archive.run, ...(archive.state ? { state: archive.state } : {}) };
+    }
   }
   private prune(keep?: string) {
     const completed = [...this.runs].filter(([, live]) => !live.client && !live.replayClient);

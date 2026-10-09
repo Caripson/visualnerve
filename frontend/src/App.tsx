@@ -2,6 +2,7 @@ import { useI18n } from './i18n';
 import { PresentationFeature } from './presentation/PresentationFeature';
 import { SimulationFeature } from './simulation/SimulationFeature';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { appUpdates } from './updates/runtime';
 import { ReactFlowProvider } from '@xyflow/react';
 import { ArrowUpRight, GitBranch, Plus, X, Menu, Database, Code2 } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
@@ -526,7 +527,10 @@ export function App() {
   }, []);
   useEffect(() => {
     if (acknowledged && import.meta.env.PROD && 'serviceWorker' in navigator)
-      void navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch(() => {});
+      void navigator.serviceWorker
+        .register('/sw.js', { updateViaCache: 'none' })
+        .then((registration) => appUpdates?.track(registration))
+        .catch(() => {});
   }, [acknowledged]);
   useEffect(() => {
     if (ready) return applyAppearance(theme);

@@ -6,17 +6,20 @@ import { vaultSession, workspaceStorage } from './storage/runtime';
 import { WorkspaceLoader } from './security/WorkspaceLoader';
 import { openWorkspaceSurface } from './security/open-workspace';
 import { I18nProvider } from './i18n';
+import { AppUpdateBoundary } from './updates/AppUpdateBoundary';
 const loadWorkspace = () =>
   import('./security/WorkspaceSurface').then((module) => ({ default: module.WorkspaceSurface }));
 const openWorkspace = () => openWorkspaceSurface(workspaceStorage);
 createRoot(document.getElementById('visual-nerve')!).render(
   <I18nProvider>
-    {vaultSession ? (
-      <VaultGate session={vaultSession} openWorkspace={openWorkspace}>
-        <WorkspaceLoader session={vaultSession} load={loadWorkspace} />
-      </VaultGate>
-    ) : (
-      <WorkspaceLoader load={loadWorkspace} />
-    )}
+    <AppUpdateBoundary>
+      {vaultSession ? (
+        <VaultGate session={vaultSession} openWorkspace={openWorkspace}>
+          <WorkspaceLoader session={vaultSession} load={loadWorkspace} />
+        </VaultGate>
+      ) : (
+        <WorkspaceLoader load={loadWorkspace} />
+      )}
+    </AppUpdateBoundary>
   </I18nProvider>,
 );

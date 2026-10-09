@@ -38,6 +38,8 @@ The password and recovery key are used in the browser. There is no server passwo
 
 With **Automatic session lock** enabled, the default session locks after 15 minutes without your interaction or after 8 hours from unlock, whichever comes first. Agent requests and background work do not extend it. Turning it off keeps an open tab unlocked until you lock it; reloading or closing the app still requires your password. You can change this choice and the time limits in [Settings](/help/settings/#protect-the-isolated-workspace). Save pending edits before leaving, and grant an agent fresh access through Settings after every unlock if you want to reconnect it.
 
+When **An update is ready** appears, choose **Later** to continue or **Update now** after finishing open dialogs, imports and exports. Let active simulations finish or choose **Stop** to save their partial results; paused runs also need to be stopped before restarting. The app finishes pending saves and reloads this tab; unlock again with the same password. Saved work stays in this browser, without a backup reimport or cache reset. [How app updates work](/help/settings/#apply-an-app-update-when-you-are-ready).
+
 ![New diagram dialog showing the template choices and a name field.](/help/images/new-diagram.webp "Choose a starting structure and give this particular diagram a meaningful name. Templates create editable objects, rather than a fixed image.")
 
 ## Choose a template for the question

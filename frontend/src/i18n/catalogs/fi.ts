@@ -1,6 +1,23 @@
 import type { Catalog } from '../types';
 
 const catalog = {
+  'appUpdate.title': 'Päivitys on valmis',
+  'appUpdate.hint':
+    'Uusia korjauksia ja toimintoja on saatavilla. Päivitä sinulle sopivana hetkenä; työtilasi säilyy tässä selaimessa.',
+  'appUpdate.apply': 'Päivitä nyt',
+  'appUpdate.later': 'Myöhemmin',
+  'appUpdate.applying': 'Tallennetaan ja päivitetään…',
+  'appUpdate.failed': 'Päivitystä ei voitu tehdä. Työtilasi on edelleen avoinna. {detail}',
+  'appUpdate.finishTask':
+    'Viimeistele tai peru nykyinen valintaikkuna, tuonti tai vienti ennen päivittämistä.',
+  'appUpdate.waitForRun': 'Pysäytä tai suorita aktiiviset simuloinnit loppuun ennen päivittämistä.',
+  'appUpdate.unlockAgain':
+    'Avaa työtilan lukitus salasanallasi uudelleenlatauksen jälkeen. Varmuuskopiota tai uutta tuontia ei tarvita.',
+  'appUpdate.changedElsewhere':
+    'Toinen välilehti asensi päivityksen. Lataa tämä välilehti uudelleen, kun olet valmis.',
+  'appUpdate.savedWork':
+    'Tallennetut kaaviot, lähdetiedot, historia, simulointitulokset ja asetukset säilyvät.',
+  'appUpdate.retry': 'Yritä päivitystä uudelleen',
   'app.closePanel': 'Sulje paneeli',
   'app.closeProperties': 'Sulje ominaisuudet',
   'app.conflictFallback': 'Toinen välilehti muutti tätä projektia.',

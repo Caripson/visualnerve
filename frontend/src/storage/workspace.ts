@@ -448,6 +448,26 @@ export class Workspace {
       throw new StorageError(500, state.message || 'Pending local changes could not be saved.');
     }
   }
+  /** Retry failed autosaves with their original versions; never overwrite a conflict. */
+  async retryFailedSaves() {
+    await this.withOperation(async (job) => {
+      await this.requireStorageConsent(job.operation.storage);
+      await this.queue;
+      await job.check();
+      const state = useEditor.getState();
+      if (state.status === 'conflict') throw new StorageError(409, state.message);
+      for (const [id, save] of this.pending) {
+        if (this.queuedSaves.has(save)) continue;
+        const operation = this.repo.db.captureOperation();
+        void operation.catch(() => undefined);
+        const retry = { ...save, cancelled: false, operation };
+        this.pending.set(id, retry);
+        this.queuedSaves.add(retry);
+        this.queue = this.queue.then(() => this.persist(retry));
+      }
+      await this.settled();
+    });
+  }
   async refresh(existing?: WorkspaceJob) {
     if (this.stopped) return;
     return this.withOperation((job) => this.refreshCaptured(job), existing);

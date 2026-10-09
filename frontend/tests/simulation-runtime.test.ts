@@ -72,6 +72,35 @@ afterEach(async () => {
 });
 const latest = () => MockWorker.instances[MockWorker.instances.length - 1];
 describe('Process Simulator shared runtime', () => {
+  it('requires even a paused in-memory run to stop and archive before an app update', async () => {
+    const run = await service.start(diagramId, model);
+    latest().engine!.advance(1);
+    await expect(service.settleBeforeAppUpdate()).rejects.toMatchObject({ kind: 'waitForRun' });
+    await service.control(run.id, 'pause');
+    await expect(service.settleBeforeAppUpdate()).rejects.toMatchObject({ kind: 'waitForRun' });
+    await service.control(run.id, 'stop');
+    await service.settleBeforeAppUpdate();
+    const saved = await new SimulationRunStore(db).get(run.id);
+    expect(saved.status).toBe('stopped');
+    expect(saved.result?.timeSeconds).toBe(1);
+    expect(await new SimulationRunStore(db).checkpoints(run.id)).toHaveLength(1);
+  });
+  it('blocks an update on failed result persistence and retries the intact archive after storage recovers', async () => {
+    const run = await service.start(diagramId, model);
+    const write = vi
+      .spyOn(SimulationRunStore.prototype, 'put')
+      .mockRejectedValue(new Error('Disk full.'));
+    latest().finish();
+    await vi.waitFor(() => expect(service.current(diagramId)?.run.error).toContain('Disk full.'));
+    await expect(service.settleBeforeAppUpdate()).rejects.toThrow('Disk full.');
+    expect(service.current(diagramId)?.run.result?.metrics.completed).toBe(1);
+    write.mockRestore();
+    await service.settleBeforeAppUpdate();
+    const saved = await new SimulationRunStore(db).get(run.id);
+    expect(saved.status).toBe('completed');
+    expect(saved.result?.metrics.completed).toBe(1);
+    expect(service.current(diagramId)?.run.error).toBeUndefined();
+  });
   it('invalid effective scenario/run options are rejected before storing or starting a worker', async () => {
     await expect(service.start(diagramId, model, { scenarioId: 'missing' })).rejects.toMatchObject({
       status: 422,

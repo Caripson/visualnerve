@@ -1,6 +1,24 @@
 import type { Catalog } from '../types';
 
 const catalog = {
+  'appUpdate.title': 'Ein Update ist bereit',
+  'appUpdate.hint':
+    'Neue Fehlerbehebungen und Funktionen sind bereit. Aktualisieren Sie, wenn es Ihnen passt; Ihr Arbeitsbereich bleibt in diesem Browser.',
+  'appUpdate.apply': 'Jetzt aktualisieren',
+  'appUpdate.later': 'Später',
+  'appUpdate.applying': 'Wird gespeichert und aktualisiert…',
+  'appUpdate.failed':
+    'Das Update konnte nicht angewendet werden. Ihr Arbeitsbereich ist weiterhin geöffnet. {detail}',
+  'appUpdate.finishTask':
+    'Beenden oder brechen Sie den aktuellen Dialog, Import oder Export ab, bevor Sie aktualisieren.',
+  'appUpdate.waitForRun': 'Stoppen oder beenden Sie aktive Simulationen, bevor Sie aktualisieren.',
+  'appUpdate.unlockAgain':
+    'Entsperren Sie Ihren Arbeitsbereich nach dem Neuladen mit Ihrem Passwort. Eine Sicherung oder ein erneuter Import ist nicht nötig.',
+  'appUpdate.changedElsewhere':
+    'Ein anderer Tab hat ein Update installiert. Laden Sie diesen Tab neu, wenn Sie bereit sind.',
+  'appUpdate.savedWork':
+    'Gespeicherte Diagramme, Quelldaten, Verlauf, Simulationsergebnisse und Einstellungen bleiben erhalten.',
+  'appUpdate.retry': 'Update erneut versuchen',
   'app.closePanel': 'Panel schließen',
   'app.closeProperties': 'Eigenschaften schließen',
   'app.conflictFallback': 'Ein anderer Tab hat dieses Projekt geändert.',
