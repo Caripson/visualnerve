@@ -293,6 +293,12 @@ export async function readEncryptedStartupDiagnostics(page: Page, label: string)
         );
       }),
     ]);
+  } catch (error) {
+    return {
+      label,
+      unavailable: 'The renderer could not provide its diagnostic snapshot.',
+      errorName: error instanceof Error ? error.name : 'unknown',
+    };
   } finally {
     clearTimeout(timer);
   }
