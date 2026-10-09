@@ -34,6 +34,8 @@ The corresponding REST route is `GET /api/v1/workspace/security`. It returns saf
 
 Static bridge `/api/v1/health` reports connectivity, not the browser's lock state. The security-status route still needs a browser connection even though it can safely report a locked state.
 
+The health response's `connected` count includes restricted control connections; it does not confirm permission to read diagrams. After choosing a fresh Settings grant, wait for its encrypted preference to finish saving and check that an allowed read, such as `GET /diagrams`, succeeds before sending writes. During this transition a read can briefly return `403` asking for a fresh grant or `503` while reconnecting. Repeat the safe read to check readiness; do not repeat a write as a connection test.
+
 A connection that was already authorized and open can remain as a **restricted control connection** when the workspace locks. It exposes safe status and returns `423 WORKSPACE_LOCKED` for content. It does not reconnect after a network loss, and a fresh locked page never connects automatically. Explicit Off closes it. After human unlock, the retained connection still has no content or lock permission until a fresh Settings grant.
 
 An authorized tool with **Read + write** can explicitly lock the encrypted workspace through the same request tool:

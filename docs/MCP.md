@@ -46,6 +46,8 @@ Use a current bridge and refreshed app tab. Bridge version 0.5.0 reports `operat
 
 Read bridge software health through direct HTTP `GET /api/v1/health` (`/health` relative to the REST base). MCP `visual_nerve_request` with `path:"/health"` instead reads the connected browser's semantic IndexedDB health, without bridge-only tool/capability fields. Their absence in that browser response is not evidence of an outdated bridge.
 
+The bridge's `connected` count includes restricted control connections, so it does not prove content access. After human unlock and a fresh Settings grant, the encrypted preference must finish saving before content authorization returns. Verify an allowed read such as `GET /diagrams` succeeds before sending writes. A brief `403` asking for a fresh grant or `503` during reconnection can occur; wait using that safe read, not a repeated write as a readiness probe.
+
 Before a write, reserve an opaque ID:
 
 ```json

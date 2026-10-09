@@ -69,14 +69,38 @@ test('encrypted browser operations preserve saved work and revoke receipts at th
     await expect(
       page.getByRole('heading', { name: input.name, exact: true, level: 1 }),
     ).toBeVisible();
+    const diagramPath = `/api/v1/diagrams/${graph.diagram.id}`;
+    const freshGrantError = 'Choose a fresh MCP access grant in browser Settings.';
+    const beforeFreshGrant = await api.get(diagramPath);
+    expect(beforeFreshGrant.status()).toBe(403);
+    expect(await beforeFreshGrant.json()).toEqual({ error: freshGrantError });
     await settings();
     await expect(page.getByLabel('MCP access', { exact: true })).toHaveValue('off');
     await page.getByLabel('MCP access', { exact: true }).selectOption('write');
     await page.getByRole('button', { name: 'Done', exact: true }).click();
+    // Transport health also counts the retained control-only socket. Wait for
+    // content authority after the encrypted grant commits, using only safe reads.
     await expect
-      .poll(async () => (await (await api.get('/api/v1/health')).json()).connected)
-      .toBe(1);
-    const restored = await (await api.get(`/api/v1/diagrams/${graph.diagram.id}`)).json();
+      .poll(async () => {
+        const response = await api.get(diagramPath);
+        const body = await response.json();
+        if (response.status() === 403) {
+          expect(body).toEqual({ error: freshGrantError });
+        } else if (response.status() === 503) {
+          expect([
+            'browser disconnected',
+            'No active Visual Nerve browser session. Open https://app.visualnerve.com/, unlock the workspace and enable MCP access in Settings.',
+          ]).toContain(body.error);
+          expect(body).toEqual({ error: body.error });
+        } else {
+          expect(response.status(), JSON.stringify(body)).toBe(200);
+        }
+        return response.status();
+      })
+      .toBe(200);
+    const restoredResponse = await api.get(diagramPath);
+    expect(restoredResponse.status(), await restoredResponse.text()).toBe(200);
+    const restored = await restoredResponse.json();
     expect(restored.nodes).toHaveLength(1);
     expect(restored.nodes[0].title).toBe(title);
     const stale = await api.post('/api/v1/spatial-diagrams', {
