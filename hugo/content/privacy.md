@@ -48,6 +48,8 @@ Before the editor opens, you must explicitly acknowledge and accept local browse
 
 Acceptance is kept in this browser profile, excluded from backups and removed when all local workspace data is deleted. Offline app caching starts after acceptance. The browser may independently cache ordinary downloaded HTTP files.
 
+The isolated app prepares editor files, Help, API reference and primary notices for offline use. Other individual dependency notices are downloaded and cached when opened online. These are public application files; these requests contain no diagram or narration content.
+
 This workspace acceptance does not grant permission for Google Analytics. Analytics has a separate optional choice on public information pages.
 
 ## A different browser or domain has different data

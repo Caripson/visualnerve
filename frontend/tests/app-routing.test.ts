@@ -47,6 +47,10 @@ function worker(editor = 'editor workspace') {
       new URL('../../scripts/service-worker-runtime.js', import.meta.url),
       join(dirname(script), 'service-worker-runtime.js'),
     );
+    copyFileSync(
+      new URL('../../scripts/offline-asset-plan.mjs', import.meta.url),
+      join(dirname(script), 'offline-asset-plan.mjs'),
+    );
     execFileSync(process.execPath, [script], { stdio: 'pipe' });
     const source = readFileSync(join(directory, 'public/sw.js'), 'utf8');
     const handlers = new Map<string, (event: any) => void>();

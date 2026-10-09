@@ -105,6 +105,8 @@ Rotation protects the current saved workspace with a new key. It cannot recall o
 
 After storage acceptance and a completed first visit, app files are cached for offline use. Diagrams remain in IndexedDB. App updates replace application files without intentionally resetting your diagrams.
 
+On the isolated app, initial offline setup includes the editor, Help pages and screenshots, API reference, license inventory and primary project/runtime notices. Other individual dependency notice files are cached when opened online; an unopened notice may require a connection. Voice runtime and model downloads retain their separate, explicit audio controls.
+
 Browser clearing, profile reset or browser removal can erase local work. Private/incognito data may disappear when its session ends. Export a backup to keep a copy independent of those browser records. Offline app caches and downloaded voices are separate from the diagram database and are not replacements for a backup.
 
 A reminder appears after ten local diagrams when a complete export has not been recorded. **Dismiss backup reminder** hides it in that workspace; it does not export anything.

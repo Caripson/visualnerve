@@ -7,6 +7,7 @@ import {
 } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { OfflineAssetPlan } from "./offline-asset-plan.mjs";
 
 function files(directory, prefix) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((file) =>
@@ -22,13 +23,13 @@ export function buildServiceWorker(
   if (!["site", "app"].includes(surface))
     throw new Error("Unknown application surface.");
   const editorAssets = files(resolve(publicDir, "editor"), "/editor");
-  const lazyAssets = editorAssets.filter((path) =>
+  const speechAssets = editorAssets.filter((path) =>
     path.startsWith("/editor/speech/"),
   );
   const route = (path) =>
     path.endsWith("/index.html") ? path.slice(0, -10) : path;
-  const assets = requestedAssets
-    ? [...new Set(requestedAssets.filter((path) => !lazyAssets.includes(path)))]
+  const managedAssets = requestedAssets
+    ? requestedAssets
     : [
         ...new Set([
           "/",
@@ -47,24 +48,23 @@ export function buildServiceWorker(
             .map(route),
           ...files(resolve(publicDir, "site"), "/site"),
           ...files(resolve(publicDir, "help"), "/help").map(route),
-          ...editorAssets.filter((path) => !lazyAssets.includes(path)),
+          ...editorAssets,
         ]),
       ];
-  for (const path of [...assets, ...lazyAssets])
-    if (
-      typeof path !== "string" ||
-      !path.startsWith("/") ||
-      path.startsWith("//") ||
-      path.includes("..") ||
-      /[?#\\]/.test(path)
-    )
-      throw new Error("Offline assets must be exact local paths.");
+  const plan = new OfflineAssetPlan({
+    surface,
+    assets: managedAssets,
+    lazyAssets: speechAssets,
+  });
+  const { assets, lazyAssets } = plan;
   const runtime = readFileSync(
     new URL("./service-worker-runtime.js", import.meta.url),
     "utf8",
   );
-  const hash = createHash("sha256").update(runtime);
-  for (const path of [...assets, ...lazyAssets])
+  const hash = createHash("sha256")
+    .update(runtime)
+    .update(JSON.stringify({ assets, lazyAssets }));
+  for (const path of plan.inventory)
     hash
       .update(path)
       .update(

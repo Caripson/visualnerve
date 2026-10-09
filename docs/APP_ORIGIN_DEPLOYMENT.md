@@ -58,6 +58,14 @@ website service worker. Product/setup links in documentation explicitly open the
 separate www origin. License text may mention unused packages; that is not runtime
 code or an analytics request.
 
+The isolated offline asset plan precaches the editor, Help including its images,
+API reference, license inventory and primary project/runtime notices. Other
+individual dependency notices remain in the audited distribution and are cached
+on a successful online visit. An unopened notice can require a connection. Both
+initial and demand-cached assets contribute to the shell revision hash and use
+the same bounded download, cancellation and Clear app cache ownership rules.
+The ordinary website's offline plan remains unchanged.
+
 Every generated HTML shell declares:
 
 ```html

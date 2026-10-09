@@ -2,10 +2,12 @@
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { expect, it, vi } from 'vitest';
+import { OfflineAssetPlan } from '../../scripts/offline-asset-plan.mjs';
 
 const origin = 'https://app.visualnerve.com';
 const shell = 'visual-nerve-app-shell-012345abcdef';
 const lazyPath = '/editor/speech/piper_phonemize.wasm';
+const noticePath = '/licenses/example-LICENSE';
 type WorkerEvent = {
   request?: Request;
   respondWith?(value: Promise<Response>): void;
@@ -23,7 +25,11 @@ function deferred<T>() {
 }
 
 /** Execute the generated worker's actual runtime using native Request/Response streams. */
-function worker(fetcher: typeof fetch, assets: readonly string[] = []) {
+function worker(
+  fetcher: typeof fetch,
+  assets: readonly string[] = [],
+  lazyAssets: readonly string[] = [lazyPath],
+) {
   const listeners = new Map<string, (event: WorkerEvent) => void>();
   const entries = new Map<string, Map<string, Response>>();
   const put = vi.fn(async (name: string, path: string, response: Response) => {
@@ -38,7 +44,7 @@ function worker(fetcher: typeof fetch, assets: readonly string[] = []) {
   )
     .replace('__CACHE_NAME__', JSON.stringify(shell))
     .replace('__ASSETS__', JSON.stringify(assets))
-    .replace('__LAZY_ASSETS__', JSON.stringify([lazyPath]));
+    .replace('__LAZY_ASSETS__', JSON.stringify(lazyAssets));
   runInNewContext(source, {
     self: {
       location: { origin },
@@ -77,11 +83,11 @@ function worker(fetcher: typeof fetch, assets: readonly string[] = []) {
       });
       return settled;
     },
-    request: () => {
+    request: (path = lazyPath) => {
       let response!: Promise<Response>;
       let settled!: Promise<unknown>;
       listeners.get('fetch')!({
-        request: new Request(origin + lazyPath),
+        request: new Request(origin + path),
         respondWith: (value) => {
           response = value;
         },
@@ -106,65 +112,124 @@ function worker(fetcher: typeof fetch, assets: readonly string[] = []) {
   };
 }
 
-it('caches a lazy runtime asset even when its delivered response is consumed immediately', async () => {
-  const runtime = worker(async () => new Response('native WASM bytes'));
-  const request = runtime.request();
-  expect(await (await request.response).text()).toBe('native WASM bytes');
-  await request.settled;
-  expect(runtime.put).toHaveBeenCalledTimes(1);
-  expect(await runtime.cached(lazyPath)?.text()).toBe('native WASM bytes');
-});
+it.each([lazyPath, noticePath])(
+  'caches lazy %s even when its delivered response is consumed immediately',
+  async (path) => {
+    const runtime = worker(async () => new Response('native static bytes'), [], [path]);
+    const request = runtime.request(path);
+    expect(await (await request.response).text()).toBe('native static bytes');
+    await request.settled;
+    expect(runtime.put).toHaveBeenCalledTimes(1);
+    expect(await runtime.cached(path)?.text()).toBe('native static bytes');
+  },
+);
 
-it('keeps cache clearing fenced until an already-started native body/cache write has settled', async () => {
-  const release = deferred<void>();
-  const runtime = worker(async () => {
-    const bytes = new TextEncoder().encode('streamed WASM bytes');
-    return new Response(
-      new ReadableStream<Uint8Array>({
-        async start(controller) {
-          await release.promise;
-          controller.enqueue(bytes);
-          controller.close();
-        },
-      }),
+it.each([lazyPath, noticePath])(
+  'keeps Clear fenced until an already-started native %s body/cache write has settled',
+  async (path) => {
+    const release = deferred<void>();
+    const runtime = worker(
+      async () => {
+        const bytes = new TextEncoder().encode('streamed WASM bytes');
+        return new Response(
+          new ReadableStream<Uint8Array>({
+            async start(controller) {
+              await release.promise;
+              controller.enqueue(bytes);
+              controller.close();
+            },
+          }),
+        );
+      },
+      [],
+      [path],
     );
+    const request = runtime.request(path);
+    const reading = request.response.then((response) => response.text());
+    await vi.waitFor(() => expect(runtime.put).toHaveBeenCalledTimes(1));
+    const clearing = runtime.clear();
+    expect(clearing.acknowledged).not.toHaveBeenCalled();
+    release.resolve();
+    expect(await reading).toBe('streamed WASM bytes');
+    await request.settled;
+    await clearing.settled;
+    expect(clearing.acknowledged).toHaveBeenCalledWith({ type: 'app-cache-ready', begin: true });
+    expect(await runtime.cached(path)?.text()).toBe('streamed WASM bytes');
+    // The page can now delete the old cache: no late native put can repopulate it.
+  },
+);
+
+it.each([lazyPath, noticePath])(
+  'does not publish or cache late %s after Clear revokes its generation',
+  async (path) => {
+    const fetched = deferred<Response>();
+    const started = deferred<void>();
+    let signal: AbortSignal | null | undefined;
+    const runtime = worker(
+      async (_request, options) => {
+        signal = options?.signal;
+        started.resolve();
+        return fetched.promise;
+      },
+      [],
+      [path],
+    );
+    const request = runtime.request(path);
+    const response = request.response.catch((error: unknown) => error);
+    await started.promise;
+    const clearing = runtime.clear();
+    expect(signal?.aborted).toBe(true);
+    expect(clearing.acknowledged).not.toHaveBeenCalled();
+    fetched.resolve(new Response('stale WASM bytes'));
+    expect(await response).toMatchObject({ name: 'AbortError' });
+    await request.settled;
+    await clearing.settled;
+    expect(runtime.put).not.toHaveBeenCalled();
+    expect(runtime.cached(path)).toBeUndefined();
+    expect(clearing.acknowledged).toHaveBeenCalledWith({ type: 'app-cache-ready', begin: true });
+  },
+);
+
+it('installs the app core before fetching a notice on demand and reuses its native cached response', async () => {
+  const plan = new OfflineAssetPlan({
+    surface: 'app',
+    assets: ['/editor/app.js', '/licenses/inventory.json', noticePath],
+    lazyAssets: [lazyPath],
   });
-  const request = runtime.request();
-  const reading = request.response.then((response) => response.text());
-  await vi.waitFor(() => expect(runtime.put).toHaveBeenCalledTimes(1));
-  const clearing = runtime.clear();
-  expect(clearing.acknowledged).not.toHaveBeenCalled();
-  release.resolve();
-  expect(await reading).toBe('streamed WASM bytes');
-  await request.settled;
-  await clearing.settled;
-  expect(clearing.acknowledged).toHaveBeenCalledWith({ type: 'app-cache-ready', begin: true });
-  expect(await runtime.cached(lazyPath)?.text()).toBe('streamed WASM bytes');
-  // The page can now delete the old cache: no late native put can repopulate it.
+  const fetcher = vi.fn<typeof fetch>(async (request) => {
+    const path = new URL(request instanceof Request ? request.url : String(request), origin)
+      .pathname;
+    return new Response(path === noticePath ? 'License notice' : 'Core file');
+  });
+  const runtime = worker(fetcher, plan.assets, plan.lazyAssets);
+  await runtime.install();
+  expect(fetcher.mock.calls.map(([path]) => path)).toEqual(plan.assets);
+  expect(runtime.cached(noticePath)).toBeUndefined();
+  const first = runtime.request(noticePath);
+  expect(await (await first.response).text()).toBe('License notice');
+  await first.settled;
+  const afterFirst = fetcher.mock.calls.length;
+  const second = runtime.request(noticePath);
+  expect(await (await second.response).text()).toBe('License notice');
+  await second.settled;
+  expect(fetcher).toHaveBeenCalledTimes(afterFirst);
+  expect(runtime.put).toHaveBeenCalledTimes(plan.assets.length + 1);
+  expect(runtime.request('/licenses/unknown-LICENSE').response).toBeUndefined();
 });
 
-it('does not publish or cache a late network response after cache clearing revokes its generation', async () => {
-  const fetched = deferred<Response>();
-  const started = deferred<void>();
-  let signal: AbortSignal | null | undefined;
-  const runtime = worker(async (_request, options) => {
-    signal = options?.signal;
-    started.resolve();
-    return fetched.promise;
-  });
-  const request = runtime.request();
-  const response = request.response.catch((error: unknown) => error);
-  await started.promise;
-  const clearing = runtime.clear();
-  expect(signal?.aborted).toBe(true);
-  expect(clearing.acknowledged).not.toHaveBeenCalled();
-  fetched.resolve(new Response('stale WASM bytes'));
-  expect(await response).toMatchObject({ name: 'AbortError' });
+it('returns a failed lazy notice response without caching it', async () => {
+  const runtime = worker(
+    async () => new Response('Notice unavailable', { status: 404 }),
+    [],
+    [noticePath],
+  );
+  const request = runtime.request(noticePath);
+  const response = await request.response;
+  expect(response.status).toBe(404);
+  expect(await response.text()).toBe('Notice unavailable');
   await request.settled;
-  await clearing.settled;
   expect(runtime.put).not.toHaveBeenCalled();
-  expect(runtime.cached(lazyPath)).toBeUndefined();
-  expect(clearing.acknowledged).toHaveBeenCalledWith({ type: 'app-cache-ready', begin: true });
+  expect(runtime.cached(noticePath)).toBeUndefined();
 });
 
 it('bounds the full install body/cache pipeline to six workers and retains every static asset', async () => {
