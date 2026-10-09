@@ -1,6 +1,31 @@
 import type { Catalog } from '../types';
 
 const catalog = {
+  'dialogs.exportSvgSourceHint':
+    'El texto fuente recortado puede permanecer en el SVG. Revísalo antes de compartirlo.',
+  'simulator.parallel.deleteBlock': 'Eliminar el bloque paralelo y todas sus tareas',
+  'editor.nodes.quickAdd.choice.parallelWork': 'Trabajo paralelo',
+  'editor.nodes.quickAdd.choice.parallelWorkDescription':
+    'Ejecuta dos ramas de trabajo obligatorias y espera a ambas antes de continuar.',
+  'dialogs.exportSvgProgress': 'Preparando exportación vectorial · {percent}%',
+  'dialogs.exportSvgBackgroundHint':
+    'El SVG se prepara en este navegador. Puedes cancelar mientras se ejecuta.',
+  'simulator.parallel.connectExplanation':
+    'Las 2–64 conexiones salientes son obligatorias. Conecta cada rama con el punto de unión y luego este con el siguiente paso.',
+  'simulator.parallel.fork': 'Trabajo paralelo',
+  'simulator.parallel.join': 'Esperar a todos',
+  'simulator.parallel.forkExplanation':
+    'Cada caso crea una tarea por cada rama seleccionada. Todas las tareas comparten el caso original y sus ingresos.',
+  'simulator.parallel.joinExplanation':
+    'Este paso continúa el caso original solo cuando han llegado todas las tareas obligatorias de su bifurcación asociada.',
+  'simulator.parallel.pairedFork': 'Empieza en:',
+  'simulator.parallel.pairedJoin': 'Continúa en:',
+  'simulator.parallel.requiredBranches': 'Ramas obligatorias',
+  'simulator.parallel.failureExplanation':
+    'Si alguna rama falla o se abandona, el caso completo termina una sola vez y las demás tareas se cancelan. Se conservan los costes incurridos.',
+  'simulator.parallel.branchCount': '{count} tareas paralelas',
+  'simulator.parallel.waitingSummary':
+    'Casos en espera: {groups} · Tareas listas: {arrived}/{expected}',
   'integration.bridge.updateRequired':
     'Actualiza el puente local, vuelve a conectar el cliente MCP y actualiza su lista de herramientas. Esta conexión no anuncia las funciones actuales de documentación de la API y escritura segura.',
   'integration.bridge.detectedVersion': 'Versión del puente detectada: {version}',

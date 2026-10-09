@@ -16,6 +16,8 @@ export function simulationTopologySignature(model: SimulationModel): string {
       node.processId ?? null,
       node.type === 'source' ? node.source.particleTypeId : null,
       node.type === 'resource' ? node.resourceId : null,
+      node.type === 'fork' ? [node.fork.joinNodeId, node.fork.branchEdgeIds] : null,
+      node.type === 'join' ? node.join.forkNodeId : null,
       node.type === 'work'
         ? (node.work.resourceRequirements ?? []).map((requirement) => requirement.resourceId).sort()
         : null,

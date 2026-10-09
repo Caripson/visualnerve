@@ -15,11 +15,16 @@ const eventTypes = new Set([
   'QUEUE_LEFT',
   'PROCESS_STARTED',
   'PROCESS_COMPLETED',
+  'PROCESS_CANCELLED',
   'RESOURCE_ACQUIRED',
   'RESOURCE_RELEASED',
   'PARTICLE_ROUTED',
   'PARTICLE_ABANDONED',
   'PARTICLE_FAILED',
+  'PARTICLE_FORKED',
+  'BRANCH_JOINED',
+  'JOIN_COMPLETED',
+  'BRANCH_CANCELLED',
   'CAPACITY_SCALE_UP',
   'CAPACITY_SCALE_DOWN',
   'REVENUE_REALIZED',
@@ -110,7 +115,9 @@ export function assertArchivedState(value: unknown): asserts value is Simulation
     requireValue(
       node.id === key &&
         text(node.name) &&
-        ['source', 'work', 'router', 'resource', 'outcome'].includes(node.type as string) &&
+        ['source', 'work', 'router', 'fork', 'join', 'resource', 'outcome'].includes(
+          node.type as string,
+        ) &&
         ['idle', 'normal', 'busy', 'saturated', 'blocked', 'scaling', 'failed'].includes(
           node.status as string,
         ) &&
@@ -118,6 +125,16 @@ export function assertArchivedState(value: unknown): asserts value is Simulation
         Object.values(node.resourceUsage).every(finite),
     );
     queue(node.queue);
+    if (node.join !== undefined) {
+      fields(node.join, [
+        'waitingGroups',
+        'arrivedBranches',
+        'expectedBranches',
+        'completedGroups',
+        'cancelledGroups',
+      ]);
+      distribution(node.join.wait);
+    }
   });
   values(state.resources, (resource, key) => {
     fields(resource, [
@@ -199,9 +216,17 @@ export function assertArchivedState(value: unknown): asserts value is Simulation
     requireValue(
       text(particle.typeId) &&
         text(particle.nodeId) &&
-        ['queued', 'processing', 'transit', 'completed', 'abandoned', 'failed'].includes(
-          particle.status as string,
-        ),
+        [
+          'queued',
+          'processing',
+          'transit',
+          'waiting',
+          'joined',
+          'cancelled',
+          'completed',
+          'abandoned',
+          'failed',
+        ].includes(particle.status as string),
     );
     for (const field of [
       'queueEnteredAtSeconds',
@@ -214,6 +239,13 @@ export function assertArchivedState(value: unknown): asserts value is Simulation
     ])
       requireValue(particle[field] === undefined || finite(particle[field]));
     requireValue(particle.edgeId === undefined || text(particle.edgeId));
+    for (const field of ['rootParticleId', 'parentParticleId', 'forkGroupId'])
+      requireValue(
+        particle[field] === undefined ||
+          (finite(particle[field]) && Number.isSafeInteger(particle[field]) && particle[field] > 0),
+      );
+    for (const field of ['forkNodeId', 'joinNodeId', 'branchEdgeId'])
+      requireValue(particle[field] === undefined || text(particle[field]));
     list(particle.history, (visit) => {
       fields(visit, ['enteredAtSeconds']);
       requireValue(
@@ -224,9 +256,27 @@ export function assertArchivedState(value: unknown): asserts value is Simulation
   list(state.events, (event) => {
     fields(event, ['sequence', 'timeSeconds']);
     requireValue(eventTypes.has(event.type as string));
-    for (const key of ['nodeId', 'edgeId', 'resourceId', 'particleTypeId'])
+    for (const key of [
+      'nodeId',
+      'edgeId',
+      'resourceId',
+      'particleTypeId',
+      'forkNodeId',
+      'joinNodeId',
+      'branchEdgeId',
+    ])
       requireValue(event[key] === undefined || text(event[key]));
-    for (const key of ['particleId', 'amount', 'capacity', 'previousCapacity'])
+    for (const key of [
+      'particleId',
+      'amount',
+      'capacity',
+      'previousCapacity',
+      'rootParticleId',
+      'parentParticleId',
+      'forkGroupId',
+      'branchCount',
+      'arrivedBranches',
+    ])
       requireValue(event[key] === undefined || finite(event[key]));
   });
   list(state.bottlenecks, (bottleneck) => {
@@ -239,6 +289,24 @@ export function assertArchivedState(value: unknown): asserts value is Simulation
     );
   });
   fields(state.retained, ['activeParticles', 'completedParticles', 'events', 'droppedEvents']);
+  if (state.parallel !== undefined) {
+    fields(state.parallel, [
+      'activeGroups',
+      'activeBranches',
+      'waitingParents',
+      'createdBranches',
+      'joinedBranches',
+      'cancelledBranches',
+      'droppedGroups',
+    ]);
+    list(state.parallel.groups, (group) => {
+      fields(group, ['groupId', 'rootParticleId', 'parentParticleId', 'createdAtSeconds']);
+      requireValue(text(group.forkNodeId) && text(group.joinNodeId));
+      requireValue(Array.isArray(group.branchParticleIds) && group.branchParticleIds.every(finite));
+      for (const field of ['arrivedBranchEdgeIds', 'pendingBranchEdgeIds'])
+        requireValue(Array.isArray(group[field]) && group[field].every(text));
+    });
+  }
   historyJsonBytes(state, 32 * 1024 * 1024);
 }
 

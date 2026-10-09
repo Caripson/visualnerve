@@ -1,6 +1,8 @@
 import { newEdge, newNode, type Graph, type GraphNode, type NodeKind } from '../model/types';
 import { setSimulationModel } from '../simulation/document';
 import type { SimulationNode } from '../simulation/types';
+import { parallelLimits } from '../simulation/parallel-topology';
+import { ParallelConnectedNodes } from './parallel-connected-node';
 
 export type ConnectedNodeType = NodeKind | SimulationNode['type'];
 export interface ConnectedNodeChoice {
@@ -33,6 +35,11 @@ const resource: ConnectedNodeChoice = {
   label: 'Shared resource',
   description: 'Add staff or equipment required by this step.',
 };
+const parallel: ConnectedNodeChoice = {
+  type: 'fork',
+  label: 'Parallel work',
+  description: 'Run two required work branches and wait for both before continuing.',
+};
 
 /** Only authoritative entities may be extended; visual capacity slots never become model nodes. */
 export function connectedNodeChoices(graph: Graph, sourceId: string): ConnectedNodeChoice[] {
@@ -42,6 +49,8 @@ export function connectedNodeChoices(graph: Graph, sourceId: string): ConnectedN
   if (graph.simulation) {
     const semantic = graph.simulation.nodes.find((item) => item.id === sourceId);
     if (!semantic) return [];
+    if (semantic.type === 'fork')
+      return semantic.fork.branchEdgeIds.length < parallelLimits.branches ? [work] : [];
     if (semantic.type === 'resource') return [work];
     if (semantic.type === 'outcome') {
       const incoming = graph.simulation.edges.some((edge) => edge.targetNodeId === sourceId);
@@ -54,7 +63,11 @@ export function connectedNodeChoices(graph: Graph, sourceId: string): ConnectedN
     const outgoing = graph.simulation.edges.filter((edge) => edge.sourceNodeId === sourceId);
     const flow =
       semantic.type === 'router' || !outgoing.length ? [work, router, outcome] : [work, router];
-    const next = semantic.type === 'work' ? [...flow, resource] : flow;
+    const parallelFlow =
+      ['source', 'work', 'join'].includes(semantic.type) && outgoing.length <= 1
+        ? [...flow, parallel]
+        : flow;
+    const next = semantic.type === 'work' ? [...parallelFlow, resource] : parallelFlow;
     return outgoing.length === 1 && semantic.type !== 'router'
       ? next.map((choice) =>
           choice.type === 'work' || choice.type === 'router'
@@ -166,6 +179,10 @@ export function addConnectedNode(
   if (!choice) return;
   const anchor = graph.nodes.find((node) => node.id === sourceId)!;
   const semantic = graph.simulation?.nodes.find((node) => node.id === sourceId);
+  if (graph.simulation && choice.type === 'fork')
+    return new ParallelConnectedNodes().insert(graph, sourceId);
+  if (semantic?.type === 'fork' && choice.type === 'work')
+    return new ParallelConnectedNodes().addBranch(graph, sourceId);
   const incoming = semantic?.type === 'outcome';
   const above = choice.type === 'resource';
   const simulation = !!graph.simulation;
@@ -182,11 +199,13 @@ export function addConnectedNode(
     : { nodes: graph.nodes, anchor };
   const kind = simulation
     ? ({ source: 'start', work: 'process', router: 'decision', outcome: 'end', resource: 'system' }[
-        choice.type as SimulationNode['type']
+        choice.type as 'source' | 'work' | 'router' | 'outcome' | 'resource'
       ] as NodeKind)
     : (choice.type as NodeKind);
   const name = simulation
-    ? { work, router, outcome, source, resource }[choice.type as SimulationNode['type']].label
+    ? { work, router, outcome, source, resource }[
+        choice.type as 'source' | 'work' | 'router' | 'outcome' | 'resource'
+      ].label
     : choice.label;
   const node = newNode(graph.diagram.id, {
     title: nextName(graph, name),

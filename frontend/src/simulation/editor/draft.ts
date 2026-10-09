@@ -1,11 +1,13 @@
 import type { SimulationModel, SimulationNode } from '../types';
 import { toScenarioPatch } from '../scenario-patch';
+import { ParallelFlowDraft } from './parallel-flow-draft';
 
 export function addDraftNode(
   model: SimulationModel,
   type: SimulationNode['type'],
   processId?: string,
 ) {
+  if (type === 'fork' || type === 'join') return new ParallelFlowDraft().add(model, processId);
   const id = crypto.randomUUID();
   const common = { id, name: `New ${type}`, ...(processId ? { processId } : {}) };
   let added: SimulationNode;

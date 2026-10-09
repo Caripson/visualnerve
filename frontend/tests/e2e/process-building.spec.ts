@@ -121,9 +121,8 @@ test('actual transfers move along traffic paths and pause freezes the rendered c
   await page.getByLabel('Simulation speed', { exact: true }).selectOption('1');
   await page.getByRole('button', { name: 'Play simulation', exact: true }).click();
   const canvas = page.getByTestId('simulation-particles');
-  await expect
-    .poll(async () => Number(await canvas.getAttribute('data-transit-particles')))
-    .toBe(20);
+  // Observe this short-lived state in the browser rather than between Node round trips.
+  await expect(canvas).toHaveAttribute('data-transit-particles', '20');
   const earlier = await canvas.evaluate((node) => (node as HTMLCanvasElement).toDataURL());
   await expect
     .poll(async () => canvas.evaluate((node) => (node as HTMLCanvasElement).toDataURL()))

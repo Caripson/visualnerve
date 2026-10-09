@@ -2,12 +2,14 @@ import { simulationNodeTypeLabel } from '../display';
 import { useI18n } from '../../i18n';
 import type { SimulationNode } from '../types';
 import type { EditorSectionProps } from './types';
-import type { Dispatch, SetStateAction } from 'react';
+import { useState, type Dispatch, type SetStateAction } from 'react';
 import { SourceEditor } from './SourceEditor';
 import { WorkEditor } from './WorkEditor';
 import { RouterEditor } from './RouterEditor';
 import { OutcomeEditor } from './OutcomeEditor';
+import { ParallelFlowEditor } from './ParallelFlowEditor';
 import { removeSimulationEntity } from '../deletion';
+import { ParallelFlowDraft } from './parallel-flow-draft';
 export function NodeEditor({
   draft,
   setDraft,
@@ -21,6 +23,7 @@ export function NodeEditor({
   addNode: (type: SimulationNode['type']) => void;
 }) {
   const { t } = useI18n();
+  const [error, setError] = useState('');
   const node = draft.nodes.find((entry) => entry.id === selected);
   const patchNode = (partial: Partial<SimulationNode>) =>
     setDraft((model) => ({
@@ -57,7 +60,7 @@ export function NodeEditor({
               }
             >
               <option value="">{t('simulator.editor.node.chooseType')}</option>
-              {['source', 'work', 'router', 'resource', 'outcome'].map((type) => (
+              {['source', 'work', 'router', 'fork', 'resource', 'outcome'].map((type) => (
                 <option key={type} value={type}>
                   {simulationNodeTypeLabel(t, type)}
                 </option>
@@ -108,6 +111,9 @@ export function NodeEditor({
           {node.type === 'router' && (
             <RouterEditor draft={draft} node={node} patchNode={patchNode} />
           )}
+          {(node.type === 'fork' || node.type === 'join') && (
+            <ParallelFlowEditor draft={draft} node={node} patchNode={patchNode} />
+          )}
           {node.type === 'resource' && (
             <p>
               {t('simulator.editor.node.configureThisResourceInTheResourcesSectionResource')}{' '}
@@ -121,13 +127,27 @@ export function NodeEditor({
             <button
               className="danger"
               onClick={() => {
-                setDraft((model) => removeSimulationEntity(model, 'nodes', node.id));
-                setSelected(undefined);
+                try {
+                  const next =
+                    node.type === 'fork' || node.type === 'join'
+                      ? new ParallelFlowDraft().remove(draft, node.id)
+                      : removeSimulationEntity(draft, 'nodes', node.id);
+                  setDraft(next);
+                  setSelected(undefined);
+                  setError('');
+                } catch (failure) {
+                  setError((failure as Error).message);
+                }
               }}
             >
-              {t('simulator.editor.node.deleteProcessNode')}
+              {t(
+                node.type === 'fork' || node.type === 'join'
+                  ? 'simulator.parallel.deleteBlock'
+                  : 'simulator.editor.node.deleteProcessNode',
+              )}
             </button>
           )}
+          {error && <p role="alert">{error}</p>}
         </>
       )}
     </>

@@ -1,6 +1,31 @@
 import type { Catalog } from '../types';
 
 const catalog = {
+  'dialogs.exportSvgSourceHint':
+    'Rajattu lähdeteksti voi säilyä SVG-tiedostossa. Tarkista tiedosto ennen jakamista.',
+  'simulator.parallel.deleteBlock': 'Poista rinnakkainen lohko ja kaikki sen tehtävät',
+  'editor.nodes.quickAdd.choice.parallelWork': 'Rinnakkainen työ',
+  'editor.nodes.quickAdd.choice.parallelWorkDescription':
+    'Suorita kaksi pakollista työhaaraa ja odota molempien valmistumista ennen jatkamista.',
+  'dialogs.exportSvgProgress': 'Valmistellaan vektorivientiä · {percent}%',
+  'dialogs.exportSvgBackgroundHint':
+    'SVG valmistellaan tässä selaimessa. Voit peruuttaa viennin sen aikana.',
+  'simulator.parallel.connectExplanation':
+    'Kaikki 2–64 lähtevää yhteyttä ovat pakollisia. Yhdistä jokainen haara yhteiseen kokoamiskohtaan ja kokoamiskohta seuraavaan vaiheeseen.',
+  'simulator.parallel.fork': 'Rinnakkainen työ',
+  'simulator.parallel.join': 'Odota kaikkia',
+  'simulator.parallel.forkExplanation':
+    'Jokainen tapaus luo tehtävän jokaista valittua haaraa varten. Kaikilla tehtävillä on sama alkuperäinen tapaus ja tuotto.',
+  'simulator.parallel.joinExplanation':
+    'Tämä vaihe jatkaa alkuperäistä tapausta vasta, kun kaikki siihen liitetyn haarautumisen pakolliset tehtävät ovat saapuneet.',
+  'simulator.parallel.pairedFork': 'Alkaa kohdasta:',
+  'simulator.parallel.pairedJoin': 'Jatkuu kohdassa:',
+  'simulator.parallel.requiredBranches': 'Pakolliset haarat',
+  'simulator.parallel.failureExplanation':
+    'Jos jokin haara epäonnistuu tai hylätään, koko tapaus päätetään kerran ja muut tehtävät perutaan. Syntyneet kustannukset säilyvät.',
+  'simulator.parallel.branchCount': '{count} rinnakkaista tehtävää',
+  'simulator.parallel.waitingSummary':
+    'Odottavat tapaukset: {groups} · Valmiit tehtävät: {arrived}/{expected}',
   'integration.bridge.updateRequired':
     'Päivitä paikallinen silta, yhdistä MCP-asiakas uudelleen ja päivitä sen työkaluluettelo. Tämä yhteys ei ilmoita nykyisiä API-dokumentoinnin ja turvallisten kirjoitusten ominaisuuksia.',
   'integration.bridge.detectedVersion': 'Tunnistettu siltaversio: {version}',

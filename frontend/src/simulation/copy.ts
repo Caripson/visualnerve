@@ -28,6 +28,13 @@ export function remapSimulationModel(
     const result = structuredClone(input);
     if (result.id) result.id = nodeId(result.id);
     if (result.processId) result.processId = processId(result.processId);
+    if ('fork' in result && result.fork) {
+      if (result.fork.joinNodeId) result.fork.joinNodeId = nodeId(result.fork.joinNodeId);
+      if (result.fork.branchEdgeIds)
+        result.fork.branchEdgeIds = result.fork.branchEdgeIds.map(edgeId);
+    }
+    if ('join' in result && result.join?.forkNodeId)
+      result.join.forkNodeId = nodeId(result.join.forkNodeId);
     if ('work' in result && result.work?.overflowNodeId)
       result.work.overflowNodeId = nodeId(result.work.overflowNodeId);
     if ('router' in result && result.router) {

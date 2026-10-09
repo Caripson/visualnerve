@@ -1,6 +1,31 @@
 import type { Catalog } from '../types';
 
 const catalog = {
+  'dialogs.exportSvgSourceHint':
+    'Le texte source masqué peut rester dans le fichier SVG. Vérifiez-le avant de le partager.',
+  'simulator.parallel.deleteBlock': 'Supprimer le bloc parallèle et toutes ses tâches',
+  'editor.nodes.quickAdd.choice.parallelWork': 'Travail parallèle',
+  'editor.nodes.quickAdd.choice.parallelWorkDescription':
+    'Exécutez deux branches obligatoires et attendez les deux avant de continuer.',
+  'dialogs.exportSvgProgress': 'Préparation de l’export vectoriel · {percent}%',
+  'dialogs.exportSvgBackgroundHint':
+    'Le SVG est préparé dans ce navigateur. Vous pouvez annuler pendant son exécution.',
+  'simulator.parallel.connectExplanation':
+    'Les 2–64 connexions sortantes sont obligatoires. Reliez chaque branche à son point de jonction, puis celui-ci à l’étape suivante.',
+  'simulator.parallel.fork': 'Travail parallèle',
+  'simulator.parallel.join': 'Attendre toutes les tâches',
+  'simulator.parallel.forkExplanation':
+    'Chaque dossier crée une tâche pour chaque branche sélectionnée. Toutes les tâches partagent le dossier original et ses revenus.',
+  'simulator.parallel.joinExplanation':
+    'Cette étape reprend le dossier original uniquement lorsque toutes les tâches obligatoires de la bifurcation associée sont arrivées.',
+  'simulator.parallel.pairedFork': 'Commence à :',
+  'simulator.parallel.pairedJoin': 'Continue à :',
+  'simulator.parallel.requiredBranches': 'Branches obligatoires',
+  'simulator.parallel.failureExplanation':
+    'Si une branche échoue ou est abandonnée, le dossier entier se termine une seule fois et les autres tâches sont annulées. Les coûts engagés sont conservés.',
+  'simulator.parallel.branchCount': '{count} tâches parallèles',
+  'simulator.parallel.waitingSummary':
+    'Dossiers en attente : {groups} · Tâches prêtes : {arrived}/{expected}',
   'integration.bridge.updateRequired':
     'Mettez à jour le pont local, reconnectez le client MCP et actualisez sa liste d’outils. Cette connexion n’annonce pas les fonctions actuelles de documentation de l’API et d’écriture sécurisée.',
   'integration.bridge.detectedVersion': 'Version du pont détectée : {version}',

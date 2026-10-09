@@ -42,7 +42,7 @@ On the isolated encrypted app, the deployed Content Security Policy also restric
 
 ## Recover a write without creating duplicates
 
-Use a current bridge and refreshed app tab. Bridge version 0.4.0 reports `operations-v1` and `endpoint-docs-v1` in health and its browser handshake, together with supported tool names. This reports software support; it does not reveal workspace data or grant access. Older browser tabs remain one-shot and cannot reserve or recover operation receipts.
+Use a current bridge and refreshed app tab. Bridge version 0.5.0 reports `operations-v1`, `endpoint-docs-v1`, `fork-join-v1` and `async-svg-export-v1` in health and its browser handshake, together with supported tool names. This reports software support; it does not reveal workspace data or grant access. Older browser tabs remain one-shot and cannot reserve or recover operation receipts.
 
 Read bridge software health through direct HTTP `GET /api/v1/health` (`/health` relative to the REST base). MCP `visual_nerve_request` with `path:"/health"` instead reads the connected browser's semantic IndexedDB health, without bridge-only tool/capability fields. Their absence in that browser response is not evidence of an outdated bridge.
 
@@ -69,6 +69,7 @@ Read only is an explicit route allowlist, not general permission for POST:
 | Route                               | Result                                     |
 | ----------------------------------- | ------------------------------------------ |
 | `/export`                           | Current graph JSON, Markdown or SVG export |
+| `/exports/svg`                      | Transient background SVG export job        |
 | `/sql/preview`                      | Unsaved SQL query/schema analysis          |
 | `/code/preview`                     | Unsaved code analysis                      |
 | `/code/project/preview`             | Unsaved ZIP project analysis               |
@@ -77,13 +78,15 @@ Read only is an explicit route allowlist, not general permission for POST:
 | `/diagrams/{id}/build-brief`        | Reviewed unsent Lovable brief              |
 | `/diagrams/{id}/simulation/compare` | Comparison of saved runs                   |
 
-The normal command validation, structure/transport limits and connected-browser requirement still apply. Paths omit `/api/v1`. Creation, settings changes, saved-definition changes and presentation/simulation controls require Read + write.
+The exact `DELETE /exports/svg/{jobId}` cancellation route also permits Read only; it removes the temporary job/result without changing the model. This does not grant general DELETE permission. The normal command validation, structure/transport limits and connected-browser requirement still apply. Paths omit `/api/v1`. Creation, settings changes, saved-definition changes and presentation/simulation controls require Read + write.
 
 ## Export a native vector diagram
 
 Call `visual_nerve_request` with `{path:"/export",method:"POST",data:{diagramId:"DIAGRAM_UUID",format:"svg"}}`. The tool returns SVG XML as a JSON string in its response body; save that string as an `.svg` file. It does not download a file or open/change the exported diagram. Optional `scope` is `complete` (default), `viewport` or `selected`; selected requires 1–20,000 unique existing node UUIDs in `nodeIds`, which is forbidden for other scopes.
 
-SVG preserves native paths, shapes, text, icons, connections and visible saved pen strokes from the canonical 2D projection, including when the diagram is in 3D. It contains no embedded raster screenshot, `foreignObject`, script or active external link. Fonts are referenced rather than embedded. Source text can retain clipped content, so review the file before sharing. Export fails beyond 100,000 rendered DOM elements, 250,000 source text characters or 16 MiB SVG XML; bridge envelope/time limits also apply. JSON and Markdown exports accept only `diagramId` and `format`. See [export formats](../EXPORT_FORMAT.md).
+SVG preserves native paths, shapes, text, icons, connections and visible saved pen strokes from the canonical 2D projection, including when the diagram is in 3D. It contains no embedded raster screenshot, `foreignObject`, script or active external link. Fonts are referenced rather than embedded. Source text can retain clipped content, so review the file before sharing. Viewport scope crops the full projected scene; it does not remove off-screen XML content or reduce node/text budgets. Use selected scope to reduce the scene.
+
+The synchronous `/export` route accepts source graphs with at most 100 nodes and 20,000 cumulative title, description and serialized metadata characters before projection, including when exporting a selection. Larger sources return `409 SVG_BACKGROUND_REQUIRED`; use the [background SVG job](#parallel-cases-and-background-exports). Small synchronous exports additionally retain 100,000 rendered DOM-element, 250,000 source-text-character and 16 MiB XML limits, subject to bridge envelope/time limits. Background jobs support up to 20,000 rendered nodes, 100,000 rendered edges, 5,000,000 source text characters and 64 MiB XML. JSON and Markdown exports accept only `diagramId` and `format`. See [export formats](../EXPORT_FORMAT.md).
 
 ## Inspect and control hierarchical processes
 
@@ -223,3 +226,13 @@ An already authorized live socket may remain restricted to control when locked; 
 With current Read + write access, `{ "path": "/workspace/lock", "method": "POST", "data": {} }` saves pending edits then intentionally locks the shared vault. Save failure preserves edits; concurrent grant/data changes return **409** without revocation. An already-locked retained connection returns idempotent safe status. There are no programmatic password, recovery, unlock or session-policy controls. Requests do not renew inactivity. A lock revokes in-flight commands permanently, including late results after a new unlock; inspect state and issue a fresh request rather than retrying an interrupted mutation automatically.
 
 Explicit authorized AI/API requests and ordinary exports expose readable content. Browser encrypted backups are separate from semantic `GET /workspace/export`, retain their original credentials, and cannot be recalled by changing the live password or rotating its key. Keep passwords/recovery keys out of prompts, tool arguments and logs. Existing www/staging workspaces remain separate until the user performs and verifies full transfer in the browser.
+
+## Parallel cases and background exports
+
+Bridge 0.5.0 bundles discoverable fork/join and asynchronous SVG contracts. The live browser must also be current. Inspect `GET /simulation/capabilities` and `GET /exports/capabilities`; transport health lists software, not grants. All supported MCP clients use the same `visual_nerve_request` tool and semantic endpoints.
+
+Create complete paired `fork`/`join` regions atomically through a versioned full-model PUT. All fork outgoing edges are mandatory tasks for one original case; a join waits for that case’s tasks, with one revenue outcome and actual shared resource allocations. UI, animated/MAX runs, API/MCP and replay share `SimulationEngine`. See [parallel fields and state](../API.md#parallel-processes-through-the-api).
+
+Route-metric keys retain exact ordered connection IDs up to 2,000 characters. Longer paths use `<first 200 chars> … [route:<8hex>-<8hex>; edges=N]`. These deterministic, non-cryptographic grouping summaries cannot reconstruct the complete itinerary. At most 256 distinct route buckets plus `[other routes]` are retained; all cases still contribute to full-population counts, costs, Work-node revenue attribution and TTR.
+
+For large vector exports, `POST /exports/svg` returns a job ID immediately. Poll its status, retrieve `/result` in chunks using `nextOffset`, and concatenate XML until `complete`. Read-only grants allow start, inspection, result and cancellation. Jobs retain their original vault session/grant and are erased on lock or explicit grant changes. Legacy small exports still return a string; background-sized legacy requests return `409 SVG_BACKGROUND_REQUIRED`. See [limits and lifecycle](../API.md#background-svg-export).

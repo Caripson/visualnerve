@@ -55,7 +55,7 @@ func operationBrowserConnection(t *testing.T, host *httptest.Server, instance, g
 	if err := wsjson.Read(ctx, conn, &info); err != nil {
 		t.Fatal(err)
 	}
-	if info.Type != "bridge-info" || info.Version != bridgeVersion || len(info.Tools) != 2 || strings.Join(info.Capabilities, ",") != "operations-v1,endpoint-docs-v1" {
+	if info.Type != "bridge-info" || info.Version != bridgeVersion || len(info.Tools) != 2 || strings.Join(info.Capabilities, ",") != "operations-v1,endpoint-docs-v1,fork-join-v1,async-svg-export-v1" {
 		t.Fatalf("incomplete bridge discovery: %+v", info)
 	}
 	return conn

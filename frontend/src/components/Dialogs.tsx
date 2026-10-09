@@ -1,3 +1,4 @@
+import { svgGraphSnapshot } from '../export/svg-snapshot';
 import { presentationMessage } from '../presentation/display-messages';
 import { diagramModeLabel, templateLabel } from '../ui/editor-labels';
 import { ownerKindKeys } from './ui-labels';
@@ -146,6 +147,7 @@ export function ExportDialog({ close }: { close: () => void }) {
     tiled: false,
   });
   const [busy, setBusy] = useState(false);
+  const [svgProgress, setSvgProgress] = useState<number | undefined>(undefined);
   const [error, setError] = useState('');
   const set = (patch: Partial<RenderOptions>) => setOptions((v) => ({ ...v, ...patch }));
   const targetField = (
@@ -291,6 +293,19 @@ export function ExportDialog({ close }: { close: () => void }) {
                 ? t('dialogs.exportSpatialHint')
                 : t('dialogs.exportRenderedHint')}
       </p>
+      {format === 'svg' && <p className="muted">{t('dialogs.exportSvgSourceHint')}</p>}
+      {busy && svgProgress !== undefined && (
+        <div role="status" aria-live="polite">
+          <p>{t('dialogs.exportSvgProgress', { percent: svgProgress })}</p>
+          <progress
+            aria-label={t('dialogs.exportSvgProgress', { percent: svgProgress })}
+            max={100}
+            value={svgProgress}
+            style={{ width: '100%' }}
+          />
+          <p className="muted">{t('dialogs.exportSvgBackgroundHint')}</p>
+        </div>
+      )}
       <StorageNotice />
       {error && <p className="form-error">{presentationMessage(error, t)}</p>}
       <div className="modal-actions">
@@ -308,13 +323,17 @@ export function ExportDialog({ close }: { close: () => void }) {
             // authorize this original dialog or change which graph it exports.
             const captured = workspace.repo.db.captureOperation();
             setBusy(true);
+            setSvgProgress(undefined);
             setError('');
             try {
               useEditor.getState().finishEditing();
               flushSpatialCamera();
               const state = useEditor.getState();
-              const g = state.graph
-                ? structuredClone(ownersFor(state.graph, state.owners))
+              const source = state.graph ? ownersFor(state.graph, state.owners) : undefined;
+              const g = source
+                ? format === 'svg'
+                  ? svgGraphSnapshot(source)
+                  : structuredClone(source)
                 : undefined;
               const selection = [...state.selectedNodes];
               operation = await captured;
@@ -342,7 +361,9 @@ export function ExportDialog({ close }: { close: () => void }) {
               else if (format === 'svg') {
                 const { exportSVG } = await waitForExport(import('../export/svg'), guard);
                 assertExportActive(guard);
-                await exportSVG(g, options.scope, selection, guard);
+                await exportSVG(g, options.scope, selection, guard, (status) => {
+                  if (mounted.current && !guard!.signal.aborted) setSvgProgress(status.progress);
+                });
               } else {
                 const { exportRendered } = await waitForExport(import('../export/rendered'), guard);
                 assertExportActive(guard);

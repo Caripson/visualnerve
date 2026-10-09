@@ -1,4 +1,5 @@
 import { ProcessHierarchy } from './process-hierarchy';
+import { ParallelTopology } from './parallel-topology';
 import { StorageError } from '../model/errors';
 import type { SimulationModel, ScalingRule, ScheduleWindow, SimulationNode } from './types';
 function requireValue(value: unknown, message: string): asserts value {
@@ -266,9 +267,13 @@ function validate(value: unknown, includeScenarios: boolean): asserts value is S
             ? ['work']
             : node.type === 'router'
               ? ['router']
-              : node.type === 'resource'
-                ? ['resourceId']
-                : ['outcome']),
+              : node.type === 'fork'
+                ? ['fork']
+                : node.type === 'join'
+                  ? ['join']
+                  : node.type === 'resource'
+                    ? ['resourceId']
+                    : ['outcome']),
       ],
       'node',
     );
@@ -367,6 +372,20 @@ function validate(value: unknown, includeScenarios: boolean): asserts value is S
         number(requirement.units, 'resource units', 0.000001);
         seen.add(requirement.resourceId);
       }
+    } else if (node.type === 'fork') {
+      keys(node.fork, ['joinNodeId', 'branchEdgeIds'], 'fork');
+      requireValue(
+        typeof node.fork.joinNodeId === 'string' &&
+          Array.isArray(node.fork.branchEdgeIds) &&
+          node.fork.branchEdgeIds.every((id) => typeof id === 'string' && !!id),
+        'fork needs a join node and branch edge IDs.',
+      );
+    } else if (node.type === 'join') {
+      keys(node.join, ['forkNodeId'], 'join');
+      requireValue(
+        typeof node.join.forkNodeId === 'string' && !!node.join.forkNodeId,
+        'join needs a fork node ID.',
+      );
     } else if (node.type === 'resource')
       requireValue(resources.has(node.resourceId), 'unknown resource node reference.');
     else if (node.type === 'outcome') {
@@ -484,6 +503,7 @@ function validate(value: unknown, includeScenarios: boolean): asserts value is S
       'unknown edge particle type.',
     );
   }
+  new ParallelTopology(model);
   for (const feature of model.improvements) {
     keys(
       feature,

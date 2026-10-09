@@ -1,5 +1,6 @@
 import { resolveScenario } from './schema';
 import { toScenarioPatch } from './scenario-patch';
+import { StorageError } from '../model/errors';
 import type { SimulationModel, SimulationNode, Improvement, ScenarioOverrides } from './types';
 
 export type SimulationCollection =
@@ -24,6 +25,14 @@ export function removeSimulationEntity(
   collection: SimulationCollection,
   id: string,
 ) {
+  if (collection === 'nodes') {
+    const node = model.nodes.find((candidate) => candidate.id === id);
+    if (node?.type === 'fork' || node?.type === 'join')
+      throw new StorageError(
+        422,
+        'Remove the complete parallel fork/join pair and reconnect its branches in one model edit. A single fork or join cannot be deleted independently.',
+      );
+  }
   if (collection === 'processes') {
     const deleted = model.processes?.find((process) => process.id === id);
     if (!deleted) return model;
@@ -63,6 +72,15 @@ function pruneTopology(input: SimulationModel, fallback?: SimulationModel): Simu
     return [node];
   });
   const nodeIds = new Set(nodes.map((node) => node.id));
+  for (const node of nodes)
+    if (
+      (node.type === 'fork' && !nodeIds.has(node.fork.joinNodeId)) ||
+      (node.type === 'join' && !nodeIds.has(node.join.forkNodeId))
+    )
+      throw new StorageError(
+        422,
+        'A parallel fork and join must stay paired. Remove the complete pair and reconnect its branches in one model edit.',
+      );
   const edges = input.edges
     .filter((edge) => nodeIds.has(edge.sourceNodeId) && nodeIds.has(edge.targetNodeId))
     .map((edge) => ({

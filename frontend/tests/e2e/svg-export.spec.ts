@@ -2,6 +2,20 @@ import { expect, test, type APIRequestContext, type Page } from './fixtures';
 import { readFile } from 'node:fs/promises';
 import type { Graph } from '../../src/model/types';
 import type { SimulationModel } from '../../src/simulation/types';
+import { browserLaunchOptions } from '../../playwright.config';
+
+// Match the other native WebGL tests without changing ordinary SVG cases or deadlines.
+const graphicsTest = test.extend({
+  launchOptions: {
+    ...browserLaunchOptions,
+    args: [
+      ...browserLaunchOptions.args,
+      '--use-gl=angle',
+      '--use-angle=swiftshader',
+      '--enable-unsafe-swiftshader',
+    ],
+  },
+});
 
 async function downloadSVG(page: Page, scope = 'complete') {
   await page.getByRole('button', { name: 'Export', exact: true }).click();
@@ -71,140 +85,145 @@ async function rasterize(page: Page, xml: string) {
     }
   }, xml);
 }
-test('SVG download and read-only REST/MCP retain native vectors, escaping, status, arrows and pen; 3D uses identical 2D geometry', async ({
-  page,
-  request,
-}, info) => {
-  const diagram = await (
-    await request.post('/api/v1/diagrams', { data: { name: 'Native SVG', type: 'mindmap' } })
-  ).json();
-  let graph = (await (
-    await request.post(`/api/v1/diagrams/${diagram.id}/bulk`, {
-      data: {
-        nodes: [
-          {
-            externalId: 'root',
-            title: 'Plan & <script>safe</script>',
-            x: 0,
-            y: 0,
-            color: '#267044',
-            status: 'done',
-            metadata: { visualNerve: { icon: 'work' } },
-          },
-          { externalId: 'ship', title: 'Ship', x: 380, y: 90, color: '#a24e38' },
-        ],
-        edges: [
-          {
-            sourceExternalId: 'root',
-            targetExternalId: 'ship',
-            label: 'Ready & approved',
-            direction: 'both',
-            style: 'dashed',
-          },
-        ],
-      },
-    })
-  ).json()) as Graph;
-  await request.patch(`/api/v1/diagrams/${diagram.id}`, {
-    data: {
-      version: graph.diagram.version,
-      settings: {
-        ...graph.diagram.settings,
-        drawing: {
-          version: 1,
-          visible: true,
-          strokes: [
+graphicsTest(
+  'SVG download and read-only REST/MCP retain native vectors, escaping, status, arrows and pen; 3D uses identical 2D geometry',
+  async ({ page, request }, info) => {
+    const diagram = await (
+      await request.post('/api/v1/diagrams', { data: { name: 'Native SVG', type: 'mindmap' } })
+    ).json();
+    let graph = (await (
+      await request.post(`/api/v1/diagrams/${diagram.id}/bulk`, {
+        data: {
+          nodes: [
             {
-              id: crypto.randomUUID(),
-              color: '#ff0088',
-              width: 6,
-              points: [
-                [0, -40],
-                [500, -40],
-              ],
+              externalId: 'root',
+              title: 'Plan & <script>safe</script>',
+              x: 0,
+              y: 0,
+              color: '#267044',
+              status: 'done',
+              metadata: { visualNerve: { icon: 'work' } },
+            },
+            { externalId: 'ship', title: 'Ship', x: 380, y: 90, color: '#a24e38' },
+          ],
+          edges: [
+            {
+              sourceExternalId: 'root',
+              targetExternalId: 'ship',
+              label: 'Ready & approved',
+              direction: 'both',
+              style: 'dashed',
             },
           ],
         },
-      },
-    },
-  });
-  await page.locator(`button[data-diagram-id="${diagram.id}"]`).click();
-  await expect(page.locator('.canvas-shell [data-testid="graph-node"]')).toHaveCount(2);
-  const icon = page.locator(
-    `.canvas-shell [data-node-id="${graph.nodes[0].id}"] svg.lucide-briefcase-business`,
-  );
-  await expect(icon).toHaveCount(1);
-  const iconPaths = await icon
-    .locator('path')
-    .evaluateAll((paths) => paths.map((path) => path.getAttribute('d')));
-  const xml = await downloadSVG(page);
-  const scene = await inspect(page, xml);
-  expect(scene.invalid).toBe(false);
-  expect(scene.unsafe).toBe(false);
-  expect(scene.text).toContain('Plan & <script>safe</script>');
-  expect(scene.text).toContain('Done');
-  expect(scene.text).toContain('Ready & approved');
-  expect(scene.paths.length).toBeGreaterThan(5);
-  expect(scene.arrows).toBeGreaterThan(0);
-  expect(scene.icons).toBeGreaterThan(0);
-  expect(scene.paths).toEqual(expect.arrayContaining(iconPaths));
-  expect(scene.pen).toBe(1);
-  expect(scene.metadata).toMatchObject({
-    format: 'visual-nerve-svg',
-    scope: 'complete',
-    view: '2d',
-  });
-  const image = await rasterize(page, xml);
-  expect(image.dark).toBeGreaterThan(100);
-  expect(image.ink).toBeGreaterThan(500);
-  await info.attach('native-svg.svg', { body: xml, contentType: 'image/svg+xml' });
-  await info.attach('native-svg-preview.png', {
-    body: Buffer.from(image.png, 'base64'),
-    contentType: 'image/png',
-  });
-  graph = (await (await request.get(`/api/v1/diagrams/${diagram.id}`)).json()) as Graph;
-  await request.patch(`/api/v1/diagrams/${diagram.id}`, {
-    data: {
-      version: graph.diagram.version,
-      settings: { ...graph.diagram.settings, spatialView: { version: 1, mode: '3d' } },
-    },
-  });
-  const spatial = await inspect(page, await apiSVG(request, diagram.id));
-  expect(spatial.viewBox).toBe(scene.viewBox);
-  expect(spatial.nodes).toEqual(scene.nodes);
-  expect(spatial.paths).toEqual(scene.paths);
-  expect(spatial.text).toBe(scene.text);
-  await page.getByRole('button', { name: 'Local only: storage and privacy', exact: true }).click();
-  await page.getByLabel('MCP access', { exact: true }).selectOption('read');
-  await page.getByRole('button', { name: 'Done', exact: true }).click();
-  const before = await (await request.get(`/api/v1/diagrams/${diagram.id}`)).json();
-  const rest = await apiSVG(request, diagram.id, {
-    scope: 'selected',
-    nodeIds: [graph.nodes[0].id],
-  });
-  expect((await inspect(page, rest)).nodes).toEqual([graph.nodes[0].id]);
-  const mcp = await (
-    await request.post('/mcp', {
+      })
+    ).json()) as Graph;
+    await request.patch(`/api/v1/diagrams/${diagram.id}`, {
       data: {
-        jsonrpc: '2.0',
-        id: 'svg-read',
-        method: 'tools/call',
-        params: {
-          name: 'visual_nerve_request',
-          arguments: {
-            path: '/export',
-            method: 'POST',
-            data: { diagramId: diagram.id, format: 'svg' },
+        version: graph.diagram.version,
+        settings: {
+          ...graph.diagram.settings,
+          drawing: {
+            version: 1,
+            visible: true,
+            strokes: [
+              {
+                id: crypto.randomUUID(),
+                color: '#ff0088',
+                width: 6,
+                points: [
+                  [0, -40],
+                  [500, -40],
+                ],
+              },
+            ],
           },
         },
       },
-    })
-  ).json();
-  expect(mcp.result.isError).toBe(false);
-  expect(mcp.result.structuredContent.status).toBe(200);
-  expect((await inspect(page, mcp.result.structuredContent.body)).nodes).toEqual(scene.nodes);
-  expect(await (await request.get(`/api/v1/diagrams/${diagram.id}`)).json()).toEqual(before);
-});
+    });
+    await page.locator(`button[data-diagram-id="${diagram.id}"]`).click();
+    await expect(page.locator('.canvas-shell [data-testid="graph-node"]')).toHaveCount(2);
+    const icon = page.locator(
+      `.canvas-shell [data-node-id="${graph.nodes[0].id}"] svg.lucide-briefcase-business`,
+    );
+    await expect(icon).toHaveCount(1);
+    const iconPaths = await icon
+      .locator('path')
+      .evaluateAll((paths) => paths.map((path) => path.getAttribute('d')));
+    const xml = await downloadSVG(page);
+    const scene = await inspect(page, xml);
+    expect(scene.invalid).toBe(false);
+    expect(scene.unsafe).toBe(false);
+    expect(scene.text).toContain('Plan & <script>safe</script>');
+    expect(scene.text).toContain('Done');
+    expect(scene.text).toContain('Ready & approved');
+    expect(scene.paths.length).toBeGreaterThan(5);
+    expect(scene.arrows).toBeGreaterThan(0);
+    expect(scene.icons).toBeGreaterThan(0);
+    expect(scene.paths).toEqual(expect.arrayContaining(iconPaths));
+    expect(scene.pen).toBe(1);
+    expect(scene.metadata).toMatchObject({
+      format: 'visual-nerve-svg',
+      scope: 'complete',
+      view: '2d',
+    });
+    const image = await rasterize(page, xml);
+    expect(image.dark).toBeGreaterThan(100);
+    expect(image.ink).toBeGreaterThan(500);
+    await info.attach('native-svg.svg', { body: xml, contentType: 'image/svg+xml' });
+    await info.attach('native-svg-preview.png', {
+      body: Buffer.from(image.png, 'base64'),
+      contentType: 'image/png',
+    });
+    graph = (await (await request.get(`/api/v1/diagrams/${diagram.id}`)).json()) as Graph;
+    await request.patch(`/api/v1/diagrams/${diagram.id}`, {
+      data: {
+        version: graph.diagram.version,
+        settings: { ...graph.diagram.settings, spatialView: { version: 1, mode: '3d' } },
+      },
+    });
+    await expect(page.getByTestId('spatial-view')).toHaveAttribute('data-renderer', 'ready', {
+      timeout: 30000,
+    });
+    const spatial = await inspect(page, await apiSVG(request, diagram.id));
+    expect(spatial.viewBox).toBe(scene.viewBox);
+    expect(spatial.nodes).toEqual(scene.nodes);
+    expect(spatial.paths).toEqual(scene.paths);
+    expect(spatial.text).toBe(scene.text);
+    await page
+      .getByRole('button', { name: 'Local only: storage and privacy', exact: true })
+      .click();
+    await page.getByLabel('MCP access', { exact: true }).selectOption('read');
+    await page.getByRole('button', { name: 'Done', exact: true }).click();
+    const before = await (await request.get(`/api/v1/diagrams/${diagram.id}`)).json();
+    const rest = await apiSVG(request, diagram.id, {
+      scope: 'selected',
+      nodeIds: [graph.nodes[0].id],
+    });
+    expect((await inspect(page, rest)).nodes).toEqual([graph.nodes[0].id]);
+    const mcp = await (
+      await request.post('/mcp', {
+        data: {
+          jsonrpc: '2.0',
+          id: 'svg-read',
+          method: 'tools/call',
+          params: {
+            name: 'visual_nerve_request',
+            arguments: {
+              path: '/export',
+              method: 'POST',
+              data: { diagramId: diagram.id, format: 'svg' },
+            },
+          },
+        },
+      })
+    ).json();
+    expect(mcp.result.isError).toBe(false);
+    expect(mcp.result.structuredContent.status).toBe(200);
+    expect((await inspect(page, mcp.result.structuredContent.body)).nodes).toEqual(scene.nodes);
+    expect(await (await request.get(`/api/v1/diagrams/${diagram.id}`)).json()).toEqual(before);
+  },
+);
 test('saved viewport SVG scales text, border and geometry at 0.5 and 2 without changing the crop', async ({
   page,
   request,

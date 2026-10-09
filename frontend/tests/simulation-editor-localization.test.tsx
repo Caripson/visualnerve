@@ -56,7 +56,10 @@ describe('simulation labels without changing semantic values', () => {
         within(choose)
           .getAllByRole('option')
           .map((option) => (option as HTMLOptionElement).value),
-      ).toEqual(['', 'source', 'work', 'router', 'resource', 'outcome']);
+      ).toEqual(['', 'source', 'work', 'router', 'fork', 'resource', 'outcome']);
+      expect(
+        within(choose).getByRole('option', { name: formatter.t('simulator.parallel.fork') }),
+      ).toHaveValue('fork');
       expect(
         within(choose).getByRole('option', {
           name: formatter.t('simulator.editor.nodeType.resource'),

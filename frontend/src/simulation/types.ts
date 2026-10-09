@@ -93,6 +93,14 @@ export interface OutcomeConfiguration {
   revenue: boolean;
   revenueOverride?: number;
 }
+/** Every declared branch must return to this fork's paired join. */
+export interface ForkConfiguration {
+  joinNodeId: string;
+  branchEdgeIds: string[];
+}
+export interface JoinConfiguration {
+  forkNodeId: string;
+}
 /** Organizational scope; all execution assumptions live on its actual child nodes. */
 export interface SimulationProcess {
   id: string;
@@ -110,6 +118,8 @@ export type SimulationNode = {
   | { type: 'source'; source: SourceConfiguration }
   | { type: 'work'; work: WorkConfiguration }
   | { type: 'router'; router: RouterConfiguration }
+  | { type: 'fork'; fork: ForkConfiguration }
+  | { type: 'join'; join: JoinConfiguration }
   | { type: 'resource'; resourceId: string }
   | { type: 'outcome'; outcome: OutcomeConfiguration }
 );
@@ -256,6 +266,38 @@ export interface NodeMetrics extends EconomicMetrics {
   throughputPerHour: number;
   status: 'idle' | 'normal' | 'busy' | 'saturated' | 'blocked' | 'scaling' | 'failed';
   resourceUsage: Record<string, number>;
+  /** Actual branch tokens wait here; these are not additional business cases. */
+  join?: JoinMetrics;
+}
+export interface JoinMetrics {
+  waitingGroups: number;
+  arrivedBranches: number;
+  expectedBranches: number;
+  completedGroups: number;
+  cancelledGroups: number;
+  wait: DistributionMetrics;
+}
+export interface ParallelGroupSnapshot {
+  groupId: number;
+  rootParticleId: number;
+  parentParticleId: number;
+  forkNodeId: string;
+  joinNodeId: string;
+  branchParticleIds: number[];
+  arrivedBranchEdgeIds: string[];
+  pendingBranchEdgeIds: string[];
+  createdAtSeconds: number;
+}
+export interface ParallelState {
+  activeGroups: number;
+  activeBranches: number;
+  waitingParents: number;
+  createdBranches: number;
+  joinedBranches: number;
+  cancelledBranches: number;
+  /** Bounded inspection sample. Aggregate counts always cover every active group. */
+  groups: ParallelGroupSnapshot[];
+  droppedGroups: number;
 }
 /** Rollup of actual work in a scope and every nested subprocess. Parent and child totals overlap. */
 export interface ProcessMetrics extends EconomicMetrics {
@@ -322,7 +364,23 @@ export interface ParticleSnapshot {
   typeId: string;
   createdAtSeconds: number;
   nodeId: string;
-  status: 'queued' | 'processing' | 'transit' | 'completed' | 'abandoned' | 'failed';
+  status:
+    | 'queued'
+    | 'processing'
+    | 'transit'
+    | 'waiting'
+    | 'joined'
+    | 'cancelled'
+    | 'completed'
+    | 'abandoned'
+    | 'failed';
+  /** Present on child work tokens; original business items retain their own identity. */
+  rootParticleId?: number;
+  parentParticleId?: number;
+  forkGroupId?: number;
+  forkNodeId?: string;
+  joinNodeId?: string;
+  branchEdgeId?: string;
   complexity: number;
   priority: number;
   expectedRevenue: number;
@@ -346,11 +404,16 @@ export type SimulationEventType =
   | 'QUEUE_LEFT'
   | 'PROCESS_STARTED'
   | 'PROCESS_COMPLETED'
+  | 'PROCESS_CANCELLED'
   | 'RESOURCE_ACQUIRED'
   | 'RESOURCE_RELEASED'
   | 'PARTICLE_ROUTED'
   | 'PARTICLE_ABANDONED'
   | 'PARTICLE_FAILED'
+  | 'PARTICLE_FORKED'
+  | 'BRANCH_JOINED'
+  | 'JOIN_COMPLETED'
+  | 'BRANCH_CANCELLED'
   | 'CAPACITY_SCALE_UP'
   | 'CAPACITY_SCALE_DOWN'
   | 'REVENUE_REALIZED'
@@ -369,6 +432,14 @@ export interface SimulationEvent {
   capacity?: number;
   previousCapacity?: number;
   reason?: string;
+  rootParticleId?: number;
+  parentParticleId?: number;
+  forkGroupId?: number;
+  forkNodeId?: string;
+  joinNodeId?: string;
+  branchEdgeId?: string;
+  branchCount?: number;
+  arrivedBranches?: number;
 }
 export interface Bottleneck {
   id: string;
@@ -399,6 +470,8 @@ export interface SimulationState {
   particleTypes: Record<string, ParticleTypeMetrics>;
   /** Older saved runs may omit this; current engine snapshots always provide it. */
   processes?: Record<string, ProcessMetrics>;
+  /** Additive schemaVersion 1 state; absent in runs made before parallel execution. */
+  parallel?: ParallelState;
   particles: ParticleSnapshot[];
   events: SimulationEvent[];
   bottlenecks: Bottleneck[];

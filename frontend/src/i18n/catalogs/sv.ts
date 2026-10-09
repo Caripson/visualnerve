@@ -1,6 +1,31 @@
 import type { Catalog } from '../types';
 
 const catalog = {
+  'dialogs.exportSvgSourceHint':
+    'Källtext som inte syns på kortet kan finnas kvar i SVG-filen. Granska den innan du delar.',
+  'simulator.parallel.deleteBlock': 'Ta bort parallellt block och alla dess uppgifter',
+  'editor.nodes.quickAdd.choice.parallelWork': 'Parallellt arbete',
+  'editor.nodes.quickAdd.choice.parallelWorkDescription':
+    'Kör två obligatoriska arbetsgrenar och vänta på båda innan flödet fortsätter.',
+  'dialogs.exportSvgProgress': 'Förbereder vektorexport · {percent}%',
+  'dialogs.exportSvgBackgroundHint':
+    'SVG skapas i den här webbläsaren. Du kan avbryta medan den körs.',
+  'simulator.parallel.connectExplanation':
+    'Alla 2–64 utgående kopplingar krävs. Koppla varje gren till dess gemensamma samlingssteg och sedan samlingssteget till nästa steg.',
+  'simulator.parallel.fork': 'Parallellt arbete',
+  'simulator.parallel.join': 'Vänta på alla',
+  'simulator.parallel.forkExplanation':
+    'Varje ärende skapar en uppgift för varje vald gren. Alla uppgifter delar det ursprungliga ärendet och dess intäkt.',
+  'simulator.parallel.joinExplanation':
+    'Det här steget fortsätter det ursprungliga ärendet först när alla obligatoriska uppgifter från den kopplade förgreningen har kommit fram.',
+  'simulator.parallel.pairedFork': 'Startar vid:',
+  'simulator.parallel.pairedJoin': 'Fortsätter vid:',
+  'simulator.parallel.requiredBranches': 'Obligatoriska grenar',
+  'simulator.parallel.failureExplanation':
+    'Om en gren misslyckas eller överges avslutas hela ärendet en gång och övriga uppgifter avbryts. Uppkomna kostnader finns kvar.',
+  'simulator.parallel.branchCount': '{count} parallella uppgifter',
+  'simulator.parallel.waitingSummary':
+    'Väntande ärenden: {groups} · Klara uppgifter: {arrived}/{expected}',
   'integration.bridge.updateRequired':
     'Uppdatera den lokala bryggan, anslut sedan MCP-klienten igen och uppdatera dess verktygslista. Den här anslutningen visar inte aktuella funktioner för API-dokumentation och säkra skrivningar.',
   'integration.bridge.detectedVersion': 'Identifierad bryggversion: {version}',

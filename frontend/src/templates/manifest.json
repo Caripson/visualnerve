@@ -66,6 +66,12 @@
     "nodes": 23
   },
   {
+    "key": "parallel-delivery-simulator",
+    "name": "Parallel SD-WAN delivery",
+    "type": "process-simulator",
+    "nodes": 10
+  },
+  {
     "key": "system-architecture",
     "name": "System Architecture",
     "type": "dependency",

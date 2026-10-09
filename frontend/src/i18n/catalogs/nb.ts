@@ -1,6 +1,31 @@
 import type { Catalog } from '../types';
 
 const catalog = {
+  'dialogs.exportSvgSourceHint':
+    'Skjult kildetekst kan fortsatt finnes i SVG-filen. Se gjennom den før du deler.',
+  'simulator.parallel.deleteBlock': 'Fjern parallell blokk og alle oppgavene',
+  'editor.nodes.quickAdd.choice.parallelWork': 'Parallelt arbeid',
+  'editor.nodes.quickAdd.choice.parallelWorkDescription':
+    'Kjør to påkrevde arbeidsgrener og vent på begge før prosessen fortsetter.',
+  'dialogs.exportSvgProgress': 'Forbereder vektoreksport · {percent}%',
+  'dialogs.exportSvgBackgroundHint':
+    'SVG klargjøres i denne nettleseren. Du kan avbryte mens den kjører.',
+  'simulator.parallel.connectExplanation':
+    'Alle 2–64 utgående forbindelser er påkrevd. Koble hver gren til det felles samlingspunktet og deretter samlingspunktet til neste trinn.',
+  'simulator.parallel.fork': 'Parallelt arbeid',
+  'simulator.parallel.join': 'Vent på alle',
+  'simulator.parallel.forkExplanation':
+    'Hver sak oppretter en oppgave for hver valgt gren. Alle oppgaver deler den opprinnelige saken og dens inntekt.',
+  'simulator.parallel.joinExplanation':
+    'Dette trinnet fortsetter først den opprinnelige saken når alle obligatoriske oppgaver fra den tilknyttede forgreningen har kommet frem.',
+  'simulator.parallel.pairedFork': 'Starter ved:',
+  'simulator.parallel.pairedJoin': 'Fortsetter ved:',
+  'simulator.parallel.requiredBranches': 'Obligatoriske grener',
+  'simulator.parallel.failureExplanation':
+    'Hvis en gren feiler eller oppgis, avsluttes hele saken én gang og de øvrige oppgavene avbrytes. Påløpte kostnader beholdes.',
+  'simulator.parallel.branchCount': '{count} parallelle oppgaver',
+  'simulator.parallel.waitingSummary':
+    'Ventende saker: {groups} · Klare oppgaver: {arrived}/{expected}',
   'integration.bridge.updateRequired':
     'Oppdater den lokale broen, koble deretter MCP-klienten til igjen og oppdater verktøylisten. Denne tilkoblingen viser ikke gjeldende funksjoner for API-dokumentasjon og sikre skriveoperasjoner.',
   'integration.bridge.detectedVersion': 'Registrert broversjon: {version}',

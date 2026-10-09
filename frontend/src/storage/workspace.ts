@@ -31,6 +31,7 @@ import { bridge } from '../integration/bridge';
 import { isWorkspaceLockCommand, workspaceSecurityStatus } from './security-status';
 import type { VaultSession } from '../security/vault-session';
 import { VaultStorageError } from '../security/vault-storage';
+import { ExternalSvgAuthority } from './external-svg-authority';
 
 /** Commit a pending local camera before a user-requested snapshot or navigation. */
 export function flushSpatialCamera() {
@@ -199,6 +200,7 @@ export class Workspace {
   private appearanceTheme?: AppearancePreference;
   private stopped = false;
   private analysisCommands = new Set<AbortController>();
+  private externalSvgJobs = new Set<ExternalSvgAuthority>();
   constructor(public repo: Repository = repository) {}
   private assertLifecycle(lifecycle: number) {
     if (lifecycle !== this.lifecycle || this.stopped)
@@ -336,6 +338,7 @@ export class Workspace {
     this.preferenceWrites = 0;
     for (const controller of this.analysisCommands) controller.abort();
     this.analysisCommands.clear();
+    this.cancelExternalSvgJobs();
     this.unsubscribe?.();
     this.observer?.();
     this.unsubscribe = undefined;
@@ -830,6 +833,7 @@ export class Workspace {
     // Revocation closes the live grant before a persisted write can wait on IDB.
     if (key === 'mcp-access') {
       accessChoice = ++this.accessChoice;
+      this.cancelExternalSvgJobs();
       if (this.repo === repository) bridge.beginAccessChoice();
       const current = this.mcpGrant(useEditor.getState().mcpAccess);
       const requested = this.mcpGrant(value);
@@ -842,6 +846,7 @@ export class Workspace {
       useEditor.setState({ mcpAccess: this.accessCeiling });
       if (value === 'off' && this.repo === repository) bridge.disconnect();
     }
+    if (key === 'storage-consent' && value !== true) this.cancelExternalSvgJobs();
     try {
       await this.withOperation(async (job) => {
         const saved = await job.operation.storage.atomic('rw', ['settings'], async (scope) => {
@@ -923,6 +928,40 @@ export class Workspace {
         403,
         'The originating MCP grant was revoked. Submit a fresh request after reviewing saved state.',
       );
+  }
+  private cancelExternalSvgJobs() {
+    for (const authority of this.externalSvgJobs) authority.cancel();
+    this.externalSvgJobs.clear();
+  }
+  private async svgAuthority(accessChoice: number, lifecycle: number) {
+    // A child of the transient POST operation would be revoked when that response ends.
+    // Capture the root storage lease and retain its original vault session instead.
+    const operation = await this.repo.db.captureOperation();
+    const fence = () => {
+      this.assertAccessChoice(accessChoice);
+      this.assertLifecycle(lifecycle);
+      if (!useEditor.getState().privacyAcknowledged)
+        throw new StorageError(403, 'Accept local storage before using the workspace.');
+      assertMcpAccess(this.mcpGrant(useEditor.getState().mcpAccess), '/exports/svg', 'POST');
+    };
+    const authority = new ExternalSvgAuthority(
+      operation,
+      fence,
+      async (storage) => {
+        await this.requireStorageConsent(storage);
+        const permission = await storage.settings.get('mcp-access');
+        assertMcpAccess(mcpAccess(permission?.value), '/exports/svg', 'POST');
+      },
+      () => this.externalSvgJobs.delete(authority),
+    );
+    this.externalSvgJobs.add(authority);
+    try {
+      await authority.guard.check();
+      return authority;
+    } catch (error) {
+      authority.dispose();
+      throw error;
+    }
   }
   private async lockExternal(data: unknown, originatingOperation?: WorkspaceOperation) {
     const accessChoice = this.accessChoice;
@@ -1021,6 +1060,15 @@ export class Workspace {
       assertMcpAccess(mcpAccess(latest?.value), path, method);
     }
     const endpoint = path.replace(/^\/api\/v1/, '');
+    if (endpoint.startsWith('/exports/')) {
+      await authorize();
+      const { SvgExportCommands } = await import('./svg-export-commands');
+      return (await new SvgExportCommands(
+        job.repo,
+        () => authorize(),
+        () => this.svgAuthority(accessChoice, job.lifecycle),
+      ).request(endpoint, method, data)) as T;
+    }
     if (endpoint === '/presentation' || endpoint.startsWith('/presentation/')) {
       await authorize();
       let payload = data;

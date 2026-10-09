@@ -157,6 +157,20 @@ export function SimulationNodeSummary({ id, node }: { id: string; node?: GraphNo
             })}
           </span>
         )}
+        {config.type === 'fork' && (
+          <span>
+            {t('simulator.parallel.branchCount', { count: config.fork.branchEdgeIds.length })}
+          </span>
+        )}
+        {config.type === 'join' && (
+          <span data-join-waiting={metric?.join?.waitingGroups ?? 0}>
+            {t('simulator.parallel.waitingSummary', {
+              groups: metric?.join?.waitingGroups ?? 0,
+              arrived: metric?.join?.arrivedBranches ?? 0,
+              expected: metric?.join?.expectedBranches ?? 0,
+            })}
+          </span>
+        )}
         {(config.type === 'work' || config.type === 'resource') && capacity !== undefined && (
           <>
             <span className="simulation-node-capacity">

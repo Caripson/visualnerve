@@ -13,6 +13,10 @@ import './quick-add.css';
 const choiceMessages: Partial<
   Record<ConnectedNodeType, { label: MessageId; description: MessageId }>
 > = {
+  fork: {
+    label: 'editor.nodes.quickAdd.choice.parallelWork',
+    description: 'editor.nodes.quickAdd.choice.parallelWorkDescription',
+  },
   work: {
     label: 'editor.nodes.quickAdd.choice.workStep',
     description: 'editor.nodes.quickAdd.choice.processWorkWithACapacityAndQueue',
@@ -64,7 +68,7 @@ const choiceIcon = (type: ConnectedNodeType) =>
     ? Diamond
     : type === 'end' || type === 'outcome'
       ? Flag
-      : type === 'resource'
+      : type === 'resource' || type === 'fork' || type === 'join'
         ? Layers
         : type === 'note'
           ? StickyNote

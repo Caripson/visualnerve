@@ -39,6 +39,14 @@ interface Projection {
   bottlenecks: Bottleneck[];
   unitCostRate: (resource: ResourceState) => number;
 }
+interface CaseVisit {
+  tokens: Set<number>;
+  entered: number;
+  status?: 'completed' | 'abandoned' | 'failed';
+  revenue: number;
+  lost: number;
+  expectedRevenue: number;
+}
 
 /** Incremental bounded statistics from engine transitions; rendering never supplies process metrics. */
 export class ProcessMetricsAccumulator {
@@ -46,6 +54,9 @@ export class ProcessMetricsAccumulator {
   private readonly counters = new Map<string, ScopeCounter>();
   /** Only current visits are retained, so completed populations do not accumulate individual records. */
   private readonly visits = new Map<number, Map<string, number>>();
+  /** Parallel tokens share one logical visit/population/revenue per business case in a scope. */
+  private readonly cases = new Map<string, Map<number, CaseVisit>>();
+  private readonly rootScopes = new Map<number, Set<string>>();
   private readonly resourceUsage = new Map<string, Map<string, number>>();
   private readonly featureCosts = new Map<string, { investment: number; perHour: number }>();
 
@@ -86,7 +97,12 @@ export class ProcessMetricsAccumulator {
   }
 
   /** Outbound transit remains in the departing scope until arrival in the next actual node. */
-  enter(particle: ParticleSnapshot, nodeId: string, clock: number) {
+  enter(
+    particle: ParticleSnapshot,
+    nodeId: string,
+    clock: number,
+    expectedRevenue = particle.expectedRevenue,
+  ) {
     if (!this.counters.size) return;
     const next = this.hierarchy.forNode(nodeId);
     const previous = this.visits.get(particle.id);
@@ -94,21 +110,29 @@ export class ProcessMetricsAccumulator {
     if (previous?.size === next.length && next.every((id) => previous.has(id))) return;
     const scopes = new Set(next),
       visits = previous ?? new Map<string, number>();
-    for (const [id, entered] of visits)
+    for (const id of visits.keys())
       if (!scopes.has(id)) {
-        const counter = this.counters.get(id)!;
-        counter.inSystem--;
-        counter.completed++;
-        counter.exited++;
-        counter.cycle.add((clock - entered) / 1000);
+        this.leaveCase(particle, id, clock);
         visits.delete(id);
       }
     for (const id of next)
       if (!visits.has(id)) {
-        const counter = this.counters.get(id)!;
-        counter.entered++;
-        counter.inSystem++;
-        counter.expectedRevenue += particle.expectedRevenue;
+        const cases = this.cases.get(id) ?? new Map<number, CaseVisit>();
+        const rootId = particle.rootParticleId ?? particle.id;
+        let visit = cases.get(rootId);
+        if (!visit) {
+          visit = { tokens: new Set(), entered: clock, revenue: 0, lost: 0, expectedRevenue };
+          const counter = this.counters.get(id)!;
+          counter.entered++;
+          counter.inSystem++;
+          counter.expectedRevenue += expectedRevenue;
+          cases.set(rootId, visit);
+          this.cases.set(id, cases);
+          const scopes = this.rootScopes.get(rootId) ?? new Set<string>();
+          scopes.add(id);
+          this.rootScopes.set(rootId, scopes);
+        }
+        visit.tokens.add(particle.id);
         visits.set(id, clock);
       }
     if (visits.size) this.visits.set(particle.id, visits);
@@ -116,28 +140,65 @@ export class ProcessMetricsAccumulator {
   }
 
   expectedRevenueChanged(particleId: number, amount: number) {
-    for (const id of this.visits.get(particleId)?.keys() ?? [])
+    for (const id of this.rootScopes.get(particleId) ?? []) {
       this.counters.get(id)!.expectedRevenue += amount;
+      this.cases.get(id)!.get(particleId)!.expectedRevenue += amount;
+    }
   }
 
-  retire(particle: ParticleSnapshot, clock: number) {
-    for (const [id, entered] of this.visits.get(particle.id) ?? []) {
-      const counter = this.counters.get(id)!;
-      counter.inSystem--;
-      if (particle.status === 'completed') {
-        counter.completed++;
-        counter.terminalCompleted++;
-        const elapsed = (clock - entered) / 1000;
-        counter.cycle.add(elapsed);
-        counter.realizedRevenue += particle.realizedRevenue;
-        if (particle.realizedRevenue > 0) counter.ttr.add(elapsed);
-      } else {
-        if (particle.status === 'abandoned') counter.abandoned++;
-        else counter.failed++;
-        counter.lostRevenue += particle.expectedRevenue;
-      }
-    }
+  retire(particle: ParticleSnapshot, clock: number, branchFailure?: 'abandoned' | 'failed') {
+    for (const id of this.visits.get(particle.id)?.keys() ?? [])
+      this.leaveCase(
+        particle,
+        id,
+        clock,
+        branchFailure ??
+          (particle.status === 'joined'
+            ? undefined
+            : particle.status === 'completed'
+              ? 'completed'
+              : particle.status === 'abandoned'
+                ? 'abandoned'
+                : 'failed'),
+      );
     this.visits.delete(particle.id);
+  }
+  private leaveCase(
+    particle: ParticleSnapshot,
+    id: string,
+    clock: number,
+    status?: 'completed' | 'abandoned' | 'failed',
+  ) {
+    const cases = this.cases.get(id)!;
+    const rootId = particle.rootParticleId ?? particle.id;
+    const visit = cases.get(rootId)!;
+    if (status) {
+      if (status !== 'completed' || visit.status === undefined) visit.status = status;
+      visit.revenue = Math.max(visit.revenue, particle.realizedRevenue);
+      if (status !== 'completed') visit.lost = visit.expectedRevenue;
+    }
+    visit.tokens.delete(particle.id);
+    if (visit.tokens.size) return;
+    const counter = this.counters.get(id)!;
+    counter.inSystem--;
+    if (visit.status === 'abandoned' || visit.status === 'failed') {
+      counter[visit.status]++;
+      counter.lostRevenue += visit.lost;
+    } else {
+      counter.completed++;
+      const elapsed = (clock - visit.entered) / 1000;
+      counter.cycle.add(elapsed);
+      if (visit.status === 'completed') {
+        counter.terminalCompleted++;
+        counter.realizedRevenue += visit.revenue;
+        if (visit.revenue > 0) counter.ttr.add(elapsed);
+      } else counter.exited++;
+    }
+    cases.delete(rootId);
+    if (!cases.size) this.cases.delete(id);
+    const scopes = this.rootScopes.get(rootId)!;
+    scopes.delete(id);
+    if (!scopes.size) this.rootScopes.delete(rootId);
   }
 
   queueEntered(nodeId: string, clock: number) {

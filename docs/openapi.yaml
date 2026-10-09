@@ -2310,7 +2310,7 @@
         "type": "object"
       },
       "Export": {
-        "description": "Read-only export. JSON returns Graph; Markdown and SVG return text as a JSON string. SVG is native vector XML from the canonical 2D layout, never the 3D camera. Optional SVG scope defaults to complete; selected requires unique existing node UUIDs. Viewport uses the saved 2D viewport at the current browser canvas size, or fits the diagram when no usable viewport is saved. Rendering does not open or change the project. Fonts are referenced, not embedded; shadows and CSS decoration may be simplified. No external links, scripts, images or foreignObject are emitted.",
+        "description": "Read-only export. JSON returns Graph; Markdown and SVG return text as a JSON string. SVG is native vector XML from the canonical 2D layout, never the 3D camera. Optional SVG scope defaults to complete; selected requires unique existing node UUIDs. Viewport uses the saved 2D viewport at the current browser canvas size, or fits the diagram when no usable viewport is saved. Rendering does not open or change the project. Fonts are referenced, not embedded; shadows and CSS decoration may be simplified. No external links, scripts, images or foreignObject are emitted. Synchronous SVG is limited to 100 graph nodes and 20,000 cumulative title, description and serialized metadata characters. Larger diagrams immediately return 409 SVG_BACKGROUND_REQUIRED; use POST /exports/svg, poll the job and concatenate GET /exports/svg/{jobId}/result chunks. Synchronous SVG also has a 16 MiB UTF-8 result ceiling and returns the same guidance if exceeded. JSON and Markdown export behavior is unchanged.",
         "oneOf": [
           {
             "additionalProperties": false,
@@ -2468,7 +2468,7 @@
             "type": "boolean"
           },
           "capabilities": {
-            "description": "Supported bridge capabilities. Version 0.4.0 advertises operations-v1 and endpoint-docs-v1; this is software discovery, not permission or workspace status.",
+            "description": "Supported bridge capabilities. Version 0.5.0 advertises operations-v1, endpoint-docs-v1, fork-join-v1 and async-svg-export-v1; this is software discovery, not permission or workspace status.",
             "items": {
               "type": "string"
             },
@@ -4696,6 +4696,48 @@
               },
               "limits": {
                 "$ref": "#/components/schemas/SimulationExecutionLimits"
+              },
+              "routeAggregation": {
+                "additionalProperties": false,
+                "properties": {
+                  "completedRouteBuckets": {
+                    "enum": [
+                      256
+                    ],
+                    "type": "integer"
+                  },
+                  "digest": {
+                    "enum": [
+                      "ordered-composable-dual-32-bit-with-edge-count"
+                    ],
+                    "type": "string"
+                  },
+                  "exactLabelCharacters": {
+                    "enum": [
+                      2000
+                    ],
+                    "type": "integer"
+                  },
+                  "overflow": {
+                    "enum": [
+                      "[other routes]"
+                    ],
+                    "type": "string"
+                  },
+                  "summaryPrefixCharacters": {
+                    "enum": [
+                      200
+                    ],
+                    "type": "integer"
+                  },
+                  "workRevenueAttribution": {
+                    "enum": [
+                      "deduplicated-visited-work-nodes"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "type": "object"
               }
             },
             "required": [
@@ -4709,6 +4751,9 @@
           },
           "hierarchy": {
             "$ref": "#/components/schemas/SimulationHierarchyCapabilities"
+          },
+          "parallel": {
+            "$ref": "#/components/schemas/SimulationParallelCapabilities"
           },
           "visualCapacity": {
             "$ref": "#/components/schemas/SimulationVisualCapacity"
@@ -5284,6 +5329,20 @@
           "amount": {
             "type": "number"
           },
+          "arrivedBranches": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "branchCount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "branchEdgeId": {
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
           "capacity": {
             "minimum": 0,
             "type": "integer"
@@ -5294,11 +5353,31 @@
             "minLength": 1,
             "type": "string"
           },
+          "forkGroupId": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "forkNodeId": {
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "joinNodeId": {
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
           "nodeId": {
             "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
+          },
+          "parentParticleId": {
+            "minimum": 1,
+            "type": "integer"
           },
           "particleId": {
             "minimum": 0,
@@ -5322,6 +5401,10 @@
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
+          },
+          "rootParticleId": {
+            "minimum": 1,
+            "type": "integer"
           },
           "sequence": {
             "minimum": 0,
@@ -5347,7 +5430,12 @@
               "CAPACITY_SCALE_DOWN",
               "REVENUE_REALIZED",
               "COST_INCURRED",
-              "SIMULATION_COMPLETED"
+              "SIMULATION_COMPLETED",
+              "PARTICLE_FORKED",
+              "BRANCH_JOINED",
+              "JOIN_COMPLETED",
+              "BRANCH_CANCELLED",
+              "PROCESS_CANCELLED"
             ],
             "type": "string"
           }
@@ -5391,6 +5479,7 @@
         "additionalProperties": false,
         "properties": {
           "activeParticles": {
+            "description": "The 200,000 live-token limit includes suspended parents and every parallel child. Exceeding it fails explicitly with partial results; children are never silently dropped.",
             "enum": [
               200000
             ],
@@ -5410,6 +5499,7 @@
             "type": "integer"
           },
           "routeVisits": {
+            "description": "Maximum visits per work token, including visits inherited from its parent at fork. Joined branch routes are summarized without retaining every repeated edge; this visit ceiling is not a limit on summed branch effort.",
             "enum": [
               10000
             ],
@@ -5430,6 +5520,128 @@
           "activeRuns",
           "cachedRuns"
         ],
+        "type": "object"
+      },
+      "SimulationFork": {
+        "additionalProperties": false,
+        "description": "Additive schemaVersion 1 mandatory fork/join execution. A business case suspends at a fork; every declared outgoing branch creates a child work token that independently uses the same queues, capacities and shared resources. Only children of the same business case and fork group can satisfy its paired join. The original parent continues once all branches arrive, with one downstream outcome/revenue and original-creation time-to-revenue. Branch processing/waiting effort and incurred costs sum into the parent; branch revenue multipliers compose once. Any branch failure or abandonment cancels the entire original case and its nested siblings, releases resources, retains incurred costs and records lost revenue once. Regions must be closed, acyclic and correctly nested (maximum 16 levels); all 2–64 fork branches are mandatory and unfiltered. Cycles, crossing pairs, unrelated incoming work and successful outcomes before the join are rejected with structured 422. Pair/topology creation or replacement uses a single versioned full model PUT so no partially configured pair is saved.",
+        "properties": {
+          "branchEdgeIds": {
+            "description": "All outgoing edge IDs from this fork, in deterministic branch creation order. No conditional subset, duplicate or particle-type-filtered fork edge is allowed.",
+            "items": {
+              "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 64,
+            "minItems": 2,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "joinNodeId": {
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "joinNodeId",
+          "branchEdgeIds"
+        ],
+        "type": "object"
+      },
+      "SimulationForkNode": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "fork": {
+            "$ref": "#/components/schemas/SimulationFork"
+          },
+          "id": {
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "name": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "processId": {
+            "description": "Optional direct membership in an existing SimulationProcess. Ancestors roll up this node automatically. This membership does not add processing time, costs, extra workers or a second resource pool.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "fork"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "fork"
+        ],
+        "type": "object"
+      },
+      "SimulationForkPartial": {
+        "additionalProperties": false,
+        "description": "Additive schemaVersion 1 mandatory fork/join execution. A business case suspends at a fork; every declared outgoing branch creates a child work token that independently uses the same queues, capacities and shared resources. Only children of the same business case and fork group can satisfy its paired join. The original parent continues once all branches arrive, with one downstream outcome/revenue and original-creation time-to-revenue. Branch processing/waiting effort and incurred costs sum into the parent; branch revenue multipliers compose once. Any branch failure or abandonment cancels the entire original case and its nested siblings, releases resources, retains incurred costs and records lost revenue once. Regions must be closed, acyclic and correctly nested (maximum 16 levels); all 2–64 fork branches are mandatory and unfiltered. Cycles, crossing pairs, unrelated incoming work and successful outcomes before the join are rejected with structured 422. Pair/topology creation or replacement uses a single versioned full model PUT so no partially configured pair is saved.",
+        "properties": {
+          "branchEdgeIds": {
+            "oneOf": [
+              {
+                "description": "All outgoing edge IDs from this fork, in deterministic branch creation order. No conditional subset, duplicate or particle-type-filtered fork edge is allowed.",
+                "items": {
+                  "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+                  "maxLength": 300,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 64,
+                "minItems": 2,
+                "type": "array",
+                "uniqueItems": true
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true,
+                "type": "object"
+              }
+            ]
+          },
+          "joinNodeId": {
+            "oneOf": [
+              {
+                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true,
+                "type": "object"
+              }
+            ]
+          }
+        },
         "type": "object"
       },
       "SimulationHierarchy": {
@@ -6117,8 +6329,131 @@
         ],
         "type": "object"
       },
+      "SimulationJoin": {
+        "additionalProperties": false,
+        "description": "The matching fork must refer back to this join. Each active fork group has independent arrival correlation; tokens from another case/group never satisfy this join. Additive schemaVersion 1 mandatory fork/join execution. A business case suspends at a fork; every declared outgoing branch creates a child work token that independently uses the same queues, capacities and shared resources. Only children of the same business case and fork group can satisfy its paired join. The original parent continues once all branches arrive, with one downstream outcome/revenue and original-creation time-to-revenue. Branch processing/waiting effort and incurred costs sum into the parent; branch revenue multipliers compose once. Any branch failure or abandonment cancels the entire original case and its nested siblings, releases resources, retains incurred costs and records lost revenue once. Regions must be closed, acyclic and correctly nested (maximum 16 levels); all 2–64 fork branches are mandatory and unfiltered. Cycles, crossing pairs, unrelated incoming work and successful outcomes before the join are rejected with structured 422. Pair/topology creation or replacement uses a single versioned full model PUT so no partially configured pair is saved.",
+        "properties": {
+          "forkNodeId": {
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "forkNodeId"
+        ],
+        "type": "object"
+      },
+      "SimulationJoinMetrics": {
+        "additionalProperties": false,
+        "description": "Live correlation and actual branch waiting. expectedBranches counts all branches in groups with at least one arrival; arrivedBranches counts currently waiting tokens. Residual branches are expectedBranches-arrivedBranches. The node queue counts these actual arrived tokens, not suspended parents or additional business cases. completedGroups/cancelledGroups are cumulative; wait is measured from actual branch arrival until group release/cancellation.",
+        "properties": {
+          "arrivedBranches": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "cancelledGroups": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "completedGroups": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "expectedBranches": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "wait": {
+            "$ref": "#/components/schemas/SimulationDistributionMetrics"
+          },
+          "waitingGroups": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "waitingGroups",
+          "arrivedBranches",
+          "expectedBranches",
+          "completedGroups",
+          "cancelledGroups",
+          "wait"
+        ],
+        "type": "object"
+      },
+      "SimulationJoinNode": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "join": {
+            "$ref": "#/components/schemas/SimulationJoin"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "name": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "processId": {
+            "description": "Optional direct membership in an existing SimulationProcess. Ancestors roll up this node automatically. This membership does not add processing time, costs, extra workers or a second resource pool.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "join"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "join"
+        ],
+        "type": "object"
+      },
+      "SimulationJoinPartial": {
+        "additionalProperties": false,
+        "description": "The matching fork must refer back to this join. Each active fork group has independent arrival correlation; tokens from another case/group never satisfy this join. Additive schemaVersion 1 mandatory fork/join execution. A business case suspends at a fork; every declared outgoing branch creates a child work token that independently uses the same queues, capacities and shared resources. Only children of the same business case and fork group can satisfy its paired join. The original parent continues once all branches arrive, with one downstream outcome/revenue and original-creation time-to-revenue. Branch processing/waiting effort and incurred costs sum into the parent; branch revenue multipliers compose once. Any branch failure or abandonment cancels the entire original case and its nested siblings, releases resources, retains incurred costs and records lost revenue once. Regions must be closed, acyclic and correctly nested (maximum 16 levels); all 2–64 fork branches are mandatory and unfiltered. Cycles, crossing pairs, unrelated incoming work and successful outcomes before the join are rejected with structured 422. Pair/topology creation or replacement uses a single versioned full model PUT so no partially configured pair is saved.",
+        "properties": {
+          "forkNodeId": {
+            "oneOf": [
+              {
+                "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true,
+                "type": "object"
+              }
+            ]
+          }
+        },
+        "type": "object"
+      },
       "SimulationMetrics": {
         "additionalProperties": false,
+        "description": "created/completed/abandoned/failed/inSystem count original business cases, including fork/join runs. created = completed + abandoned + failed + inSystem. Throughput, expected/realized/lost revenue and TTR are business metrics; queue/processing distributions observe actual work-token effort. Additive schemaVersion 1 mandatory fork/join execution. A business case suspends at a fork; every declared outgoing branch creates a child work token that independently uses the same queues, capacities and shared resources. Only children of the same business case and fork group can satisfy its paired join. The original parent continues once all branches arrive, with one downstream outcome/revenue and original-creation time-to-revenue. Branch processing/waiting effort and incurred costs sum into the parent; branch revenue multipliers compose once. Any branch failure or abandonment cancels the entire original case and its nested siblings, releases resources, retains incurred costs and records lost revenue once. Regions must be closed, acyclic and correctly nested (maximum 16 levels); all 2–64 fork branches are mandatory and unfiltered. Cycles, crossing pairs, unrelated incoming work and successful outcomes before the join are rejected with structured 422. Pair/topology creation or replacement uses a single versioned full model PUT so no partially configured pair is saved.",
         "properties": {
           "abandoned": {
             "minimum": 0,
@@ -6195,7 +6530,7 @@
       },
       "SimulationModel": {
         "additionalProperties": false,
-        "description": "Authoritative local-first process model. Time/duration/delays use simulated seconds; rates and operating costs use per-hour units in one configurable model currency. Processing/resource dependencies are semantic, independent of canvas layout. A process-simulator Graph requires this payload; other document types must not acquire it implicitly. Empty arrays form a valid document for guided setup; a runnable process needs its particle types, connected source/work/outcome nodes and any required resources. GET /templates discovers process-simulator-blank (guided empty setup) and process-simulator (Kiosk + package pickup example). POST /diagrams preserves the kiosk default; versioned PUT /diagrams/{diagramId}/simulation replaces it with an empty or complete model. Node and edge semantic IDs are canonicalized to graph UUIDs on save; aliases are retained as native externalId.",
+        "description": "Authoritative local-first process model. Time/duration/delays use simulated seconds; rates and operating costs use per-hour units in one configurable model currency. Processing/resource dependencies are semantic, independent of canvas layout. A process-simulator Graph requires this payload; other document types must not acquire it implicitly. Empty arrays form a valid document for guided setup; a runnable process needs its particle types, connected source/work/outcome nodes and any required resources. GET /templates discovers process-simulator-blank (guided empty setup) and process-simulator (Kiosk + package pickup example). POST /diagrams preserves the kiosk default; versioned PUT /diagrams/{diagramId}/simulation replaces it with an empty or complete model. Node and edge semantic IDs are canonicalized to graph UUIDs on save; aliases are retained as native externalId. Additive schemaVersion 1 mandatory fork/join execution. A business case suspends at a fork; every declared outgoing branch creates a child work token that independently uses the same queues, capacities and shared resources. Only children of the same business case and fork group can satisfy its paired join. The original parent continues once all branches arrive, with one downstream outcome/revenue and original-creation time-to-revenue. Branch processing/waiting effort and incurred costs sum into the parent; branch revenue multipliers compose once. Any branch failure or abandonment cancels the entire original case and its nested siblings, releases resources, retains incurred costs and records lost revenue once. Regions must be closed, acyclic and correctly nested (maximum 16 levels); all 2–64 fork branches are mandatory and unfiltered. Cycles, crossing pairs, unrelated incoming work and successful outcomes before the join are rejected with structured 422. Pair/topology creation or replacement uses a single versioned full model PUT so no partially configured pair is saved.",
         "properties": {
           "currency": {
             "pattern": "^[A-Z]{3}$",
@@ -6344,6 +6679,12 @@
           },
           {
             "$ref": "#/components/schemas/SimulationOutcomeNode"
+          },
+          {
+            "$ref": "#/components/schemas/SimulationForkNode"
+          },
+          {
+            "$ref": "#/components/schemas/SimulationJoinNode"
           }
         ]
       },
@@ -6390,6 +6731,9 @@
           },
           "investmentCost": {
             "type": "number"
+          },
+          "join": {
+            "$ref": "#/components/schemas/SimulationJoinMetrics"
           },
           "lostRevenue": {
             "type": "number"
@@ -6448,6 +6792,8 @@
               "source",
               "work",
               "router",
+              "fork",
+              "join",
               "resource",
               "outcome"
             ],
@@ -6483,11 +6829,39 @@
               }
             ]
           },
+          "fork": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SimulationForkPartial"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true,
+                "type": "object"
+              }
+            ]
+          },
           "id": {
             "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
+          },
+          "join": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SimulationJoinPartial"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true,
+                "type": "object"
+              }
+            ]
           },
           "metadata": {
             "oneOf": [
@@ -6600,6 +6974,8 @@
               "source",
               "work",
               "router",
+              "fork",
+              "join",
               "resource",
               "outcome"
             ],
@@ -6656,11 +7032,39 @@
               }
             ]
           },
+          "fork": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SimulationForkPartial"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true,
+                "type": "object"
+              }
+            ]
+          },
           "id": {
             "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
+          },
+          "join": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SimulationJoinPartial"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true,
+                "type": "object"
+              }
+            ]
           },
           "metadata": {
             "oneOf": [
@@ -6773,6 +7177,8 @@
               "source",
               "work",
               "router",
+              "fork",
+              "join",
               "resource",
               "outcome"
             ],
@@ -6935,8 +7341,293 @@
         },
         "type": "object"
       },
+      "SimulationParallelCapabilities": {
+        "additionalProperties": false,
+        "description": "Additive schemaVersion 1 mandatory fork/join execution. A business case suspends at a fork; every declared outgoing branch creates a child work token that independently uses the same queues, capacities and shared resources. Only children of the same business case and fork group can satisfy its paired join. The original parent continues once all branches arrive, with one downstream outcome/revenue and original-creation time-to-revenue. Branch processing/waiting effort and incurred costs sum into the parent; branch revenue multipliers compose once. Any branch failure or abandonment cancels the entire original case and its nested siblings, releases resources, retains incurred costs and records lost revenue once. Regions must be closed, acyclic and correctly nested (maximum 16 levels); all 2–64 fork branches are mandatory and unfiltered. Cycles, crossing pairs, unrelated incoming work and successful outcomes before the join are rejected with structured 422. Pair/topology creation or replacement uses a single versioned full model PUT so no partially configured pair is saved.",
+        "properties": {
+          "cancellation": {
+            "enum": [
+              "any-branch-failure-or-abandonment-cancels-entire-case"
+            ],
+            "type": "string"
+          },
+          "fork": {
+            "additionalProperties": false,
+            "properties": {
+              "branchEdgeIds": {
+                "enum": [
+                  "fork.branchEdgeIds"
+                ],
+                "type": "string"
+              },
+              "joinNodeId": {
+                "enum": [
+                  "fork.joinNodeId"
+                ],
+                "type": "string"
+              },
+              "outgoing": {
+                "enum": [
+                  "all-declared"
+                ],
+                "type": "string"
+              },
+              "particleTypeFilters": {
+                "enum": [
+                  false
+                ],
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "groupSampling": {
+            "enum": [
+              "bounded-by-particle-retention"
+            ],
+            "type": "string"
+          },
+          "incurredCosts": {
+            "enum": [
+              "retained-on-cancellation"
+            ],
+            "type": "string"
+          },
+          "join": {
+            "additionalProperties": false,
+            "properties": {
+              "correlation": {
+                "enum": [
+                  "business-case-and-fork-group"
+                ],
+                "type": "string"
+              },
+              "forkNodeId": {
+                "enum": [
+                  "join.forkNodeId"
+                ],
+                "type": "string"
+              },
+              "wait": {
+                "enum": [
+                  "all-declared-branches"
+                ],
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "joinMetricsField": {
+            "enum": [
+              "nodes[].join"
+            ],
+            "type": "string"
+          },
+          "limits": {
+            "additionalProperties": false,
+            "properties": {
+              "branches": {
+                "enum": [
+                  64
+                ],
+                "type": "integer"
+              },
+              "liveTokens": {
+                "enum": [
+                  200000
+                ],
+                "type": "integer"
+              },
+              "nesting": {
+                "enum": [
+                  16
+                ],
+                "type": "integer"
+              }
+            },
+            "required": [
+              "branches",
+              "nesting",
+              "liveTokens"
+            ],
+            "type": "object"
+          },
+          "mode": {
+            "enum": [
+              "all-mandatory"
+            ],
+            "type": "string"
+          },
+          "mutations": {
+            "enum": [
+              "atomic-full-model-put-for-pair-and-topology-changes"
+            ],
+            "type": "string"
+          },
+          "nesting": {
+            "enum": [
+              "properly-nested-closed-acyclic-regions"
+            ],
+            "type": "string"
+          },
+          "population": {
+            "enum": [
+              "original-business-cases"
+            ],
+            "type": "string"
+          },
+          "processingAndWaiting": {
+            "enum": [
+              "summed-branch-effort"
+            ],
+            "type": "string"
+          },
+          "revenue": {
+            "enum": [
+              "once-after-join-with-composed-branch-multipliers"
+            ],
+            "type": "string"
+          },
+          "stateField": {
+            "enum": [
+              "parallel"
+            ],
+            "type": "string"
+          },
+          "timeToRevenue": {
+            "enum": [
+              "original-creation-to-single-outcome"
+            ],
+            "type": "string"
+          },
+          "workTokens": {
+            "enum": [
+              "independent-queue-resource-consuming-children"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "SimulationParallelGroup": {
+        "additionalProperties": false,
+        "properties": {
+          "arrivedBranchEdgeIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "branchParticleIds": {
+            "items": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "maxItems": 64,
+            "type": "array"
+          },
+          "createdAtSeconds": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "forkNodeId": {
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "groupId": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "joinNodeId": {
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "parentParticleId": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "pendingBranchEdgeIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "rootParticleId": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "groupId",
+          "rootParticleId",
+          "parentParticleId",
+          "forkNodeId",
+          "joinNodeId",
+          "branchParticleIds",
+          "arrivedBranchEdgeIds",
+          "pendingBranchEdgeIds",
+          "createdAtSeconds"
+        ],
+        "type": "object"
+      },
+      "SimulationParallelState": {
+        "additionalProperties": false,
+        "description": "Aggregates cover every active fork group/token. groups is a bounded inspection sample, capped by particle retention (at most 10,000); droppedGroups states how many active groups are omitted from that sample. These counts never replace original business-case metrics. A nested suspended parent is also an outer branch token, so activeBranches+waitingParents must not be treated as distinct population.",
+        "properties": {
+          "activeBranches": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "activeGroups": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "cancelledBranches": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "createdBranches": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "droppedGroups": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/SimulationParallelGroup"
+            },
+            "type": "array"
+          },
+          "joinedBranches": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "waitingParents": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "activeGroups",
+          "activeBranches",
+          "waitingParents",
+          "createdBranches",
+          "joinedBranches",
+          "cancelledBranches",
+          "groups",
+          "droppedGroups"
+        ],
+        "type": "object"
+      },
       "SimulationParticleSnapshot": {
         "additionalProperties": false,
+        "description": "Original business items have their own ID. Child work tokens additionally expose root/parent/group/fork/join/branch identities. waiting means a suspended parent or an arrived child waiting at join; joined and cancelled children are retired work tokens, never extra completed/failed business cases. Accumulated processing/waiting are effort summed across branches, while TTR/cycle time use original creation and completion timestamps.",
         "properties": {
           "accumulatedCost": {
             "minimum": 0,
@@ -6945,6 +7636,12 @@
           "arrivesAtSeconds": {
             "minimum": 0,
             "type": "number"
+          },
+          "branchEdgeId": {
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
           },
           "completedAtSeconds": {
             "minimum": 0,
@@ -6970,6 +7667,16 @@
           },
           "expectedRevenue": {
             "type": "number"
+          },
+          "forkGroupId": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "forkNodeId": {
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
           },
           "history": {
             "items": {
@@ -7002,11 +7709,21 @@
             "minimum": 0,
             "type": "integer"
           },
+          "joinNodeId": {
+            "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
           "nodeId": {
             "description": "Stable semantic ID. Node/edge IDs returned by a saved document are canonical graph UUIDs; process, resource, particle type and scenario IDs may be readable strings.",
             "maxLength": 300,
             "minLength": 1,
             "type": "string"
+          },
+          "parentParticleId": {
+            "minimum": 1,
+            "type": "integer"
           },
           "pendingAdmission": {
             "description": "The particle has reached a Work node at the current timestamp and awaits the shared same-time admission batch; this is real engine state, before resource acquisition/processing.",
@@ -7034,11 +7751,18 @@
           "realizedRevenue": {
             "type": "number"
           },
+          "rootParticleId": {
+            "minimum": 1,
+            "type": "integer"
+          },
           "status": {
             "enum": [
               "queued",
               "processing",
               "transit",
+              "waiting",
+              "joined",
+              "cancelled",
               "completed",
               "abandoned",
               "failed"
@@ -7703,7 +8427,7 @@
       },
       "SimulationProcessMetrics": {
         "additionalProperties": false,
-        "description": "A process includes its direct members and every descendant. Parent/child rollups overlap and must not be summed. Distributions come from actual scope observations, never sums of node quantiles. The same global engine and shared resource pools constrain every scope. Only occupied shared-resource cost is allocated to a scope; idle resource capacity, pool scaling and pool investments remain whole-system overhead. Projected process cards and boundary connectors are read-only views, not additional processing nodes, costs or capacity.",
+        "description": "A process includes its direct members and every descendant. Parent/child rollups overlap and must not be summed. Distributions come from actual scope observations, never sums of node quantiles. The same global engine and shared resource pools constrain every scope. Only occupied shared-resource cost is allocated to a scope; idle resource capacity, pool scaling and pool investments remain whole-system overhead. Projected process cards and boundary connectors are read-only views, not additional processing nodes, costs or capacity. Parallel siblings are deduplicated by root business case per active scope visit; shared scopes count population, revenue and terminal loss once, while queues/resources/processing observe actual child work.",
         "properties": {
           "abandoned": {
             "minimum": 0,
@@ -8648,6 +9372,9 @@
             },
             "type": "object"
           },
+          "parallel": {
+            "$ref": "#/components/schemas/SimulationParallelState"
+          },
           "particleTypes": {
             "additionalProperties": {
               "$ref": "#/components/schemas/SimulationParticleTypeMetrics"
@@ -8676,6 +9403,7 @@
             "additionalProperties": false,
             "properties": {
               "activeParticles": {
+                "description": "All live engine tokens, including original items, child work tokens and suspended parents. This is a storage/performance count, not business population.",
                 "minimum": 0,
                 "type": "integer"
               },
@@ -8735,6 +9463,7 @@
               },
               "type": "object"
             },
+            "description": "Completed original-case route metrics. Exact ordered labels are retained up to 2,000 characters. Longer paths use the first 200 characters followed by an ordered composable dual 32-bit digest and edge count: … [route:\u003c8hex\u003e-\u003c8hex\u003e; edges=N]. These deterministic grouping summaries are not cryptographic integrity guarantees and cannot reconstruct the complete itinerary. This bounded summary never drops Work revenue attribution. At most 256 distinct route buckets plus [other routes] are retained; all completed cases still contribute to metrics.",
             "type": "object"
           },
           "runId": {
@@ -9910,6 +10639,9 @@
             },
             "type": "object"
           },
+          "parallel": {
+            "$ref": "#/components/schemas/SimulationParallelState"
+          },
           "particleTypes": {
             "additionalProperties": {
               "$ref": "#/components/schemas/SimulationParticleTypeMetrics"
@@ -9938,6 +10670,7 @@
             "additionalProperties": false,
             "properties": {
               "activeParticles": {
+                "description": "All live engine tokens, including original items, child work tokens and suspended parents. This is a storage/performance count, not business population.",
                 "minimum": 0,
                 "type": "integer"
               },
@@ -11163,6 +11896,420 @@
           }
         ]
       },
+      "SvgExportCapabilities": {
+        "additionalProperties": false,
+        "description": "Read-only background SVG export in the connected browser's local Web Worker. It snapshots the canonical 2D diagram without opening or mutating the project; a 3D view exports its corresponding 2D layout. The same renderer powers UI and API exports. Jobs and results are transient RAM, not IndexedDB or server files. Every request requires accepted storage, an unlocked workspace and at least Read only MCP access. A job retains its original vault session and MCP grant; lock, grant change, cache clear or bridge stop invalidates it rather than rerouting it to another authority. Expired, evicted or cancelled jobs return 404; after reauthorization, an invalidated original job is unavailable. Authorization errors, including 423 while locked, take precedence. Status may report failed with error details; result retrieval requires succeeded and otherwise returns 409 SVG_JOB_NOT_READY.",
+        "properties": {
+          "execution": {
+            "enum": [
+              "local-web-worker"
+            ],
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "svg"
+            ],
+            "type": "string"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/SvgExportLimits"
+          },
+          "persistence": {
+            "enum": [
+              "transient-memory"
+            ],
+            "type": "string"
+          },
+          "requiresOriginalSessionAndGrant": {
+            "enum": [
+              true
+            ],
+            "type": "boolean"
+          },
+          "resultOffsetUnit": {
+            "enum": [
+              "utf-16-code-units"
+            ],
+            "type": "string"
+          },
+          "scopes": {
+            "items": {
+              "enum": [
+                "complete",
+                "viewport",
+                "selected"
+              ],
+              "type": "string"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "version": {
+            "enum": [
+              1
+            ],
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "format",
+          "execution",
+          "scopes",
+          "limits",
+          "resultOffsetUnit",
+          "requiresOriginalSessionAndGrant",
+          "persistence"
+        ],
+        "type": "object"
+      },
+      "SvgExportEmptyInput": {
+        "additionalProperties": false,
+        "description": "No body or exactly {}. No model mutation or credential input.",
+        "properties": {},
+        "type": "object"
+      },
+      "SvgExportJobInput": {
+        "description": "Read-only background SVG export in the connected browser's local Web Worker. It snapshots the canonical 2D diagram without opening or mutating the project; a 3D view exports its corresponding 2D layout. The same renderer powers UI and API exports. Jobs and results are transient RAM, not IndexedDB or server files. Every request requires accepted storage, an unlocked workspace and at least Read only MCP access. A job retains its original vault session and MCP grant; lock, grant change, cache clear or bridge stop invalidates it rather than rerouting it to another authority. Expired, evicted or cancelled jobs return 404; after reauthorization, an invalidated original job is unavailable. Authorization errors, including 423 while locked, take precedence. Status may report failed with error details; result retrieval requires succeeded and otherwise returns 409 SVG_JOB_NOT_READY. Scope defaults to complete. Viewport uses the saved 2D viewport at the browser canvas size, or fits the diagram if no usable viewport is saved. Selected scope requires unique existing node UUIDs; nodeIds is rejected for every other scope, including an empty array. Unknown fields and query parameters are rejected. The renderer references fonts without embedding them and emits no external links, scripts, images or foreignObject.",
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "diagramId": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "scope": {
+                "default": "complete",
+                "enum": [
+                  "complete",
+                  "viewport"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "diagramId"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "diagramId": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "nodeIds": {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "maxItems": 20000,
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "scope": {
+                "enum": [
+                  "selected"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "diagramId",
+              "scope",
+              "nodeIds"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "SvgExportLimits": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "description": "Maximum simultaneous queued or running jobs in this browser.",
+            "enum": [
+              2
+            ],
+            "type": "integer"
+          },
+          "bytes": {
+            "description": "Maximum complete SVG result size, in UTF-8 bytes.",
+            "enum": [
+              67108864
+            ],
+            "type": "integer"
+          },
+          "deadlineMs": {
+            "description": "Maximum worker execution deadline, in milliseconds.",
+            "enum": [
+              120000
+            ],
+            "type": "integer"
+          },
+          "dimension": {
+            "description": "Maximum absolute coordinate or canvas dimension supported by the vector renderer.",
+            "enum": [
+              16777216
+            ],
+            "type": "integer"
+          },
+          "edges": {
+            "description": "Maximum projected or scoped connections rendered by one background job.",
+            "enum": [
+              100000
+            ],
+            "type": "integer"
+          },
+          "nodes": {
+            "description": "Maximum projected or scoped nodes rendered by one background job; a smaller selection from a larger source graph is allowed.",
+            "enum": [
+              20000
+            ],
+            "type": "integer"
+          },
+          "resultChunkCharacters": {
+            "description": "Maximum result chunk length, in UTF-16 code units; Unicode surrogate pairs are never split.",
+            "enum": [
+              1048576
+            ],
+            "type": "integer"
+          },
+          "retained": {
+            "description": "Maximum retained terminal jobs; older jobs can be evicted.",
+            "enum": [
+              4
+            ],
+            "type": "integer"
+          },
+          "retainedBytes": {
+            "description": "Maximum retained SVG result bytes in this browser.",
+            "enum": [
+              134217728
+            ],
+            "type": "integer"
+          },
+          "retentionMs": {
+            "description": "Job retention from creation, in milliseconds; expiry removes the job and result.",
+            "enum": [
+              900000
+            ],
+            "type": "integer"
+          },
+          "sourceEdges": {
+            "description": "Maximum source graph edges before snapshotting, independent of export scope.",
+            "enum": [
+              500000
+            ],
+            "type": "integer"
+          },
+          "sourceNodes": {
+            "description": "Maximum source graph nodes before snapshotting, independent of export scope.",
+            "enum": [
+              100000
+            ],
+            "type": "integer"
+          },
+          "synchronousNodes": {
+            "description": "Maximum graph nodes before legacy POST /export SVG requires a background job.",
+            "enum": [
+              100
+            ],
+            "type": "integer"
+          },
+          "synchronousTextCharacters": {
+            "description": "Maximum title, description and serialized metadata characters before synchronous SVG requires a background job.",
+            "enum": [
+              20000
+            ],
+            "type": "integer"
+          },
+          "textCharacters": {
+            "description": "Maximum rendered text budget, in JavaScript UTF-16 code units.",
+            "enum": [
+              5000000
+            ],
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sourceNodes",
+          "sourceEdges",
+          "nodes",
+          "edges",
+          "textCharacters",
+          "bytes",
+          "dimension",
+          "active",
+          "retained",
+          "retainedBytes",
+          "retentionMs",
+          "deadlineMs",
+          "synchronousNodes",
+          "synchronousTextCharacters",
+          "resultChunkCharacters"
+        ],
+        "type": "object"
+      },
+      "SvgJobFailure": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "description": "Semantic SVG error code, such as SVG_RENDER_FAILED, SVG_JOB_TIMEOUT or a renderer limit code.",
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "type": "object"
+      },
+      "SvgJobResultChunk": {
+        "additionalProperties": false,
+        "description": "Read-only background SVG export in the connected browser's local Web Worker. It snapshots the canonical 2D diagram without opening or mutating the project; a 3D view exports its corresponding 2D layout. The same renderer powers UI and API exports. Jobs and results are transient RAM, not IndexedDB or server files. Every request requires accepted storage, an unlocked workspace and at least Read only MCP access. A job retains its original vault session and MCP grant; lock, grant change, cache clear or bridge stop invalidates it rather than rerouting it to another authority. Expired, evicted or cancelled jobs return 404; after reauthorization, an invalidated original job is unavailable. Authorization errors, including 423 while locked, take precedence. Status may report failed with error details; result retrieval requires succeeded and otherwise returns 409 SVG_JOB_NOT_READY. Retrieve only after state=succeeded. Offsets and limit use UTF-16 code units. Offsets inside a surrogate pair or beyond the result return 422; a limit too small to include the next Unicode character also returns 422. Follow nextOffset and concatenate text until complete=true. The result stays local and is not embedded in status responses.",
+        "properties": {
+          "complete": {
+            "description": "True when nextOffset equals totalCharacters; no further chunk is needed.",
+            "type": "boolean"
+          },
+          "jobId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "nextOffset": {
+            "description": "Use this exact offset for the next request; it may be less than offset + limit to preserve a Unicode character boundary.",
+            "maximum": 67108864,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "offset": {
+            "description": "Requested starting UTF-16 code-unit offset.",
+            "maximum": 67108864,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "text": {
+            "description": "Raw SVG text for this chunk. Concatenate text in offset order without JSON quoting or separators.",
+            "maxLength": 1048576,
+            "type": "string"
+          },
+          "totalCharacters": {
+            "description": "Complete result length in UTF-16 code units, not UTF-8 bytes or Unicode code points.",
+            "maximum": 67108864,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "jobId",
+          "offset",
+          "nextOffset",
+          "totalCharacters",
+          "text",
+          "complete"
+        ],
+        "type": "object"
+      },
+      "SvgJobStatus": {
+        "additionalProperties": false,
+        "description": "Read-only background SVG export in the connected browser's local Web Worker. It snapshots the canonical 2D diagram without opening or mutating the project; a 3D view exports its corresponding 2D layout. The same renderer powers UI and API exports. Jobs and results are transient RAM, not IndexedDB or server files. Every request requires accepted storage, an unlocked workspace and at least Read only MCP access. A job retains its original vault session and MCP grant; lock, grant change, cache clear or bridge stop invalidates it rather than rerouting it to another authority. Expired, evicted or cancelled jobs return 404; after reauthorization, an invalidated original job is unavailable. Authorization errors, including 423 while locked, take precedence. Status may report failed with error details; result retrieval requires succeeded and otherwise returns 409 SVG_JOB_NOT_READY. Poll by jobId. GET status returns 200 for retained failed jobs, with error.code and error.message. Cancellation returns one cancelled status and removes the job and any readable result; subsequent status/result requests return 404. Job IDs are canonical UUIDs, separate from opaque recoverable transport operation IDs.",
+        "properties": {
+          "bytes": {
+            "description": "Complete successful result size in UTF-8 bytes.",
+            "maximum": 67108864,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "diagramId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "edgeCount": {
+            "description": "Source graph connection count while queued; successful result counts the rendered projected/scoped connections, at most 100,000.",
+            "maximum": 500000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "error": {
+            "$ref": "#/components/schemas/SvgJobFailure"
+          },
+          "format": {
+            "enum": [
+              "svg"
+            ],
+            "type": "string"
+          },
+          "jobId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "nodeCount": {
+            "description": "Source graph node count while queued; successful result counts the rendered projected/scoped nodes, at most 20,000.",
+            "maximum": 100000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "phase": {
+            "enum": [
+              "queued",
+              "projection",
+              "layout",
+              "edges",
+              "nodes",
+              "drawing",
+              "complete"
+            ],
+            "type": "string"
+          },
+          "progress": {
+            "description": "Actual worker progress; success assigns 100. Always inspect state: cancellation can discard a previously successful result and preserve its last progress value.",
+            "maximum": 100,
+            "minimum": 0,
+            "type": "number"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed",
+              "cancelled"
+            ],
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "jobId",
+          "diagramId",
+          "format",
+          "state",
+          "progress",
+          "phase",
+          "createdAt",
+          "updatedAt",
+          "nodeCount",
+          "edgeCount"
+        ],
+        "type": "object"
+      },
       "TemplateRecord": {
         "additionalProperties": false,
         "description": "Browser-local built-in or user template with its complete reusable native graph. A Process Simulator template includes graph.simulation. Discovery requires an accepted, connected browser and at least Read only access; records are not stored by the server.",
@@ -11446,9 +12593,9 @@
     }
   },
   "info": {
-    "description": "IndexedDB in the browser is authoritative and is the only database. This optional API forwards commands through a WebSocket bridge to an open browser with explicit storage acceptance and MCP access set to Read only or Read + write (default Off). Read-only access permits GET, POST /export, exact POST /sql/preview, /code/preview, /code/project/preview or /diagram-files/preview and exact diagram questions/build-brief previews, rejecting mutations with 403. Semantic overview, evidence-backed multi-level questions, local version history, editable storyboard scenes and reviewed app specifications share the same canonical graph and browser-local persistence. Draw.io XML and base64 Visio .vsdx ZIP files are analyzed locally without executing or fetching embedded content; POST /import saves only a selected native page and requires write access. Multipage imports require pageId from preview. Original XML/ZIP is transient. SQL SELECT/WITH visualization retains scoped aliases, expressions, joins and clauses locally; it never executes SQL or connects to a database. POST /sql/diagrams and POST /code/diagrams save and open validated graphs and require write access. GET /code/languages discovers 50 code languages plus Markdown. POST /code/project/preview and /code/project/diagrams accept strict base64 ZIP projects and files/symbols/folders modes, using the same local analysis engine. Project preview permits read-only access; saving requires write access. Code diagrams retain identifiers, paths, source lines and confidence; original source and nonstructural string values are discarded. The public static host provides no content API; endpoints target a loopback bridge only. Start the static server with --bridge. No application records are stored in the server. PATCH requires version; graph replacement requires baseVersion. Optional VISUAL_NERVE_BRIDGE_TOKEN protects all integration requests. PNG/PDF render in the browser. MCP is available at /mcp. Its initialize instructions advertise Process Simulator, native 2D and opt-in 3D. Process Simulator is a first-class local document with separately typed schemaVersion 1 semantics and the same deterministic worker engine for UI, API and MCP. Seeded runs return asynchronous IDs; headless execution needs no active canvas or animation but still requires a connected browser. Shared resources, queues, scaling, economics, replay and scenario results are semantically inspectable.  visual_nerve_api_docs provides a compact guide by default and the full bundled OpenAPI with document=openapi; the same documents are MCP resources. Documentation discovery requires no connected browser. The production browser workspace is at https://app.visualnerve.com/; https://www.visualnerve.com/ is the public product website. Former public /app paths redirect to the app root, while /app on the app origin returns 404. Browser records remain bound to their original origin and are never automatically moved or deleted. Local source-development builds may retain a development-only /app fixture. The exact app origin https://app.visualnerve.com without a path is the allowed production browser origin; Settings shows a separate local MCP HTTP URL for Codex and WebSocket URL for the browser. Public GET /mcp/ is setup documentation; local MCP POST /mcp and REST /api/v1 endpoints remain unchanged. GET /workspace/security reports safe versioned metadata for the connected browser's actual storage backend without reading private records or unlocking it. Encrypted app workspaces use AES-256-GCM in IndexedDB and require a human password/recovery action in the browser; existing legacy workspaces are explicitly mode:legacy. Logical workspace schemaVersion 8 is separate from vault schemaVersion 1. Private UI/API/MCP operations share the same revocable unlocked-session storage boundary. An already authorized live socket remains restricted to safe status while locked; it is not reconnected after closure. Cold locked startup creates no connection. Connected locked content requests return 423 WORKSPACE_LOCKED; an absent/disconnected browser remains 503. API/MCP requests do not renew idle timeout. Lock cancels jobs and invalidates originating requests, even after a later unlock. POST /workspace/lock accepts only an empty object or no arguments. It requires current fresh Read + write access while unlocked, waits for pending saves, and returns safe status after revocation; save failure does not silently discard edits. A durable revision fence rejects concurrent grant or saved-data changes with 409 without invalidating local keys; inspect current state before a fresh request. A locked retained connection returns idempotent status without revoking again; after unlock a fresh human grant is required. There are no password, recovery, unlock or session-policy control endpoints; /settings/vault-* writes are rejected. Documentation discovery through visual_nerve_api_docs and MCP resources needs no connected/unlocked browser. Explicit authorized API/AI requests and diagram exports return readable content; GET /workspace/export is a readable semantic WorkspaceBackup, not the browser's encrypted backup download. Downloaded encrypted backups retain their own credentials after the live workspace password changes. After each encrypted-session unlock access starts Off; the human must choose a fresh Read only or Read + write grant in Settings. The app interface supports en, da, nb, sv, fi, de, es and fr, selected in browser Settings; English is the default. This display-only technical preference does not change canonical API/MCP field names, enum values, errors, schemas, source data or deterministic results. It is not a private workspace setting, is excluded from backups, and does not change narration voice. Help and API documentation remain in English. visual_nerve_api_docs also supports document:endpoint with an exact documented path template and uppercase method, returning that operation with shared path parameters and its complete transitive component/security dependencies. No browser, external fetch or schema truncation is involved. Canonical IDs are UUIDs; externalId is an optional client-defined integration string. Bulk updates match externalId only; use versioned PATCH to edit by canonical UUID. Recoverable write operations use a server-issued opaque operationId, not a graph UUID. POST /operations with exactly {} reserves an ID before submitting a write. Pass it in X-Visual-Nerve-Operation-Id for REST or the operationId argument of visual_nerve_request for MCP. Successful command bodies remain unchanged; the response header or MCP structuredContent.operationId identifies the operation. GET /operations/{operationId} reads the original browser's receipt. Reuse the same ID only with the exact method, path and JSON data, including absent versus null; conflicting reuse returns 409 OPERATION_CONFLICT. A timeout or lost acknowledgement after dispatch returns OPERATION_OUTCOME_UNKNOWN with state:unknown: the write may still commit. Inspect that operation or retry the identical command with the same ID, never blindly repeat it under a new ID. Identity is bound to the original workspace, origin, browser instance and access grant; another tab or grant cannot reroute it. Bridge restart returns 409 OPERATION_OUTCOME_UNKNOWN; expired receipts return 410 OPERATION_EXPIRED. Reconcile saved model state manually before fresh work when recovery is unavailable. Browser-only transient receipts are bounded to 15 minutes, 256 entries and 8 MiB of readable results; bridge RAM retains only opaque routing/fingerprint metadata, bounded to 15 minutes and 1024 entries. Nothing is persisted to IndexedDB or the server's disk. Lock, reload, grant revocation or storage loss can remove recovery data. Older browser tabs without operations-v1 remain one-shot and cannot reserve/recover IDs: refresh the browser and use a current bridge. Check bridge health/version/capabilities; static health contains no workspace records or grants.",
+    "description": "IndexedDB in the browser is authoritative and is the only database. This optional API forwards commands through a WebSocket bridge to an open browser with explicit storage acceptance and MCP access set to Read only or Read + write (default Off). Read-only access permits GET, POST /export, exact POST /exports/svg and DELETE /exports/svg/{jobId} for transient vector jobs, exact POST /sql/preview, /code/preview, /code/project/preview or /diagram-files/preview and exact diagram questions/build-brief previews, rejecting mutations with 403. Semantic overview, evidence-backed multi-level questions, local version history, editable storyboard scenes and reviewed app specifications share the same canonical graph and browser-local persistence. Draw.io XML and base64 Visio .vsdx ZIP files are analyzed locally without executing or fetching embedded content; POST /import saves only a selected native page and requires write access. Multipage imports require pageId from preview. Original XML/ZIP is transient. SQL SELECT/WITH visualization retains scoped aliases, expressions, joins and clauses locally; it never executes SQL or connects to a database. POST /sql/diagrams and POST /code/diagrams save and open validated graphs and require write access. GET /code/languages discovers 50 code languages plus Markdown. POST /code/project/preview and /code/project/diagrams accept strict base64 ZIP projects and files/symbols/folders modes, using the same local analysis engine. Project preview permits read-only access; saving requires write access. Code diagrams retain identifiers, paths, source lines and confidence; original source and nonstructural string values are discarded. The public static host provides no content API; endpoints target a loopback bridge only. Start the static server with --bridge. No application records are stored in the server. PATCH requires version; graph replacement requires baseVersion. Optional VISUAL_NERVE_BRIDGE_TOKEN protects all integration requests. PNG/PDF render in the browser. MCP is available at /mcp. Its initialize instructions advertise Process Simulator, native 2D and opt-in 3D. Process Simulator is a first-class local document with separately typed schemaVersion 1 semantics and the same deterministic worker engine for UI, API and MCP. Seeded runs return asynchronous IDs; headless execution needs no active canvas or animation but still requires a connected browser. Shared resources, queues, scaling, economics, replay and scenario results are semantically inspectable.  visual_nerve_api_docs provides a compact guide by default and the full bundled OpenAPI with document=openapi; the same documents are MCP resources. Documentation discovery requires no connected browser. The production browser workspace is at https://app.visualnerve.com/; https://www.visualnerve.com/ is the public product website. Former public /app paths redirect to the app root, while /app on the app origin returns 404. Browser records remain bound to their original origin and are never automatically moved or deleted. Local source-development builds may retain a development-only /app fixture. The exact app origin https://app.visualnerve.com without a path is the allowed production browser origin; Settings shows a separate local MCP HTTP URL for Codex and WebSocket URL for the browser. Public GET /mcp/ is setup documentation; local MCP POST /mcp and REST /api/v1 endpoints remain unchanged. GET /workspace/security reports safe versioned metadata for the connected browser's actual storage backend without reading private records or unlocking it. Encrypted app workspaces use AES-256-GCM in IndexedDB and require a human password/recovery action in the browser; existing legacy workspaces are explicitly mode:legacy. Logical workspace schemaVersion 8 is separate from vault schemaVersion 1. Private UI/API/MCP operations share the same revocable unlocked-session storage boundary. An already authorized live socket remains restricted to safe status while locked; it is not reconnected after closure. Cold locked startup creates no connection. Connected locked content requests return 423 WORKSPACE_LOCKED; an absent/disconnected browser remains 503. API/MCP requests do not renew idle timeout. Lock cancels jobs and invalidates originating requests, even after a later unlock. POST /workspace/lock accepts only an empty object or no arguments. It requires current fresh Read + write access while unlocked, waits for pending saves, and returns safe status after revocation; save failure does not silently discard edits. A durable revision fence rejects concurrent grant or saved-data changes with 409 without invalidating local keys; inspect current state before a fresh request. A locked retained connection returns idempotent status without revoking again; after unlock a fresh human grant is required. There are no password, recovery, unlock or session-policy control endpoints; /settings/vault-* writes are rejected. Documentation discovery through visual_nerve_api_docs and MCP resources needs no connected/unlocked browser. Explicit authorized API/AI requests and diagram exports return readable content; GET /workspace/export is a readable semantic WorkspaceBackup, not the browser's encrypted backup download. Downloaded encrypted backups retain their own credentials after the live workspace password changes. After each encrypted-session unlock access starts Off; the human must choose a fresh Read only or Read + write grant in Settings. The app interface supports en, da, nb, sv, fi, de, es and fr, selected in browser Settings; English is the default. This display-only technical preference does not change canonical API/MCP field names, enum values, errors, schemas, source data or deterministic results. It is not a private workspace setting, is excluded from backups, and does not change narration voice. Help and API documentation remain in English. visual_nerve_api_docs also supports document:endpoint with an exact documented path template and uppercase method, returning that operation with shared path parameters and its complete transitive component/security dependencies. No browser, external fetch or schema truncation is involved. Canonical IDs are UUIDs; externalId is an optional client-defined integration string. Bulk updates match externalId only; use versioned PATCH to edit by canonical UUID. Recoverable write operations use a server-issued opaque operationId, not a graph UUID. POST /operations with exactly {} reserves an ID before submitting a write. Pass it in X-Visual-Nerve-Operation-Id for REST or the operationId argument of visual_nerve_request for MCP. Successful command bodies remain unchanged; the response header or MCP structuredContent.operationId identifies the operation. GET /operations/{operationId} reads the original browser's receipt. Reuse the same ID only with the exact method, path and JSON data, including absent versus null; conflicting reuse returns 409 OPERATION_CONFLICT. A timeout or lost acknowledgement after dispatch returns OPERATION_OUTCOME_UNKNOWN with state:unknown: the write may still commit. Inspect that operation or retry the identical command with the same ID, never blindly repeat it under a new ID. Identity is bound to the original workspace, origin, browser instance and access grant; another tab or grant cannot reroute it. Bridge restart returns 409 OPERATION_OUTCOME_UNKNOWN; expired receipts return 410 OPERATION_EXPIRED. Reconcile saved model state manually before fresh work when recovery is unavailable. Browser-only transient receipts are bounded to 15 minutes, 256 entries and 8 MiB of readable results; bridge RAM retains only opaque routing/fingerprint metadata, bounded to 15 minutes and 1024 entries. Nothing is persisted to IndexedDB or the server's disk. Lock, reload, grant revocation or storage loss can remove recovery data. Older browser tabs without operations-v1 remain one-shot and cannot reserve/recover IDs: refresh the browser and use a current bridge. Check bridge health/version/capabilities; static health contains no workspace records or grants.",
     "title": "Visual Nerve local API",
-    "version": "0.4.0"
+    "version": "0.5.0"
   },
   "openapi": "3.0.3",
   "paths": {
@@ -24204,6 +25351,7 @@
     },
     "/export": {
       "post": {
+        "description": "Synchronous SVG is limited to 100 graph nodes and 20,000 cumulative title, description and serialized metadata characters. Larger diagrams immediately return 409 SVG_BACKGROUND_REQUIRED; use POST /exports/svg, poll the job and concatenate GET /exports/svg/{jobId}/result chunks. Synchronous SVG also has a 16 MiB UTF-8 result ceiling and returns the same guidance if exceeded. JSON and Markdown export behavior is unchanged.",
         "operationId": "post_export",
         "parameters": [
           {
@@ -24358,6 +25506,768 @@
           {}
         ],
         "summary": "Export canonical JSON, semantic Markdown or native vector SVG; read-only access allowed"
+      }
+    },
+    "/exports/capabilities": {
+      "get": {
+        "description": "Read-only background SVG export in the connected browser's local Web Worker. It snapshots the canonical 2D diagram without opening or mutating the project; a 3D view exports its corresponding 2D layout. The same renderer powers UI and API exports. Jobs and results are transient RAM, not IndexedDB or server files. Every request requires accepted storage, an unlocked workspace and at least Read only MCP access. A job retains its original vault session and MCP grant; lock, grant change, cache clear or bridge stop invalidates it rather than rerouting it to another authority. Expired, evicted or cancelled jobs return 404; after reauthorization, an invalidated original job is unavailable. Authorization errors, including 423 while locked, take precedence. Status may report failed with error details; result retrieval requires succeeded and otherwise returns 409 SVG_JOB_NOT_READY.",
+        "operationId": "get_exports_capabilities",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SvgExportCapabilities"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Discover read-only background SVG export scopes and browser-local limits"
+      }
+    },
+    "/exports/svg": {
+      "post": {
+        "description": "Read-only background SVG export in the connected browser's local Web Worker. It snapshots the canonical 2D diagram without opening or mutating the project; a 3D view exports its corresponding 2D layout. The same renderer powers UI and API exports. Jobs and results are transient RAM, not IndexedDB or server files. Every request requires accepted storage, an unlocked workspace and at least Read only MCP access. A job retains its original vault session and MCP grant; lock, grant change, cache clear or bridge stop invalidates it rather than rerouting it to another authority. Expired, evicted or cancelled jobs return 404; after reauthorization, an invalidated original job is unavailable. Authorization errors, including 423 while locked, take precedence. Status may report failed with error details; result retrieval requires succeeded and otherwise returns 409 SVG_JOB_NOT_READY. Returns 201 promptly with a queued/running job status, not the complete SVG. At most two jobs can run concurrently; an exhausted job slot returns 429 SVG_JOB_BUSY. Graph/text/result ceilings are discoverable through GET /exports/capabilities. Invalid scopes, IDs, selections and unknown fields return 422.",
+        "operationId": "post_exports_svg",
+        "parameters": [
+          {
+            "description": "Optional reserved operation identity for this non-GET command. Reuse only for the same method, path and exact JSON data. Omit on initial POST /operations reservation.",
+            "in": "header",
+            "name": "X-Visual-Nerve-Operation-Id",
+            "required": false,
+            "schema": {
+              "description": "Opaque server-issued operation token returned by POST /operations or an earlier write. Not a graph UUID; never invent or alter it.",
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SvgExportJobInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SvgJobStatus"
+                }
+              }
+            },
+            "description": "Success",
+            "headers": {
+              "X-Visual-Nerve-Operation-Id": {
+                "description": "Server-issued identity for this operation when the current browser supports recoverable operations. Successful response bodies are unchanged.",
+                "schema": {
+                  "description": "Opaque server-issued operation token returned by POST /operations or an earlier write. Not a graph UUID; never invent or alter it.",
+                  "minLength": 1,
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "410": {
+            "$ref": "#/components/responses/OperationExpired"
+          },
+          "422": {
+            "$ref": "#/components/responses/OperationValidation"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
+          "426": {
+            "$ref": "#/components/responses/OperationProtocolRequired"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "429": {
+            "$ref": "#/components/responses/OperationLimit"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "502": {
+            "$ref": "#/components/responses/OperationInvalidAcknowledgment"
+          },
+          "503": {
+            "$ref": "#/components/responses/OperationUnavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/OperationTimeout"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Start a read-only native SVG export in a local Web Worker"
+      }
+    },
+    "/exports/svg/{jobId}": {
+      "delete": {
+        "description": "Read-only background SVG export in the connected browser's local Web Worker. It snapshots the canonical 2D diagram without opening or mutating the project; a 3D view exports its corresponding 2D layout. The same renderer powers UI and API exports. Jobs and results are transient RAM, not IndexedDB or server files. Every request requires accepted storage, an unlocked workspace and at least Read only MCP access. A job retains its original vault session and MCP grant; lock, grant change, cache clear or bridge stop invalidates it rather than rerouting it to another authority. Expired, evicted or cancelled jobs return 404; after reauthorization, an invalidated original job is unavailable. Authorization errors, including 423 while locked, take precedence. Status may report failed with error details; result retrieval requires succeeded and otherwise returns 409 SVG_JOB_NOT_READY. This exact DELETE endpoint is permitted in Read only access. Returns a final cancelled status once, then releases the worker, result and original authority. Subsequent requests return 404. No body or exactly {} is accepted.",
+        "operationId": "delete_exports_svg_jobId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional reserved operation identity for this non-GET command. Reuse only for the same method, path and exact JSON data. Omit on initial POST /operations reservation.",
+            "in": "header",
+            "name": "X-Visual-Nerve-Operation-Id",
+            "required": false,
+            "schema": {
+              "description": "Opaque server-issued operation token returned by POST /operations or an earlier write. Not a graph UUID; never invent or alter it.",
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SvgExportEmptyInput"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SvgJobStatus"
+                }
+              }
+            },
+            "description": "Success",
+            "headers": {
+              "X-Visual-Nerve-Operation-Id": {
+                "description": "Server-issued identity for this operation when the current browser supports recoverable operations. Successful response bodies are unchanged.",
+                "schema": {
+                  "description": "Opaque server-issued operation token returned by POST /operations or an earlier write. Not a graph UUID; never invent or alter it.",
+                  "minLength": 1,
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "410": {
+            "$ref": "#/components/responses/OperationExpired"
+          },
+          "422": {
+            "$ref": "#/components/responses/OperationValidation"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
+          "426": {
+            "$ref": "#/components/responses/OperationProtocolRequired"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "429": {
+            "$ref": "#/components/responses/OperationLimit"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "502": {
+            "$ref": "#/components/responses/OperationInvalidAcknowledgment"
+          },
+          "503": {
+            "$ref": "#/components/responses/OperationUnavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/OperationTimeout"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Cancel and discard this SVG job without changing the diagram"
+      },
+      "get": {
+        "description": "Read-only background SVG export in the connected browser's local Web Worker. It snapshots the canonical 2D diagram without opening or mutating the project; a 3D view exports its corresponding 2D layout. The same renderer powers UI and API exports. Jobs and results are transient RAM, not IndexedDB or server files. Every request requires accepted storage, an unlocked workspace and at least Read only MCP access. A job retains its original vault session and MCP grant; lock, grant change, cache clear or bridge stop invalidates it rather than rerouting it to another authority. Expired, evicted or cancelled jobs return 404; after reauthorization, an invalidated original job is unavailable. Authorization errors, including 423 while locked, take precedence. Status may report failed with error details; result retrieval requires succeeded and otherwise returns 409 SVG_JOB_NOT_READY.",
+        "operationId": "get_exports_svg_jobId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SvgJobStatus"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Inspect retained SVG job progress and terminal status"
+      }
+    },
+    "/exports/svg/{jobId}/result": {
+      "get": {
+        "description": "Read-only background SVG export in the connected browser's local Web Worker. It snapshots the canonical 2D diagram without opening or mutating the project; a 3D view exports its corresponding 2D layout. The same renderer powers UI and API exports. Jobs and results are transient RAM, not IndexedDB or server files. Every request requires accepted storage, an unlocked workspace and at least Read only MCP access. A job retains its original vault session and MCP grant; lock, grant change, cache clear or bridge stop invalidates it rather than rerouting it to another authority. Expired, evicted or cancelled jobs return 404; after reauthorization, an invalidated original job is unavailable. Authorization errors, including 423 while locked, take precedence. Status may report failed with error details; result retrieval requires succeeded and otherwise returns 409 SVG_JOB_NOT_READY. Retrieve only after state=succeeded. Offsets and limit use UTF-16 code units. Offsets inside a surrogate pair or beyond the result return 422; a limit too small to include the next Unicode character also returns 422. Follow nextOffset and concatenate text until complete=true. The result stays local and is not embedded in status responses.",
+        "operationId": "get_exports_svg_jobId_result",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "UTF-16 code-unit offset at a Unicode character boundary; repeat parameters and unknown query keys are rejected.",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 67108864,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Maximum UTF-16 code units to return; chunks never split a surrogate pair.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 1048576,
+              "maximum": 1048576,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SvgJobResultChunk"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Malformed JSON or 32 MiB transport envelope exceeded"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bearer token required if configured"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Untrusted origin/host, storage not accepted or read-only mutation denied"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown entity"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version or identity conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Input or graph validation failed; no partial writes"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLockedError"
+                }
+              }
+            },
+            "description": "Connected encrypted workspace is locked or the request's originating session was revoked; human unlock in the browser is required"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Version required"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser storage failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No connected browser or integration disabled"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Browser did not respond"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "summary": "Retrieve a bounded SVG text chunk from a successful job"
       }
     },
     "/health": {

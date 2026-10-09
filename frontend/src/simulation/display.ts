@@ -5,6 +5,8 @@ const simulationNodeTypeMessages: Record<string, MessageId> = {
   source: 'simulator.editor.nodeType.source',
   work: 'simulator.editor.nodeType.work',
   router: 'simulator.editor.nodeType.router',
+  fork: 'simulator.parallel.fork',
+  join: 'simulator.parallel.join',
   resource: 'simulator.editor.nodeType.resource',
   outcome: 'simulator.editor.nodeType.outcome',
 };

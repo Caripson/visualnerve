@@ -140,6 +140,8 @@ Compare package throughput with store waiting and lost revenue, not only package
 | **Particle type** | A kind of work item: customer, package, order or job, with revenue, complexity, priority and patience. |
 | **Source** | Generates that work according to arrivals, a burst, schedules and limits. |
 | **Work** | Processes queued items using its own parallel slots and required shared resources. |
+| **Parallel work** | Starts every required branch for the same case. |
+| **Wait for all** | Resumes that case when all of its paired branch tasks arrive. |
 | **Router** | Chooses a valid outgoing route using rules or current state. |
 | **Resource** | Shared capacity such as staff, counters, machines or vehicles. Multiple Work nodes can compete for it. |
 | **Outcome** | Completes, fails or rejects work, and can realize revenue. |
@@ -237,7 +239,29 @@ For a Router, choose a **Routing strategy**:
 
 Set **Fallback connection** deliberately. Weighted routing with no positive eligible branch uses a valid type-compatible fallback; if none exists, the particle fails rather than following an invented route.
 
-Each particle chooses one outgoing process connection at a time. Multiple sources, Work slots and process groups can run concurrently and compete for shared resources, but a branch does not clone one case into parallel child tasks or wait for all child tasks to rejoin. Explicit case-level fork/join synchronization is not currently supported. For example, drawing three outgoing lines for access, equipment and site readiness does not make the engine wait for all three before completing a delivery.
+A Router chooses one continuation. Use **Parallel work** when the same case needs several tasks to finish before it can continue.
+
+### Parallel tasks: wait for the same case
+
+For a telecom delivery, access provisioning, equipment preparation and site readiness can happen at the same time. Installation must wait until all three are ready.
+
+1. Open the **Parallel SD-WAN delivery** template for a complete example, or select an existing Source or Work step and use its **+ → Parallel work** control. A complete block starts with two Work tasks and a **Wait for all** step. If the original step had a continuation, the block is inserted before it.
+2. Give each branch a useful name and configure its processing time, capacity, costs and shared resource requirements. Each branch has a real queue and can compete with other branches for the same staff.
+3. Use **+ → Work step** on the Parallel work node to add another required branch. The new task is connected to the paired Wait for all node. Add intermediate steps with the normal connected-node control.
+4. Connect the Wait for all node to the next process step or Outcome. All outgoing connections from Parallel work are mandatory; every successful branch must reach its paired join.
+5. Play the model. The join shows the number of cases waiting and tasks ready. An early branch waits for the other tasks belonging to that same case, never for a different customer's task.
+
+The example supplies eight orders, three prerequisite tasks, shared engineers, a warehouse worker, installation and one billing outcome. **Assumptions** explains every rate, delay and cost. Compare the **Two additional engineers** scenario to see both the reduction in waiting and the increased staffing cost.
+
+![The SD-WAN readiness subprocess paused with required tasks and its selected Wait for all node showing actual correlated case and task counts.](/help/images/parallel-delivery-desktop.webp "Parallel work waits for the same case’s prerequisites. Resource contention and branch processing come from the simulation engine.")
+
+![The same live Wait for all step on a phone with the compact simulation strip and readable case and task counts.](/help/images/parallel-delivery-mobile.webp "On a phone, select the join to inspect readiness, then open Simulation details for metrics and replay.")
+
+Whole-system Created, Completed and In system count original cases. A case carries its revenue once; branch work still incurs its own processing and resource costs. Cycle time and time-to-revenue follow the original case's simulation timestamps. If one branch fails or abandons, the case ends once, its other tasks are cancelled and their resources are released; already incurred costs remain.
+
+A block supports 2–64 required branches and up to 16 nested parallel blocks. Paths inside a block must be acyclic and cannot cross into another block's branches. Invalid pairs or connections show a validation error. A failure/rejection route may end the entire case; a successful Outcome belongs after the join. **Assumptions → Nodes → Remove parallel block and all its tasks** removes the selected fork/join and its enclosed tasks, reconnecting the incoming flow to the single continuation. Undo restores the complete edit. Review the button's scope before removing a block.
+
+The [API and MCP guide](/help/api-mcp/#parallel-processes-through-the-api) shows the semantic pairing fields, live state and atomic model updates.
 
 ### Outcomes: completion and realized revenue
 
@@ -369,6 +393,7 @@ Limits describe bounded execution, not guaranteed interactive speed:
 
 - Up to 50,000 semantic nodes and 200,000 flow edges; maximum configured horizon ten simulated years.
 - Up to 200,000 simultaneously active particles, 50 million scheduled/semantic events per run and 10,000 route visits per particle.
+- Long route labels are summarized with a stable identifier and connection count. Parallel task histories do not need to retain every repeated connection; full-population counts, costs and time-to-revenue remain unchanged.
 - Four resident execution/replay workers, including paused workers and startup reservations; sixty cached runs.
 - Up to 30 archived runs per diagram. Default retained samples/events are 300/2,000, configurable to at most 10,000/100,000.
 - Up to 240 checkpoints per run. Replay can reconstruct captured inputs without retaining every frame.

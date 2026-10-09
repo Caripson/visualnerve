@@ -84,7 +84,13 @@ export function buildSimulationParticleScene(
         unit === undefined ? undefined : particleCapacityCard(view, particle.nodeId, unit);
       if (node && !getSimulationProcessId(node) && inBounds(node))
         processing.push({ particle, node, index: 0 });
-    } else if (particle.status === 'queued' && queues.length < 80) {
+    } else if (
+      (particle.status === 'queued' ||
+        (particle.status === 'waiting' &&
+          particle.parentParticleId !== undefined &&
+          particle.nodeId === particle.joinNodeId)) &&
+      queues.length < 80
+    ) {
       if (!state.nodes[particle.nodeId]?.queue.current) continue;
       const node = particleCapacityCard(view, particle.nodeId);
       const count = queueCounts.get(node?.id ?? particle.nodeId) ?? 0;

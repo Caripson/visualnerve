@@ -240,3 +240,36 @@ Execution safety limits are discoverable at `/simulation/capabilities` under `ex
 - Go contract/discovery changes: `backend/cmd/openapi/{main,simulation,processes}.go`, `backend/internal/model/model.go`, `backend/internal/server/{server,mcp,mcp_description,mcp_discovery,mcp_tools,simulation_description,process_description}.go`. Go forwards to the connected browser rather than owning another simulation engine.
 - Documentation: `API.md`, `EXPORT_FORMAT.md`, `docs/openapi.yaml`, `docs/PROCESS_SIMULATOR.md`, `docs/PROCESS_SIMULATOR_ACCEPTANCE.md`, `hugo/content/help.md`.
 - Tests: `frontend/tests/simulation-*.test.{ts,tsx}`, `frontend/tests/process-{starter,wizard}.test.{ts,tsx}`, `frontend/tests/workspace-sync.test.ts`, `frontend/tests/e2e/simulation-{ui,api}.spec.ts`, `frontend/tests/e2e/process-{wizard,building,hierarchy}.spec.ts`, new Go simulation/OpenAPI tests and existing fixture updates for the additive IndexedDB v8 upgrade and template selection.
+
+## Parallel processes through the API
+
+`GET /simulation/capabilities` exposes `fork` and `join` node types and the `parallel` contract. Read the current model and canonical IDs before editing. Configure a complete block in one versioned `PUT /diagrams/{diagramId}/simulation` with `{baseVersion,model}`; creating an unpaired node through individual CRUD is rejected. The following is a fragment, to insert alongside the model's valid Sources, Work nodes, Outcomes and edges:
+
+```json
+{
+  "nodes": [
+    {"id":"fork-id","name":"Start prerequisites","type":"fork",
+     "fork":{"joinNodeId":"join-id","branchEdgeIds":["access-edge","equipment-edge"]}},
+    {"id":"join-id","name":"All prerequisites ready","type":"join",
+     "join":{"forkNodeId":"fork-id"}}
+  ],
+  "edges": [
+    {"id":"access-edge","sourceNodeId":"fork-id","targetNodeId":"access-work-id"},
+    {"id":"equipment-edge","sourceNodeId":"fork-id","targetNodeId":"equipment-work-id"},
+    {"id":"access-ready-edge","sourceNodeId":"access-work-id","targetNodeId":"join-id"},
+    {"id":"equipment-ready-edge","sourceNodeId":"equipment-work-id","targetNodeId":"join-id"}
+  ]
+}
+```
+
+The IDs above are explanatory placeholders. Supply unique canonical node/edge UUIDs for the actual document, retain existing identifiers, and read the returned model before further updates. `branchEdgeIds` must declare **all** outgoing fork edges; particle-type filters on those edges are rejected. Every branch must have a path to the paired join. The engine rejects unmatched/crossed pairs, cycles inside the region, foreign incoming connections, more than 64 branches or more than 16 nested pairs with structured validation issues. Failure/rejection paths can end the entire case; successful outcomes must follow the join.
+
+Run the model through the existing simulation run endpoints. Original-case population and revenue remain single-counted; child tasks have their own processing, queues and resource allocations. `state.parallel` exposes active groups/branches, waiting parents and bounded correlated group summaries. Particle tokens carry `rootParticleId`, `parentParticleId`, `forkGroupId`, `forkNodeId`, `joinNodeId` and `branchEdgeId` where applicable. A suspended parent and an arrived child can have status `waiting`; retired children have `joined` or `cancelled`. Node metrics at a join expose `join.waitingGroups`, `arrivedBranches`, `expectedBranches`, `completedGroups`, `cancelledGroups` and the observed synchronization-wait distribution. Its current queue counts arrived tasks waiting for their siblings. `PARTICLE_FORKED`, `BRANCH_JOINED`, `JOIN_COMPLETED`, `BRANCH_CANCELLED` and `PROCESS_CANCELLED` events provide correlation without inspecting coordinates. Retained live tokens and sampled particles include branches and suspended parents; business `created`, `completed`, `abandoned`, `failed` and `inSystem` count original cases. The 200,000 active-token limit applies to parents and children together.
+
+Discover the **Parallel SD-WAN delivery** template through `GET /templates` for a complete editable example. Headless, animated, scenario and replay runs use the same deterministic engine.
+
+Route metrics retain exact connection-ID labels up to 2,000 characters. Longer histories use a bounded identifier: the first 200 characters followed by ` … [route:<8hex>-<8hex>; edges=N]`. The ordered dual digest and edge count are deterministic grouping identifiers, not a cryptographic integrity guarantee; they cannot reconstruct the complete itinerary. This bounds nested branch history without dropping visited Work-node revenue attribution or changing case counts, costs or TTR.
+
+## Parallel execution modules
+
+`ParallelTopology` validates closed paired regions without recursion over graph depth. `ParallelExecution` coordinates correlated child tokens in the one `SimulationEngine`; it does not introduce a second worker or clock. `engine-state`, process rollups and archives distinguish logical case metrics from task/tokens and validate retained lineage. `ParallelFlowDraft` creates complete pairs, synchronizes required connection IDs and removes explicitly selected whole regions. `ParallelConnectedNodes` inserts the same block through the canvas control and preserves downstream edges. `ParticleRoute` merges bounded prefixes, ordered digests and deduplicated Work attribution without retaining every repeated branch connection. `ParallelDeliveryExample` supplies the editable SD-WAN template. Existing schemaVersion 1 documents without parallel nodes retain their earlier interpretation.

@@ -254,6 +254,7 @@ describe('creating a connected node', () => {
     expect(connectedNodeChoices(graph, workId).map((choice) => choice.label)).toEqual([
       'Insert work step',
       'Insert decision',
+      'Parallel work',
       'Shared resource',
     ]);
     const unconnected = { ...graph, simulation: { ...graph.simulation!, edges: [] }, edges: [] };

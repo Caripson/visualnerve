@@ -2,11 +2,14 @@ import { expect, it } from 'vitest';
 import { instantiate, templates } from '../src/templates/templates';
 import { nodeTypes } from '../src/nodes/registry';
 import { nodeKinds } from '../src/model/types';
+import { validateGraph } from '../src/model/validation';
 it('provides all canonical templates, a guided empty simulator and fresh identities', () => {
-  expect(templates).toHaveLength(12);
+  expect(templates).toHaveLength(13);
   for (const template of templates) {
     const first = instantiate(template.key, 'A'),
       second = instantiate(template.key, 'B');
+    validateGraph(first);
+    validateGraph(second);
     expect(first.format).toBe('visual-nerve');
     expect(first.diagram.id).not.toBe(second.diagram.id);
     const ids = new Set(first.nodes.map((n) => n.id));

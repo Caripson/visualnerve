@@ -69,13 +69,33 @@ function remapState<T extends SimulationState>(
       ...particle,
       nodeId: nodeId(particle.nodeId),
       ...(particle.edgeId ? { edgeId: edgeId(particle.edgeId) } : {}),
+      ...(particle.forkNodeId ? { forkNodeId: nodeId(particle.forkNodeId) } : {}),
+      ...(particle.joinNodeId ? { joinNodeId: nodeId(particle.joinNodeId) } : {}),
+      ...(particle.branchEdgeId ? { branchEdgeId: edgeId(particle.branchEdgeId) } : {}),
       history: particle.history.map((visit) => ({ ...visit, nodeId: nodeId(visit.nodeId) })),
     })),
     events: state.events.map((event) => ({
       ...event,
       ...(event.nodeId ? { nodeId: nodeId(event.nodeId) } : {}),
       ...(event.edgeId ? { edgeId: edgeId(event.edgeId) } : {}),
+      ...(event.forkNodeId ? { forkNodeId: nodeId(event.forkNodeId) } : {}),
+      ...(event.joinNodeId ? { joinNodeId: nodeId(event.joinNodeId) } : {}),
+      ...(event.branchEdgeId ? { branchEdgeId: edgeId(event.branchEdgeId) } : {}),
     })),
+    ...(state.parallel
+      ? {
+          parallel: {
+            ...state.parallel,
+            groups: state.parallel.groups.map((group) => ({
+              ...group,
+              forkNodeId: nodeId(group.forkNodeId),
+              joinNodeId: nodeId(group.joinNodeId),
+              arrivedBranchEdgeIds: group.arrivedBranchEdgeIds.map(edgeId),
+              pendingBranchEdgeIds: group.pendingBranchEdgeIds.map(edgeId),
+            })),
+          },
+        }
+      : {}),
     bottlenecks: state.bottlenecks.map((bottleneck) => ({
       ...bottleneck,
       id: bottleneck.kind === 'node' ? nodeId(bottleneck.id) : bottleneck.id,

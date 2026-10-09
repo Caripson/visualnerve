@@ -1,6 +1,31 @@
 import type { Catalog } from '../types';
 
 const catalog = {
+  'dialogs.exportSvgSourceHint':
+    'Skjult kildetekst kan stadig være i SVG-filen. Gennemgå den, før du deler.',
+  'simulator.parallel.deleteBlock': 'Fjern parallel blok og alle dens opgaver',
+  'editor.nodes.quickAdd.choice.parallelWork': 'Parallelt arbejde',
+  'editor.nodes.quickAdd.choice.parallelWorkDescription':
+    'Kør to nødvendige arbejdsgrene og vent på begge, før processen fortsætter.',
+  'dialogs.exportSvgProgress': 'Forbereder vektoreksport · {percent}%',
+  'dialogs.exportSvgBackgroundHint':
+    'SVG klargøres i denne browser. Du kan annullere, mens den kører.',
+  'simulator.parallel.connectExplanation':
+    'Alle 2–64 udgående forbindelser er nødvendige. Forbind hver gren til det fælles samlingspunkt og derefter samlingspunktet til næste trin.',
+  'simulator.parallel.fork': 'Parallelt arbejde',
+  'simulator.parallel.join': 'Vent på alle',
+  'simulator.parallel.forkExplanation':
+    'Hver sag opretter en opgave for hver valgt gren. Alle opgaver deler den oprindelige sag og dens indtægt.',
+  'simulator.parallel.joinExplanation':
+    'Dette trin fortsætter først den oprindelige sag, når alle obligatoriske opgaver fra den tilknyttede forgrening er ankommet.',
+  'simulator.parallel.pairedFork': 'Starter ved:',
+  'simulator.parallel.pairedJoin': 'Fortsætter ved:',
+  'simulator.parallel.requiredBranches': 'Obligatoriske grene',
+  'simulator.parallel.failureExplanation':
+    'Hvis en gren fejler eller opgives, afsluttes hele sagen én gang, og de øvrige opgaver annulleres. Afholdte omkostninger bevares.',
+  'simulator.parallel.branchCount': '{count} parallelle opgaver',
+  'simulator.parallel.waitingSummary':
+    'Ventende sager: {groups} · Klare opgaver: {arrived}/{expected}',
   'integration.bridge.updateRequired':
     'Opdater den lokale bro, tilslut derefter MCP-klienten igen og opdater dens værktøjsliste. Denne forbindelse viser ikke de aktuelle funktioner til API-dokumentation og sikre skrivninger.',
   'integration.bridge.detectedVersion': 'Registreret broversion: {version}',

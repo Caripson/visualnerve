@@ -1,4 +1,29 @@
 const catalog = {
+  'dialogs.exportSvgSourceHint':
+    'Clipped source text can remain in the SVG file. Review it before sharing.',
+  'simulator.parallel.deleteBlock': 'Remove parallel block and all its tasks',
+  'editor.nodes.quickAdd.choice.parallelWork': 'Parallel work',
+  'editor.nodes.quickAdd.choice.parallelWorkDescription':
+    'Run two required work branches and wait for both before continuing.',
+  'dialogs.exportSvgProgress': 'Preparing vector export · {percent}%',
+  'dialogs.exportSvgBackgroundHint':
+    'SVG is prepared in this browser. You can cancel while it is running.',
+  'simulator.parallel.connectExplanation':
+    'All 2–64 outgoing connections are required. Connect every branch back to the paired join; then connect that join to the next step.',
+  'simulator.parallel.fork': 'Parallel work',
+  'simulator.parallel.join': 'Wait for all',
+  'simulator.parallel.forkExplanation':
+    'Each case creates a task for every required branch. All tasks share the original case and its revenue.',
+  'simulator.parallel.joinExplanation':
+    'This step resumes the original case only when every required task from its paired fork has arrived.',
+  'simulator.parallel.pairedFork': 'Starts at:',
+  'simulator.parallel.pairedJoin': 'Continues at:',
+  'simulator.parallel.requiredBranches': 'Required branches',
+  'simulator.parallel.failureExplanation':
+    'If any branch fails or abandons, the whole case ends once and sibling tasks are cancelled. Incurred costs remain.',
+  'simulator.parallel.branchCount': '{count} parallel tasks',
+  'simulator.parallel.waitingSummary':
+    'Waiting cases: {groups} · Ready tasks: {arrived}/{expected}',
   'integration.bridge.updateRequired':
     'Update the local bridge, then reconnect your MCP client and refresh its tool list. This connection does not advertise the current API documentation and safe-write capabilities.',
   'integration.bridge.detectedVersion': 'Detected bridge version: {version}',

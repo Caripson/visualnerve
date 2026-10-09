@@ -108,6 +108,13 @@ export function simulationNodeTraffic(
     return { ...value, level: 'inactive', label: 'Ready', reason: 'Run to observe traffic' };
   if (metric?.status === 'failed')
     return { ...value, level: 'congested', label: 'Failed', reason: 'Processing failed' };
+  if (node.type === 'join' && metric?.join?.waitingGroups)
+    return {
+      ...value,
+      level: 'busy',
+      label: 'Waiting for branches',
+      reason: `Waiting for ${metric.join.expectedBranches - metric.join.arrivedBranches} branches · ${metric.join.arrivedBranches} arrived`,
+    };
   if (waitingResources.length)
     return {
       ...value,

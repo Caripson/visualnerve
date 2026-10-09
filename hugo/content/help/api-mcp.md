@@ -133,7 +133,7 @@ The app, the local bridge executable and your MCP client are three separate prog
 
 Before giving an agent workspace commands:
 
-1. Inspect the local `GET /api/v1/health` address shown in the copied instructions. The current bridge reports version **0.4.0**, both MCP tool names, and the capabilities `operations-v1` and `endpoint-docs-v1`. Health contains public transport metadata; it does not read diagrams or unlock the workspace.
+1. Inspect the local `GET /api/v1/health` address shown in the copied instructions. The current bridge reports version **0.5.0**, both MCP tool names, and the capabilities `operations-v1`, `endpoint-docs-v1`, `fork-join-v1` and `async-svg-export-v1`. Health contains public transport metadata; it does not read diagrams or unlock the workspace.
 2. Reconnect or initialize the MCP client, then inspect its discovered tools. It should show both **visual_nerve_request** and **visual_nerve_api_docs**. A client can retain an old tool list until you reconnect it.
 3. Ask the agent to read the compact guide before making commands. For a particular endpoint, it can request a smaller contract containing that operation and every referenced schema:
 
@@ -317,7 +317,7 @@ After updating the local executable, restart it and reconnect the MCP client to 
 
 ## Export a vector diagram through MCP
 
-Use the normal export endpoint with `format: "svg"`:
+For a small diagram, the existing export endpoint with `format: "svg"` returns a string. For large diagrams, use [background SVG export](#background-svg-export) to start a job, poll progress and retrieve bounded result chunks:
 
 ```json
 {
@@ -526,3 +526,48 @@ Simulation validation can return `error`, `code` and `issues` with semantic fiel
 Ordinary diagram evidence excludes raw code/source scripts. An explicit CSV measure-evidence request can return original cells to the requesting client; ask for that only when needed. Unsent question/app-brief previews do not publish data to an external service. Rendering exports or final video downloads happen in the connected browser.
 
 For complete schemas use the [API reference](/api/docs/). For connection and import recovery use [troubleshooting](/help/troubleshooting/); for permissions and backups use [Settings](/help/settings/).
+
+## Parallel processes through the API
+
+`GET /simulation/capabilities` exposes `fork` and `join` node types and the `parallel` contract. Read the current model and canonical IDs before editing. Configure a complete block in one versioned `PUT /diagrams/{diagramId}/simulation` with `{baseVersion,model}`; creating an unpaired node through individual CRUD is rejected. The following is a fragment, to insert alongside the model's valid Sources, Work nodes, Outcomes and edges:
+
+```json
+{
+  "nodes": [
+    {"id":"fork-id","name":"Start prerequisites","type":"fork",
+     "fork":{"joinNodeId":"join-id","branchEdgeIds":["access-edge","equipment-edge"]}},
+    {"id":"join-id","name":"All prerequisites ready","type":"join",
+     "join":{"forkNodeId":"fork-id"}}
+  ],
+  "edges": [
+    {"id":"access-edge","sourceNodeId":"fork-id","targetNodeId":"access-work-id"},
+    {"id":"equipment-edge","sourceNodeId":"fork-id","targetNodeId":"equipment-work-id"},
+    {"id":"access-ready-edge","sourceNodeId":"access-work-id","targetNodeId":"join-id"},
+    {"id":"equipment-ready-edge","sourceNodeId":"equipment-work-id","targetNodeId":"join-id"}
+  ]
+}
+```
+
+The IDs above are explanatory placeholders. Supply unique canonical node/edge UUIDs for the actual document, retain existing identifiers, and read the returned model before further updates. `branchEdgeIds` must declare **all** outgoing fork edges; particle-type filters on those edges are rejected. Every branch must have a path to the paired join. The engine rejects unmatched/crossed pairs, cycles inside the region, foreign incoming connections, more than 64 branches or more than 16 nested pairs with structured validation issues. Failure/rejection paths can end the entire case; successful outcomes must follow the join.
+
+Run the model through the existing simulation run endpoints. Original-case population and revenue remain single-counted; child tasks have their own processing, queues and resource allocations. `state.parallel` exposes active groups/branches, waiting parents and bounded correlated group summaries with `droppedGroups` describing omitted active groups. Particle tokens carry `rootParticleId`, `parentParticleId`, `forkGroupId`, `forkNodeId`, `joinNodeId` and `branchEdgeId` where applicable. A suspended parent and an arrived child can have status `waiting`; retired children have `joined` or `cancelled`. Node metrics at a join expose `join.waitingGroups`, `arrivedBranches`, `expectedBranches`, `completedGroups`, `cancelledGroups` and the observed synchronization-wait distribution. Its current queue counts arrived tasks waiting for their siblings. `PARTICLE_FORKED`, `BRANCH_JOINED`, `JOIN_COMPLETED`, `BRANCH_CANCELLED` and `PROCESS_CANCELLED` events provide correlation without inspecting coordinates. Retained live tokens and sampled particles include branches and suspended parents; business `created`, `completed`, `abandoned`, `failed` and `inSystem` count original cases. The 200,000 active-token limit applies to parents and children together.
+
+Discover the **Parallel SD-WAN delivery** template through `GET /templates` for a complete editable example. Headless, animated, scenario and replay runs use the same deterministic engine.
+
+Route metrics retain exact connection-ID labels up to 2,000 characters. Longer histories use a bounded identifier: the first 200 characters followed by ` … [route:<8hex>-<8hex>; edges=N]`. The ordered dual digest and edge count are deterministic grouping identifiers, not a cryptographic integrity guarantee, and cannot reconstruct the complete itinerary. At most 256 distinct route buckets plus `[other routes]` are retained; all completed cases still contribute to metrics. This bounds nested branch history without dropping visited Work-node revenue attribution or changing case counts, costs or TTR.
+
+## Background SVG export
+
+Prefer the asynchronous export for large diagrams. All operations below are available with **Read only** access and do not change the model:
+
+```json
+{"path":"/exports/svg","method":"POST","data":{"diagramId":"YOUR_DIAGRAM_UUID","scope":"complete"}}
+```
+
+The `201` response includes `jobId`, `diagramId`, `state`, `progress` (0–100), `phase`, timestamps and object counts. Poll `GET /exports/svg/{jobId}` with a short backoff until `succeeded`, `failed` or `cancelled`. Fetch `GET /exports/svg/{jobId}/result?offset=0&limit=1048576`. Each response is `{jobId,offset,nextOffset,totalCharacters,text,complete}`. Append `text`, then request the returned `nextOffset` until `complete:true`. Offsets use UTF-16 code units; returned boundaries preserve Unicode characters. Save the concatenated XML as `.svg` (`image/svg+xml`). A result requested before success returns `409 SVG_JOB_NOT_READY`. Cancel/remove a job with exact `DELETE /exports/svg/{jobId}` and no arguments or `{}`; this returns its cancelled status (`200`).
+
+`GET /exports/capabilities` discovers the complete limits and scope options. The local Web Worker preserves canonical 2D bounds, connections, current appearance, icons and visible drawing. It keeps full source descriptions while clipping visible content to each saved card. Selection and saved-viewport scopes follow the normal export conventions. Large exports use no hidden React node per object; simulation and UI responsiveness are independent of vector generation.
+
+Jobs are transient browser memory, with at most two running jobs, four retained terminal jobs and 128 MiB of retained SVG results. Limits are 20,000 rendered nodes, 100,000 rendered connections, 5,000,000 source characters, 64 MiB XML, 16,777,216 pixels per dimension and a 120-second worker deadline. A scoped export can snapshot up to 100,000 source nodes and 500,000 source edges, while its projected scene must remain within the rendered limits. Results expire 15 minutes after job creation. Lock, reload, workspace stop, app-cache clearing or an explicit MCP grant change cancels/removes jobs; a later unlock or grant cannot restore old plaintext. Start a fresh export. The POST's short-lived bridge lease ending does **not** cancel an otherwise authorized job. Individual result chunks stay below the 32 MiB transport envelope. Unknown fields, duplicate query parameters and invalid ranges are rejected rather than guessed.
+
+The existing `POST /export` JSON/Markdown behavior is unchanged. Source graphs with at most 100 nodes and 20,000 title/description/serialized metadata characters before projection retain its SVG JSON-string response and 16 MiB limit. Larger sources return `409 SVG_BACKGROUND_REQUIRED` even for a small selection, with instructions to use `/exports/svg`, avoiding a command timeout with an uncertain export result. The UI chooses the background route automatically, displays progress and offers Cancel. Review SVG source before sharing: an encrypted workspace does not encrypt diagram exports.

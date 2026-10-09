@@ -11,11 +11,14 @@ import type {
   ResourceMetrics,
   Bottleneck,
   ProcessMetrics,
+  JoinMetrics,
+  ParallelState,
 } from './types';
 import { Distribution } from './statistics';
 import type { EventQueue } from './event-queue';
 import type { BoundedRing } from './ring';
 import { zeroEconomics, finishEconomics } from './economics';
+import type { ParticleRoute } from './particle-route';
 const sec = (t: number) => t / 1000;
 export interface Meter {
   capacity: number;
@@ -61,7 +64,7 @@ export interface Particle extends ParticleSnapshot {
   entered: number;
   started: number;
   workCostIntegralStart: number;
-  route: string[];
+  route: ParticleRoute;
   resources: { resourceId: string; units: number; unitCostIntegralStart: number }[];
   visits: number;
 }
@@ -136,6 +139,9 @@ interface ProjectionInput {
     nodes: Record<string, NodeMetrics>,
     bottlenecks: Bottleneck[],
   ) => Record<string, ProcessMetrics>;
+  joinMetrics: (id: string) => JoinMetrics | undefined;
+  joinQueueMetrics: (id: string) => QueueMetrics;
+  parallel: ParallelState;
 }
 
 export function projectSimulationState(input: ProjectionInput): SimulationState {
@@ -217,6 +223,16 @@ export function projectSimulationState(input: ProjectionInput): SimulationState 
           finishEconomics({ ...zeroEconomics(), realizedRevenue: a.revenue, lostRevenue: a.lost }),
         );
     }
+    if (node.type === 'join') {
+      const join = input.joinMetrics(node.id)!;
+      nodes[node.id] = {
+        ...nodes[node.id],
+        join,
+        queue: input.joinQueueMetrics(node.id),
+        status:
+          nodes[node.id].status === 'failed' ? 'failed' : join.waitingGroups ? 'blocked' : 'idle',
+      };
+    }
   }
   const bottlenecks: Bottleneck[] = [];
   for (const n of Object.values(nodes))
@@ -289,10 +305,20 @@ export function projectSimulationState(input: ProjectionInput): SimulationState 
     ]),
   );
   const samples: ParticleSnapshot[] = [];
+  const suspendedParent = (p: Particle) => p.status === 'waiting' && p.nodeId !== p.joinNodeId;
   for (const p of input.active.values()) {
     if (samples.length >= input.particleLimit) break;
+    // A burst creates all originals before its fork events create children. Do
+    // not let suspended parents consume the entire bounded visual/API sample;
+    // arrived join children are genuine waiting work and stay eligible here.
+    if (input.parallel?.activeGroups && suspendedParent(p)) continue;
     samples.push(input.snapshot(p));
   }
+  if (input.parallel?.activeGroups && samples.length < input.particleLimit)
+    for (const p of input.active.values()) {
+      if (samples.length >= input.particleLimit) break;
+      if (suspendedParent(p)) samples.push(input.snapshot(p));
+    }
   return {
     timeSeconds: sec(input.clock),
     status: input.status,
@@ -302,7 +328,11 @@ export function projectSimulationState(input: ProjectionInput): SimulationState 
       completed: input.totals.completed,
       abandoned: input.totals.abandoned,
       failed: input.totals.failed,
-      inSystem: input.active.size,
+      inSystem:
+        input.totals.created -
+        input.totals.completed -
+        input.totals.abandoned -
+        input.totals.failed,
       throughputPerHour: input.clock ? (input.totals.completed * 3600000) / input.clock : 0,
       queue: {
         current: input.queueLength,
@@ -322,6 +352,7 @@ export function projectSimulationState(input: ProjectionInput): SimulationState 
     resources,
     particleTypes,
     processes: input.processMetrics(nodes, bottlenecks),
+    parallel: input.parallel,
     particles: [
       ...samples,
       ...input.retained

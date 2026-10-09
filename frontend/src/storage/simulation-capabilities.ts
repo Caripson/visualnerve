@@ -3,6 +3,8 @@ import {
   MAX_ADDITIONAL_CAPACITY_CARDS,
 } from '../simulation/capacity-projection';
 import { browserApiVersion } from './api-version';
+import { parallelLimits } from '../simulation/parallel-topology';
+import { ParticleRoute } from '../simulation/particle-route';
 
 export const simulationCapabilities = {
   type: 'process-simulator',
@@ -11,7 +13,7 @@ export const simulationCapabilities = {
   engine: 'deterministic-discrete-event',
   timeUnit: 'second',
   currency: 'one configurable currency per model',
-  nodeTypes: ['source', 'work', 'router', 'resource', 'outcome'],
+  nodeTypes: ['source', 'work', 'router', 'fork', 'join', 'resource', 'outcome'],
   queueDisciplines: ['fifo', 'priority'],
   arrivalDistributions: ['regular', 'poisson'],
   routingModes: ['first-match', 'weighted', 'least-queue', 'available-capacity'],
@@ -19,6 +21,7 @@ export const simulationCapabilities = {
   features: [
     'semantic-crud',
     'hierarchical-processes',
+    'parallel-fork-join',
     'process-drilldown',
     'shared-resources',
     'queues',
@@ -39,6 +42,33 @@ export const simulationCapabilities = {
     'native-capacity-card-projection',
     'local-persistence',
   ],
+  parallel: {
+    mode: 'all-mandatory',
+    fork: {
+      joinNodeId: 'fork.joinNodeId',
+      branchEdgeIds: 'fork.branchEdgeIds',
+      outgoing: 'all-declared',
+      particleTypeFilters: false,
+    },
+    join: {
+      forkNodeId: 'join.forkNodeId',
+      correlation: 'business-case-and-fork-group',
+      wait: 'all-declared-branches',
+    },
+    cancellation: 'any-branch-failure-or-abandonment-cancels-entire-case',
+    incurredCosts: 'retained-on-cancellation',
+    population: 'original-business-cases',
+    workTokens: 'independent-queue-resource-consuming-children',
+    processingAndWaiting: 'summed-branch-effort',
+    timeToRevenue: 'original-creation-to-single-outcome',
+    revenue: 'once-after-join-with-composed-branch-multipliers',
+    nesting: 'properly-nested-closed-acyclic-regions',
+    limits: { ...parallelLimits, liveTokens: 200000 },
+    stateField: 'parallel',
+    joinMetricsField: 'nodes[].join',
+    groupSampling: 'bounded-by-particle-retention',
+    mutations: 'atomic-full-model-put-for-pair-and-topology-changes',
+  },
   hierarchy: {
     processCollection: 'processes',
     parentField: 'processes[].parentId',
@@ -83,6 +113,14 @@ export const simulationCapabilities = {
     browserRequired: true,
     activeCanvasRequired: false,
     animationRequired: false,
+    routeAggregation: {
+      exactLabelCharacters: ParticleRoute.labelLimit,
+      summaryPrefixCharacters: ParticleRoute.prefixLimit,
+      digest: 'ordered-composable-dual-32-bit-with-edge-count',
+      completedRouteBuckets: 256,
+      overflow: '[other routes]',
+      workRevenueAttribution: 'deduplicated-visited-work-nodes',
+    },
     limits: {
       activeParticles: 200000,
       semanticEvents: 50000000,

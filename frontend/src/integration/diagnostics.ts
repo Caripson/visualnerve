@@ -43,8 +43,8 @@ export class BridgeDiagnostics {
     const capabilities = Array.isArray(value.capabilities) ? value.capabilities : [];
     const current =
       ['visual_nerve_request', 'visual_nerve_api_docs'].every((tool) => tools.includes(tool)) &&
-      ['operations-v1', 'endpoint-docs-v1'].every((capability) =>
-        capabilities.includes(capability),
+      ['operations-v1', 'endpoint-docs-v1', 'fork-join-v1', 'async-svg-export-v1'].every(
+        (capability) => capabilities.includes(capability),
       );
     this.publish({ state: current ? 'current' : 'update-required', version });
     return true;

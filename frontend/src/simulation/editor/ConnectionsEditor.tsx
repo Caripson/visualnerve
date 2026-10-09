@@ -1,4 +1,5 @@
 import { useI18n } from '../../i18n';
+import { useState } from 'react';
 import { EntityCollection } from './EntityCollection';
 import { NumberField, ScalingFields } from '../fields';
 import { JsonField } from './JsonField';
@@ -6,10 +7,29 @@ import type { ParticleType, Resource, Improvement, SimulationNode } from '../typ
 import type { EditorSectionProps } from './types';
 import { ConnectionForm } from './ConnectionForm';
 import { removeSimulationEntity } from '../deletion';
+import { ParallelFlowDraft } from './parallel-flow-draft';
 export function ConnectionsEditor({ draft, setDraft, scenarioId }: EditorSectionProps) {
   const { t } = useI18n();
+  const [error, setError] = useState('');
+  const remove = (id: string) => {
+    try {
+      const synchronized = new ParallelFlowDraft().synchronize({
+        ...draft,
+        edges: draft.edges.filter((edge) => edge.id !== id),
+      });
+      setDraft(removeSimulationEntity(synchronized, 'edges', id));
+      setError('');
+    } catch (failure) {
+      setError((failure as Error).message);
+    }
+  };
   return (
     <>
+      {error && (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      )}
       <EntityCollection
         items={draft.edges.map((edge) => ({
           ...edge,
@@ -36,9 +56,7 @@ export function ConnectionsEditor({ draft, setDraft, scenarioId }: EditorSection
               }
             />
             {!scenarioId && (
-              <button
-                onClick={() => setDraft((model) => removeSimulationEntity(model, 'edges', edge.id))}
-              >
+              <button onClick={() => remove(edge.id)}>
                 {t('simulator.editor.connections.removeConnection')}
               </button>
             )}
@@ -49,13 +67,15 @@ export function ConnectionsEditor({ draft, setDraft, scenarioId }: EditorSection
         <ConnectionForm
           model={draft}
           add={(sourceNodeId, targetNodeId) =>
-            setDraft((model) => ({
-              ...model,
-              edges: [
-                ...model.edges,
-                { id: crypto.randomUUID(), sourceNodeId, targetNodeId, travelSeconds: 0 },
-              ],
-            }))
+            setDraft((model) =>
+              new ParallelFlowDraft().synchronize({
+                ...model,
+                edges: [
+                  ...model.edges,
+                  { id: crypto.randomUUID(), sourceNodeId, targetNodeId, travelSeconds: 0 },
+                ],
+              }),
+            )
           }
         />
       )}

@@ -9,9 +9,15 @@ import type { SimulationModel, SimulationNode } from './types';
 const uuid = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 const annotations = new Set(['note', 'group']);
 const kind = (node: SimulationNode): GraphNode['nodeType'] =>
-  ({ source: 'start', work: 'process', router: 'decision', resource: 'system', outcome: 'end' })[
-    node.type
-  ] as GraphNode['nodeType'];
+  ({
+    source: 'start',
+    work: 'process',
+    router: 'decision',
+    fork: 'decision',
+    join: 'decision',
+    resource: 'system',
+    outcome: 'end',
+  })[node.type] as GraphNode['nodeType'];
 
 /** Semantic edits produce matching canvas entities while retaining their placement/style. */
 export function setSimulationModel(graph: Graph, input: SimulationModel): Graph {
@@ -187,6 +193,12 @@ export function reconcileSimulationGraph(previous: Graph | undefined, next: Grap
   )
     return setSimulationModel(next, next.simulation);
   const shapeIds = new Set(next.nodes.map((node) => node.id));
+  for (const node of previous.simulation.nodes)
+    if (node.type === 'fork' && shapeIds.has(node.id) !== shapeIds.has(node.fork.joinNodeId))
+      throw new StorageError(
+        422,
+        'Remove both the parallel fork and its join together, then reconnect the remaining branches. A single fork or join cannot be deleted independently.',
+      );
   const shapeById = new Map(next.nodes.map((node) => [node.id, node]));
   let nodes = next.simulation.nodes.filter((node) => shapeIds.has(node.id));
   const resources = [...next.simulation.resources];

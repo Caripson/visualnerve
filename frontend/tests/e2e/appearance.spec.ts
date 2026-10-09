@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { acknowledge } from './fixtures';
+import { openAPIEndpoint } from './api-docs-fixture';
 
 const publicURL = 'https://public-app.test:4340';
 const publicApp = `${publicURL}/app/`;
@@ -266,14 +267,14 @@ for (const width of [1440, 320]) {
             `api-docs-${width === 320 ? 'mobile' : 'desktop'}-${colorScheme}-introduction.png`,
           ),
         });
-        await page.locator('#operations-default-get_diagrams').click();
+        const endpoint = await openAPIEndpoint(page, 'GET', '/diagrams');
         await expect(page.getByRole('button', { name: /Try it out/ })).toHaveCount(0);
         const foreground = await page.evaluate(
           () => getComputedStyle(document.documentElement).color,
         );
-        for (const heading of await page
-          .locator('.opblock.is-open .opblock-section-header h4, .opblock.is-open .tab li button')
-          .all())
+        const detailLabels = endpoint.locator('.opblock-section-header h4, .tab li button');
+        expect(await detailLabels.count()).toBeGreaterThan(0);
+        for (const heading of await detailLabels.all())
           await expect(heading).toHaveCSS('color', foreground);
         await expect
           .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
@@ -301,9 +302,35 @@ test('the loopback API reference retains local Try it out without opening a work
     page.getByRole('heading', { level: 1, name: 'Visual Nerve local API', exact: true }),
   ).toBeVisible();
   await expect(page.locator('.swagger-ui .info .title')).toContainText('Visual Nerve local API');
-  await page.locator('#operations-default-get_diagrams').click();
+  await openAPIEndpoint(page, 'GET', '/diagrams');
   await expect(page.getByRole('button', { name: /Try it out/ })).toBeVisible();
   expect(
     await page.evaluate(async () => (await indexedDB.databases()).map((db) => db.name)),
   ).toEqual([]);
+});
+
+test('large API references keep offscreen endpoints reachable through the virtualized list', async ({
+  page,
+}) => {
+  const contractResponse = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === '/openapi.yaml',
+  );
+  await page.goto(`${publicURL}/api/docs/`);
+  await expect(page.locator('.swagger-ui .info .title')).toContainText('Visual Nerve local API');
+  const contract = await (await contractResponse).json();
+  const methods = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace']);
+  const operationCount = Object.values(contract.paths).reduce<number>(
+    (count, path) => count + Object.keys(path as object).filter((key) => methods.has(key)).length,
+    0,
+  );
+  expect(operationCount).toBeGreaterThanOrEqual(100);
+  await expect(page.locator('.operations-virtual')).toHaveCount(1);
+  expect(await page.locator('.swagger-ui .opblock').count()).toBeLessThan(operationCount);
+  await expect(page.locator('.opblock-summary-path[data-path="/workspace/security"]')).toHaveCount(
+    0,
+  );
+  const endpoint = await openAPIEndpoint(page, 'GET', '/workspace/security');
+  await expect(endpoint.locator('.opblock-body')).toContainText('"mode"');
+  await expect(endpoint.locator('.opblock-body')).toContainText('"schemaVersion"');
+  await expect(page.getByRole('button', { name: /Try it out/ })).toHaveCount(0);
 });

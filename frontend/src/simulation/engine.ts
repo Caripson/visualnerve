@@ -7,6 +7,7 @@ import {
   type TypeState,
 } from './engine-state';
 import { ProcessMetricsAccumulator } from './process-metrics';
+import { ParallelExecution, type ForkGroup } from './parallel-execution';
 import { zeroEconomics, finishEconomics } from './economics';
 export { compareSimulationResults } from './economics';
 import type {
@@ -35,6 +36,7 @@ import type {
 import { validateSimulationModel, resolveScenario } from './schema';
 import { EventQueue, type EngineEvent } from './event-queue';
 import { SeededRandom, hashString } from './random';
+import { ParticleRoute } from './particle-route';
 import { Distribution } from './statistics';
 import { BoundedRing } from './ring';
 import { StorageError } from '../model/errors';
@@ -81,6 +83,7 @@ export class SimulationEngine {
   > &
     RunOptions;
   private readonly processes: ProcessMetricsAccumulator;
+  private readonly parallel: ParallelExecution;
   private clock = 0;
   private accountedClock = 0;
   private processedEvents = 0;
@@ -153,6 +156,7 @@ export class SimulationEngine {
     this.model = resolveScenario(model, options.scenarioId, options.demandMultiplier);
     validateSimulationModel({ ...this.model, scenarios: [] });
     this.processes = new ProcessMetricsAccumulator(this.model);
+    this.parallel = new ParallelExecution(this.model);
     this.options = {
       ...options,
       durationSeconds: options.durationSeconds ?? model.defaults.durationSeconds,
@@ -382,7 +386,15 @@ export class SimulationEngine {
     type: SimulationEventType,
     fields: Omit<Partial<SimulationEvent>, 'type' | 'timeSeconds' | 'sequence'> = {},
   ) {
-    const event = { sequence: ++this.eventSequence, timeSeconds: sec(this.clock), type, ...fields };
+    const particle =
+      fields.particleId === undefined ? undefined : this.active.get(fields.particleId);
+    const event = {
+      sequence: ++this.eventSequence,
+      timeSeconds: sec(this.clock),
+      type,
+      ...(particle ? this.parallelFields(particle) : {}),
+      ...fields,
+    };
     if (this.events.push(event)) this.droppedEvents++;
   }
   private moveTime(t: number, commit = true) {
@@ -499,7 +511,7 @@ export class SimulationEngine {
       entered: this.clock,
       started: 0,
       workCostIntegralStart: 0,
-      route: [],
+      route: new ParticleRoute(),
       resources: [],
       visits: 0,
     };
@@ -590,24 +602,7 @@ export class SimulationEngine {
         this.fail(p, node.id, 'Overflow/failure routing needs a valid model edge.');
         return;
       }
-      p.route.push(edge.id);
-      p.edgeId = edge.id;
-      p.departedAtSeconds = sec(this.clock);
-      p.arrivesAtSeconds = sec(this.clock + ms(edge.travelSeconds ?? 0));
-      p.status = 'transit';
-      this.emit('PARTICLE_ROUTED', {
-        particleId: p.id,
-        particleTypeId: p.typeId,
-        nodeId: node.id,
-        edgeId: edge.id,
-      });
-      this.schedule(
-        'arrival',
-        edge.targetNodeId,
-        this.clock + ms(edge.travelSeconds ?? 0),
-        2,
-        p.id,
-      );
+      this.travel(p, node, edge);
       return;
     }
     const eligible = (this.outgoing.get(node.id) ?? []).filter(
@@ -677,7 +672,10 @@ export class SimulationEngine {
       this.fail(p, node.id, 'No matching outgoing route.');
       return;
     }
-    p.route.push(edge.id);
+    this.travel(p, node, edge);
+  }
+  private travel(p: Particle, node: SimulationNode, edge: SimulationEdge) {
+    p.route.appendEdge(edge.id, node.type === 'work' ? node.id : undefined);
     p.edgeId = edge.id;
     p.departedAtSeconds = sec(this.clock);
     p.arrivesAtSeconds = sec(this.clock + ms(edge.travelSeconds ?? 0));
@@ -693,7 +691,14 @@ export class SimulationEngine {
   }
   private enter(p: Particle, nodeId: string) {
     const node = this.nodes.get(nodeId)!;
-    this.processes.enter(p, nodeId, this.clock);
+    this.processes.enter(
+      p,
+      nodeId,
+      this.clock,
+      p.rootParticleId === undefined
+        ? p.expectedRevenue
+        : this.active.get(p.rootParticleId)!.expectedRevenue,
+    );
     this.activity.get(nodeId)!.started++;
     p.nodeId = nodeId;
     p.edgeId = undefined;
@@ -702,6 +707,14 @@ export class SimulationEngine {
     p.entered = this.clock;
     p.history.push({ nodeId, enteredAtSeconds: sec(this.clock) });
     if (p.history.length > 64) p.history.shift();
+    if (node.type === 'fork') {
+      this.fork(p, node);
+      return;
+    }
+    if (node.type === 'join') {
+      this.join(p, node);
+      return;
+    }
     if (node.type === 'outcome') {
       this.finish(p, node);
       return;
@@ -734,6 +747,162 @@ export class SimulationEngine {
     });
     w.expected += p.expectedRevenue;
     this.mark(node.id);
+  }
+  private parallelFields(p: Particle) {
+    return p.parentParticleId === undefined
+      ? {}
+      : {
+          rootParticleId: p.rootParticleId,
+          parentParticleId: p.parentParticleId,
+          forkGroupId: p.forkGroupId,
+          forkNodeId: p.forkNodeId,
+          joinNodeId: p.joinNodeId,
+          branchEdgeId: p.branchEdgeId,
+        };
+  }
+  private fork(p: Particle, node: Extract<SimulationNode, { type: 'fork' }>) {
+    if (
+      this.active.size + node.fork.branchEdgeIds.length >
+      simulationExecutionLimits.activeParticles
+    ) {
+      this.status = 'failed';
+      this.message =
+        'Simulation active-particle limit reached while creating parallel work. Reduce arrivals or branch fan-out.';
+      return;
+    }
+    const group = this.parallel.create(p, node, this.clock);
+    p.status = 'waiting';
+    const branches = node.fork.branchEdgeIds.map((edgeId) => {
+      const child: Particle = {
+        ...p,
+        id: ++this.particleSequence,
+        rootParticleId: group.rootId,
+        parentParticleId: p.id,
+        forkGroupId: group.id,
+        forkNodeId: node.id,
+        joinNodeId: group.joinNodeId,
+        branchEdgeId: edgeId,
+        status: 'transit',
+        accumulatedCost: 0,
+        waitingSeconds: 0,
+        processingSeconds: 0,
+        realizedRevenue: 0,
+        history: [{ nodeId: node.id, enteredAtSeconds: sec(this.clock) }],
+        route: new ParticleRoute(),
+        resources: [],
+      };
+      this.active.set(child.id, child);
+      this.processes.enter(
+        child,
+        node.id,
+        this.clock,
+        this.active.get(group.rootId)!.expectedRevenue,
+      );
+      this.parallel.addBranch(group, edgeId, child);
+      return child;
+    });
+    this.emit('PARTICLE_FORKED', {
+      particleId: p.id,
+      particleTypeId: p.typeId,
+      nodeId: node.id,
+      rootParticleId: group.rootId,
+      parentParticleId: p.id,
+      forkGroupId: group.id,
+      forkNodeId: node.id,
+      joinNodeId: group.joinNodeId,
+      branchCount: branches.length,
+    });
+    for (const child of branches) {
+      child.history[0].leftAtSeconds = sec(this.clock);
+      this.travel(child, node, this.edges.get(child.branchEdgeId!)!);
+    }
+  }
+  private join(p: Particle, node: Extract<SimulationNode, { type: 'join' }>) {
+    const group = this.parallel.arrive(p, node.id, this.clock);
+    if (!group || group.forkNodeId !== node.join.forkNodeId) {
+      this.fail(p, node.id, 'Join received work without its matching fork group.');
+      return;
+    }
+    p.status = 'waiting';
+    p.queueEnteredAtSeconds = sec(this.clock);
+    this.queueLength++;
+    this.maximumQueue = Math.max(this.maximumQueue, this.queueLength);
+    this.processes.queueEntered(node.id, this.clock);
+    this.emit('QUEUE_ENTERED', { particleId: p.id, particleTypeId: p.typeId, nodeId: node.id });
+    this.emit('BRANCH_JOINED', {
+      particleId: p.id,
+      particleTypeId: p.typeId,
+      nodeId: node.id,
+      arrivedBranches: group.arrived.size,
+      branchCount: group.branches.size,
+    });
+    if (group.arrived.size !== group.branches.size) return;
+    const parent = group.parent;
+    // Transfer the logical case into the join's scopes before retiring its child
+    // tokens, so the handoff cannot create a second visit to the same scope.
+    this.processes.enter(
+      parent,
+      node.id,
+      this.clock,
+      this.active.get(group.rootId)!.expectedRevenue,
+    );
+    let revenueFactor = 1;
+    for (const child of group.branches.values()) {
+      this.leaveJoin(child, group);
+      parent.accumulatedCost += child.accumulatedCost;
+      parent.waitingSeconds += child.waitingSeconds;
+      parent.processingSeconds += child.processingSeconds;
+      parent.route.append(child.route);
+      if (group.expectedRevenue > 0) revenueFactor *= child.expectedRevenue / group.expectedRevenue;
+      child.status = 'joined';
+      this.retire(child);
+    }
+    this.parallel.close(group, false, this.clock);
+    const expected = group.expectedRevenue * revenueFactor;
+    const changed = expected - parent.expectedRevenue;
+    parent.expectedRevenue = expected;
+    if (parent.parentParticleId === undefined) {
+      this.totals.expected += changed;
+      this.types.get(parent.typeId)!.expected += changed;
+      this.processes.expectedRevenueChanged(parent.id, changed);
+    }
+    parent.history[parent.history.length - 1].leftAtSeconds = sec(this.clock);
+    parent.nodeId = node.id;
+    parent.entered = this.clock;
+    parent.status = 'transit';
+    parent.history.push({ nodeId: node.id, enteredAtSeconds: sec(this.clock) });
+    if (parent.history.length > 64) parent.history.shift();
+    this.activity.get(group.forkNodeId)!.completed++;
+    this.activity.get(node.id)!.completed++;
+    this.emit('JOIN_COMPLETED', {
+      particleId: parent.id,
+      particleTypeId: parent.typeId,
+      nodeId: node.id,
+      rootParticleId: group.rootId,
+      parentParticleId: parent.id,
+      forkGroupId: group.id,
+      forkNodeId: group.forkNodeId,
+      joinNodeId: node.id,
+      branchCount: group.branches.size,
+      arrivedBranches: group.branches.size,
+    });
+    this.route(parent, node);
+  }
+  private leaveJoin(p: Particle, group: ForkGroup) {
+    const arrived = group.arrived.get(p.branchEdgeId!);
+    if (arrived === undefined) return;
+    const wait = sec(this.clock - arrived);
+    p.waitingSeconds += wait;
+    p.queueEnteredAtSeconds = undefined;
+    this.queueLength--;
+    this.wait.add(wait);
+    this.types.get(p.typeId)!.wait.add(wait);
+    this.processes.queueLeft(group.joinNodeId, this.clock, wait, true);
+    this.emit('QUEUE_LEFT', {
+      particleId: p.id,
+      particleTypeId: p.typeId,
+      nodeId: group.joinNodeId,
+    });
   }
   private resourceQueue(id: string) {
     const r = this.resources.get(id)!;
@@ -907,12 +1076,42 @@ export class SimulationEngine {
     this.captureCash();
   }
   private processFinished(p: Particle, id: string) {
+    this.releaseProcessing(p, id, false);
+    const w = this.work.get(id)!;
+    let expected = p.expectedRevenue;
+    for (const feature of this.features(id)) expected *= feature.revenueMultiplier ?? 1;
+    const revenueChange = expected - p.expectedRevenue;
+    p.expectedRevenue = expected;
+    if (p.parentParticleId === undefined) {
+      this.totals.expected += revenueChange;
+      this.processes.expectedRevenueChanged(p.id, revenueChange);
+      this.types.get(p.typeId)!.expected += revenueChange;
+    } else if (revenueChange !== 0) {
+      const root = this.active.get(p.rootParticleId!)!;
+      const multiplier = expected / (expected - revenueChange);
+      const rootChange = root.expectedRevenue * (multiplier - 1);
+      root.expectedRevenue += rootChange;
+      this.totals.expected += rootChange;
+      this.types.get(p.typeId)!.expected += rootChange;
+      this.processes.expectedRevenueChanged(root.id, rootChange);
+    }
+    w.expected += revenueChange;
+    const failed = this.features(id).find(
+      (f) => (f.failureProbability ?? 0) > this.stream(`failure:${f.id}`).next(),
+    );
+    if (failed) {
+      if (failed.failureNodeId) this.route(p, w.node, failed.failureNodeId);
+      else this.fail(p, id, 'Processing feature failure.');
+    } else this.route(p, w.node);
+    this.captureCash();
+  }
+  private releaseProcessing(p: Particle, id: string, cancelled: boolean) {
     const w = this.work.get(id)!;
     this.touch(w);
     const previousRate = this.rate(w);
     w.busy--;
     this.workRate += this.rate(w) - previousRate;
-    w.completed++;
+    if (!cancelled) w.completed++;
     const elapsed = sec(this.clock - p.started);
     p.processingSeconds += elapsed;
     this.processing.add(elapsed);
@@ -942,27 +1141,20 @@ export class SimulationEngine {
     p.resources = [];
     p.processingStartedAtSeconds = undefined;
     p.processingEndsAtSeconds = undefined;
-    this.emit('PROCESS_COMPLETED', { particleId: p.id, particleTypeId: p.typeId, nodeId: id });
+    this.emit(cancelled ? 'PROCESS_CANCELLED' : 'PROCESS_COMPLETED', {
+      particleId: p.id,
+      particleTypeId: p.typeId,
+      nodeId: id,
+    });
     this.checkScale(w, id, false);
     this.mark(id);
-    let expected = p.expectedRevenue;
-    for (const feature of this.features(id)) expected *= feature.revenueMultiplier ?? 1;
-    const revenueChange = expected - p.expectedRevenue;
-    p.expectedRevenue = expected;
-    this.totals.expected += revenueChange;
-    this.processes.expectedRevenueChanged(p.id, revenueChange);
-    this.types.get(p.typeId)!.expected += revenueChange;
-    w.expected += revenueChange;
-    const failed = this.features(id).find(
-      (f) => (f.failureProbability ?? 0) > this.stream(`failure:${f.id}`).next(),
-    );
-    if (failed) {
-      if (failed.failureNodeId) this.route(p, w.node, failed.failureNodeId);
-      else this.fail(p, id, 'Processing feature failure.');
-    } else this.route(p, w.node);
-    this.captureCash();
+    p.status = 'transit';
   }
   private abandon(p: Particle, id: string, reason: string) {
+    if (p.parentParticleId !== undefined || this.parallel.forRoot(p.id).length) {
+      this.cancelParallel(p, id, reason, 'abandoned');
+      return;
+    }
     this.activity.get(id)!.abandoned++;
     this.activity.get(id)!.lost += p.expectedRevenue;
     const w = this.work.get(id);
@@ -988,6 +1180,10 @@ export class SimulationEngine {
     this.retire(p);
   }
   private fail(p: Particle, id: string, reason: string) {
+    if (p.parentParticleId !== undefined || this.parallel.forRoot(p.id).length) {
+      this.cancelParallel(p, id, reason, 'failed');
+      return;
+    }
     this.activity.get(id)!.failed++;
     this.activity.get(id)!.lost += p.expectedRevenue;
     p.status = 'failed';
@@ -1003,6 +1199,70 @@ export class SimulationEngine {
       reason,
     });
     this.retire(p);
+  }
+  private cancelParallel(
+    trigger: Particle,
+    id: string,
+    reason: string,
+    status: 'abandoned' | 'failed',
+  ) {
+    const root = this.active.get(trigger.rootParticleId ?? trigger.id)!;
+    const groups = this.parallel.forRoot(root.id);
+    const tokens = new Map<number, Particle>();
+    for (const group of groups) {
+      tokens.set(group.parent.id, group.parent);
+      for (const child of group.branches.values()) tokens.set(child.id, child);
+    }
+    tokens.delete(root.id);
+    for (const child of tokens.values()) {
+      const work = this.work.get(child.nodeId);
+      if (child.status === 'queued' && work?.queueIds.has(child.id)) {
+        this.leaveQueue(work, child);
+        this.checkScale(work, work.node.id, false);
+        this.mark(work.node.id);
+      } else if (child.status === 'processing') this.releaseProcessing(child, child.nodeId, true);
+      else if (child.status === 'waiting') {
+        const group = this.parallel.group(child);
+        if (group?.arrived.has(child.branchEdgeId!)) this.leaveJoin(child, group);
+      }
+      root.accumulatedCost += child.accumulatedCost;
+      root.waitingSeconds += child.waitingSeconds;
+      root.processingSeconds += child.processingSeconds;
+      root.route.append(child.route);
+      child.status = 'cancelled';
+      this.emit('BRANCH_CANCELLED', {
+        particleId: child.id,
+        particleTypeId: child.typeId,
+        nodeId: child.nodeId,
+        reason,
+      });
+      this.retire(child, status);
+    }
+    for (const group of groups) this.parallel.close(group, true, this.clock);
+    this.activity.get(id)![status === 'abandoned' ? 'abandoned' : 'failed']++;
+    this.activity.get(id)!.lost += root.expectedRevenue;
+    const work = this.work.get(id);
+    if (work) {
+      if (status === 'abandoned') work.abandoned++;
+      work.lost += root.expectedRevenue;
+    }
+    root.status = status;
+    root.nodeId = id;
+    this.totals[status]++;
+    this.totals.lost += root.expectedRevenue;
+    const type = this.types.get(root.typeId)!;
+    type[status]++;
+    type.lost += root.expectedRevenue;
+    this.emit(status === 'abandoned' ? 'PARTICLE_ABANDONED' : 'PARTICLE_FAILED', {
+      particleId: root.id,
+      particleTypeId: root.typeId,
+      nodeId: id,
+      rootParticleId: root.id,
+      amount: root.expectedRevenue,
+      reason,
+    });
+    this.retire(root);
+    this.captureCash();
   }
   private finish(p: Particle, node: Extract<SimulationNode, { type: 'outcome' }>) {
     if (node.outcome.status !== 'completed') {
@@ -1032,8 +1292,7 @@ export class SimulationEngine {
     type.completed++;
     type.revenue += revenue;
     type.cycle.add(elapsed);
-    let route = p.route.join(' → ');
-    if (route.length > 2000) route = `${route.slice(0, 200)} … [${hashString(route).toString(16)}]`;
+    let route = p.route.label();
     if (!this.routes.has(route) && this.routes.size >= 256) route = '[other routes]';
     const routeStats = this.routes.get(route) ?? {
       count: 0,
@@ -1055,17 +1314,17 @@ export class SimulationEngine {
         amount: revenue,
       });
     }
-    for (const id of new Set(p.route.map((edgeId) => this.edges.get(edgeId)?.sourceNodeId))) {
-      const w = id ? this.work.get(id) : undefined;
+    for (const id of p.route.workNodeIds) {
+      const w = this.work.get(id);
       if (w) w.revenue += revenue;
     }
     this.retire(p);
     this.captureCash();
   }
-  private retire(p: Particle) {
+  private retire(p: Particle, branchFailure?: 'abandoned' | 'failed') {
     p.completedAtSeconds = sec(this.clock);
     p.pendingAdmission = undefined;
-    this.processes.retire(p, this.clock);
+    this.processes.retire(p, this.clock, branchFailure);
     this.active.delete(p.id);
     if (this.particleLimit) this.retained.push(this.snapshot(p));
   }
@@ -1466,6 +1725,9 @@ export class SimulationEngine {
       queueMetrics: (s) => this.queueMetrics(s),
       rate: (s) => this.rate(s),
       snapshot: (p) => this.snapshot(p),
+      parallel: this.parallel.state(this.particleLimit),
+      joinMetrics: (id) => this.parallel.joinMetrics(id),
+      joinQueueMetrics: (id) => this.parallel.queueMetrics(id, this.clock),
       processMetrics: (nodes, bottlenecks) =>
         this.processes.project({
           clock: this.clock,

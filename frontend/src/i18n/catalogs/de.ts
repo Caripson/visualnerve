@@ -1,6 +1,31 @@
 import type { Catalog } from '../types';
 
 const catalog = {
+  'dialogs.exportSvgSourceHint':
+    'Abgeschnittener Quelltext kann in der SVG-Datei enthalten sein. Prüfen Sie sie vor dem Teilen.',
+  'simulator.parallel.deleteBlock': 'Parallelen Block und alle Aufgaben entfernen',
+  'editor.nodes.quickAdd.choice.parallelWork': 'Parallele Arbeit',
+  'editor.nodes.quickAdd.choice.parallelWorkDescription':
+    'Zwei erforderliche Arbeitszweige ausführen und vor dem Fortfahren auf beide warten.',
+  'dialogs.exportSvgProgress': 'Vektorexport wird vorbereitet · {percent}%',
+  'dialogs.exportSvgBackgroundHint':
+    'SVG wird in diesem Browser erstellt. Sie können den laufenden Export abbrechen.',
+  'simulator.parallel.connectExplanation':
+    'Alle 2–64 ausgehenden Verbindungen sind erforderlich. Verbinden Sie jeden Zweig mit dem gemeinsamen Sammelpunkt und diesen mit dem nächsten Schritt.',
+  'simulator.parallel.fork': 'Parallele Arbeit',
+  'simulator.parallel.join': 'Auf alle warten',
+  'simulator.parallel.forkExplanation':
+    'Jeder Fall erstellt eine Aufgabe für jeden ausgewählten Zweig. Alle Aufgaben teilen den ursprünglichen Fall und dessen Erlös.',
+  'simulator.parallel.joinExplanation':
+    'Dieser Schritt setzt den ursprünglichen Fall erst fort, wenn alle erforderlichen Aufgaben der zugehörigen Verzweigung eingetroffen sind.',
+  'simulator.parallel.pairedFork': 'Beginnt bei:',
+  'simulator.parallel.pairedJoin': 'Geht weiter bei:',
+  'simulator.parallel.requiredBranches': 'Erforderliche Zweige',
+  'simulator.parallel.failureExplanation':
+    'Wenn ein Zweig scheitert oder abgebrochen wird, endet der gesamte Fall einmal und die übrigen Aufgaben werden abgebrochen. Angefallene Kosten bleiben erhalten.',
+  'simulator.parallel.branchCount': '{count} parallele Aufgaben',
+  'simulator.parallel.waitingSummary':
+    'Wartende Fälle: {groups} · Fertige Aufgaben: {arrived}/{expected}',
   'integration.bridge.updateRequired':
     'Aktualisieren Sie die lokale Bridge, verbinden Sie den MCP-Client erneut und aktualisieren Sie seine Werkzeugliste. Diese Verbindung meldet nicht die aktuellen Funktionen für API-Dokumentation und sichere Schreibvorgänge.',
   'integration.bridge.detectedVersion': 'Erkannte Bridge-Version: {version}',

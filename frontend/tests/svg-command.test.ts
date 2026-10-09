@@ -37,6 +37,14 @@ describe('read-only SVG export command', () => {
     expect(render).toHaveBeenLastCalledWith(source, 'selected', [source.nodes[0].id]);
     expect(source).toEqual(before);
   });
+  it('returns explicit asynchronous guidance before rendering a large synchronous export', async () => {
+    const source = graph();
+    source.nodes = Array.from({ length: 101 }, () => newNode(source.diagram.id));
+    await expect(
+      exportCommand(source, { diagramId: source.diagram.id, format: 'svg' }),
+    ).rejects.toMatchObject({ status: 409, code: 'SVG_BACKGROUND_REQUIRED' });
+    expect(render).not.toHaveBeenCalled();
+  });
   it.each([
     { format: 'png' },
     { format: ['svg'] },

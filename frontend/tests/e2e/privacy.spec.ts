@@ -10,6 +10,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { acknowledge } from './fixtures';
+import { openAPIEndpoint } from './api-docs-fixture';
 import templateManifest from '../../src/templates/manifest.json' with { type: 'json' };
 
 const publicURL = 'https://public-app.test:4340';
@@ -615,7 +616,7 @@ test('substantial data gets a one-time dismissible backup reminder and public AP
     );
     await page.goto(`${publicURL}/api/docs/`);
     await expect(page.locator('.swagger-ui .info .title')).toContainText('Visual Nerve local API');
-    await page.locator('#operations-default-get_diagrams').click();
+    await openAPIEndpoint(page, 'GET', '/diagrams');
     await expect(page.getByRole('button', { name: /Try it out/ })).toHaveCount(0);
     audit();
   } finally {

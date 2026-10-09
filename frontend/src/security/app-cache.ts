@@ -1,3 +1,4 @@
+import { clearSvgJobsIfLoaded } from '../export/svg-job-lifecycle';
 import { SPEECH_MODEL_CACHE } from '../presentation/speech/protocol';
 import { isNarrationClipCache } from '../presentation/speech/clip-cache-protocol';
 
@@ -174,6 +175,7 @@ export class AppCacheManager {
       async () => {
         this.listen();
         this.clearing = true;
+        if (kind === 'app') clearSvgJobsIfLoaded();
         const state: CacheControl = {
           generation: crypto.randomUUID(),
           clearing: true,

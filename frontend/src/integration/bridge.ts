@@ -6,6 +6,7 @@ import { bridgeDiagnostics } from './diagnostics';
 import { workspace } from '../storage/workspace';
 import { VaultStorageError } from '../security/vault-storage';
 import type { WorkspaceOperation } from '../storage/contracts';
+import { SvgExportError } from '../export/svg-job-types';
 import {
   isWorkspaceLockCommand,
   isWorkspaceSecurityDiscovery,
@@ -24,12 +25,16 @@ interface Command {
   accessGrantId?: string;
 }
 export function bridgeResponseStatus(path: string, method: string): number {
-  return method === 'DELETE' && path.replace(/^\/api\/v1/, '') !== '/presentation/video'
+  const endpoint = path.replace(/^\/api\/v1/, '');
+  return method === 'DELETE' &&
+    endpoint !== '/presentation/video' &&
+    !/^\/exports\/svg\/[\da-f-]{36}$/i.test(endpoint)
     ? 204
     : method === 'POST' &&
-        /\/(spatial-diagrams|diagrams|nodes|edges|owners|children|import|particle-types|resources|improvements|scenarios|processes|runs)$/.test(
-          path,
-        )
+        (endpoint === '/exports/svg' ||
+          /\/(spatial-diagrams|diagrams|nodes|edges|owners|children|import|particle-types|resources|improvements|scenarios|processes|runs)$/.test(
+            path,
+          ))
       ? 201
       : 200;
 }
@@ -42,7 +47,11 @@ export function bridgeError(error: unknown) {
   };
 }
 export function bridgeErrorStatus(error: unknown): number {
-  return error instanceof StorageError || error instanceof VaultStorageError ? error.status : 422;
+  return error instanceof StorageError ||
+    error instanceof VaultStorageError ||
+    error instanceof SvgExportError
+    ? error.status
+    : 422;
 }
 export class Bridge {
   private readonly browserInstanceId = crypto.randomUUID();
