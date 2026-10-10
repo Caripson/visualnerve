@@ -103,74 +103,119 @@ afterEach(async () => {
 });
 afterAll(() => cipher.destroyKeys(vault.keys));
 describe('one authoritative graph transaction for UI/API/peer edits', () => {
-  it('preserves opted-in CSV sources across actual UI autosave and honors explicit source removal', async () => {
-    gateway.dispose();
-    const dataset = parseCsv('Category,Private\nA,secret-row-value', 'shared.csv');
-    graph = await repo.saveGraph(csvGraph(dataset, defaultAnalysis(dataset)), 0);
-    roomId = crypto.randomUUID();
-    room = {
-      ...room,
-      currentPolicy: { policy: { roomId, ownerDeviceId: 'owner-device-1234' } },
-    } as unknown as EncryptedRoom;
-    gateway = new CollaborationDocumentGateway({
-      workspace,
-      store: privateStore,
-      room,
-      graph,
-      scope: { shareMetadata: false, shareOwners: false, shareDatasets: true },
-      lease,
-      check: () => lease.assertActive(),
-      role: () => role,
-      onFailure: errors,
-      onOffline: () => {},
-    });
-    await gateway.initialize('https://relay.example.com');
-    await db.settings.put({ key: 'storage-consent', value: true });
-    await workspace.start();
-    await workspace.open(graph.diagram.id);
-    useEditor.getState().updateNode(graph.nodes[0].id, { title: 'Edited CSV group' });
-    await workspace.settled();
-    await gateway.flush();
-    let saved = await repo.getGraph(graph.diagram.id);
-    expect(useEditor.getState().status, useEditor.getState().message).toBe('saved');
-    expect(saved.nodes[0].title).toBe('Edited CSV group');
-    expect(saved.dataset!.rows).toEqual(dataset.rows);
-    expect(gateway.document.graph(saved).dataset!.rows).toEqual(dataset.rows);
-    expect(errors).not.toHaveBeenCalled();
-    const baseline = saved;
-    const peer = new CollaborativeDocument(
-      saved,
-      { shareMetadata: false, shareOwners: false, shareDatasets: true },
-      gateway.document.encodedState(),
-    );
-    try {
-      const remote = structuredClone(saved);
-      remote.dataset!.rows = [['A', 'peer-row-value']];
-      const change = peer.applyLocal(saved, remote, { canWrite: true, assertActive: () => {} });
-      await gateway.receive(change.update);
-    } finally {
-      peer.destroy();
-    }
-    // An already queued drawing edit must preserve the newer source from the
-    // peer, even though its edit baseline predates that source update.
-    const { dataset: _dataset, datasets: _datasets, ...drawing } = baseline;
-    drawing.nodes = drawing.nodes.map((node) => ({ ...node, title: 'Local queued title' }));
-    const current = await repo.getGraph(graph.diagram.id);
-    saved = await repo.saveGraph(drawing, current.diagram.version, undefined, undefined, baseline);
-    await gateway.flush();
-    expect(saved.nodes[0].title).toBe('Local queued title');
-    expect(saved.dataset!.rows).toEqual([['A', 'peer-row-value']]);
-    expect(gateway.document.graph(saved).dataset!.rows).toEqual(saved.dataset!.rows);
-    const empty = blankGraph('Intentionally replace shared CSV');
-    empty.diagram.id = saved.diagram.id;
-    empty.datasets = [];
-    const replaced = await repo.saveGraph(empty, saved.diagram.version);
-    await gateway.flush();
-    expect(replaced.dataset).toBeUndefined();
-    expect(replaced.datasets).toEqual([]);
-    expect(gateway.document.graph(replaced).dataset).toBeUndefined();
-    expect(await db.datasets.where('diagramId').equals(saved.diagram.id).toArray()).toEqual([]);
-  });
+  it.each(['root-first', 'group-first'] as const)(
+    'preserves opted-in CSV sources across actual UI autosave and honors explicit source removal (%s)',
+    async (sortOrder) => {
+      gateway.dispose();
+      const dataset = parseCsv('Category,Private\nA,secret-row-value', 'shared.csv');
+      const csv = csvGraph(dataset, defaultAnalysis(dataset));
+      expect(csv.nodes).toHaveLength(2);
+      // A shared projection normalizes entity ordering. Force both UUID orders
+      // and follow the edited node's identity throughout real encrypted autosave.
+      const lowId = '11111111-1111-4111-8111-111111111111';
+      const highId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+      const editedNodeId = sortOrder === 'root-first' ? lowId : highId;
+      const untouchedNodeId = sortOrder === 'root-first' ? highId : lowId;
+      const identifiers = new Map([
+        [csv.nodes[0].id, editedNodeId],
+        [csv.nodes[1].id, untouchedNodeId],
+      ]);
+      csv.nodes = csv.nodes.map((node) => ({
+        ...node,
+        id: identifiers.get(node.id)!,
+        ...(node.parentId ? { parentId: identifiers.get(node.parentId)! } : {}),
+      }));
+      csv.edges = csv.edges.map((edge) => ({
+        ...edge,
+        sourceNodeId: identifiers.get(edge.sourceNodeId)!,
+        targetNodeId: identifiers.get(edge.targetNodeId)!,
+      }));
+      graph = await repo.saveGraph(csv, 0);
+      roomId = crypto.randomUUID();
+      room = {
+        ...room,
+        currentPolicy: { policy: { roomId, ownerDeviceId: 'owner-device-1234' } },
+      } as unknown as EncryptedRoom;
+      gateway = new CollaborationDocumentGateway({
+        workspace,
+        store: privateStore,
+        room,
+        graph,
+        scope: { shareMetadata: false, shareOwners: false, shareDatasets: true },
+        lease,
+        check: () => lease.assertActive(),
+        role: () => role,
+        onFailure: errors,
+        onOffline: () => {},
+      });
+      await gateway.initialize('https://relay.example.com');
+      await db.settings.put({ key: 'storage-consent', value: true });
+      await workspace.start();
+      await workspace.open(graph.diagram.id);
+      useEditor.getState().updateNode(editedNodeId, { title: 'Edited CSV group' });
+      await workspace.settled();
+      await gateway.flush();
+      let saved = await repo.getGraph(graph.diagram.id);
+      expect(useEditor.getState().status, useEditor.getState().message).toBe('saved');
+      expect(saved.nodes).toHaveLength(2);
+      expect(saved.nodes.find((node) => node.id === editedNodeId)).toMatchObject({
+        id: editedNodeId,
+        title: 'Edited CSV group',
+      });
+      expect(saved.nodes.find((node) => node.id === untouchedNodeId)).toMatchObject({
+        id: untouchedNodeId,
+        title: 'A',
+      });
+      expect(
+        useEditor.getState().graph?.nodes.find((node) => node.id === editedNodeId)?.title,
+      ).toBe('Edited CSV group');
+      expect(
+        gateway.document.graph(saved).nodes.find((node) => node.id === editedNodeId)?.title,
+      ).toBe('Edited CSV group');
+      expect(saved.dataset!.rows).toEqual(dataset.rows);
+      expect(gateway.document.graph(saved).dataset!.rows).toEqual(dataset.rows);
+      expect(errors).not.toHaveBeenCalled();
+      const baseline = saved;
+      const peer = new CollaborativeDocument(
+        saved,
+        { shareMetadata: false, shareOwners: false, shareDatasets: true },
+        gateway.document.encodedState(),
+      );
+      try {
+        const remote = structuredClone(saved);
+        remote.dataset!.rows = [['A', 'peer-row-value']];
+        const change = peer.applyLocal(saved, remote, { canWrite: true, assertActive: () => {} });
+        await gateway.receive(change.update);
+      } finally {
+        peer.destroy();
+      }
+      // An already queued drawing edit must preserve the newer source from the
+      // peer, even though its edit baseline predates that source update.
+      const { dataset: _dataset, datasets: _datasets, ...drawing } = baseline;
+      drawing.nodes = drawing.nodes.map((node) => ({ ...node, title: 'Local queued title' }));
+      const current = await repo.getGraph(graph.diagram.id);
+      saved = await repo.saveGraph(
+        drawing,
+        current.diagram.version,
+        undefined,
+        undefined,
+        baseline,
+      );
+      await gateway.flush();
+      expect(saved.nodes[0].title).toBe('Local queued title');
+      expect(saved.dataset!.rows).toEqual([['A', 'peer-row-value']]);
+      expect(gateway.document.graph(saved).dataset!.rows).toEqual(saved.dataset!.rows);
+      const empty = blankGraph('Intentionally replace shared CSV');
+      empty.diagram.id = saved.diagram.id;
+      empty.datasets = [];
+      const replaced = await repo.saveGraph(empty, saved.diagram.version);
+      await gateway.flush();
+      expect(replaced.dataset).toBeUndefined();
+      expect(replaced.datasets).toEqual([]);
+      expect(gateway.document.graph(replaced).dataset).toBeUndefined();
+      expect(await db.datasets.where('diagramId').equals(saved.diagram.id).toArray()).toEqual([]);
+    },
+  );
   it('projects an individual ID-based API patch through the same CRDT and encrypts its outbox', async () => {
     const node = graph.nodes[0];
     await repo.request(`/nodes/${node.id}`, 'PATCH', {
