@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
+import { verifyCollaborationCI } from "./collaboration-ci.mjs";
 
 function latest(runs, predicate) {
   if (!Array.isArray(runs))
@@ -136,7 +137,7 @@ export async function verifyDeployment(env, mode, fetcher = fetch) {
       : Promise.resolve([]),
     currentMain(),
   ]);
-  return authorizeDeployment({
+  const evidence = authorizeDeployment({
     sha: env.GITHUB_SHA,
     mainSha,
     ref: env.GITHUB_REF,
@@ -147,6 +148,33 @@ export async function verifyDeployment(env, mode, fetcher = fetch) {
     actor: env.GITHUB_ACTOR,
     triggeringActor: env.GITHUB_TRIGGERING_ACTOR || env.GITHUB_ACTOR,
   });
+  const collaborationChecks = await verifyCollaborationCI({
+    sha: env.GITHUB_SHA,
+    runs: (workflow, query = {}) => runs(workflow, query),
+    read: async (path) => {
+      const response = await fetcher(
+        new URL(`${api}/repos/${repository}/${path}`),
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2026-03-10",
+          },
+          redirect: "error",
+          signal: AbortSignal.timeout(15000),
+        },
+      );
+      if (!response.ok)
+        throw new Error(
+          `Cannot verify immutable CI source (HTTP ${response.status}); deployment remains blocked.`,
+        );
+      return response.json();
+    },
+  });
+  return {
+    ...evidence,
+    ...(collaborationChecks.length ? { collaborationChecks } : {}),
+  };
 }
 
 if (

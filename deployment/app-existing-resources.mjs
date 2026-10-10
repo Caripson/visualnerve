@@ -43,7 +43,10 @@ export function existingAppTarget(input) {
     fail(
       "Use the dedicated isolated-app route function ARN, never a shared website function.",
     );
-  const headers = appResponseHeaders(input.bridgePorts);
+  const headers = appResponseHeaders(
+    input.bridgePorts,
+    input.collaborationRelayOrigin,
+  );
   return {
     ...EXISTING_APP_TARGET,
     accountId: input.accountId,
@@ -51,6 +54,9 @@ export function existingAppTarget(input) {
     responseHeadersPolicyId: input.responseHeadersPolicyId,
     viewerRequestFunctionArn: functionArn,
     bridgePorts: [...(input.bridgePorts ?? [4317])],
+    ...(input.collaborationRelayOrigin !== undefined
+      ? { collaborationRelayOrigin: input.collaborationRelayOrigin }
+      : {}),
     headers,
   };
 }

@@ -14,6 +14,29 @@ const input = {
   viewerRequestFunctionArn:
     'arn:aws:cloudfront::123456789012:function/visualnerve-isolated-app-routes-E10TKGRYWGM422',
 };
+
+it('prepares only the explicit reviewed relay origins without changing website resources', () => {
+  const origin = 'https://relay.example.com';
+  const initial = snapshot();
+  const untouched = structuredClone(initial);
+  const prepared = prepareExistingAppResources(initial, {
+    ...input,
+    collaborationRelayOrigin: origin,
+  });
+  expect(initial).toEqual(untouched);
+  expect(prepared.target.collaborationRelayOrigin).toBe(origin);
+  const csp =
+    prepared.createResponseHeadersPolicy.ResponseHeadersPolicyConfig.SecurityHeadersConfig
+      .ContentSecurityPolicy.ContentSecurityPolicy;
+  expect(csp).toContain(` ${origin} wss://relay.example.com`);
+  expect(csp).not.toContain('https://*.');
+  expect(() =>
+    existingAppTarget({
+      ...input,
+      collaborationRelayOrigin: 'https://relay.example.com;script-src',
+    }),
+  ).toThrow();
+});
 function snapshot() {
   return {
     ETag: 'EREVIEW1234567',

@@ -1,6 +1,8 @@
+import collaboration from '../collaboration/fi';
 import type { Catalog } from '../types';
 
 const catalog = {
+  ...collaboration,
   'dialogs.exportEditableFullHint':
     'Koko kaavion vienti sisältää kaikki tallennetut solmut, myös suodattimien tai näkymien piilottamat solmut. Rajaa jaettava sisältö valitsemalla solmut.',
   'dialogs.exportDrawioOption': 'draw.io · muokattava kaavio',

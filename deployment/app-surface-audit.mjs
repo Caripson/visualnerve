@@ -23,6 +23,7 @@ const guideNames = [
   "sharing",
   "settings",
   "api-mcp",
+  "collaboration",
   "troubleshooting",
 ];
 export const policyNames = ["privacy", "security", "license"];
@@ -45,6 +46,7 @@ export const copiedAsset = (path) =>
   /^editor\/(?:app\.(?:js|css)|assets\/[\w.-]+\.(?:js|css|svg|png|woff2?)|speech\/(?:ort-wasm(?:-simd)?\.wasm|piper_phonemize\.(?:wasm|data)))$/.test(
     path,
   ) ||
+  /^editor\/assets\/mls_bg-[\w-]{8,}\.wasm$/.test(path) ||
   /^swagger\/swagger-ui(?:-bundle\.js|\.css)$/.test(path) ||
   /^licenses\/[\w.-]+$/.test(path) ||
   /^help\/(?:help\.(?:css|js)|index\.json|images\/[\w.-]+\.webp)$/.test(path);
@@ -106,7 +108,10 @@ export function auditAppSurface(directory, { allowLegacyAlias = false } = {}) {
       throw new Error(`Analytics/consent code found in app surface: ${path}`);
     if (!path.endsWith(".html")) continue;
     const html = text(directory, path);
-    const metaPolicy = appContentSecurityPolicy(options.bridgePorts)
+    const metaPolicy = appContentSecurityPolicy(
+      options.bridgePorts,
+      options.collaborationRelayOrigin,
+    )
       .split("; ")
       .filter((directive) => !directive.startsWith("frame-ancestors "))
       .join("; ")
@@ -121,6 +126,21 @@ export function auditAppSurface(directory, { allowLegacyAlias = false } = {}) {
       );
     if (/<meta\b[^>]*name=["']visualnerve-google-analytics["']/i.test(html))
       throw new Error(`Analytics configuration found in app surface: ${path}`);
+    const relayMeta = [
+      ...html.matchAll(
+        /<meta\b[^>]*name=["']visual-nerve-collaboration-relay["'][^>]*>/gi,
+      ),
+    ];
+    if (
+      options.collaborationRelayOrigin
+        ? relayMeta.length !== 1 ||
+          relayMeta[0][0] !==
+            `<meta name="visual-nerve-collaboration-relay" content="${options.collaborationRelayOrigin}">`
+        : relayMeta.length !== 0
+    )
+      throw new Error(
+        `Collaboration relay configuration is missing or changed: ${path}`,
+      );
     for (const marker of [
       '<meta name="visualnerve-surface" content="isolated-app">',
       '<meta name="visualnerve-vault-required" content="true">',
@@ -161,7 +181,9 @@ export function auditAppSurface(directory, { allowLegacyAlias = false } = {}) {
       throw new Error(`App surface is missing ${required}`);
   if (
     JSON.stringify(manifest.responseHeaders) !==
-    JSON.stringify(appResponseHeaders(options.bridgePorts))
+    JSON.stringify(
+      appResponseHeaders(options.bridgePorts, options.collaborationRelayOrigin),
+    )
   )
     throw new Error(
       "App response-header policy does not match its configuration.",

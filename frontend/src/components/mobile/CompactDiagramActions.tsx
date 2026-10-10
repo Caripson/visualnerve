@@ -1,5 +1,6 @@
 import { useI18n } from '../../i18n';
 import {
+  Users,
   Clapperboard,
   Code2,
   Database,
@@ -30,6 +31,10 @@ export function CompactDiagramActions(props: CompactToolbarProps) {
       text={false}
     >
       <h3>{t('mobile.diagramTitle')}</h3>
+      <button className="full" onClick={() => open('collaboration')}>
+        <Users size={17} />
+        {t('collaboration.open')}
+      </button>
       <button className="full" onClick={() => open('new')}>
         <Plus size={17} />
         {t('workspace.newDiagram')}

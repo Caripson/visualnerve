@@ -28,9 +28,14 @@ export class OfflineAssetPlan {
         throw new Error("Offline assets must be exact local paths.");
     const deferred = new Set(lazyAssets);
     for (const path of assets) {
+      // Optional MLS compilation is requested only after collaboration opens.
+      // Publishing/hash-covering the asset must not download it during normal app installation.
+      if (/^\/editor\/assets\/mls_bg-[\w-]{8,}\.wasm$/.test(path))
+        deferred.add(path);
       // All notices remain published and hash-covered. Dependency notices are
       // cached on reading; inventory and project/speech notices remain core.
-      if (surface === "app" && appCoreLicenses.has(path)) deferred.delete(path);
+      else if (surface === "app" && appCoreLicenses.has(path))
+        deferred.delete(path);
       else if (
         surface === "app" &&
         path.startsWith("/licenses/") &&

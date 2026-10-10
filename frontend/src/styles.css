@@ -1814,6 +1814,21 @@ kbd {
 .help-page p {
   margin: 14px 0;
 }
+@media (max-width: 1360px) {
+  /* Keep the project name readable beside both desktop side panels. The
+     action icons retain their full accessible names and hover descriptions. */
+  .document-actions {
+    gap: 6px;
+  }
+  .document-actions button {
+    min-width: 36px;
+    min-height: 36px;
+    padding: 8px;
+  }
+  .document-actions button span {
+    display: none;
+  }
+}
 @media (max-width: 1180px) {
   .application {
     grid-template-columns: 210px minmax(0, 1fr) 248px;

@@ -17,4 +17,10 @@ hugo/static/licenses/
 hugo/static/site/vendor/
 *.tsbuildinfo
 .env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+.wrangler/
+collaboration-crypto/target/
 *.log

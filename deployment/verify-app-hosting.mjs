@@ -91,7 +91,10 @@ export function verifyAppHosting(input, manifest) {
     fail(
       "the account, us-east-1 bucket, absent website endpoint and production package must match.",
     );
-  const expectedHeaders = appResponseHeaders(manifest.bridgePorts);
+  const expectedHeaders = appResponseHeaders(
+    manifest.bridgePorts,
+    manifest.collaborationRelayOrigin,
+  );
   if (!same(manifest.responseHeaders, expectedHeaders))
     fail("the package response policy is not the approved app policy.");
   const config = input.distribution.Distribution.DistributionConfig;
@@ -276,6 +279,9 @@ export function verifyAppHosting(input, manifest) {
     bucket: EXISTING_APP_TARGET.bucketName,
     distributionId: EXISTING_APP_TARGET.distributionId,
     bridgePorts: manifest.bridgePorts,
+    ...(manifest.collaborationRelayOrigin
+      ? { collaborationRelayOrigin: manifest.collaborationRelayOrigin }
+      : {}),
   };
 }
 

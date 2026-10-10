@@ -20,6 +20,20 @@ Ordinary editing does not upload that content to the static host, S3, CloudFront
 
 The browser may temporarily hold unsaved working state in memory. Keep the tab open when saving reports an error or conflict, and resolve it before closing.
 
+## Optional realtime collaboration
+
+When a collaboration relay is configured, you can choose to share one diagram with approved devices through the Collaboration panel. Ordinary editing and other diagrams remain local; there is no automatic account-wide synchronization or cloud backup.
+
+The shared graph is carried in **MLS (RFC 9420) encrypted application messages**. The configured Cloudflare relay receives ciphertext, request/IP metadata, room and public device/membership identifiers, connection state, message sizes and timing. It does not receive your vault password or recovery key. Approved participants decrypt the shared content, and may save or copy it. This feature is not anonymous communication and the integration has not been independently audited.
+
+Default sharing includes titles, descriptions, relationships, geometry, styles, annotations, storyboard/presentation configuration and process assumptions. Optional independent choices add metadata/source evidence, referenced owner profiles or original CSV datasets/analysis configuration. Labels and grouped values can already reveal customer names, paths or other sensitive information while these options are off. Unreferenced owner profiles, camera/view preferences, folders, favorites and local timestamps remain local.
+
+Local private CRDT/room associations are encrypted in IndexedDB and excluded from native diagram exports and all workspace backups. MLS ratchets/private signing keys remain only in the unlocked live tab's memory. Reconnect may reuse that live device; reload or lock/unlock requires new device approval and owner reload requires a new room. A backup restores diagram content, not room membership keys.
+
+Invitations are private admission capabilities. The owner approves a device as Editor or Viewer; a display name is not enterprise identity verification. Removing a member or closing a room affects future delivery after the membership change. It cannot erase content already received, downloaded, copied or photographed. Review the scope and recipients before sharing, and treat the receiving devices as part of your data boundary.
+
+[Collaboration guide](/help/collaboration/) · [API/MCP restrictions](/help/api-mcp/#inspect-an-approved-collaboration-session) · [Security model](/security/#optional-realtime-collaboration)
+
 ## Encryption on the dedicated app surface
 
 **Workspace address:** the encrypted editor is `https://app.visualnerve.com/`. The public website's old `/app` path redirects there, and `/app` on the app origin returns 404. Routing changes never read, transfer or delete older browser records. Encryption on the app origin does not retroactively protect readable records or backups created elsewhere.
@@ -54,7 +68,7 @@ This workspace acceptance does not grant permission for Google Analytics. Analyt
 
 ## A different browser or domain has different data
 
-The workspace belongs to the **exact origin**—scheme, hostname and port—and browser profile where you created it. Another device, browser, private window or origin has separate storage. There is no automatic synchronization.
+The workspace belongs to the **exact origin**—scheme, hostname and port—and browser profile where you created it. Another device, browser, private window or origin has separate storage. There is no automatic workspace-wide synchronization; optional collaboration shares only an approved diagram session.
 
 A move to a new website domain does not transfer diagrams. For the dedicated encrypted app, use the complete, verified transfer described above. Other browser-to-browser backup imports still use the reviewed Restore backup flow. A different path within the same origin, such as moving the editor to `/app/`, does not itself create a new browser-storage origin.
 

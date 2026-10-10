@@ -62,6 +62,8 @@ The [source repository](https://github.com/Caripson/visualnerve) is public. For 
 
 The gate reads the latest CI **push** run on main for `GITHUB_SHA`; a PR result or a success for another revision is insufficient. It also requires main's current head to equal that SHA, so rerunning an old workflow cannot publish stale code after main advances. CI history/API failures block deployment. The gate is checked again before publication.
 
+When the optional collaboration source exists, that same gate also requires its relay and browser-cryptography workflows. It rejects missing workflow definitions and failed/pending exact-revision runs. A path-filtered run absent for an unrelated revision may reuse successful validation only after immutable Git trees prove its covered files, file modes and workflow definition unchanged. Changed inputs or unavailable proof block release. Both collaboration workflows can be dispatched manually for current `main`. The manual relay production workflow uses this gate before Cloudflare access, including reviewed staging and owner SHA approval; see [collaboration deployment](COLLABORATION_DEPLOYMENT.md#ci-and-manual-release-authorization).
+
 Staging is marked noindex. That is a search-engine instruction, not authentication or access control; anyone who can reach the hostname can read the site. User workspace records remain browser-local.
 
 Deployments to each destination are serialized and are not canceled by a newer run. Uploads publish hashed assets first, other resources next, HTML after its dependencies and `sw.js` last. Older hashed assets remain available to open tabs. Only after successful uploads does the script invalidate `/*` and wait for completion.
@@ -83,6 +85,7 @@ After the owner has reviewed and approved the complete staging result:
 Before AWS access, production requires all of:
 
 - Successful latest CI push run for the exact deployed SHA.
+- Successful relevant collaboration verification, or immutable proof that its path-filtered inputs are unchanged since successful validation.
 - The selected latest manual **Deploy S3** run on main completed successfully for that SHA. The gate orders runs by update time; before promotion, also confirm there is no newer dispatched pending or failed staging run. A later update of an older run can otherwise sort ahead of a newer queued run.
 - `PRODUCTION_APPROVED_SHA` exactly equals that SHA.
 - Original dispatcher and any rerun actor are Caripson.

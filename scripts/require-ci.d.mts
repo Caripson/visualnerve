@@ -17,6 +17,13 @@ export interface DeploymentEvidence {
   ciUrl: string;
   stagingRunId?: number;
   stagingUrl?: string;
+  collaborationChecks?: Array<{
+    workflow: string;
+    runId: number;
+    runUrl: string;
+    validationSha: string;
+    unchangedInputs: boolean;
+  }>;
 }
 
 export function authorizeDeployment(input: {

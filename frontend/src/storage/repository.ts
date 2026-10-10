@@ -73,6 +73,8 @@ import { createSimulationGraph } from '../simulation/document';
 import { createEmptySimulationModel } from '../simulation/starter';
 import { browserApiVersion } from './api-version';
 import { BulkIdentities } from './bulk-identities';
+import { collaborationPermissions, type SharedProjectionAuthority } from '../collaboration/access';
+import { collaborationDocumentHooks } from '../collaboration/document-hooks';
 
 export type CommandOptions = AnalysisCommandOptions & {
   /** Recheck external grants after queue waits and immediately before dispatch. */
@@ -198,14 +200,73 @@ export class Repository {
     input: Graph,
     expectedVersion?: number,
     beforeWrite?: (scope: WorkspaceStorage) => Promise<void>,
+    projection?: SharedProjectionAuthority,
+    changeBase?: Graph,
   ): Promise<Graph> {
-    return this.persistGraph(input, expectedVersion, false, beforeWrite);
+    return this.persistGraph(input, expectedVersion, false, beforeWrite, projection, changeBase);
   }
   private async persistGraph(
     input: Graph,
     expectedVersion?: number,
     canonicalPositions = false,
     beforeWrite?: (scope: WorkspaceStorage) => Promise<void>,
+    projection?: SharedProjectionAuthority,
+    changeBase?: Graph,
+  ): Promise<Graph> {
+    const shared = projection ? undefined : collaborationDocumentHooks.get(input.diagram.id);
+    if (shared && !this.db.inTransaction) {
+      return this.db.atomic(
+        'rw',
+        ['diagrams', 'nodes', 'edges', 'owners', 'datasets', 'simulationModels', 'settings'],
+        (scope) =>
+          new Repository(scope).persistGraph(
+            input,
+            expectedVersion,
+            canonicalPositions,
+            beforeWrite,
+            projection,
+            changeBase,
+          ),
+      );
+    }
+    const before = shared ? (changeBase ?? (await this.db.graph(input.diagram.id))) : undefined;
+    // Ordinary drawing saves intentionally omit raw CSV sources. Apply the
+    // same inheritance as writeGraph before calculating their shared delta,
+    // using the edit's baseline so a concurrent peer source change stays a
+    // peer change. An explicit datasets: [] still requests source removal.
+    if (shared && before)
+      input = {
+        ...input,
+        dataset: input.dataset ?? (input.datasets === undefined ? before.dataset : undefined),
+        datasets: input.datasets ?? before.datasets,
+      };
+    const prepared =
+      shared && before ? await shared.prepareLocal(before, input, this.db) : undefined;
+    try {
+      const saved = await this.writeGraph(
+        prepared?.graph ?? input,
+        expectedVersion,
+        canonicalPositions,
+        beforeWrite,
+        projection,
+      );
+      if (prepared && this.db.inTransaction)
+        (this.db as import('./contracts').WorkspaceScope).afterCommit(() =>
+          prepared.committed(saved),
+        );
+      else prepared?.committed(saved);
+      return saved;
+    } catch (error) {
+      prepared?.cancelled?.();
+      throw error;
+    }
+  }
+  private async writeGraph(
+    input: Graph,
+    expectedVersion?: number,
+    canonicalPositions = false,
+    beforeWrite?: (scope: WorkspaceStorage) => Promise<void>,
+    projection?: SharedProjectionAuthority,
   ): Promise<Graph> {
     validateGraphFields(input);
     const saved = await this.db.atomic(
@@ -307,6 +368,7 @@ export class Repository {
         const ids = new Set(graph.nodes.map((node) => node.id)),
           edges = new Set(graph.edges.map((edge) => edge.id));
         await beforeWrite?.(scope);
+        collaborationPermissions.assertWrite(input.diagram.id, old, graph, projection);
         await scope.nodes.bulkDelete(
           old?.nodes.filter((node) => !ids.has(node.id)).map((node) => node.id) ?? [],
         );
@@ -353,6 +415,7 @@ export class Repository {
       async (scope) => {
         const scoped = new Repository(scope);
         await beforeWrite?.(scope);
+        collaborationPermissions.assertDetached(id);
         scope.forgetDatasets();
         await scope.nodes.where('diagramId').equals(id).delete();
         await scope.edges.where('diagramId').equals(id).delete();
@@ -495,6 +558,7 @@ export class Repository {
       );
       await beforeWrite?.(scope);
       if (mode === 'replace') {
+        collaborationPermissions.assertDetached();
         scope.forgetDatasets();
         for (const table of scope.tables) await table.clear();
       }
@@ -631,6 +695,7 @@ export class Repository {
     return restored;
   }
   async clearAll() {
+    collaborationPermissions.assertDetached();
     await this.db.atomic('rw', workspaceStoreNames, async (scope) => {
       scope.forgetDatasets();
       for (const table of scope.tables) await table.clear();
@@ -703,6 +768,9 @@ export class Repository {
             throw new StorageError(409, 'External owner id already exists.');
         }
         validateOwner(input);
+        if (old)
+          for (const node of await scope.nodes.where('ownerIds').equals(old.id).toArray())
+            collaborationPermissions.assertDetached(node.diagramId);
         const owner = stamp(input, old);
         await beforeWrite?.(scope);
         await scope.owners.put(owner);
@@ -976,6 +1044,7 @@ export class Repository {
         ['owners', 'nodes', 'diagrams', 'settings'],
         async (scope) => {
           const nodes = await scope.nodes.where('ownerIds').equals(id).toArray();
+          for (const node of nodes) collaborationPermissions.assertDetached(node.diagramId);
           await options.beforeWrite?.(scope);
           await scope.nodes.bulkPut(
             nodes.map((node) => {

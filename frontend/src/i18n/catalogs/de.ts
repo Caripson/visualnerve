@@ -1,6 +1,8 @@
+import collaboration from '../collaboration/de';
 import type { Catalog } from '../types';
 
 const catalog = {
+  ...collaboration,
   'dialogs.exportEditableFullHint':
     'Der vollständige Export enthält alle gespeicherten Knoten, auch durch Filter oder Ansichten ausgeblendete. Wählen Sie einzelne Knoten, um geteilte Inhalte zu begrenzen.',
   'dialogs.exportDrawioOption': 'draw.io · bearbeitbares Diagramm',

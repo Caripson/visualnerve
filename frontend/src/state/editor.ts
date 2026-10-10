@@ -1,4 +1,5 @@
 import { workspace } from '../storage/workspace';
+import { collaborationPermissions } from '../collaboration/access';
 import { reanalyzeDataModelAsync } from '../data/modelClient';
 import { prunePresentation } from '../presentation/definition';
 import { pruneStoryboard } from '../presentation/storyboard';
@@ -186,6 +187,7 @@ export const useEditor = create<Editor>((set, get) => ({
     const changed = change(s.graph);
     let reconciled: Graph;
     try {
+      collaborationPermissions.assertWrite(s.graph.diagram.id, s.graph, changed);
       reconciled = reconcileSimulationGraph(s.graph, changed);
     } catch (error) {
       set({
@@ -566,6 +568,14 @@ export const useEditor = create<Editor>((set, get) => ({
   },
   undo: () => {
     const s = get();
+    if (s.graph) {
+      try {
+        if (collaborationPermissions.undo(s.graph.diagram.id) !== undefined) return;
+      } catch (error) {
+        set({ commandError: (error as Error).message });
+        return;
+      }
+    }
     const delta = s.history.at(-1);
     if (s.graph && delta) {
       const graph = applyDelta(s.graph, delta, false);
@@ -599,6 +609,14 @@ export const useEditor = create<Editor>((set, get) => ({
   },
   redo: () => {
     const s = get();
+    if (s.graph) {
+      try {
+        if (collaborationPermissions.redo(s.graph.diagram.id) !== undefined) return;
+      } catch (error) {
+        set({ commandError: (error as Error).message });
+        return;
+      }
+    }
     const delta = s.future.at(-1);
     if (s.graph && delta) {
       const graph = applyDelta(s.graph, delta, true);

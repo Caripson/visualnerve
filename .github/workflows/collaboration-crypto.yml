@@ -1,0 +1,153 @@
+name: Collaboration browser cryptography
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "collaboration-crypto/**"
+      - "collaboration-worker/**"
+      - "frontend/src/collaboration/**"
+      - "frontend/src/i18n/**"
+      - "frontend/tests/collaboration-*.test.*"
+      - "frontend/tests/browser/collaboration-*.tsx"
+      - "frontend/src/security/**"
+      - "frontend/src/storage/**"
+      - "frontend/src/model/**"
+      - "frontend/src/state/**"
+      - "frontend/src/data/**"
+      - "frontend/src/components/Field.tsx"
+      - "frontend/src/components/Modal.tsx"
+      - "frontend/src/styles.css"
+      - "frontend/package*.json"
+      - "frontend/vite.config.ts"
+      - "frontend/tsconfig*.json"
+      - ".gitattributes"
+      - ".github/workflows/collaboration-crypto.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "collaboration-crypto/**"
+      - "collaboration-worker/**"
+      - "frontend/src/collaboration/**"
+      - "frontend/src/i18n/**"
+      - "frontend/tests/collaboration-*.test.*"
+      - "frontend/tests/browser/collaboration-*.tsx"
+      - "frontend/src/security/**"
+      - "frontend/src/storage/**"
+      - "frontend/src/model/**"
+      - "frontend/src/state/**"
+      - "frontend/src/data/**"
+      - "frontend/src/components/Field.tsx"
+      - "frontend/src/components/Modal.tsx"
+      - "frontend/src/styles.css"
+      - "frontend/package*.json"
+      - "frontend/vite.config.ts"
+      - "frontend/tsconfig*.json"
+      - ".gitattributes"
+      - ".github/workflows/collaboration-crypto.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: collaboration-crypto-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source:
+    name: Rust source and reproducible WASM
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - name: Install pinned Rust toolchain and binding generator
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.91.0 --profile minimal --target wasm32-unknown-unknown
+          cargo +1.91.0 install wasm-bindgen-cli --version 0.2.129 --locked --root "$RUNNER_TEMP/collaboration-bindgen"
+      - name: Test the actual OpenMLS adapter
+        run: cargo +1.91.0 test --locked --manifest-path collaboration-crypto/Cargo.toml
+      - name: Rebuild checked-in browser assets from locked source
+        shell: bash
+        env:
+          COLLABORATION_WASM_BINDGEN: ${{ runner.temp }}/collaboration-bindgen/bin/wasm-bindgen
+          CARGO_TARGET_DIR: ${{ runner.temp }}/collaboration-wasm
+        run: |
+          set -euo pipefail
+          # Explicit CARGO_HOME makes registry source paths independent of runner homes.
+          export CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}"
+          ./collaboration-crypto/build.sh
+          git diff --exit-code -- frontend/src/collaboration/generated/mls.js frontend/src/collaboration/generated/mls_bg.wasm frontend/src/collaboration/generated/manifest.json
+      - name: Verify retained Cargo notices against the lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test collaboration-crypto/license-generator.test.mjs
+          cargo +1.91.0 metadata --locked --manifest-path collaboration-crypto/Cargo.toml --filter-platform wasm32-unknown-unknown --format-version 1 > "$RUNNER_TEMP/collaboration-cargo-metadata.json"
+          node collaboration-crypto/write-licenses.mjs "$RUNNER_TEMP/collaboration-cargo-metadata.json"
+          git diff --exit-code -- collaboration-crypto/licenses/
+
+  browsers:
+    name: MLS in ${{ matrix.browser }} workers
+    runs-on: ubuntu-24.04
+    # Leave diagnostic time after bounded harness deadlines and browser setup.
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - name: Install the matching browser and system libraries
+        working-directory: frontend
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Authenticate, rotate, revoke and reject forged/replayed encrypted messages
+        env:
+          COLLABORATION_BROWSER: ${{ matrix.browser }}
+        run: node collaboration-crypto/browser-test.mjs
+      - name: Review responsive collaboration controls in light and dark
+        if: matrix.browser == 'chromium'
+        run: node collaboration-crypto/ui-browser-test.mjs
+      - name: Install the local-only Cloudflare relay
+        if: matrix.browser == 'chromium'
+        run: npm ci
+        working-directory: collaboration-worker
+      - name: Verify two real encrypted browser workspaces and the relay
+        if: matrix.browser == 'chromium'
+        run: node collaboration-crypto/live-browser-test.mjs
+      - name: Preserve explicitly shared CSV data across actual browser autosaves
+        if: matrix.browser == 'chromium'
+        env:
+          COLLABORATION_TEST_SHARE_CSV: "1"
+        run: node collaboration-crypto/live-browser-test.mjs
+      - name: Preserve component review screenshots
+        if: ${{ always() && matrix.browser == 'chromium' && !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: collaboration-ui-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            tmp/collaboration-ui-screenshots/
+            tmp/collaboration-live-screenshots/
+            tmp/collaboration-live-screenshots-csv/
+          if-no-files-found: ignore
+          retention-days: 7

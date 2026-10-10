@@ -1,7 +1,7 @@
 ---
 title: "Connect tools through API and MCP"
 summary: "Use the optional local bridge to inspect and control the same browser workspace through semantic commands."
-weight: 15
+weight: 16
 ---
 
 You can use every normal Visual Nerve workflow through the UI without AI, MCP or a backend. The optional local bridge lets an external client read and edit the same workspace, create diagrams, analyze supplied input, control presentations and run simulations.
@@ -135,7 +135,7 @@ The app, the local bridge executable and your MCP client are three separate prog
 
 Before giving an agent workspace commands:
 
-1. Inspect the local `GET /api/v1/health` address shown in the copied instructions. The current bridge reports version **0.6.0**, both MCP tool names, and the capabilities `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1` and `exchange-export-v1`. Health contains public transport metadata; it does not read diagrams or unlock the workspace.
+1. Inspect the local `GET /api/v1/health` address shown in the copied instructions. The current bridge reports version **0.7.0**, both MCP tool names, and the capabilities `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1` and `collaboration-v1`. Health contains public transport metadata; it does not read diagrams or unlock the workspace.
 2. Reconnect or initialize the MCP client, then inspect its discovered tools. It should show both **visual_nerve_request** and **visual_nerve_api_docs**. A client can retain an old tool list until you reconnect it.
 3. Ask the agent to read the compact guide before making commands. For a particular endpoint, it can request a smaller contract containing that operation and every referenced schema:
 
@@ -580,7 +580,7 @@ Use editable exports when you want to continue working on the drawing in another
 
 Editable Draw.io drawings use a deliberate **light drawing surface**, regardless of app Appearance. White base fills and dark text, connection labels and base borders keep the document readable in another editor. Saved node, connection and mind-map color accents remain. Native JSON preserves full stored styling, and workspace backups also retain portable appearance settings. This needs no extra API argument; SVG keeps its existing appearance behavior.
 
-1. Read `GET /exports/capabilities` first. Its existing SVG fields remain unchanged; `diagrams` describes the drawio format, scopes, validation metadata and separate limits. Bridge 0.6.0 advertises `exchange-export-v1`.
+1. Read `GET /exports/capabilities` first. Its existing SVG fields remain unchanged; `diagrams` describes the drawio format, scopes, validation metadata and separate limits. Bridge 0.7.0 advertises `exchange-export-v1`.
 2. Start an export with the existing **visual_nerve_request** tool:
 
 ```json
@@ -656,6 +656,46 @@ await request(`/exports/diagrams/${job.jobId}`, { method: 'DELETE' });
 ```
 
 The example never automatically repeats a POST after a transport error. If a write response is uncertain, use the [operation receipt workflow](#recover-an-uncertain-write-without-creating-it-twice); safe status/result reads can be repeated while the original job remains authorized.
+
+## Inspect an approved collaboration session
+
+Realtime collaboration is optional and requires a configured relay. The human creates a room, chooses what to disclose and approves participant devices in the [Collaboration panel](/help/collaboration/). MCP does not provide invitations, approval, role changes, private keys or an unlock operation.
+
+Bridge **0.7.0** advertises `collaboration-v1`. Ask the browser whether the optional feature is configured:
+
+```json
+{ "path": "/collaboration/capabilities", "method": "GET" }
+```
+
+If `configured` is false, the relay has not been configured for this deployment. Enabling local MCP does not enable a cloud room. Documentation can still be discovered without an active room.
+
+Read the current local sessions or one existing diagram:
+
+```json
+{ "path": "/collaboration/sessions", "method": "GET" }
+```
+
+```json
+{ "path": "/diagrams/00000000-0000-4000-8000-000000000001/collaboration", "method": "GET" }
+```
+
+Responses describe status, sharing scope, participants, roles, connection state, selected node IDs, optional activity labels, pending approval count and optional synchronization progress. The current app reports human-device activity; API/MCP edits use that approved device and are not automatically labeled as separate AI activity. Invitation URLs, relay addresses, credentials, private keys and raw error messages are excluded. An unconnected diagram returns `idle`; session listing is not room history.
+
+The agent edits through ordinary node, edge and graph commands, using the same model and version checks. A shared write needs both an approved **Owner/Editor** role and local **Read + write** MCP access. A **Viewer** cannot become an editor by asking for write access locally. Your camera and view filters stay local. Leave the active room before deleting the shared diagram, clearing/replacing the workspace or editing/deleting referenced global owner profiles; these operations return 409 while shared. Prepare profiles before joining; node-based assignment follows the sharing scope.
+
+To leave the browser's current session without deleting its local diagram:
+
+```json
+{
+  "path": "/diagrams/00000000-0000-4000-8000-000000000001/collaboration/disconnect",
+  "method": "POST",
+  "data": {}
+}
+```
+
+Disconnect requires Read + write. It accepts no body or exactly `{}`, returns `{diagramId,status:"disconnected"}`, and rejects a nonmatching active room with 404. Query parameters and extra fields return 422. The same vault lock and request/grant revocation rules apply. Use [operation receipts](#recover-an-uncertain-write-without-creating-it-twice) if the write response is uncertain.
+
+The shared model uses MLS encrypted messages and per-field Yjs updates; **the integration is not independently audited**. Local CRDT state and associations are encrypted and excluded from exports/backups. Private MLS keys/ratchets stay only in the unlocked tab's memory. After a reload or lock, request fresh device approval; owner reload requires a new room. Removing a participant cannot erase their earlier copy. Review [disclosure and recovery limits](/help/collaboration/#choose-what-you-disclose) before using an agent with shared customer data.
 
 ### Limits, permissions and readable output
 

@@ -8,6 +8,7 @@ export interface ExistingAppInput {
   responseHeadersPolicyId: string;
   viewerRequestFunctionArn: string;
   bridgePorts?: number[];
+  collaborationRelayOrigin?: string;
 }
 export const EXISTING_APP_TARGET: Readonly<{
   domainName: string;

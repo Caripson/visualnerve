@@ -1,5 +1,1826 @@
 [
   {
+    "ecosystem": "Cargo",
+    "name": "aead",
+    "version": "0.5.2",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/traits",
+    "notices": [
+      "licenses/cargo-aead-0.5.2-LICENSE-APACHE",
+      "licenses/cargo-aead-0.5.2-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "aes",
+    "version": "0.8.4",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/block-ciphers",
+    "notices": [
+      "licenses/cargo-aes-0.8.4-LICENSE-APACHE",
+      "licenses/cargo-aes-0.8.4-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "aes-gcm",
+    "version": "0.10.3",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/AEADs",
+    "notices": [
+      "licenses/cargo-aes-gcm-0.10.3-LICENSE-APACHE",
+      "licenses/cargo-aes-gcm-0.10.3-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "autocfg",
+    "version": "1.5.1",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/cuviper/autocfg",
+    "notices": [
+      "licenses/cargo-autocfg-1.5.1-LICENSE-APACHE",
+      "licenses/cargo-autocfg-1.5.1-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "base16ct",
+    "version": "0.2.0",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/formats/tree/master/base16ct",
+    "notices": [
+      "licenses/cargo-base16ct-0.2.0-LICENSE-APACHE",
+      "licenses/cargo-base16ct-0.2.0-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "base64",
+    "version": "0.22.1",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/marshallpierce/rust-base64",
+    "notices": [
+      "licenses/cargo-base64-0.22.1-LICENSE-APACHE",
+      "licenses/cargo-base64-0.22.1-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "base64ct",
+    "version": "1.8.3",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/formats",
+    "notices": [
+      "licenses/cargo-base64ct-1.8.3-LICENSE-APACHE",
+      "licenses/cargo-base64ct-1.8.3-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "block-buffer",
+    "version": "0.10.4",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/utils",
+    "notices": [
+      "licenses/cargo-block-buffer-0.10.4-LICENSE-APACHE",
+      "licenses/cargo-block-buffer-0.10.4-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "block-buffer",
+    "version": "0.12.1",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/utils",
+    "notices": [
+      "licenses/cargo-block-buffer-0.12.1-LICENSE-APACHE",
+      "licenses/cargo-block-buffer-0.12.1-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "bumpalo",
+    "version": "3.20.3",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/fitzgen/bumpalo",
+    "notices": [
+      "licenses/cargo-bumpalo-3.20.3-LICENSE-APACHE",
+      "licenses/cargo-bumpalo-3.20.3-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "cfg-if",
+    "version": "1.0.5",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/rust-lang/cfg-if",
+    "notices": [
+      "licenses/cargo-cfg-if-1.0.5-LICENSE-APACHE",
+      "licenses/cargo-cfg-if-1.0.5-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "chacha20",
+    "version": "0.10.2",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/stream-ciphers",
+    "notices": [
+      "licenses/cargo-chacha20-0.10.2-LICENSE-APACHE",
+      "licenses/cargo-chacha20-0.10.2-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "chacha20",
+    "version": "0.9.1",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/stream-ciphers",
+    "notices": [
+      "licenses/cargo-chacha20-0.9.1-LICENSE-APACHE",
+      "licenses/cargo-chacha20-0.9.1-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "chacha20poly1305",
+    "version": "0.10.1",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/AEADs/tree/master/chacha20poly1305",
+    "notices": [
+      "licenses/cargo-chacha20poly1305-0.10.1-LICENSE-APACHE",
+      "licenses/cargo-chacha20poly1305-0.10.1-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "cipher",
+    "version": "0.4.4",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/traits",
+    "notices": [
+      "licenses/cargo-cipher-0.4.4-LICENSE-APACHE",
+      "licenses/cargo-cipher-0.4.4-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "cmov",
+    "version": "0.5.4",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/utils",
+    "notices": [
+      "licenses/cargo-cmov-0.5.4-LICENSE-APACHE",
+      "licenses/cargo-cmov-0.5.4-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "const-oid",
+    "version": "0.10.2",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/formats",
+    "notices": [
+      "licenses/cargo-const-oid-0.10.2-LICENSE-APACHE",
+      "licenses/cargo-const-oid-0.10.2-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "const-oid",
+    "version": "0.9.6",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/formats/tree/master/const-oid",
+    "notices": [
+      "licenses/cargo-const-oid-0.9.6-LICENSE-APACHE",
+      "licenses/cargo-const-oid-0.9.6-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "crossbeam-deque",
+    "version": "0.8.8",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/crossbeam-rs/crossbeam",
+    "notices": [
+      "licenses/cargo-crossbeam-deque-0.8.8-LICENSE-APACHE",
+      "licenses/cargo-crossbeam-deque-0.8.8-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "crossbeam-epoch",
+    "version": "0.9.21",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/crossbeam-rs/crossbeam",
+    "notices": [
+      "licenses/cargo-crossbeam-epoch-0.9.21-LICENSE-APACHE",
+      "licenses/cargo-crossbeam-epoch-0.9.21-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "crossbeam-utils",
+    "version": "0.8.23",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/crossbeam-rs/crossbeam",
+    "notices": [
+      "licenses/cargo-crossbeam-utils-0.8.23-LICENSE-APACHE",
+      "licenses/cargo-crossbeam-utils-0.8.23-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "crypto-bigint",
+    "version": "0.5.5",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/crypto-bigint",
+    "notices": [
+      "licenses/cargo-crypto-bigint-0.5.5-LICENSE-APACHE",
+      "licenses/cargo-crypto-bigint-0.5.5-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "crypto-common",
+    "version": "0.1.7",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/traits",
+    "notices": [
+      "licenses/cargo-crypto-common-0.1.7-LICENSE-APACHE",
+      "licenses/cargo-crypto-common-0.1.7-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "crypto-common",
+    "version": "0.2.2",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/traits",
+    "notices": [
+      "licenses/cargo-crypto-common-0.2.2-LICENSE-APACHE",
+      "licenses/cargo-crypto-common-0.2.2-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "ctr",
+    "version": "0.9.2",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/block-modes",
+    "notices": [
+      "licenses/cargo-ctr-0.9.2-LICENSE-APACHE",
+      "licenses/cargo-ctr-0.9.2-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "ctutils",
+    "version": "0.4.3",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/utils",
+    "notices": [
+      "licenses/cargo-ctutils-0.4.3-LICENSE-APACHE",
+      "licenses/cargo-ctutils-0.4.3-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "curve25519-dalek",
+    "version": "4.1.3",
+    "license": "BSD-3-Clause",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/dalek-cryptography/curve25519-dalek/tree/main/curve25519-dalek",
+    "notices": [
+      "licenses/cargo-curve25519-dalek-4.1.3-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "curve25519-dalek",
+    "version": "5.0.0",
+    "license": "BSD-3-Clause",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/dalek-cryptography/curve25519-dalek/tree/main/curve25519-dalek",
+    "notices": [
+      "licenses/cargo-curve25519-dalek-5.0.0-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "der",
+    "version": "0.7.10",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/formats/tree/master/der",
+    "notices": [
+      "licenses/cargo-der-0.7.10-LICENSE-APACHE",
+      "licenses/cargo-der-0.7.10-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "der",
+    "version": "0.8.2",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/formats",
+    "notices": [
+      "licenses/cargo-der-0.8.2-LICENSE-APACHE",
+      "licenses/cargo-der-0.8.2-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "digest",
+    "version": "0.10.7",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/traits",
+    "notices": [
+      "licenses/cargo-digest-0.10.7-LICENSE-APACHE",
+      "licenses/cargo-digest-0.10.7-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "digest",
+    "version": "0.11.3",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/traits",
+    "notices": [
+      "licenses/cargo-digest-0.11.3-LICENSE-APACHE",
+      "licenses/cargo-digest-0.11.3-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "ecdsa",
+    "version": "0.16.9",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/signatures/tree/master/ecdsa",
+    "notices": [
+      "licenses/cargo-ecdsa-0.16.9-LICENSE-APACHE",
+      "licenses/cargo-ecdsa-0.16.9-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "ed25519",
+    "version": "2.2.3",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/signatures/tree/master/ed25519",
+    "notices": [
+      "licenses/cargo-ed25519-2.2.3-LICENSE-APACHE",
+      "licenses/cargo-ed25519-2.2.3-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "ed25519-dalek",
+    "version": "2.2.0",
+    "license": "BSD-3-Clause",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/dalek-cryptography/curve25519-dalek/tree/main/ed25519-dalek",
+    "notices": [
+      "licenses/cargo-ed25519-dalek-2.2.0-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "either",
+    "version": "1.19.0",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/rayon-rs/either",
+    "notices": [
+      "licenses/cargo-either-1.19.0-LICENSE-APACHE",
+      "licenses/cargo-either-1.19.0-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "elliptic-curve",
+    "version": "0.13.8",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/traits/tree/master/elliptic-curve",
+    "notices": [
+      "licenses/cargo-elliptic-curve-0.13.8-LICENSE-APACHE",
+      "licenses/cargo-elliptic-curve-0.13.8-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "ff",
+    "version": "0.13.1",
+    "license": "MIT/Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/zkcrypto/ff",
+    "notices": [
+      "licenses/cargo-ff-0.13.1-LICENSE-APACHE",
+      "licenses/cargo-ff-0.13.1-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "futures-core",
+    "version": "0.3.34",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/rust-lang/futures-rs",
+    "notices": [
+      "licenses/cargo-futures-core-0.3.34-LICENSE-APACHE",
+      "licenses/cargo-futures-core-0.3.34-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "futures-task",
+    "version": "0.3.34",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/rust-lang/futures-rs",
+    "notices": [
+      "licenses/cargo-futures-task-0.3.34-LICENSE-APACHE",
+      "licenses/cargo-futures-task-0.3.34-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "futures-util",
+    "version": "0.3.34",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/rust-lang/futures-rs",
+    "notices": [
+      "licenses/cargo-futures-util-0.3.34-LICENSE-APACHE",
+      "licenses/cargo-futures-util-0.3.34-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "generic-array",
+    "version": "0.14.7",
+    "license": "MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/fizyk20/generic-array.git",
+    "notices": [
+      "licenses/cargo-generic-array-0.14.7-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "getrandom",
+    "version": "0.2.17",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/rust-random/getrandom",
+    "notices": [
+      "licenses/cargo-getrandom-0.2.17-LICENSE-APACHE",
+      "licenses/cargo-getrandom-0.2.17-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "getrandom",
+    "version": "0.4.3",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/rust-random/getrandom",
+    "notices": [
+      "licenses/cargo-getrandom-0.4.3-LICENSE-APACHE",
+      "licenses/cargo-getrandom-0.4.3-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "ghash",
+    "version": "0.5.1",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/universal-hashes",
+    "notices": [
+      "licenses/cargo-ghash-0.5.1-LICENSE-APACHE",
+      "licenses/cargo-ghash-0.5.1-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "group",
+    "version": "0.13.0",
+    "license": "MIT/Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/zkcrypto/group",
+    "notices": [
+      "licenses/cargo-group-0.13.0-LICENSE-APACHE",
+      "licenses/cargo-group-0.13.0-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "hax-lib",
+    "version": "0.3.7",
+    "license": "Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/hacspec/hax",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "hax-lib-macros",
+    "version": "0.3.7",
+    "license": "Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/hacspec/hax",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "hkdf",
+    "version": "0.12.4",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/KDFs/",
+    "notices": [
+      "licenses/cargo-hkdf-0.12.4-LICENSE-APACHE",
+      "licenses/cargo-hkdf-0.12.4-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "hkdf",
+    "version": "0.13.0",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/KDFs/",
+    "notices": [
+      "licenses/cargo-hkdf-0.13.0-LICENSE-APACHE",
+      "licenses/cargo-hkdf-0.13.0-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "hmac",
+    "version": "0.12.1",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/MACs",
+    "notices": [
+      "licenses/cargo-hmac-0.12.1-LICENSE-APACHE",
+      "licenses/cargo-hmac-0.12.1-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "hmac",
+    "version": "0.13.0",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/MACs",
+    "notices": [
+      "licenses/cargo-hmac-0.13.0-LICENSE-APACHE",
+      "licenses/cargo-hmac-0.13.0-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "hpke-rs",
+    "version": "0.7.0",
+    "license": "MPL-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/celabshq/libcrux",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "hpke-rs-crypto",
+    "version": "0.7.0",
+    "license": "MPL-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/celabshq/libcrux",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "hpke-rs-libcrux",
+    "version": "0.7.0",
+    "license": "MPL-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/celabshq/libcrux",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "hpke-rs-rust-crypto",
+    "version": "0.7.0",
+    "license": "MPL-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/celabshq/libcrux",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "hybrid-array",
+    "version": "0.4.15",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/hybrid-array",
+    "notices": [
+      "licenses/cargo-hybrid-array-0.4.15-LICENSE-APACHE",
+      "licenses/cargo-hybrid-array-0.4.15-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "inout",
+    "version": "0.1.4",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/utils",
+    "notices": [
+      "licenses/cargo-inout-0.1.4-LICENSE-APACHE",
+      "licenses/cargo-inout-0.1.4-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "itoa",
+    "version": "1.0.18",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/dtolnay/itoa",
+    "notices": [
+      "licenses/cargo-itoa-1.0.18-LICENSE-APACHE",
+      "licenses/cargo-itoa-1.0.18-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "js-sys",
+    "version": "0.3.106",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/js-sys",
+    "notices": [
+      "licenses/cargo-js-sys-0.3.106-LICENSE-APACHE",
+      "licenses/cargo-js-sys-0.3.106-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "k256",
+    "version": "0.13.4",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/elliptic-curves/tree/master/k256",
+    "notices": [
+      "licenses/cargo-k256-0.13.4-LICENSE-APACHE",
+      "licenses/cargo-k256-0.13.4-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "keccak",
+    "version": "0.2.2",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/sponges",
+    "notices": [
+      "licenses/cargo-keccak-0.2.2-LICENSE-APACHE",
+      "licenses/cargo-keccak-0.2.2-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "kem",
+    "version": "0.3.0",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/traits",
+    "notices": [
+      "licenses/cargo-kem-0.3.0-LICENSE-APACHE",
+      "licenses/cargo-kem-0.3.0-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "libc",
+    "version": "0.2.190",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/rust-lang/libc",
+    "notices": [
+      "licenses/cargo-libc-0.2.190-LICENSE-APACHE",
+      "licenses/cargo-libc-0.2.190-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "libcrux-aead",
+    "version": "0.0.9",
+    "license": "Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/cryspen/libcrux",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "libcrux-aes",
+    "version": "0.0.9",
+    "license": "Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/cryspen/libcrux",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "libcrux-chacha20poly1305",
+    "version": "0.0.9",
+    "license": "Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/cryspen/libcrux",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "libcrux-curve25519",
+    "version": "0.0.8",
+    "license": "Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/cryspen/libcrux",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "libcrux-ecdh",
+    "version": "0.0.8",
+    "license": "Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/cryspen/libcrux",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "libcrux-hacl-rs",
+    "version": "0.0.5",
+    "license": "Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/cryspen/libcrux",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "libcrux-hkdf",
+    "version": "0.0.8",
+    "license": "Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/cryspen/libcrux",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "libcrux-hmac",
+    "version": "0.0.8",
+    "license": "Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/cryspen/libcrux",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "libcrux-intrinsics",
+    "version": "0.0.8",
+    "license": "Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/cryspen/libcrux",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "libcrux-kem",
+    "version": "0.0.9",
+    "license": "Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/cryspen/libcrux",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "libcrux-macros",
+    "version": "0.0.3",
+    "license": "Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/cryspen/libcrux",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "libcrux-ml-kem",
+    "version": "0.0.10",
+    "license": "Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/cryspen/libcrux",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "libcrux-p256",
+    "version": "0.0.8",
+    "license": "Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/cryspen/libcrux",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "libcrux-platform",
+    "version": "0.0.3",
+    "license": "Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/cryspen/libcrux",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "libcrux-poly1305",
+    "version": "0.0.6",
+    "license": "Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/cryspen/libcrux",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "libcrux-secrets",
+    "version": "0.0.6",
+    "license": "Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/cryspen/libcrux",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "libcrux-sha2",
+    "version": "0.0.8",
+    "license": "Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/cryspen/libcrux",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "libcrux-sha3",
+    "version": "0.0.10",
+    "license": "Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/cryspen/libcrux",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "libcrux-traits",
+    "version": "0.0.8",
+    "license": "Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/cryspen/libcrux",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "log",
+    "version": "0.4.34",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/rust-lang/log",
+    "notices": [
+      "licenses/cargo-log-0.4.34-LICENSE-APACHE",
+      "licenses/cargo-log-0.4.34-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "memchr",
+    "version": "2.8.3",
+    "license": "Unlicense OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/BurntSushi/memchr",
+    "notices": [
+      "licenses/cargo-memchr-2.8.3-COPYING",
+      "licenses/cargo-memchr-2.8.3-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "ml-dsa",
+    "version": "0.1.1",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/signatures",
+    "notices": [
+      "licenses/cargo-ml-dsa-0.1.1-LICENSE-APACHE",
+      "licenses/cargo-ml-dsa-0.1.1-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "ml-kem",
+    "version": "0.3.2",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/KEMs",
+    "notices": [
+      "licenses/cargo-ml-kem-0.3.2-LICENSE-APACHE",
+      "licenses/cargo-ml-kem-0.3.2-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "module-lattice",
+    "version": "0.2.3",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/KEMs",
+    "notices": [
+      "licenses/cargo-module-lattice-0.2.3-LICENSE-APACHE",
+      "licenses/cargo-module-lattice-0.2.3-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "num-traits",
+    "version": "0.2.19",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/rust-num/num-traits",
+    "notices": [
+      "licenses/cargo-num-traits-0.2.19-LICENSE-APACHE",
+      "licenses/cargo-num-traits-0.2.19-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "once_cell",
+    "version": "1.21.4",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/matklad/once_cell",
+    "notices": [
+      "licenses/cargo-once_cell-1.21.4-LICENSE-APACHE",
+      "licenses/cargo-once_cell-1.21.4-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "opaque-debug",
+    "version": "0.3.1",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/utils",
+    "notices": [
+      "licenses/cargo-opaque-debug-0.3.1-LICENSE-APACHE",
+      "licenses/cargo-opaque-debug-0.3.1-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "openmls",
+    "version": "0.9.1",
+    "license": "MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/openmls/openmls/",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "openmls_basic_credential",
+    "version": "0.6.0",
+    "license": "MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/openmls/openmls/tree/main/basic_credential",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "openmls_memory_storage",
+    "version": "0.6.0",
+    "license": "MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/openmls/openmls/tree/main/memory_storage",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "openmls_rust_crypto",
+    "version": "0.6.0",
+    "license": "MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/openmls/openmls/tree/main/openmls_rust_crypto",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "openmls_serialization_helpers",
+    "version": "0.1.0",
+    "license": "MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/openmls/openmls/tree/main/serialization_helpers",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "openmls_traits",
+    "version": "0.6.0",
+    "license": "MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/openmls/openmls/tree/main/traits",
+    "notices": []
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "p256",
+    "version": "0.13.2",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/elliptic-curves/tree/master/p256",
+    "notices": [
+      "licenses/cargo-p256-0.13.2-LICENSE-APACHE",
+      "licenses/cargo-p256-0.13.2-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "p384",
+    "version": "0.13.1",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/elliptic-curves/tree/master/p384",
+    "notices": [
+      "licenses/cargo-p384-0.13.1-LICENSE-APACHE",
+      "licenses/cargo-p384-0.13.1-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "pem-rfc7468",
+    "version": "0.7.0",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/formats/tree/master/pem-rfc7468",
+    "notices": [
+      "licenses/cargo-pem-rfc7468-0.7.0-LICENSE-APACHE",
+      "licenses/cargo-pem-rfc7468-0.7.0-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "pin-project-lite",
+    "version": "0.2.17",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/taiki-e/pin-project-lite",
+    "notices": [
+      "licenses/cargo-pin-project-lite-0.2.17-LICENSE-APACHE",
+      "licenses/cargo-pin-project-lite-0.2.17-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "pkcs8",
+    "version": "0.10.2",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/formats/tree/master/pkcs8",
+    "notices": [
+      "licenses/cargo-pkcs8-0.10.2-LICENSE-APACHE",
+      "licenses/cargo-pkcs8-0.10.2-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "pkcs8",
+    "version": "0.11.0",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/formats",
+    "notices": [
+      "licenses/cargo-pkcs8-0.11.0-LICENSE-APACHE",
+      "licenses/cargo-pkcs8-0.11.0-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "poly1305",
+    "version": "0.8.0",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/universal-hashes",
+    "notices": [
+      "licenses/cargo-poly1305-0.8.0-LICENSE-APACHE",
+      "licenses/cargo-poly1305-0.8.0-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "polyval",
+    "version": "0.6.2",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/universal-hashes",
+    "notices": [
+      "licenses/cargo-polyval-0.6.2-LICENSE-APACHE",
+      "licenses/cargo-polyval-0.6.2-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "ppv-lite86",
+    "version": "0.2.21",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/cryptocorrosion/cryptocorrosion",
+    "notices": [
+      "licenses/cargo-ppv-lite86-0.2.21-LICENSE-APACHE",
+      "licenses/cargo-ppv-lite86-0.2.21-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "primeorder",
+    "version": "0.13.6",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/elliptic-curves/tree/master/primeorder",
+    "notices": [
+      "licenses/cargo-primeorder-0.13.6-LICENSE-APACHE",
+      "licenses/cargo-primeorder-0.13.6-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "proc-macro2",
+    "version": "1.0.107",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/dtolnay/proc-macro2",
+    "notices": [
+      "licenses/cargo-proc-macro2-1.0.107-LICENSE-APACHE",
+      "licenses/cargo-proc-macro2-1.0.107-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "quote",
+    "version": "1.0.47",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/dtolnay/quote",
+    "notices": [
+      "licenses/cargo-quote-1.0.47-LICENSE-APACHE",
+      "licenses/cargo-quote-1.0.47-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "rand",
+    "version": "0.10.3",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/rust-random/rand",
+    "notices": [
+      "licenses/cargo-rand-0.10.3-LICENSE-APACHE",
+      "licenses/cargo-rand-0.10.3-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "rand_chacha",
+    "version": "0.10.0",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/rust-random/rand",
+    "notices": [
+      "licenses/cargo-rand_chacha-0.10.0-LICENSE-APACHE",
+      "licenses/cargo-rand_chacha-0.10.0-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "rand_chacha",
+    "version": "0.3.1",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/rust-random/rand",
+    "notices": [
+      "licenses/cargo-rand_chacha-0.3.1-LICENSE-APACHE",
+      "licenses/cargo-rand_chacha-0.3.1-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "rand_core",
+    "version": "0.10.1",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/rust-random/rand_core",
+    "notices": [
+      "licenses/cargo-rand_core-0.10.1-LICENSE-APACHE",
+      "licenses/cargo-rand_core-0.10.1-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "rand_core",
+    "version": "0.6.4",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/rust-random/rand",
+    "notices": [
+      "licenses/cargo-rand_core-0.6.4-LICENSE-APACHE",
+      "licenses/cargo-rand_core-0.6.4-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "rayon",
+    "version": "1.12.0",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/rayon-rs/rayon",
+    "notices": [
+      "licenses/cargo-rayon-1.12.0-LICENSE-APACHE",
+      "licenses/cargo-rayon-1.12.0-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "rayon-core",
+    "version": "1.13.0",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/rayon-rs/rayon",
+    "notices": [
+      "licenses/cargo-rayon-core-1.13.0-LICENSE-APACHE",
+      "licenses/cargo-rayon-core-1.13.0-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "rfc6979",
+    "version": "0.4.0",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/signatures/tree/master/rfc6979",
+    "notices": [
+      "licenses/cargo-rfc6979-0.4.0-LICENSE-APACHE",
+      "licenses/cargo-rfc6979-0.4.0-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "rustc_version",
+    "version": "0.4.1",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/djc/rustc-version-rs",
+    "notices": [
+      "licenses/cargo-rustc_version-0.4.1-LICENSE-APACHE",
+      "licenses/cargo-rustc_version-0.4.1-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "rustversion",
+    "version": "1.0.23",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/dtolnay/rustversion",
+    "notices": [
+      "licenses/cargo-rustversion-1.0.23-LICENSE-APACHE",
+      "licenses/cargo-rustversion-1.0.23-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "sec1",
+    "version": "0.7.3",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/formats/tree/master/sec1",
+    "notices": [
+      "licenses/cargo-sec1-0.7.3-LICENSE-APACHE",
+      "licenses/cargo-sec1-0.7.3-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "semver",
+    "version": "1.0.28",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/dtolnay/semver",
+    "notices": [
+      "licenses/cargo-semver-1.0.28-LICENSE-APACHE",
+      "licenses/cargo-semver-1.0.28-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "serde",
+    "version": "1.0.229",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/serde-rs/serde",
+    "notices": [
+      "licenses/cargo-serde-1.0.229-LICENSE-APACHE",
+      "licenses/cargo-serde-1.0.229-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "serde_bytes",
+    "version": "0.11.19",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/serde-rs/bytes",
+    "notices": [
+      "licenses/cargo-serde_bytes-0.11.19-LICENSE-APACHE",
+      "licenses/cargo-serde_bytes-0.11.19-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "serde_core",
+    "version": "1.0.229",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/serde-rs/serde",
+    "notices": [
+      "licenses/cargo-serde_core-1.0.229-LICENSE-APACHE",
+      "licenses/cargo-serde_core-1.0.229-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "serde_derive",
+    "version": "1.0.229",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/serde-rs/serde",
+    "notices": [
+      "licenses/cargo-serde_derive-1.0.229-LICENSE-APACHE",
+      "licenses/cargo-serde_derive-1.0.229-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "serde_json",
+    "version": "1.0.152",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/serde-rs/json",
+    "notices": [
+      "licenses/cargo-serde_json-1.0.152-LICENSE-APACHE",
+      "licenses/cargo-serde_json-1.0.152-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "sha2",
+    "version": "0.10.9",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/hashes",
+    "notices": [
+      "licenses/cargo-sha2-0.10.9-LICENSE-APACHE",
+      "licenses/cargo-sha2-0.10.9-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "sha2",
+    "version": "0.11.0",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/hashes",
+    "notices": [
+      "licenses/cargo-sha2-0.11.0-LICENSE-APACHE",
+      "licenses/cargo-sha2-0.11.0-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "sha3",
+    "version": "0.11.0",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/hashes",
+    "notices": [
+      "licenses/cargo-sha3-0.11.0-LICENSE-APACHE",
+      "licenses/cargo-sha3-0.11.0-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "sha3",
+    "version": "0.12.0",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/hashes",
+    "notices": [
+      "licenses/cargo-sha3-0.12.0-LICENSE-APACHE",
+      "licenses/cargo-sha3-0.12.0-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "shake",
+    "version": "0.1.0",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/XOFs",
+    "notices": [
+      "licenses/cargo-shake-0.1.0-LICENSE-APACHE",
+      "licenses/cargo-shake-0.1.0-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "signature",
+    "version": "2.2.0",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/traits/tree/master/signature",
+    "notices": [
+      "licenses/cargo-signature-2.2.0-LICENSE-APACHE",
+      "licenses/cargo-signature-2.2.0-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "signature",
+    "version": "3.0.0",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/traits",
+    "notices": [
+      "licenses/cargo-signature-3.0.0-LICENSE-APACHE",
+      "licenses/cargo-signature-3.0.0-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "slab",
+    "version": "0.4.12",
+    "license": "MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/tokio-rs/slab",
+    "notices": [
+      "licenses/cargo-slab-0.4.12-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "spki",
+    "version": "0.7.3",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/formats/tree/master/spki",
+    "notices": [
+      "licenses/cargo-spki-0.7.3-LICENSE-APACHE",
+      "licenses/cargo-spki-0.7.3-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "spki",
+    "version": "0.8.1",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/formats",
+    "notices": [
+      "licenses/cargo-spki-0.8.1-LICENSE-APACHE",
+      "licenses/cargo-spki-0.8.1-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "sponge-cursor",
+    "version": "0.1.0",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/utils",
+    "notices": [
+      "licenses/cargo-sponge-cursor-0.1.0-LICENSE-APACHE",
+      "licenses/cargo-sponge-cursor-0.1.0-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "subtle",
+    "version": "2.6.1",
+    "license": "BSD-3-Clause",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/dalek-cryptography/subtle",
+    "notices": [
+      "licenses/cargo-subtle-2.6.1-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "syn",
+    "version": "2.0.119",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/dtolnay/syn",
+    "notices": [
+      "licenses/cargo-syn-2.0.119-LICENSE-APACHE",
+      "licenses/cargo-syn-2.0.119-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "syn",
+    "version": "3.0.7",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/dtolnay/syn",
+    "notices": [
+      "licenses/cargo-syn-3.0.7-LICENSE-APACHE",
+      "licenses/cargo-syn-3.0.7-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "thiserror",
+    "version": "2.0.21",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/dtolnay/thiserror",
+    "notices": [
+      "licenses/cargo-thiserror-2.0.21-LICENSE-APACHE",
+      "licenses/cargo-thiserror-2.0.21-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "thiserror-impl",
+    "version": "2.0.21",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/dtolnay/thiserror",
+    "notices": [
+      "licenses/cargo-thiserror-impl-2.0.21-LICENSE-APACHE",
+      "licenses/cargo-thiserror-impl-2.0.21-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "tls_codec",
+    "version": "0.5.0",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/formats",
+    "notices": [
+      "licenses/cargo-tls_codec-0.5.0-LICENSE-APACHE",
+      "licenses/cargo-tls_codec-0.5.0-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "tls_codec_derive",
+    "version": "0.5.0",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/formats",
+    "notices": [
+      "licenses/cargo-tls_codec_derive-0.5.0-LICENSE-APACHE",
+      "licenses/cargo-tls_codec_derive-0.5.0-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "typenum",
+    "version": "1.20.1",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/paholg/typenum",
+    "notices": [
+      "licenses/cargo-typenum-1.20.1-LICENSE",
+      "licenses/cargo-typenum-1.20.1-LICENSE-APACHE",
+      "licenses/cargo-typenum-1.20.1-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "unicode-ident",
+    "version": "1.0.26",
+    "license": "(MIT OR Apache-2.0) AND Unicode-3.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/dtolnay/unicode-ident",
+    "notices": [
+      "licenses/cargo-unicode-ident-1.0.26-LICENSE-APACHE",
+      "licenses/cargo-unicode-ident-1.0.26-LICENSE-MIT",
+      "licenses/cargo-unicode-ident-1.0.26-LICENSE-UNICODE"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "universal-hash",
+    "version": "0.5.1",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/traits",
+    "notices": [
+      "licenses/cargo-universal-hash-0.5.1-LICENSE-APACHE",
+      "licenses/cargo-universal-hash-0.5.1-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "version_check",
+    "version": "0.9.5",
+    "license": "MIT/Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/SergioBenitez/version_check",
+    "notices": [
+      "licenses/cargo-version_check-0.9.5-LICENSE-APACHE",
+      "licenses/cargo-version_check-0.9.5-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "wasm-bindgen",
+    "version": "0.2.129",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/wasm-bindgen/wasm-bindgen",
+    "notices": [
+      "licenses/cargo-wasm-bindgen-0.2.129-LICENSE-APACHE",
+      "licenses/cargo-wasm-bindgen-0.2.129-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "wasm-bindgen-macro",
+    "version": "0.2.129",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/macro",
+    "notices": [
+      "licenses/cargo-wasm-bindgen-macro-0.2.129-LICENSE-APACHE",
+      "licenses/cargo-wasm-bindgen-macro-0.2.129-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "wasm-bindgen-macro-support",
+    "version": "0.2.129",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/wasm-bindgen/wasm-bindgen/tree/main/crates/macro-support",
+    "notices": [
+      "licenses/cargo-wasm-bindgen-macro-support-0.2.129-LICENSE-APACHE",
+      "licenses/cargo-wasm-bindgen-macro-support-0.2.129-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "wasm-bindgen-shared",
+    "version": "0.2.129",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/shared",
+    "notices": [
+      "licenses/cargo-wasm-bindgen-shared-0.2.129-LICENSE-APACHE",
+      "licenses/cargo-wasm-bindgen-shared-0.2.129-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "web-time",
+    "version": "1.1.0",
+    "license": "MIT OR Apache-2.0",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/daxpedda/web-time",
+    "notices": [
+      "licenses/cargo-web-time-1.1.0-LICENSE-APACHE",
+      "licenses/cargo-web-time-1.1.0-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "x-wing",
+    "version": "0.1.1",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/KEMs/tree/master/x-wing",
+    "notices": [
+      "licenses/cargo-x-wing-0.1.1-LICENSE-APACHE",
+      "licenses/cargo-x-wing-0.1.1-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "x25519-dalek",
+    "version": "2.0.1",
+    "license": "BSD-3-Clause",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/dalek-cryptography/curve25519-dalek/tree/main/x25519-dalek",
+    "notices": [
+      "licenses/cargo-x25519-dalek-2.0.1-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "x25519-dalek",
+    "version": "3.0.0",
+    "license": "BSD-3-Clause",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/dalek-cryptography/curve25519-dalek/tree/main/x25519-dalek",
+    "notices": [
+      "licenses/cargo-x25519-dalek-3.0.0-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "zerocopy",
+    "version": "0.8.62",
+    "license": "BSD-2-Clause OR Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/google/zerocopy",
+    "notices": [
+      "licenses/cargo-zerocopy-0.8.62-LICENSE-APACHE",
+      "licenses/cargo-zerocopy-0.8.62-LICENSE-BSD",
+      "licenses/cargo-zerocopy-0.8.62-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "zeroize",
+    "version": "1.9.1",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/utils",
+    "notices": [
+      "licenses/cargo-zeroize-1.9.1-LICENSE-APACHE",
+      "licenses/cargo-zeroize-1.9.1-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "zeroize_derive",
+    "version": "1.5.0",
+    "license": "Apache-2.0 OR MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/RustCrypto/utils",
+    "notices": [
+      "licenses/cargo-zeroize_derive-1.5.0-LICENSE-APACHE",
+      "licenses/cargo-zeroize_derive-1.5.0-LICENSE-MIT"
+    ]
+  },
+  {
+    "ecosystem": "Cargo",
+    "name": "zmij",
+    "version": "1.0.23",
+    "license": "MIT",
+    "scope": "locked WASM runtime/build dependency",
+    "repository": "https://github.com/dtolnay/zmij",
+    "notices": [
+      "licenses/cargo-zmij-1.0.23-LICENSE-MIT"
+    ]
+  },
+  {
     "ecosystem": "Go",
     "name": "github.com/coder/websocket",
     "version": "v1.8.15",
@@ -1688,9 +3509,9 @@
   {
     "ecosystem": "npm",
     "name": "ansi-styles",
-    "version": "5.2.0",
+    "version": "4.3.0",
     "license": "MIT",
-    "scope": "transitive development",
+    "scope": "transitive runtime",
     "notices": [
       "licenses/ansi-styles-license"
     ]
@@ -1698,9 +3519,9 @@
   {
     "ecosystem": "npm",
     "name": "ansi-styles",
-    "version": "4.3.0",
+    "version": "5.2.0",
     "license": "MIT",
-    "scope": "transitive runtime",
+    "scope": "transitive development",
     "notices": [
       "licenses/ansi-styles-license"
     ]
@@ -2160,7 +3981,7 @@
   {
     "ecosystem": "npm",
     "name": "dom-accessibility-api",
-    "version": "0.6.3",
+    "version": "0.5.16",
     "license": "MIT",
     "scope": "transitive development",
     "notices": [
@@ -2170,7 +3991,7 @@
   {
     "ecosystem": "npm",
     "name": "dom-accessibility-api",
-    "version": "0.5.16",
+    "version": "0.6.3",
     "license": "MIT",
     "scope": "transitive development",
     "notices": [
@@ -2291,7 +4112,7 @@
   {
     "ecosystem": "npm",
     "name": "eslint-visitor-keys",
-    "version": "3.4.3",
+    "version": "2.1.0",
     "license": "Apache-2.0",
     "scope": "transitive runtime",
     "notices": [
@@ -2301,7 +4122,7 @@
   {
     "ecosystem": "npm",
     "name": "eslint-visitor-keys",
-    "version": "2.1.0",
+    "version": "3.4.3",
     "license": "Apache-2.0",
     "scope": "transitive runtime",
     "notices": [
@@ -2359,37 +4180,37 @@
   {
     "ecosystem": "npm",
     "name": "estraverse",
-    "version": "5.3.0",
-    "license": "BSD-2-Clause",
-    "scope": "transitive runtime",
-    "notices": [
-      "licenses/estraverse-LICENSE.BSD"
-    ]
-  },
-  {
-    "ecosystem": "npm",
-    "name": "estraverse",
-    "version": "5.3.0",
-    "license": "BSD-2-Clause",
-    "scope": "transitive runtime",
-    "notices": [
-      "licenses/estraverse-LICENSE.BSD"
-    ]
-  },
-  {
-    "ecosystem": "npm",
-    "name": "estraverse",
-    "version": "5.3.0",
-    "license": "BSD-2-Clause",
-    "scope": "transitive runtime",
-    "notices": [
-      "licenses/estraverse-LICENSE.BSD"
-    ]
-  },
-  {
-    "ecosystem": "npm",
-    "name": "estraverse",
     "version": "4.3.0",
+    "license": "BSD-2-Clause",
+    "scope": "transitive runtime",
+    "notices": [
+      "licenses/estraverse-LICENSE.BSD"
+    ]
+  },
+  {
+    "ecosystem": "npm",
+    "name": "estraverse",
+    "version": "5.3.0",
+    "license": "BSD-2-Clause",
+    "scope": "transitive runtime",
+    "notices": [
+      "licenses/estraverse-LICENSE.BSD"
+    ]
+  },
+  {
+    "ecosystem": "npm",
+    "name": "estraverse",
+    "version": "5.3.0",
+    "license": "BSD-2-Clause",
+    "scope": "transitive runtime",
+    "notices": [
+      "licenses/estraverse-LICENSE.BSD"
+    ]
+  },
+  {
+    "ecosystem": "npm",
+    "name": "estraverse",
+    "version": "5.3.0",
     "license": "BSD-2-Clause",
     "scope": "transitive runtime",
     "notices": [
@@ -2784,6 +4605,16 @@
   },
   {
     "ecosystem": "npm",
+    "name": "isomorphic.js",
+    "version": "0.2.5",
+    "license": "MIT",
+    "scope": "transitive runtime",
+    "notices": [
+      "licenses/isomorphic.js-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm",
     "name": "js-tokens",
     "version": "4.0.0",
     "license": "MIT",
@@ -2908,6 +4739,16 @@
     "scope": "transitive runtime",
     "notices": [
       "licenses/levn-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm",
+    "name": "lib0",
+    "version": "0.2.119",
+    "license": "MIT",
+    "scope": "transitive runtime",
+    "notices": [
+      "licenses/lib0-LICENSE"
     ]
   },
   {
@@ -3878,7 +5719,7 @@
   {
     "ecosystem": "npm",
     "name": "whatwg-mimetype",
-    "version": "5.0.0",
+    "version": "4.0.0",
     "license": "MIT",
     "scope": "transitive development",
     "notices": [
@@ -3888,7 +5729,7 @@
   {
     "ecosystem": "npm",
     "name": "whatwg-mimetype",
-    "version": "4.0.0",
+    "version": "5.0.0",
     "license": "MIT",
     "scope": "transitive development",
     "notices": [
@@ -3987,6 +5828,16 @@
   },
   {
     "ecosystem": "npm",
+    "name": "yjs",
+    "version": "13.6.33",
+    "license": "MIT",
+    "scope": "direct runtime",
+    "notices": [
+      "licenses/yjs-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm",
     "name": "yocto-queue",
     "version": "0.1.0",
     "license": "MIT",
@@ -4013,6 +5864,1450 @@
     "scope": "direct runtime",
     "notices": [
       "licenses/zustand-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@cloudflare/kv-asset-handler",
+    "version": "0.5.0",
+    "license": "MIT OR Apache-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@cloudflare/unenv-preset",
+    "version": "2.16.2",
+    "license": "MIT OR Apache-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@cloudflare/vitest-plugin",
+    "version": "1.4.0",
+    "license": "MIT",
+    "scope": "direct development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@cloudflare/workerd-darwin-64",
+    "version": "1.20261006.1",
+    "license": "Apache-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@cloudflare/workerd-darwin-arm64",
+    "version": "1.20261006.1",
+    "license": "Apache-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@cloudflare/workerd-linux-64",
+    "version": "1.20261006.1",
+    "license": "Apache-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@cloudflare/workerd-linux-arm64",
+    "version": "1.20261006.1",
+    "license": "Apache-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@cloudflare/workerd-windows-64",
+    "version": "1.20261006.1",
+    "license": "Apache-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@cloudflare/workers-types",
+    "version": "5.20261010.1",
+    "license": "MIT OR Apache-2.0",
+    "scope": "direct development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@cspotcode/source-map-support",
+    "version": "0.8.1",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_cspotcode_source-map-support-LICENSE.md"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@emnapi/runtime",
+    "version": "1.11.3",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_emnapi_runtime-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/aix-ppc64",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/android-arm",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/android-arm64",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/android-x64",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/darwin-arm64",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/darwin-x64",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/freebsd-arm64",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/freebsd-x64",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/linux-arm",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/linux-arm64",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/linux-ia32",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/linux-loong64",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/linux-mips64el",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/linux-ppc64",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/linux-riscv64",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/linux-s390x",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/linux-x64",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/netbsd-arm64",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/netbsd-x64",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/openbsd-arm64",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/openbsd-x64",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/openharmony-arm64",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/sunos-x64",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/win32-arm64",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/win32-ia32",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@esbuild/win32-x64",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/colour",
+    "version": "1.1.0",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_img_colour-LICENSE.md"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-darwin-arm64",
+    "version": "0.35.5",
+    "license": "Apache-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-darwin-x64",
+    "version": "0.35.5",
+    "license": "Apache-2.0",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_img_sharp-darwin-x64-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-freebsd-wasm32",
+    "version": "0.35.5",
+    "license": "Apache-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-libvips-darwin-arm64",
+    "version": "1.3.4",
+    "license": "LGPL-3.0-or-later",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-libvips-darwin-x64",
+    "version": "1.3.4",
+    "license": "LGPL-3.0-or-later",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-libvips-linux-arm",
+    "version": "1.3.4",
+    "license": "LGPL-3.0-or-later",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-libvips-linux-arm64",
+    "version": "1.3.4",
+    "license": "LGPL-3.0-or-later",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-libvips-linux-ppc64",
+    "version": "1.3.4",
+    "license": "LGPL-3.0-or-later",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-libvips-linux-riscv64",
+    "version": "1.3.4",
+    "license": "LGPL-3.0-or-later",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-libvips-linux-s390x",
+    "version": "1.3.4",
+    "license": "LGPL-3.0-or-later",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-libvips-linux-x64",
+    "version": "1.3.4",
+    "license": "LGPL-3.0-or-later",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-libvips-linuxmusl-arm64",
+    "version": "1.3.4",
+    "license": "LGPL-3.0-or-later",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-libvips-linuxmusl-x64",
+    "version": "1.3.4",
+    "license": "LGPL-3.0-or-later",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-linux-arm",
+    "version": "0.35.5",
+    "license": "Apache-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-linux-arm64",
+    "version": "0.35.5",
+    "license": "Apache-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-linux-ppc64",
+    "version": "0.35.5",
+    "license": "Apache-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-linux-riscv64",
+    "version": "0.35.5",
+    "license": "Apache-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-linux-s390x",
+    "version": "0.35.5",
+    "license": "Apache-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-linux-x64",
+    "version": "0.35.5",
+    "license": "Apache-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-linuxmusl-arm64",
+    "version": "0.35.5",
+    "license": "Apache-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-linuxmusl-x64",
+    "version": "0.35.5",
+    "license": "Apache-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-wasm32",
+    "version": "0.35.5",
+    "license": "Apache-2.0 AND LGPL-3.0-or-later AND MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_img_sharp-wasm32-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-webcontainers-wasm32",
+    "version": "0.35.5",
+    "license": "Apache-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-win32-arm64",
+    "version": "0.35.5",
+    "license": "Apache-2.0 AND LGPL-3.0-or-later",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-win32-ia32",
+    "version": "0.35.5",
+    "license": "Apache-2.0 AND LGPL-3.0-or-later",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@img/sharp-win32-x64",
+    "version": "0.35.5",
+    "license": "Apache-2.0 AND LGPL-3.0-or-later",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@jridgewell/resolve-uri",
+    "version": "3.1.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_jridgewell_resolve-uri-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@jridgewell/sourcemap-codec",
+    "version": "1.6.0",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_jridgewell_sourcemap-codec-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@jridgewell/trace-mapping",
+    "version": "0.3.9",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_jridgewell_trace-mapping-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@oxc-project/types",
+    "version": "0.153.0",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_oxc-project_types-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@poppinss/colors",
+    "version": "4.1.6",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_poppinss_colors-LICENSE.md"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@poppinss/dumper",
+    "version": "0.6.5",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_poppinss_dumper-LICENSE.md"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@poppinss/exception",
+    "version": "1.2.3",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_poppinss_exception-LICENSE.md"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@rolldown/binding-android-arm-eabi",
+    "version": "1.2.13",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@rolldown/binding-android-arm64",
+    "version": "1.2.13",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@rolldown/binding-darwin-arm64",
+    "version": "1.2.13",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@rolldown/binding-darwin-x64",
+    "version": "1.2.13",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@rolldown/binding-freebsd-x64",
+    "version": "1.2.13",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@rolldown/binding-linux-arm-gnueabihf",
+    "version": "1.2.13",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@rolldown/binding-linux-arm64-gnu",
+    "version": "1.2.13",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@rolldown/binding-linux-arm64-musl",
+    "version": "1.2.13",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@rolldown/binding-linux-ppc64-gnu",
+    "version": "1.2.13",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@rolldown/binding-linux-s390x-gnu",
+    "version": "1.2.13",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@rolldown/binding-linux-x64-gnu",
+    "version": "1.2.13",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@rolldown/binding-linux-x64-musl",
+    "version": "1.2.13",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@rolldown/binding-openharmony-arm64",
+    "version": "1.2.13",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@rolldown/binding-win32-arm64-msvc",
+    "version": "1.2.13",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@rolldown/binding-win32-x64-msvc",
+    "version": "1.2.13",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@rolldown/pluginutils",
+    "version": "1.0.1",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_rolldown_pluginutils-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@sindresorhus/is",
+    "version": "7.2.0",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_sindresorhus_is-license"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@speed-highlight/core",
+    "version": "1.2.24",
+    "license": "CC0-1.0",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_speed-highlight_core-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@standard-schema/spec",
+    "version": "1.1.0",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_standard-schema_spec-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@types/chai",
+    "version": "5.2.3",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_types_chai-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@types/deep-eql",
+    "version": "4.0.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_types_deep-eql-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@types/estree",
+    "version": "1.0.9",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_types_estree-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@vitest/expect",
+    "version": "4.1.11",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_vitest_expect-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@vitest/mocker",
+    "version": "4.1.11",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_vitest_mocker-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@vitest/pretty-format",
+    "version": "4.1.11",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_vitest_pretty-format-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@vitest/runner",
+    "version": "4.1.11",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_vitest_runner-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@vitest/snapshot",
+    "version": "4.1.11",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_vitest_snapshot-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@vitest/spy",
+    "version": "4.1.11",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_vitest_spy-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "@vitest/utils",
+    "version": "4.1.11",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-_vitest_utils-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "assertion-error",
+    "version": "2.0.1",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-assertion-error-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "blake3-wasm",
+    "version": "2.1.5",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-blake3-wasm-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "chai",
+    "version": "6.3.0",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-chai-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "cjs-module-lexer",
+    "version": "1.2.3",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-cjs-module-lexer-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "convert-source-map",
+    "version": "2.0.0",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-convert-source-map-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "cookie",
+    "version": "1.1.1",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-cookie-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "detect-libc",
+    "version": "2.1.2",
+    "license": "Apache-2.0",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-detect-libc-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "error-stack-parser-es",
+    "version": "1.0.5",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-error-stack-parser-es-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "es-module-lexer",
+    "version": "2.3.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-es-module-lexer-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "esbuild",
+    "version": "0.28.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-esbuild-LICENSE.md"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "estree-walker",
+    "version": "3.0.3",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-estree-walker-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "expect-type",
+    "version": "1.4.0",
+    "license": "Apache-2.0",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-expect-type-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "fdir",
+    "version": "6.5.0",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-fdir-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "fsevents",
+    "version": "2.3.3",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-fsevents-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "jsonc-parser",
+    "version": "3.3.1",
+    "license": "MIT",
+    "scope": "direct development",
+    "notices": [
+      "licenses/worker-jsonc-parser-LICENSE.md"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "kleur",
+    "version": "4.1.5",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-kleur-license"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "lightningcss",
+    "version": "1.33.0",
+    "license": "MPL-2.0",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-lightningcss-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "lightningcss-android-arm64",
+    "version": "1.33.0",
+    "license": "MPL-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "lightningcss-darwin-arm64",
+    "version": "1.33.0",
+    "license": "MPL-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "lightningcss-darwin-x64",
+    "version": "1.33.0",
+    "license": "MPL-2.0",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-lightningcss-darwin-x64-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "lightningcss-freebsd-x64",
+    "version": "1.33.0",
+    "license": "MPL-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "lightningcss-linux-arm-gnueabihf",
+    "version": "1.33.0",
+    "license": "MPL-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "lightningcss-linux-arm64-gnu",
+    "version": "1.33.0",
+    "license": "MPL-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "lightningcss-linux-arm64-musl",
+    "version": "1.33.0",
+    "license": "MPL-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "lightningcss-linux-x64-gnu",
+    "version": "1.33.0",
+    "license": "MPL-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "lightningcss-linux-x64-musl",
+    "version": "1.33.0",
+    "license": "MPL-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "lightningcss-win32-arm64-msvc",
+    "version": "1.33.0",
+    "license": "MPL-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "lightningcss-win32-x64-msvc",
+    "version": "1.33.0",
+    "license": "MPL-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "magic-string",
+    "version": "0.30.21",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-magic-string-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "miniflare",
+    "version": "5.20261006.1-alpha",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "nanoid",
+    "version": "3.3.20",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-nanoid-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "obug",
+    "version": "2.2.1",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-obug-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "path-to-regexp",
+    "version": "6.3.0",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-path-to-regexp-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "pathe",
+    "version": "2.0.3",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-pathe-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "picocolors",
+    "version": "1.1.1",
+    "license": "ISC",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-picocolors-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "picomatch",
+    "version": "4.0.7",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-picomatch-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "postcss",
+    "version": "8.5.29",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-postcss-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "rolldown",
+    "version": "1.2.13",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-rolldown-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "semver",
+    "version": "7.8.5",
+    "license": "ISC",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-semver-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "sharp",
+    "version": "0.35.5",
+    "license": "Apache-2.0",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-sharp-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "siginfo",
+    "version": "2.0.0",
+    "license": "ISC",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-siginfo-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "source-map-js",
+    "version": "1.2.2",
+    "license": "BSD-3-Clause",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-source-map-js-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "stackback",
+    "version": "0.0.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "std-env",
+    "version": "4.3.0",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-std-env-LICENCE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "supports-color",
+    "version": "10.2.2",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-supports-color-license"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "tinybench",
+    "version": "2.9.0",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-tinybench-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "tinyexec",
+    "version": "1.3.1",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-tinyexec-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "tinyglobby",
+    "version": "0.2.17",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-tinyglobby-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "tinyrainbow",
+    "version": "3.2.0",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-tinyrainbow-LICENCE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "tslib",
+    "version": "2.8.1",
+    "license": "0BSD",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-tslib-LICENSE.txt"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "typescript",
+    "version": "5.9.3",
+    "license": "Apache-2.0",
+    "scope": "direct development",
+    "notices": [
+      "licenses/worker-typescript-LICENSE.txt"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "undici",
+    "version": "7.29.1",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-undici-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "unenv",
+    "version": "2.0.0-rc.24",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-unenv-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "vite",
+    "version": "8.3.4",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-vite-LICENSE.md"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "vitest",
+    "version": "4.1.11",
+    "license": "MIT",
+    "scope": "direct development",
+    "notices": [
+      "licenses/worker-vitest-LICENSE.md"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "why-is-node-running",
+    "version": "2.3.0",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-why-is-node-running-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "workerd",
+    "version": "1.20261006.1",
+    "license": "Apache-2.0",
+    "scope": "transitive development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "wrangler",
+    "version": "4.149.0",
+    "license": "MIT OR Apache-2.0",
+    "scope": "direct development",
+    "notices": []
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "ws",
+    "version": "8.21.0",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-ws-LICENSE"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "youch",
+    "version": "4.1.0-beta.10",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-youch-LICENSE.md"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "youch-core",
+    "version": "0.3.3",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-youch-core-LICENSE.md"
+    ]
+  },
+  {
+    "ecosystem": "npm-worker",
+    "name": "zod",
+    "version": "4.6.5",
+    "license": "MIT",
+    "scope": "transitive development",
+    "notices": [
+      "licenses/worker-zod-LICENSE"
     ]
   },
   {

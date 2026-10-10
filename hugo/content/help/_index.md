@@ -19,6 +19,7 @@ Visual Nerve turns ideas, data and code into diagrams you can explore, annotate,
 | Find where capacity or queues hurt a business | [Process Simulator](/help/simulation/) |
 | Walk someone through a diagram like a film | [Presentations, narration and video](/help/presentations/) |
 | Turn a workflow into an app brief | [Export and Lovable](/help/sharing/) |
+| Work on one diagram with approved people | [Realtime collaboration](/help/collaboration/) |
 | Connect Codex or another MCP client | [API and MCP setup](/help/api-mcp/) |
 
 ## How to use these guides
@@ -29,7 +30,7 @@ Screenshots show the real tool with illustrative data. Button names match the En
 
 ## Keep your work safe
 
-**Saved** means the change is stored in this browser profile at this website address. There is no automatic account, cloud copy or synchronization between devices. Export a full backup regularly, and before clearing site data. See [local storage and settings](/help/settings/#export-all-local-data).
+**Saved** means the change is stored in this browser profile at this website address. There is no automatic account or cloud backup. Optional [realtime collaboration](/help/collaboration/) shares only a deliberately approved diagram session; other workspace records stay local. Export a full backup regularly, and before clearing site data. See [local storage and settings](/help/settings/#export-all-local-data).
 
 ## Existing guide links
 

@@ -1,0 +1,24 @@
+{
+  "name": "visual-nerve-collaboration-relay",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MPL-2.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:setup": "node --test scripts/deploy.test.mjs",
+    "check": "tsc --noEmit",
+    "dev": "WRANGLER_SEND_METRICS=false wrangler dev --local --port 4357 --ip 127.0.0.1 --var ENABLED:true --var ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173",
+    "build": "WRANGLER_SEND_METRICS=false wrangler deploy --dry-run --outdir dist",
+    "credentials:verify": "node scripts/deploy.mjs --verify",
+    "deploy:manual": "node scripts/deploy.mjs"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.4.0",
+    "@cloudflare/workers-types": "5.20261010.1",
+    "jsonc-parser": "3.3.1",
+    "typescript": "5.9.3",
+    "vitest": "4.1.11",
+    "wrangler": "4.149.0"
+  }
+}

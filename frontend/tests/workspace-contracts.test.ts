@@ -29,7 +29,9 @@ afterEach(async () => {
 
 describe('explicit legacy workspace storage contract', () => {
   it('covers all 14 logical stores and matches the actual legacy keys/index constraints', () => {
-    expect(workspaceStoreNames).toEqual(VAULT_STORES);
+    expect(workspaceStoreNames).toEqual(VAULT_STORES.filter((store) => store !== 'collaboration'));
+    expect(workspaceStoreNames).not.toContain('collaboration');
+    expect(storage.tables.map((table) => table.name)).not.toContain('collaboration');
     expect(Object.keys(workspaceStoreDefinitions).sort()).toEqual([...workspaceStoreNames].sort());
     expect(storage.tables.map((table) => table.name).sort()).toEqual(
       [...workspaceStoreNames].sort(),

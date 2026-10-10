@@ -1,3 +1,4 @@
+import { bindCollaborationJournal } from '../security/collaboration-journal';
 import type { CsvDataset } from '../data/types';
 import type { Diagram, Graph } from '../model/types';
 import { VaultLogicalRecordCodec } from '../security/vault-logical-record';
@@ -65,6 +66,8 @@ export class EncryptedWorkspaceDatabase implements WorkspaceScope {
     private operation?: VaultSessionOperation,
   ) {
     this.name = session.storage.name;
+    if (scope?.mode === 'rw')
+      bindCollaborationJournal(this, (work) => scope.withCollaborationJournal(work));
     this.root = root ?? this;
     this.records = root?.records ?? new VaultWorkspaceRecords(session, codec);
     for (const name of workspaceStoreNames)

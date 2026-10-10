@@ -86,6 +86,6 @@ PNG, PDF and SVG share the 2D visual view. SVG preserves vector text and geometr
 
 Build with Lovable prepares a reviewed app specification and prompt locally. Opening its dialog sends nothing; choosing Open in Lovable explicitly shares the reviewed text. Review descriptions, SQL literals and other included detail before that handoff.
 
-The workspace belongs to one browser profile and origin. There is no automatic cloud synchronization or simultaneous team editing. Use exports and backups to move or share a copy.
+The workspace belongs to one browser profile and origin. There is no automatic workspace-wide cloud synchronization. Optional [realtime collaboration](/help/collaboration/) lets approved people edit one deliberately shared diagram when a relay is configured. Use exports and backups for portable copies and recovery.
 
 [Open Visual Nerve](/app/) · [Compare export formats](/help/sharing/) · [Understand local data](/privacy/)

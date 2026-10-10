@@ -11,13 +11,13 @@ import (
 )
 
 const (
-	bridgeVersion       = "0.6.0"
+	bridgeVersion       = "0.7.0"
 	operationRetention  = 15 * time.Minute
 	maxBridgeOperations = 1024
 	maxPendingCommands  = 256
 )
 
-var bridgeCapabilities = []string{"operations-v1", "endpoint-docs-v1", "fork-join-v1", "async-svg-export-v1", "exchange-export-v1"}
+var bridgeCapabilities = []string{"operations-v1", "endpoint-docs-v1", "fork-join-v1", "async-svg-export-v1", "exchange-export-v1", "collaboration-v1"}
 var bridgeToolNames = []string{"visual_nerve_request", "visual_nerve_api_docs"}
 
 // The bridge retains only opaque routing/correlation metadata. Request and result

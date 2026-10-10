@@ -1,8 +1,8 @@
 import { readdirSync, lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-const helpGuides = ['getting-started', 'editing', 'layouts', '3d', 'csv', 'connected-data', 'sql', 'code', 'diagram-import', 'understanding', 'presentations', 'simulation', 'sharing', 'settings', 'api-mcp', 'troubleshooting'];
-const helpScreenshots = ['new-diagram', 'editor', 'mobile-editor', 'layouts', 'spatial', 'csv-import', 'csv-evidence', 'connected-data', 'data-quality', 'source-refresh', 'sql-query', 'sql-schema', 'code-cobol', 'code-project', 'code-project-zip', 'project-file-limit', 'diagram-import', 'overview', 'history', 'player', 'player-compact', 'storyboard', 'simulation', 'process-setup', 'process-subprocess-setup', 'process-hierarchy', 'process-drilldown', 'node-quick-add', 'simulation-traffic', 'parallel-delivery-desktop', 'parallel-delivery-mobile', 'simulation-assumptions', 'simulation-compare', 'export', 'export-svg', 'export-editable-desktop', 'export-editable-mobile', 'lovable', 'settings', 'app-language', 'backup', 'mcp-settings', 'vault-setup', 'vault-unlock', 'vault-password-change', 'vault-session-settings', 'vault-content-key-rotation', 'presentation-voice', 'app-update', 'app-update-mobile'];
+const helpGuides = ['getting-started', 'editing', 'layouts', '3d', 'csv', 'connected-data', 'sql', 'code', 'diagram-import', 'understanding', 'presentations', 'simulation', 'sharing', 'settings', 'api-mcp', 'collaboration', 'troubleshooting'];
+const helpScreenshots = ['new-diagram', 'editor', 'mobile-editor', 'layouts', 'spatial', 'csv-import', 'csv-evidence', 'connected-data', 'data-quality', 'source-refresh', 'sql-query', 'sql-schema', 'code-cobol', 'code-project', 'code-project-zip', 'project-file-limit', 'diagram-import', 'overview', 'history', 'player', 'player-compact', 'storyboard', 'simulation', 'process-setup', 'process-subprocess-setup', 'process-hierarchy', 'process-drilldown', 'node-quick-add', 'simulation-traffic', 'parallel-delivery-desktop', 'parallel-delivery-mobile', 'simulation-assumptions', 'simulation-compare', 'export', 'export-svg', 'export-editable-desktop', 'export-editable-mobile', 'lovable', 'settings', 'app-language', 'backup', 'mcp-settings', 'vault-setup', 'vault-unlock', 'vault-password-change', 'vault-session-settings', 'vault-content-key-rotation', 'presentation-voice', 'app-update', 'app-update-mobile', 'collaboration-approval-mobile', 'collaboration-members-desktop'];
 const productPages = ['app', 'features', 'use-cases', 'process-simulator', 'mcp', 'developers', 'security'];
 export function auditStatic(directory) {
   const files = [];
@@ -23,6 +23,7 @@ export function auditStatic(directory) {
         || ['phone', 'tablet', 'desktop', 'laptop'].some(name => path === `site/images/${name}-dark.webp` || path === `site/devices/${name}.svg`)
         || /^editor\/(?:app\.(?:js|css)|assets\/[\w.-]+\.(?:js|css|svg|png|woff2?))$/.test(path)
         || /^editor\/speech\/(?:ort-wasm(?:-simd)?\.wasm|piper_phonemize\.(?:wasm|data))$/.test(path)
+        || /^editor\/assets\/mls_bg-[\w-]{8,}\.wasm$/.test(path)
         || /^swagger\/swagger-ui(?:-bundle\.js|\.css)$/.test(path)
         || /^licenses\/[\w.-]+$/.test(path);
       if (!allowed || /\.(?:sqlite3?|db|backup)$/i.test(path)) throw new Error(`Unexpected file in static bundle: ${path}`);

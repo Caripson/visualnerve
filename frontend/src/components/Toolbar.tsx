@@ -5,6 +5,7 @@ import { presentation } from '../presentation/service';
 import { useEffect, useState } from 'react';
 import { useReactFlow, useStoreApi } from '@xyflow/react';
 import {
+  Users,
   ArrowRight,
   Download,
   GitBranch,
@@ -207,6 +208,7 @@ export function Toolbar({
           </span>
           <button
             aria-label={t('toolbar.playerAria')}
+            title={t('toolbar.playerAria')}
             onClick={() => {
               useEditor.getState().finishEditing();
               presentation.open();
@@ -215,13 +217,26 @@ export function Toolbar({
             <Clapperboard size={15} />
             <span>{t('toolbar.playerLabel')}</span>
           </button>
-          <button aria-label={t('dialogs.exportField')} onClick={() => open('export')}>
+          <button
+            aria-label={t('collaboration.open')}
+            title={t('collaboration.open')}
+            onClick={() => open('collaboration')}
+          >
+            <Users size={15} />
+            <span>{t('collaboration.action')}</span>
+          </button>
+          <button
+            aria-label={t('dialogs.exportField')}
+            title={t('dialogs.exportField')}
+            onClick={() => open('export')}
+          >
             <Download size={14} />
             <span>{t('dialogs.exportField')}</span>
           </button>
           <button
             className="desktop-tools"
             aria-label={t('toolbar.buildLovable')}
+            title={t('toolbar.buildLovable')}
             onClick={() => open('lovable')}
           >
             <Sparkles size={14} />

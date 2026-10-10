@@ -8,6 +8,14 @@ The website delivers app files. The browser saves diagrams, nodes, relationships
 Visual Nerve website → your browser → IndexedDB
 ```
 
+## Optional realtime collaboration
+
+A configured Cloudflare relay enables deliberate sharing of one graph with approved devices. Messages use MLS RFC 9420 application encryption and owner-signed membership policy; the integration has not been independently audited. The relay receives encrypted payloads, connection/IP metadata, room/public device identifiers and message timing/size. Approved participants receive readable shared content and can retain it. The local vault password/recovery key never becomes a room credential.
+
+Default sharing includes graph text, structure, style, geometry, annotations and process assumptions. Metadata/source evidence, referenced owners and raw CSV datasets require independent human disclosure choices. Titles or aggregated labels can already contain sensitive values with those choices off. Camera/view state, folders, favorites and local timestamps remain local. Encrypted private room/CRDT records are excluded from native exports, logical/API exports and all workspace backups; a backup retains diagram content but not room access.
+
+MLS ratchets/private signing keys remain live-memory only. Network reconnect can reuse the same unlocked device; reload or lock/unlock requires a newly approved device, and owner reload requires a new room. Removing a participant cannot erase content already received or downloaded. No automatic account-wide synchronization or cloud backup is added. See [user collaboration guide](https://www.visualnerve.com/help/collaboration/) and [semantic API](../API.md#optional-realtime-collaboration).
+
 ## Encrypted production app
 
 The separate `app.visualnerve.com` implementation encrypts all private IndexedDB
@@ -41,7 +49,7 @@ Acceptance is saved in IndexedDB, never inferred from a visit, old informational
 
 ## Separate browsers and devices
 
-Another browser, profile, device or private window has independent storage even at the same URL. Nothing automatically synchronizes. Return with the same browser profile and origin; changing scheme, hostname or port opens separate storage. Public app hosting does not make content public.
+Another browser, profile, device or private window has independent storage even at the same URL. Nothing synchronizes automatically across the whole workspace. Optional collaboration shares only a deliberately approved diagram session. Return with the same browser profile and origin; changing scheme, hostname or port opens separate storage. Public app hosting does not make content public.
 
 ## Backups and moving work
 

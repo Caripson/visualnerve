@@ -37,7 +37,7 @@ Encryption protects persisted records while locked, not content intentionally re
 
 ## Recoverable writes and bridge discovery
 
-Bridge version 0.6.0 advertises operations-v1, endpoint-docs-v1, fork-join-v1, async-svg-export-v1 and exchange-export-v1 with supported tool names in direct HTTP GET /api/v1/health (/health relative to the REST base) and the browser handshake. This identifies software support, not workspace content or authorization. visual_nerve_request with path:/health instead reads the connected browser's semantic IndexedDB health; it does not expose bridge-only tools or capabilities. Do not diagnose an old bridge from their absence in that browser response. Use a current bridge and refreshed browser tab; old tabs remain one-shot and cannot reserve/recover operation IDs.
+Bridge version 0.7.0 advertises operations-v1, endpoint-docs-v1, fork-join-v1, async-svg-export-v1, exchange-export-v1 and collaboration-v1 with supported tool names in direct HTTP GET /api/v1/health (/health relative to the REST base) and the browser handshake. This identifies software support, not workspace content or authorization. visual_nerve_request with path:/health instead reads the connected browser's semantic IndexedDB health; it does not expose bridge-only tools or capabilities. Do not diagnose an old bridge from their absence in that browser response. Use a current bridge and refreshed browser tab; old tabs remain one-shot and cannot reserve/recover operation IDs.
 
 Before a write, call POST /operations with exactly {} to reserve a server-issued opaque operationId. This requires an unlocked connected browser, accepted storage and Read + write. Pass that ID as the optional operationId argument of visual_nerve_request, or REST header X-Visual-Nerve-Operation-Id. Successful command bodies are unchanged; identity appears in MCP structuredContent.operationId or the REST response header. GET /operations/{operationId} returns the original browser receipt {operationId,state,resultAvailable,status?,result?}; states are reserved, running, succeeded, failed and unknown. Opaque operation tokens are not graph UUIDs.
 
@@ -154,7 +154,11 @@ GET/PUT /diagrams/{diagramId}/build-specification reads/saves reviewed additions
 ## Use the full OpenAPI document
 
 The bundled contract contains all supported command paths, inputs, response schemas, graph metadata, import/export formats and validation errors. Read it through visual_nerve_api_docs or resources/read instead of inferring endpoints from the UI or fetching a separate web link.
-`
+
+## Optional realtime collaboration
+
+
+` + "\n" + mcpCollaborationPolicy
 
 func mcpResources() []any {
 	return []any{

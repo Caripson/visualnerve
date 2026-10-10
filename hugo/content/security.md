@@ -12,7 +12,7 @@ summary: "Local storage reduces automatic data transfers, while the browser, dev
 
 Diagrams and related records are stored in IndexedDB under one browser profile and exact website origin. The static website host delivers application files; ordinary editing does not upload graphs or source files to it. Other visitors to the website do not share your browser's workspace.
 
-There is no account-based synchronization, mandatory cloud database or server-side diagram store. Offline app files are cached after required storage acceptance. Exports are explicit copies that you decide where to keep.
+There is no account-based workspace synchronization or mandatory cloud database. Optional collaboration uses a separately configured relay with approved participants; ordinary saved workspace data stays browser-local. Offline app files are cached after required storage acceptance. Exports are explicit copies that you decide where to keep.
 
 Local storage is not a guarantee of confidentiality or recovery. A person or process with access to the browser profile, a powerful extension, or compromised same-origin application code may be able to access its contents. Protect the device and profile using controls appropriate to your data.
 
@@ -49,6 +49,20 @@ The encrypted app's downloaded workspace backup is encrypted and can be restored
 Changing the live workspace password or recovery material does not rewrite files you already downloaded. Old encrypted backups retain their original password/recovery credentials. Retain the matching credentials for each copy and decide when to replace or destroy old copies; deleting local records cannot delete files held elsewhere.
 
 A normal password change keeps the content key. An older backup plus its credential can expose a key still used by the current workspace. If that key may have been exposed, **Workspace security → Suspected content-key exposure** prepares a new content key and recovery material, authenticates and reencrypts every current record, then atomically activates the verified replacement and locks the workspace tabs. This human-only incident operation needs temporary memory and storage headroom. It protects the current saved workspace; old backups and already shared content remain outside its protection. [Incident procedure](/help/settings/#rotate-an-exposed-content-key).
+
+## Optional realtime collaboration
+
+Ordinary editing remains local. A separately configured Cloudflare relay enables a deliberately shared diagram session, using **MLS (RFC 9420)** application encryption, device approval and owner-signed membership policy. This integration has **not been independently audited**; use it only after assessing the disclosed content and organizational requirements. OpenMLS is the cryptographic implementation; that does not make the complete browser, policy or relay integration independently audited.
+
+The owner reviews each live device and grants Editor or Viewer access. Display names are participant labels, not a verified enterprise identity. Invitations are admission capabilities and should be sent privately. API/MCP can inspect semantic presence and use the existing graph endpoints, but cannot create invitations, approve devices, change roles, obtain room keys or unlock a vault. Shared writes require both owner/editor membership and the current local write grant.
+
+The default scope shares graph text, structure, geometry, styling, annotations and process assumptions. Metadata/code/SQL evidence, referenced owner profiles and original CSV datasets require distinct human disclosure choices. Sensitive text can already appear in titles, descriptions and aggregated labels with those options off. Cameras, view filters and private local preferences stay local. Private CRDT state and room associations use the dedicated encrypted vault namespace, are excluded from native exports and every workspace backup, and participate in content-key rotation.
+
+The relay handles ciphertext plus IP/request, room, public device/membership, connection and message timing/size metadata. Authorized participants receive readable content. The vault password and recovery key are never room credentials and never go to the relay. Protect unlocked browsers and participant devices; encryption cannot prevent an authorized participant or compromised device from copying content.
+
+MLS ratchets and private device signing keys are **live-memory only** in this release. Network reconnect retains the same unlocked live device; exact ciphertext may be retransmitted. Reload or lock/unlock requires a fresh device and owner approval, and owner reload requires a new room. Restoring an older backup cannot resume private room keys. Member removal changes future authorized access after the membership transition but cannot revoke previously copied, exported or photographed information.
+
+[Collaboration disclosure, roles and recovery guide](/help/collaboration/) · [What the relay receives](/privacy/#optional-realtime-collaboration)
 
 ## What is implemented
 
@@ -88,7 +102,7 @@ Browser quota, private browsing, eviction, profile reset or device loss can remo
 
 ## What the product does not currently provide
 
-Visual Nerve has no built-in enterprise identity provider, SSO, role-based team tenancy, shared live workspace, central audit log or managed retention policy. Browser-local vault encryption is not a hosted collaboration or end-to-end messaging service, and ordinary exports are not automatically encrypted. It does not provide an unattended cloud simulation service.
+Visual Nerve has no built-in enterprise identity provider, SSO, managed team tenancy, central audit log or managed retention policy. Optional owner-approved live diagram collaboration is a separate MLS-encrypted feature when a relay is configured; it does not add those enterprise controls. Ordinary exports are not automatically encrypted. The product does not provide an unattended cloud simulation service.
 
 This page does not claim independent security certification, regulatory certification or a completed external penetration test. Evaluate the implemented boundary against your organization’s data classification and device policies rather than assuming that “local” meets every requirement.
 

@@ -126,8 +126,12 @@ describe('manual deployment gates', () => {
   it('performs no production-history query for staging and returns validated evidence', async () => {
     const fetcher = vi.fn(async (url: URL) => ({
       ok: true,
-      json: async () =>
-        url.pathname.includes('/git/ref/') ? { object: { sha } } : { workflow_runs: [run()] },
+      json: async () => {
+        if (url.pathname.includes('/git/ref/')) return { object: { sha } };
+        if (url.pathname.includes('/git/commits/')) return { sha, tree: { sha: other } };
+        if (url.pathname.includes('/git/trees/')) return { truncated: false, tree: [] };
+        return { workflow_runs: [run()] };
+      },
     }));
     const result = await verifyDeployment(
       {
@@ -139,12 +143,30 @@ describe('manual deployment gates', () => {
       'staging',
       fetcher,
     );
-    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(fetcher).toHaveBeenCalledTimes(4);
     expect(
       fetcher.mock.calls.every(([url]) => !url.pathname.includes('/workflows/deploy.yml/')),
     ).toBe(true);
     expect(result.sha).toBe(sha);
     expect(JSON.stringify(result)).not.toContain('fixture-token');
+  });
+
+  it('gates the manual relay deployment twice before Cloudflare credentials are exposed', () => {
+    const relay = readFileSync(
+      new URL('../../.github/workflows/deploy-collaboration.yml', import.meta.url),
+      'utf8',
+    );
+    expect(relay).toMatch(/^on:\n  workflow_dispatch:\n\n/m);
+    expect(relay).not.toMatch(/^  (push|pull_request|workflow_run|schedule):/m);
+    expect(relay).toContain("github.ref == 'refs/heads/main'");
+    expect(relay).toContain('environment: collaboration-production');
+    expect(relay).toContain('actions: read');
+    expect(relay).toContain('PRODUCTION_APPROVED_SHA: ${{ vars.PRODUCTION_APPROVED_SHA }}');
+    const gate = 'node ../scripts/require-ci.mjs production';
+    expect(relay.split(gate)).toHaveLength(3);
+    expect(relay.indexOf(gate)).toBeLessThan(relay.indexOf('run: npm ci'));
+    expect(relay.lastIndexOf(gate)).toBeLessThan(relay.indexOf('run: npm run deploy:manual'));
+    expect(relay.lastIndexOf(gate)).toBeLessThan(relay.indexOf('CLOUDFLARE_API_TOKEN:'));
   });
 
   it('notices an older staging run rerun after the reviewed publication', () => {

@@ -30,6 +30,8 @@ export const VAULT_STORES = [
   'simulationModels',
   'simulationRuns',
   'simulationCheckpoints',
+  // Private collaboration records deliberately have no logical workspace/API/export table.
+  'collaboration',
 ] as const;
 export type VaultStore = (typeof VAULT_STORES)[number];
 

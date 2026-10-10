@@ -291,6 +291,19 @@ export class VaultWorkspaceRecordScope {
     this.check();
     this.journal.physical.afterCommit(action);
   }
+  /** Internal private namespace participates in the same graph/outbox commit. */
+  async withCollaborationJournal<T>(work: (scope: VaultJournalScope) => Promise<T>): Promise<T> {
+    this.check(undefined, true);
+    this.journal.inFlight++;
+    try {
+      return await this.journal.physical.atomic('rw', ['collaboration'], work);
+    } catch (error) {
+      this.journal.failed = true;
+      throw error;
+    } finally {
+      this.journal.inFlight--;
+    }
+  }
   async atomic<T>(
     mode: VaultTransactionMode,
     stores: readonly WorkspaceStoreName[],
@@ -345,7 +358,7 @@ export class VaultWorkspaceRecords {
       invalid('Unknown workspace table.');
     return this.journal.atomic(
       mode,
-      stores,
+      mode === 'rw' ? [...stores, 'collaboration'] : stores,
       async (physical) => {
         const journal: RecordJournal = {
           physical,

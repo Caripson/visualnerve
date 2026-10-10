@@ -11,6 +11,7 @@ import {
 } from '../../deployment/app-policy.mjs';
 import { appTemplate } from '../../deployment/app-template.mjs';
 import { template } from '../../deployment/template.mjs';
+import { spawnSync } from 'node:child_process';
 import { requireAppApproval } from '../../deployment/require-app-approval.mjs';
 
 const temporary: string[] = [];
@@ -42,6 +43,7 @@ function fixture() {
   put('editor/app.js', 'import "./assets/worker-example.js";');
   put('editor/app.css', '.site-shell{}');
   put('editor/assets/worker-example.js', 'export const localWorker = true;');
+  put('editor/assets/mls_bg-testhash.wasm', 'checked compiled MLS module');
   put('editor/speech/ort-wasm.wasm', 'local WASM');
   put('editor/speech/piper_phonemize.wasm', 'local phonemizer');
   put('editor/speech/piper_phonemize.data', 'local pronunciations');
@@ -52,6 +54,10 @@ function fixture() {
     ),
   );
   put('help/editing/index.html', shell('<main class="help-main"><h1>Editing</h1></main>'));
+  put(
+    'help/collaboration/index.html',
+    shell('<main class="help-main"><h1>Collaboration</h1></main>'),
+  );
   put('help/help.js', 'window.localHelp = true;');
   put('help/help.css', '.help-main{}');
   put('help/index.json', '{"guides":[]}');
@@ -127,6 +133,14 @@ it('prepares a single app root and local documentation without legacy alias, mar
   expect(worker).toMatch(/visual-nerve-app-shell-[a-f0-9]{12}/);
   expect(worker).toContain('/api/docs/');
   expect(worker).toContain('/editor/assets/worker-example.js');
+  expect(worker).toContain('/editor/assets/mls_bg-testhash.wasm');
+  expect(prepared.files).toContain('editor/assets/mls_bg-testhash.wasm');
+  expect(JSON.parse(worker.match(/^const assets = (.*);$/m)![1])).not.toContain(
+    '/editor/assets/mls_bg-testhash.wasm',
+  );
+  expect(JSON.parse(worker.match(/^const lazyAssets = (.*);$/m)![1])).toContain(
+    '/editor/assets/mls_bg-testhash.wasm',
+  );
   expect(worker).toContain('/editor/speech/piper_phonemize.wasm');
   expect(worker).not.toMatch(/site\/consent|vendor\/klaro|\/features\//);
   expect(readFileSync(join(output, 'robots.txt'), 'utf8')).toBe('User-agent: *\nDisallow: /\n');
@@ -157,6 +171,18 @@ it('rejects unexpected outputs and never replaces a directory containing unrelat
   await buildAppSurface(source, output);
   writeFileSync(join(output, 'site/consent.js'), 'window.gtag = () => {};');
   expect(() => auditAppSurface(output)).toThrow('Unexpected file');
+});
+
+it('rejects unreviewed WASM names while copying the exact hashed MLS asset family', async () => {
+  const { source, output, put } = fixture();
+  put('editor/assets/unreviewed-testhash.wasm', 'not an approved module family');
+  await expect(buildAppSurface(source, output)).rejects.toThrow('Unexpected file in static bundle');
+  rmSync(join(source, 'editor/assets/unreviewed-testhash.wasm'));
+  const prepared = await buildAppSurface(source, output);
+  expect(prepared.files).toContain('editor/assets/mls_bg-testhash.wasm');
+  expect(readFileSync(join(output, 'editor/assets/mls_bg-testhash.wasm'), 'utf8')).toBe(
+    'checked compiled MLS module',
+  );
 });
 
 it('rejects weakened HTML policy and analytics hidden inside otherwise allowed files', async () => {
@@ -227,6 +253,87 @@ it('allows only reviewed loopback bridge ports, local executable assets and fixe
   expect(headers['X-Frame-Options']).toBe('DENY');
   expect(headers['Content-Security-Policy']).toContain("frame-ancestors 'none'");
   expect(headers['Permissions-Policy']).toContain('microphone=()');
+});
+
+it('keeps collaboration disabled by default and pins one explicit HTTPS/WSS relay only when configured', async () => {
+  const { source, output } = fixture();
+  const origin = 'https://visual-nerve-collaboration.entis.workers.dev';
+  await buildAppSurface(source, output);
+  const disabled = readFileSync(join(output, 'index.html'), 'utf8');
+  expect(disabled).not.toContain('visual-nerve-collaboration-relay');
+  expect(disabled).not.toContain(origin);
+  const prepared = await buildAppSurface(source, output, { collaborationRelayOrigin: origin });
+  expect(prepared.files).toContain('help/collaboration/index.html');
+  for (const path of ['index.html', 'help/collaboration/index.html', 'api/docs/index.html']) {
+    const html = readFileSync(join(output, path), 'utf8');
+    expect(html).toContain(`<meta name="visual-nerve-collaboration-relay" content="${origin}">`);
+    expect(html).toContain(`${origin} ${origin.replace('https:', 'wss:')}`);
+    expect(html).not.toContain('visualnerve-google-analytics');
+  }
+  const manifest = JSON.parse(readFileSync(join(output, 'app-surface.json'), 'utf8'));
+  expect(manifest.collaborationRelayOrigin).toBe(origin);
+  expect(manifest.responseHeaders).toEqual(appResponseHeaders([4317], origin));
+  const directives = appContentSecurityPolicy([4317], origin).split('; ');
+  expect(directives.find((directive) => directive.startsWith('script-src '))).not.toContain(origin);
+  expect(directives.find((directive) => directive.startsWith('connect-src '))).toContain(
+    ` ${origin} `,
+  );
+  expect(readFileSync(join(source, 'help/collaboration/index.html'), 'utf8')).not.toContain(origin);
+  expect(auditAppSurface(output)).toEqual(prepared.files);
+});
+
+it('rejects missing, duplicated or changed relay pins even when the package otherwise passes its audit', async () => {
+  const { source, output } = fixture(),
+    origin = 'https://relay.example.com';
+  await buildAppSurface(source, output, { collaborationRelayOrigin: origin });
+  const path = join(output, 'index.html'),
+    original = readFileSync(path, 'utf8');
+  const pin = `<meta name="visual-nerve-collaboration-relay" content="${origin}">`;
+  for (const changed of [
+    original.replace(pin, ''),
+    original.replace(pin, pin + pin),
+    original.replace(pin, pin.replace(origin, 'https://other.example.com')),
+  ]) {
+    writeFileSync(path, changed);
+    expect(() => auditAppSurface(output)).toThrow('Collaboration relay configuration');
+  }
+  writeFileSync(path, original);
+  const manifest = JSON.parse(readFileSync(join(output, 'app-surface.json'), 'utf8'));
+  manifest.responseHeaders = appResponseHeaders();
+  writeFileSync(join(output, 'app-surface.json'), JSON.stringify(manifest));
+  expect(() => auditAppSurface(output)).toThrow('response-header policy');
+});
+
+it.each([
+  '',
+  'http://relay.example.com',
+  'wss://relay.example.com',
+  'https://relay.example.com/',
+  'https://user:secret@relay.example.com',
+  'https://relay.example.com/path',
+  'https://relay.example.com?token=secret',
+  'https://relay.example.com#secret',
+  'https://*.example.com',
+  ' https://relay.example.com',
+  'https://relay.example.com;script-src',
+])('rejects unsafe or nonexact deployment relay configuration %s', (origin) => {
+  expect(() => appSurfaceOptions({ collaborationRelayOrigin: origin })).toThrow(
+    'exact HTTPS origin',
+  );
+  expect(() => appResponseHeaders([4317], origin)).toThrow('exact HTTPS origin');
+});
+
+it('threads the public relay build variable through the CLI without changing the source website', () => {
+  const { source, output } = fixture(),
+    origin = 'https://relay.example.com';
+  const script = new URL('../../scripts/build-app-surface.mjs', import.meta.url);
+  const result = spawnSync(process.execPath, [script.pathname, source, output], {
+    encoding: 'utf8',
+    env: { COLLABORATION_RELAY_ORIGIN: origin },
+  });
+  expect(result.status, result.stderr).toBe(0);
+  expect(readFileSync(join(output, 'index.html'), 'utf8')).toContain(`content="${origin}"`);
+  expect(readFileSync(join(source, 'help/index.html'), 'utf8')).not.toContain(origin);
 });
 
 it('keeps the current website deployment unchanged while attaching app-only security headers to a separate stack', () => {

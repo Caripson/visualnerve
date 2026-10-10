@@ -32,6 +32,8 @@ import { isWorkspaceLockCommand, workspaceSecurityStatus } from './security-stat
 import type { VaultSession } from '../security/vault-session';
 import { VaultStorageError } from '../security/vault-storage';
 import { ExternalSvgAuthority } from './external-svg-authority';
+import { collaborationDocumentHooks } from '../collaboration/document-hooks';
+import type { SharedProjectionAuthority } from '../collaboration/access';
 
 /** Commit a pending local camera before a user-requested snapshot or navigation. */
 export function flushSpatialCamera() {
@@ -102,6 +104,8 @@ function acknowledged(local: Graph, saved: Graph): Graph {
 
 interface QueuedSave {
   graph?: Graph;
+  /** The exact UI snapshot whose changed fields are being saved, before remote merges. */
+  changeBase?: Graph;
   revision: number;
   sourcesChanged: boolean;
   cancelled?: boolean;
@@ -297,6 +301,7 @@ export class Workspace {
           sources.some((source, index) => source !== oldSources[index]);
         const save = {
           graph,
+          changeBase: previous.graph ? ownersFor(previous.graph, previous.owners) : undefined,
           revision,
           sourcesChanged,
           operation: this.repo.db.captureOperation(),
@@ -410,6 +415,9 @@ export class Workspace {
       const stored = await repo.saveGraph(
         sourcesChanged ? { ...graph, datasets: graph.datasets ?? [] } : drawing,
         this.versions.get(id) ?? graph.diagram.version,
+        undefined,
+        undefined,
+        save.changeBase,
       );
       await operation.check();
       if (save.cancelled || this.stopped) return;
@@ -423,7 +431,9 @@ export class Workspace {
                 ...state.graph,
                 diagram: { ...state.graph.diagram, version: stored.diagram.version },
               }
-            : acknowledged(state.graph, stored),
+            : collaborationDocumentHooks.get(id)
+              ? stored
+              : acknowledged(state.graph, stored),
           status: changed ? 'saving' : 'saved',
           message: '',
         });
@@ -449,6 +459,116 @@ export class Workspace {
       const state = useEditor.getState();
       if (state.status === 'conflict') throw new StorageError(409, state.message);
       throw new StorageError(500, state.message || 'Pending local changes could not be saved.');
+    }
+  }
+  /** Peer projections share the same write ordering as UI autosaves and MCP. */
+  async applySharedProjection(
+    diagramId: string,
+    prepare: (
+      current: Graph,
+      storage: WorkspaceStorage,
+    ) => Promise<{ graph: Graph; committed(): void }>,
+    authority: SharedProjectionAuthority,
+  ): Promise<Graph> {
+    const lifecycle = this.lifecycle;
+    const originating = await this.repo.db.captureOperation();
+    const pending = this.queue.then(() =>
+      this.withOperation(
+        async (job) => {
+          this.assertLifecycle(lifecycle);
+          const stored = await job.operation.storage.atomic(
+            'rw',
+            ['diagrams', 'nodes', 'edges', 'owners', 'datasets', 'simulationModels', 'settings'],
+            async (scope) => {
+              const repo = new Repository(scope);
+              const before = await repo.getGraph(diagramId);
+              await job.check();
+              const prepared = await prepare(before, scope);
+              await job.check();
+              const saved = await repo.saveGraph(
+                prepared.graph,
+                before.diagram.version,
+                async () => job.check(),
+                authority,
+              );
+              scope.afterCommit(() => prepared.committed());
+              return saved;
+            },
+          );
+          await job.check();
+          this.versions.set(diagramId, stored.diagram.version);
+          const state = useEditor.getState();
+          if (state.graph?.diagram.id === diagramId && !this.pending.has(diagramId))
+            useEditor.setState({ graph: stored, status: 'saved', message: '' });
+          return stored;
+        },
+        undefined,
+        originating,
+      ),
+    );
+    this.queue = pending.then(
+      () => {},
+      () => {},
+    );
+    try {
+      return await pending;
+    } finally {
+      originating.dispose();
+    }
+  }
+  /** Internal authenticated initial projection; canonical IDs are never remapped. */
+  async installSharedGraph(
+    graph: Graph,
+    allowExisting: boolean,
+    authority: SharedProjectionAuthority,
+    preparePrivate?: (storage: WorkspaceStorage) => Promise<() => void>,
+  ) {
+    const lifecycle = this.lifecycle;
+    const originating = await this.repo.db.captureOperation();
+    const pending = this.queue.then(() =>
+      this.withOperation(
+        async (job) => {
+          this.assertLifecycle(lifecycle);
+          await this.requireStorageConsent(job.operation.storage);
+          const stored = await job.operation.storage.atomic(
+            'rw',
+            ['diagrams', 'nodes', 'edges', 'owners', 'datasets', 'simulationModels', 'settings'],
+            async (scope) => {
+              const current = await scope.graph(graph.diagram.id);
+              await job.check();
+              if (current && !allowExisting)
+                throw new StorageError(409, 'A local diagram already uses this shared ID.');
+              const finalize = await preparePrivate?.(scope);
+              const stored = await new Repository(scope).saveGraph(
+                graph,
+                current?.diagram.version ?? 0,
+                async () => job.check(),
+                authority,
+              );
+              if (finalize) scope.afterCommit(finalize);
+              return stored;
+            },
+          );
+          await job.check();
+          this.versions.set(stored.diagram.id, stored.diagram.version);
+          return stored;
+        },
+        undefined,
+        originating,
+      ),
+    );
+    this.queue = pending.then(
+      () => {},
+      () => {},
+    );
+    try {
+      const stored = await pending;
+      // refresh waits for the autosave tail: invoke it after this queued write
+      // resolves, never from inside the same tail. Retain the originating lease.
+      await this.withOperation((job) => this.refresh(job), undefined, originating);
+      return stored;
+    } finally {
+      originating.dispose();
     }
   }
   /** Retry failed autosaves with their original versions; never overwrite a conflict. */
@@ -789,6 +909,11 @@ export class Workspace {
     const current =
       state.graph?.diagram.id === id ? ownersFor(state.graph, state.owners) : undefined;
     if (committed) this.versions.set(id, committed.diagram.version);
+    if (committed && collaborationDocumentHooks.get(id)) {
+      if (!this.pending.has(id) && state.graph?.diagram.id === id)
+        useEditor.setState({ graph: committed, status: 'saved', message: '' });
+      return;
+    }
     if (
       saves.some((save) => save.graph && !cameraOnly(before, save.graph)) ||
       (current && !cameraOnly(before, current))
@@ -1060,6 +1185,23 @@ export class Workspace {
       assertMcpAccess(mcpAccess(latest?.value), path, method);
     }
     const endpoint = path.replace(/^\/api\/v1/, '');
+    const collaborationPath = endpoint.split(/[?#]/, 1)[0];
+    if (
+      collaborationPath.startsWith('/collaboration/') ||
+      /^\/diagrams\/[^/]+\/collaboration(?:\/disconnect)?$/.test(collaborationPath)
+    ) {
+      await authorize();
+      const { executeCollaborationCommand, collaborationCommandUrl } =
+        await import('../collaboration/api');
+      const command = collaborationCommandUrl(endpoint, data);
+      const diagramId = /^\/diagrams\/([^/]+)\/collaboration/.exec(command.pathname)?.[1];
+      if (diagramId) await job.repo.getGraph(diagramId);
+      await job.check();
+      const result = await executeCollaborationCommand(endpoint, method, data);
+      await job.check();
+      return result as T;
+    }
+
     if (endpoint.startsWith('/exports/')) {
       await authorize();
       if (endpoint === '/exports/diagrams' || endpoint.startsWith('/exports/diagrams/')) {

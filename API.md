@@ -1,5 +1,7 @@
 # Optional local REST and MCP integration
 
+API **0.7.0** adds optional realtime collaboration inspection to the existing local command surface. The bridge advertises `collaboration-v1`; a browser's `GET /collaboration/capabilities` separately reports whether the relay is configured. Room admission remains a human UI action.
+
 The public product website is `https://www.visualnerve.com/`. The encrypted editor has one production entry: `https://app.visualnerve.com/`. The former public `/app` paths redirect there without forwarding query data; `/app` on the app origin returns HTTP 404. IndexedDB is origin-bound: existing records on older origins are not deleted, moved or synchronized by routing changes. Local source-development builds retain a development-only `/app/` editor for test fixtures. API/MCP command paths remain the same; allow the exact `https://app.visualnerve.com` origin when starting the local bridge.
 
 IndexedDB in the browser is the only database. Start the static server with `--bridge`, open the app and explicitly choose Settings → MCP access → Read only or Read + write (default Off). REST and MCP forward commands over a local WebSocket to that browser. The browser applies IndexedDB transactions before replying. The Go server retains no application records; without a connected browser graph requests return 503.
@@ -53,7 +55,7 @@ Use `visual_nerve_request` for graph commands. HTTP documentation paths `/api/do
 
 ## Recover writes after a timeout
 
-Bridge version 0.6.0 advertises `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1` and `exchange-export-v1` through direct HTTP `GET /api/v1/health` (`/health` relative to the REST base) and its browser handshake; that transport response also lists supported MCP tools. These identify supported software, not workspace access. In contrast, `visual_nerve_request` with `{"path":"/health","method":"GET"}` reads semantic browser/IndexedDB health through the connected workspace. It does not expose bridge-only tools or capabilities, so their absence there does not mean that the bridge is outdated. Check the direct HTTP transport response when a newly documented bridge capability is unavailable. A current bridge and refreshed browser tab are needed for recoverable operations; older tabs remain one-shot and cannot reserve or recover receipts.
+Bridge version 0.7.0 advertises `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1` and `collaboration-v1` through direct HTTP `GET /api/v1/health` (`/health` relative to the REST base) and its browser handshake; that transport response also lists supported MCP tools. These identify supported software, not workspace access. In contrast, `visual_nerve_request` with `{"path":"/health","method":"GET"}` reads semantic browser/IndexedDB health through the connected workspace. It does not expose bridge-only tools or capabilities, so their absence there does not mean that the bridge is outdated. Check the direct HTTP transport response when a newly documented bridge capability is unavailable. A current bridge and refreshed browser tab are needed for recoverable operations; older tabs remain one-shot and cannot reserve or recover receipts.
 
 1. Reserve identity with `POST /operations` and exactly `{}` before sending a write. This requires an unlocked, connected browser with accepted storage and Read + write access.
 2. Read the returned `operationId`. It is an opaque server-issued token, distinct from graph UUIDs.
@@ -461,3 +463,44 @@ Result offsets and limits count **raw binary bytes**, separately from SVG's UTF-
 Independent exchange limits are 100,000 source nodes/500,000 source edges before snapshotting; 20,000 scoped nodes/100,000 internal edges; 5,000,000 exported text characters; 64 MiB output; and 16,777,216 coordinate/dimension units. Two jobs may run concurrently, with four terminal jobs/128 MiB retained results. Retention lasts 15 minutes from creation; worker execution has a 120-second deadline. Busy starts return `429 EXCHANGE_JOB_BUSY`. Limits fail explicitly without silent truncation; use a selection or separate diagrams.
 
 Jobs retain their original workspace session and MCP grant beyond the POST response. Lock, explicit grant changes, reload, workspace stop or app-cache clearing removes jobs/results; later unlock or grants cannot revive them. Locked requests return 423 before exposing content. Authorized requests for invalidated, expired, evicted or cancelled jobs return 404. The data stays in transient browser RAM, never IndexedDB or bridge disk. **Downloaded files remain readable**, even when source IndexedDB uses AES-256-GCM encryption. Review scope and text before sharing.
+
+## Optional realtime collaboration
+
+The browser remains authoritative for its encrypted workspace and ordinary graph endpoints. Optional collaboration joins a human-approved diagram session through a configured Cloudflare relay. Shared fields use Yjs; application messages use MLS RFC 9420 with owner-approved devices and owner-signed membership policy. **This integration is not independently audited.** It introduces network metadata and deliberately disclosed content recipients; it is not a regulatory certification or managed enterprise tenancy.
+
+| Command | Meaning | Access |
+| --- | --- | --- |
+| `GET /collaboration/capabilities` | Schema/protocol, `configured`, roles, allowed controls, privacy/recovery policy and independent limits | Read only |
+| `GET /collaboration/sessions` | Zero or one current local live-room session; not saved room history | Read only |
+| `GET /diagrams/{diagramId}/collaboration` | Current local diagram session, or `idle` if the diagram is not connected | Read only |
+| `POST /diagrams/{diagramId}/collaboration/disconnect` | Leave this browser's current session while preserving its local graph | Read + write |
+
+Inspection and disconnect accept no arguments or an empty object and reject query parameters, extra fields and invalid UUIDs with 422. Disconnect returns `{diagramId,status:"disconnected"}`; a diagram without a current matching room returns 404. Existing vault lock, grant and disconnected-browser errors apply. Documentation discovery remains available without a browser; semantic inspection requires its current content grant.
+
+```json
+{
+  "configured": true,
+  "status": "live",
+  "roomId": "opaque-public-room-id",
+  "diagramId": "00000000-0000-4000-8000-000000000001",
+  "selfDeviceId": "opaque-live-device-id",
+  "role": "editor",
+  "scope": { "shareMetadata": false, "shareOwners": false, "shareDatasets": false },
+  "participants": [
+    { "deviceId": "approved-device-id", "name": "Ada", "role": "viewer", "connected": true, "selectedNodeIds": [], "actor": "human" }
+  ],
+  "pendingJoinCount": 0
+}
+```
+
+`roomId` and participant device IDs are semantic identifiers, not admission capabilities. Optional `syncProgress` reports `{completed,total}`. Invitations, relay URLs, owner credentials, participant credentials, private keys, ratchet state and raw runtime error text are absent. There are **no** API/MCP endpoints for room creation, join, invitations, approval, role changes, key retrieval or vault unlock.
+
+Existing `PATCH`, graph replacement, bulk and node/edge CRUD edit the same authoritative graph. On an active shared document they require both owner/editor membership and a fresh local MCP write grant. A viewer cannot bypass their role using bulk, graph replacement or a local Read + write grant. The existing version and atomic validation contracts remain in effect. Deleting the active shared diagram, clearing/replacing the workspace, and editing/deleting a global owner profile referenced by the active diagram return 409 until the local room is left. Prepare global profiles before joining; graph-based owner assignment remains scope-controlled. UI/API edits are staged with the shared CRDT and encrypted private record before publication; invalid merged topology is reported as a conflict rather than silently pruned. Cameras, view filters, folders, favorites and local CAS timestamps remain per browser.
+
+The default shared scope includes graph text, relationships, styles, geometry, annotations, storyboard/presentation configuration and process assumptions. Explicit independent disclosure flags add metadata/code/SQL evidence, referenced owner profiles, or original CSV datasets and analysis configuration. Titles and descriptions can already reveal names, paths, SQL-derived labels or aggregated CSV values while those flags are false. Unreferenced owners remain private. Room associations, encoded CRDT state and bounded ciphertext queues use a dedicated encrypted IndexedDB namespace excluded from logical exports, native diagram JSON and all workspace backups; content-key rotation reencrypts that namespace too.
+
+MLS ratchets and private device signing keys are **live-memory only**. Temporary network reconnect preserves the same unlocked device and retransmits exact ciphertext. Reload, lock/unlock or restored backups require fresh device admission; owner reload requires a new room. Previously downloaded/copied content cannot be recalled by removal, role change, closing a room or password change. The Cloudflare relay receives ciphertext plus connection, room, public device/membership and timing metadata; authorized participants receive readable model content. It never receives the vault password or recovery key.
+
+`limits` discovers the enforced client budgets: 20,000 nodes, 100,000 edges, 20,000 referenced owners, 16 MiB shared JSON, 8 MiB per causal incremental delta, 32 MiB encoded CRDT state/full-state refresh, 1,000,000 field paths and depth 48. Application payload compression has independent bounds of 3 MiB compressed and 64 MiB decompressed; a diagram below the object limits can still exceed a sharing payload limit. Base vectors are limited to 64 KiB and 4,096 actors. The existing binary update envelope uses the canonical empty base vector `[0]` for a full-state refresh (up to 32 MiB); nonempty causal vectors keep the 8 MiB delta limit. Both forms undergo the same document, scope, topology, actor and owner-approved sender validation before their graph and private state are committed together. Each authenticated plaintext frame is at most 64 KiB; 32 KiB binary chunks assemble into at most 32 MiB, with eight active messages and a **global** 32 MiB received-buffer budget across senders. Pending assembly expires after 60 seconds; replay bookkeeping is bounded at 256 IDs. Limits reject explicitly rather than truncating the model. Transport membership and rate limits are additional relay boundaries.
+
+See [user collaboration guide](https://www.visualnerve.com/help/collaboration/) and [implementation/deployment plan](docs/REALTIME_COLLABORATION_PLAN.md).

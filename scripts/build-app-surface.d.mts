@@ -13,4 +13,5 @@ export function buildAppSurface(
   appOrigin: string;
   websiteOrigin: string;
   bridgePorts: number[];
+  collaborationRelayOrigin?: string;
 }>;

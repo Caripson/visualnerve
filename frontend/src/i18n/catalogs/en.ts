@@ -1,4 +1,6 @@
+import collaboration from '../collaboration/en';
 const catalog = {
+  ...collaboration,
   'dialogs.exportEditableFullHint':
     'Complete export includes all stored nodes, even those hidden by filters or views. Use a selection to limit shared content.',
   'dialogs.exportDrawioOption': 'draw.io · editable diagram',

@@ -1,7 +1,7 @@
 ---
 title: "Settings, local data and backups"
 summary: "Choose your app language and control appearance, imports, voices, storage and integration permissions in this browser."
-weight: 14
+weight: 15
 ---
 
 Open **Settings** on desktop or **Diagram actions → Settings** on a phone. Settings applies to this browser's workspace. Some preferences update immediately; import size, ZIP source-file count, voice selection and connection details have their own save buttons.
@@ -126,6 +126,8 @@ Rotation protects the current saved workspace with a new key. It cannot recall o
 After storage acceptance and a completed first visit, app files are cached for offline use. Diagrams remain in IndexedDB. App updates replace application files without intentionally resetting your diagrams.
 
 ### Apply an app update when you are ready
+
+An active collaboration lifecycle—including connecting or awaiting approval—blocks **Update now**. Leave/end the local room explicitly first; updating never silently discards live MLS keys. After reload a participant needs fresh approval, and an owner starts a new room.
 
 The app checks for new application files in the background every 15 minutes while open, and when you reconnect, return to the tab or focus the window. You can see **An update is ready** without first reloading the page. A check requests the app's own `sw.js` on the same origin; it does not upload diagrams, send analytics or require the workspace to be unlocked. Offline work continues when no connection or update is available.
 

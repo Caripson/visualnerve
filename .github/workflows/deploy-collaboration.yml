@@ -1,0 +1,51 @@
+name: Deploy collaboration relay
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: deploy-collaboration-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: collaboration-production
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PRODUCTION_APPROVED_SHA: ${{ vars.PRODUCTION_APPROVED_SHA }}
+    defaults:
+      run:
+        working-directory: collaboration-worker
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: collaboration-worker/package-lock.json
+      - name: Verify exact revision, reviewed staging and all relevant CI
+        run: node ../scripts/require-ci.mjs production
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - run: npm run test:setup
+      - run: npm run build
+      - name: Recheck deployment authorization before Cloudflare access
+        run: node ../scripts/require-ci.mjs production
+      - name: Manual Cloudflare deployment
+        run: npm run deploy:manual
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          COLLABORATION_WORKER_NAME: ${{ vars.COLLABORATION_WORKER_NAME }}
+          COLLABORATION_WORKER_URL: ${{ vars.COLLABORATION_WORKER_URL }}
+          COLLABORATION_ALLOWED_ORIGINS: ${{ vars.COLLABORATION_ALLOWED_ORIGINS }}

@@ -27,7 +27,7 @@ afterEach(() =>
   temporary.splice(0).forEach((path) => rmSync(path, { recursive: true, force: true })),
 );
 const sha = 'a'.repeat(40);
-function reviewed(bridgePorts = [4317]) {
+function reviewed(bridgePorts = [4317], collaborationRelayOrigin?: string) {
   const plan = prepareExistingAppResources(
     {
       ETag: 'EREVIEW1234567',
@@ -66,6 +66,7 @@ function reviewed(bridgePorts = [4317]) {
       responseHeadersPolicyId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
       viewerRequestFunctionArn: `arn:aws:cloudfront::${APP_ACCOUNT}:function/${APP_FUNCTION}`,
       bridgePorts,
+      collaborationRelayOrigin,
     },
   );
   const input = {
@@ -111,12 +112,24 @@ function reviewed(bridgePorts = [4317]) {
     appOrigin: 'https://app.visualnerve.com',
     websiteOrigin: 'https://www.visualnerve.com',
     bridgePorts,
-    responseHeaders: appResponseHeaders(bridgePorts),
+    ...(collaborationRelayOrigin ? { collaborationRelayOrigin } : {}),
+    responseHeaders: appResponseHeaders(bridgePorts, collaborationRelayOrigin),
   };
   return { input, manifest };
 }
 
 describe('isolated app read-only hosting release check', () => {
+  it('requires the actual response-header policy to match the explicit relay pin before publication', () => {
+    const origin = 'https://relay.example.com';
+    const { input, manifest } = reviewed([4317], origin);
+    expect(verifyAppHosting(input, manifest)).toHaveProperty('collaborationRelayOrigin', origin);
+    const deployedHeaders = input.headers.ResponseHeadersPolicy as Record<string, any>;
+    deployedHeaders.ResponseHeadersPolicyConfig.SecurityHeadersConfig.ContentSecurityPolicy.ContentSecurityPolicy =
+      appResponseHeaders()['Content-Security-Policy'];
+    expect(() => verifyAppHosting(input, manifest)).toThrow(
+      'all nine deployed app response headers',
+    );
+  });
   it('accepts the hardened existing-resource plan without changing any source configuration', () => {
     const { input, manifest } = reviewed([4317, 9443]);
     const original = structuredClone(input);

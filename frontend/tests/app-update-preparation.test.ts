@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { prepareAppUpdate } from '../src/updates/prepare-update';
 import { AppUpdateBlockedError } from '../src/updates/errors';
+import {
+  hasCollaborationUpdateTask,
+  registerCollaborationUpdateTask,
+} from '../src/collaboration/update-task';
 
 const mocks = vi.hoisted(() => ({
   status: 'unlocked',
@@ -19,6 +23,12 @@ const mocks = vi.hoisted(() => ({
   video: vi.fn(),
   simulations: vi.fn(),
 }));
+const endCollaborationTasks: Array<() => void> = [];
+const beginCollaboration = () => {
+  const release = registerCollaborationUpdateTask();
+  endCollaborationTasks.push(release);
+  return release;
+};
 vi.mock('../src/state/editor', () => ({ useEditor: { getState: () => mocks.state } }));
 vi.mock('../src/storage/runtime', () => ({
   vaultSession: { getSnapshot: () => ({ status: mocks.status }) },
@@ -56,7 +66,41 @@ beforeEach(() => {
   mocks.video.mockReturnValue(false);
   mocks.simulations.mockResolvedValue(undefined);
 });
-afterEach(() => document.body.replaceChildren());
+afterEach(() => {
+  for (const release of endCollaborationTasks.splice(0)) release();
+  document.body.replaceChildren();
+});
+
+it('does not silently discard connecting, approval, offline or live collaboration keys', async () => {
+  const release = beginCollaboration();
+  await expect(prepareAppUpdate()).rejects.toMatchObject({ kind: 'finishTask' });
+  expect(mocks.capture).not.toHaveBeenCalled();
+  expect(mocks.preference).not.toHaveBeenCalled();
+  release();
+  await prepareAppUpdate();
+  expect(mocks.settled).toHaveBeenCalledTimes(2);
+});
+
+it('requires all registered room lifecycles to end and permits idempotent cleanup', () => {
+  const first = beginCollaboration(),
+    second = beginCollaboration();
+  expect(hasCollaborationUpdateTask()).toBe(true);
+  first();
+  first();
+  expect(hasCollaborationUpdateTask()).toBe(true);
+  second();
+  expect(hasCollaborationUpdateTask()).toBe(false);
+});
+
+it('rechecks collaboration begun while local saves await, before lowering the agent grant', async () => {
+  mocks.state.mcpAccess = 'write';
+  mocks.settled.mockImplementationOnce(async () => {
+    beginCollaboration();
+  });
+  await expect(prepareAppUpdate()).rejects.toMatchObject({ kind: 'finishTask' });
+  expect(mocks.preference).not.toHaveBeenCalled();
+  expect(mocks.settled).toHaveBeenCalledTimes(1);
+});
 
 it('a locked tab can update without opening or authorizing private storage', async () => {
   mocks.status = 'locked';

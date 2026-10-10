@@ -1,0 +1,2 @@
+# Preserve retained upstream licenses byte-for-byte, including original line endings.
+collaboration-crypto/licenses/** -text -whitespace

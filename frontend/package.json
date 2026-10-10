@@ -31,6 +31,7 @@
     "saxes": "6.0.0",
     "swagger-ui-dist": "5.33.1",
     "three": "0.186.1",
+    "yjs": "13.6.33",
     "zustand": "^5.0.8"
   },
   "devDependencies": {

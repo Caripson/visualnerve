@@ -167,7 +167,10 @@ export async function buildAppSurface(
           entrySha256: createHash("sha256")
             .update(readFileSync(resolve(output, "editor/app.js")))
             .digest("hex"),
-          responseHeaders: appResponseHeaders(options.bridgePorts),
+          responseHeaders: appResponseHeaders(
+            options.bridgePorts,
+            options.collaborationRelayOrigin,
+          ),
         },
         null,
         2,
@@ -220,6 +223,9 @@ if (isMain()) {
         : {}),
       ...(process.env.APP_BRIDGE_PORTS
         ? { bridgePorts: process.env.APP_BRIDGE_PORTS.split(",").map(Number) }
+        : {}),
+      ...(process.env.COLLABORATION_RELAY_ORIGIN
+        ? { collaborationRelayOrigin: process.env.COLLABORATION_RELAY_ORIGIN }
         : {}),
     },
   );

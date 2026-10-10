@@ -2,7 +2,7 @@
 
 Visual Nerve's original code is MPL-2.0; see [LICENSE](LICENSE), [NOTICE](NOTICE) and [source-distribution requirements](docs/LICENSING.md). This inventory covers third-party components, whose terms remain independent.
 
-Versions are locked in frontend/package-lock.json and backend/go.mod/go.sum. The complete direct/transitive inventory, including development and platform-specific optional packages, is [docs/third-party-licenses.json](docs/third-party-licenses.json). Regenerate with `node scripts/licenses.mjs /path/to/go` after installing dependencies. Production builds copy available upstream license/notice files to `public/licenses/`. The optional Go communication bridge uses coder/websocket (ISC) and has no persistent storage.
+Versions are locked in frontend/package-lock.json, collaboration-worker/package-lock.json, collaboration-crypto/Cargo.lock and backend/go.mod/go.sum. The complete direct/transitive inventory, including development and platform-specific optional packages, is [docs/third-party-licenses.json](docs/third-party-licenses.json). Regenerate with `node scripts/licenses.mjs /path/to/go` after installing dependencies. Production builds copy available upstream license/notice files to `public/licenses/`. The optional Go communication bridge uses coder/websocket (ISC) and has no persistent storage. Optional realtime collaboration loads a separate OpenMLS 0.9.1 Rust/WASM worker using RFC 9420; its adapter source, pinned toolchain and retained Cargo notices are in collaboration-crypto/. This adapter has not been independently audited.
 
 | Direct dependency | Version | License | Role |
 | --- | --- | --- | --- |
@@ -41,7 +41,14 @@ Versions are locked in frontend/package-lock.json and backend/go.mod/go.sum. The
 | typescript | 5.9.3 | Apache-2.0 | direct development |
 | vite | 7.3.6 | MIT | direct development |
 | vitest | 4.1.11 | MIT | direct development |
+| yjs | 13.6.33 | MIT | direct runtime |
 | zustand | 5.0.15 | MIT | direct runtime |
+| @cloudflare/vitest-plugin | 1.4.0 | MIT | direct development |
+| @cloudflare/workers-types | 5.20261010.1 | MIT OR Apache-2.0 | direct development |
+| jsonc-parser | 3.3.1 | MIT | direct development |
+| typescript | 5.9.3 | Apache-2.0 | direct development |
+| vitest | 4.1.11 | MIT | direct development |
+| wrangler | 4.149.0 | MIT OR Apache-2.0 | direct development |
 
 Hugo (Apache-2.0), Go (BSD-3-Clause), Node.js (MIT with bundled third-party notices) and npm (Artistic-2.0) are build/install tools, not browser runtime services. ELK.js is a required layout dependency under EPL-2.0 (with its stated secondary-license conditions); we do not modify its source. The optional local neural voice engine bundles eSpeak-ng under GPL-3.0-or-later; its corresponding-source and build links are in [docs/SPEECH.md](docs/SPEECH.md) and the distributed license notices. Most application dependencies use MIT, BSD or Apache licenses. Lucide icons use ISC, with the upstream Feather notices retained.
 

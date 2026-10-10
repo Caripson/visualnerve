@@ -1,5 +1,39 @@
 # MCP processes, understanding and diagram presentations
 
+## Optional approved collaboration
+
+Read `limits` before assuming an existing diagram can be shared: object, JSON, CRDT-state and update budgets are independent. Incremental causal updates are limited to 8 MiB; full-state refreshes use the canonical empty base vector `[0]` and the 32 MiB CRDT-state limit, with the same role, sharing-scope and semantic validation. Compressed application payloads are limited to 3 MiB and decompressed payloads to 64 MiB; content can exceed those limits even when its node count fits. Exceeded limits reject the operation without silently omitting content.
+
+Bridge **0.7.0** adds `collaboration-v1` without changing the two MCP tools. Discover the semantic controls first:
+
+```json
+{ "path": "/collaboration/capabilities", "method": "GET" }
+```
+
+`configured:false` means the optional relay is unavailable. Software capability discovery does not configure a relay or approve a participant. A human creates/joins a room and approves devices in the browser's Collaboration panel; agents cannot issue invitations, approve devices, change roles, retrieve credentials or unlock the vault.
+
+```json
+{ "path": "/collaboration/sessions", "method": "GET" }
+```
+
+```json
+{ "path": "/diagrams/00000000-0000-4000-8000-000000000001/collaboration", "method": "GET" }
+```
+
+These report only the current local room: status, scope, participant deviceId/name/role/connected/selectedNodeIds/actor, pending join count and optional sync progress. They omit invitation URLs, relay URLs, credentials, private keys, MLS state and raw errors. Normal graph CRUD remains the editing interface. Shared writes require both owner/editor room membership and the current local MCP write grant; a viewer's Read + write grant cannot bypass their role. Delete/clear/replace operations affecting the active shared diagram and edits/deletion of its referenced global owner profiles return 409 until the room is left; prepare global owner profiles before joining.
+
+To leave only this browser's session while retaining its local graph, use Read + write and:
+
+```json
+{ "path": "/diagrams/00000000-0000-4000-8000-000000000001/collaboration/disconnect", "method": "POST", "data": {} }
+```
+
+No query parameters or nonempty bodies are accepted. Existing locked-workspace and grant checks apply. A missing current session returns 404 on disconnect. If a disconnect response is uncertain, use the existing operation receipt workflow; never blindly repeat a write with a new ID.
+
+Shared graph fields use Yjs and MLS RFC 9420 application encryption with owner-approved devices and owner-signed policy. **This integration has not been independently audited.** It requires a configured relay and discloses connection/room/device/timing metadata to it. Default drawing text, relationships, styles and process assumptions are shared; metadata/source evidence, referenced owner profiles and raw CSV datasets require separate human choices. Written labels can still be sensitive with those flags off. Private view/camera preferences remain local, and encrypted CRDT/room records are excluded from native exports and workspace backups.
+
+MLS private signing keys and ratchets remain live-memory only. Reconnect retains the same unlocked live device and exact ciphertext; reload/lock/unlock requires fresh admission, and owner reload requires a new room. Member removal cannot recall content already received. See [the complete collaboration contract](../API.md#optional-realtime-collaboration) and [the user guide](https://www.visualnerve.com/help/collaboration/).
+
 The app interface offers eight languages with English as default; see
 [App interface languages](UI_LANGUAGES.md). This display-only choice does not
 change API/MCP fields, enum values, schemas, diagnostics, source data, simulation
@@ -42,7 +76,7 @@ On the isolated encrypted app, the deployed Content Security Policy also restric
 
 ## Recover a write without creating duplicates
 
-Use a current bridge and refreshed app tab. Bridge version 0.6.0 reports `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1` and `exchange-export-v1` in health and its browser handshake, together with supported tool names. This reports software support; it does not reveal workspace data or grant access. Older browser tabs remain one-shot and cannot reserve or recover operation receipts.
+Use a current bridge and refreshed app tab. Bridge version 0.7.0 reports `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1` and `collaboration-v1` in health and its browser handshake, together with supported tool names. This reports software support; it does not reveal workspace data or grant access. Older browser tabs remain one-shot and cannot reserve or recover operation receipts.
 
 Read bridge software health through direct HTTP `GET /api/v1/health` (`/health` relative to the REST base). MCP `visual_nerve_request` with `path:"/health"` instead reads the connected browser's semantic IndexedDB health, without bridge-only tool/capability fields. Their absence in that browser response is not evidence of an outdated bridge.
 
@@ -93,7 +127,7 @@ The synchronous `/export` route accepts source graphs with at most 100 nodes and
 
 ## Export an editable Draw.io diagram
 
-Bridge 0.6.0 advertises `exchange-export-v1`. `GET /exports/capabilities` keeps all SVG fields and adds `diagrams`: the drawio format, scopes, independent budgets, byte chunk units and validation metadata. Use the existing request tool:
+Bridge 0.7.0 advertises `exchange-export-v1`. `GET /exports/capabilities` keeps all SVG fields and adds `diagrams`: the drawio format, scopes, independent budgets, byte chunk units and validation metadata. Use the existing request tool:
 
 ```json
 {"path":"/exports/diagrams","method":"POST","data":{"diagramId":"DIAGRAM_UUID","format":"drawio","scope":"complete"}}
@@ -248,7 +282,7 @@ Explicit authorized AI/API requests and ordinary exports expose readable content
 
 ## Parallel cases and background exports
 
-Bridge 0.6.0 bundles discoverable fork/join and asynchronous SVG contracts. The live browser must also be current. Inspect `GET /simulation/capabilities` and `GET /exports/capabilities`; transport health lists software, not grants. All supported MCP clients use the same `visual_nerve_request` tool and semantic endpoints.
+Bridge 0.7.0 bundles discoverable fork/join and asynchronous SVG contracts. The live browser must also be current. Inspect `GET /simulation/capabilities` and `GET /exports/capabilities`; transport health lists software, not grants. All supported MCP clients use the same `visual_nerve_request` tool and semantic endpoints.
 
 Create complete paired `fork`/`join` regions atomically through a versioned full-model PUT. All fork outgoing edges are mandatory tasks for one original case; a join waits for that case’s tasks, with one revenue outcome and actual shared resource allocations. UI, animated/MAX runs, API/MCP and replay share `SimulationEngine`. See [parallel fields and state](../API.md#parallel-processes-through-the-api).
 

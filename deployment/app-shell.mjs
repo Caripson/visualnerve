@@ -24,7 +24,10 @@ export function appHeader(brand, options, workspace = false) {
 
 export function appDocument(title, path, body, brand, options, assets = {}) {
   // Framing protection requires the HTTP header; browsers ignore frame-ancestors in a meta policy.
-  const metaCsp = appContentSecurityPolicy(options.bridgePorts)
+  const metaCsp = appContentSecurityPolicy(
+    options.bridgePorts,
+    options.collaborationRelayOrigin,
+  )
     .split("; ")
     .filter((directive) => !directive.startsWith("frame-ancestors "))
     .join("; ");
@@ -34,7 +37,10 @@ export function appDocument(title, path, body, brand, options, assets = {}) {
     ...(assets.styles ?? []),
   ];
   const scripts = ["/appearance.js", ...(assets.scripts ?? [])];
-  return `<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="robots" content="noindex, nofollow"><meta name="referrer" content="no-referrer"><meta name="visualnerve-surface" content="isolated-app"><meta name="visualnerve-vault-required" content="true"><meta name="visualnerve-app-origin" content="${escape(options.appOrigin)}"><meta http-equiv="Content-Security-Policy" content="${escape(metaCsp)}"><title>${escape(title)} · Visual Nerve</title><link rel="canonical" href="${escape(new URL(path, options.appOrigin).href)}"><link rel="icon" href="/site/mark.svg">${styles.map((path) => `<link rel="stylesheet" href="${path}">`).join("")}${scripts.map((path) => `<script src="${path}"${path === "/appearance.js" ? "" : " defer"}></script>`).join("")}${(assets.modules ?? []).map((path) => `<script type="module" src="${path}"></script>`).join("")}</head><body${assets.bodyClass ? ` class="${escape(assets.bodyClass)}"` : ""}>${appHeader(brand, options, assets.workspaceChrome === true)}${body}</body></html>\n`;
+  const relayMeta = options.collaborationRelayOrigin
+    ? `<meta name="visual-nerve-collaboration-relay" content="${escape(options.collaborationRelayOrigin)}">`
+    : "";
+  return `<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="robots" content="noindex, nofollow"><meta name="referrer" content="no-referrer"><meta name="visualnerve-surface" content="isolated-app"><meta name="visualnerve-vault-required" content="true"><meta name="visualnerve-app-origin" content="${escape(options.appOrigin)}">${relayMeta}<meta http-equiv="Content-Security-Policy" content="${escape(metaCsp)}"><title>${escape(title)} · Visual Nerve</title><link rel="canonical" href="${escape(new URL(path, options.appOrigin).href)}"><link rel="icon" href="/site/mark.svg">${styles.map((path) => `<link rel="stylesheet" href="${path}">`).join("")}${scripts.map((path) => `<script src="${path}"${path === "/appearance.js" ? "" : " defer"}></script>`).join("")}${(assets.modules ?? []).map((path) => `<script type="module" src="${path}"></script>`).join("")}</head><body${assets.bodyClass ? ` class="${escape(assets.bodyClass)}"` : ""}>${appHeader(brand, options, assets.workspaceChrome === true)}${body}</body></html>\n`;
 }
 
 export function rewriteAppLinks(html, options) {

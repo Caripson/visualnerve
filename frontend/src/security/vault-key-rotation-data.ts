@@ -9,6 +9,7 @@ import {
   parseWorkspaceIndexProjection,
   workspaceEqualityPartitions,
   workspaceRecordId,
+  type VaultIndexProjection,
 } from './vault-indexes';
 import {
   VAULT_ROTATION_MAX_RECORDS,
@@ -48,7 +49,9 @@ export async function rewriteVaultRecords(
   const budget = { bytes: 0, values: 0 };
   let remaining = VAULT_ROTATION_MAX_RECORDS,
     ciphertextBytes = 0;
-  for (const store of workspaceStoreNames) {
+  // Collaboration is private (outside logical exports) but uses the same vault
+  // content key. A rotation must neither drop it nor leave old ciphertext behind.
+  for (const store of [...workspaceStoreNames, 'collaboration'] as const) {
     await check();
     const physical = await storage.select(lease, { store }, remaining);
     remaining -= physical.length;
@@ -65,11 +68,19 @@ export async function rewriteVaultRecords(
         return ids.map((id) => values.get(id));
       });
       await check();
-      if (workspaceRecordId(store, original.value) !== original.logicalId) integrity();
-      const projection = projectWorkspaceIndexes(store, original.value);
-      parseWorkspaceIndexProjection(store, original.projection, original.logicalId);
-      if (JSON.stringify(projection) !== JSON.stringify(original.projection)) integrity();
-      const partitions = workspaceEqualityPartitions(store, projection);
+      const projection =
+        store === 'collaboration'
+          ? original.projection
+          : projectWorkspaceIndexes(store, original.value);
+      if (store !== 'collaboration') {
+        if (workspaceRecordId(store, original.value) !== original.logicalId) integrity();
+        parseWorkspaceIndexProjection(store, original.projection, original.logicalId);
+        if (JSON.stringify(projection) !== JSON.stringify(original.projection)) integrity();
+      }
+      const partitions =
+        store === 'collaboration'
+          ? []
+          : workspaceEqualityPartitions(store, projection as VaultIndexProjection);
       const expectedTokens = [
         ...new Set([
           rootToken,
@@ -99,7 +110,8 @@ export async function rewriteVaultRecords(
         partitions,
         {
           projection,
-          payloadFields: workspacePayloadFields[store],
+          payloadFields:
+            store === 'collaboration' ? ['crdtState', 'pending'] : workspacePayloadFields[store],
         },
       );
       await check();

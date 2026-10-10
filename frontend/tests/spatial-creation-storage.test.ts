@@ -215,7 +215,7 @@ describe.each(['indexeddb', 'encrypted'] as const)(
     it('reports the current semantic API version consistently without impersonating bridge health', async () => {
       const health = await repo.request<Record<string, unknown>>('/health');
       const capabilities = await repo.request<Record<string, unknown>>('/simulation/capabilities');
-      expect(health).toMatchObject({ status: 'ok', storage: 'indexeddb', version: '0.6.0' });
+      expect(health).toMatchObject({ status: 'ok', storage: 'indexeddb', version: '0.7.0' });
       expect(capabilities.apiVersion).toBe(health.version);
       expect(health).not.toHaveProperty('bridge');
       expect(health).not.toHaveProperty('tools');

@@ -1,6 +1,8 @@
+import collaboration from '../collaboration/sv';
 import type { Catalog } from '../types';
 
 const catalog = {
+  ...collaboration,
   'dialogs.exportEditableFullHint':
     'Hela diagrammet omfattar alla sparade noder, även de som döljs av filter eller vyer. Välj specifika noder för att begränsa innehållet du delar.',
   'dialogs.exportDrawioOption': 'draw.io · redigerbart diagram',

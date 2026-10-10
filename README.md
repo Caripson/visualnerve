@@ -18,6 +18,8 @@ The screenshot shows the actual desktop workspace with illustrative data. Light 
 
 ## What you can do
 
+Optional [realtime collaboration](https://www.visualnerve.com/help/collaboration/) shares one diagram with owner-approved devices when a Cloudflare relay is configured. Shared messages use MLS encryption; local room/CRDT records remain in the encrypted vault and are excluded from backups/exports. The integration is not independently audited. Room creation, disclosure choices and device approval remain human actions; API/MCP can inspect presence and edit through the existing graph commands when both membership and the local grant permit it. Live private MLS keys are not restored after reload; fresh admission is required, and owner reload requires a new room.
+
 | Workflow                 | Capabilities                                                                                                                          |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
 | Map a system             | Mind maps, flowcharts, timelines, groups, directed relationships, owners, status and a saved pen layer.                               |
@@ -32,7 +34,7 @@ The screenshot shows the actual desktop workspace with illustrative data. Light 
 
 Code/SQL imports analyze structure without executing the source. Import previews report unsupported or uncertain constructs. File imports default to 50 MiB; larger configured imports are experimental. ZIP projects default to 500 analyzed source files, with a separate browser-local setting up to 10,000. See the [import guides](docs/CODE_IMPORT.md) for the byte, count and time limits.
 
-## Your data stays in your browser
+## Local storage and deliberate sharing
 
 The editor stores diagrams, CSV sources, saved history and simulation archives in IndexedDB. No account or cloud database is required. Accept local browser storage and offline app caching before opening the workspace. After an initial accepted online visit, the cached editor can reload and save offline.
 
@@ -40,7 +42,7 @@ The app checks for updates in the background and displays **An update is ready**
 
 Each browser profile and exact origin owns a separate workspace: `localhost` and `127.0.0.1`, or staging and another host, do not share data. Clearing or losing browser storage can remove your work. Use **Settings → Data & Privacy → Export all data** regularly and before changing browser, device or origin; restore that backup at the destination. Per-diagram JSON is lossless for the current graph, while full backups also retain saved history and simulation archives.
 
-Storage consent, MCP grants, credentials and the two browser-local import limits are excluded from backups. Sharing an export, an MCP response with an AI client, or a reviewed Lovable brief is an explicit action that can disclose its contents. See [privacy](docs/PRIVACY.md), [storage](docs/STORAGE.md) and [security](SECURITY.md).
+Storage consent, MCP grants, credentials, private collaboration state and the two browser-local import limits are excluded from backups. Sharing an export, an MCP response with an AI client, or a reviewed Lovable brief is an explicit action that can disclose its contents. See [privacy](docs/PRIVACY.md), [storage](docs/STORAGE.md) and [security](SECURITY.md).
 
 ## Run locally
 
@@ -73,7 +75,7 @@ Keep the intended browser workspace open and select **Settings → MCP / API int
 
 For MCP, call `visual_nerve_api_docs` before `visual_nerve_request`; the guide and OpenAPI contract are bundled. A separately hosted app may need an exact allowed origin, trusted local TLS and browser local-network permission. Read [connection setup](docs/MCP.md) and the [API contract](API.md) before configuring that connection.
 
-Check bridge health and the client's discovered tools before workspace commands. Version 0.6.0 advertises `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1` and `exchange-export-v1`; updating the website does not replace a running local binary. The documentation tool accepts `document: "endpoint"`, an exact OpenAPI template `path` and HTTP `method` for a compact complete contract. For retry-safe writes, reserve an opaque ID with `POST /operations`, use it on the write and inspect `GET /operations/{operationId}` after an uncertain response. A timeout may occur after a commit; never repeat a creation under a new ID without reconciling saved state. See [operation recovery](hugo/content/help/api-mcp.md#recover-an-uncertain-write-without-creating-it-twice).
+Check bridge health and the client's discovered tools before workspace commands. Version 0.7.0 advertises `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1` and `collaboration-v1`; updating the website does not replace a running local binary. The documentation tool accepts `document: "endpoint"`, an exact OpenAPI template `path` and HTTP `method` for a compact complete contract. For retry-safe writes, reserve an opaque ID with `POST /operations`, use it on the write and inspect `GET /operations/{operationId}` after an uncertain response. A timeout may occur after a commit; never repeat a creation under a new ID without reconciling saved state. See [operation recovery](hugo/content/help/api-mcp.md#recover-an-uncertain-write-without-creating-it-twice).
 
 The integration follows standard MCP rather than a Codex-specific protocol. Codex, Cursor, Claude Code and Gemini CLI can use the HTTP endpoint. A local stdio adapter supports clients such as Claude Desktop: configure an absolute path to `visual-nerve` with `args: ["--mcp-stdio"]` while the shared bridge is already running. Cloud connectors cannot reach a laptop's loopback address. See the [client configuration guide](hugo/content/help/api-mcp.md) for complete examples.
 

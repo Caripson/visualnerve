@@ -1,7 +1,7 @@
 import { useI18n } from './i18n';
 import { PresentationFeature } from './presentation/PresentationFeature';
 import { SimulationFeature } from './simulation/SimulationFeature';
-import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { appUpdates } from './updates/runtime';
 import { ReactFlowProvider } from '@xyflow/react';
 import { ArrowUpRight, GitBranch, Plus, X, Menu, Database, Code2 } from 'lucide-react';
@@ -94,7 +94,13 @@ const DataQualityDialog = lazy(() =>
     default: module.DataQualityDialog,
   })),
 );
+const CollaborationFeature = lazy(() =>
+  import('./collaboration/CollaborationFeature').then((module) => ({
+    default: module.CollaborationFeature,
+  })),
+);
 export type DialogName =
+  | 'collaboration'
   | 'new'
   | 'export'
   | 'lovable'
@@ -134,6 +140,20 @@ export function App() {
     return value;
   };
   const [dialog, setDialog] = useState<DialogName | null>(null);
+  const [initialInvitation] = useState(() => {
+    if (!location.hash.startsWith('#collaboration=')) return undefined;
+    const invitation = location.href;
+    history.replaceState(history.state, '', location.pathname + location.search);
+    return invitation;
+  });
+  const [collaborationLoaded, setCollaborationLoaded] = useState(!!initialInvitation);
+  useEffect(() => {
+    if (initialInvitation) setDialog('collaboration');
+  }, [initialInvitation]);
+
+  useEffect(() => {
+    if (dialog === 'collaboration') setCollaborationLoaded(true);
+  }, [dialog]);
   const [ready, setReady] = useState(false);
   const [backup, setBackup] = useState<WorkspaceBackup | null>(null);
   const { readBackup, backupDialog } = useWorkspaceBackupReader();
@@ -783,6 +803,7 @@ export function App() {
               </p>
               <LocalBadge onClick={() => open('settings')} />
               <div className="welcome-actions">
+                <button onClick={() => open('collaboration')}>{t('collaboration.open')}</button>
                 <button className="primary" onClick={() => open('new')}>
                   <Plus size={16} />
                   {t('app.createDiagram')}
@@ -895,6 +916,22 @@ export function App() {
           if (active.current && file.current) file.current.value = '';
         }}
       />
+      {collaborationLoaded && (
+        <LazyDialogBoundary
+          active={dialog === 'collaboration'}
+          close={close}
+          beforeReload={() => workspace.settled()}
+        >
+          <Suspense fallback={null}>
+            <CollaborationFeature
+              open={dialog === 'collaboration'}
+              close={close}
+              onOpen={() => setDialog('collaboration')}
+              initialInvitation={initialInvitation}
+            />
+          </Suspense>
+        </LazyDialogBoundary>
+      )}
       <LazyDialogBoundary
         key={`${dialog ?? ''}:${diagramFile?.name ?? ''}:${csvDraft?.dataset.id ?? ''}`}
         close={() => {

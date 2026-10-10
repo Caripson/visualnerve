@@ -7,6 +7,7 @@ import { OfflineAssetPlan } from '../../scripts/offline-asset-plan.mjs';
 const origin = 'https://app.visualnerve.com';
 const shell = 'visual-nerve-app-shell-012345abcdef';
 const lazyPath = '/editor/speech/piper_phonemize.wasm';
+const mlsPath = '/editor/assets/mls_bg-testhash.wasm';
 const noticePath = '/licenses/example-LICENSE';
 type WorkerEvent = {
   request?: Request;
@@ -393,6 +394,23 @@ it('installs the app core before fetching a notice on demand and reuses its nati
   expect(fetcher).toHaveBeenCalledTimes(afterFirst);
   expect(runtime.put).toHaveBeenCalledTimes(plan.assets.length + 1);
   expect(runtime.request('/licenses/unknown-LICENSE').response).toBeUndefined();
+});
+
+it('fetches the optional MLS module only on demand, preserving encrypted-room runtime laziness', async () => {
+  const plan = new OfflineAssetPlan({ surface: 'app', assets: ['/editor/app.js', mlsPath] });
+  const fetcher = vi.fn<typeof fetch>(async () => new Response('checked static module bytes'));
+  const runtime = worker(fetcher, plan.assets, plan.lazyAssets);
+  await runtime.install();
+  expect(fetcher.mock.calls.map(([path]) => path)).toEqual(['/editor/app.js']);
+  expect(runtime.cached(mlsPath)).toBeUndefined();
+  const first = runtime.request(mlsPath);
+  expect(await (await first.response).text()).toBe('checked static module bytes');
+  await first.settled;
+  const calls = fetcher.mock.calls.length;
+  const second = runtime.request(mlsPath);
+  expect(await (await second.response).text()).toBe('checked static module bytes');
+  await second.settled;
+  expect(fetcher).toHaveBeenCalledTimes(calls);
 });
 
 it('returns a failed lazy notice response without caching it', async () => {

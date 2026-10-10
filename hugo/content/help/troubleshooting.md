@@ -1,7 +1,7 @@
 ---
 title: "Troubleshooting and limits"
 summary: "Find the cause of missing work, import errors, slow playback or integration failures."
-weight: 16
+weight: 17
 ---
 
 Start with the message shown by the tool. Keep a tab with unsaved changes open, and export a backup before deliberately clearing or replacing data. Most problems fall into the following groups.

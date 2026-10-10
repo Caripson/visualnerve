@@ -41,11 +41,50 @@ export function appSurfaceOptions(options = {}) {
     throw new Error(
       "Choose one to four distinct local bridge ports between 1 and 65535.",
     );
-  return { appOrigin, websiteOrigin, bridgePorts: [...bridgePorts] };
+  const collaborationRelayOrigin = options.collaborationRelayOrigin;
+  if (collaborationRelayOrigin !== undefined) {
+    let relay;
+    try {
+      relay = new URL(collaborationRelayOrigin);
+    } catch {
+      /* rejected below */
+    }
+    if (
+      typeof collaborationRelayOrigin !== "string" ||
+      !relay ||
+      relay.protocol !== "https:" ||
+      relay.origin !== collaborationRelayOrigin ||
+      relay.username ||
+      relay.password ||
+      relay.search ||
+      relay.hash ||
+      relay.pathname !== "/" ||
+      !/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(
+        relay.hostname,
+      )
+    )
+      throw new Error(
+        "The collaboration relay must be an exact HTTPS origin without paths, credentials, wildcards or whitespace.",
+      );
+  }
+  return {
+    appOrigin,
+    websiteOrigin,
+    bridgePorts: [...bridgePorts],
+    ...(collaborationRelayOrigin !== undefined
+      ? { collaborationRelayOrigin }
+      : {}),
+  };
 }
 
-export function appContentSecurityPolicy(bridgePorts = [4317]) {
-  const { bridgePorts: ports } = appSurfaceOptions({ bridgePorts });
+export function appContentSecurityPolicy(
+  bridgePorts = [4317],
+  collaborationRelayOrigin,
+) {
+  const { bridgePorts: ports } = appSurfaceOptions({
+    bridgePorts,
+    collaborationRelayOrigin,
+  });
   const bridges = ports.flatMap((port) =>
     ["ws", "wss"].flatMap((scheme) =>
       ["127.0.0.1", "localhost"].map(
@@ -53,6 +92,9 @@ export function appContentSecurityPolicy(bridgePorts = [4317]) {
       ),
     ),
   );
+  const relay = collaborationRelayOrigin
+    ? ` ${collaborationRelayOrigin} ${collaborationRelayOrigin.replace(/^https:/, "wss:")}`
+    : "";
   return [
     "default-src 'none'",
     "base-uri 'none'",
@@ -68,13 +110,19 @@ export function appContentSecurityPolicy(bridgePorts = [4317]) {
     "media-src 'self' blob:",
     "worker-src 'self' blob:",
     // Voice requests are additionally pinned to exact URLs and checked by SHA-256 in the runtime.
-    `connect-src 'self' ${bridges.join(" ")} https://huggingface.co/rhasspy/piper-voices/ https://us.aws.cdn.hf.co`,
+    `connect-src 'self' ${bridges.join(" ")} https://huggingface.co/rhasspy/piper-voices/ https://us.aws.cdn.hf.co${relay}`,
   ].join("; ");
 }
 
-export function appResponseHeaders(bridgePorts = [4317]) {
+export function appResponseHeaders(
+  bridgePorts = [4317],
+  collaborationRelayOrigin,
+) {
   return {
-    "Content-Security-Policy": appContentSecurityPolicy(bridgePorts),
+    "Content-Security-Policy": appContentSecurityPolicy(
+      bridgePorts,
+      collaborationRelayOrigin,
+    ),
     "Strict-Transport-Security": "max-age=31536000",
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",

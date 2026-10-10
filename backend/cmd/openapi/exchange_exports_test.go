@@ -86,7 +86,7 @@ func TestGeneratedDiagramExchangePathsDiscoverCompleteScopedContracts(t *testing
 	if err := json.Unmarshal(data, &document); err != nil {
 		t.Fatal(err)
 	}
-	if document["info"].(object)["version"] != "0.6.0" {
+	if document["info"].(object)["version"] != "0.7.0" {
 		t.Fatal("additive export release must identify current API version")
 	}
 	paths := document["paths"].(object)

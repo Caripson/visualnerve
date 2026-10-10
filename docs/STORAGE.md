@@ -93,3 +93,11 @@ repopulating cleared resources. This does not clear the browser's entire HTTP
 cache, other websites or downloaded exports.
 
 Named local history and automatic safety checkpoints retain removed content until the versions or diagram are explicitly deleted. Unchanged CSV rows are deduplicated. Full backups include history and remap historical references; single-diagram export includes current content only. Restore keeps current shared owner profiles and exact saved positions. See [understanding workflows](UNDERSTANDING.md) for quotas and comparison bounds.
+
+## Private collaboration namespace
+
+The encrypted physical vault permits a dedicated `collaboration` namespace, while logical workspace tables, graph/settings APIs, native exports and all workspace backups exclude it. It stores bounded validated Yjs state, public owner-key pins, room associations and already-encrypted ciphertext queue entries. It never stores MLS ratchets or device private signing keys. Ordinary content-key rotation authenticates and reencrypts these records together with the workspace.
+
+Shared graph mutations and private CRDT/outbox state use the same original vault journal and durable revision fence. A failed validation/save rolls back staged records; publication occurs only after commit. No independent nested journal is acquired from a repository graph transaction. The original session remains revocable while queued or executing; later unlock does not revive a write.
+
+Temporary network reconnect preserves the same unlocked live MLS device. Reload or lock/unlock creates a fresh device requiring owner approval; owner reload requires a new room. Saved room associations are not admission authority. Local cameras/view filters, folders/favorites and version timestamps remain local; referenced owners, metadata/source evidence and raw datasets share only under the explicit room scope. See [collaboration contract](../API.md#optional-realtime-collaboration).

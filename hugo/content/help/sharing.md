@@ -1,7 +1,7 @@
 ---
 title: "Export, share and build from a diagram"
 summary: "Choose a restorable file, a visual export, a complete backup or a reviewed Lovable app brief."
-weight: 13
+weight: 14
 ---
 
 Visual Nerve saves locally. Export creates a file you control; it does not automatically publish the diagram. Choose a format based on whether the recipient needs to edit the model, read an explanation or see the picture.
@@ -183,6 +183,14 @@ Each reviewed text field supports up to 30,000 characters; the complete reviewed
 **Open in Lovable** opens an unsent prompt at `lovable.dev` using its URL-fragment handoff. Visual Nerve does not start a build automatically. Opening the brief dialog sends nothing; explicitly opening Lovable shares the previewed text with that service.
 
 The handoff permits up to 50,000 prompt characters and an encoded link up to 60,000 characters. If the brief exceeds either limit, it is not truncated. Choose **Copy build prompt** or **Download build brief**, then **Open Lovable and paste the prompt**. If clipboard permission is unavailable, the complete preview is selected for manual copying.
+
+## Share a live diagram with approved people
+
+For simultaneous work, use optional [realtime collaboration](/help/collaboration/) when the deployment has a configured relay. The owner creates a room, reviews the disclosure scope and approves each current device as an Editor or Viewer. Invitations are admission capabilities; send them privately and verify the participant rather than posting them publicly.
+
+Collaboration shares the selected diagram's text, structure, geometry, styling and process assumptions. Raw CSV datasets, metadata/source evidence and referenced owner profiles require separate explicit choices. Text and summarized values may already be sensitive when those choices are off. Cameras and local view filters remain private.
+
+The network messages use MLS encryption; local private room/CRDT records use the encrypted vault and are absent from every diagram export and workspace backup. **The integration has not been independently audited.** Private MLS keys exist only in the live unlocked tab: reload or lock requires fresh admission, and owner reload needs a new room. Participant removal cannot recall earlier content. This is a live sharing workflow, not a cloud backup.
 
 ## Resolve export problems
 

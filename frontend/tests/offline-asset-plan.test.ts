@@ -25,6 +25,7 @@ const core = [
   ...APP_PRECACHE_LICENSE_PATHS,
 ];
 const notices = ['/licenses/dependency-LICENSE', '/licenses/dependency-NOTICE'];
+const mls = '/editor/assets/mls_bg-testhash.wasm';
 const temporary: string[] = [];
 afterEach(() =>
   temporary.splice(0).forEach((path) => rmSync(path, { recursive: true, force: true })),
@@ -33,7 +34,7 @@ afterEach(() =>
 function fixture() {
   const directory = mkdtempSync(join(tmpdir(), 'visualnerve-offline-plan-'));
   temporary.push(directory);
-  const assets = [...core, ...notices, ...speech];
+  const assets = [...core, ...notices, ...speech, mls];
   const put = (path: string, contents: string) => {
     const file = join(directory, path.endsWith('/') ? path + 'index.html' : path);
     mkdirSync(dirname(file), { recursive: true });
@@ -78,6 +79,17 @@ it('does not add hundreds of dependency notice requests to app installation', ()
   expect(plan.inventory).toHaveLength(core.length + dependencyNotices.length + speech.length);
 });
 
+it.each(['site', 'app'] as const)(
+  'keeps optional MLS compilation lazy on %s even without explicit lazy input',
+  (surface) => {
+    const inventory = [...core, mls];
+    const plan = new OfflineAssetPlan({ surface, assets: inventory });
+    expect(plan.assets).toEqual(core);
+    expect(plan.lazyAssets).toEqual([mls]);
+    expect(new Set(plan.inventory)).toEqual(new Set(inventory));
+  },
+);
+
 it('keeps explicitly managed site notices precached and existing speech assets lazy', () => {
   const plan = new OfflineAssetPlan({
     surface: 'site',
@@ -106,10 +118,12 @@ it('generates a complete worker plan while preserving every bundled notice on di
   const { directory, assets } = fixture();
   const plan = buildServiceWorker(directory, { surface: 'app', assets });
   expect(plan.assets).toEqual(core);
-  expect(new Set(plan.lazyAssets)).toEqual(new Set([...notices, ...speech]));
+  expect(new Set(plan.lazyAssets)).toEqual(new Set([...notices, ...speech, mls]));
   const source = readFileSync(join(directory, 'sw.js'), 'utf8');
   const installed = JSON.parse(source.match(/^const assets = (.*);$/m)![1]);
   const lazy = JSON.parse(source.match(/^const lazyAssets = (.*);$/m)![1]);
+  expect(installed).not.toContain(mls);
+  expect(lazy).toContain(mls);
   expect(installed).toEqual(core);
   expect(new Set([...installed, ...lazy])).toEqual(new Set(assets));
   for (const path of notices)
@@ -127,6 +141,9 @@ it('changes the cache revision when an unopened dependency notice or lazy speech
   put(speech[0], 'Updated optional speech runtime');
   const third = buildServiceWorker(directory, { surface: 'app', assets });
   expect(third.cacheName).not.toBe(second.cacheName);
+  put(mls, 'Updated optional MLS WASM');
+  const fourth = buildServiceWorker(directory, { surface: 'app', assets });
+  expect(fourth.cacheName).not.toBe(third.cacheName);
   rmSync(join(directory, notices[1]));
   expect(() => buildServiceWorker(directory, { surface: 'app', assets })).toThrow(/ENOENT/);
 });

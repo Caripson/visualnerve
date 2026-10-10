@@ -34,7 +34,7 @@ async function imagesLoaded(page: Page) {
     .toBe(true);
 }
 
-test('the help hub and all 16 guides have real screenshots, valid local links and working anchors', async ({
+test('the help hub and all 17 guides have real screenshots, valid local links and working anchors', async ({
   browser,
   request,
 }) => {
@@ -50,11 +50,15 @@ test('the help hub and all 16 guides have real screenshots, valid local links an
   try {
     await page.goto(`${publicURL}/help/`);
     const guides = await index(page);
-    expect(guides).toHaveLength(16);
-    expect(new Set(guides.map((guide) => guide.url)).size).toBe(16);
+    expect(guides).toHaveLength(17);
+    expect(new Set(guides.map((guide) => guide.url)).size).toBe(17);
+    expect(guides.map((guide) => guide.url)).toContain('/help/collaboration/');
     await expect(
       page.getByRole('region', { name: 'All guides', exact: true }).locator('a'),
-    ).toHaveCount(16);
+    ).toHaveCount(17);
+    await expect(page.locator('.help-guide-number')).toHaveText(
+      Array.from({ length: 17 }, (_, position) => String(position + 1).padStart(2, '0')),
+    );
     const links = new Set<string>();
     const anchors = new Map<string, Set<string>>();
     const record = (destination: string) => {
@@ -206,7 +210,10 @@ for (const width of [1440, 390, 320]) {
         if (width < 900) {
           const topics = page.locator('.help-mobile-topics');
           await topics.getByText('Topics', { exact: true }).click();
-          await expect(topics.getByRole('link')).toHaveCount(17);
+          await expect(topics.getByRole('link')).toHaveCount(18);
+          await expect(
+            topics.getByRole('link', { name: 'Collaborate on a diagram', exact: true }),
+          ).toHaveAttribute('href', '/help/collaboration/');
           await topics.getByRole('link').nth(1).click();
           await expect(page).toHaveURL(`${publicURL}${guides[0].url}`);
           await noOverflow(page, width);

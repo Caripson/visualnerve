@@ -1,6 +1,8 @@
+import collaboration from '../collaboration/es';
 import type { Catalog } from '../types';
 
 const catalog = {
+  ...collaboration,
   'dialogs.exportEditableFullHint':
     'La exportación completa incluye todos los nodos guardados, incluso los ocultos por filtros o vistas. Usa una selección para limitar el contenido compartido.',
   'dialogs.exportDrawioOption': 'draw.io · diagrama editable',

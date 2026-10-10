@@ -14,4 +14,5 @@ export function verifyAppHosting(
   bucket: string;
   distributionId: string;
   bridgePorts: number[];
+  collaborationRelayOrigin?: string;
 };
