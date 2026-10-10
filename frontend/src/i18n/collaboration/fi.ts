@@ -96,5 +96,11 @@ const messages = {
     'Reaaliaikainen yhteistyö edellyttää salatun sovelluksen työtilaa. Voit jatkaa paikallisten kaavioiden muokkaamista täällä. Salatun sovelluksen avaaminen ei siirrä tai jaa nykyisiä kaavioitasi.',
   'collaboration.openEncryptedApp': 'Avaa salattu sovellus',
   'collaboration.connectedCount': '{count} yhdistetty',
+  'collaboration.copyValue': 'Kopioi {label}',
+  'collaboration.copyHint': 'Kopioi napsauttamalla tai napauttamalla.',
+  'collaboration.valueCopied': 'Kopioitu leikepöydälle.',
+  'collaboration.valueCopyFailed': 'Kopiointi epäonnistui. Valitse arvo ja kopioi se käsin.',
+  'collaboration.deviceId': 'Laitetunnus',
+  'collaboration.roomId': 'Huonetunnus',
 } satisfies CollaborationMessages;
 export default messages;

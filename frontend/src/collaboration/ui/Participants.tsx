@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Check, UserRound, ShieldCheck, UserX } from 'lucide-react';
 import { Field } from '../../components/Field';
+import { CopyValue } from './CopyValue';
 import { useI18n } from '../../i18n';
 import type { CollaborationRole } from '../../../../collaboration-worker/src/protocol';
 import type { CollaborationSnapshot, CollaborationUiController } from '../types';
@@ -57,18 +58,13 @@ function PendingRequest({
   const [role, setRole] = useState<'editor' | 'viewer'>('viewer');
   return (
     <li className="collaboration-request">
-      <p className="collaboration-device-id">{deviceId}</p>
+      <CopyValue label={t('collaboration.deviceId')} value={deviceId} />
       <p className="muted">
         {t('collaboration.expires', {
           date: date(expiresAt, { dateStyle: 'medium', timeStyle: 'short' }),
         })}
       </p>
-      <dl className="collaboration-fingerprint">
-        <dt>{t('collaboration.fingerprint')}</dt>
-        <dd>
-          <code>{credentialId}</code>
-        </dd>
-      </dl>
+      <CopyValue label={t('collaboration.fingerprint')} value={credentialId} />
       <p>{t('collaboration.compareFingerprint')}</p>
       <RoleChoice role={role} change={setRole} disabled={disabled} />
       <div className="collaboration-actions">
@@ -160,7 +156,11 @@ export function Participants({
                     <ShieldCheck size={14} />
                     {t('collaboration.fingerprint')}
                   </summary>
-                  <code>{participant.credentialId}</code>
+                  <CopyValue
+                    hideLabel
+                    label={`${t('collaboration.fingerprint')} · ${participant.name || participant.deviceId}`}
+                    value={participant.credentialId}
+                  />
                 </details>
                 {owner && participant.role !== 'owner' && (
                   <div className="collaboration-member-controls">

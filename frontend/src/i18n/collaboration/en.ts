@@ -97,6 +97,12 @@ const messages = {
     'Live collaboration requires the encrypted app workspace. You can keep editing your local diagrams here. Opening the encrypted app does not move or share your existing diagrams.',
   'collaboration.openEncryptedApp': 'Open the encrypted app',
   'collaboration.connectedCount': '{count} connected',
+  'collaboration.copyValue': 'Copy {label}',
+  'collaboration.copyHint': 'Click or tap to copy.',
+  'collaboration.valueCopied': 'Copied to clipboard.',
+  'collaboration.valueCopyFailed': 'Could not copy. Select the value and copy it manually.',
+  'collaboration.deviceId': 'Device ID',
+  'collaboration.roomId': 'Room ID',
 } as const;
 
 export default messages;

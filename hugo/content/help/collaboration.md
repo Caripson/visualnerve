@@ -23,6 +23,14 @@ An invitation is not automatic approval. The owner's approval binds access to th
 
 The pending participant can review exactly what the room includes before the owner approves access. The device fingerprints are public identity information; the invitation itself must remain private.
 
+### Copy a link or device identity
+
+Click or tap a displayed **Room ID**, **Device ID**, or **device fingerprint** to copy its complete value. Open a participant's **Device fingerprint** disclosure to reach that field. A copy icon shows the action, and **Copied to clipboard** confirms that it succeeded.
+
+For a newly created invitation, click or tap the **Private invitation link** field or its adjacent copy button. With a keyboard, tab to a copy button and press **Enter** or **Space**. Focusing a field alone does not copy anything. If the browser blocks clipboard access, the field selects its full value and asks you to copy it manually.
+
+Send invitations only through a private channel. Send fingerprints through a separate trusted channel to verify devices. Editable fields, such as your display name and a pasted invitation, keep their normal typing behavior.
+
 ## Choose what you disclose
 
 The default shared drawing includes titles, descriptions, relationships, geometry, styling, saved annotations, presentation/storyboard configuration and semantic process assumptions. Text already shown in a diagram can contain customer names, code identifiers, paths, SQL-derived labels or summarized CSV values. Review it even when the optional disclosures are off.

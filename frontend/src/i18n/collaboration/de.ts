@@ -100,5 +100,12 @@ const messages = {
     'Live-Zusammenarbeit erfordert den verschlüsselten App-Arbeitsbereich. Sie können Ihre lokalen Diagramme hier weiter bearbeiten. Das Öffnen der verschlüsselten App verschiebt oder teilt Ihre vorhandenen Diagramme nicht.',
   'collaboration.openEncryptedApp': 'Verschlüsselte App öffnen',
   'collaboration.connectedCount': '{count} verbunden',
+  'collaboration.copyValue': '{label} kopieren',
+  'collaboration.copyHint': 'Zum Kopieren anklicken oder antippen.',
+  'collaboration.valueCopied': 'In die Zwischenablage kopiert.',
+  'collaboration.valueCopyFailed':
+    'Kopieren fehlgeschlagen. Den Wert auswählen und manuell kopieren.',
+  'collaboration.deviceId': 'Geräte-ID',
+  'collaboration.roomId': 'Raum-ID',
 } satisfies CollaborationMessages;
 export default messages;

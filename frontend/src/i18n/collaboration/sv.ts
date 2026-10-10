@@ -98,5 +98,11 @@ const messages = {
     'Livesamarbete kräver den krypterade appens arbetsyta. Du kan fortsätta redigera dina lokala diagram här. Att öppna den krypterade appen flyttar eller delar inte dina befintliga diagram.',
   'collaboration.openEncryptedApp': 'Öppna den krypterade appen',
   'collaboration.connectedCount': '{count} anslutna',
+  'collaboration.copyValue': 'Kopiera {label}',
+  'collaboration.copyHint': 'Klicka eller tryck för att kopiera.',
+  'collaboration.valueCopied': 'Kopierat till urklipp.',
+  'collaboration.valueCopyFailed': 'Kunde inte kopiera. Markera värdet och kopiera det manuellt.',
+  'collaboration.deviceId': 'Enhets-ID',
+  'collaboration.roomId': 'Rums-ID',
 } satisfies CollaborationMessages;
 export default messages;

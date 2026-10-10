@@ -1,11 +1,12 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
-import { Copy, Link, LockKeyhole, RefreshCw, Users } from 'lucide-react';
+import { Link, LockKeyhole, RefreshCw, Users } from 'lucide-react';
 import { Modal } from '../../components/Modal';
 import { Field } from '../../components/Field';
 import { useI18n } from '../../i18n';
 import { defaultCollaborationShareScope, type CollaborationShareScope } from '../document/scope';
 import type { CollaborationSnapshot, CollaborationUiController } from '../types';
 import { Participants, type RoomConfirmation } from './Participants';
+import { CopyValue } from './CopyValue';
 import './collaboration.css';
 
 function SecurityNotice() {
@@ -128,28 +129,19 @@ function Invitation({
   run: (action: () => Promise<void>) => void;
 }) {
   const { t, date } = useI18n();
-  const [copied, setCopied] = useState(false);
-  const [copyFailed, setCopyFailed] = useState(false);
-  useEffect(() => {
-    setCopied(false);
-    setCopyFailed(false);
-  }, [snapshot.invitation?.url]);
   return (
     <section aria-label={t('collaboration.invitation')}>
       <h3>{t('collaboration.invitation')}</h3>
       <p>{t('collaboration.inviteHint')}</p>
       {snapshot.invitation && (
         <>
-          <Field title={t('collaboration.invitation')}>
-            <textarea
-              className="collaboration-invitation"
-              readOnly
-              rows={2}
-              spellCheck={false}
-              value={snapshot.invitation.url}
-              onFocus={(event) => event.target.select()}
-            />
-          </Field>
+          <CopyValue
+            multiline
+            label={t('collaboration.invitation')}
+            buttonLabel={t('collaboration.copy')}
+            value={snapshot.invitation.url}
+            disabled={busy || snapshot.status !== 'live'}
+          />
           <p className="muted">
             {t('collaboration.expires', {
               date: date(snapshot.invitation.expiresAt, {
@@ -161,24 +153,6 @@ function Invitation({
         </>
       )}
       <div className="collaboration-actions">
-        {snapshot.invitation && (
-          <button
-            disabled={busy || snapshot.status !== 'live'}
-            onClick={() => {
-              void navigator.clipboard
-                ?.writeText(snapshot.invitation!.url)
-                .then(() => {
-                  setCopied(true);
-                  setCopyFailed(false);
-                })
-                .catch(() => setCopyFailed(true));
-              if (!navigator.clipboard?.writeText) setCopyFailed(true);
-            }}
-          >
-            <Copy size={16} />
-            {t('collaboration.copy')}
-          </button>
-        )}
         <button
           disabled={busy || snapshot.status !== 'live'}
           onClick={() => run(() => controller.createInvitation())}
@@ -187,8 +161,6 @@ function Invitation({
           {t('collaboration.newInvitation')}
         </button>
       </div>
-      {copied && <p role="status">{t('collaboration.copied')}</p>}
-      {copyFailed && <p role="status">{t('collaboration.copyFailed')}</p>}
     </section>
   );
 }
@@ -404,25 +376,19 @@ export function CollaborationPanel({
         </>
       ) : (
         <>
-          <p className="collaboration-room-id">
-            {t('collaboration.room', { id: snapshot.roomId! })}
-          </p>
+          <CopyValue label={t('collaboration.roomId')} value={snapshot.roomId!} />
           {snapshot.ownerCredentialId && (
-            <dl className="collaboration-fingerprint">
-              <dt>{t('collaboration.ownerFingerprint')}</dt>
-              <dd>
-                <code>{snapshot.ownerCredentialId}</code>
-              </dd>
-            </dl>
+            <CopyValue
+              label={t('collaboration.ownerFingerprint')}
+              value={snapshot.ownerCredentialId}
+            />
           )}
           {snapshot.selfCredentialId && snapshot.role !== 'owner' && (
             <div>
-              <dl className="collaboration-fingerprint">
-                <dt>{t('collaboration.selfFingerprint')}</dt>
-                <dd>
-                  <code>{snapshot.selfCredentialId}</code>
-                </dd>
-              </dl>
+              <CopyValue
+                label={t('collaboration.selfFingerprint')}
+                value={snapshot.selfCredentialId}
+              />
               {snapshot.status === 'awaiting-approval' && (
                 <p className="muted">{t('collaboration.selfFingerprintHint')}</p>
               )}

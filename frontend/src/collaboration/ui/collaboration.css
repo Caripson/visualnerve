@@ -146,29 +146,6 @@
   background: var(--accent-bg);
   color: var(--accent);
 }
-.collaboration-fingerprint {
-  margin: 0;
-  display: grid;
-  gap: 6px;
-  min-width: 0;
-}
-.collaboration-fingerprint dt {
-  color: var(--muted);
-  font-size: 11px;
-}
-.collaboration-fingerprint dd {
-  margin: 0;
-}
-.collaboration-fingerprint code,
-.collaboration-identity-details code {
-  display: block;
-  overflow-wrap: anywhere;
-  word-break: break-all;
-  user-select: text;
-  font-size: 11px;
-  line-height: 1.7;
-  color: var(--text);
-}
 .collaboration-identity-details summary,
 .collaboration-security summary {
   display: flex;
@@ -188,15 +165,74 @@
   content: '−';
 }
 .collaboration-member-controls {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
   gap: 12px;
-  flex-wrap: wrap;
   padding-top: 8px;
   border-top: 1px solid var(--border);
 }
 .collaboration-member-controls > .field {
-  flex: 1 1 140px;
+  margin: 0;
+  min-width: 0;
+}
+.collaboration-member-controls select {
+  min-height: 40px;
+}
+.collaboration-copy-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.collaboration-copy-label,
+.collaboration-copy-feedback {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.collaboration-copy-value {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  gap: 12px;
+  justify-content: space-between;
+  text-align: left;
+  background: var(--surface-alt);
+  padding: 10px 12px;
+}
+.collaboration-copy-value code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  user-select: text;
+  font-size: 11px;
+  line-height: 1.7;
+  font-weight: 400;
+}
+.collaboration-copy-value > svg {
+  flex: 0 0 16px;
+  align-self: center;
+  color: var(--accent);
+}
+.collaboration-copy-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: 8px;
+}
+.collaboration-copy-input textarea {
+  width: 100%;
+  min-width: 0;
+  resize: vertical;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.collaboration-copy-input > button {
+  align-self: start;
+  min-width: 44px;
+}
+.collaboration-identity-details .collaboration-copy-field {
+  margin-top: 8px;
 }
 .collaboration-security {
   padding-top: 12px;
@@ -207,16 +243,6 @@
 }
 .collaboration-security p {
   margin: 10px 0;
-}
-.collaboration-room-id,
-.collaboration-device-id {
-  overflow-wrap: anywhere;
-  color: var(--muted);
-}
-.collaboration-invitation {
-  font-size: 12px;
-  overflow-wrap: anywhere;
-  resize: vertical;
 }
 .collaboration-progress {
   display: grid;
@@ -264,6 +290,7 @@
 }
 @media (max-width: 900px) {
   .collaboration-panel button,
+  .collaboration-panel select,
   .collaboration-panel summary {
     min-height: 44px;
   }
@@ -287,6 +314,7 @@
   }
   .collaboration-member-controls {
     align-items: stretch;
+    grid-template-columns: minmax(0, 1fr);
   }
   .collaboration-member-controls > button {
     width: 100%;

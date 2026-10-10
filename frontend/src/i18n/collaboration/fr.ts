@@ -99,5 +99,12 @@ const messages = {
     'La collaboration en direct nécessite l’espace de travail de l’application chiffrée. Vous pouvez continuer à modifier vos diagrammes locaux ici. Ouvrir l’application chiffrée ne déplace ni ne partage vos diagrammes existants.',
   'collaboration.openEncryptedApp': 'Ouvrir l’application chiffrée',
   'collaboration.connectedCount': '{count} connectés',
+  'collaboration.copyValue': 'Copier {label}',
+  'collaboration.copyHint': 'Cliquez ou touchez pour copier.',
+  'collaboration.valueCopied': 'Copié dans le presse-papiers.',
+  'collaboration.valueCopyFailed':
+    'Impossible de copier. Sélectionnez la valeur et copiez-la manuellement.',
+  'collaboration.deviceId': 'ID de l’appareil',
+  'collaboration.roomId': 'ID de la salle',
 } satisfies CollaborationMessages;
 export default messages;

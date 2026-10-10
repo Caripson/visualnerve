@@ -99,5 +99,11 @@ const messages = {
     'La colaboración en directo requiere el espacio de trabajo de la aplicación cifrada. Puedes seguir editando tus diagramas locales aquí. Abrir la aplicación cifrada no mueve ni comparte tus diagramas existentes.',
   'collaboration.openEncryptedApp': 'Abrir la aplicación cifrada',
   'collaboration.connectedCount': '{count} conectados',
+  'collaboration.copyValue': 'Copiar {label}',
+  'collaboration.copyHint': 'Haz clic o toca para copiar.',
+  'collaboration.valueCopied': 'Copiado al portapapeles.',
+  'collaboration.valueCopyFailed': 'No se pudo copiar. Selecciona el valor y cópialo manualmente.',
+  'collaboration.deviceId': 'ID del dispositivo',
+  'collaboration.roomId': 'ID de la sala',
 } satisfies CollaborationMessages;
 export default messages;
