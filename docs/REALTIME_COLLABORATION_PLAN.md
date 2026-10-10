@@ -44,16 +44,16 @@ epoch, including saved local changes.
 
 ## Modules and schemas
 
-| Boundary | Modules |
-| --- | --- |
-| Relay, public admission and bounded metadata | `collaboration-worker/src/` |
-| Standard MLS adapter, reproducible WASM and retained Cargo licenses | `collaboration-crypto/`, `frontend/src/collaboration/crypto*`, `generated/` |
-| Owner policies, authenticated transport and ephemeral group session | `frontend/src/collaboration/transport/`, `session/encrypted-room.ts` |
-| Scoped field/entity CRDT and concurrent merge validation | `frontend/src/collaboration/document/` |
-| Atomic encrypted sync persistence and graph projection | `frontend/src/collaboration/persistence/`, `session/document-gateway.ts`, `security/collaboration-journal.ts`, existing `storage/` |
-| Room lifecycle, permissions, lazy UI and authenticated presence | `frontend/src/collaboration/controller.ts`, `access.ts`, `ui/`, `CollaborationFeature.tsx` |
-| Existing API/MCP discovery and complete OpenAPI contract | `frontend/src/collaboration/api.ts`, `backend/internal/server/collaboration*`, `backend/cmd/openapi/collaboration.go` |
-| Optional exact relay origin and matching CSP | `scripts/build-app-surface.mjs`, `deployment/app-policy.mjs`, `docs/COLLABORATION_DEPLOYMENT.md` |
+| Boundary                                                                       | Modules                                                                                                                            |
+| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Relay, public admission and bounded metadata                                   | `collaboration-worker/src/`                                                                                                        |
+| Standard MLS adapter, canonical Linux WASM rebuild and retained Cargo licenses | `collaboration-crypto/`, `frontend/src/collaboration/crypto*`, `generated/`                                                        |
+| Owner policies, authenticated transport and ephemeral group session            | `frontend/src/collaboration/transport/`, `session/encrypted-room.ts`                                                               |
+| Scoped field/entity CRDT and concurrent merge validation                       | `frontend/src/collaboration/document/`                                                                                             |
+| Atomic encrypted sync persistence and graph projection                         | `frontend/src/collaboration/persistence/`, `session/document-gateway.ts`, `security/collaboration-journal.ts`, existing `storage/` |
+| Room lifecycle, permissions, lazy UI and authenticated presence                | `frontend/src/collaboration/controller.ts`, `access.ts`, `ui/`, `CollaborationFeature.tsx`                                         |
+| Existing API/MCP discovery and complete OpenAPI contract                       | `frontend/src/collaboration/api.ts`, `backend/internal/server/collaboration*`, `backend/cmd/openapi/collaboration.go`              |
+| Optional exact relay origin and matching CSP                                   | `scripts/build-app-surface.mjs`, `deployment/app-policy.mjs`, `docs/COLLABORATION_DEPLOYMENT.md`                                   |
 
 Ordinary diagram schemas remain unchanged. A collaboration room references one
 existing diagram; it does not turn every saved document into a shared document.
@@ -118,26 +118,27 @@ Compromised client devices or delivered application code can read unlocked conte
 9. Reload uses fresh crypto identity; no old ratchet is restored from a backup.
 10. Private state is encrypted locally and absent from diagram exports and APIs.
 11. Offline single-user editing, existing documents, 2D/3D and simulations still work.
-12. Browser, engine, API and relay tests pass; an independent security review is a
-    prerequisite for Enterprise claims, not something inferred from green tests.
+12. Browser, engine, API and relay tests pass; an independent integration security
+    review is a prerequisite for public relay/app activation. Green tests alone
+    do not authorize that release or establish Enterprise assurance.
 
 ## Verification implemented
 
 The tests exercise the actual OpenMLS adapter, Cloudflare workerd relay and
 encrypted browser repositories.
 
-| Verification | Coverage |
-| --- | --- |
-| Rust adapter | 17 tests for authentic authorship, membership, rotation, tampering, replay and removal |
-| Native relay | 36 tests with Web Crypto, Durable Object storage, real WebSockets, public policy validation, hibernation and retained rate budgets |
-| Deployment helper | 6 synthetic tests; credentials are excluded from arguments/configuration and truncated output cannot expose a partial credential at a dropped chunk boundary |
-| Real browser workers | Standard MLS encryption and revocation under the deployed-style CSP; Chromium is checked locally and Chromium/Firefox/WebKit are required by CI |
-| Two encrypted browser workspaces | Concurrent field edits, UI/API parity, approval, Viewer restrictions, five immediate role-change cycles, atomic commit rollback, offline/rejoin reconciliation, removal and lock |
-| Explicit CSV disclosure | The same live workflow with raw data opted in; ordinary autosaves preserve the dataset through editing and rejoin |
-| Product and accessibility | Native Chrome checks desktop/mobile controls, title/action reachability around layout breakpoints, light/dark appearance, failed optional-module recovery, encrypted reload and lock; Help and simulation API regressions are also checked |
-| Manual release gates | 57 tests for exact-revision CI, path-filtered checks, immutable input equality, missing/deleted workflow definitions and failed/pending histories |
-| Reproducible artifacts | Pinned Rust/WASM bindings, checked manifest hashes, source rebuild comparison in Linux CI and deterministic retained license inventories |
-| Credential isolation | The ignored local `.env` remains mode `0600`; source and built public files are checked without printing configured credentials |
+| Verification                     | Coverage                                                                                                                                                                                                                                          |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Rust adapter                     | 17 tests for authentic authorship, membership, rotation, tampering, replay and removal                                                                                                                                                            |
+| Native relay                     | 36 tests with Web Crypto, Durable Object storage, real WebSockets, public policy validation, hibernation and retained rate budgets                                                                                                                |
+| Deployment helper                | 6 synthetic tests; credentials are excluded from arguments/configuration and truncated output cannot expose a partial credential at a dropped chunk boundary                                                                                      |
+| Real browser workers             | Standard MLS encryption and revocation under the deployed-style CSP; Chromium is checked locally and Chromium/Firefox/WebKit are required by CI                                                                                                   |
+| Two encrypted browser workspaces | Concurrent field edits, UI/API parity, approval, Viewer restrictions, five immediate role-change cycles, atomic commit rollback, offline/rejoin reconciliation, removal and lock                                                                  |
+| Explicit CSV disclosure          | The same live workflow with raw data opted in; ordinary autosaves preserve the dataset through editing and rejoin                                                                                                                                 |
+| Product and accessibility        | Native Chrome checks desktop/mobile controls, title/action reachability around layout breakpoints, light/dark appearance, failed optional-module recovery, encrypted reload and lock; Help and simulation API regressions are also checked        |
+| Manual release gates             | 57 tests for exact-revision CI, path-filtered checks, immutable input equality, missing/deleted workflow definitions and failed/pending histories                                                                                                 |
+| Canonical release artifacts      | Pinned Linux release environment and Rust/WASM bindings, checked manifest hashes, exact source rebuild comparison in Linux CI and deterministic retained license inventories; native development builds on other hosts need not be byte-identical |
+| Credential isolation             | The ignored local `.env` remains mode `0600`; source and built public files are checked without printing configured credentials                                                                                                                   |
 
 The core CI workflow runs the complete existing unit, API, build and native
 browser suite on the pushed revision. Dedicated relay and browser-cryptography

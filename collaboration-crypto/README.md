@@ -34,14 +34,26 @@ Wire limits: 32 members; 32 KiB public KeyPackage; 64 KiB application payload; 1
 
 The generated browser JS/WASM and manifest are checked in so ordinary frontend builds do not require Rust. All sources, exact direct versions, `Cargo.lock`, Rust 1.91.0 and wasm-bindgen-cli 0.2.129 are retained for rebuilding. The script remaps build paths and writes SHA-256 hashes.
 
+**The canonical release builder is Linux x86_64**, with Ubuntu 24.04 used by the source CI job. That job rebuilds from the locked source and requires the generated JS, WASM and manifest to match the checked-in files byte-for-byte; the check must not be removed or relaxed. Release builds reject inherited Rust flags/compiler wrappers and require explicit `CARGO_HOME` for registry-path remapping. The manifest identifies this canonical builder without recording machine paths, timestamps or credentials.
+
+Independent macOS and Linux rebuilds with the same Rust/Cargo 1.91.0, wasm-bindgen 0.2.129, source, lockfile and normalized source paths produced functionally tested but different WASM bytes. Two independent clean Linux CI builds produced identical output; copying the source into a separate macOS directory also reproduced the macOS output. The observed difference is in generated function/code/data layout, not merely an unstripped debug path. We do not claim a particular compiler defect or guarantee byte identity across build hosts. Use the canonical Linux builder for release artifacts.
+
 ```sh
 rustup toolchain install 1.91.0 --profile minimal --target wasm32-unknown-unknown
 cargo +1.91.0 install wasm-bindgen-cli --version 0.2.129 --locked
+# Canonical release command, on Linux x86_64 with no inherited Rust flags:
+export CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}"
 ./collaboration-crypto/build.sh
 cargo +1.91.0 test --locked --manifest-path collaboration-crypto/Cargo.toml
 ```
 
-`COLLABORATION_CARGO`, `COLLABORATION_WASM_BINDGEN`, `CARGO_HOME`, and `CARGO_TARGET_DIR` support isolated tooling. The script does not read Cloudflare credentials or deploy anything. Runtime packaging must keep these assets lazy; single-user operation does not need to load the collaboration WASM.
+On macOS, Windows/WSL with a different architecture, or other development hosts, choose an explicit output directory under this repository's ignored `tmp/`. Development builds cannot overwrite the canonical tracked assets:
+
+```sh
+./collaboration-crypto/build.sh --development "$PWD/tmp/collaboration-crypto-development"
+```
+
+`COLLABORATION_CARGO` (a rustup Cargo shim), `COLLABORATION_WASM_BINDGEN`, `CARGO_HOME`, and `CARGO_TARGET_DIR` support isolated tooling. The script does not read Cloudflare credentials or deploy anything. Runtime packaging must keep these assets lazy; single-user operation does not need to load the collaboration WASM.
 
 ## Tests
 

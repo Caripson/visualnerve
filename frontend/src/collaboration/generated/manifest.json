@@ -3,6 +3,10 @@
   "openmls": "0.9.1",
   "rust": "1.91.0",
   "wasmBindgen": "0.2.129",
+  "builder": {
+    "canonicalRelease": true,
+    "host": "x86_64-unknown-linux-gnu"
+  },
   "ciphersuite": "MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519",
   "independentlyReviewedAdapter": false,
   "hashes": {
@@ -11,8 +15,8 @@
       "sha256": "06d3996daffe9fafd82fe2f035c195b80212c572d12cc0ce7329595225466cdc"
     },
     "mls_bg.wasm": {
-      "bytes": 1694289,
-      "sha256": "bbff5b79f90720bfe54632e53f3bfca2a3600c64cb5519063a5ba83973e9a841"
+      "bytes": 1693701,
+      "sha256": "765ec5a9878f74d67915c0869535c6b202fdd494f222294196b6d0f0bb9e02b8"
     }
   }
 }

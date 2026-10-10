@@ -1,6 +1,6 @@
 # Configure the optional collaboration relay
 
-Collaboration is disabled in an ordinary production app build. The worker's existence or a local Cloudflare credential does not enable browser sharing. Deploying the relay and enabling it in the isolated app are separate manual release steps.
+Collaboration is disabled in an ordinary production app build. The worker's existence or a local Cloudflare credential does not enable browser sharing. Deploying the relay and enabling it in the isolated app are separate manual release steps. An independent security review of the browser adapter, admission protocol and complete integration is required before public relay/app activation; green CI and owner approval do not replace that review. See [the adapter's review boundary](../collaboration-crypto/README.md).
 
 The public worker hostname selected for this installation is `https://visual-nerve-collaboration.entis.workers.dev`. This is a public address, not an API token. Its actual availability and allowed origins must be verified during release; this document does not assert that it is deployed.
 
