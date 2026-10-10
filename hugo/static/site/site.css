@@ -558,6 +558,159 @@ input:focus-visible {
   color: var(--accent);
   margin-top: auto;
 }
+.collaboration-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 54px;
+  align-items: center;
+}
+.collaboration-artwork {
+  min-width: 0;
+  margin: 0;
+  text-align: center;
+}
+.collaboration-artwork__scene {
+  position: relative;
+  isolation: isolate;
+  padding: 20px 0 8px;
+}
+.collaboration-artwork__scene::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 8% -5% 0;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, var(--accent-bg), transparent 68%);
+}
+.collaboration-artwork picture,
+.collaboration-artwork img {
+  display: block;
+  width: 100%;
+}
+.collaboration-artwork img {
+  height: auto;
+}
+.collaboration-roles {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 16px;
+}
+.collaboration-roles span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.collaboration-roles b {
+  font-weight: 600;
+  color: var(--text);
+}
+.collaboration-artwork figcaption {
+  max-width: 350px;
+  margin: 0 auto;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+.collaboration-copy {
+  min-width: 0;
+}
+.collaboration-principles {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.collaboration-principles li {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.collaboration-step {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font:
+    500 11px/1 ui-monospace,
+    monospace;
+}
+.collaboration-principles h3 {
+  font-size: 17px;
+  line-height: 1.45;
+  letter-spacing: -0.3px;
+  font-weight: 600;
+  margin: 4px 0 8px;
+}
+.collaboration-principles p,
+.collaboration-agent p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.85;
+  margin: 0;
+}
+.collaboration-agent {
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.collaboration-agent summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 44px;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+  font-weight: 600;
+  list-style: none;
+  cursor: pointer;
+}
+.collaboration-agent summary::-webkit-details-marker {
+  display: none;
+}
+.collaboration-agent summary::after {
+  content: "+";
+  color: var(--accent);
+  font-size: 20px;
+  font-weight: 400;
+}
+.collaboration-agent[open] summary::after {
+  content: "−";
+}
+.collaboration-agent p {
+  margin-top: 12px;
+}
+.collaboration-actions {
+  margin-top: 16px;
+  gap: 8px 20px;
+}
+.collaboration-actions .site-text-link {
+  font-size: 12px;
+  min-height: 44px;
+  align-content: center;
+}
+.collaboration-availability {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+.collaboration-availability strong {
+  color: var(--text);
+  font-weight: 600;
+}
 .trust-section {
   margin-top: 100px;
   display: grid;
@@ -859,6 +1012,9 @@ input:focus-visible {
   .feature-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .collaboration-layout {
+    gap: 30px;
+  }
   .device-showcase {
     height: 55vw;
     max-height: 620px;
@@ -981,6 +1137,14 @@ input:focus-visible {
   }
   .trust-section {
     gap: 30px;
+  }
+  .collaboration-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 36px;
+  }
+  .collaboration-artwork {
+    max-width: 620px;
+    margin: 0 auto;
   }
 }
 @media (max-width: 650px) {
@@ -1164,6 +1328,32 @@ input:focus-visible {
   }
   .feature-card > span:last-child {
     font-size: 12px;
+  }
+  .collaboration-layout {
+    gap: 30px;
+  }
+  .collaboration-artwork__scene {
+    padding-top: 0;
+  }
+  .collaboration-artwork__scene::before {
+    inset: 0;
+  }
+  .collaboration-principles li {
+    gap: 13px;
+    margin-bottom: 26px;
+  }
+  .collaboration-principles h3 {
+    font-size: 17px;
+  }
+  .collaboration-principles p,
+  .collaboration-agent p {
+    font-size: 14px;
+  }
+  .collaboration-actions {
+    gap: 0 18px;
+  }
+  .collaboration-actions .site-text-link {
+    font-size: 13px;
   }
   .trust-section {
     margin-top: 60px;

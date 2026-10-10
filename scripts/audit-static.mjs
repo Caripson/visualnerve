@@ -19,6 +19,7 @@ export function auditStatic(directory) {
         || path === 'robots.txt'
         || productPages.some(name => path === `${name}/index.html`)
         || ['site/site.css', 'site/syntax.css', 'site/captures.css', 'site/site.js', 'site/mark.svg', 'site/consent.css', 'site/consent.js', 'site/vendor/klaro.js', 'site/vendor/klaro.css', 'site/vendor/klaro-LICENSE', 'site/vendor/preact-LICENSE', 'site/vendor/core-js-LICENSE', 'site/vendor/classnames-LICENSE'].includes(path)
+        || ['site/images/collaboration.webp', 'site/images/collaboration-dark.webp'].includes(path)
         || ['phone', 'tablet', 'desktop', 'laptop', 'social'].some(name => path === `site/images/${name}.webp`)
         || ['phone', 'tablet', 'desktop', 'laptop'].some(name => path === `site/images/${name}-dark.webp` || path === `site/devices/${name}.svg`)
         || /^editor\/(?:app\.(?:js|css)|assets\/[\w.-]+\.(?:js|css|svg|png|woff2?))$/.test(path)

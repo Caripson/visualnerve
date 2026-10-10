@@ -1,0 +1,47 @@
+<section id="collaboration" class="home-section home-collaboration section-width" aria-labelledby="collaboration-heading">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">REALTIME DIAGRAM COLLABORATION</p>
+      <h2 id="collaboration-heading">A shared diagram.<br>Approved people.</h2>
+    </div>
+    <p>Work together from computers, tablets and phones. See who is connected and which nodes they are exploring, while each person keeps a separate local workspace.</p>
+  </div>
+  <div class="collaboration-layout">
+    <figure class="collaboration-artwork">
+      <div class="collaboration-artwork__scene">
+        {{ partial "appearance-image.html" (dict "src" "/site/images/collaboration.webp" "alt" "Concept illustration of shared diagram cards, Owner, Editor and Viewer participants, and an AI agent connected through the Editor" "width" 1536 "height" 1024) }}
+      </div>
+      <div class="collaboration-roles" aria-label="Diagram access roles">
+        <span><b>Owner</b> approves</span>
+        <span><b>Editor</b> edits</span>
+        <span><b>Viewer</b> explores</span>
+      </div>
+      <figcaption>Concept illustration. Participants share the diagram, not their whole workspace.</figcaption>
+    </figure>
+    <div class="collaboration-copy">
+      <ol class="collaboration-principles">
+        <li>
+          <span class="collaboration-step" aria-hidden="true">01</span>
+          <div><h3>Invite, review, then work together</h3><p>The owner approves each device as an Editor or Viewer. Editors can change the diagram; Viewers can explore it. An invitation alone does not grant access.</p></div>
+        </li>
+        <li>
+          <span class="collaboration-step" aria-hidden="true">02</span>
+          <div><h3>Encrypted between approved devices</h3><p>Shared messages use MLS (RFC 9420) encryption. The relay forwards encrypted messages; approved participants can read the content you choose to share.</p></div>
+        </li>
+        <li>
+          <span class="collaboration-step" aria-hidden="true">03</span>
+          <div><h3>Your local workspace stays yours</h3><p>Saved records remain protected by AES-256-GCM in each browser. Cameras and personal settings stay local. Source metadata, owner profiles and raw datasets need explicit disclosure.</p></div>
+        </li>
+      </ol>
+      <details class="collaboration-agent">
+        <summary>Where does an AI agent fit?</summary>
+        <p>An agent uses an approved participant’s local API/MCP connection. Its edits need both that participant’s room role and an explicit local write grant. A Viewer stays read-only; the agent cannot invite or approve people.</p>
+      </details>
+      <div class="site-actions collaboration-actions">
+        <a class="site-text-link" href="/help/collaboration/">Read the collaboration guide <span aria-hidden="true">→</span></a>
+        <a class="site-text-link" href="/security/#optional-realtime-collaboration">Sharing and security <span aria-hidden="true">→</span></a>
+      </div>
+      <p class="collaboration-availability"><strong>Optional.</strong> Requires a configured collaboration relay. The integration has not been independently audited.</p>
+    </div>
+  </div>
+</section>
