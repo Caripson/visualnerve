@@ -79,6 +79,7 @@ jobs:
       - name: Test the actual OpenMLS adapter
         run: cargo +1.91.0 test --locked --manifest-path collaboration-crypto/Cargo.toml
       - name: Rebuild checked-in browser assets from locked source
+        id: rebuild
         shell: bash
         env:
           COLLABORATION_WASM_BINDGEN: ${{ runner.temp }}/collaboration-bindgen/bin/wasm-bindgen
@@ -97,6 +98,17 @@ jobs:
           cargo +1.91.0 metadata --locked --manifest-path collaboration-crypto/Cargo.toml --filter-platform wasm32-unknown-unknown --format-version 1 > "$RUNNER_TEMP/collaboration-cargo-metadata.json"
           node collaboration-crypto/write-licenses.mjs "$RUNNER_TEMP/collaboration-cargo-metadata.json"
           git diff --exit-code -- collaboration-crypto/licenses/
+      - name: Preserve failed rebuild diagnostics
+        if: ${{ failure() && !cancelled() && steps.rebuild.outcome == 'failure' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: collaboration-source-diagnostic-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            frontend/src/collaboration/generated/mls.js
+            frontend/src/collaboration/generated/mls_bg.wasm
+            frontend/src/collaboration/generated/manifest.json
+          if-no-files-found: error
+          retention-days: 7
 
   browsers:
     name: MLS in ${{ matrix.browser }} workers

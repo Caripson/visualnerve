@@ -9,9 +9,16 @@ const output = `${root}tmp/collaboration-ui-screenshots`;
 await mkdir(output, { recursive: true });
 const vite = await createServer({
   root: frontend,
+  cacheDir: `${root}tmp/collaboration-ui-vite-cache`,
   envFile: false,
   configFile: `${frontend}vite.config.ts`,
-  server: { host: "127.0.0.1", port: 0 },
+  // This synthetic page is not the app entrypoint. Complete its dependencies
+  // before navigation rather than letting discovery reload a partially loaded UI.
+  optimizeDeps: {
+    noDiscovery: true,
+    include: ["react", "react/jsx-runtime", "react-dom/client", "lucide-react"],
+  },
+  server: { host: "127.0.0.1", port: 0, hmr: false },
 });
 let browser;
 const deadline = setTimeout(() => {
