@@ -9,7 +9,26 @@ const output = `${root}tmp/collaboration-document-review`;
 await mkdir(output, { recursive: true });
 const vite = await createServer({
   root: `${root}frontend`,
+  cacheDir: `${output}/vite-cache`,
+  envFile: false,
   configFile: `${root}frontend/vite.config.ts`,
+  // This routed fixture is not the application entrypoint. Prebundle its full
+  // dependency graph before navigation so discovery cannot reset form state.
+  optimizeDeps: {
+    noDiscovery: true,
+    include: [
+      "react",
+      "react/jsx-runtime",
+      "react-dom/client",
+      "lucide-react",
+      "zustand",
+      "yjs",
+      "papaparse",
+      "dexie",
+      "@xyflow/react",
+      "elkjs/lib/elk-api.js",
+    ],
+  },
   server: { host: "127.0.0.1", port: 0, hmr: false },
 });
 let browser;

@@ -156,6 +156,14 @@ GPU cause. Browser assertions have not been weakened. A new native encrypted-sto
 test verifies UI/API parity, reload/unlock, the first cold API mutation and the first
 cold history restore, including preservation of the private acting-profile setting.
 
+The first CI run also exposed incremental Vite dependency discovery reloading the
+routed presence-test fixture. Replaying the preceding crypto harness's React-only
+cache followed by presence reproduced the optimizer reload and a browser 504
+`Outdated Optimize Dep`. Presence and document-form fixtures now use isolated
+caches and explicitly prebundled dependencies, matching the existing UI harness.
+Their assertions and timeouts remain unchanged; cold-cache browser runs verify the
+test setup as well as the product controls.
+
 CI repeats the whole-product suite and cross-browser crypto checks on the pushed
 revision. Release assurance remains subject to
 [collaboration deployment gates](COLLABORATION_DEPLOYMENT.md) and the limitations
