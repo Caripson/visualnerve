@@ -185,6 +185,24 @@ const test = {
     if (!room) throw new Error('Test room not available');
     await (room as unknown as { transport: { reader: Promise<void> } }).transport.reader;
   },
+  workflowCheckpoint: async () => {
+    await workspace.settled();
+    const gateway = (controller as unknown as { gateway?: CollaborationDocumentGateway }).gateway;
+    if (!gateway) throw new Error('Test gateway not available');
+    return gateway.workflow.checkpoint(await current());
+  },
+  collaborationSettled: async () => {
+    const { room, gateway } = controller as unknown as {
+      room?: EncryptedRoom;
+      gateway?: CollaborationDocumentGateway;
+    };
+    if (!room || !gateway) throw new Error('Test room not available');
+    await workspace.settled();
+    await gateway.flush();
+    await (room as unknown as { transport: { reader: Promise<void> } }).transport.reader;
+    await workspace.settled();
+    await gateway.flush();
+  },
   epoch: () => (controller as unknown as { room?: { epoch: number } }).room?.epoch,
   disconnect: () => {
     const room = (controller as unknown as { room?: { transport?: { disconnect(): void } } }).room;

@@ -343,6 +343,14 @@ try {
   );
   await evaluate(guest, "edit", "Valid edit after rejected peer messages");
   await waitTitle(owner, "Valid edit after rejected peer messages");
+  // The remote title commits before the owner asynchronously publishes its
+  // protected activity checkpoint. Finish that legitimate edit and its outbox
+  // acknowledgement before testing whether the next failed commit rolls back.
+  const acceptedCheckpoint = await evaluate(owner, "workflowCheckpoint");
+  await expect
+    .poll(() => evaluate(guest, "workflowCheckpoint"), { timeout: 30_000 })
+    .toEqual(acceptedCheckpoint);
+  await evaluate(guest, "collaborationSettled");
   checked.push(
     "Actual MLS Editor cannot inject protected CRDT fields, forge an owner checkpoint or rewrite the owner profile; rejection preserves workflow and the room accepts subsequent valid edits",
   );

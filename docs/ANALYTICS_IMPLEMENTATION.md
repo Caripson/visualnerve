@@ -99,6 +99,7 @@ hide controls or restyle the application.
 | Four analytics browser specs, `VN_CAPTURE_ANALYTICS=1 npx playwright test tests/e2e/analytics-{ui,mcp,security-site,ui-vault}.spec.ts` | 25/25 PASS, 3.0 minutes |
 | Fresh Help and virtualized API reference follow-up | 10/10 PASS, 1.0 minute |
 | Existing simulator currency and real 60-minute scale-down cases | 2/2 PASS, 12.6 seconds, normal Chrome |
+| Actual encrypted collaboration rollback regression | Three Chrome runs PASS: 15 checks without CSV, 16 checks with CSV twice |
 
 The analytics browser run exercises actual UI/REST/MCP numerical parity, both executable client
 examples, operation recovery, effect-based grants, source conflicts, encrypted reload/offline
@@ -114,6 +115,13 @@ cases. All eleven subsequently passed in the targeted runs recorded above; the i
 itself is not reported as green. The skips are 14 optional existing screenshot-regeneration
 cases plus one opt-in live Alan voice-model download. No core feature case was skipped. Local
 verification uses synthetic isolated profiles; CI is a separate execution of the complete suite.
+
+The first CI collaboration run exposed a test synchronization race: the rollback baseline was
+captured before an already accepted edit's owner-mediated activity checkpoint arrived. The
+test now waits for the exact protected workflow checkpoint and drains the incoming/save/outbox
+queues before capturing that baseline. The full graph and private-state rollback comparisons
+and subsequent real MLS edit remain unchanged. Three actual Chrome runs passed with the local
+relay, encrypted vaults and MLS; no production permission or persistence behavior was relaxed.
 
 ### Bounded performance evidence
 
