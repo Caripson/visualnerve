@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { ReactFlowProvider } from '@xyflow/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CollaborationSnapshot, CollaborationUiController } from '../src/collaboration/types';
 import { defaultCollaborationShareScope } from '../src/collaboration/document/scope';
@@ -25,6 +26,12 @@ vi.mock('../src/storage/runtime', () => ({
   },
 }));
 vi.mock('../src/collaboration/runtime', () => ({ collaborationRuntime: runtime }));
+vi.mock('../src/state/editor', () => ({
+  // This lifecycle fixture has no opened diagram or editor storage. The feature
+  // still runs with the same ReactFlow provider used by the encrypted App.
+  useEditor: (select: (state: { graph: null; selectedNodes: string[] }) => unknown) =>
+    select({ graph: null, selectedNodes: [] }),
+}));
 import { CollaborationFeature } from '../src/collaboration/CollaborationFeature';
 
 function controller(overrides: Partial<CollaborationSnapshot> = {}) {
@@ -93,7 +100,9 @@ describe('optional collaboration feature lifecycle', () => {
     const current = controller({ configured: true, status: 'live', roomId: 'private-room' });
     runtime.getController.mockReturnValue(current);
     const onOpen = vi.fn();
-    const { rerender } = render(<CollaborationFeature open close={() => {}} onOpen={onOpen} />);
+    const { rerender } = render(<CollaborationFeature open close={() => {}} onOpen={onOpen} />, {
+      wrapper: ReactFlowProvider,
+    });
     expect(screen.getByRole('dialog', { name: 'Live collaboration' })).toBeVisible();
     rerender(<CollaborationFeature open={false} close={() => {}} onOpen={onOpen} />);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -112,6 +121,7 @@ describe('optional collaboration feature lifecycle', () => {
     runtime.getController.mockReturnValue(current);
     const { unmount } = render(
       <CollaborationFeature open={false} close={() => {}} onOpen={() => {}} />,
+      { wrapper: ReactFlowProvider },
     );
     unmount();
     expect(runtime.release).toHaveBeenCalledExactlyOnceWith(current);

@@ -94,6 +94,24 @@ cache, other websites or downloaded exports.
 
 Named local history and automatic safety checkpoints retain removed content until the versions or diagram are explicitly deleted. Unchanged CSV rows are deduplicated. Full backups include history and remap historical references; single-diagram export includes current content only. Restore keeps current shared owner profiles and exact saved positions. See [understanding workflows](UNDERSTANDING.md) for quotas and comparison bounds.
 
+## Portable document work
+
+Optional `diagram.collaboration` schemaVersion1 stores document profiles,
+comments/messages, node tasks and bounded activity inside the existing Diagram
+record. It adds no physical store or migration and does not reinterpret old
+diagrams. Native exports, backup/history and copied diagrams preserve the content
+and remap surviving node references. Deleted-node work retains its UUID/title.
+The browser's `collaboration-profile:{diagramId}` selection is a private setting,
+excluded from backup export and restore.
+
+Workflow actions and normal graph edits share the repository's atomic/versioned
+write boundary. Node/bulk commands and history restore include settings in their
+transaction and resolve optional modules before opening native IndexedDB. Live
+collection/message fields merge by UUID; replies/activity use logical sequences.
+Projection retains500 activity entries and the next local write prunes older raw
+activity paths against the merged state, preserving unseen peer appends. Yjs
+causal deletion metadata still has the overall bounded state budget.
+
 ## Private collaboration namespace
 
 The encrypted physical vault permits a dedicated `collaboration` namespace, while logical workspace tables, graph/settings APIs, native exports and all workspace backups exclude it. It stores bounded validated Yjs state, public owner-key pins, room associations and already-encrypted ciphertext queue entries. It never stores MLS ratchets or device private signing keys. Ordinary content-key rotation authenticates and reencrypts these records together with the workspace.

@@ -20,6 +20,7 @@ import {
   validateCollaborationStateVector,
 } from '../document/update-envelope';
 import { CollaborationPeerMessageError } from '../transport/room-transport';
+import type { CollaborationActionContext } from '../model/types';
 const encoder = new TextEncoder();
 export interface DocumentGatewayOptions {
   workspace: Workspace;
@@ -31,6 +32,7 @@ export interface DocumentGatewayOptions {
   lease: VaultSessionOperation;
   check(): void;
   role(): SharedRole;
+  documentContext?(): CollaborationActionContext;
   onFailure(error: Error): void;
   onOffline(): void;
 }
@@ -94,10 +96,24 @@ export class CollaborationDocumentGateway {
         hasSharedChanges: (a, b) => this.document.hasSharedChanges(a, b),
         undo: () => this.history('undo'),
         redo: () => this.history('redo'),
+        documentContext: () =>
+          this.options.documentContext?.() ?? {
+            role: this.options.role(),
+            source: 'ui',
+          },
+        activeProfileIds: () =>
+          Object.entries(this.options.room.profileBindings ?? {})
+            .filter(([id]) =>
+              this.options.room.currentPolicy!.policy.members.some(
+                (member) => member.deviceId === id,
+              ),
+            )
+            .map(([, profileId]) => profileId),
       }),
     );
     this.unbind.push(
       collaborationDocumentHooks.bind(id, {
+        scope: this.options.scope,
         prepareLocal: (before, after, storage) => this.prepareLocal(before, after, storage),
       }),
     );
@@ -330,6 +346,17 @@ export class CollaborationDocumentGateway {
         scope: this.options.scope,
         document: sharedGraph(this.document.graph(graph), this.options.scope),
         state: encodeBytes(this.document.encodedState()),
+        ...(this.options.room.role === 'owner'
+          ? {
+              profileBindings: Object.fromEntries(
+                Object.entries(this.options.room.profileBindings).filter(([id]) =>
+                  this.options.room.currentPolicy!.policy.members.some(
+                    (member) => member.deviceId === id,
+                  ),
+                ),
+              ),
+            }
+          : {}),
       }),
     );
     const compressed = await compressPayload(bytes, this.options.lease.signal);

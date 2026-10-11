@@ -8,6 +8,23 @@ The website delivers app files. The browser saves diagrams, nodes, relationships
 Visual Nerve website → your browser → IndexedDB
 ```
 
+## Document collaboration work
+
+Optional `diagram.collaboration` contains per-document display profiles/colors,
+bounded raster pictures, comments, node tasks and the latest 500 activity entries.
+It uses ordinary encrypted diagram storage and works without a relay. Native
+exports and backups include it as readable or explicitly encrypted content; the
+private local acting-profile preference is excluded. UI picture uploads are
+resized/re-encoded locally to strip source metadata; imported/API raster content
+is type/size bounded and remains the sender's responsibility. External image URLs
+and SVG avatars are rejected.
+
+These fields are included when sharing a diagram, independently of optional
+metadata, responsibility-owner or raw-dataset disclosure. Profile names are
+unverified labels. Activity is editable diagram information with device-clock
+display timestamps and logical ordering, not verified audit evidence. Approved
+recipients can retain readable copies.
+
 ## Optional realtime collaboration
 
 A configured Cloudflare relay enables deliberate sharing of one graph with approved devices. Messages use MLS RFC 9420 application encryption and owner-signed membership policy; the integration has not been independently audited. The relay receives encrypted payloads, connection/IP metadata, room/public device identifiers and message timing/size. Approved participants receive readable shared content and can retain it. The local vault password/recovery key never becomes a room credential.

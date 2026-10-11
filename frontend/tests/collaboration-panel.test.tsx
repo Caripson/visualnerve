@@ -199,9 +199,12 @@ describe('collaboration consent, permissions and authoritative UI state', () => 
     const pending = screen.getByRole('region', { name: 'Waiting for your approval' });
     expect(within(pending).getByText('d'.repeat(64))).toBeVisible();
     expect(within(pending).getByRole('combobox', { name: 'Permission' })).toHaveValue('viewer');
+    fireEvent.change(within(pending).getByLabelText('New profile name'), {
+      target: { value: 'Sam' },
+    });
     fireEvent.click(within(pending).getByRole('button', { name: 'Approve device' }));
     await waitFor(() =>
-      expect(controller.approve).toHaveBeenCalledWith('pending-device', 'viewer'),
+      expect(controller.approve).toHaveBeenCalledWith('pending-device', 'viewer', undefined, 'Sam'),
     );
   });
 

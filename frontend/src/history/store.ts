@@ -328,64 +328,66 @@ export class HistoryStore {
       const baseline = await this.scoped(db).current(diagramId);
       version(baseline.diagram.version, options.baseVersion);
       const prepared = await this.scoped(db).prepared(baseline);
-      return db.atomic(
-        'rw',
-        [...historyGraphStoreNames, ...(options.beforeWrite ? ['settings' as const] : [])],
-        async (scope) => {
-          const store = this.scoped(scope);
-          const current = await store.current(diagramId);
-          version(current.diagram.version, options.baseVersion);
-          await options.beforeWrite?.(scope);
-          const target = await store.readScoped(diagramId, id);
-          const safetySnapshot = await store.insert(
-            prepared,
-            `Before restoring ${target.snapshot.name}`.slice(0, 200),
-            'pre-restore',
-          );
-          const currentNodes = new Set(current.nodes.map((node) => node.id)),
-            currentEdges = new Set(current.edges.map((edge) => edge.id));
-          const currentSources = new Set(graphDatasets(current).map((source) => source.id));
-          const archivedSources = await scope.historySources
-            .where('diagramId')
-            .equals(diagramId)
-            .toArray();
-          const datasets = graphDatasets(target.graph).map((source) => {
-            if (currentSources.has(source.id)) return source;
-            const latest = archivedSources
-              .filter((archive) => archive.datasetId === source.id)
-              .reduce((max, archive) => Math.max(max, archive.datasetVersion), source.version);
-            return { ...source, version: Math.max(latest, current.diagram.version) + 1 };
-          });
-          const restored: Graph = {
-            ...target.graph,
-            dataset: datasets[0],
-            datasets: datasets.slice(1),
-            nodes: target.graph.nodes.map((node) =>
-              currentNodes.has(node.id)
-                ? node
-                : { ...node, version: Math.max(node.version, current.diagram.version) + 1 },
-            ),
-            edges: target.graph.edges.map((edge) =>
-              currentEdges.has(edge.id)
-                ? edge
-                : { ...edge, version: Math.max(edge.version, current.diagram.version) + 1 },
-            ),
-          };
-          const graph = await this.saveGraph!(
-            {
-              ...restored,
-              diagram: {
-                ...target.graph.diagram,
-                version: current.diagram.version,
-                createdAt: current.diagram.createdAt,
-              },
+      // The graph saver may record document activity. Resolve its cold modules
+      // before native IndexedDB opens and include its private profile preference.
+      await Promise.all([
+        import('../collaboration/model'),
+        import('../collaboration/document/scope'),
+      ]);
+      return db.atomic('rw', [...historyGraphStoreNames, 'settings'], async (scope) => {
+        const store = this.scoped(scope);
+        const current = await store.current(diagramId);
+        version(current.diagram.version, options.baseVersion);
+        await options.beforeWrite?.(scope);
+        const target = await store.readScoped(diagramId, id);
+        const safetySnapshot = await store.insert(
+          prepared,
+          `Before restoring ${target.snapshot.name}`.slice(0, 200),
+          'pre-restore',
+        );
+        const currentNodes = new Set(current.nodes.map((node) => node.id)),
+          currentEdges = new Set(current.edges.map((edge) => edge.id));
+        const currentSources = new Set(graphDatasets(current).map((source) => source.id));
+        const archivedSources = await scope.historySources
+          .where('diagramId')
+          .equals(diagramId)
+          .toArray();
+        const datasets = graphDatasets(target.graph).map((source) => {
+          if (currentSources.has(source.id)) return source;
+          const latest = archivedSources
+            .filter((archive) => archive.datasetId === source.id)
+            .reduce((max, archive) => Math.max(max, archive.datasetVersion), source.version);
+          return { ...source, version: Math.max(latest, current.diagram.version) + 1 };
+        });
+        const restored: Graph = {
+          ...target.graph,
+          dataset: datasets[0],
+          datasets: datasets.slice(1),
+          nodes: target.graph.nodes.map((node) =>
+            currentNodes.has(node.id)
+              ? node
+              : { ...node, version: Math.max(node.version, current.diagram.version) + 1 },
+          ),
+          edges: target.graph.edges.map((edge) =>
+            currentEdges.has(edge.id)
+              ? edge
+              : { ...edge, version: Math.max(edge.version, current.diagram.version) + 1 },
+          ),
+        };
+        const graph = await this.saveGraph!(
+          {
+            ...restored,
+            diagram: {
+              ...target.graph.diagram,
+              version: current.diagram.version,
+              createdAt: current.diagram.createdAt,
             },
-            current.diagram.version,
-            scope,
-          );
-          return { graph, safetySnapshot };
-        },
-      );
+          },
+          current.diagram.version,
+          scope,
+        );
+        return { graph, safetySnapshot };
+      });
     }).catch(historyStorageFailure);
   }
   async remove(

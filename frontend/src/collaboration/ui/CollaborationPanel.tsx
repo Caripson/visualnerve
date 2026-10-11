@@ -8,6 +8,8 @@ import type { CollaborationSnapshot, CollaborationUiController } from '../types'
 import { Participants, type RoomConfirmation } from './Participants';
 import { CopyValue } from './CopyValue';
 import './collaboration.css';
+import { useEditor } from '../../state/editor';
+import { DocumentWorkspace } from './DocumentWorkspace';
 
 function SecurityNotice() {
   const { t } = useI18n();
@@ -179,6 +181,9 @@ export function CollaborationPanel({
   initialInvitation?: string;
 }) {
   const { t, number } = useI18n();
+  const graph = useEditor((state) => state.graph);
+  const selectedNodeId = useEditor((state) => state.selectedNodes[0]);
+  const [section, setSection] = useState<'room' | 'document'>('room');
   const snapshot = useSyncExternalStore(
     (listener) => controller.subscribe(listener),
     () => controller.getSnapshot(),
@@ -246,234 +251,261 @@ export function CollaborationPanel({
       dismissible={!busy}
       className="collaboration-panel"
     >
-      <p>{t('collaboration.intro')}</p>
-      <p className="collaboration-notice">{t('collaboration.reviewNotice')}</p>
-      <div className={`collaboration-status status-${snapshot.status}`} role="status">
-        <span
-          className={`collaboration-dot ${snapshot.status === 'live' ? 'connected' : ''}`}
-          aria-hidden="true"
+      {graph && (
+        <div className="collaboration-modes" aria-label={t('collaboration.title')}>
+          <button aria-pressed={section === 'room'} onClick={() => setSection('room')}>
+            {t('collaboration.roomTab')}
+          </button>
+          <button aria-pressed={section === 'document'} onClick={() => setSection('document')}>
+            {t('collaboration.documentTab')}
+          </button>
+        </div>
+      )}
+      {section === 'document' && graph ? (
+        <DocumentWorkspace
+          graph={graph}
+          snapshot={snapshot}
+          controller={controller}
+          selectedNodeId={selectedNodeId}
         />
-        <strong>{t(`collaboration.status.${snapshot.status}`)}</strong>
-        {snapshot.role && (
-          <span className="collaboration-badge">{t(`collaboration.role.${snapshot.role}`)}</span>
-        )}
-      </div>
-      {snapshot.syncProgress && (
-        <div className="collaboration-progress">
-          <progress
-            aria-label={t('collaboration.status.syncing')}
-            value={snapshot.syncProgress.completed}
-            max={Math.max(1, snapshot.syncProgress.total)}
-          />
-          <p>
-            {t('collaboration.syncProgress', {
-              completed: number(snapshot.syncProgress.completed),
-              total: number(snapshot.syncProgress.total),
-            })}
-          </p>
-        </div>
-      )}
-      {(error || snapshot.error) && (
-        <div role="alert" className="collaboration-error">
-          <strong>{t('collaboration.errorTitle')}</strong>
-          <p>{error || snapshot.error}</p>
-        </div>
-      )}
-      {!snapshot.configured ? (
-        <p className="collaboration-notice">{t('collaboration.unavailable')}</p>
-      ) : !active ? (
-        <>
-          <div className="collaboration-modes" aria-label={t('collaboration.title')}>
-            <button
-              aria-pressed={mode === 'create'}
-              className={mode === 'create' ? 'primary' : ''}
-              disabled={disabled}
-              onClick={() => setMode('create')}
-            >
-              <Users size={16} />
-              {t('collaboration.create')}
-            </button>
-            <button
-              aria-pressed={mode === 'join'}
-              className={mode === 'join' ? 'primary' : ''}
-              disabled={disabled}
-              onClick={() => setMode('join')}
-            >
-              <Link size={16} />
-              {t('collaboration.join')}
-            </button>
-          </div>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!displayName.trim() || disabled) return;
-              if (mode === 'create' && snapshot.diagramId && consent)
-                void run(() => controller.create(snapshot.diagramId!, displayName.trim(), scope));
-              if (mode === 'join' && invitation.trim())
-                void run(async () => {
-                  await controller.join(invitation.trim(), displayName.trim());
-                  if (alive.current) setInvitation('');
-                });
-            }}
-          >
-            <Field title={t('collaboration.displayName')}>
-              <input
-                required
-                maxLength={80}
-                autoComplete="nickname"
-                value={displayName}
-                disabled={disabled}
-                onChange={(event) => setDisplayName(event.target.value)}
-              />
-            </Field>
-            <p className="muted">{t('collaboration.nameHint')}</p>
-            {mode === 'create' ? (
-              <>
-                {!snapshot.diagramId && (
-                  <p className="collaboration-notice">{t('collaboration.selectDiagram')}</p>
-                )}
-                <Disclosure scope={scope} change={setScope} disabled={disabled} />
-                <p className="collaboration-notice">{t('collaboration.backupWarning')}</p>
-                <p className="muted">{t('collaboration.reloadWarning')}</p>
-                <label className="check-field">
-                  <input
-                    type="checkbox"
-                    checked={consent}
-                    disabled={disabled}
-                    onChange={(event) => setConsent(event.target.checked)}
-                  />
-                  {t('collaboration.shareConsent')}
-                </label>
-                <div className="collaboration-actions">
-                  <button
-                    type="submit"
-                    className="primary"
-                    disabled={disabled || !snapshot.diagramId || !displayName.trim() || !consent}
-                  >
-                    {t(busy ? 'collaboration.busy' : 'collaboration.createAction')}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <Field title={t('collaboration.invitation')}>
-                  <textarea
-                    required
-                    rows={3}
-                    spellCheck={false}
-                    autoComplete="off"
-                    value={invitation}
-                    disabled={disabled}
-                    onChange={(event) => setInvitation(event.target.value)}
-                  />
-                </Field>
-                <p>{t('collaboration.inviteHint')}</p>
-                <p className="collaboration-notice">{t('collaboration.joinWarning')}</p>
-                <div className="collaboration-actions">
-                  <button
-                    type="submit"
-                    className="primary"
-                    disabled={disabled || !displayName.trim() || !invitation.trim()}
-                  >
-                    {t(busy ? 'collaboration.busy' : 'collaboration.joinAction')}
-                  </button>
-                </div>
-              </>
-            )}
-          </form>
-        </>
       ) : (
         <>
-          {snapshot.roomId && (
-            <CopyValue label={t('collaboration.roomId')} value={snapshot.roomId} />
-          )}
-          {snapshot.ownerCredentialId && (
-            <CopyValue
-              label={t('collaboration.ownerFingerprint')}
-              value={snapshot.ownerCredentialId}
+          <p>{t('collaboration.intro')}</p>
+          <p className="collaboration-notice">{t('collaboration.reviewNotice')}</p>
+          <div className={`collaboration-status status-${snapshot.status}`} role="status">
+            <span
+              className={`collaboration-dot ${snapshot.status === 'live' ? 'connected' : ''}`}
+              aria-hidden="true"
             />
-          )}
-          {snapshot.selfCredentialId && snapshot.role !== 'owner' && (
-            <div>
-              <CopyValue
-                label={t('collaboration.selfFingerprint')}
-                value={snapshot.selfCredentialId}
+            <strong>{t(`collaboration.status.${snapshot.status}`)}</strong>
+            {snapshot.role && (
+              <span className="collaboration-badge">
+                {t(`collaboration.role.${snapshot.role}`)}
+              </span>
+            )}
+          </div>
+          {snapshot.syncProgress && (
+            <div className="collaboration-progress">
+              <progress
+                aria-label={t('collaboration.status.syncing')}
+                value={snapshot.syncProgress.completed}
+                max={Math.max(1, snapshot.syncProgress.total)}
               />
-              {snapshot.status === 'awaiting-approval' && (
-                <p className="muted">{t('collaboration.selfFingerprintHint')}</p>
-              )}
+              <p>
+                {t('collaboration.syncProgress', {
+                  completed: number(snapshot.syncProgress.completed),
+                  total: number(snapshot.syncProgress.total),
+                })}
+              </p>
             </div>
           )}
-          {snapshot.recoveryCopy && (
-            <p className="collaboration-notice" role="status">
-              {t('collaboration.recoveryCopy', {
-                name: snapshot.recoveryCopy.title,
-                projects: t('workspace.projects'),
-              })}
-            </p>
+          {(error || snapshot.error) && (
+            <div role="alert" className="collaboration-error">
+              <strong>{t('collaboration.errorTitle')}</strong>
+              <p>{error || snapshot.error}</p>
+            </div>
           )}
-          {snapshot.role === 'owner' && (
-            <Invitation
-              snapshot={snapshot}
-              controller={controller}
-              busy={busy || !!confirmation}
-              run={(action) => {
-                void run(action);
-              }}
-            />
-          )}
-          <Disclosure scope={snapshot.scope} disabled />
-          <Participants
-            snapshot={snapshot}
-            controller={controller}
-            busy={busy || !!confirmation}
-            run={(action) => {
-              void run(action);
-            }}
-            confirm={setConfirmation}
-          />
-          <p className="collaboration-notice">{t('collaboration.reloadWarning')}</p>
-          <div className="collaboration-actions collaboration-session-actions">
-            {snapshot.status === 'offline' && (
-              <button
-                disabled={busy}
-                onClick={() => {
-                  void run(() => controller.reconnect());
+          {!snapshot.configured ? (
+            <p className="collaboration-notice">{t('collaboration.unavailable')}</p>
+          ) : !active ? (
+            <>
+              <div className="collaboration-modes" aria-label={t('collaboration.title')}>
+                <button
+                  aria-pressed={mode === 'create'}
+                  className={mode === 'create' ? 'primary' : ''}
+                  disabled={disabled}
+                  onClick={() => setMode('create')}
+                >
+                  <Users size={16} />
+                  {t('collaboration.create')}
+                </button>
+                <button
+                  aria-pressed={mode === 'join'}
+                  className={mode === 'join' ? 'primary' : ''}
+                  disabled={disabled}
+                  onClick={() => setMode('join')}
+                >
+                  <Link size={16} />
+                  {t('collaboration.join')}
+                </button>
+              </div>
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (!displayName.trim() || disabled) return;
+                  if (mode === 'create' && snapshot.diagramId && consent)
+                    void run(() =>
+                      controller.create(snapshot.diagramId!, displayName.trim(), scope),
+                    );
+                  if (mode === 'join' && invitation.trim())
+                    void run(async () => {
+                      await controller.join(invitation.trim(), displayName.trim());
+                      if (alive.current) setInvitation('');
+                    });
                 }}
               >
-                <RefreshCw size={16} />
-                {t('collaboration.reconnect')}
-              </button>
-            )}
-            <button
-              disabled={busy || !!confirmation}
-              onClick={() =>
-                setConfirmation({
-                  kind: snapshot.role === 'owner' && !failed ? 'close' : 'leave',
-                })
-              }
-            >
-              {t(
-                failed
-                  ? 'collaboration.endLocalSession'
-                  : snapshot.role === 'owner'
-                    ? 'collaboration.closeRoom'
-                    : 'collaboration.leave',
+                <Field title={t('collaboration.displayName')}>
+                  <input
+                    required
+                    maxLength={80}
+                    autoComplete="nickname"
+                    value={displayName}
+                    disabled={disabled}
+                    onChange={(event) => setDisplayName(event.target.value)}
+                  />
+                </Field>
+                <p className="muted">{t('collaboration.nameHint')}</p>
+                {mode === 'create' ? (
+                  <>
+                    {!snapshot.diagramId && (
+                      <p className="collaboration-notice">{t('collaboration.selectDiagram')}</p>
+                    )}
+                    <Disclosure scope={scope} change={setScope} disabled={disabled} />
+                    <p className="collaboration-notice">{t('collaboration.backupWarning')}</p>
+                    <p className="muted">{t('collaboration.reloadWarning')}</p>
+                    <label className="check-field">
+                      <input
+                        type="checkbox"
+                        checked={consent}
+                        disabled={disabled}
+                        onChange={(event) => setConsent(event.target.checked)}
+                      />
+                      {t('collaboration.shareConsent')}
+                    </label>
+                    <div className="collaboration-actions">
+                      <button
+                        type="submit"
+                        className="primary"
+                        disabled={
+                          disabled || !snapshot.diagramId || !displayName.trim() || !consent
+                        }
+                      >
+                        {t(busy ? 'collaboration.busy' : 'collaboration.createAction')}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Field title={t('collaboration.invitation')}>
+                      <textarea
+                        required
+                        rows={3}
+                        spellCheck={false}
+                        autoComplete="off"
+                        value={invitation}
+                        disabled={disabled}
+                        onChange={(event) => setInvitation(event.target.value)}
+                      />
+                    </Field>
+                    <p>{t('collaboration.inviteHint')}</p>
+                    <p className="collaboration-notice">{t('collaboration.joinWarning')}</p>
+                    <div className="collaboration-actions">
+                      <button
+                        type="submit"
+                        className="primary"
+                        disabled={disabled || !displayName.trim() || !invitation.trim()}
+                      >
+                        {t(busy ? 'collaboration.busy' : 'collaboration.joinAction')}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </form>
+            </>
+          ) : (
+            <>
+              {snapshot.roomId && (
+                <CopyValue label={t('collaboration.roomId')} value={snapshot.roomId} />
               )}
-            </button>
-          </div>
-          {confirmation && (
-            <Confirmation
-              value={confirmation}
-              failed={failed}
-              busy={busy}
-              cancel={() => setConfirmation(undefined)}
-              execute={confirmationAction}
-            />
+              {snapshot.ownerCredentialId && (
+                <CopyValue
+                  label={t('collaboration.ownerFingerprint')}
+                  value={snapshot.ownerCredentialId}
+                />
+              )}
+              {snapshot.selfCredentialId && snapshot.role !== 'owner' && (
+                <div>
+                  <CopyValue
+                    label={t('collaboration.selfFingerprint')}
+                    value={snapshot.selfCredentialId}
+                  />
+                  {snapshot.status === 'awaiting-approval' && (
+                    <p className="muted">{t('collaboration.selfFingerprintHint')}</p>
+                  )}
+                </div>
+              )}
+              {snapshot.recoveryCopy && (
+                <p className="collaboration-notice" role="status">
+                  {t('collaboration.recoveryCopy', {
+                    name: snapshot.recoveryCopy.title,
+                    projects: t('workspace.projects'),
+                  })}
+                </p>
+              )}
+              {snapshot.role === 'owner' && (
+                <Invitation
+                  snapshot={snapshot}
+                  controller={controller}
+                  busy={busy || !!confirmation}
+                  run={(action) => {
+                    void run(action);
+                  }}
+                />
+              )}
+              <Disclosure scope={snapshot.scope} disabled />
+              <Participants
+                snapshot={snapshot}
+                controller={controller}
+                busy={busy || !!confirmation}
+                run={(action) => {
+                  void run(action);
+                }}
+                confirm={setConfirmation}
+              />
+              <p className="collaboration-notice">{t('collaboration.reloadWarning')}</p>
+              <div className="collaboration-actions collaboration-session-actions">
+                {snapshot.status === 'offline' && (
+                  <button
+                    disabled={busy}
+                    onClick={() => {
+                      void run(() => controller.reconnect());
+                    }}
+                  >
+                    <RefreshCw size={16} />
+                    {t('collaboration.reconnect')}
+                  </button>
+                )}
+                <button
+                  disabled={busy || !!confirmation}
+                  onClick={() =>
+                    setConfirmation({
+                      kind: snapshot.role === 'owner' && !failed ? 'close' : 'leave',
+                    })
+                  }
+                >
+                  {t(
+                    failed
+                      ? 'collaboration.endLocalSession'
+                      : snapshot.role === 'owner'
+                        ? 'collaboration.closeRoom'
+                        : 'collaboration.leave',
+                  )}
+                </button>
+              </div>
+              {confirmation && (
+                <Confirmation
+                  value={confirmation}
+                  failed={failed}
+                  busy={busy}
+                  cancel={() => setConfirmation(undefined)}
+                  execute={confirmationAction}
+                />
+              )}
+            </>
           )}
+          <SecurityNotice />
         </>
       )}
-      <SecurityNotice />
     </Modal>
   );
 }

@@ -85,6 +85,25 @@ The app can be publicly hosted on S3/CloudFront; those services contain static c
 
 Required storage consent precedes opening the workspace and registering offline caches. MCP defaults Off; read-only access rejects all mutation commands before repository dispatch, including attempts to enable write access. URLs are restricted to literal loopback WebSocket hosts; a public app cannot connect its bridge to a cloud URL. The local service checks explicit HTTPS app origins, supports trusted local TLS and has no wildcard CORS. See [privacy](docs/PRIVACY.md), [storage](docs/STORAGE.md) and [deployment](docs/DEPLOYMENT.md).
 
+## Portable collaboration document work
+
+Profiles, comments, tasks and activity are ordinary diagram content. They are
+stored with existing AES-256-GCM encrypted diagram records, included in native
+exports/backups, and shared with approved recipients even when optional metadata
+or responsibility-owner disclosure is off. No new account or identity provider
+is created. Display profiles grant no room access. UI/API actions use the current
+application actor and role, reject caller-supplied authors/roles, require current
+versions, and preserve viewer restrictions. Approved editors remain trusted to
+modify the shared CRDT; activity is not signed immutable audit evidence.
+
+Uploads have compressed/dimension bounds before decoding and are locally
+resized/re-encoded. Saved avatars accept only bounded data PNG/JPEG/WebP;
+external URLs and SVG are rejected. Every retained collaboration field path is
+structurally allowlisted before projection, including paths suppressed by a
+deleted ancestor or activity retention. Unknown credential/session fields are
+rejected without changing accepted CRDT state. This is structural scope checking,
+not a promise to sanitize secrets users put into permitted diagram text.
+
 ## Optional realtime collaboration boundary
 
 A configured Cloudflare relay enables deliberate per-diagram collaboration using MLS RFC 9420 application encryption and owner-approved device membership with signed policy. The owner verifies a separate device-signed admission proof binding the room, complete transport/MLS identity, KeyPackage and expiry. The complete browser/relay integration has not been independently audited. This adds live Owner/Editor/Viewer roles, not enterprise SSO, verified organization identity, managed tenancy or a central audit log. Display names do not verify a legal identity. The [dated internal engineering review](docs/COLLABORATION_SECURITY_REVIEW.md) records corrections, tested boundaries and remaining limits; it is not external assurance.

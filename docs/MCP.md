@@ -4,7 +4,7 @@
 
 Read `limits` before assuming an existing diagram can be shared: object, JSON, CRDT-state and update budgets are independent. Incremental causal updates are limited to 8 MiB; full-state refreshes use the canonical empty base vector `[0]` and the 32 MiB CRDT-state limit, with the same role, sharing-scope and semantic validation. Compressed application payloads are limited to 3 MiB and decompressed payloads to 64 MiB; content can exceed those limits even when its node count fits. Exceeded limits reject the operation without silently omitting content.
 
-Bridge **0.7.0** adds `collaboration-v1` without changing the two MCP tools. Discover the semantic controls first:
+Bridge **0.8.0** adds `collaboration-document-v1` alongside `collaboration-v1`, without changing the two MCP tools. Discover the semantic controls first:
 
 ```json
 { "path": "/collaboration/capabilities", "method": "GET" }
@@ -17,15 +17,53 @@ Bridge **0.7.0** adds `collaboration-v1` without changing the two MCP tools. Dis
 ```
 
 ```json
-{ "path": "/diagrams/00000000-0000-4000-8000-000000000001/collaboration", "method": "GET" }
+{
+  "path": "/diagrams/00000000-0000-4000-8000-000000000001/collaboration",
+  "method": "GET"
+}
 ```
 
-These report only the current local room: status, scope, participant deviceId/name/role/connected/selectedNodeIds/actor, pending join count and optional sync progress. They omit invitation URLs, relay URLs, credentials, private keys, MLS state and raw errors. Normal graph CRUD remains the editing interface. Shared writes require both owner/editor room membership and the current local MCP write grant; a viewer's Read + write grant cannot bypass their role. Delete/clear/replace operations affecting the active shared diagram and edits/deletion of its referenced global owner profiles return 409 until the room is left; prepare global owner profiles before joining.
+These report only the current local room: status, scope, optional selfProfileId, participant deviceId/name/role/connected/selectedNodeIds/actor and optional profileId/color, pending join count and optional sync progress. They omit invitation URLs, relay URLs, credentials, private keys, MLS state and raw errors. Normal graph CRUD remains the editing interface. Shared writes require both owner/editor room membership and the current local MCP write grant; a viewer's Read + write grant cannot bypass their role. Delete/clear/replace operations affecting the active shared diagram and edits/deletion of its referenced global owner profiles return 409 until the room is left; prepare global owner profiles before joining.
+
+Portable document work does not need a configured relay. Inspect it with `GET /diagrams/{diagramId}/collaboration/document` to obtain `{diagramId,baseVersion,document}`. To add a thread, task or display profile, use exact `POST /diagrams/{diagramId}/collaboration/actions` with `{baseVersion,action}` and Read + write. Read the scoped endpoint schema first:
+
+```json
+{
+  "document": "endpoint",
+  "path": "/diagrams/{diagramId}/collaboration/actions",
+  "method": "POST"
+}
+```
+
+```json
+{
+  "path": "/diagrams/00000000-0000-4000-8000-000000000001/collaboration/actions",
+  "method": "POST",
+  "data": {
+    "baseVersion": 42,
+    "action": {
+      "type": "task.create",
+      "task": {
+        "nodeId": "00000000-0000-4000-8000-000000000002",
+        "title": "Review dependency",
+        "status": "todo",
+        "dueDate": "2026-10-20"
+      }
+    }
+  }
+}
+```
+
+Use the current returned version and existing node/profile IDs. The browser binds actor, role and source; do not send author IDs, role, timestamps or credentials. Owner provisions profiles, editors update their own profile/comments and node tasks, thread author/owner resolves, and viewers cannot mutate. Profiles are unverified document labels, distinct from process owners and live credentials. Deleted-node work retains its UUID/title. Native exports/backups include this document work; encrypted room/CRDT records remain private. Profile creation with omitted/null color automatically chooses the first unused palette color, then balances reuse after eight colors; names/initials also identify labels. The latest 500 activity events use logical sequence with UUID ties and writer-clock display values; they are informational editable content, not a signed immutable audit. Approved editors remain trusted to edit the existing shared CRDT. See [the complete action and limit contract](../API.md#optional-realtime-collaboration).
 
 To leave only this browser's session while retaining its local graph, use Read + write and:
 
 ```json
-{ "path": "/diagrams/00000000-0000-4000-8000-000000000001/collaboration/disconnect", "method": "POST", "data": {} }
+{
+  "path": "/diagrams/00000000-0000-4000-8000-000000000001/collaboration/disconnect",
+  "method": "POST",
+  "data": {}
+}
 ```
 
 No query parameters or nonempty bodies are accepted. Existing locked-workspace and grant checks apply. A missing current session returns 404 on disconnect. If a disconnect response is uncertain, use the existing operation receipt workflow; never blindly repeat a write with a new ID.
@@ -76,7 +114,7 @@ On the isolated encrypted app, the deployed Content Security Policy also restric
 
 ## Recover a write without creating duplicates
 
-Use a current bridge and refreshed app tab. Bridge version 0.7.0 reports `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1` and `collaboration-v1` in health and its browser handshake, together with supported tool names. This reports software support; it does not reveal workspace data or grant access. Older browser tabs remain one-shot and cannot reserve or recover operation receipts.
+Use a current bridge and refreshed app tab. Bridge version 0.8.0 reports `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1` and `collaboration-document-v1` in health and its browser handshake, together with supported tool names. This reports software support; it does not reveal workspace data or grant access. Older browser tabs remain one-shot and cannot reserve or recover operation receipts.
 
 Read bridge software health through direct HTTP `GET /api/v1/health` (`/health` relative to the REST base). MCP `visual_nerve_request` with `path:"/health"` instead reads the connected browser's semantic IndexedDB health, without bridge-only tool/capability fields. Their absence in that browser response is not evidence of an outdated bridge.
 
@@ -85,7 +123,7 @@ The bridge's `connected` count includes restricted control connections, so it do
 Before a write, reserve an opaque ID:
 
 ```json
-{"path":"/operations","method":"POST","data":{}}
+{ "path": "/operations", "method": "POST", "data": {} }
 ```
 
 The reservation requires an unlocked browser, accepted storage and Read + write access. Read its returned `operationId`, then supply it as a top-level argument of `visual_nerve_request` alongside the write's `path`, `method` and `data`. REST uses `X-Visual-Nerve-Operation-Id`. Successful write bodies are unchanged; MCP `structuredContent.operationId` and the REST response header expose identity. Agents must retain that identity before dispatch if they need to recover even when the client loses the entire response.
@@ -106,7 +144,7 @@ Read only is an explicit route allowlist, not general permission for POST:
 | ----------------------------------- | ------------------------------------------ |
 | `/export`                           | Current graph JSON, Markdown or SVG export |
 | `/exports/svg`                      | Transient background SVG export job        |
-| `/exports/diagrams`                 | Editable Draw.io export job |
+| `/exports/diagrams`                 | Editable Draw.io export job                |
 | `/sql/preview`                      | Unsaved SQL query/schema analysis          |
 | `/code/preview`                     | Unsaved code analysis                      |
 | `/code/project/preview`             | Unsaved ZIP project analysis               |
@@ -127,10 +165,18 @@ The synchronous `/export` route accepts source graphs with at most 100 nodes and
 
 ## Export an editable Draw.io diagram
 
-Bridge 0.7.0 advertises `exchange-export-v1`. `GET /exports/capabilities` keeps all SVG fields and adds `diagrams`: the drawio format, scopes, independent budgets, byte chunk units and validation metadata. Use the existing request tool:
+Bridge 0.8.0 advertises `exchange-export-v1`. `GET /exports/capabilities` keeps all SVG fields and adds `diagrams`: the drawio format, scopes, independent budgets, byte chunk units and validation metadata. Use the existing request tool:
 
 ```json
-{"path":"/exports/diagrams","method":"POST","data":{"diagramId":"DIAGRAM_UUID","format":"drawio","scope":"complete"}}
+{
+  "path": "/exports/diagrams",
+  "method": "POST",
+  "data": {
+    "diagramId": "DIAGRAM_UUID",
+    "format": "drawio",
+    "scope": "complete"
+  }
+}
 ```
 
 The `201` response is a job status, not the file. Poll `GET /exports/diagrams/{jobId}` for real progress, state and warnings. After `succeeded`, retrieve `/exports/diagrams/{jobId}/result?offset=0&limit=786432`. Chunks contain `{jobId,format,mimeType,encoding:"base64",offset,nextOffset,totalBytes,data,complete,warnings}`. **Decode each padded base64 data chunk separately**, concatenate binary bytes and advance with `nextOffset` until complete. Offsets count raw bytes; never concatenate base64 strings or use SVG's UTF-16 offsets. Save `.drawio` and review warnings. Starting, inspecting, retrieving and exact DELETE cancellation permit Read only. Cancellation accepts no arguments or `{}`, returns cancelled status once and then removes the job/result.
@@ -282,7 +328,7 @@ Explicit authorized AI/API requests and ordinary exports expose readable content
 
 ## Parallel cases and background exports
 
-Bridge 0.7.0 bundles discoverable fork/join and asynchronous SVG contracts. The live browser must also be current. Inspect `GET /simulation/capabilities` and `GET /exports/capabilities`; transport health lists software, not grants. All supported MCP clients use the same `visual_nerve_request` tool and semantic endpoints.
+Bridge 0.8.0 bundles discoverable fork/join and asynchronous SVG contracts. The live browser must also be current. Inspect `GET /simulation/capabilities` and `GET /exports/capabilities`; transport health lists software, not grants. All supported MCP clients use the same `visual_nerve_request` tool and semantic endpoints.
 
 Create complete paired `fork`/`join` regions atomically through a versioned full-model PUT. All fork outgoing edges are mandatory tasks for one original case; a join waits for that case’s tasks, with one revenue outcome and actual shared resource allocations. UI, animated/MAX runs, API/MCP and replay share `SimulationEngine`. See [parallel fields and state](../API.md#parallel-processes-through-the-api).
 

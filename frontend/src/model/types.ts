@@ -7,6 +7,7 @@ import type { StoryboardDefinition } from '../presentation/storyboard';
 import type { OverviewConfig } from '../overview/types';
 import type { BuildSpecificationDraft } from '../export/build-specification-draft';
 import type { SimulationModel } from '../simulation/types';
+import type { CollaborationDocument } from '../collaboration/model/types';
 export type { DrawingLayer, DrawingStroke } from '../drawing/types';
 
 export const diagramTypes = [
@@ -57,6 +58,8 @@ export interface Diagram extends Base {
   favorite: boolean;
   tags: string[];
   metadata: Metadata;
+  /** Portable collaboration work, distinct from private live-room credentials. */
+  collaboration?: CollaborationDocument;
   settings: {
     viewport?: { x: number; y: number; zoom: number };
     grid?: boolean;

@@ -1,0 +1,128 @@
+.document-workspace {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.document-work-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.document-work-tabs > button {
+  flex: 1;
+}
+.document-work-tabs > [aria-selected='true'] {
+  color: var(--accent);
+  background: var(--accent-bg);
+  border-color: var(--accent);
+}
+.document-workspace section {
+  display: grid;
+  gap: 14px;
+}
+.document-workspace .field {
+  margin-bottom: 0;
+}
+.document-workspace :is(input, textarea, select) {
+  width: 100%;
+  min-width: 0;
+}
+.document-workspace textarea {
+  resize: vertical;
+  min-height: 84px;
+}
+.document-work-list {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.document-work-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.document-work-form {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding-block: 12px;
+}
+.document-work-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
+  gap: 12px;
+}
+.document-work-actions,
+.document-work-pages,
+.document-work-meta,
+.document-profile-heading,
+.document-profile-appearance {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+}
+.document-work-meta {
+  color: var(--muted);
+  font-size: 11px;
+}
+.document-profile-heading > strong {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.document-profile-appearance input[type='color'] {
+  width: 80px;
+  min-height: 36px;
+}
+.document-work-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
+}
+.document-comment-message {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+  display: grid;
+  gap: 10px;
+}
+.document-work-pages {
+  justify-content: space-between;
+}
+.document-work-notice,
+.document-work-error {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-alt);
+  margin: 0;
+}
+.document-work-error {
+  border-color: var(--danger);
+}
+.document-work-confirmation {
+  border: 1px solid var(--caution);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--surface-alt);
+}
+.document-workspace [role='tabpanel']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+@media (max-width: 900px), (max-width: 1100px) and (max-height: 500px) {
+  .document-workspace :is(button, select, input) {
+    min-height: 44px;
+  }
+  .document-workspace :is(input, select, textarea) {
+    font-size: 16px;
+  }
+  .document-work-card {
+    padding: 12px;
+  }
+}

@@ -5,6 +5,7 @@ import { collaborationUpdateLimits } from './document/update-envelope';
 import { collaborationFrameLimits } from './sync/message-framing';
 import { collaborationPayloadLimits } from './session/payload-codec';
 import type { CollaborationSnapshot } from './types';
+import { collaborationLimits } from './model/types';
 
 export interface CollaborationApiRuntime {
   inspect(): Readonly<CollaborationSnapshot> | undefined;
@@ -40,6 +41,19 @@ export function collaborationCapabilities(configured: boolean) {
       reconnect: 'same-unlocked-live-device',
       reload: 'fresh-device-owner-approval',
       ownerReload: 'new-room',
+    },
+    documentWorkflow: {
+      schemaVersion: 1,
+      persistence: 'diagram.collaboration',
+      capabilities: ['profiles', 'comments', 'tasks', 'semantic-activity'],
+      inspect: '/diagrams/{id}/collaboration/document',
+      mutate: '/diagrams/{id}/collaboration/actions',
+      concurrency: 'baseVersion',
+      actor: 'adapter-bound-document-profile',
+      identity: 'unverified-document-label',
+      activity: 'bounded-editable-client-clock-history',
+      requiresConfiguredRelay: false,
+      limits: collaborationLimits,
     },
     assurance: 'not-independently-audited',
     requiresConfiguredRelay: true,
@@ -91,6 +105,7 @@ export function collaborationApiSnapshot(snapshot: Readonly<CollaborationSnapsho
     ...(snapshot.roomId ? { roomId: snapshot.roomId } : {}),
     ...(snapshot.diagramId ? { diagramId: snapshot.diagramId } : {}),
     ...(snapshot.selfDeviceId ? { selfDeviceId: snapshot.selfDeviceId } : {}),
+    ...(snapshot.selfProfileId ? { selfProfileId: snapshot.selfProfileId } : {}),
     ...(snapshot.role ? { role: snapshot.role } : {}),
     scope: {
       shareMetadata: snapshot.scope.shareMetadata,
@@ -104,6 +119,8 @@ export function collaborationApiSnapshot(snapshot: Readonly<CollaborationSnapsho
       connected: participant.connected,
       selectedNodeIds: [...participant.selectedNodeIds],
       ...(participant.actor ? { actor: participant.actor } : {}),
+      ...(participant.profileId ? { profileId: participant.profileId } : {}),
+      ...(participant.color ? { color: participant.color } : {}),
     })),
     pendingJoinCount: snapshot.pendingJoins.length,
     ...(snapshot.syncProgress

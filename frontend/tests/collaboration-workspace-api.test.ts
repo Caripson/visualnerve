@@ -31,6 +31,25 @@ afterEach(async () => {
   await db.delete();
 });
 describe('collaboration through the existing workspace API authority', () => {
+  it('accepts the bridge null body for a read-only document inspection without enabling document work', async () => {
+    await workspace.setPreference('mcp-access', 'read');
+    const before = await repo.getGraph(diagramId);
+    // An absent Go json.RawMessage is encoded as data:null in the bridge command.
+    const command = JSON.parse(
+      JSON.stringify({
+        path: `/api/v1/diagrams/${diagramId}/collaboration/document`,
+        method: 'GET',
+        data: null,
+      }),
+    );
+    expect(await workspace.external(command.path, command.method, command.data)).toEqual({
+      diagramId,
+      baseVersion: before.diagram.version,
+      document: { schemaVersion: 1, profiles: [], comments: [], tasks: [], activity: [] },
+    });
+    expect(await repo.getGraph(diagramId)).toEqual(before);
+    expect((await repo.getGraph(diagramId)).diagram.collaboration).toBeUndefined();
+  });
   it('routes canonical diagram inspection and capabilities through one consent/grant boundary', async () => {
     expect(
       await workspace.external(`/api/v1/diagrams/${diagramId}/collaboration`, 'GET'),

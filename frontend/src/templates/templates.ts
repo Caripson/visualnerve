@@ -5,6 +5,7 @@ import { remapSimulationModel } from '../simulation/copy';
 import { createEmptySimulationModel } from '../simulation/starter';
 import { DeliveryNetworkExample } from '../simulation/delivery-example';
 import { ParallelDeliveryExample } from '../simulation/parallel-delivery-example';
+import { remapGraphCollaboration } from '../collaboration/model/remap';
 const files = import.meta.glob<Graph>('./*.json', { eager: true, import: 'default' });
 export const templates = manifest;
 export function instantiate(key: string, name: string, source?: Graph): Graph {
@@ -40,6 +41,8 @@ export function instantiate(key: string, name: string, source?: Graph): Graph {
     targetNodeId: ids.get(e.targetNodeId)!,
   }));
   if (graph.simulation) graph.simulation = remapSimulationModel(graph.simulation, ids, ids);
+  if (graph.diagram.collaboration)
+    Object.assign(graph, remapGraphCollaboration(graph, { nodeIds: ids, edgeIds: ids }));
   if (graph.diagram.type === 'mindmap' && graph.nodes[0]) graph.nodes[0].title = name;
   if (graph.diagram.type === 'timeline') {
     const origin = Date.parse(graph.nodes[0].startDate!);

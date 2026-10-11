@@ -75,8 +75,12 @@ import { browserApiVersion } from './api-version';
 import { BulkIdentities } from './bulk-identities';
 import { collaborationPermissions, type SharedProjectionAuthority } from '../collaboration/access';
 import { collaborationDocumentHooks } from '../collaboration/document-hooks';
+import type { CollaborationActionContext } from '../collaboration/model/types';
+import { documentProfilePreference } from '../collaboration/profile-preference';
 
 export type CommandOptions = AnalysisCommandOptions & {
+  /** Internal adapter context; never accepted from external request JSON. */
+  collaborationContext?: CollaborationActionContext;
   /** Recheck external grants after queue waits and immediately before dispatch. */
   beforeRequest?: () => Promise<void>;
   /** Recheck external grants inside document transactions before their first write. */
@@ -213,8 +217,13 @@ export class Repository {
     projection?: SharedProjectionAuthority,
     changeBase?: Graph,
   ): Promise<Graph> {
+    // Resolve optional modules before opening a native IndexedDB transaction.
+    // Fetching a first-use chunk inside that transaction can commit it early.
+    if (!this.db.inTransaction && input.diagram.collaboration && !projection)
+      await import('../collaboration/model');
     const shared = projection ? undefined : collaborationDocumentHooks.get(input.diagram.id);
     if (shared && !this.db.inTransaction) {
+      await import('../collaboration/document/scope');
       return this.db.atomic(
         'rw',
         ['diagrams', 'nodes', 'edges', 'owners', 'datasets', 'simulationModels', 'settings'],
@@ -229,7 +238,11 @@ export class Repository {
           ),
       );
     }
-    const before = shared ? (changeBase ?? (await this.db.graph(input.diagram.id))) : undefined;
+    const before =
+      shared || (!projection && input.diagram.collaboration)
+        ? (changeBase ?? (await this.db.graph(input.diagram.id)))
+        : undefined;
+    collaborationPermissions.assertWrite(input.diagram.id, before, input, projection);
     // Ordinary drawing saves intentionally omit raw CSV sources. Apply the
     // same inheritance as writeGraph before calculating their shared delta,
     // using the edit's baseline so a concurrent peer source change stays a
@@ -240,6 +253,44 @@ export class Repository {
         dataset: input.dataset ?? (input.datasets === undefined ? before.dataset : undefined),
         datasets: input.datasets ?? before.datasets,
       };
+    if (!projection && before && input.diagram.collaboration) {
+      const { appendSemanticActivity, retainCollaborationNodeTitles } =
+        await import('../collaboration/model');
+      const bound = collaborationPermissions.documentContext(input.diagram.id);
+      const preference = bound
+        ? undefined
+        : await this.db.settings.get(documentProfilePreference(input.diagram.id));
+      const profileId =
+        typeof preference?.value === 'string' &&
+        input.diagram.collaboration.profiles.some((profile) => profile.id === preference.value)
+          ? preference.value
+          : undefined;
+      const context = bound
+        ? { ...bound, source: canonicalPositions ? ('ui' as const) : ('api' as const) }
+        : {
+            role: 'owner' as const,
+            profileId,
+            source: canonicalPositions ? ('ui' as const) : ('api' as const),
+          };
+      // Summaries must obey the same disclosure scope as the document delta.
+      // Private metadata, owners and source evidence never leak via history.
+      if (shared) {
+        const scope = shared.scope;
+        if (scope) {
+          const { sharedGraph, localGraph } = await import('../collaboration/document/scope');
+          const empty = blankGraph(input.diagram.name, input.diagram.type);
+          empty.diagram.id = input.diagram.id;
+          const visibleBefore = localGraph(sharedGraph(before, scope), empty, scope);
+          const visibleAfter = localGraph(sharedGraph(input, scope), empty, scope);
+          const recorded = appendSemanticActivity(visibleBefore, visibleAfter, context);
+          input = {
+            ...input,
+            diagram: { ...input.diagram, collaboration: recorded.diagram.collaboration },
+          };
+        }
+      } else input = appendSemanticActivity(before, input, context);
+      input = retainCollaborationNodeTitles(input);
+    }
     const prepared =
       shared && before ? await shared.prepareLocal(before, input, this.db) : undefined;
     try {
@@ -431,6 +482,9 @@ export class Repository {
     source: Graph,
     beforeWrite?: (scope: WorkspaceStorage) => Promise<void>,
   ): Promise<Graph> {
+    const collaboration = source?.diagram?.collaboration
+      ? await import('../collaboration/model/remap')
+      : undefined;
     const imported = await this.db.atomic(
       'rw',
       [
@@ -505,6 +559,8 @@ export class Repository {
         Object.assign(graph, remapStoryboard(graph, nodeIds, edgeIds));
         Object.assign(graph, remapBuildSpecification(graph, nodeIds, edgeIds, sourceIds));
         Object.assign(graph, remapOverview(graph, source, nodeIds));
+        if (collaboration)
+          Object.assign(graph, collaboration.remapGraphCollaboration(graph, { nodeIds, edgeIds }));
         if (graph.simulation)
           graph.simulation = remapSimulationModel(graph.simulation, nodeIds, edgeIds);
         if (graph.diagram.settings.csvSuppressedRelationshipEdges)
@@ -670,6 +726,7 @@ export class Repository {
         backup.settings.filter(
           (setting) =>
             !setting.key.startsWith('vault-') &&
+            !setting.key.startsWith('collaboration-profile:') &&
             ![
               'workspace-id',
               'last-diagram',
@@ -743,9 +800,13 @@ export class Repository {
     id?: string,
     beforeWrite?: (scope: WorkspaceStorage) => Promise<void>,
   ): Promise<Owner> {
+    // Bulk owners already belong to a graph-save transaction. Direct registry
+    // edits preload the optional activity module before native IndexedDB opens.
+    const activity =
+      id && !this.db.inTransaction ? await import('../collaboration/model') : undefined;
     return this.db.atomic(
       'rw',
-      ['owners', 'nodes', 'diagrams', ...(beforeWrite ? ['settings' as const] : [])],
+      ['owners', 'nodes', 'diagrams', ...(beforeWrite || activity ? ['settings' as const] : [])],
       async (scope) => {
         const old = id ? await scope.owners.get(id) : undefined;
         if (id && !old) throw new StorageError(404, 'Owner does not exist.');
@@ -786,16 +847,56 @@ export class Repository {
             (diagram): diagram is Diagram => !!diagram,
           );
           await scope.diagrams.bulkPut(
-            diagrams.map((diagram) => ({
-              ...diagram,
-              version: diagram.version + 1,
-              updatedAt: new Date().toISOString(),
-            })),
+            await this.updatedOwnerDiagrams(
+              scope,
+              diagrams,
+              sameContent(input, old) ? undefined : activity,
+            ),
           );
         }
         return owner;
       },
     );
+  }
+  private async updatedOwnerDiagrams(
+    scope: WorkspaceStorage,
+    diagrams: Diagram[],
+    activity?: typeof import('../collaboration/model'),
+  ): Promise<Diagram[]> {
+    const updatedAt = new Date().toISOString();
+    const result: Diagram[] = [];
+    for (const diagram of diagrams) {
+      const updated = { ...diagram, version: diagram.version + 1, updatedAt };
+      if (activity && diagram.collaboration) {
+        const document = structuredClone(diagram.collaboration);
+        const validate: (typeof import('../collaboration/model'))['validateCollaboration'] =
+          activity.validateCollaboration;
+        validate(document);
+        const preference = await scope.settings.get(documentProfilePreference(diagram.id));
+        const profileId =
+          typeof preference?.value === 'string' &&
+          document.profiles.some((profile) => profile.id === preference.value)
+            ? preference.value
+            : undefined;
+        const context: CollaborationActionContext = {
+          role: 'owner',
+          profileId,
+          source: 'api',
+          now: updatedAt,
+        };
+        activity.appendCollaborationActivity(document, [
+          activity.collaborationActivityEvent(
+            context,
+            'owners.updated',
+            'Diagram responsibility owners updated.',
+          ),
+        ]);
+        validate(document);
+        updated.collaboration = document;
+      }
+      result.push(updated);
+    }
+    return result;
   }
   async request<T>(
     path: string,
@@ -871,6 +972,15 @@ export class Repository {
       [collection, id, action] = parts;
     const read = method === 'GET',
       remove = method === 'DELETE';
+    if (!read && ['diagrams', 'nodes', 'edges'].includes(collection)) {
+      // Node/PATCH/bulk commands can enter their own transaction before saveGraph.
+      // Resolve optional workflow code first so cold chunks cannot close native IDB.
+      await Promise.all([
+        import('../collaboration/model'),
+        import('../collaboration/document/scope'),
+      ]);
+      await this.commandReady(options);
+    }
     if (collection === 'workspace' && id === 'security') {
       if (parts.length !== 2 || url.search || url.hash)
         throw new StorageError(404, 'Unknown workspace security discovery endpoint.');
@@ -1039,6 +1149,7 @@ export class Repository {
     if (collection === 'owners') {
       if (read) return (id ? await this.db.owners.get(id) : await this.db.owners.toArray()) as T;
       if (!remove) return (await this.owner(object(payload), id, options.beforeWrite)) as T;
+      const activity = await import('../collaboration/model');
       return await this.db.atomic(
         'rw',
         ['owners', 'nodes', 'diagrams', 'settings'],
@@ -1055,13 +1166,7 @@ export class Repository {
           const diagrams = (
             await scope.diagrams.bulkGet([...new Set(nodes.map((node) => node.diagramId))])
           ).filter((diagram): diagram is Diagram => !!diagram);
-          await scope.diagrams.bulkPut(
-            diagrams.map((diagram) => ({
-              ...diagram,
-              version: diagram.version + 1,
-              updatedAt: new Date().toISOString(),
-            })),
-          );
+          await scope.diagrams.bulkPut(await this.updatedOwnerDiagrams(scope, diagrams, activity));
           await scope.owners.delete(id);
           return undefined as T;
         },
@@ -1094,6 +1199,18 @@ export class Repository {
       return (await exportCommand(graph, data, exportGuard)) as T;
     }
     if (collection === 'diagrams') {
+      if (id && action === 'collaboration' && ['document', 'actions'].includes(parts[3])) {
+        const { CollaborationDocumentCommands } = await import('../collaboration/document-api');
+        await this.commandReady(options);
+        return (await new CollaborationDocumentCommands(this).request(
+          id,
+          parts,
+          url,
+          method,
+          payload,
+          options,
+        )) as T;
+      }
       if (id && action === 'simulation') {
         const { simulationCommand } = await loadOptionalCommand('simulation');
         await this.commandReady(options);
@@ -1187,7 +1304,25 @@ export class Repository {
         const graph = data.graph as Graph;
         validateGraphFields(graph);
         if (graph.diagram.id !== id) throw new StorageError(422, 'Diagram id mismatch.');
-        return (await this.saveGraph(graph, data.baseVersion as number, options.beforeWrite)) as T;
+        const current = await this.getGraph(id);
+        if (
+          graph.diagram.collaboration !== undefined &&
+          JSON.stringify(graph.diagram.collaboration) !==
+            JSON.stringify(current.diagram.collaboration)
+        )
+          throw new StorageError(
+            422,
+            'Use versioned collaboration actions to change document profiles, comments, tasks or activity.',
+          );
+        const preserved = {
+          ...graph,
+          diagram: { ...graph.diagram, collaboration: current.diagram.collaboration },
+        };
+        return (await this.saveGraph(
+          preserved,
+          data.baseVersion as number,
+          options.beforeWrite,
+        )) as T;
       }
       if (action === 'bulk')
         return (await this.bulk(id, object(payload), options.beforeWrite)) as T;
@@ -1223,6 +1358,11 @@ export class Repository {
             return saved.edges.find((value) => value.id === edge.id) as T;
           }
           requireVersion(version, data.version);
+          if (Object.hasOwn(data, 'collaboration'))
+            throw new StorageError(
+              422,
+              'Use versioned collaboration actions to change document work.',
+            );
           graph.diagram = patch(graph.diagram, data);
           return (await scoped.saveGraph(graph, version, options.beforeWrite)).diagram as T;
         },
@@ -1327,17 +1467,10 @@ export class Repository {
     data: Patch,
     beforeWrite?: (scope: WorkspaceStorage) => Promise<void>,
   ): Promise<Graph> {
+    if (!this.db.inTransaction) await import('../collaboration/model');
     const saved = await this.db.atomic(
       'rw',
-      [
-        'diagrams',
-        'nodes',
-        'edges',
-        'owners',
-        'datasets',
-        'simulationModels',
-        ...(beforeWrite ? ['settings' as const] : []),
-      ],
+      ['diagrams', 'nodes', 'edges', 'owners', 'datasets', 'simulationModels', 'settings'],
       async (scope) => {
         const scoped = new Repository(scope);
         const graph = await scoped.getGraph(id),

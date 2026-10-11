@@ -1,6 +1,6 @@
 # Optional local REST and MCP integration
 
-API **0.7.0** adds optional realtime collaboration inspection to the existing local command surface. The bridge advertises `collaboration-v1`; a browser's `GET /collaboration/capabilities` separately reports whether the relay is configured. Room admission remains a human UI action.
+API **0.8.0** adds portable collaboration document work to the existing local command surface. The bridge advertises `collaboration-v1` and `collaboration-document-v1`; a browser's `GET /collaboration/capabilities` separately reports whether the relay is configured. Room admission remains a human UI action.
 
 The public product website is `https://www.visualnerve.com/`. The encrypted editor has one production entry: `https://app.visualnerve.com/`. The former public `/app` paths redirect there without forwarding query data; `/app` on the app origin returns HTTP 404. IndexedDB is origin-bound: existing records on older origins are not deleted, moved or synchronized by routing changes. Local source-development builds retain a development-only `/app/` editor for test fixtures. API/MCP command paths remain the same; allow the exact `https://app.visualnerve.com` origin when starting the local bridge.
 
@@ -55,7 +55,7 @@ Use `visual_nerve_request` for graph commands. HTTP documentation paths `/api/do
 
 ## Recover writes after a timeout
 
-Bridge version 0.7.0 advertises `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1` and `collaboration-v1` through direct HTTP `GET /api/v1/health` (`/health` relative to the REST base) and its browser handshake; that transport response also lists supported MCP tools. These identify supported software, not workspace access. In contrast, `visual_nerve_request` with `{"path":"/health","method":"GET"}` reads semantic browser/IndexedDB health through the connected workspace. It does not expose bridge-only tools or capabilities, so their absence there does not mean that the bridge is outdated. Check the direct HTTP transport response when a newly documented bridge capability is unavailable. A current bridge and refreshed browser tab are needed for recoverable operations; older tabs remain one-shot and cannot reserve or recover receipts.
+Bridge version 0.8.0 advertises `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1` and `collaboration-document-v1` through direct HTTP `GET /api/v1/health` (`/health` relative to the REST base) and its browser handshake; that transport response also lists supported MCP tools. These identify supported software, not workspace access. In contrast, `visual_nerve_request` with `{"path":"/health","method":"GET"}` reads semantic browser/IndexedDB health through the connected workspace. It does not expose bridge-only tools or capabilities, so their absence there does not mean that the bridge is outdated. Check the direct HTTP transport response when a newly documented bridge capability is unavailable. A current bridge and refreshed browser tab are needed for recoverable operations; older tabs remain one-shot and cannot reserve or recover receipts.
 
 1. Reserve identity with `POST /operations` and exactly `{}` before sending a write. This requires an unlocked, connected browser with accepted storage and Read + write access.
 2. Read the returned `operationId`. It is an opaque server-issued token, distinct from graph UUIDs.
@@ -377,16 +377,43 @@ ZIP API language overrides use `languages:{"src/header.h":"c"}` with exact retai
 ```json
 {
   "nodes": [
-    {"id":"fork-id","name":"Start prerequisites","type":"fork",
-     "fork":{"joinNodeId":"join-id","branchEdgeIds":["access-edge","equipment-edge"]}},
-    {"id":"join-id","name":"All prerequisites ready","type":"join",
-     "join":{"forkNodeId":"fork-id"}}
+    {
+      "id": "fork-id",
+      "name": "Start prerequisites",
+      "type": "fork",
+      "fork": {
+        "joinNodeId": "join-id",
+        "branchEdgeIds": ["access-edge", "equipment-edge"]
+      }
+    },
+    {
+      "id": "join-id",
+      "name": "All prerequisites ready",
+      "type": "join",
+      "join": { "forkNodeId": "fork-id" }
+    }
   ],
   "edges": [
-    {"id":"access-edge","sourceNodeId":"fork-id","targetNodeId":"access-work-id"},
-    {"id":"equipment-edge","sourceNodeId":"fork-id","targetNodeId":"equipment-work-id"},
-    {"id":"access-ready-edge","sourceNodeId":"access-work-id","targetNodeId":"join-id"},
-    {"id":"equipment-ready-edge","sourceNodeId":"equipment-work-id","targetNodeId":"join-id"}
+    {
+      "id": "access-edge",
+      "sourceNodeId": "fork-id",
+      "targetNodeId": "access-work-id"
+    },
+    {
+      "id": "equipment-edge",
+      "sourceNodeId": "fork-id",
+      "targetNodeId": "equipment-work-id"
+    },
+    {
+      "id": "access-ready-edge",
+      "sourceNodeId": "access-work-id",
+      "targetNodeId": "join-id"
+    },
+    {
+      "id": "equipment-ready-edge",
+      "sourceNodeId": "equipment-work-id",
+      "targetNodeId": "join-id"
+    }
   ]
 }
 ```
@@ -404,7 +431,11 @@ Route metrics retain exact connection-ID labels up to 2,000 characters. Longer h
 Prefer the asynchronous export for large diagrams. All operations below are available with **Read only** access and do not change the model:
 
 ```json
-{"path":"/exports/svg","method":"POST","data":{"diagramId":"YOUR_DIAGRAM_UUID","scope":"complete"}}
+{
+  "path": "/exports/svg",
+  "method": "POST",
+  "data": { "diagramId": "YOUR_DIAGRAM_UUID", "scope": "complete" }
+}
 ```
 
 The `201` response includes `jobId`, `diagramId`, `state`, `progress` (0–100), `phase`, timestamps and object counts. Poll `GET /exports/svg/{jobId}` with a short backoff until `succeeded`, `failed` or `cancelled`. Fetch `GET /exports/svg/{jobId}/result?offset=0&limit=1048576`. Each response is `{jobId,offset,nextOffset,totalCharacters,text,complete}`. Append `text`, then request the returned `nextOffset` until `complete:true`. Offsets use UTF-16 code units; returned boundaries preserve Unicode characters. Save the concatenated XML as `.svg` (`image/svg+xml`). A result requested before success returns `409 SVG_JOB_NOT_READY`. Cancel/remove a job with exact `DELETE /exports/svg/{jobId}` and no arguments or `{}`; this returns its cancelled status (`200`).
@@ -415,22 +446,21 @@ Jobs are transient browser memory, with at most two running jobs, four retained 
 
 The existing `POST /export` JSON/Markdown behavior is unchanged. Source graphs with at most 100 nodes and 20,000 title/description/serialized metadata characters before projection retain its SVG JSON-string response and 16 MiB limit. Larger sources return `409 SVG_BACKGROUND_REQUIRED` even for a small selection, with instructions to use `/exports/svg`, avoiding a command timeout with an uncertain export result. The UI chooses the background route automatically, displays progress and offers Cancel. Review SVG source before sharing: an encrypted workspace does not encrypt diagram exports.
 
-
 ## Editable diagram exchange
 
 API 0.6.0 adds editable Draw.io exports without changing JSON, Markdown or SVG routes. `GET /exports/capabilities` retains every top-level SVG field and adds `diagrams` with the drawio format, scopes, validation metadata, byte chunk units and independent limits. Bridge discovery advertises `exchange-export-v1`; update the local bridge and refresh the browser before using it.
 
 All job routes permit **Read only** access and use the same local worker and authoritative saved model as the UI:
 
-| Method | Route | Result |
-| --- | --- | --- |
-| POST | `/exports/diagrams` | `201` job status |
-| GET | `/exports/diagrams/{jobId}` | Real state, progress, format, counts, warnings and optional error |
-| DELETE | `/exports/diagrams/{jobId}` | `200` cancelled status, then removes the job/file |
-| GET | `/exports/diagrams/{jobId}/result?offset=0&limit=786432` | Base64-encoded binary chunk after success |
+| Method | Route                                                    | Result                                                            |
+| ------ | -------------------------------------------------------- | ----------------------------------------------------------------- |
+| POST   | `/exports/diagrams`                                      | `201` job status                                                  |
+| GET    | `/exports/diagrams/{jobId}`                              | Real state, progress, format, counts, warnings and optional error |
+| DELETE | `/exports/diagrams/{jobId}`                              | `200` cancelled status, then removes the job/file                 |
+| GET    | `/exports/diagrams/{jobId}/result?offset=0&limit=786432` | Base64-encoded binary chunk after success                         |
 
 ```json
-{"diagramId":"YOUR_DIAGRAM_UUID","format":"drawio","scope":"complete"}
+{ "diagramId": "YOUR_DIAGRAM_UUID", "format": "drawio", "scope": "complete" }
 ```
 
 `format` is required and must be `drawio`. `scope` defaults to `complete`; `selected` requires 1–20,000 unique existing canonical node UUIDs in `nodeIds`. `nodeIds` is rejected outside selected scope, including `[]`. Unknown fields, unsupported/duplicate query parameters, invalid references and unsafe integer ranges are rejected. Creation/status/cancellation take no query parameters; cancellation accepts no body or exactly `{}`.
@@ -445,16 +475,16 @@ Status includes `jobId`, `diagramId`, `format`, `state`, `progress` (0–100), `
 
 ```json
 {
-  "jobId":"YOUR_JOB_UUID",
-  "format":"drawio",
-  "mimeType":"application/vnd.jgraph.mxfile",
-  "encoding":"base64",
-  "offset":0,
-  "nextOffset":3,
-  "totalBytes":3,
-  "data":"PG14",
-  "complete":true,
-  "warnings":[]
+  "jobId": "YOUR_JOB_UUID",
+  "format": "drawio",
+  "mimeType": "application/vnd.jgraph.mxfile",
+  "encoding": "base64",
+  "offset": 0,
+  "nextOffset": 3,
+  "totalBytes": 3,
+  "data": "PG14",
+  "complete": true,
+  "warnings": []
 }
 ```
 
@@ -468,12 +498,37 @@ Jobs retain their original workspace session and MCP grant beyond the POST respo
 
 The browser remains authoritative for its encrypted workspace and ordinary graph endpoints. Optional collaboration joins a human-approved diagram session through a configured Cloudflare relay. Shared fields use Yjs; application messages use MLS RFC 9420 with owner-approved devices and owner-signed membership policy. Human admission independently verifies a device-signed proof binding the room, complete transport/MLS identity, public KeyPackage and expiry before the owner changes MLS membership. The public proof contains no invitation secret. **This integration is not independently audited.** It introduces network metadata and deliberately disclosed content recipients; it is not a regulatory certification or managed enterprise tenancy.
 
-| Command | Meaning | Access |
-| --- | --- | --- |
-| `GET /collaboration/capabilities` | Schema/protocol, `configured`, roles, allowed controls, privacy/recovery policy and independent limits | Read only |
-| `GET /collaboration/sessions` | Zero or one current local live-room session; not saved room history | Read only |
-| `GET /diagrams/{diagramId}/collaboration` | Current local diagram session, or `idle` if the diagram is not connected | Read only |
-| `POST /diagrams/{diagramId}/collaboration/disconnect` | Leave this browser's current session while preserving its local graph | Read + write |
+| Command                                               | Meaning                                                                                                | Access       |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------ |
+| `GET /collaboration/capabilities`                     | Schema/protocol, `configured`, roles, allowed controls, privacy/recovery policy and independent limits | Read only    |
+| `GET /collaboration/sessions`                         | Zero or one current local live-room session; not saved room history                                    | Read only    |
+| `GET /diagrams/{diagramId}/collaboration`             | Current local diagram session, or `idle` if the diagram is not connected                               | Read only    |
+| `POST /diagrams/{diagramId}/collaboration/disconnect` | Leave this browser's current session while preserving its local graph                                  | Read + write |
+| `GET /diagrams/{diagramId}/collaboration/document`    | Portable profiles, comment threads, node tasks and informational activity with current `baseVersion`   | Read only    |
+| `POST /diagrams/{diagramId}/collaboration/actions`    | Apply exactly one actor-bound versioned document action                                                | Read + write |
+
+Portable document work lives in optional `diagram.collaboration` with its own `schemaVersion:1`; existing diagrams require no migration. It is available locally without a relay. The document contains `profiles`, `comments`, `tasks` and `activity`. Profiles have stable per-document UUIDs and unverified names, colors and optional tiny raster `avatarDataUrl`; they are separate from global process responsibility owners and private live-device identities. Native JSON, backups and duplication retain the work and remap node references. No room IDs, credentials, device IDs or private keys are stored in this payload.
+
+`GET .../collaboration/document` returns `{diagramId,baseVersion,document}`; absent work returns an empty version-1 document. `POST .../collaboration/actions` accepts exactly `{baseVersion,action}`, rejects query parameters and hashes, and returns the saved `Graph`. Full graph replacement inherits existing document work when diagram.collaboration is omitted; it rejects changing an explicitly supplied payload. Diagram PATCH cannot write this namespace. Use the versioned actions to change existing work. The browser adapter supplies the acting profile, role, source, IDs and writer-clock timestamps. The caller cannot supply `authorId`, `profileId`, `role`, `source`, timestamps or credentials in an action. A human selects the acting profile; the first profile created in a standalone document becomes the local selection.
+
+```json
+{
+  "baseVersion": 42,
+  "action": {
+    "type": "comment.create",
+    "nodeId": "00000000-0000-4000-8000-000000000002",
+    "text": "Please review this dependency."
+  }
+}
+```
+
+Supported actions are `profile.create` with `profile:{name,color?,avatarDataUrl?}`, `profile.update` with `id,patch`, `profile.remove` with `id`; `comment.create` with `text,nodeId?`, `comment.reply` with `id,text`, `comment.edit` with `id,messageId,text`, `comment.remove` with `id,messageId?`, `comment.resolve` with `id,resolved`; and `task.create` with `task:{nodeId,title,description?,assigneeId?,status?,dueDate?}`, `task.update` with `id,patch`, `task.remove` with `id`. Task status is `todo`, `in-progress` or `done`; due dates use valid `YYYY-MM-DD`. Creating a profile with omitted or null color picks the first unused entry of the eight-color participant palette, then balances reuse after all eight colors are used; names and initials also distinguish participants. A profile update with color:null removes its explicit color. Null clears optional avatar, description, assignee or due date. Tasks do not change process responsibility ownership.
+
+The owner provisions/removes profiles. An editor updates only their own display fields and comment text; the owner can moderate other comments by deletion, while the thread author or owner resolves/reopens a thread. Editors create and update node tasks. Viewers cannot mutate any document work. Profiles referenced by comments, tasks or retained activity cannot be removed; explicitly clear an assignee first when it is the only reference. Select another acting profile before removing the current one. A profile assigned to an approved live device cannot be removed until that device leaves or is removed from the room. New or relinked node targets must exist, while work whose node was deleted retains its UUID and last title snapshot. Missing entities/targets return 404, denied role/authorship 403, stale `baseVersion` 409 and invalid shape/field/reference 422; existing 423/503 lock/browser errors remain.
+
+Limits are 128 profiles, 2,000 threads/messages in total, 1,000 tasks, 500 activity events, name 80 and comment/description 4,000 UTF-16 code units, 4,000,000 total comment code units and 16 MiB serialized UTF-8 document data. Avatar payloads are canonical base64 PNG/JPEG/WebP data images, at most 64 KiB decoded and 256 × 256 pixels each, with 2 MiB decoded across all profiles. SVG, external URLs and animated PNG/WebP are rejected; browser upload decode/re-encoding canonicalizes raster data. UI source uploads are limited to 8 MiB, 32 megapixels and 16,384 pixels per dimension before decoding.
+
+Comment replies and activity use a logical sequence with UUID ties, independent of clock skew. Activity keeps the latest 500 generic semantic events in that order, using the writer's clock for display; camera/layout-only edits do not add events. Profiles and history are **unverified, editable information, not a signed or immutable security audit**. Existing shared CRDT access trusts approved editors to edit document content. The UI/API action ownership checks do not assert cryptographic author provenance.
 
 Inspection and disconnect accept no arguments or an empty object and reject query parameters, extra fields and invalid UUIDs with 422. Disconnect returns `{diagramId,status:"disconnected"}`; a diagram without a current matching room returns 404. Existing vault lock, grant and disconnected-browser errors apply. Documentation discovery remains available without a browser; semantic inspection requires its current content grant.
 
@@ -485,9 +540,20 @@ Inspection and disconnect accept no arguments or an empty object and reject quer
   "diagramId": "00000000-0000-4000-8000-000000000001",
   "selfDeviceId": "opaque-live-device-id",
   "role": "editor",
-  "scope": { "shareMetadata": false, "shareOwners": false, "shareDatasets": false },
+  "scope": {
+    "shareMetadata": false,
+    "shareOwners": false,
+    "shareDatasets": false
+  },
   "participants": [
-    { "deviceId": "approved-device-id", "name": "Ada", "role": "viewer", "connected": true, "selectedNodeIds": [], "actor": "human" }
+    {
+      "deviceId": "approved-device-id",
+      "name": "Ada",
+      "role": "viewer",
+      "connected": true,
+      "selectedNodeIds": [],
+      "actor": "human"
+    }
   ],
   "pendingJoinCount": 0
 }

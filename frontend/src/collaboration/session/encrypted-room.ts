@@ -71,6 +71,8 @@ class CollaborationSendSupersededError extends Error {
 export class EncryptedRoom {
   readonly identity: TransportIdentity;
   readonly device: DeviceIdentity;
+  /** Ephemeral, owner-announced associations; never credentials or persisted room access. */
+  profileBindings: Record<string, string> = {};
   private transport: RoomTransport;
   private policy?: SignedRoomPolicy;
   private previousPolicy?: SignedRoomPolicy;

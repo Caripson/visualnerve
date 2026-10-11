@@ -1,5 +1,6 @@
 import { StorageError } from '../../model/errors';
 import { collaborationDocumentLimits } from './scope';
+import { collaborationLimits } from '../model/types';
 
 export type PathValue = ['object'] | ['value', unknown];
 const object = (value: unknown): value is Record<string, unknown> =>
@@ -15,7 +16,18 @@ const collections = new Set([
   'simulation.processes',
   'simulation.improvements',
   'simulation.scenarios',
+  'diagram.collaboration.profiles',
+  'diagram.collaboration.comments',
+  'diagram.collaboration.tasks',
+  'diagram.collaboration.activity',
 ]);
+const isCollection = (path: string[]) =>
+  collections.has(path.join('.')) ||
+  (path.length === 5 &&
+    path[0] === 'diagram' &&
+    path[1] === 'collaboration' &&
+    path[2] === 'comments' &&
+    path[4] === 'messages');
 const invalid = (message: string): never => {
   throw new StorageError(422, message);
 };
@@ -27,7 +39,7 @@ export function flattenShared(value: Record<string, unknown>): Map<string, PathV
   const walk = (value: unknown, path: string[]) => {
     if (path.length > collaborationDocumentLimits.depth)
       invalid('Shared document is nested too deeply.');
-    if (Array.isArray(value) && collections.has(path.join('.'))) {
+    if (Array.isArray(value) && isCollection(path)) {
       const record: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
       for (const item of value) {
         if (!object(item) || typeof item.id !== 'string' || Object.hasOwn(record, item.id))
@@ -118,10 +130,33 @@ export function expandShared(entries: Iterable<[string, unknown]>): Record<strin
   const arrays = (value: Record<string, unknown>, path: string[]) => {
     for (const [key, child] of Object.entries(value)) {
       const childPath = [...path, key];
-      if (collections.has(childPath.join('.')) && object(child)) {
-        value[key] = Object.keys(child)
+      if (isCollection(childPath) && object(child)) {
+        arrays(child, childPath);
+        let items = Object.keys(child)
           .sort()
           .map((id) => child[id]);
+        if (childPath[0] === 'diagram' && childPath[1] === 'collaboration') {
+          // Each author can remove their own last surviving message concurrently.
+          // The merged empty thread has no public representation; retain the
+          // underlying Yjs delete sets so replayed removals cannot revive messages.
+          if (key === 'comments')
+            items = items.filter(
+              (item) => !(object(item) && Array.isArray(item.messages) && !item.messages.length),
+            );
+          const clock = key === 'activity' || key === 'messages' ? 'sequence' : 'createdAt';
+          items.sort((a, b) => {
+            const left = object(a) ? (a[clock] ?? '') : '';
+            const right = object(b) ? (b[clock] ?? '') : '';
+            if (typeof left === 'number' && typeof right === 'number') return left - right;
+            const l = String(left),
+              r = String(right);
+            return l < r ? -1 : l > r ? 1 : 0;
+          });
+          // Concurrent appends may temporarily exceed retention. Both peers
+          // project the same bounded history; the next local save prunes paths.
+          if (key === 'activity') items = items.slice(-collaborationLimits.activity);
+        }
+        value[key] = items;
       } else if (object(child)) arrays(child, childPath);
     }
   };

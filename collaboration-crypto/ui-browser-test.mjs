@@ -14,20 +14,20 @@ async function verifyControls(container, { viewport, theme }) {
     const card = element.getBoundingClientRect();
     return {
       card: { left: card.left, right: card.right },
-      controls: [...element.querySelectorAll("select, button")].map(
-        (control) => {
-          const bounds = control.getBoundingClientRect();
-          return {
-            name:
-              control.getAttribute("aria-label") || control.textContent.trim(),
-            left: bounds.left,
-            right: bounds.right,
-            top: bounds.top,
-            bottom: bounds.bottom,
-            height: bounds.height,
-          };
-        },
-      ),
+      controls: [
+        ...element.querySelectorAll("input, textarea, select, button"),
+      ].map((control) => {
+        const bounds = control.getBoundingClientRect();
+        return {
+          name:
+            control.getAttribute("aria-label") || control.textContent.trim(),
+          left: bounds.left,
+          right: bounds.right,
+          top: bounds.top,
+          bottom: bounds.bottom,
+          height: bounds.height,
+        };
+      }),
     };
   });
   const detail = JSON.stringify({ viewport, theme, result });
@@ -216,7 +216,18 @@ const vite = await createServer({
   // before navigation rather than letting discovery reload a partially loaded UI.
   optimizeDeps: {
     noDiscovery: true,
-    include: ["react", "react/jsx-runtime", "react-dom/client", "lucide-react"],
+    include: [
+      "react",
+      "react/jsx-runtime",
+      "react-dom/client",
+      "lucide-react",
+      "zustand",
+      "yjs",
+      "papaparse",
+      "dexie",
+      "@xyflow/react",
+      "elkjs/lib/elk-api.js",
+    ],
   },
   server: { host: "127.0.0.1", port: 0, hmr: false },
 });
@@ -259,7 +270,10 @@ try {
         route.fulfill({ contentType: "text/html", body: html }),
       );
       const errors = [];
-      page.on("pageerror", (error) => errors.push(error.message));
+      page.on("pageerror", (error) => {
+        errors.push(error.message);
+        console.error(`Component browser error: ${error.message}`);
+      });
       await page.goto(`${origin}/collaboration-ui-harness`);
       await page.getByRole("dialog", { name: "Live collaboration" }).waitFor();
       await page.evaluate((theme) => {

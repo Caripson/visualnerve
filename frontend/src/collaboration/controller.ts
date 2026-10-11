@@ -29,6 +29,8 @@ import { CollaborativeDocument } from './document/document';
 import { mergeCollaborationSnapshot } from './document/merge-snapshot';
 import { credentialId } from './transport/identity';
 import { CollaborationPeerMessageError } from './transport/room-transport';
+import type { CollaborationAction, CollaborationActionContext } from './model/types';
+import { documentProfilePreference } from './profile-preference';
 const encoder = new TextEncoder();
 /** One live session per unlocked browser tab. Other local diagrams stay local. */
 export class CollaborationController implements CollaborationUiController {
@@ -49,6 +51,9 @@ export class CollaborationController implements CollaborationUiController {
   private generation = 0;
   private management = Promise.resolve();
   private cleanups: Array<() => void> = [];
+  private pointer?: { x: number; y: number };
+  private pointerTimer?: ReturnType<typeof setTimeout>;
+  private localProfiles = new Map<string, string>();
   constructor(
     private options: {
       workspace: Workspace;
@@ -71,12 +76,20 @@ export class CollaborationController implements CollaborationUiController {
     this.cleanups.push(
       useEditor.subscribe((state, previous) => {
         if (this.disposed) return;
-        if (!this.room && state.graph?.diagram.id !== previous.graph?.diagram.id)
+        if (!this.room && state.graph?.diagram.id !== previous.graph?.diagram.id) {
           this.update({ diagramId: state.graph?.diagram.id });
+          void this.refreshLocalProfile(state.graph ?? undefined);
+        }
         if (this.gateway && state.selectedNodes !== previous.selectedNodes)
           void this.presence().catch(() => {});
+        if (state.graph?.diagram.collaboration !== previous.graph?.diagram.collaboration) {
+          this.refreshProfiles();
+          if (!this.room) void this.refreshLocalProfile(state.graph ?? undefined);
+          if (this.gateway) void this.presence().catch(() => {});
+        }
       }),
     );
+    void this.refreshLocalProfile(useEditor.getState().graph ?? undefined);
   }
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -198,7 +211,12 @@ export class CollaborationController implements CollaborationUiController {
       },
     };
   }
-  async create(diagramId: string, name: string, scope: CollaborationShareScope) {
+  async create(
+    diagramId: string,
+    name: string,
+    scope: CollaborationShareScope,
+    requestedProfileId?: string,
+  ) {
     await this.begin(name, scope, diagramId);
     const generation = this.generation,
       lease = this.lease!;
@@ -206,6 +224,39 @@ export class CollaborationController implements CollaborationUiController {
     let bootstrap: undefined | (() => void);
     try {
       await this.options.workspace.settled();
+      check();
+      // Choosing a retained profile never substitutes for fresh device approval.
+      let ownerGraph = await this.options.workspace.repo.getGraph(diagramId);
+      const preference = await this.options.workspace.repo.db.settings.get(
+        documentProfilePreference(diagramId),
+      );
+      const profileId =
+        requestedProfileId ??
+        (typeof preference?.value === 'string' ? preference.value : undefined);
+      let ownerProfile = ownerGraph.diagram.collaboration?.profiles.find((p) => p.id === profileId);
+      if (requestedProfileId && !ownerProfile)
+        throw new Error('The document profile no longer exists.');
+      if (!ownerProfile) {
+        const existing = new Set(
+          ownerGraph.diagram.collaboration?.profiles.map((profile) => profile.id),
+        );
+        ownerGraph = (await this.applyDocumentAction(
+          diagramId,
+          {
+            type: 'profile.create',
+            profile: { name: displayName(name) },
+          },
+          ownerGraph.diagram.version,
+        )) as Graph;
+        ownerProfile = ownerGraph.diagram.collaboration!.profiles.find(
+          (profile) => !existing.has(profile.id),
+        )!;
+      }
+      this.localProfiles.set(diagramId, ownerProfile.id);
+      await this.options.workspace.setPreference(
+        documentProfilePreference(diagramId),
+        ownerProfile.id,
+      );
       check();
       // Freeze content only after draining existing autosaves, before crypto/network
       // awaits can let a newer local graph diverge from the initial shared state.
@@ -228,9 +279,11 @@ export class CollaborationController implements CollaborationUiController {
         throw error;
       }
       this.room = room;
+      room.profileBindings = { [room.device.deviceId]: ownerProfile.id };
       this.update({
         selfDeviceId: room.device.deviceId,
         selfCredentialId: room.device.credentialId,
+        selfProfileId: ownerProfile.id,
       });
       await room.create();
       check();
@@ -307,6 +360,7 @@ export class CollaborationController implements CollaborationUiController {
           ? ('viewer' as const)
           : role;
       },
+      documentContext: () => this.documentContext(graph.diagram.id),
       onFailure: (error: Error) => {
         if (this.current(generation, lease)) this.fail(error);
       },
@@ -347,6 +401,7 @@ export class CollaborationController implements CollaborationUiController {
       })),
       invitation: undefined,
     });
+    this.refreshProfiles();
   }
   private joinList() {
     const now = Date.now();
@@ -402,6 +457,18 @@ export class CollaborationController implements CollaborationUiController {
       } catch {
         throw new CollaborationPeerMessageError('Invalid collaboration presence.');
       }
+      if (presence.profileBindings) {
+        if (sender.role !== 'owner')
+          throw new CollaborationPeerMessageError('Only the owner assigns document profiles.');
+        const members = new Set(
+          this.room!.currentPolicy!.policy.members.map((member) => member.deviceId),
+        );
+        if (Object.keys(presence.profileBindings).some((id) => !members.has(id)))
+          throw new CollaborationPeerMessageError(
+            'A profile association refers to an unapproved device.',
+          );
+        this.room!.profileBindings = { ...presence.profileBindings };
+      }
       const now = Date.now();
       this.update({
         participants: this.snapshot.participants.map((member) =>
@@ -410,6 +477,7 @@ export class CollaborationController implements CollaborationUiController {
             : member,
         ),
       });
+      this.refreshProfiles();
       return;
     }
     if (kind === 'sync') {
@@ -448,7 +516,7 @@ export class CollaborationController implements CollaborationUiController {
       snapshot = this.snapshot;
     const check = () => this.checkSession(generation, lease);
     const input = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
-    record(input, ['version', 'scope', 'document', 'state']);
+    record(input, ['version', 'scope', 'document', 'state'], ['profileBindings']);
     if (input.version !== 1 || JSON.stringify(input.scope) !== JSON.stringify(snapshot.scope))
       throw new Error('The snapshot sharing scope differs from the accepted invitation.');
     const id = snapshot.diagramId!;
@@ -498,6 +566,29 @@ export class CollaborationController implements CollaborationUiController {
         ...snapshot.scope,
       });
       validateGraph(graph);
+      if (input.profileBindings !== undefined) {
+        const announcement = presenceMessage(
+          encoder.encode(
+            JSON.stringify({
+              name: 'Owner',
+              selectedNodeIds: [],
+              actor: 'human',
+              profileBindings: input.profileBindings,
+            }),
+          ),
+        );
+        const members = new Set(
+          room.currentPolicy!.policy.members.map((member) => member.deviceId),
+        );
+        if (
+          Object.keys(announcement.profileBindings!).some((id) => !members.has(id)) ||
+          Object.values(announcement.profileBindings!).some(
+            (id) => !graph.diagram.collaboration?.profiles.some((p) => p.id === id),
+          )
+        )
+          throw new Error('The snapshot has invalid document profile associations.');
+        room.profileBindings = { ...announcement.profileBindings };
+      }
       if (graph.diagram.id !== id) throw new Error('The snapshot belongs to another diagram.');
       state = decodeBytes(input.state, 32 * 1024 * 1024);
       if (existing && association) {
@@ -545,6 +636,7 @@ export class CollaborationController implements CollaborationUiController {
       check();
       this.epoch = room.epoch;
       this.update({ status: 'live' });
+      this.refreshProfiles();
     } catch (error) {
       gateway?.dispose();
       if (this.gateway === gateway) this.gateway = undefined;
@@ -620,14 +712,41 @@ export class CollaborationController implements CollaborationUiController {
     this.management = pending.catch(() => {});
     return pending;
   }
-  approve(deviceId: string, role: 'editor' | 'viewer') {
+  async approve(
+    deviceId: string,
+    role: 'editor' | 'viewer',
+    requestedProfileId?: string,
+    profileName?: string,
+  ) {
+    this.owner();
     const generation = this.generation,
       lease = this.lease!;
+    const request = this.joins.get(deviceId);
+    if (!request || request.expiresAt <= Date.now())
+      throw new Error('The admission request has expired.');
+    const id = this.snapshot.diagramId!;
+    let graph = await this.options.workspace.repo.getGraph(id);
+    this.checkSession(generation, lease);
+    let profile = graph.diagram.collaboration?.profiles.find((p) => p.id === requestedProfileId);
+    if (requestedProfileId && !profile) throw new Error('The document profile no longer exists.');
+    if (!profile) {
+      const existing = new Set(graph.diagram.collaboration?.profiles.map((profile) => profile.id));
+      graph = (await this.applyDocumentAction(
+        id,
+        {
+          type: 'profile.create',
+          profile: { name: displayName(profileName || `Participant ${existing.size + 1}`) },
+        },
+        graph.diagram.version,
+      )) as Graph;
+      profile = graph.diagram.collaboration!.profiles.find((profile) => !existing.has(profile.id))!;
+    }
+    this.checkSession(generation, lease);
     return this.manage(async (check) => {
       const room = this.owner();
-      const request = this.joins.get(deviceId);
-      if (!request || request.expiresAt <= Date.now())
+      if (this.joins.get(deviceId) !== request || request.expiresAt <= Date.now())
         throw new Error('The admission request has expired.');
+      room.profileBindings[deviceId] = profile!.id;
       await room.changeMembers(
         [
           ...room.currentPolicy!.policy.members,
@@ -726,12 +845,121 @@ export class CollaborationController implements CollaborationUiController {
             name: this.snapshot.displayName,
             selectedNodeIds: selected,
             actor: 'human',
+            ...(this.pointer ? { pointer: this.pointer } : {}),
+            ...(this.room.role === 'owner'
+              ? { profileBindings: this.activeProfileBindings() }
+              : {}),
           }),
         ),
       );
     } finally {
       this.presencePending = false;
     }
+  }
+  private activeProfileBindings() {
+    const members = new Set(
+      this.room?.currentPolicy?.policy.members.map((member) => member.deviceId),
+    );
+    return Object.fromEntries(
+      Object.entries(this.room?.profileBindings ?? {}).filter(([id]) => members.has(id)),
+    );
+  }
+  private refreshProfiles() {
+    const graph = useEditor.getState().graph;
+    if (!graph || graph.diagram.id !== this.snapshot.diagramId || !this.room) return;
+    const profiles = new Map(
+      graph.diagram.collaboration?.profiles.map((profile) => [profile.id, profile]) ?? [],
+    );
+    const bindings = this.room.profileBindings ?? {};
+    this.update({
+      selfProfileId: bindings[this.snapshot.selfDeviceId ?? ''],
+      participants: this.snapshot.participants.map((participant) => {
+        const profileId = bindings[participant.deviceId];
+        const profile = profiles.get(profileId);
+        return {
+          ...participant,
+          name: profile?.name ?? participant.name,
+          profileId,
+          color: profile?.color,
+          avatarDataUrl: profile?.avatarDataUrl,
+        };
+      }),
+    });
+  }
+  private async refreshLocalProfile(graph?: Graph) {
+    if (!graph || this.room || this.disposed) return;
+    const generation = this.generation;
+    try {
+      const preference = await this.options.workspace.repo.db.settings.get(
+        documentProfilePreference(graph.diagram.id),
+      );
+      if (generation !== this.generation || this.room || this.disposed) return;
+      const profileId =
+        typeof preference?.value === 'string' &&
+        graph.diagram.collaboration?.profiles.some((profile) => profile.id === preference.value)
+          ? preference.value
+          : undefined;
+      if (profileId) this.localProfiles.set(graph.diagram.id, profileId);
+      else this.localProfiles.delete(graph.diagram.id);
+      if (useEditor.getState().graph?.diagram.id === graph.diagram.id)
+        this.update({ selfProfileId: profileId });
+    } catch {
+      /* A locked/changed vault never reuses cached identity. */
+    }
+  }
+  async selectDocumentProfile(diagramId: string, profileId: string) {
+    if (this.room && this.snapshot.diagramId === diagramId)
+      throw new Error('The room owner assigns profiles to approved devices.');
+    const graph = await this.options.workspace.repo.getGraph(diagramId);
+    if (!graph.diagram.collaboration?.profiles.some((profile) => profile.id === profileId))
+      throw new Error('The document profile no longer exists.');
+    await this.options.workspace.setPreference(documentProfilePreference(diagramId), profileId);
+    this.localProfiles.set(diagramId, profileId);
+    if (useEditor.getState().graph?.diagram.id === diagramId)
+      this.update({ selfProfileId: profileId });
+  }
+  documentContext(
+    diagramId: string,
+    source: CollaborationActionContext['source'] = 'ui',
+  ): CollaborationActionContext {
+    if (this.room && this.snapshot.diagramId === diagramId) {
+      this.check();
+      const role = this.room.role;
+      if (!role || ['connecting', 'syncing', 'awaiting-approval'].includes(this.snapshot.status))
+        throw new Error('Wait for the approved document to finish synchronizing.');
+      return { role, profileId: this.room.profileBindings?.[this.room.device.deviceId], source };
+    }
+    return { role: 'owner', profileId: this.localProfiles.get(diagramId), source };
+  }
+  async applyDocumentAction(diagramId: string, action: CollaborationAction, baseVersion: number) {
+    const context = this.documentContext(diagramId);
+    if (!context.profileId && !this.room) {
+      const selected = await this.options.workspace.repo.db.settings.get(
+        documentProfilePreference(diagramId),
+      );
+      const graph = await this.options.workspace.repo.getGraph(diagramId);
+      if (
+        typeof selected?.value === 'string' &&
+        graph.diagram.collaboration?.profiles.some((p) => p.id === selected.value)
+      )
+        context.profileId = selected.value;
+    }
+    const result = await this.options.workspace.execute(
+      `/diagrams/${diagramId}/collaboration/actions`,
+      'POST',
+      { baseVersion, action },
+      { collaborationContext: context },
+    );
+    if (!this.room) await this.refreshLocalProfile(result as Graph);
+    return result;
+  }
+  setPointer(pointer?: { x: number; y: number }) {
+    this.pointer = pointer;
+    if (this.pointerTimer) return;
+    this.pointerTimer = setTimeout(() => {
+      this.pointerTimer = undefined;
+      void this.presence().catch(() => {});
+    }, 200);
   }
   private fail(error: Error) {
     if (this.disposed || ['error', 'conflict'].includes(this.snapshot.status)) return;
@@ -795,6 +1023,10 @@ export class CollaborationController implements CollaborationUiController {
     this.initialAccess = undefined;
     this.management = Promise.resolve();
     this.presencePending = false;
+    if (this.pointerTimer) clearTimeout(this.pointerTimer);
+    this.pointerTimer = undefined;
+    this.pointer = undefined;
+    this.localProfiles.clear();
     this.failureAccess?.();
     this.failureAccess = undefined;
     this.releaseUpdateTask?.();
@@ -814,6 +1046,7 @@ export class CollaborationController implements CollaborationUiController {
       roomId: undefined,
       diagramId: useEditor.getState().graph?.diagram.id,
       selfDeviceId: undefined,
+      selfProfileId: undefined,
       selfCredentialId: undefined,
       recoveryCopy: undefined,
       role: undefined,
@@ -824,6 +1057,8 @@ export class CollaborationController implements CollaborationUiController {
       error: undefined,
       syncProgress: undefined,
     });
+    if (this.options.session.getSnapshot().status === 'unlocked')
+      void this.refreshLocalProfile(useEditor.getState().graph ?? undefined);
   }
   dispose() {
     this.reset();

@@ -29,6 +29,10 @@ type Diagram struct {
 	Tags        []string `json:"tags"`
 	Metadata    Meta     `json:"metadata"`
 	Settings    Meta     `json:"settings"`
+	// Portable schemaVersion 1 public profiles, comments, tasks and informational
+	// activity; the authoritative browser validates mutations and references.
+	// Live device credentials and private room state are never persisted here.
+	Collaboration Meta `json:"collaboration,omitempty"`
 }
 type Node struct {
 	Base

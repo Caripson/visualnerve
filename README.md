@@ -20,17 +20,19 @@ The screenshot shows the actual desktop workspace with illustrative data. Light 
 
 Optional [realtime collaboration](https://www.visualnerve.com/help/collaboration/) shares one diagram with owner-approved devices when a Cloudflare relay is configured. Shared messages use MLS encryption; local room/CRDT records remain in the encrypted vault and are excluded from backups/exports. The integration is not independently audited. Room creation, disclosure choices and device approval remain human actions; API/MCP can inspect presence and edit through the existing graph commands when both membership and the local grant permit it. Live private MLS keys are not restored after reload; fresh admission is required, and owner reload requires a new room.
 
-| Workflow                 | Capabilities                                                                                                                          |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Map a system             | Mind maps, flowcharts, timelines, groups, directed relationships, owners, status and a saved pen layer.                               |
-| Inspect large diagrams   | Semantic overview, relationship questions, source evidence, saved analysis views and named local history.                             |
-| Explore data             | Worker-based CSV cleanup, filters, grouping and aggregates; connect and refresh sources while retaining annotations.                  |
-| Understand code          | Visualize SQL SELECT/WITH and DDL, analyze 50 code languages plus Markdown, or inspect a ZIP project by file, declaration or folder.  |
-| Import existing diagrams | Preview and convert a selected draw.io or Visio `.vsdx` page into editable native objects.                                            |
-| Rotate the same diagram  | Styled 3D card relief with readable front/back text and editable placement; return to the canonical 2D layout.                        |
-| Explain and share        | Walkthroughs, local Piper narration, video, PNG/PDF/SVG, Markdown, lossless JSON, editable draw.io export. |
-| Simulate a process       | Seeded worker runs with queues, shared resources, nested processes, scenarios, metrics, economics and bounded replay archives.        |
-| Connect other tools      | Optional local REST/MCP for the same validated model; review a workflow brief before opening it in Lovable.                           |
+The Collaboration panel also supports local document profiles with distinct colors and optional small photos, comment threads, node tasks and a bounded activity feed without a relay. Native JSON and backups preserve this work. Profiles are unverified labels, and activity is editable information with logical ordering and writer-clock display values. Approved live editors remain trusted to edit shared content. UI and API/MCP use the same versioned actions and ownership checks.
+
+| Workflow                 | Capabilities                                                                                                                         |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Map a system             | Mind maps, flowcharts, timelines, groups, directed relationships, owners, status and a saved pen layer.                              |
+| Inspect large diagrams   | Semantic overview, relationship questions, source evidence, saved analysis views and named local history.                            |
+| Explore data             | Worker-based CSV cleanup, filters, grouping and aggregates; connect and refresh sources while retaining annotations.                 |
+| Understand code          | Visualize SQL SELECT/WITH and DDL, analyze 50 code languages plus Markdown, or inspect a ZIP project by file, declaration or folder. |
+| Import existing diagrams | Preview and convert a selected draw.io or Visio `.vsdx` page into editable native objects.                                           |
+| Rotate the same diagram  | Styled 3D card relief with readable front/back text and editable placement; return to the canonical 2D layout.                       |
+| Explain and share        | Walkthroughs, local Piper narration, video, PNG/PDF/SVG, Markdown, lossless JSON, editable draw.io export.                           |
+| Simulate a process       | Seeded worker runs with queues, shared resources, nested processes, scenarios, metrics, economics and bounded replay archives.       |
+| Connect other tools      | Optional local REST/MCP for the same validated model; review a workflow brief before opening it in Lovable.                          |
 
 Code/SQL imports analyze structure without executing the source. Import previews report unsupported or uncertain constructs. File imports default to 50 MiB; larger configured imports are experimental. ZIP projects default to 500 analyzed source files, with a separate browser-local setting up to 10,000. See the [import guides](docs/CODE_IMPORT.md) for the byte, count and time limits.
 
@@ -75,7 +77,7 @@ Keep the intended browser workspace open and select **Settings → MCP / API int
 
 For MCP, call `visual_nerve_api_docs` before `visual_nerve_request`; the guide and OpenAPI contract are bundled. A separately hosted app may need an exact allowed origin, trusted local TLS and browser local-network permission. Read [connection setup](docs/MCP.md) and the [API contract](API.md) before configuring that connection.
 
-Check bridge health and the client's discovered tools before workspace commands. Version 0.7.0 advertises `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1` and `collaboration-v1`; updating the website does not replace a running local binary. The documentation tool accepts `document: "endpoint"`, an exact OpenAPI template `path` and HTTP `method` for a compact complete contract. For retry-safe writes, reserve an opaque ID with `POST /operations`, use it on the write and inspect `GET /operations/{operationId}` after an uncertain response. A timeout may occur after a commit; never repeat a creation under a new ID without reconciling saved state. See [operation recovery](hugo/content/help/api-mcp.md#recover-an-uncertain-write-without-creating-it-twice).
+Check bridge health and the client's discovered tools before workspace commands. Version 0.8.0 advertises `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1` and `collaboration-document-v1`; updating the website does not replace a running local binary. The documentation tool accepts `document: "endpoint"`, an exact OpenAPI template `path` and HTTP `method` for a compact complete contract. For retry-safe writes, reserve an opaque ID with `POST /operations`, use it on the write and inspect `GET /operations/{operationId}` after an uncertain response. A timeout may occur after a commit; never repeat a creation under a new ID without reconciling saved state. See [operation recovery](hugo/content/help/api-mcp.md#recover-an-uncertain-write-without-creating-it-twice).
 
 The integration follows standard MCP rather than a Codex-specific protocol. Codex, Cursor, Claude Code and Gemini CLI can use the HTTP endpoint. A local stdio adapter supports clients such as Claude Desktop: configure an absolute path to `visual-nerve` with `args: ["--mcp-stdio"]` while the shared bridge is already running. Cloud connectors cannot reach a laptop's loopback address. See the [client configuration guide](hugo/content/help/api-mcp.md) for complete examples.
 

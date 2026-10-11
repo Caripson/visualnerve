@@ -1,10 +1,13 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import type { Graph, GraphNode } from '../../src/model/types';
+import type { HistoryRestoreResult, HistorySnapshot } from '../../src/history/types';
 import { acknowledge } from './fixtures';
 import { containedDialog, noHorizontalOverflow, touchControlIsReachable } from './mobile-fixtures';
 
 // Exercise the actual isolated application, native crypto/IndexedDB and offline
-// shell. No relay is configured by the standard product fixture: collaboration
-// must remain optional and must not require an API/MCP grant or network service.
+// shell. No relay is configured by the standard product fixture: local document
+// work remains optional. The API parity case explicitly grants bridge access;
+// the other cases prove ordinary editing needs no API/MCP grant or relay.
 const app = 'https://public-app.test:4341';
 const password = 'Optional collaboration product smoke test passphrase';
 const openLabel = 'Open collaboration and participants';
@@ -65,6 +68,200 @@ async function unlock(page: Page, name: string) {
   await expect(page.getByRole('heading', { name, exact: true, level: 1 })).toBeVisible();
   await expect(page.getByRole('status').filter({ hasText: /^Saved$/ })).toBeVisible();
 }
+
+test('local document work survives native encrypted storage and cold API writes and history restore', async ({
+  page,
+  playwright,
+}) => {
+  const errors: string[] = [];
+  const sockets: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('websocket', (socket) => sockets.push(socket.url()));
+  const api = await playwright.request.newContext({
+    baseURL: 'https://127.0.0.1:4329',
+    ignoreHTTPSErrors: true,
+  });
+  const profileName = 'Local document reviewer';
+  const comment = 'Check the processing assumptions before approval.';
+  const taskTitle = 'Validate the document baseline';
+  const changedTitle = 'Approved cold API edit';
+  const dialog = page.getByRole('dialog', { name: 'Live collaboration', exact: true });
+
+  // Use the real human permission grant and HTTP -> bridge -> browser path.
+  // Safe reads may establish transport readiness; they do not warm write-only
+  // collaboration modules before the first native IndexedDB transaction.
+  async function grant(diagramId?: string) {
+    await page
+      .getByRole('button', { name: 'Local only: storage and privacy', exact: true })
+      .click();
+    await page.getByText('Local connection details', { exact: true }).click();
+    await page
+      .getByLabel('Local bridge address', { exact: true })
+      .fill('wss://127.0.0.1:4329/bridge');
+    await page.getByRole('button', { name: 'Save connection', exact: true }).click();
+    await expect(
+      page.getByText('Local connection updated. The token lasts for this browser session.', {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await page.getByLabel('MCP access', { exact: true }).selectOption('write');
+    await page.getByRole('button', { name: 'Done', exact: true }).click();
+    await expect
+      .poll(async () => {
+        if (diagramId) return (await api.get(`/api/v1/diagrams/${diagramId}`)).status();
+        return (await (await api.get('/api/v1/health')).json()).connected;
+      })
+      .toBe(diagramId ? 200 : 1);
+  }
+  async function current(diagramId: string) {
+    const response = await api.get(`/api/v1/diagrams/${diagramId}`);
+    expect(response.status(), await response.text()).toBe(200);
+    return (await response.json()) as Graph;
+  }
+  async function openDocumentWork() {
+    await page.getByRole('button', { name: openLabel, exact: true }).click();
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('button', { name: 'Document work', exact: true }).click();
+  }
+
+  try {
+    await setup(page);
+    await create(page);
+    await openDocumentWork();
+    await dialog.getByRole('button', { name: 'Create profile', exact: true }).click();
+    await dialog.getByLabel('Profile name', { exact: true }).fill(profileName);
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(
+      dialog.getByText(profileName, { exact: true }).filter({ visible: true }),
+    ).toBeVisible();
+    await expect(dialog.getByLabel('Acting document profile', { exact: true })).toHaveValue(/.+/);
+    await dialog.getByRole('button', { name: 'Close dialog', exact: true }).click();
+    await grant();
+    const listed = await api.get('/api/v1/diagrams');
+    expect(listed.status()).toBe(200);
+    const [{ id: diagramId }] = (await listed.json()) as Graph['diagram'][];
+    const first = await current(diagramId);
+    const node = first.nodes[0];
+    expect(node).toBeDefined();
+    const profileId = first.diagram.collaboration!.profiles[0].id;
+
+    await openDocumentWork();
+    await dialog.getByRole('tab', { name: 'Comments', exact: true }).click();
+    await dialog.getByLabel('Linked node', { exact: true }).selectOption(node.id);
+    await dialog.getByLabel('Comment text', { exact: true }).fill(comment);
+    await dialog.getByRole('button', { name: 'Add comment', exact: true }).click();
+    await expect(dialog.getByText(comment, { exact: true })).toBeVisible();
+    await dialog.getByRole('tab', { name: 'Tasks', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Create task', exact: true }).click();
+    await dialog.getByLabel('Task title', { exact: true }).fill(taskTitle);
+    await dialog.getByLabel('Linked node', { exact: true }).selectOption(node.id);
+    await dialog.getByLabel('Assigned profile', { exact: true }).selectOption(profileId);
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(dialog.getByText(taskTitle, { exact: true })).toBeVisible();
+    await dialog.getByRole('button', { name: 'Close dialog', exact: true }).click();
+
+    const baseline = await current(diagramId);
+    const document = baseline.diagram.collaboration!;
+    expect(document.profiles).toHaveLength(1);
+    expect(document.profiles[0]).toMatchObject({ id: profileId, name: profileName });
+    expect(document.comments).toHaveLength(1);
+    expect(document.comments[0]).toMatchObject({ nodeId: node.id, authorId: profileId });
+    expect(document.comments[0].messages).toHaveLength(1);
+    expect(document.comments[0].messages[0]).toMatchObject({ text: comment, authorId: profileId });
+    expect(document.tasks).toHaveLength(1);
+    expect(document.tasks[0]).toMatchObject({
+      nodeId: node.id,
+      title: taskTitle,
+      authorId: profileId,
+      assigneeId: profileId,
+      status: 'todo',
+    });
+    const semantic = await api.get(`/api/v1/diagrams/${diagramId}/collaboration/document`);
+    expect(semantic.status(), await semantic.text()).toBe(200);
+    expect(await semantic.json()).toEqual({
+      diagramId,
+      baseVersion: baseline.diagram.version,
+      document,
+    });
+    const saved = await api.post(`/api/v1/diagrams/${diagramId}/history`, {
+      data: { baseVersion: baseline.diagram.version, name: 'Local document baseline' },
+    });
+    expect(saved.status(), await saved.text()).toBe(200);
+    const snapshot = (await saved.json()) as HistorySnapshot;
+
+    await test.step('first cold write preserves content and is reflected on the canvas', async () => {
+      await page.reload();
+      await unlock(page, title);
+      await grant(diagramId);
+      const patched = await api.patch(`/api/v1/nodes/${node.id}`, {
+        data: {
+          version: baseline.nodes.find((item) => item.id === node.id)!.version,
+          title: changedTitle,
+        },
+      });
+      expect(patched.status(), await patched.text()).toBe(200);
+      expect((await patched.json()) as GraphNode).toMatchObject({
+        id: node.id,
+        title: changedTitle,
+      });
+      await expect(
+        page.locator('.canvas-shell .node-title').filter({ hasText: changedTitle }),
+      ).toBeVisible();
+      const changed = await current(diagramId);
+      expect(changed.nodes).toHaveLength(baseline.nodes.length);
+      expect(changed.diagram.collaboration!.profiles).toEqual(document.profiles);
+      expect(changed.diagram.collaboration!.comments).toEqual(
+        document.comments.map((thread) => ({ ...thread, nodeTitle: changedTitle })),
+      );
+      expect(changed.diagram.collaboration!.tasks).toEqual(
+        document.tasks.map((task) => ({ ...task, nodeTitle: changedTitle })),
+      );
+      expect(changed.diagram.collaboration!.activity.length).toBeGreaterThan(
+        document.activity.length,
+      );
+    });
+
+    const changed = await current(diagramId);
+    await test.step('first cold history restore uses the same atomic encrypted model', async () => {
+      await page.reload();
+      await unlock(page, title);
+      await grant(diagramId);
+      const response = await api.post(
+        `/api/v1/diagrams/${diagramId}/history/${snapshot.id}/restore`,
+        { data: { baseVersion: changed.diagram.version } },
+      );
+      expect(response.status(), await response.text()).toBe(200);
+      const restored = (await response.json()) as HistoryRestoreResult;
+      expect(restored.graph.nodes.find((item) => item.id === node.id)?.title).toBe(node.title);
+      expect(restored.graph.diagram.collaboration!.profiles).toEqual(document.profiles);
+      expect(restored.graph.diagram.collaboration!.comments).toEqual(document.comments);
+      expect(restored.graph.diagram.collaboration!.tasks).toEqual(document.tasks);
+      expect(restored.safetySnapshot.kind).toBe('pre-restore');
+      const safety = await api.get(
+        `/api/v1/diagrams/${diagramId}/history/${restored.safetySnapshot.id}`,
+      );
+      expect(safety.status(), await safety.text()).toBe(200);
+      expect(
+        (await safety.json()).graph.nodes.find((item: GraphNode) => item.id === node.id)?.title,
+      ).toBe(changedTitle);
+      await expect(
+        page.locator('.canvas-shell .node-title').filter({ hasText: changedTitle }),
+      ).toHaveCount(0);
+      await openDocumentWork();
+      await expect(dialog.getByLabel('Acting document profile', { exact: true })).toHaveValue(
+        profileId,
+      );
+      await dialog.getByRole('tab', { name: 'Comments', exact: true }).click();
+      await expect(dialog.getByText(comment, { exact: true })).toBeVisible();
+      await dialog.getByRole('tab', { name: 'Tasks', exact: true }).click();
+      await expect(dialog.getByText(taskTitle, { exact: true })).toBeVisible();
+    });
+    expect(sockets.every((url) => url === 'wss://127.0.0.1:4329/bridge')).toBe(true);
+    expect(errors).toEqual([]);
+  } finally {
+    await api.dispose();
+  }
+});
 
 for (const width of [1440, 1024]) {
   test(`isolated optional collaboration: desktop ${width}, local editing and lock teardown`, async ({

@@ -142,6 +142,12 @@ jobs:
       - name: Review responsive collaboration controls in light and dark
         if: matrix.browser == 'chromium'
         run: node collaboration-crypto/ui-browser-test.mjs
+      - name: Keep presence clear of canvas controls and gestures
+        if: matrix.browser == 'chromium'
+        run: node collaboration-crypto/presence-browser-test.mjs
+      - name: Review document workflow layouts and native avatar uploads
+        if: matrix.browser == 'chromium'
+        run: node collaboration-crypto/document-ui-browser-test.mjs
       - name: Install the local-only Cloudflare relay
         if: matrix.browser == 'chromium'
         run: npm ci
@@ -154,6 +160,9 @@ jobs:
         env:
           COLLABORATION_TEST_SHARE_CSV: "1"
         run: node collaboration-crypto/live-browser-test.mjs
+      - name: Verify profiles, comments and tasks in the actual encrypted app
+        if: matrix.browser == 'chromium'
+        run: node collaboration-crypto/workflow-browser-test.mjs
       - name: Preserve component review screenshots
         if: ${{ always() && matrix.browser == 'chromium' && !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -163,5 +172,8 @@ jobs:
             tmp/collaboration-ui-screenshots/
             tmp/collaboration-live-screenshots/
             tmp/collaboration-live-screenshots-csv/
+            tmp/collaboration-presence-review/
+            tmp/collaboration-document-review/
+            tmp/collaboration-workflow-review/
           if-no-files-found: ignore
           retention-days: 7

@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { Check, UserRound, ShieldCheck, UserX } from 'lucide-react';
+import { Check, ShieldCheck, UserX } from 'lucide-react';
 import { Field } from '../../components/Field';
 import { CopyValue } from './CopyValue';
+import { ParticipantAvatar } from './ParticipantAvatar';
 import { useI18n } from '../../i18n';
 import type { CollaborationRole } from '../../../../collaboration-worker/src/protocol';
 import type { CollaborationSnapshot, CollaborationUiController } from '../types';
+import { useEditor } from '../../state/editor';
+import type { ParticipantProfile } from '../model/types';
 
 export type RoomConfirmation =
   | { kind: 'remove'; deviceId: string; name: string }
@@ -45,17 +48,21 @@ function PendingRequest({
   disabled,
   approve,
   reject,
+  profiles,
 }: {
   deviceId: string;
   credentialId: string;
   expiresAt: number;
   disabled: boolean;
-  approve: (role: 'editor' | 'viewer') => void;
+  approve: (role: 'editor' | 'viewer', profileId?: string, profileName?: string) => void;
   reject: () => void;
+  profiles: readonly ParticipantProfile[];
 }) {
   const { t, date } = useI18n();
   // Least privilege: a new device is a viewer unless the owner explicitly changes it.
   const [role, setRole] = useState<'editor' | 'viewer'>('viewer');
+  const [profileId, setProfileId] = useState('');
+  const [profileName, setProfileName] = useState(`Participant ${profiles.length + 1}`);
   return (
     <li className="collaboration-request">
       <CopyValue label={t('collaboration.deviceId')} value={deviceId} />
@@ -67,8 +74,38 @@ function PendingRequest({
       <CopyValue label={t('collaboration.fingerprint')} value={credentialId} />
       <p>{t('collaboration.compareFingerprint')}</p>
       <RoleChoice role={role} change={setRole} disabled={disabled} />
+      <Field title={t('collaboration.approvalProfile')}>
+        <select
+          value={profileId}
+          disabled={disabled}
+          onChange={(event) => setProfileId(event.target.value)}
+        >
+          <option value="">{t('collaboration.approvalNewProfileName')}</option>
+          {profiles.map((profile) => (
+            <option key={profile.id} value={profile.id}>
+              {profile.name}
+            </option>
+          ))}
+        </select>
+      </Field>
+      {!profileId && (
+        <Field title={t('collaboration.approvalNewProfileName')}>
+          <input
+            value={profileName}
+            maxLength={80}
+            disabled={disabled}
+            onChange={(event) => setProfileName(event.target.value)}
+          />
+        </Field>
+      )}
       <div className="collaboration-actions">
-        <button disabled={disabled} className="primary" onClick={() => approve(role)}>
+        <button
+          disabled={disabled || (!profileId && !profileName.trim())}
+          className="primary"
+          onClick={() =>
+            approve(role, profileId || undefined, profileId ? undefined : profileName.trim())
+          }
+        >
           <Check size={16} />
           {t('collaboration.approve')}
         </button>
@@ -94,6 +131,11 @@ export function Participants({
   confirm: (value: RoomConfirmation) => void;
 }) {
   const { t } = useI18n();
+  const graph = useEditor((state) => state.graph);
+  const profiles =
+    graph && graph.diagram.id === snapshot.diagramId
+      ? (graph.diagram.collaboration?.profiles ?? [])
+      : [];
   const owner = snapshot.role === 'owner';
   const mutable = owner && snapshot.status === 'live' && !busy;
   const roleLabel = (role: CollaborationRole) => t(`collaboration.role.${role}`);
@@ -109,7 +151,10 @@ export function Participants({
                 key={request.deviceId}
                 {...request}
                 disabled={!mutable}
-                approve={(role) => run(() => controller.approve(request.deviceId, role))}
+                profiles={profiles}
+                approve={(role, profileId, profileName) =>
+                  run(() => controller.approve(request.deviceId, role, profileId, profileName))
+                }
                 reject={() => confirm({ kind: 'reject', deviceId: request.deviceId })}
               />
             ))}
@@ -122,9 +167,7 @@ export function Participants({
         <ul className="collaboration-list">
           {snapshot.participants.map((participant) => (
             <li className="collaboration-participant" key={participant.deviceId}>
-              <span className="collaboration-avatar" aria-hidden="true">
-                <UserRound size={19} />
-              </span>
+              <ParticipantAvatar person={participant} />
               <div className="collaboration-person-details">
                 <p className="collaboration-person-name">
                   {participant.name || participant.deviceId}

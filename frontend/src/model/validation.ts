@@ -134,6 +134,7 @@ export function validateGraphFields(graph: Graph) {
   validateFields(graph.diagram, 'Diagram', ['description', 'folder'], true);
   requireValue(typeof graph.diagram.favorite === 'boolean', 'Invalid diagram favorite flag.');
   requireValue(object(graph.diagram.settings), 'Invalid diagram settings.');
+  if (graph.diagram.collaboration !== undefined) validateCollaboration(graph.diagram.collaboration);
   // Validate native JSON fields before specialized projections inspect metadata
   // or the UI assumes tags/text are safe to render.
   for (const node of graph.nodes) {
@@ -386,3 +387,4 @@ export function validateGraph(graph: Graph, trustedDataset?: CsvDataset | CsvDat
     }
   }
 }
+import { validateCollaboration } from '../collaboration/model/validation';

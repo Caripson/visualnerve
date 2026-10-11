@@ -298,7 +298,19 @@ export class CollaborativeDocument {
           if (!equal(previous.get(key), value)) fields.set(key, value);
       }, this.localOrigin);
       guard.assertActive();
-      return this.prepared(staged, this.project(staged, after), this.localOrigin, guard);
+      const merged = this.project(staged, after);
+      // The baseline may predate a peer append. Prune against the merged,
+      // validated projection, never against the caller's stale graph.
+      const retained = new Set(merged.diagram.collaboration?.activity.map((event) => event.id));
+      staged.transact(() => {
+        const fields = staged.getMap('fields');
+        for (const key of fields.keys()) {
+          if (!key.startsWith('["diagram","collaboration","activity",')) continue;
+          const path = JSON.parse(key) as string[];
+          if (!retained.has(path[3])) fields.delete(key);
+        }
+      }, this.localOrigin);
+      return this.prepared(staged, merged, this.localOrigin, guard);
     } finally {
       staged.destroy();
     }

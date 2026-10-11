@@ -1,6 +1,7 @@
 import type { WorkspaceStorage } from '../storage/contracts';
 import type { Graph } from '../model/types';
 import { StorageError } from '../model/errors';
+import type { CollaborationShareScope } from './document/scope';
 
 export interface PreparedSharedSave {
   readonly graph: Graph;
@@ -9,6 +10,7 @@ export interface PreparedSharedSave {
   cancelled?(): void;
 }
 export interface SharedDocumentPort {
+  readonly scope?: CollaborationShareScope;
   prepareLocal(
     before: Graph,
     requested: Graph,

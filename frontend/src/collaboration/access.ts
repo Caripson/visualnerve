@@ -1,5 +1,6 @@
 import type { Graph } from '../model/types';
 import { StorageError } from '../model/errors';
+import type { CollaborationActionContext } from './model/types';
 
 export type SharedRole = 'owner' | 'editor' | 'viewer';
 export interface SharedAccess {
@@ -9,6 +10,8 @@ export interface SharedAccess {
   hasSharedChanges(before: Graph, after: Graph): boolean;
   undo?(): boolean;
   redo?(): boolean;
+  documentContext?(): CollaborationActionContext;
+  activeProfileIds?(): readonly string[];
 }
 export class CollaborationAccessError extends StorageError {
   readonly code = 'COLLABORATION_READ_ONLY';
@@ -37,6 +40,17 @@ export class CollaborationPermissions {
 
   role(diagramId: string): SharedRole | undefined {
     return this.bindings.get(diagramId)?.role;
+  }
+  documentContext(diagramId: string): CollaborationActionContext | undefined {
+    const access = this.bindings.get(diagramId);
+    if (!access) return undefined;
+    access.check();
+    return access.documentContext?.() ?? { role: access.role, source: 'api' };
+  }
+  activeProfileIds(diagramId: string): readonly string[] {
+    const access = this.bindings.get(diagramId);
+    access?.check();
+    return access?.activeProfileIds?.() ?? [];
   }
 
   assertDetached(diagramId?: string): void {

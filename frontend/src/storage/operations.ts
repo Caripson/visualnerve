@@ -108,7 +108,10 @@ export async function readWorkspaceBackup(scope: WorkspaceStorage): Promise<Work
     edges: await scope.edges.toArray(),
     owners: await scope.owners.toArray(),
     settings: (await scope.settings.toArray()).filter(
-      (setting) => !privateBackupSettings.has(setting.key) && !setting.key.startsWith('vault-'),
+      (setting) =>
+        !privateBackupSettings.has(setting.key) &&
+        !setting.key.startsWith('vault-') &&
+        !setting.key.startsWith('collaboration-profile:'),
     ),
     templates: await scope.templates.toArray(),
     datasets,

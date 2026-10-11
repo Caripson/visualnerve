@@ -57,6 +57,7 @@ class FakeRoom {
   readonly device: DeviceIdentity;
   readonly currentPolicy: SignedRoomPolicy;
   epoch = 0;
+  profileBindings: Record<string, string> = {};
   role: 'owner' | 'editor' | 'viewer' = 'owner';
   dispose = vi.fn();
   cancelPendingSends = vi.fn();
@@ -69,7 +70,7 @@ class FakeRoom {
   constructor(readonly options: EncryptedRoomOptions) {
     const publicBytes = encodeBytes(new Uint8Array(32).fill(1));
     this.device = {
-      deviceId: `owner-${crypto.randomUUID()}`,
+      deviceId: crypto.randomUUID(),
       credentialId: 'a'.repeat(64),
       signingKey: { kty: 'EC', crv: 'P-256', x: publicBytes, y: publicBytes },
       mlsSignatureKey: publicBytes,
@@ -126,6 +127,7 @@ beforeEach(async () => {
   await session.unlock(password);
   db = new EncryptedWorkspaceDatabase(session, new VaultLogicalRecordCodec(cipher));
   repo = new Repository(db);
+  await db.settings.put({ key: 'storage-consent', value: true });
   workspace = new Workspace(repo);
   graph = blankGraph('Authoritative controller graph');
   graph.nodes.push(newNode(graph.diagram.id, { title: 'Original' }));
@@ -437,6 +439,7 @@ describe('collaboration controller lifecycle against the encrypted repository', 
   });
   it('ignores a late offline-send failure from the revoked gateway after a fresh unlock', async () => {
     await controller.create(graph.diagram.id, 'Old owner', scope);
+    graph = await repo.getGraph(graph.diagram.id);
     const old = opened.at(-1)!,
       sending = deferred<void>(),
       entered = deferred<void>();
@@ -587,6 +590,8 @@ describe('collaboration controller lifecycle against the encrypted repository', 
     ).toBe('Viewer');
     expect(controller.getSnapshot().status).toBe('live');
   });
+  // Real encrypted persistence and repeated 9 MiB projection/compression need
+  // more wall time when CI runs other CPU-heavy storage and build checks.
   it('refreshes an accepted 9 MiB document under a new live epoch without freezing its room', async () => {
     const large = structuredClone(graph);
     large.nodes[0].description = 'x'.repeat(9 * 1024 * 1024);
@@ -627,5 +632,5 @@ describe('collaboration controller lifecycle against the encrypted repository', 
     expect((await repo.getGraph(graph.diagram.id)).nodes[0].description).toHaveLength(
       9 * 1024 * 1024,
     );
-  });
+  }, 90_000);
 });

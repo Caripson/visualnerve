@@ -1,10 +1,10 @@
 ---
 title: "Collaborate on a diagram"
-summary: "Share one diagram with approved people, see their presence and understand encryption, disclosure and recovery limits."
+summary: "Use document profiles, comments, tasks and activity locally or in an approved encrypted live diagram session."
 weight: 13
 ---
 
-Realtime collaboration is optional. Ordinary diagrams still work locally without a relay or account. When a collaboration relay is configured, the **Collaboration** panel lets an owner share one diagram with approved devices. Participants work on the same graph while keeping their own camera and workspace preferences.
+**Document work** keeps profiles, comments, node tasks and activity inside one diagram; it works locally without a relay or account. Realtime collaboration is optional. When a collaboration relay is configured, the **Collaboration** panel lets an owner share one diagram with approved devices. Participants work on the same graph while keeping their own camera and workspace preferences.
 
 **This integration has not been independently audited.** Evaluate it against your organization's data and device policies before sharing sensitive material. It is not an enterprise identity service or a promise of regulatory compliance.
 
@@ -13,6 +13,56 @@ room. Collaboration is a deliberate sharing choice: keep working locally when
 the diagram should not leave your browser. Self-hosting gives you control of the
 relay and deployment, but uses the same client/protocol and does not eliminate
 software defects or compromised participant devices.
+
+## Keep work beside the diagram
+
+Open **Collaboration → Document work**. The four tabs are **Profiles**, **Comments**, **Tasks** and **Activity**. You can use them in your unlocked local workspace without starting a room. Nothing is sent to other people until you deliberately share the diagram.
+
+### Profiles and pictures
+
+Create a document profile, then choose it as your **Acting document profile**. Comments and tasks you create use that profile. Give other contributors a profile so you can assign their work. A profile belongs to this diagram: it is not a login, an account or proof of a person's identity.
+
+Each new profile receives an available color. You can change it; initials and names remain visible so color is not the only identifier. In a live room, the owner chooses which document profile an approved device represents. A participant cannot gain access by creating a profile or choosing someone else's name. Document profiles are separate from the workspace's responsibility/owner profiles.
+
+To remove an unused profile, select another acting profile first. Profiles referenced by comments, tasks or retained activity stay available so those records keep their meaning. Clear an assignment before removal when it is the only reference. A profile representing an approved live device also remains until that device leaves or is removed from the room.
+
+An optional picture replaces initials. Upload a local PNG, JPEG or WebP up to **8 MiB**, **32 megapixels** and **16,384 pixels per dimension**. The app checks these limits before decoding, resizes to at most **256 × 256**, and re-encodes locally to remove source metadata. The saved image must fit **64 KiB**; pictures together must fit **2 MiB**. SVG and external image links are rejected. Use a picture you are allowed to share.
+
+![Document profiles, automatic participant colors and the local acting-profile selection.](/help/images/collaboration-document-profiles.webp)
+
+### Comments and replies
+
+Select a node, open **Comments**, and choose that node in **Linked node**. Choose **Whole diagram** for a general discussion. Enter a comment and select **Add comment**. Each thread supports replies, editing your own text and resolution; resolved threads remain readable and can be reopened.
+
+An author can resolve their thread. The room owner can also resolve or remove a thread for moderation, but cannot rewrite another person's comment through these controls. Removal asks for confirmation. Viewers can read comments but cannot post, reply, edit or resolve them.
+
+For example, attach “Validate package demand with the store team” to the package counter. A colleague replies with the assumptions you should use. Resolve the thread once those assumptions are agreed.
+
+![A node-linked discussion with two contributors and a reply.](/help/images/collaboration-document-comments.webp)
+
+### Node tasks
+
+In **Tasks**, select **Create task**, choose a node, enter a title, and optionally add a description, assignee and due date. Use **To do**, **In progress** or **Done** to show progress. Editors can update tasks; viewers remain read-only. A task's assignee does not change node responsibility, grant room access or limit who can edit it.
+
+This is a compact action list beside the model. Due dates are descriptive: there are no email reminders, push notifications or automatic escalation. If you remove the linked node, its saved title remains with the task or comment so you can understand the orphaned work. Edit a task to link it to another existing node, or remove it deliberately.
+
+![A node task assigned to a contributor, with its due date and completed status.](/help/images/collaboration-document-tasks.webp)
+
+![Node tasks remain readable and editable in the mobile Collaboration panel.](/help/images/collaboration-document-mobile-tasks.webp)
+
+### Shared activity
+
+**Activity** summarizes meaningful model and document-work changes. Moving a node alone does not fill the feed with drag frames. The latest **500** entries are retained. A logical sequence orders entries independently of device clocks; concurrent entries use a stable ID tie-breaker. Displayed dates still come from contributors' devices.
+
+This is **informational, editable diagram content, not an immutable audit log**. Approved editors can modify shared document content, person labels are not independently verified, and imported history is not evidence of verified authorship. Do not use it as regulatory or legal audit evidence.
+
+![The bounded activity feed summarizes comments, tasks and semantic diagram changes.](/help/images/collaboration-document-activity.webp)
+
+### Save, export and limits
+
+Document work uses the same encrypted diagram record in IndexedDB. It survives normal save/reopen and follows native JSON exports and workspace backups. Exported readable copies include profiles, pictures, comments, tasks and activity; keep them appropriately protected. Room credentials and the browser's chosen acting-profile preference are excluded.
+
+One document supports **128 profiles**, **2,000 threads and 2,000 messages in total**, **1,000 tasks** and **500 activity entries**. Comment text and task descriptions allow 4,000 characters; task titles allow 300. These bounds limit memory, sharing and retained history. The API returns a structured error instead of silently accepting oversized content.
 
 ## Start with a small example
 
@@ -39,7 +89,7 @@ Send invitations only through a private channel. Send fingerprints through a sep
 
 ## Choose what you disclose
 
-The default shared drawing includes titles, descriptions, relationships, geometry, styling, saved annotations, presentation/storyboard configuration and semantic process assumptions. Text already shown in a diagram can contain customer names, code identifiers, paths, SQL-derived labels or summarized CSV values. Review it even when the optional disclosures are off.
+The default shared drawing includes titles, descriptions, relationships, geometry, styling, saved annotations, presentation/storyboard configuration, semantic process assumptions, and **document profiles (including names, colors and pictures), comments, tasks and activity**. These document-work fields are shared even when optional metadata and owner-profile disclosure are off. Text already shown in a diagram can contain customer names, code identifiers, paths, SQL-derived labels or summarized CSV values. Review it even when the optional disclosures are off.
 
 | Choice | What it adds | Default |
 | --- | --- | --- |
@@ -57,7 +107,7 @@ Camera position, zoom/view filters, workspace folder, favorites and local save/v
 
 ## Read presence and roles
 
-The panel shows approved participants, their roles and connection state. Shared selection identifies which objects a participant is examining. Activity currently identifies the approved human device; an API/MCP edit uses that same device and permissions, rather than appearing automatically as a separately approved AI participant.
+The panel shows approved participants, their roles and connection state. On the 2D canvas, shared selection outlines and pointer labels identify which objects a participant is examining. The live participant dock remains clear of zoom/Fit controls and does not intercept canvas gestures. Large groups use a bounded visible sample of remote markers. Activity uses the document profile associated with the approved human device; an API/MCP edit uses that same device and permissions, rather than appearing automatically as a separately approved AI participant.
 
 ![The owner reviews connected participants, their full device fingerprints, roles and removal controls in the Collaboration panel.](/help/images/collaboration-members-desktop.webp)
 
@@ -69,13 +119,15 @@ The panel shows approved participants, their roles and connection state. Shared 
 
 Each participant's local vault must remain unlocked. MCP also needs its own explicit local grant. A **Viewer** with a local **Read + write** MCP grant still cannot edit the shared graph. An **Editor** with a **Read only** MCP grant cannot let that tool write. The two permissions are checked together.
 
+![The live participant dock remains clear of canvas controls on a phone.](/help/images/collaboration-document-mobile-canvas.webp)
+
 ## Understand saving and simultaneous edits
 
 Edits are merged per field using Yjs. Two people can change different properties without replacing each other's whole node. The accepted graph still undergoes Visual Nerve's reference and model validation, and local saves use the existing encrypted transaction boundary.
 
 Malformed presence and sync requests are rejected before changing the drawing or participant list. Known-invalid, cryptographically authenticated application framing or permissions are rejected without ending every recipient's session. Expired/overloaded message assembly, uncertain cryptographic state, invalid membership policy and persistence failures still stop the session safely; the app does not silently drop a possibly valid edit while showing a live connection.
 
-Some simultaneous changes cannot form a valid model—for example, deleting an object while another participant creates a relationship to it. A conflict stops normal synchronization rather than silently deleting evidence or accepting a broken graph. Inspect the visible conflict, keep your local diagram, and coordinate a reviewed recovery or a new room. Do not treat an offline or conflict indicator as confirmation that all edits reached everyone.
+Some simultaneous changes cannot form a valid model—for example, deleting an object while another participant creates a relationship to it. Removing an unused profile while another participant assigns a task to it is another conflicting reference change; keep the profile until assignments are agreed. A conflict stops normal synchronization rather than silently deleting evidence or accepting a broken graph. Inspect the visible conflict, keep your local diagram, and coordinate a reviewed recovery or a new room. Do not treat an offline or conflict indicator as confirmation that all edits reached everyone.
 
 While a room is active, leave it before deleting its shared diagram, clearing/replacing the workspace, or editing/deleting a global owner profile referenced by that diagram. Those operations return a conflict rather than diverging from other participants. Create/edit the owner profiles before joining; assigning an existing owner through the shared node still follows the chosen scope.
 
@@ -112,6 +164,6 @@ When a returning participant is approved as an **Editor** into the same room and
 
 ## Use an AI agent with an approved session
 
-Create and approve the room through the human UI first. An agent can then inspect semantic collaboration status and edit through the existing graph endpoints when both its MCP grant and your room role allow it. There are no MCP endpoints to issue invitations, approve participants, retrieve private room keys or unlock a vault.
+Create and approve the room through the human UI first. An agent can then inspect semantic collaboration status and edit through the existing graph endpoints when both its MCP grant and your room role allow it. Profiles, comments, tasks and activity are available through the versioned document/action endpoints, including local-only diagrams. Live actions derive their author from the approved device profile; local actions use the selected local profile. Read the current base version before writing. There are no MCP endpoints to issue invitations, approve participants, retrieve private room keys or unlock a vault.
 
 See [collaboration through API and MCP](/help/api-mcp/#inspect-an-approved-collaboration-session), [privacy](/privacy/#optional-realtime-collaboration), and [security](/security/#optional-realtime-collaboration).

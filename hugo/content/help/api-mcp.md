@@ -52,13 +52,13 @@ Encryption protects saved records while locked. An authorized API/MCP request, d
 
 ## Understand the addresses
 
-| Address                                                       | Purpose                                                                     |
-| ------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `https://app.visualnerve.com/` | Encrypted browser workspace where your diagrams and Settings live |
-| `https://app.visualnerve.com` | Exact app origin allowed by your bridge; use it without a path |
-| `ws://127.0.0.1:4317/bridge` or trusted `wss://…/bridge`      | Browser-to-local-service WebSocket connection                               |
-| `http://127.0.0.1:4317/mcp` or matching `https://…/mcp`       | Local MCP server address for any compatible client                          |
-| `http://127.0.0.1:4317/api/v1` or matching `https://…/api/v1` | Local REST API base                                                         |
+| Address                                                       | Purpose                                                           |
+| ------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `https://app.visualnerve.com/`                                | Encrypted browser workspace where your diagrams and Settings live |
+| `https://app.visualnerve.com`                                 | Exact app origin allowed by your bridge; use it without a path    |
+| `ws://127.0.0.1:4317/bridge` or trusted `wss://…/bridge`      | Browser-to-local-service WebSocket connection                     |
+| `http://127.0.0.1:4317/mcp` or matching `https://…/mcp`       | Local MCP server address for any compatible client                |
+| `http://127.0.0.1:4317/api/v1` or matching `https://…/api/v1` | Local REST API base                                               |
 
 `127.0.0.1` means the computer where the connecting software runs. It remains local even when the app was downloaded from a public domain. JavaScript opens a connection to the bridge; it does not install or create that native process. A client on another machine does not reach your computer by using its own `127.0.0.1`.
 
@@ -135,7 +135,7 @@ The app, the local bridge executable and your MCP client are three separate prog
 
 Before giving an agent workspace commands:
 
-1. Inspect the local `GET /api/v1/health` address shown in the copied instructions. The current bridge reports version **0.7.0**, both MCP tool names, and the capabilities `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1` and `collaboration-v1`. Health contains public transport metadata; it does not read diagrams or unlock the workspace.
+1. Inspect the local `GET /api/v1/health` address shown in the copied instructions. The current bridge reports version **0.8.0**, both MCP tool names, and the capabilities `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1` and `collaboration-document-v1`. Health contains public transport metadata; it does not read diagrams or unlock the workspace.
 2. Reconnect or initialize the MCP client, then inspect its discovered tools. It should show both **visual_nerve_request** and **visual_nerve_api_docs**. A client can retain an old tool list until you reconnect it.
 3. Ask the agent to read the compact guide before making commands. For a particular endpoint, it can request a smaller contract containing that operation and every referenced schema:
 
@@ -185,12 +185,12 @@ After **504** with `code: "OPERATION_OUTCOME_UNKNOWN"`, inspect the operation th
 { "path": "/operations/<operationId>", "method": "GET" }
 ```
 
-| State | Meaning and next step |
-| ----- | --------------------- |
-| `reserved` | The command has not started in this browser. Send the intended write with this ID. |
-| `running` | The command is still being handled. Poll status; do not start a second copy. |
-| `succeeded` | The browser handled the command successfully. Inspect its result or reread saved data. |
-| `failed` | The browser returned an error. Inspect that response and saved state before preparing a corrected operation. |
+| State                                       | Meaning and next step                                                                                                        |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `reserved`                                  | The command has not started in this browser. Send the intended write with this ID.                                           |
+| `running`                                   | The command is still being handled. Poll status; do not start a second copy.                                                 |
+| `succeeded`                                 | The browser handled the command successfully. Inspect its result or reread saved data.                                       |
+| `failed`                                    | The browser returned an error. Inspect that response and saved state before preparing a corrected operation.                 |
 | `unknown`, expired or unavailable authority | The retained transport information cannot prove the outcome. Reread saved data and current versions before issuing new work. |
 
 An invalid browser acknowledgment can also produce **502 OPERATION_OUTCOME_UNKNOWN**. `failed` reports a browser command error, without guaranteeing rollback of every multi-phase runtime side effect. This is at-most-once command execution within retained browser/grant scope, not exactly-once transactions across page or bridge lifetimes.
@@ -536,16 +536,43 @@ For complete schemas use the [API reference](/api/docs/). For connection and imp
 ```json
 {
   "nodes": [
-    {"id":"fork-id","name":"Start prerequisites","type":"fork",
-     "fork":{"joinNodeId":"join-id","branchEdgeIds":["access-edge","equipment-edge"]}},
-    {"id":"join-id","name":"All prerequisites ready","type":"join",
-     "join":{"forkNodeId":"fork-id"}}
+    {
+      "id": "fork-id",
+      "name": "Start prerequisites",
+      "type": "fork",
+      "fork": {
+        "joinNodeId": "join-id",
+        "branchEdgeIds": ["access-edge", "equipment-edge"]
+      }
+    },
+    {
+      "id": "join-id",
+      "name": "All prerequisites ready",
+      "type": "join",
+      "join": { "forkNodeId": "fork-id" }
+    }
   ],
   "edges": [
-    {"id":"access-edge","sourceNodeId":"fork-id","targetNodeId":"access-work-id"},
-    {"id":"equipment-edge","sourceNodeId":"fork-id","targetNodeId":"equipment-work-id"},
-    {"id":"access-ready-edge","sourceNodeId":"access-work-id","targetNodeId":"join-id"},
-    {"id":"equipment-ready-edge","sourceNodeId":"equipment-work-id","targetNodeId":"join-id"}
+    {
+      "id": "access-edge",
+      "sourceNodeId": "fork-id",
+      "targetNodeId": "access-work-id"
+    },
+    {
+      "id": "equipment-edge",
+      "sourceNodeId": "fork-id",
+      "targetNodeId": "equipment-work-id"
+    },
+    {
+      "id": "access-ready-edge",
+      "sourceNodeId": "access-work-id",
+      "targetNodeId": "join-id"
+    },
+    {
+      "id": "equipment-ready-edge",
+      "sourceNodeId": "equipment-work-id",
+      "targetNodeId": "join-id"
+    }
   ]
 }
 ```
@@ -563,7 +590,11 @@ Route metrics retain exact connection-ID labels up to 2,000 characters. Longer h
 Prefer the asynchronous export for large diagrams. All operations below are available with **Read only** access and do not change the model:
 
 ```json
-{"path":"/exports/svg","method":"POST","data":{"diagramId":"YOUR_DIAGRAM_UUID","scope":"complete"}}
+{
+  "path": "/exports/svg",
+  "method": "POST",
+  "data": { "diagramId": "YOUR_DIAGRAM_UUID", "scope": "complete" }
+}
 ```
 
 The `201` response includes `jobId`, `diagramId`, `state`, `progress` (0–100), `phase`, timestamps and object counts. Poll `GET /exports/svg/{jobId}` with a short backoff until `succeeded`, `failed` or `cancelled`. Fetch `GET /exports/svg/{jobId}/result?offset=0&limit=1048576`. Each response is `{jobId,offset,nextOffset,totalCharacters,text,complete}`. Append `text`, then request the returned `nextOffset` until `complete:true`. Offsets use UTF-16 code units; returned boundaries preserve Unicode characters. Save the concatenated XML as `.svg` (`image/svg+xml`). A result requested before success returns `409 SVG_JOB_NOT_READY`. Cancel/remove a job with exact `DELETE /exports/svg/{jobId}` and no arguments or `{}`; this returns its cancelled status (`200`).
@@ -580,11 +611,19 @@ Use editable exports when you want to continue working on the drawing in another
 
 Editable Draw.io drawings use a deliberate **light drawing surface**, regardless of app Appearance. White base fills and dark text, connection labels and base borders keep the document readable in another editor. Saved node, connection and mind-map color accents remain. Native JSON preserves full stored styling, and workspace backups also retain portable appearance settings. This needs no extra API argument; SVG keeps its existing appearance behavior.
 
-1. Read `GET /exports/capabilities` first. Its existing SVG fields remain unchanged; `diagrams` describes the drawio format, scopes, validation metadata and separate limits. Bridge 0.7.0 advertises `exchange-export-v1`.
+1. Read `GET /exports/capabilities` first. Its existing SVG fields remain unchanged; `diagrams` describes the drawio format, scopes, validation metadata and separate limits. Bridge 0.8.0 advertises `exchange-export-v1`.
 2. Start an export with the existing **visual_nerve_request** tool:
 
 ```json
-{"path":"/exports/diagrams","method":"POST","data":{"diagramId":"YOUR_DIAGRAM_UUID","format":"drawio","scope":"complete"}}
+{
+  "path": "/exports/diagrams",
+  "method": "POST",
+  "data": {
+    "diagramId": "YOUR_DIAGRAM_UUID",
+    "format": "drawio",
+    "scope": "complete"
+  }
+}
 ```
 
 3. The **201** response contains a `jobId`, not the file. Poll `GET /exports/diagrams/{jobId}` with a short backoff. Status reports real progress, phases and warnings. Continue until `succeeded`, `failed` or `cancelled`; inspect `error` if it fails.
@@ -608,51 +647,55 @@ curl --fail-with-body http://127.0.0.1:4317/api/v1/exports/capabilities
 If your bridge requires a token, use your client's protected Authorization configuration. For the following Node.js 22 example, set `VISUAL_NERVE_BRIDGE_TOKEN` in your local environment if needed and set `VISUAL_NERVE_DIAGRAM_ID` to the canonical UUID returned by `GET /diagrams`. Do not put real tokens in the script. Save it as `export-diagram.mjs`, then run `node export-diagram.mjs`. Adjust the base address to your configured listener. When multiple workspaces are connected, also set `VISUAL_NERVE_WORKSPACE_ID` to the intended workspace ID.
 
 ```javascript
-import { writeFile } from 'node:fs/promises';
-import { setTimeout as delay } from 'node:timers/promises';
+import { writeFile } from "node:fs/promises";
+import { setTimeout as delay } from "node:timers/promises";
 
-const base = 'http://127.0.0.1:4317/api/v1';
+const base = "http://127.0.0.1:4317/api/v1";
 const diagramId = process.env.VISUAL_NERVE_DIAGRAM_ID;
-if (!diagramId) throw new Error('Set VISUAL_NERVE_DIAGRAM_ID first.');
-const headers = { 'Content-Type': 'application/json' };
+if (!diagramId) throw new Error("Set VISUAL_NERVE_DIAGRAM_ID first.");
+const headers = { "Content-Type": "application/json" };
 if (process.env.VISUAL_NERVE_BRIDGE_TOKEN)
   headers.Authorization = `Bearer ${process.env.VISUAL_NERVE_BRIDGE_TOKEN}`;
 if (process.env.VISUAL_NERVE_WORKSPACE_ID)
-  headers['X-Visual-Nerve-Workspace'] = process.env.VISUAL_NERVE_WORKSPACE_ID;
+  headers["X-Visual-Nerve-Workspace"] = process.env.VISUAL_NERVE_WORKSPACE_ID;
 async function request(path, options = {}) {
   const response = await fetch(base + path, {
-    ...options, headers, signal: AbortSignal.timeout(30_000),
+    ...options,
+    headers,
+    signal: AbortSignal.timeout(30_000),
   });
   const body = await response.json();
-  if (!response.ok) throw new Error(`${response.status}: ${JSON.stringify(body)}`);
+  if (!response.ok)
+    throw new Error(`${response.status}: ${JSON.stringify(body)}`);
   return body;
 }
 
-const capabilities = await request('/exports/capabilities');
-if (!capabilities.diagrams) throw new Error('Update the app and local bridge.');
-let job = await request('/exports/diagrams', {
-  method: 'POST',
-  body: JSON.stringify({ diagramId, format: 'drawio', scope: 'complete' }),
+const capabilities = await request("/exports/capabilities");
+if (!capabilities.diagrams) throw new Error("Update the app and local bridge.");
+let job = await request("/exports/diagrams", {
+  method: "POST",
+  body: JSON.stringify({ diagramId, format: "drawio", scope: "complete" }),
 });
-while (['queued', 'running'].includes(job.state)) {
+while (["queued", "running"].includes(job.state)) {
   await delay(250);
   job = await request(`/exports/diagrams/${job.jobId}`);
 }
-if (job.state !== 'succeeded')
+if (job.state !== "succeeded")
   throw new Error(job.error?.message ?? `Export ${job.state}`);
 
 const chunks = [];
-let offset = 0, chunk;
+let offset = 0,
+  chunk;
 do {
   chunk = await request(
     `/exports/diagrams/${job.jobId}/result?offset=${offset}&limit=786432`,
   );
-  chunks.push(Buffer.from(chunk.data, 'base64')); // Decode each chunk independently.
+  chunks.push(Buffer.from(chunk.data, "base64")); // Decode each chunk independently.
   offset = chunk.nextOffset;
 } while (!chunk.complete);
 await writeFile(`diagram.${chunk.format}`, Buffer.concat(chunks));
 console.log(chunk.warnings);
-await request(`/exports/diagrams/${job.jobId}`, { method: 'DELETE' });
+await request(`/exports/diagrams/${job.jobId}`, { method: "DELETE" });
 ```
 
 The example never automatically repeats a POST after a transport error. If a write response is uncertain, use the [operation receipt workflow](#recover-an-uncertain-write-without-creating-it-twice); safe status/result reads can be repeated while the original job remains authorized.
@@ -661,7 +704,7 @@ The example never automatically repeats a POST after a transport error. If a wri
 
 Realtime collaboration is optional and requires a configured relay. The human creates a room, chooses what to disclose and approves participant devices in the [Collaboration panel](/help/collaboration/). MCP does not provide invitations, approval, role changes, private keys or an unlock operation.
 
-Bridge **0.7.0** advertises `collaboration-v1`. Ask the browser whether the optional feature is configured:
+Bridge **0.8.0** advertises `collaboration-v1` and `collaboration-document-v1`. Ask the browser whether the optional feature is configured:
 
 ```json
 { "path": "/collaboration/capabilities", "method": "GET" }
@@ -676,7 +719,10 @@ Read the current local sessions or one existing diagram:
 ```
 
 ```json
-{ "path": "/diagrams/00000000-0000-4000-8000-000000000001/collaboration", "method": "GET" }
+{
+  "path": "/diagrams/00000000-0000-4000-8000-000000000001/collaboration",
+  "method": "GET"
+}
 ```
 
 Responses describe status, sharing scope, participants, roles, connection state, selected node IDs, optional activity labels, pending approval count and optional synchronization progress. The current app reports human-device activity; API/MCP edits use that approved device and are not automatically labeled as separate AI activity. Invitation URLs, relay addresses, credentials, private keys and raw error messages are excluded. An unconnected diagram returns `idle`; session listing is not room history.
@@ -704,3 +750,11 @@ All four editable-job routes permit **Read only**. Their exact POST/DELETE excep
 The source graph can contain up to 100,000 nodes/500,000 connections; the selected export is limited to 20,000 nodes/100,000 internal connections, 5,000,000 exported text characters and 64 MiB. Two jobs may run at once; four terminal jobs and 128 MiB of result bytes may be retained. Jobs expire 15 minutes after creation, with a two-minute worker deadline. Discover exact limits through capabilities and reduce the selection when needed; the exporter does not silently truncate it.
 
 Jobs retain the **original unlocked session and MCP grant**, beyond the POST response. Lock, reload, stop, cache clearing or an explicit grant change removes them; a later unlock or grant cannot recover the old result. Locked content requests return **423**, and authorized reads of expired, removed or cancelled jobs return **404**. Temporary results stay in browser memory. Downloaded files are readable and cannot be recalled by locking the workspace. Review titles, descriptions, owner/status labels, process assumptions and scope before sharing. See [sharing and exports](/help/sharing/#continue-editing-in-drawio) and the [complete API contract](https://github.com/Caripson/visualnerve/blob/main/API.md#editable-diagram-exchange).
+
+## Work with portable comments and tasks
+
+Document collaboration work is available locally without a configured relay. `GET /diagrams/{diagramId}/collaboration/document` returns its current `baseVersion` and schemaVersion 1 profiles, comment threads, node tasks and informational activity. Use exact `POST /diagrams/{diagramId}/collaboration/actions` with `{baseVersion,action}` to save one supported action with Read + write. Read the complete scoped schema through `visual_nerve_api_docs` using `document:"endpoint"`, `path:"/diagrams/{diagramId}/collaboration/actions"` and `method:"POST"` before writing.
+
+The browser supplies the acting profile, role and writer-clock timestamp. Agents cannot send authors, roles or credentials in an action. Owners provision profiles, editors edit their own display profile and comment text, thread authors/owners resolve discussions, and editors assign/update node tasks. Viewers cannot mutate. Tasks use `todo`, `in-progress` or `done`, optional profile assignee and a valid `YYYY-MM-DD` due date; they do not replace process ownership. Work attached to a deleted node retains its UUID and last title.
+
+Profiles are unverified labels and the latest 500 activity events are editable information, not a signed or immutable security audit. Approved editors of the existing shared document remain trusted to edit its content. Native JSON/backups retain this work, including tiny raster avatars; private room state and credentials remain excluded. See the [complete API contract](/api/docs/) for limits, strict action fields and version/access errors.

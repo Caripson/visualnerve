@@ -202,7 +202,13 @@ try {
     await guest.screenshot({ path: `${output}/pending-mobile-${theme}.png` });
   }
   await guest.setViewportSize({ width: 1440, height: 900 });
-  await owner.locator(".collaboration-request select").selectOption("editor");
+  await owner
+    .locator(".collaboration-request")
+    .getByRole("combobox", { name: /^Permission(?:\s|$)/ })
+    .selectOption("editor");
+  await owner
+    .getByRole("textbox", { name: "New profile name", exact: true })
+    .fill("Guest browser");
   await owner.getByRole("button", { name: "Approve device" }).click();
   await waitStatus(guest, "live");
   const sharedOwner = await evaluate(owner, "graph"),
@@ -322,7 +328,13 @@ try {
       .fill(invitation);
     await guest.getByRole("button", { name: "Request to join" }).click();
     await owner.getByRole("button", { name: "Approve device" }).waitFor();
-    await owner.locator(".collaboration-request select").selectOption(role);
+    await owner
+      .locator(".collaboration-request")
+      .getByRole("combobox", { name: /^Permission(?:\s|$)/ })
+      .selectOption(role);
+    await owner
+      .getByRole("textbox", { name: "New profile name", exact: true })
+      .fill(name);
     await owner.getByRole("button", { name: "Approve device" }).click();
     await waitStatus(guest, "live");
   };
@@ -356,7 +368,7 @@ try {
   const participantSelect = owner
     .locator(".collaboration-participant")
     .filter({ hasText: "Recovery editor" })
-    .locator("select");
+    .getByRole("combobox", { name: /^Permission · Recovery editor(?:\s|$)/ });
   // The owner may change policy again before another device has finished its
   // prior synchronization. Do not hide legitimate transport/epoch races with
   // an artificial per-peer acknowledgement wait between owner UI operations.
@@ -369,10 +381,13 @@ try {
       await waitStatus(owner, "live");
     }
   }
+  const finalPolicyEpoch = await evaluate(owner, "epoch");
   await guest.waitForFunction(
-    () =>
+    (expectedEpoch) =>
       window.collaborationLiveTest.snapshot().role === "editor" &&
-      window.collaborationLiveTest.snapshot().status === "live",
+      window.collaborationLiveTest.snapshot().status === "live" &&
+      window.collaborationLiveTest.epoch() === expectedEpoch,
+    finalPolicyEpoch,
   );
   assert.equal(await evaluate(guest, "epoch"), await evaluate(owner, "epoch"));
   checked.push(

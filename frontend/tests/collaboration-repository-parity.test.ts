@@ -274,7 +274,7 @@ describe('one authoritative graph transaction for UI/API/peer edits', () => {
     const node = graph.nodes[0];
     await expect(
       repo.request(`/nodes/${node.id}`, 'PATCH', { version: node.version, title: 'Forbidden' }),
-    ).rejects.toThrow('viewing access only');
+    ).rejects.toMatchObject({ status: 403 });
     await expect(repo.removeDiagram(graph.diagram.id)).rejects.toThrow(
       'Leave the active collaboration',
     );

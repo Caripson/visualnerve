@@ -1,6 +1,7 @@
 import type { Graph } from '../../model/types';
 import { StorageError } from '../../model/errors';
 import type { SimulationModel } from '../../simulation/types';
+import { validCollaborationId } from '../model/validation';
 
 /** A human chooses disclosure once when creating/joining a room. Never infer consent. */
 export interface CollaborationShareScope {
@@ -72,6 +73,83 @@ const sharedRoots = new Set([
   'dataset',
   'datasets',
 ]);
+const documentFields: Record<string, Set<string>> = {
+  profiles: new Set(['id', 'name', 'color', 'avatarDataUrl', 'createdAt', 'updatedAt']),
+  comments: new Set([
+    'id',
+    'nodeId',
+    'nodeTitle',
+    'authorId',
+    'resolved',
+    'resolvedBy',
+    'resolvedAt',
+    'createdAt',
+    'updatedAt',
+    'messages',
+  ]),
+  tasks: new Set([
+    'id',
+    'nodeId',
+    'nodeTitle',
+    'title',
+    'description',
+    'authorId',
+    'assigneeId',
+    'status',
+    'dueDate',
+    'createdAt',
+    'updatedAt',
+  ]),
+  activity: new Set([
+    'id',
+    'kind',
+    'source',
+    'authorId',
+    'sequence',
+    'timestamp',
+    'summary',
+    'nodeIds',
+    'entityId',
+  ]),
+};
+const messageFields = new Set(['id', 'authorId', 'text', 'sequence', 'createdAt', 'updatedAt']);
+
+/** Validate retained paths even when a deleted ancestor or history retention hides them. */
+function validDocumentPath(path: string[], encoded: unknown): boolean {
+  if (!Array.isArray(encoded)) return false;
+  const container = encoded.length === 1 && encoded[0] === 'object';
+  const scalar =
+    encoded.length === 2 &&
+    encoded[0] === 'value' &&
+    (encoded[1] === null ||
+      ['string', 'boolean'].includes(typeof encoded[1]) ||
+      (typeof encoded[1] === 'number' && Number.isFinite(encoded[1])));
+  if (path.length === 2) return container;
+  const collection = path[2];
+  if (collection === 'schemaVersion') return path.length === 3 && scalar;
+  const fields = Object.hasOwn(documentFields, collection) ? documentFields[collection] : undefined;
+  if (!fields) return false;
+  if (path.length === 3) return container;
+  if (!validCollaborationId(path[3])) return false;
+  if (path.length === 4) return container;
+  const field = path[4];
+  if (!fields.has(field)) return false;
+  if (collection === 'comments' && field === 'messages') {
+    if (path.length === 5) return container;
+    if (!validCollaborationId(path[5])) return false;
+    if (path.length === 6) return container;
+    return path.length === 7 && messageFields.has(path[6]) && scalar;
+  }
+  if (path.length !== 5) return false;
+  if (collection === 'activity' && field === 'nodeIds')
+    return (
+      encoded.length === 2 &&
+      encoded[0] === 'value' &&
+      Array.isArray(encoded[1]) &&
+      encoded[1].every((id: unknown) => validCollaborationId(id))
+    );
+  return scalar;
+}
 function scopedSimulation(model: SimulationModel, scope: CollaborationShareScope) {
   const result = structuredClone(model);
   if (!scope.shareMetadata) {
@@ -173,6 +251,7 @@ export function assertCollaborationFieldScope(
     )
       fail();
     if (root === 'diagram') {
+      if (entityId === 'collaboration' && !validDocumentPath(path, value)) fail();
       if (entityId === 'externalId' && !scope.shareMetadata) fail();
       if (['version', 'createdAt', 'updatedAt', 'favorite', 'folder'].includes(entityId)) fail();
       if (entityId === 'metadata' && path.length > 2 && !scope.shareMetadata) fail();
