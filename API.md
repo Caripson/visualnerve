@@ -1,6 +1,6 @@
 # Optional local REST and MCP integration
 
-API **0.8.2** adds portable collaboration document work to the existing local command surface. The bridge advertises `collaboration-v1` , `collaboration-document-v1` and `analytics-v1`; a browser's `GET /collaboration/capabilities` separately reports whether the relay is configured. Room admission remains a human UI action.
+API **0.8.2** adds Time Series & Signal Analysis to the existing local command surface. Portable collaboration document work remains supported. The bridge advertises `collaboration-v1` , `collaboration-document-v1` and `analytics-v1`; a browser's `GET /collaboration/capabilities` separately reports whether the relay is configured. Room admission remains a human UI action.
 
 The public product website is `https://www.visualnerve.com/`. The encrypted editor has one production entry: `https://app.visualnerve.com/`. The former public `/app` paths redirect there without forwarding query data; `/app` on the app origin returns HTTP 404. IndexedDB is origin-bound: existing records on older origins are not deleted, moved or synchronized by routing changes. Local source-development builds retain a development-only `/app/` editor for test fixtures. API/MCP command paths remain the same; allow the exact `https://app.visualnerve.com` origin when starting the local bridge.
 

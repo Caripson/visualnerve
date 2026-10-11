@@ -10,6 +10,9 @@ func TestMCPCollaborationDocumentDiscoveryIsOfflineAndComplete(t *testing.T) {
 	handler, _ := bundledMCPServer(t)
 	initialized := resultMCP(t, callMCP(t, handler, "initialize", nil))
 	instructions := initialized["instructions"].(string) + mcpAPIGuide
+	if initialized["serverInfo"].(map[string]any)["version"] != "0.8.2" || !strings.HasPrefix(mcpCollaborationDocumentPolicy, "Bridge 0.8.2 ") {
+		t.Fatal("document discovery must describe the current bridge release")
+	}
 	for _, phrase := range []string{"collaboration-document-v1", "/collaboration/document", "/collaboration/actions", "unverified", "informational", "approved editors", "not a signed or immutable", "baseVersion"} {
 		if !strings.Contains(instructions, phrase) {
 			t.Fatal("missing document workflow/trust boundary", phrase)

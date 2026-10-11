@@ -100,6 +100,8 @@ hide controls or restyle the application.
 | Fresh Help and virtualized API reference follow-up | 10/10 PASS, 1.0 minute |
 | Existing simulator currency and real 60-minute scale-down cases | 2/2 PASS, 12.6 seconds, normal Chrome |
 | Actual encrypted collaboration rollback regression | Three Chrome runs PASS: 15 checks without CSV, 16 checks with CSV twice |
+| MCP operation reservation, timeout recovery and grant isolation follow-up | 3/3 PASS, including a genuinely lost browser acknowledgement |
+| Browser/bridge version alignment and analytics MCP parity | 47 focused unit tests, Go discovery/generator race tests, vet, build and formatting PASS; 6/6 real MCP browser workflows PASS |
 
 The analytics browser run exercises actual UI/REST/MCP numerical parity, both executable client
 examples, operation recovery, effect-based grants, source conflicts, encrypted reload/offline
@@ -122,6 +124,13 @@ test now waits for the exact protected workflow checkpoint and drains the incomi
 queues before capturing that baseline. The full graph and private-state rollback comparisons
 and subsequent real MLS edit remain unchanged. Three actual Chrome runs passed with the local
 relay, encrypted vaults and MLS; no production permission or persistence behavior was relaxed.
+
+The first complete CI execution on the pushed sources passed all 3,813 frontend tests and
+the production build, then completed 335 browser cases with 319 passes, 15 optional skips
+and one failed legacy MCP check. That check still expected bridge 0.8.1 although the analytics
+bridge correctly advertised 0.8.2. Its exact version and analytics capability assertions were
+aligned; the operation reservation, recovery and content-preservation assertions remain intact.
+The final CI execution is reported separately from that failed run.
 
 ### Bounded performance evidence
 
@@ -188,7 +197,8 @@ immutable captured result inputs are separate fields; scenario output does not r
 
 No workspace database upgrade is required: logical schema 8, physical vault schema 1 and the
 optional analytics extension schema 1 remain distinct. Existing documents without the extension
-are unchanged. The bridge capability is `analytics-v1`; local binary 0.8.2 adds routing and discovery.
+are unchanged. Browser semantic API, bridge transport and OpenAPI report version 0.8.2;
+the bridge capability is `analytics-v1`, and local binary 0.8.2 adds routing and discovery.
 A web update cannot update an installed bridge. Production publication stays a separate manual workflow.
 
 No account, AI call, external runtime CDN, server database or additional persistent store

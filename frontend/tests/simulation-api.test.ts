@@ -90,7 +90,7 @@ describe('authoritative Process Simulator API', () => {
     expect(simulationCapabilities).toMatchObject({
       type: 'process-simulator',
       schemaVersion: 1,
-      apiVersion: '0.8.1',
+      apiVersion: '0.8.2',
       timeUnit: 'second',
     });
     expect(simulationCapabilities.execution).toMatchObject({
