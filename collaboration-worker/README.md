@@ -28,6 +28,15 @@ Local development uses port 4357 and allows only `http://localhost:5173` and `ht
 
 The tracked Wrangler configuration is disabled, does not expose a workers.dev hostname, and has Worker observability disabled. Nothing deploys automatically after a push. A deliberate manual deployment enables the Worker and configures its public address and Origin allowlist.
 
+The default configuration supports the Workers Free plan and leaves CPU limits
+to Cloudflare's runtime. Do not add `limits.cpu_ms` for Free accounts: Cloudflare
+rejects that setting before publication. Daily request/storage allowances and
+runtime limits still apply; a free deployment is not an availability guarantee.
+See [Workers limits](https://developers.cloudflare.com/workers/platform/limits/)
+and [Durable Object limits](https://developers.cloudflare.com/durable-objects/platform/limits/).
+If a self-hosted installation chooses a paid plan and a custom CPU limit, review
+that separate configuration and its costs before deploying it.
+
 Place local credentials in the ignored repository-root `.env`, using the names in `.env.example`:
 
 | Variable                        | Purpose                                                                              |

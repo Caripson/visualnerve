@@ -21,5 +21,4 @@
       "simple": { "limit": 30, "period": 60 },
     },
   ],
-  "limits": { "cpu_ms": 50 },
 }

@@ -17,6 +17,12 @@ import { APP_LOCALES } from '../../src/i18n/types';
 test.skip(process.env.VN_PRODUCTION_SMOKE !== '1', 'Explicit post-deployment opt-in required.');
 const app = 'https://app.visualnerve.com';
 const website = 'https://www.visualnerve.com';
+// This public origin must match the reviewed app package. Leaving it unset
+// verifies the ordinary local-only release, with collaboration disabled.
+const expectedAppHeaders = appResponseHeaders(
+  [4317],
+  process.env.VN_PRODUCTION_COLLABORATION_RELAY_ORIGIN || undefined,
+);
 const bridge = process.env.VN_PRODUCTION_BRIDGE_ORIGIN ?? 'http://127.0.0.1:4317';
 if (
   ![
@@ -40,7 +46,7 @@ interface GraphSummary {
   name: string;
 }
 function headers(actual: Record<string, string>) {
-  for (const [name, value] of Object.entries(appResponseHeaders([4317])))
+  for (const [name, value] of Object.entries(expectedAppHeaders))
     expect(actual[name.toLowerCase()], `Live ${name} must match the reviewed app policy`).toBe(
       value,
     );

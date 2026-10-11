@@ -53,4 +53,10 @@ After the approved manual deployment, check the isolated app's public meta and r
 
 Test a room using invented data and two separate unlocked browser profiles. Verify owner approval, Viewer restrictions, shared edits, disconnect/reconnect, participant removal and lock behavior. Reload requires fresh device admission; loss of the owner's live tab requires a new room. Do not advertise independently audited encryption or compliance certification for this integration.
 
+For the production smoke suite, set `VN_PRODUCTION_SMOKE=1` and
+`VN_PRODUCTION_COLLABORATION_RELAY_ORIGIN` to the same reviewed public HTTPS
+origin. This compares the actual response headers against the relay-aware policy;
+an unset origin expects collaboration to remain disabled. The value is validated
+by the same policy builder and must never contain credentials or an invitation.
+
 See [the collaboration guide](../hugo/content/help/collaboration.md), [API semantics](../API.md#optional-realtime-collaboration), and the worker's own deployment instructions for its separately reviewed configuration.
