@@ -3,6 +3,7 @@
  */
 import { createServer } from "../frontend/node_modules/vite/dist/node/index.js";
 import { chromium } from "../frontend/node_modules/playwright-core/index.mjs";
+import { expect } from "../frontend/node_modules/@playwright/test/index.mjs";
 import { fileURLToPath } from "node:url";
 import { mkdir, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
@@ -96,12 +97,11 @@ const waitStatus = (page, status) =>
     { timeout: 30_000 },
   );
 const waitTitle = (page, title) =>
-  page.waitForFunction(
-    async (title) =>
-      (await window.collaborationLiveTest.graph()).nodes[0].title === title,
-    title,
-    { timeout: 30_000 },
-  );
+  expect
+    .poll(async () => (await evaluate(page, "graph")).nodes[0].title, {
+      timeout: 30_000,
+    })
+    .toBe(title);
 try {
   for (let n = 0; ; n++) {
     try {
@@ -391,13 +391,18 @@ try {
     evaluate(guest, "patchUi", { description: "Concurrent editor detail" }),
   ]);
   for (const page of [owner, guest]) {
-    await page.waitForFunction(async () => {
-      const graph = await window.collaborationLiveTest.graph();
-      return (
-        graph.nodes[0].x === 777 &&
-        graph.nodes[0].description === "Concurrent editor detail"
-      );
-    });
+    await expect
+      .poll(
+        async () => {
+          const graph = await evaluate(page, "graph");
+          return {
+            x: graph.nodes[0].x,
+            description: graph.nodes[0].description,
+          };
+        },
+        { timeout: 30_000 },
+      )
+      .toEqual({ x: 777, description: "Concurrent editor detail" });
   }
   checked.push(
     "Concurrent UI edits to separate fields converge without losing either change across the two encrypted repositories",

@@ -267,6 +267,71 @@ async function expectContentFrozen() {
   expect((await repo.getGraph(graph.diagram.id)).nodes[0].title).toBe('Saved offline local edit');
 }
 describe('collaboration controller lifecycle against the encrypted repository', () => {
+  it('publishes an empty idle session only after the room-close acknowledgement', async () => {
+    await controller.create(graph.diagram.id, 'Owner', scope);
+    const room = opened.at(-1)!;
+    const peer: RoomMember = { ...room.device, deviceId: 'approved-editor-peer', role: 'editor' };
+    room.currentPolicy.policy.members.push(peer);
+    room.options.onPolicy(room.currentPolicy);
+    expect(controller.getSnapshot().participants).toHaveLength(2);
+    const acknowledgement = deferred<Record<string, never>>();
+    const control = vi.spyOn(room, 'control').mockImplementation(() => acknowledgement.promise);
+    const observed: ReturnType<CollaborationController['getSnapshot']>[] = [];
+    const unsubscribe = controller.subscribe(() => observed.push(controller.getSnapshot()));
+    const closing = controller.closeRoom();
+    expect(control).toHaveBeenCalledWith('delete-room');
+    expect(controller.getSnapshot()).toMatchObject({ status: 'live', role: 'owner' });
+    expect(controller.getSnapshot().participants).toHaveLength(2);
+    expect(room.dispose).not.toHaveBeenCalled();
+    acknowledgement.resolve({});
+    await closing;
+    expect(controller.getSnapshot()).toMatchObject({
+      status: 'idle',
+      participants: [],
+      pendingJoins: [],
+    });
+    expect(controller.getSnapshot().roomId).toBeUndefined();
+    expect(controller.getSnapshot().role).toBeUndefined();
+    expect(observed.filter((snapshot) => snapshot.status === 'idle')).not.toHaveLength(0);
+    for (const snapshot of observed.filter((snapshot) => snapshot.status === 'idle'))
+      expect(snapshot.participants).toEqual([]);
+    expect(room.dispose).toHaveBeenCalledOnce();
+    expect(collaborationPermissions.role(graph.diagram.id)).toBeUndefined();
+    expect(hasCollaborationUpdateTask()).toBe(false);
+    expect(() => room.options.onPolicy(room.currentPolicy)).toThrow(/session has changed/);
+    expect(() => room.options.onMessage('presence', new Uint8Array(), peer)).toThrow(
+      /session has changed/,
+    );
+    room.options.onDisconnect();
+    room.options.onError(new Error('Late transport failure'));
+    expect(controller.getSnapshot()).toMatchObject({ status: 'idle', participants: [] });
+    expect(controller.getSnapshot().error).toBeUndefined();
+    expect((await repo.getGraph(graph.diagram.id)).nodes[0].title).toBe('Original');
+    unsubscribe();
+  });
+  it('keeps a new room live when an obsolete room-close acknowledgement arrives after lock', async () => {
+    await controller.create(graph.diagram.id, 'Old owner', scope);
+    const oldRoom = opened.at(-1)!;
+    const acknowledgement = deferred<Record<string, never>>();
+    vi.spyOn(oldRoom, 'control').mockImplementation(() => acknowledgement.promise);
+    const closing = controller.closeRoom();
+    await session.lock();
+    await session.unlock(password);
+    await controller.create(graph.diagram.id, 'New owner', scope);
+    const fresh = opened.at(-1)!;
+    acknowledgement.resolve({});
+    await closing;
+    expect(controller.getSnapshot()).toMatchObject({
+      status: 'live',
+      role: 'owner',
+      roomId: fresh.options.roomId,
+      displayName: 'New owner',
+    });
+    expect(controller.getSnapshot().participants).toHaveLength(1);
+    expect(fresh.dispose).not.toHaveBeenCalled();
+    expect(collaborationPermissions.role(graph.diagram.id)).toBe('owner');
+    expect(hasCollaborationUpdateTask()).toBe(true);
+  });
   it.each(['error', 'conflict'] as const)(
     'keeps %s fail-closed until local cleanup, then allows a fresh owner room',
     async (status) => {

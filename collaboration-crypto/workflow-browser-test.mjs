@@ -1,5 +1,6 @@
 import { createServer } from '../frontend/node_modules/vite/dist/node/index.js';
 import { chromium } from '../frontend/node_modules/playwright-core/index.mjs';
+import { expect } from '../frontend/node_modules/@playwright/test/index.mjs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -76,7 +77,9 @@ async function snapshot(page) {
   return page.evaluate(async () => (await import('/src/collaboration/runtime.ts')).collaborationRuntime.inspect());
 }
 async function status(page, value) {
-  await page.waitForFunction(async value => (await import('/src/collaboration/runtime.ts')).collaborationRuntime.inspect()?.status === value, value);
+  // Await each inspection before testing its value. A Promise returned from a
+  // browser predicate can itself satisfy waitForFunction before it resolves.
+  await expect.poll(async () => (await snapshot(page))?.status, {timeout:45000}).toBe(value);
 }
 async function panel(page) {
   const dialog = page.getByRole('dialog',{name:'Live collaboration',exact:true});

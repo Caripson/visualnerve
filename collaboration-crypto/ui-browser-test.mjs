@@ -1,6 +1,7 @@
 /** Real React/CSS rendering with a test-only controller, not a live relay test. */
 import { createServer } from "../frontend/node_modules/vite/dist/node/index.js";
 import { chromium } from "../frontend/node_modules/playwright-core/index.mjs";
+import { expect } from "../frontend/node_modules/@playwright/test/index.mjs";
 import { fileURLToPath } from "node:url";
 import { mkdir } from "node:fs/promises";
 import assert from "node:assert/strict";
@@ -112,10 +113,11 @@ async function verifyCopy(page, { name, value, touch, keys = true }) {
       if (touch) await button.tap();
       else await button.click();
     } else await button.press(activation);
-    await page.waitForFunction(
-      async (value) => (await navigator.clipboard.readText()) === value,
-      value,
-    );
+    await expect
+      .poll(() => page.evaluate(() => navigator.clipboard.readText()), {
+        timeout: 20_000,
+      })
+      .toBe(value);
     await field
       .getByRole("status")
       .filter({ hasText: /^Copied/i })
@@ -380,11 +382,11 @@ try {
       });
       if (viewport.width <= 390) await invitation.tap();
       else await invitation.click();
-      await page.waitForFunction(
-        async () =>
-          (await navigator.clipboard.readText()) ===
-          "https://app.example/#collaboration=synthetic-ui-only",
-      );
+      await expect
+        .poll(() => page.evaluate(() => navigator.clipboard.readText()), {
+          timeout: 20_000,
+        })
+        .toBe("https://app.example/#collaboration=synthetic-ui-only");
       await verifyCopy(page, {
         name: "Copy private invitation",
         value: "https://app.example/#collaboration=synthetic-ui-only",
