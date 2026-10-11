@@ -29,11 +29,13 @@ function SecurityNotice() {
 
 function Confirmation({
   value,
+  failed,
   busy,
   cancel,
   execute,
 }: {
   value: RoomConfirmation;
+  failed: boolean;
   busy: boolean;
   cancel: () => void;
   execute: () => void;
@@ -54,9 +56,11 @@ function Confirmation({
           })
         : value.kind === 'reject'
           ? t('collaboration.confirmReject')
-          : value.kind === 'close'
-            ? t('collaboration.confirmClose')
-            : t('collaboration.confirmLeave');
+          : failed
+            ? t('collaboration.confirmEndLocalSession')
+            : value.kind === 'close'
+              ? t('collaboration.confirmClose')
+              : t('collaboration.confirmLeave');
   return (
     <section
       className="collaboration-confirmation"
@@ -214,7 +218,10 @@ export function CollaborationPanel({
       if (alive.current) setBusy(false);
     }
   };
-  const active = !!snapshot.roomId;
+  const failed = snapshot.status === 'error' || snapshot.status === 'conflict';
+  // Startup can fail before a room exists while still retaining a vault lease
+  // and the fail-closed graph fence. Explicit local cleanup must stay reachable.
+  const active = !!snapshot.roomId || failed;
   const disabled = busy || snapshot.status === 'connecting' || snapshot.status === 'syncing';
   const confirmationAction = () => {
     if (!confirmation) return;
@@ -226,7 +233,7 @@ export function CollaborationPanel({
           ? controller.changeRole(value.deviceId, value.role)
           : value.kind === 'reject'
             ? controller.reject(value.deviceId)
-            : value.kind === 'close'
+            : value.kind === 'close' && !failed
               ? controller.closeRoom()
               : controller.leave(),
     );
@@ -377,7 +384,9 @@ export function CollaborationPanel({
         </>
       ) : (
         <>
-          <CopyValue label={t('collaboration.roomId')} value={snapshot.roomId!} />
+          {snapshot.roomId && (
+            <CopyValue label={t('collaboration.roomId')} value={snapshot.roomId} />
+          )}
           {snapshot.ownerCredentialId && (
             <CopyValue
               label={t('collaboration.ownerFingerprint')}
@@ -425,9 +434,7 @@ export function CollaborationPanel({
           />
           <p className="collaboration-notice">{t('collaboration.reloadWarning')}</p>
           <div className="collaboration-actions collaboration-session-actions">
-            {(snapshot.status === 'offline' ||
-              snapshot.status === 'error' ||
-              snapshot.status === 'conflict') && (
+            {snapshot.status === 'offline' && (
               <button
                 disabled={busy}
                 onClick={() => {
@@ -441,15 +448,24 @@ export function CollaborationPanel({
             <button
               disabled={busy || !!confirmation}
               onClick={() =>
-                setConfirmation({ kind: snapshot.role === 'owner' ? 'close' : 'leave' })
+                setConfirmation({
+                  kind: snapshot.role === 'owner' && !failed ? 'close' : 'leave',
+                })
               }
             >
-              {t(snapshot.role === 'owner' ? 'collaboration.closeRoom' : 'collaboration.leave')}
+              {t(
+                failed
+                  ? 'collaboration.endLocalSession'
+                  : snapshot.role === 'owner'
+                    ? 'collaboration.closeRoom'
+                    : 'collaboration.leave',
+              )}
             </button>
           </div>
           {confirmation && (
             <Confirmation
               value={confirmation}
+              failed={failed}
               busy={busy}
               cancel={() => setConfirmation(undefined)}
               execute={confirmationAction}

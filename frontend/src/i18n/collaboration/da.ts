@@ -59,6 +59,7 @@ const messages = {
   'collaboration.agent': 'MCP-agent',
   'collaboration.remove': 'Fjern deltager',
   'collaboration.leave': 'Forlad rummet',
+  'collaboration.endLocalSession': 'Afslut lokal session',
   'collaboration.closeRoom': 'Luk rummet for alle',
   'collaboration.confirmTitle': 'Bekræft ændring i rummet',
   'collaboration.confirmRemove':
@@ -69,6 +70,8 @@ const messages = {
     'Afvis enhedens anmodning? En ny invitation kræves for at prøve igen.',
   'collaboration.confirmLeave':
     'Forlad live-rummet? Dit gemte lokale diagram bevares. Du skal have en ny invitation og godkendelse for at vende tilbage.',
+  'collaboration.confirmEndLocalSession':
+    'Afslut den mislykkede session i denne browser? Dit gemte lokale diagram bevares. Rummet på relæet lukkes ikke, og andre deltagere frakobles ikke. Opret et nyt rum eller brug en ny invitation for at samarbejde igen.',
   'collaboration.confirmClose':
     'Luk rummet for alle? Alle deltagere frakobles. Gemte lokale diagrammer og kopier bevares.',
   'collaboration.confirm': 'Bekræft ændring',

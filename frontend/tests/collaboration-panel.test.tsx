@@ -263,6 +263,75 @@ describe('collaboration consent, permissions and authoritative UI state', () => 
     expect(screen.getByText('Disconnected')).toBeVisible();
   });
 
+  it.each([
+    { status: 'error' as const, role: 'owner' as const },
+    { status: 'conflict' as const, role: 'owner' as const },
+    { status: 'error' as const, role: 'editor' as const },
+    { status: 'conflict' as const, role: 'viewer' as const },
+  ])(
+    'offers local cleanup for a $role after $status without attempting room closure',
+    async (failed) => {
+      const { controller } = fixture({ ...active, ...failed });
+      render(<CollaborationPanel controller={controller} close={() => {}} />);
+      expect(
+        screen.queryByRole('button', { name: 'Reconnect live session' }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Close room for everyone' }),
+      ).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'End local session' }));
+      expect(controller.leave).not.toHaveBeenCalled();
+      const confirmation = screen.getByRole('alertdialog');
+      expect(within(confirmation).getByText(/Your saved local diagram remains/)).toBeVisible();
+      expect(
+        within(confirmation).getByText(/relay room and other participants are not closed/),
+      ).toBeVisible();
+      fireEvent.click(within(confirmation).getByRole('button', { name: 'Confirm change' }));
+      await waitFor(() => expect(controller.leave).toHaveBeenCalledOnce());
+      expect(controller.closeRoom).not.toHaveBeenCalled();
+      expect(controller.reconnect).not.toHaveBeenCalled();
+    },
+  );
+
+  it('offers explicit local cleanup after startup fails before a room exists', async () => {
+    const { controller } = fixture({ status: 'error', error: 'Local startup failed' });
+    render(<CollaborationPanel controller={controller} close={() => {}} />);
+    expect(screen.queryByLabelText(/^Copy Room ID/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Start private room' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'End local session' }));
+    expect(screen.getByText(/relay room and other participants are not closed/)).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm change' }));
+    await waitFor(() => expect(controller.leave).toHaveBeenCalledOnce());
+    expect(controller.closeRoom).not.toHaveBeenCalled();
+  });
+
+  it('changes an open owner close confirmation to local cleanup if the live session fails', async () => {
+    const test = fixture(active);
+    render(<CollaborationPanel controller={test.controller} close={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Close room for everyone' }));
+    expect(screen.getByText(/All participants are disconnected/)).toBeVisible();
+    test.emit({ status: 'error' });
+    expect(screen.queryByText(/All participants are disconnected/)).not.toBeInTheDocument();
+    expect(screen.getByText(/relay room and other participants are not closed/)).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm change' }));
+    await waitFor(() => expect(test.controller.leave).toHaveBeenCalledOnce());
+    expect(test.controller.closeRoom).not.toHaveBeenCalled();
+  });
+
+  it.each(['live', 'offline'] as const)(
+    'keeps the owner room-close action during ordinary %s state',
+    async (status) => {
+      const { controller } = fixture({ ...active, status });
+      render(<CollaborationPanel controller={controller} close={() => {}} />);
+      expect(screen.queryByRole('button', { name: 'End local session' })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Close room for everyone' }));
+      expect(screen.getByText(/All participants are disconnected/)).toBeVisible();
+      fireEvent.click(screen.getByRole('button', { name: 'Confirm change' }));
+      await waitFor(() => expect(controller.closeRoom).toHaveBeenCalledOnce());
+      expect(controller.leave).not.toHaveBeenCalled();
+    },
+  );
+
   it('does not issue duplicate creates while an asynchronous creation is pending', async () => {
     const { controller } = fixture();
     let complete!: () => void;

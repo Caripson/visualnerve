@@ -98,6 +98,7 @@ class FakeRoom {
     this.options.onPolicy(this.currentPolicy);
     await this.options.onReady();
   }
+  reconnect = vi.fn(async () => this.connect());
   async control() {
     return {};
   }
@@ -251,6 +252,82 @@ async function expectContentFrozen() {
   expect((await repo.getGraph(graph.diagram.id)).nodes[0].title).toBe('Saved offline local edit');
 }
 describe('collaboration controller lifecycle against the encrypted repository', () => {
+  it.each(['error', 'conflict'] as const)(
+    'keeps %s fail-closed until local cleanup, then allows a fresh owner room',
+    async (status) => {
+      await controller.create(graph.diagram.id, 'Original owner', scope);
+      const room = opened.at(-1)!;
+      const control = vi.spyOn(room, 'control');
+      const failure = new Error('Synthetic session failure');
+      if (status === 'conflict') Object.assign(failure, { code: 'COLLABORATION_INVALID_UPDATE' });
+      room.options.onError(failure);
+      expect(controller.getSnapshot()).toMatchObject({ status, role: 'owner' });
+      expect(controller.getSnapshot().participants.every((p) => !p.connected)).toBe(true);
+      expect(controller.getSnapshot().syncProgress).toBeUndefined();
+      expect(room.dispose).toHaveBeenCalled();
+      await expect(controller.reconnect()).rejects.toThrow(/failed session/);
+      await expect(controller.closeRoom()).rejects.toThrow(/failed session/);
+      await expect(controller.create(graph.diagram.id, 'Must wait', scope)).rejects.toThrow(
+        /Leave the current room/,
+      );
+      const rejected = structuredClone(graph);
+      rejected.nodes[0].title = 'Must remain frozen';
+      await expect(repo.saveGraph(rejected, graph.diagram.version)).rejects.toThrow(
+        /failed session/,
+      );
+      expect(hasCollaborationUpdateTask()).toBe(true);
+      await controller.leave();
+      expect(control).not.toHaveBeenCalled();
+      expect(controller.getSnapshot()).toMatchObject({ status: 'idle', participants: [] });
+      expect(controller.getSnapshot().roomId).toBeUndefined();
+      expect(controller.getSnapshot().error).toBeUndefined();
+      expect(collaborationPermissions.role(graph.diagram.id)).toBeUndefined();
+      expect(hasCollaborationUpdateTask()).toBe(false);
+      expect((await repo.getGraph(graph.diagram.id)).nodes[0].title).toBe('Original');
+      await controller.create(graph.diagram.id, 'Fresh owner', scope);
+      const fresh = opened.at(-1)!;
+      expect(fresh).not.toBe(room);
+      expect(controller.getSnapshot()).toMatchObject({ status: 'live', role: 'owner' });
+      expect(controller.getSnapshot().roomId).not.toBe(room.options.roomId);
+      expect(collaborationPermissions.role(graph.diagram.id)).toBe('owner');
+      const edited = await repo.getGraph(graph.diagram.id);
+      edited.nodes[0].title = 'Local work after recovery';
+      await expect(repo.saveGraph(edited, edited.diagram.version)).resolves.toBeDefined();
+    },
+  );
+  it('releases failed startup before room creation so the same local diagram can start again', async () => {
+    vi.spyOn(workspace, 'settled').mockRejectedValueOnce(new Error('Synthetic startup failure'));
+    await expect(controller.create(graph.diagram.id, 'Initial owner', scope)).rejects.toThrow(
+      /startup failure/,
+    );
+    expect(controller.getSnapshot().status).toBe('error');
+    expect(controller.getSnapshot().roomId).toBeUndefined();
+    expect(opened).toHaveLength(0);
+    expect(hasCollaborationUpdateTask()).toBe(true);
+    await controller.leave();
+    expect(controller.getSnapshot().status).toBe('idle');
+    expect(collaborationPermissions.role(graph.diagram.id)).toBeUndefined();
+    expect(hasCollaborationUpdateTask()).toBe(false);
+    await controller.create(graph.diagram.id, 'Fresh owner', scope);
+    expect(controller.getSnapshot()).toMatchObject({ status: 'live', role: 'owner' });
+    expect((await repo.getGraph(graph.diagram.id)).nodes[0].title).toBe('Original');
+  });
+  it('reconnects the existing unlocked device after ordinary network loss', async () => {
+    await controller.create(graph.diagram.id, 'Owner', scope);
+    const room = opened.at(-1)!;
+    room.options.onDisconnect();
+    expect(controller.getSnapshot().status).toBe('offline');
+    expect(room.dispose).not.toHaveBeenCalled();
+    await controller.reconnect();
+    expect(room.reconnect).toHaveBeenCalledOnce();
+    expect(opened).toHaveLength(1);
+    expect(controller.getSnapshot()).toMatchObject({
+      status: 'live',
+      role: 'owner',
+      roomId: room.options.roomId,
+      selfDeviceId: room.device.deviceId,
+    });
+  });
   it('freezes the initial graph before asynchronous MLS admission and synchronously replaces the gate', async () => {
     const admission = deferred<FakeRoom>(),
       entered = deferred<EncryptedRoomOptions>();

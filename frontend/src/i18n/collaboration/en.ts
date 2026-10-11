@@ -59,6 +59,7 @@ const messages = {
   'collaboration.agent': 'MCP agent',
   'collaboration.remove': 'Remove participant',
   'collaboration.leave': 'Leave room',
+  'collaboration.endLocalSession': 'End local session',
   'collaboration.closeRoom': 'Close room for everyone',
   'collaboration.confirmTitle': 'Confirm room change',
   'collaboration.confirmRemove':
@@ -69,6 +70,8 @@ const messages = {
     'Reject this device’s request? It will need a new invitation to try again.',
   'collaboration.confirmLeave':
     'Leave this live room? Your saved local diagram remains. Returning requires a fresh invitation and approval.',
+  'collaboration.confirmEndLocalSession':
+    'End this browser’s failed session? Your saved local diagram remains. The relay room and other participants are not closed. Create a new room or use a fresh invitation to collaborate again.',
   'collaboration.confirmClose':
     'Close the room for everyone? All participants are disconnected. Saved local diagrams and copies remain.',
   'collaboration.confirm': 'Confirm change',

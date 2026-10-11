@@ -61,6 +61,7 @@ const messages = {
   'collaboration.agent': 'Agent MCP',
   'collaboration.remove': 'Retirer le participant',
   'collaboration.leave': 'Quitter la salle',
+  'collaboration.endLocalSession': 'Terminer la session locale',
   'collaboration.closeRoom': 'Fermer la salle pour tous',
   'collaboration.confirmTitle': 'Confirmer le changement',
   'collaboration.confirmRemove':
@@ -71,6 +72,8 @@ const messages = {
     'Refuser la demande de cet appareil ? Une nouvelle invitation sera nécessaire pour réessayer.',
   'collaboration.confirmLeave':
     'Quitter la salle en direct ? Votre diagramme local enregistré reste disponible. Revenir nécessite une nouvelle invitation et approbation.',
+  'collaboration.confirmEndLocalSession':
+    'Terminer la session en échec dans ce navigateur ? Votre diagramme local enregistré reste disponible. La salle sur le relais n’est pas fermée et les autres participants ne sont pas déconnectés. Créez une nouvelle salle ou utilisez une nouvelle invitation pour collaborer à nouveau.',
   'collaboration.confirmClose':
     'Fermer la salle pour tous ? Tous les participants seront déconnectés. Les diagrammes locaux enregistrés et les copies restent disponibles.',
   'collaboration.confirm': 'Confirmer le changement',

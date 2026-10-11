@@ -59,6 +59,7 @@ const messages = {
   'collaboration.agent': 'MCP-agentti',
   'collaboration.remove': 'Poista osallistuja',
   'collaboration.leave': 'Poistu huoneesta',
+  'collaboration.endLocalSession': 'Lopeta paikallinen istunto',
   'collaboration.closeRoom': 'Sulje huone kaikilta',
   'collaboration.confirmTitle': 'Vahvista huoneen muutos',
   'collaboration.confirmRemove':
@@ -68,6 +69,8 @@ const messages = {
   'collaboration.confirmReject': 'Hylätäänkö laitteen pyyntö? Uusi yritys vaatii uuden kutsun.',
   'collaboration.confirmLeave':
     'Poistutaanko live-huoneesta? Tallennettu paikallinen kaaviosi säilyy. Palaaminen vaatii uuden kutsun ja hyväksynnän.',
+  'collaboration.confirmEndLocalSession':
+    'Lopetetaanko tämän selaimen epäonnistunut istunto? Tallennettu paikallinen kaaviosi säilyy. Välityspalvelun huonetta ei suljeta eikä muiden osallistujien yhteyttä katkaista. Luo uusi huone tai käytä uutta kutsua jatkaaksesi yhteistyötä.',
   'collaboration.confirmClose':
     'Suljetaanko huone kaikilta? Kaikkien osallistujien yhteys katkaistaan. Tallennetut paikalliset kaaviot ja kopiot säilyvät.',
   'collaboration.confirm': 'Vahvista muutos',

@@ -61,6 +61,7 @@ const messages = {
   'collaboration.agent': 'Agente MCP',
   'collaboration.remove': 'Eliminar participante',
   'collaboration.leave': 'Salir de la sala',
+  'collaboration.endLocalSession': 'Finalizar sesión local',
   'collaboration.closeRoom': 'Cerrar sala para todos',
   'collaboration.confirmTitle': 'Confirmar cambio en la sala',
   'collaboration.confirmRemove':
@@ -71,6 +72,8 @@ const messages = {
     '¿Rechazar la solicitud del dispositivo? Necesitará una nueva invitación para intentarlo de nuevo.',
   'collaboration.confirmLeave':
     '¿Salir de la sala en vivo? Tu diagrama local guardado permanece. Para volver necesitas una nueva invitación y aprobación.',
+  'collaboration.confirmEndLocalSession':
+    '¿Finalizar la sesión fallida en este navegador? Tu diagrama local guardado permanece. No se cierra la sala del servicio de retransmisión ni se desconecta a los demás participantes. Crea una nueva sala o usa una nueva invitación para volver a colaborar.',
   'collaboration.confirmClose':
     '¿Cerrar la sala para todos? Se desconectará a todos los participantes. Los diagramas locales guardados y las copias permanecen.',
   'collaboration.confirm': 'Confirmar cambio',

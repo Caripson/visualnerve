@@ -62,6 +62,7 @@ const messages = {
   'collaboration.agent': 'MCP-Agent',
   'collaboration.remove': 'Person entfernen',
   'collaboration.leave': 'Raum verlassen',
+  'collaboration.endLocalSession': 'Lokale Sitzung beenden',
   'collaboration.closeRoom': 'Raum für alle schließen',
   'collaboration.confirmTitle': 'Änderung im Raum bestätigen',
   'collaboration.confirmRemove':
@@ -72,6 +73,8 @@ const messages = {
     'Die Geräteanfrage ablehnen? Für einen neuen Versuch wird eine neue Einladung benötigt.',
   'collaboration.confirmLeave':
     'Den Live-Raum verlassen? Ihr gespeichertes lokales Diagramm bleibt erhalten. Für die Rückkehr sind eine neue Einladung und Genehmigung nötig.',
+  'collaboration.confirmEndLocalSession':
+    'Die fehlgeschlagene Sitzung in diesem Browser beenden? Ihr gespeichertes lokales Diagramm bleibt erhalten. Der Raum im Relay-Dienst wird nicht geschlossen und andere Teilnehmende werden nicht getrennt. Erstellen Sie einen neuen Raum oder verwenden Sie eine neue Einladung, um wieder zusammenzuarbeiten.',
   'collaboration.confirmClose':
     'Den Raum für alle schließen? Alle werden getrennt. Gespeicherte lokale Diagramme und Kopien bleiben erhalten.',
   'collaboration.confirm': 'Änderung bestätigen',

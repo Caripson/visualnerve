@@ -128,3 +128,35 @@ See [deployment gates](COLLABORATION_DEPLOYMENT.md),
 [architecture and threat boundaries](REALTIME_COLLABORATION_PLAN.md),
 [browser cryptography](../collaboration-crypto/README.md), and the
 [user guide](../hugo/content/help/collaboration.md).
+
+## Pre-release flow walkthrough follow-up — 2026-10-11
+
+The core CI and relay checks passed for `86e4b45`. The browser-cryptography
+workflow passed its Chromium, Firefox and WebKit jobs, but the canonical native
+build job failed while checking the Rust host after its 17 native tests passed.
+Under `pipefail`, `grep -q` could close the version-output pipe early and cause a
+false compiler-host rejection. The host and version checks now drain their
+input without weakening the pinned-toolchain guards. Six synthetic regression
+tests cover trailing output and rejection of unsupported hosts, versions,
+compiler failures, flags and wrappers. The canonical Linux rebuild still needs
+to pass on the follow-up revision; local guard tests do not establish a
+reproducible WASM rebuild.
+
+The walkthrough also found that failed sessions offered reconnect/owner-close
+actions that correctly rejected the uncertain cryptographic state, leaving
+local cleanup inaccessible in the panel. Errors and conflicts now offer
+**End local session** to both owners and participants, including failed startup
+before a room ID exists. The confirmation accurately says that this is local
+cleanup, preserves the saved diagram, and does not close other participants'
+relay room. Ordinary offline reconnect is unchanged. Failed state clears stale
+sync progress and marks participants disconnected; it never resumes the failed
+cryptographic session.
+
+Verification of the follow-up included 273 passing collaboration tests in 22
+files, the six build-guard tests, full frontend formatting and TypeScript checks.
+The whole App was also exercised with two disposable encrypted browser
+workspaces and local workerd: room creation, one-use invitation, recipient
+unlock/onboarding, fingerprint-bound owner approval, explicit Editor permission,
+live UI edit propagation, desktop/mobile panels in light/dark appearance, and
+confirmed room closure. Fifteen screenshots were captured for review. This
+walkthrough used no cloud credentials and activated no production room or relay.

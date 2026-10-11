@@ -60,6 +60,7 @@ const messages = {
   'collaboration.agent': 'MCP-agent',
   'collaboration.remove': 'Ta bort deltagare',
   'collaboration.leave': 'Lämna rummet',
+  'collaboration.endLocalSession': 'Avsluta lokal session',
   'collaboration.closeRoom': 'Stäng rummet för alla',
   'collaboration.confirmTitle': 'Bekräfta ändring i rummet',
   'collaboration.confirmRemove':
@@ -70,6 +71,8 @@ const messages = {
     'Avvisa enhetens förfrågan? En ny inbjudan krävs för att försöka igen.',
   'collaboration.confirmLeave':
     'Lämna live-rummet? Ditt sparade lokala diagram finns kvar. Återkomst kräver en ny inbjudan och ett nytt godkännande.',
+  'collaboration.confirmEndLocalSession':
+    'Avsluta den misslyckade sessionen i den här webbläsaren? Ditt sparade lokala diagram finns kvar. Rummet på reläet stängs inte och andra deltagare kopplas inte från. Skapa ett nytt rum eller använd en ny inbjudan för att samarbeta igen.',
   'collaboration.confirmClose':
     'Stäng rummet för alla? Alla deltagare kopplas från. Sparade lokala diagram och kopior finns kvar.',
   'collaboration.confirm': 'Bekräfta ändring',

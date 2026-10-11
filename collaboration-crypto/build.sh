@@ -38,7 +38,9 @@ if [[ "$crypto_mode" == release ]]; then
     echo 'Canonical collaboration release builds require Linux x86_64. Use --development with an output directory inside repository tmp/ on other hosts.' >&2
     exit 1
   fi
-  if ! rustc +1.91.0 --version --verbose | grep -qx 'host: x86_64-unknown-linux-gnu'; then
+  # Drain version output: grep -q exits at the host line and can give rustc
+  # SIGPIPE on its remaining lines, making a valid toolchain fail pipefail.
+  if ! rustc +1.91.0 --version --verbose | grep -x 'host: x86_64-unknown-linux-gnu' >/dev/null; then
     echo 'Canonical release builds require the pinned x86_64-unknown-linux-gnu Rust toolchain.' >&2
     exit 1
   fi
@@ -53,11 +55,11 @@ if [[ "$crypto_mode" == release ]]; then
 fi
 # The toolchain selector prevents an ambient default Cargo/Rust version from
 # overriding the locked release compiler; no credential environment is read.
-if ! (cd "$crypto_root/collaboration-crypto" && "$crypto_cargo" +1.91.0 --version) | grep -q '^cargo 1\.91\.0 '; then
+if ! (cd "$crypto_root/collaboration-crypto" && "$crypto_cargo" +1.91.0 --version) | grep '^cargo 1\.91\.0 ' >/dev/null; then
   echo 'Install the pinned Rust/Cargo 1.91.0 toolchain before rebuilding.' >&2
   exit 1
 fi
-if ! "$crypto_bindgen" --version | awk '{print $2}' | grep -qx '0.2.129'; then
+if ! "$crypto_bindgen" --version | awk '{print $2}' | grep -x '0.2.129' >/dev/null; then
   echo 'Install wasm-bindgen-cli 0.2.129 before rebuilding collaboration crypto.' >&2
   exit 1
 fi

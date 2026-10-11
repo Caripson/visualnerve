@@ -740,6 +740,11 @@ export class CollaborationController implements CollaborationUiController {
         (error as { code?: string }).code === 'COLLABORATION_INVALID_UPDATE' ? 'conflict' : 'error',
       error: error.message.slice(0, 400),
       invitation: undefined,
+      syncProgress: undefined,
+      participants: this.snapshot.participants.map((participant) => ({
+        ...participant,
+        connected: false,
+      })),
     });
     this.generation++;
     this.initialAccess?.();
@@ -817,6 +822,7 @@ export class CollaborationController implements CollaborationUiController {
       pendingJoins: [],
       invitation: undefined,
       error: undefined,
+      syncProgress: undefined,
     });
   }
   dispose() {

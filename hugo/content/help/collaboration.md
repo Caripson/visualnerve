@@ -95,10 +95,12 @@ This release keeps MLS ratchets and private signing keys only in the live unlock
 
 | Event | What to do |
 | --- | --- |
-| Temporary network loss while the same tab stays unlocked | Reconnect the existing live device and let it synchronize; exact encrypted retransmissions do not create a new edit |
+| Temporary network loss while the same tab stays unlocked | Use **Reconnect live session** to reconnect the existing live device and let it synchronize; exact encrypted retransmissions do not create a new edit |
 | A participant reloads, closes the tab or locks/unlocks | Request access as a fresh device and obtain owner approval again |
 | The owner's live tab is lost, reloaded or locked | Start a new room from the retained local diagram and invite participants again |
-| Invalid authenticated update or incompatible shared graph | Stop normal sync, inspect the conflict and coordinate a reviewed recovery |
+| Invalid authenticated update, incompatible shared graph or another failed session | Inspect the error or conflict, then use **End local session** and coordinate a reviewed recovery or a new room |
+
+**Reconnect live session** is available only for an ordinary offline session while the same tab stays unlocked. An error or conflict offers **End local session** instead. This ends only the failed session in this browser and retains your saved local diagram. It does not close the relay room or disconnect other participants. The owner creates a new room from the retained diagram and invites participants again; other participants need a fresh invitation and approval to collaborate again.
 
 The local graph and encrypted CRDT association can survive a reload; they are not permission or private key material to resume the old room. A restored workspace backup contains the graph, not room access, MLS keys or private collaboration records. Keep the owner tab open and unlocked for the duration of an active session, and choose your session timer deliberately.
 
@@ -106,7 +108,7 @@ When a returning participant is approved as an **Editor** into the same room and
 
 **Update now** is blocked while the room lifecycle is connecting, awaiting approval, live or reconnecting. Leave/end the local room explicitly before applying an app update; update preparation never discards live room keys silently.
 
-**Disconnect** leaves this browser's room session while preserving its local diagram. It does not remove another participant's copy. Owners can separately remove a device or close a room through the panel. Locking or clearing the app runtime ends the local live session; a later unlock does not revive old grants, jobs or room keys.
+**Leave room** leaves a participant's live room session while preserving its local diagram. It does not remove another participant's copy. While the owner's session is active, **Close room for everyone** closes the room and disconnects all participants; saved local diagrams remain. Owners can also remove individual devices through the panel. Locking or clearing the app runtime ends the local live session; a later unlock does not revive old grants, jobs or room keys.
 
 ## Use an AI agent with an approved session
 
