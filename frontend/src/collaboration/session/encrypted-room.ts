@@ -29,6 +29,7 @@ import {
   RoomTransport,
   CollaborationRelayError,
   CollaborationPeerMessageError,
+  CollaborationConnectionError,
 } from '../transport/room-transport';
 import {
   binaryHash,
@@ -117,6 +118,7 @@ export class EncryptedRoom {
   private leaseBoot?: { wall: number; monotonic: number };
   private leaseReady = false;
   private bufferRecoveryTimer?: ReturnType<typeof setTimeout>;
+  private bufferRecoveryRevision = 0;
   private controlBudget = { at: Date.now(), messages: 0, bytes: 0 };
   private peerControls = new Map<string, { at: number; messages: number }>();
   private constructor(
@@ -145,7 +147,10 @@ export class EncryptedRoom {
         : {}),
       onFrame: (frame) => this.receive(frame),
       onDisconnect: () => {
-        if (!this.stopped) options.onDisconnect();
+        if (!this.stopped) {
+          this.clearBufferRecovery();
+          options.onDisconnect();
+        }
       },
       onError: (error) => options.onError(error),
     });
@@ -324,16 +329,17 @@ export class EncryptedRoom {
       await this.transport.create(this.policy);
       this.options.onPolicy(this.policy);
     });
-    await this.transport.connect();
+    await this.connect();
   }
   async connect() {
     this.check();
+    this.clearBufferRecovery();
     await this.transport.connect();
   }
   async reconnect() {
     this.check();
     this.transport.disconnect();
-    await this.transport.connect();
+    await this.connect();
   }
   private armLeaseDeadline() {
     clearTimeout(this.leaseTimer);
@@ -619,6 +625,7 @@ export class EncryptedRoom {
         try {
           if (result.kind !== 'commit') throw new Error('Invalid membership commit.');
           assertMlsPolicy(await this.mls.info(), next.policy);
+          this.clearBufferRecovery();
           this.assembler.clear();
           this.policy = next;
           this.clearEpochWait();
@@ -808,25 +815,37 @@ export class EncryptedRoom {
     return pending;
   }
   cancelPendingSends() {
-    clearTimeout(this.bufferRecoveryTimer);
-    this.bufferRecoveryTimer = undefined;
+    this.clearBufferRecovery();
     this.sendEpoch.abort();
     this.sendEpoch = new AbortController();
   }
+  private clearBufferRecovery() {
+    ++this.bufferRecoveryRevision;
+    clearTimeout(this.bufferRecoveryTimer);
+    this.bufferRecoveryTimer = undefined;
+  }
   private recoverBufferPressure() {
     if (this.bufferRecoveryTimer || !this.options.onBufferAvailable) return;
+    const epoch = this.epoch;
+    const revision = this.bufferRecoveryRevision;
+    const superseded = () =>
+      this.stopped || epoch !== this.epoch || revision !== this.bufferRecoveryRevision;
+    const current = () => !superseded() && this.ready && this.policyFresh;
     // Coalesce recovery outside the ordered receive loop, after incomplete
     // assemblies expire. A lost bootstrap must not leave a recipient stranded.
     this.bufferRecoveryTimer = setTimeout(() => {
       this.bufferRecoveryTimer = undefined;
-      if (this.stopped || !this.ready || !this.policyFresh) return;
+      if (!current()) return;
       void Promise.resolve()
         .then(() => {
+          if (!current()) return;
           this.assertAuthorized();
           return this.options.onBufferAvailable?.();
         })
         .catch((error) => {
-          if (!this.stopped) this.options.onError(error);
+          if (superseded()) return;
+          if (error instanceof CollaborationConnectionError) this.options.onDisconnect();
+          else this.options.onError(error);
         });
     }, collaborationFrameLimits.timeoutMs + 1);
   }
@@ -969,6 +988,7 @@ export class EncryptedRoom {
         }
         await this.mls.confirmPendingCommit();
         assertMlsPolicy(await this.mls.info(), policy);
+        this.clearBufferRecovery();
         this.policy = signed;
         this.invitations.clear();
         this.clearEpochWait();
@@ -989,8 +1009,7 @@ export class EncryptedRoom {
     this.clearEpochWait();
     clearTimeout(this.leaseTimer);
     clearInterval(this.leaseRefresh);
-    clearTimeout(this.bufferRecoveryTimer);
-    this.bufferRecoveryTimer = undefined;
+    this.clearBufferRecovery();
     this.leaseChallenge = undefined;
     this.leaseGranted = undefined;
     this.invitations.clear();

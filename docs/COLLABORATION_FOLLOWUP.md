@@ -11,10 +11,10 @@ certification or an independent audit of the corrected revision.
 
 | Finding | Correction | Regression boundary |
 | --- | --- | --- |
-| N1: invalid admission closes the owner's session | Typed admission rejection for malformed, forged, expired and revoked requests before membership/MLS changes. The ordered socket reader discards only this known rejection for a `join-request`. Other protocol, cryptographic and local-state failures retain fatal handling. | Real socket-reader tests verify no approval or `onError`, unchanged membership, a subsequent valid request and continued commands. Expiry during signature verification is covered. The native browser/relay test substitutes the owner capability while retaining a valid relay ticket; the real owner rejects its signed request, remains live, and approves a fresh invitation. |
+| N1: invalid admission closes the owner's session | Typed admission rejection for malformed, forged, expired and revoked requests before membership/MLS changes. The ordered socket reader discards only this known rejection for a `join-request`. Unexpected exceptions outside admission validation, MLS/protocol-state and local-state failures retain fatal handling. | Real socket-reader tests verify no approval or `onError`, unchanged membership, a subsequent valid request and continued commands. Expiry during signature verification is covered. The native browser/relay test substitutes the owner capability while retaining a valid relay ticket; the real owner rejects its signed request, remains live, and approves a fresh invitation. |
 | N2: global buffer pressure blames the arriving sender | Aggregate saturation is backpressure without retiring that sender or showing a participant warning. Per-peer abuse limits remain. Valid single-frame controls have a bounded independent verification allowance. | Fill the global buffer from four senders, reject additional data as receiver pressure, accept lease controls, preserve later traffic. Recovery coalesces after the 60-second assembly expiry; epoch change/disposal cancels it. Global missing-dependency saturation requests recovery without blaming the next sender. |
-| N3: repeated full snapshots monopolize traffic | `CollaborationSyncResponseQueue` keeps one vector per current approved peer and schedules peers fairly. Global cooldown depends on actual compressed size at a target of 1 MiB/minute, with at least ten seconds between responses. Deferred requests do not construct/compress snapshots. | A 1-MiB response followed by six requests per minute cannot produce six full snapshots. Deferred recovery is serviced later. A supported 3-MiB response reserves three minutes before the next recovery response. Admission bootstrap remains separate; edits and reserved leases retain existing paths. |
-| N4: idle unauthenticated sockets fill the room | At most eight unproved challenge slots; replace the oldest idle challenge when a new one needs a slot. Established participants and valid-ticket pending approvals are protected. The hard 64-socket limit remains. | Native workerd tests preserve owner/pending approval, allow signed reconnect under saturation, and exercise 72 successive unknown connections. |
+| N3: repeated full snapshots monopolize traffic | `CollaborationSyncResponseQueue` keeps one vector per current approved peer and schedules peers fairly. Global cooldown depends on actual compressed size at a target of 1 MiB/minute, with at least ten seconds between scheduled response jobs. Deferred requests do not construct/compress snapshots. | A 1-MiB response followed by six requests per minute cannot produce six full snapshots. Deferred recovery is serviced later. A supported 3-MiB response reserves three minutes before the next recovery response. Admission bootstrap remains separate; edits and reserved leases retain existing paths. |
+| N4: idle unauthenticated sockets fill the room | At most eight active unproved challenge slots; replace the oldest idle challenge when a new one needs a slot. Established participants and valid-ticket pending approvals are protected. The hard 64-socket limit remains. | Native workerd tests preserve owner/pending approval, allow signed reconnect under saturation, and exercise 72 successive unknown connections. |
 
 Invitation expiry remains strict: an expiry race or clock difference rejects
 that request harmlessly rather than extending an expired signed capability.
@@ -24,6 +24,13 @@ Recovery runs outside the ordered receiver. Nonowners request the canonical
 owner's state; owners request one current editing peer at a time rather than
 sending requests to themselves. Deferred recovery rechecks epoch and permission.
 An incomplete or invalid document is never committed to bypass pressure.
+Actual incoming policy transitions and owner-confirmed membership changes cancel
+obsolete recovery timers. Disconnect/reconnect and explicit cancellation also
+invalidate recovery, including late failures from a previous connection in the
+same epoch. A current recovery's connection interruption follows the normal
+offline path;
+unexpected local failures retain fatal handling. Regression tests renew signed
+leases throughout the timer deadline to ensure expiry cannot hide a stale timer.
 
 ## Compatibility and remaining limits
 
@@ -34,9 +41,11 @@ the additive `preAuthenticationSockets: 8` bound.
 
 Recovery uses cost-weighted scheduling; it does not promise at most 1 MiB of wire
 data in every rolling minute. One necessary large refresh can use part of an
-ordinary transport window, but repeated requests cannot consume successive
-windows. Existing payload/relay limits remain. Controls permit eight concurrent
-single-frame verifications, at most 256 KiB in total, independently of the 32-MiB
+ordinary transport window, but pacing prevents repeated requests from continually
+monopolizing it. Quota waits can bunch actual deliveries; job pacing is not a
+delivery-spacing guarantee. Existing payload/relay limits remain. Controls permit
+eight concurrent single-frame verifications, at most 256 KiB of owned binary
+control payloads, independently of the 32-MiB
 multipart buffer. Viewer multipart controls remain rejected.
 
 Continuous admission floods can still race legitimate arrivals or exhaust
@@ -63,10 +72,12 @@ encrypted repositories and local workerd, alongside existing edit, rollback,
 reconnect, role, removal and lock checks. The relay suite passes 43 tests,
 TypeScript validation and six deployment setup checks, including a native
 half-open-socket regression proving the remaining hard-cap availability limit.
-The final focused client suite passes 110 checks, including admission/socket,
+The final focused client suite passes 119 checks, including admission/socket,
 session, controller, framing, recovery scheduling, API and real repository tests.
-The full local suite passes 3,491 frontend tests in 328 files, Go race tests,
-Go vet and formatting. The production build passes its static audit. The real
+Before the final recovery lifecycle changes, the full local suite passed 3,491
+frontend tests in 328 files, Go race tests, Go vet and formatting. Nine additional
+lifecycle regression cases are included in the focused suite above. The production
+build passes its static audit. The real
 MLS/Web Crypto browser harness passes eight checks, the controller/native relay
 harness passes 15 integration checks, and the app workflow harness completes its
 UI assertions with 30 screenshots and no page errors. Exact-revision GitHub CI

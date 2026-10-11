@@ -10,6 +10,7 @@ import type {
 import { admissionInput, relayLimits } from '../../collaboration-worker/src/protocol';
 import {
   CollaborationRelayError,
+  CollaborationConnectionError,
   CollaborationPeerMessageError,
   type RoomTransportOptions,
 } from '../src/collaboration/transport/room-transport';
@@ -332,12 +333,13 @@ async function grantLease(
     command: { ...unsigned, signature: await owner.identity.sign('command', unsigned) },
   });
 }
-async function joined() {
+async function joined(patch: Partial<EncryptedRoomOptions> = {}) {
   const owner = await participant();
   const f = await fixture({
     invitation: encodeBytes(crypto.getRandomValues(new Uint8Array(32))),
     ownerCredential: owner.device.credentialId,
     ownerDeviceId: owner.device.deviceId,
+    ...patch,
   });
   const commit = encodeBytes(Uint8Array.of(1, 2, 3)),
     welcome = encodeBytes(Uint8Array.of(4, 5, 6));
@@ -1200,6 +1202,189 @@ describe('owner invitation capability and bounded policy freshness', () => {
       expect(f.options.onError).not.toHaveBeenCalled();
     },
   );
+  it('cancels aggregate recovery when the owner confirms a new membership epoch', async () => {
+    const onBufferAvailable = vi.fn(),
+      f = await fixture({ onBufferAvailable }),
+      peer = await admit(f);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    vi.spyOn(CollaborationMessageAssembler.prototype, 'accept').mockRejectedValueOnce(
+      new CollaborationBufferBusyError(),
+    );
+    const message = await relay(f, peer);
+    await f.transport.options.onFrame({ type: 'relay', protocol: 1, command: message.command });
+    const epoch = f.room.epoch;
+    await f.room.changeMembers(f.room.currentPolicy!.policy.members);
+    expect(f.room.epoch).toBe(epoch + 1);
+    await vi.advanceTimersByTimeAsync(60_001);
+    expect(onBufferAvailable).not.toHaveBeenCalled();
+    expect(f.options.onError).not.toHaveBeenCalled();
+  });
+  it('cancels old aggregate recovery after an incoming verified policy even when the new lease is fresh', async () => {
+    vi.useFakeTimers();
+    const onBufferAvailable = vi.fn(),
+      { f, owner } = await joined({ onBufferAvailable });
+    await grantLease(f, owner);
+    vi.spyOn(CollaborationMessageAssembler.prototype, 'accept').mockRejectedValueOnce(
+      new CollaborationBufferBusyError(),
+    );
+    const message = await relay(f, owner, 'snapshot');
+    await f.transport.options.onFrame({ type: 'relay', protocol: 1, command: message.command });
+    const epoch = f.room.epoch;
+    await guestRoleTransition(f, owner, 'viewer');
+    expect(f.room.epoch).toBe(epoch + 1);
+    await grantLease(f, owner);
+    // Renew genuinely signed leases throughout the old recovery deadline so
+    // expiry cannot hide an obsolete timer firing in the new epoch.
+    for (let i = 0; i < 6; i++) {
+      await vi.advanceTimersByTimeAsync(policyLeaseLimits.refreshMs);
+      await vi.waitFor(() =>
+        expect(
+          (f.room as unknown as { leaseChallenge?: { nonce: string } }).leaseChallenge,
+        ).toBeDefined(),
+      );
+      await grantLease(f, owner);
+      expect(f.room.policyFresh).toBe(true);
+    }
+    await vi.advanceTimersByTimeAsync(1);
+    expect(onBufferAvailable).not.toHaveBeenCalled();
+    expect(f.options.onError).not.toHaveBeenCalled();
+    expect(f.mls.dispose).not.toHaveBeenCalled();
+  });
+  it('keeps an offline owner session recoverable when deferred recovery loses its connection', async () => {
+    const onBufferAvailable = vi.fn(() => f.room.message('sync', Uint8Array.of(0))),
+      f = await fixture({ onBufferAvailable }),
+      peer = await admit(f);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    vi.spyOn(CollaborationMessageAssembler.prototype, 'accept').mockRejectedValueOnce(
+      new CollaborationBufferBusyError(),
+    );
+    const message = await relay(f, peer);
+    await f.transport.options.onFrame({ type: 'relay', protocol: 1, command: message.command });
+    f.transport.send.mockRejectedValueOnce(new CollaborationConnectionError('Connection lost.'));
+    await vi.advanceTimersByTimeAsync(60_001);
+    expect(onBufferAvailable).toHaveBeenCalledOnce();
+    // Web Crypto runs outside fake timers; wait for the actual rejected send.
+    await vi.waitFor(() => expect(f.options.onDisconnect).toHaveBeenCalledOnce());
+    expect(f.options.onError).not.toHaveBeenCalled();
+    expect(f.transport.close).not.toHaveBeenCalled();
+    expect(f.mls.dispose).not.toHaveBeenCalled();
+    await expect(f.room.message('sync', Uint8Array.of(0))).resolves.toBeUndefined();
+  });
+  it.each(['unknown local failure', 'connection lost'])(
+    'ignores a superseded epoch recovery failure: %s',
+    async (failure) => {
+      let rejectRecovery!: (error: Error) => void;
+      const onBufferAvailable = vi.fn(
+          () => new Promise<void>((_resolve, reject) => (rejectRecovery = reject)),
+        ),
+        f = await fixture({ onBufferAvailable }),
+        peer = await admit(f);
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+      vi.spyOn(CollaborationMessageAssembler.prototype, 'accept').mockRejectedValueOnce(
+        new CollaborationBufferBusyError(),
+      );
+      const message = await relay(f, peer);
+      await f.transport.options.onFrame({ type: 'relay', protocol: 1, command: message.command });
+      await vi.advanceTimersByTimeAsync(60_001);
+      expect(onBufferAvailable).toHaveBeenCalledOnce();
+      await f.room.changeMembers(f.room.currentPolicy!.policy.members);
+      rejectRecovery(
+        failure === 'connection lost'
+          ? new CollaborationConnectionError('Connection lost.')
+          : new Error(failure),
+      );
+      await vi.advanceTimersByTimeAsync(0);
+      expect(f.options.onError).not.toHaveBeenCalled();
+      expect(f.options.onDisconnect).not.toHaveBeenCalled();
+    },
+  );
+  it('retains fatal handling for an unknown current-epoch recovery failure', async () => {
+    const error = new Error('Unknown local recovery failure.'),
+      onBufferAvailable = vi.fn(async () => {
+        throw error;
+      }),
+      f = await fixture({ onBufferAvailable }),
+      peer = await admit(f);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    vi.spyOn(CollaborationMessageAssembler.prototype, 'accept').mockRejectedValueOnce(
+      new CollaborationBufferBusyError(),
+    );
+    const message = await relay(f, peer);
+    await f.transport.options.onFrame({ type: 'relay', protocol: 1, command: message.command });
+    await vi.advanceTimersByTimeAsync(60_001);
+    expect(f.options.onError).toHaveBeenCalledWith(error);
+    expect(f.options.onDisconnect).not.toHaveBeenCalled();
+  });
+  it.each(['unknown local failure', 'connection lost'])(
+    'ignores in-flight recovery failures after a same-epoch reconnect: %s',
+    async (failure) => {
+      let rejectRecovery!: (error: Error) => void;
+      const onBufferAvailable = vi.fn(
+          () => new Promise<void>((_resolve, reject) => (rejectRecovery = reject)),
+        ),
+        f = await fixture({ onBufferAvailable }),
+        peer = await admit(f);
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+      vi.spyOn(CollaborationMessageAssembler.prototype, 'accept').mockRejectedValueOnce(
+        new CollaborationBufferBusyError(),
+      );
+      const message = await relay(f, peer);
+      await f.transport.options.onFrame({ type: 'relay', protocol: 1, command: message.command });
+      await vi.advanceTimersByTimeAsync(60_001);
+      expect(onBufferAvailable).toHaveBeenCalledOnce();
+      const epoch = f.room.epoch;
+      f.transport.options.onDisconnect();
+      f.transport.connect.mockImplementationOnce(async () => {
+        await f.transport.options.onFrame({
+          type: 'authenticated',
+          protocol: 1,
+          policy: f.room.currentPolicy!,
+          role: 'owner',
+        });
+      });
+      await f.room.reconnect();
+      expect(f.room.epoch).toBe(epoch);
+      expect(f.room.policyFresh).toBe(true);
+      vi.mocked(f.options.onDisconnect).mockClear();
+      rejectRecovery(
+        failure === 'connection lost'
+          ? new CollaborationConnectionError('Connection lost.')
+          : new Error(failure),
+      );
+      await vi.advanceTimersByTimeAsync(0);
+      expect(f.options.onError).not.toHaveBeenCalled();
+      expect(f.options.onDisconnect).not.toHaveBeenCalled();
+      expect(f.mls.dispose).not.toHaveBeenCalled();
+    },
+  );
+  it('cancels an armed recovery timer on disconnect without disabling subsequent recovery', async () => {
+    const onBufferAvailable = vi.fn(),
+      f = await fixture({ onBufferAvailable }),
+      peer = await admit(f);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    vi.spyOn(CollaborationMessageAssembler.prototype, 'accept')
+      .mockRejectedValueOnce(new CollaborationBufferBusyError())
+      .mockRejectedValueOnce(new CollaborationBufferBusyError());
+    const message = await relay(f, peer);
+    await f.transport.options.onFrame({ type: 'relay', protocol: 1, command: message.command });
+    f.transport.options.onDisconnect();
+    f.transport.connect.mockImplementationOnce(async () => {
+      await f.transport.options.onFrame({
+        type: 'authenticated',
+        protocol: 1,
+        policy: f.room.currentPolicy!,
+        role: 'owner',
+      });
+    });
+    await f.room.connect();
+    await vi.advanceTimersByTimeAsync(60_001);
+    expect(onBufferAvailable).not.toHaveBeenCalled();
+    const fresh = await relay(f, peer);
+    await f.transport.options.onFrame({ type: 'relay', protocol: 1, command: fresh.command });
+    await vi.advanceTimersByTimeAsync(60_001);
+    expect(onBufferAvailable).toHaveBeenCalledOnce();
+    expect(f.options.onError).not.toHaveBeenCalled();
+  });
   it('rejects relay-fabricated self-signed admission without owner invitation possession', async () => {
     const f = await fixture(),
       peer = await participant();
