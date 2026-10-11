@@ -38,13 +38,13 @@ matrix or promise maintenance of older revisions.
 
 ## Local storage and integration boundaries
 
-The separate encrypted app implementation at `app.visualnerve.com` is under
-release review; it has not replaced the published plaintext workspace at
-`www.visualnerve.com/app/`. Its browser-only password and recovery material
-protect all 14 private IndexedDB record groups with AES-256-GCM and keyed lookup
+The encrypted editor uses the separate origin `https://app.visualnerve.com/`.
+Its browser-only password and recovery material protect the private IndexedDB
+record groups, including collaboration state, with AES-256-GCM and keyed lookup
 metadata. A shared revocable session fences UI, storage, API/MCP and background
-work. No API submits unlock credentials or renews human inactivity. An explicit
-verified transfer preserves the original workspace on the other origin. See
+work. No API submits unlock credentials or renews human inactivity. Retiring the
+old public `/app/` entry does not move, delete or encrypt existing records on that
+origin; an explicit verified transfer preserves the original workspace. See
 [the storage/session schema](docs/ENCRYPTED_WORKSPACE_SCHEMA.md) and
 [release acceptance plan](docs/ENCRYPTED_WORKSPACE_PLAN.md).
 
@@ -87,8 +87,8 @@ Required storage consent precedes opening the workspace and registering offline 
 
 ## Optional realtime collaboration boundary
 
-A configured Cloudflare relay enables deliberate per-diagram collaboration using MLS RFC 9420 application encryption and owner-approved device membership with signed policy. The complete browser/relay integration has not been independently audited. This adds live Owner/Editor/Viewer roles, not enterprise SSO, verified organization identity, managed tenancy or a central audit log. Display names do not verify a legal identity.
+A configured Cloudflare relay enables deliberate per-diagram collaboration using MLS RFC 9420 application encryption and owner-approved device membership with signed policy. The owner verifies a separate device-signed admission proof binding the room, complete transport/MLS identity, KeyPackage and expiry. The complete browser/relay integration has not been independently audited. This adds live Owner/Editor/Viewer roles, not enterprise SSO, verified organization identity, managed tenancy or a central audit log. Display names do not verify a legal identity. The [dated internal engineering review](docs/COLLABORATION_SECURITY_REVIEW.md) records corrections, tested boundaries and remaining limits; it is not external assurance.
 
-Graph text, structure, styles, annotations and process assumptions are disclosed to approved participants. Metadata/source evidence, referenced owners and raw CSV datasets require independent human choices. Cameras/local views stay private. The relay receives encrypted payloads plus request/IP, room, public device/membership and timing/size metadata; the vault password/recovery key never reaches it. Authorized participants can retain readable copies that cannot be recalled by device removal, room closure or password changes.
+Graph text, structure, styles, annotations and process assumptions are disclosed to approved participants. Metadata/source evidence, integration external IDs and simulation entity/scenario metadata, referenced owners and raw CSV datasets require separate human choices. Semantic simulation IDs, routing attributes and native graph extension content remain shared drawing content. Cameras/local views stay private. The relay receives encrypted payloads plus request/IP, room, public device/membership and timing/size metadata; the vault password/recovery key never reaches it. Authorized participants can retain readable copies that cannot be recalled by device removal, room closure or password changes.
 
 Private CRDT/room records are encrypted in a dedicated IndexedDB namespace excluded from exports and all backups, and included in content-key rotation. MLS ratchets/private signing keys are live-memory only: reconnect retains the same unlocked live device, reload/lock/unlock requires fresh device approval, and owner reload requires a new room. API/MCP cannot invite, approve, change roles, retrieve keys or unlock. Existing graph writes require the approved room role as well as the local MCP grant and existing version/reference checks. [User boundaries and recovery](https://www.visualnerve.com/help/collaboration/) and [API contract](API.md#optional-realtime-collaboration).

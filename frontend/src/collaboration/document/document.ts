@@ -110,6 +110,16 @@ export class CollaborativeDocument {
       fail('COLLABORATION_LIMIT', 'The shared document/update exceeds its size limit.');
   }
   private project(doc: Y.Doc, local: Graph): Graph {
+    // Yjs retains unresolved actor prefixes and delete sets outside the live
+    // maps, then includes them in encoded snapshots/diffs. They cannot be scope
+    // validated until integrated, so never persist or publish such a state.
+    // Legitimate out-of-order deltas are caught by their declared base vector
+    // before application and request synchronization through the gateway.
+    if (doc.store.pendingStructs !== null || doc.store.pendingDs !== null)
+      fail(
+        'COLLABORATION_INVALID_UPDATE',
+        'This shared update contains unresolved document dependencies.',
+      );
     const contract = doc.getMap('contract');
     const fields = doc.getMap('fields');
     // A Y.Map must not carry an invisible text/list sequence. Extra root types

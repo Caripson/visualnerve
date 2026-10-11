@@ -28,6 +28,11 @@ Deleting a member advances the MLS epoch and prevents reading future messages. N
 
 Outer transport signatures and server ACLs do not replace these client checks. A viewer has a group decryption key, so the receiver must reject that viewer's document mutations even if a malicious relay forwards them.
 
+Before adding a device, the owner also verifies its separate P-256-signed admission
+proof binding the room, complete public identity, MLS KeyPackage and expiry. Comparing
+two relay-supplied key values alone is insufficient. See the
+[internal review and remaining limits](../docs/COLLABORATION_SECURITY_REVIEW.md).
+
 Wire limits: 32 members; 32 KiB public KeyPackage; 64 KiB application payload; 128 KiB MLS wire message. Larger diagram snapshots use chunks at the document transport layer, not one unbounded encrypted message. Any uncertain worker timeout terminates the crypto session rather than continuing with unknown mutable state.
 
 ## Rebuild

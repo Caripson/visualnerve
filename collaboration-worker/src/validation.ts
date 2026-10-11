@@ -1,6 +1,9 @@
 import {
   relayLimits,
+  type RelayPayloadKind,
   type DeviceIdentity,
+  type AdmissionProof,
+  type PendingJoin,
   type SignedRoomPolicy,
   type TransportPublicKey,
 } from "./protocol";
@@ -34,6 +37,15 @@ export function integer(value: unknown, minimum = 0): number {
   if (!Number.isSafeInteger(value) || (value as number) < minimum)
     throw new RelayError("INVALID_INTEGER");
   return value as number;
+}
+/** JSON must carry a literal wire kind; coercion can disagree with role checks. */
+export function relayPayloadKind(value: unknown): RelayPayloadKind {
+  if (
+    typeof value !== "string" ||
+    !["application", "presence", "snapshot", "sync-request"].includes(value)
+  )
+    throw new RelayError("INVALID_PAYLOAD_KIND");
+  return value as RelayPayloadKind;
 }
 export function deviceId(value: unknown): string {
   if (typeof value !== "string" || !/^[A-Za-z0-9_-]{8,128}$/.test(value))
@@ -109,6 +121,51 @@ export function identity(value: unknown): DeviceIdentity {
     throw new RelayError("INVALID_CREDENTIAL");
   decode(device.mlsSignatureKey, 32, 32);
   return device as unknown as DeviceIdentity;
+}
+/** Both endpoints bound the signed expiry; ten seconds allow device clock skew. */
+export function admissionExpiry(value: unknown, now = Date.now()): number {
+  const expiresAt = integer(value);
+  if (expiresAt <= now || expiresAt > now + relayLimits.pendingJoinMs + 10_000)
+    throw new RelayError("INVALID_ADMISSION_EXPIRY");
+  return expiresAt;
+}
+export function admissionProof(
+  value: unknown,
+  now = Date.now(),
+): AdmissionProof {
+  const proof = record(value, ["expiresAt", "signature"]);
+  const expiresAt = admissionExpiry(proof.expiresAt, now);
+  decode(proof.signature, 64, 64);
+  return { expiresAt, signature: proof.signature as string };
+}
+/** Take an isolated public snapshot before any asynchronous signature check. */
+export function pendingJoin(value: unknown, now = Date.now()): PendingJoin {
+  const request = record(value, [
+    "deviceId",
+    "signingKey",
+    "credentialId",
+    "mlsSignatureKey",
+    "keyPackage",
+    "expiresAt",
+    "admission",
+  ]);
+  const device = identity({
+    deviceId: request.deviceId,
+    signingKey: request.signingKey,
+    credentialId: request.credentialId,
+    mlsSignatureKey: request.mlsSignatureKey,
+  });
+  decode(request.keyPackage, relayLimits.keyPackageBytes);
+  const admission = admissionProof(request.admission, now);
+  if (request.expiresAt !== admission.expiresAt)
+    throw new RelayError("INVALID_ADMISSION_EXPIRY");
+  return {
+    ...device,
+    signingKey: { ...device.signingKey },
+    keyPackage: request.keyPackage as string,
+    expiresAt: admission.expiresAt,
+    admission,
+  };
 }
 export function signedPolicy(value: unknown): SignedRoomPolicy {
   const signed = record(value, ["policy", "signature"]);

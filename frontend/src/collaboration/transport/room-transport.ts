@@ -1,5 +1,6 @@
 import {
   collaborationProtocol,
+  admissionInput,
   relayLimits,
   type Authentication,
   type Challenge,
@@ -37,6 +38,14 @@ export class CollaborationRelayError extends Error {
   constructor(readonly code: string) {
     super(`Collaboration request rejected: ${code}.`);
     this.name = 'CollaborationRelayError';
+  }
+}
+
+/** An authenticated application was rejected without an uncertain crypto outcome. */
+export class CollaborationPeerMessageError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CollaborationPeerMessageError';
   }
 }
 
@@ -178,6 +187,9 @@ export class RoomTransport {
           }
         })
         .catch((error) => {
+          // A rejected authenticated application must not let one participant
+          // disconnect every recipient. Control or unknown crypto failures stay fatal.
+          if (frame.type === 'relay' && error instanceof CollaborationPeerMessageError) return;
           if (generation === this.generation)
             this.fail(
               error instanceof Error ? error : new Error('The collaboration message failed.'),
@@ -214,6 +226,24 @@ export class RoomTransport {
       throw new Error('The collaboration challenge is invalid or expired. Check the device clock.');
     decode(challenge.nonce, 32, 32);
     this.connectionId = challenge.connectionId;
+    const joining = this.admissionPending && this.options.invitation;
+    if (joining && !this.options.keyPackage)
+      throw new Error('The admission request is missing its public KeyPackage.');
+    const expiresAt = Date.now() + relayLimits.pendingJoinMs;
+    const admission = joining
+      ? {
+          expiresAt,
+          signature: await this.options.identity.sign(
+            'admission',
+            admissionInput(
+              this.options.roomId,
+              this.options.device,
+              this.options.keyPackage!,
+              expiresAt,
+            ),
+          ),
+        }
+      : undefined;
     const unsigned: Omit<Authentication, 'signature'> = {
       type: 'authenticate',
       protocol: collaborationProtocol,
@@ -227,6 +257,7 @@ export class RoomTransport {
       ...(this.admissionPending && this.options.keyPackage
         ? { keyPackage: this.options.keyPackage }
         : {}),
+      ...(admission ? { admission } : {}),
     };
     const signature = await this.options.identity.sign('authenticate', unsigned);
     if (generation !== this.generation) throw new Error('The collaboration connection changed.');

@@ -83,6 +83,18 @@ afterEach(() => {
 });
 
 describe('collaboration consent, permissions and authoritative UI state', () => {
+  it('shows review and disclosure limits before creating or joining without opening help', () => {
+    const { controller } = fixture();
+    render(<CollaborationPanel controller={controller} close={() => {}} />);
+    const notice = screen.getByText(/Optional collaboration has not been independently audited/);
+    expect(notice).toBeVisible();
+    expect(notice).toHaveTextContent('approved participants can keep copies');
+    fireEvent.click(screen.getByRole('button', { name: 'Join a room' }));
+    expect(notice).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Request to join' })).toBeDisabled();
+    expect(controller.create).not.toHaveBeenCalled();
+    expect(controller.join).not.toHaveBeenCalled();
+  });
   it('shows the pending device its complete fingerprint for approval through a trusted channel', () => {
     const { controller } = fixture({
       ...active,

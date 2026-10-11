@@ -4,7 +4,7 @@ import { base, blankGraph, newNode, newEdge, type Graph } from '../src/model/typ
 import { csvGraph, defaultAnalysis, parseCsv } from '../src/data/csv';
 import { createSimulationGraph } from '../src/simulation/document';
 import { CollaborativeDocument } from '../src/collaboration/document/document';
-import { sharedGraph } from '../src/collaboration/document/scope';
+import { localGraph, sharedGraph } from '../src/collaboration/document/scope';
 import {
   decodeCollaborationUpdate,
   encodeCollaborationUpdate,
@@ -163,6 +163,80 @@ describe('one semantic CRDT document', () => {
     expect(a.graph(value).owners.map((owner) => owner.name)).toEqual(['Assigned reviewer']);
     expect(JSON.stringify(sharedGraph(value, a.scope))).not.toContain('Unrelated private profile');
   });
+  it('requires metadata opt-in for integration IDs and retains each recipient local value', () => {
+    const value = graph();
+    const owner = {
+      ...base(),
+      name: 'Assigned reviewer',
+      externalId: 'Private owner integration ID',
+      kind: 'person' as const,
+      color: '#31766c',
+      metadata: { sourceEvidence: 'Private owner evidence' },
+    };
+    value.owners = [owner];
+    value.nodes[0].ownerIds = [owner.id];
+    value.nodes[0].externalId = 'Private node integration ID';
+    value.edges[0].externalId = 'Private edge integration ID';
+    Object.assign(value.diagram, { externalId: 'Private diagram integration ID' });
+    const { a, b } = peers(value, {
+      shareMetadata: false,
+      shareOwners: true,
+      shareDatasets: false,
+    });
+    const projection = sharedGraph(value, a.scope);
+    expect(JSON.stringify(projection)).not.toContain('Private');
+    expect(new TextDecoder().decode(a.encodedState())).not.toContain('Private');
+    const fresh = blankGraph('Fresh recipient');
+    fresh.diagram.id = value.diagram.id;
+    expect(JSON.stringify(localGraph(projection, fresh, a.scope))).not.toContain('Private');
+    const local = structuredClone(value);
+    local.nodes[0].externalId = 'Private recipient node ID';
+    expect(a.hasSharedChanges(value, local)).toBe(false);
+    const next = edit(value, (graph) => {
+      graph.nodes[0].title = 'Shared title';
+    });
+    const changed = b.applyRemote(a.applyLocal(value, next, writable).update, local).graph;
+    expect(changed.nodes.find((node) => node.id === local.nodes[0].id)?.externalId).toBe(
+      local.nodes[0].externalId,
+    );
+    expect(changed.edges[0].externalId).toBe(local.edges[0].externalId);
+    expect(changed.owners[0].externalId).toBe(owner.externalId);
+    expect(changed.owners[0].metadata).toEqual(owner.metadata);
+    expect(changed.diagram).toHaveProperty('externalId', 'Private diagram integration ID');
+    const opted = new CollaborativeDocument(value, { ...a.scope, shareMetadata: true });
+    documents.push(opted);
+    const disclosed = localGraph(sharedGraph(value, opted.scope), fresh, opted.scope);
+    expect(disclosed.nodes[0].externalId).toBe(value.nodes[0].externalId);
+    expect(disclosed.edges[0].externalId).toBe(value.edges[0].externalId);
+    expect(disclosed.owners[0].externalId).toBe(owner.externalId);
+    expect(disclosed.diagram).toHaveProperty('externalId', 'Private diagram integration ID');
+  });
+  it('rejects excluded integration IDs beneath deleted or missing ancestors', () => {
+    const { a, value } = peers();
+    const before = a.encodedState();
+    for (const path of [
+      ['diagram', 'externalId'],
+      ['nodes', 'missing-node', 'externalId'],
+      ['edges', 'missing-edge', 'externalId'],
+      ['owners', 'missing-owner', 'externalId'],
+    ]) {
+      const corrupt = new Y.Doc();
+      try {
+        Y.applyUpdate(corrupt, before);
+        const vector = Y.encodeStateVector(corrupt);
+        corrupt.getMap('fields').set(JSON.stringify(path), ['value', 'Private integration ID']);
+        expect(() =>
+          a.prepareRemote(
+            encodeCollaborationUpdate(vector, Y.encodeStateAsUpdate(corrupt, vector)),
+            value,
+          ),
+        ).toThrow('private field');
+        expect(a.encodedState()).toEqual(before);
+      } finally {
+        corrupt.destroy();
+      }
+    }
+  });
   it('stages remote persistence before publication and rejects invalid updates atomically', () => {
     const { a, b, value } = peers();
     const next = edit(value, (graph) => {
@@ -273,6 +347,7 @@ describe('one semantic CRDT document', () => {
     const before = a.encodedState(),
       missingNode = crypto.randomUUID();
     for (const path of [
+      ['unknown-private-root', 'secret'],
       ['nodes', missingNode, 'metadata', 'sourceSecret'],
       ['nodes', missingNode, 'createdAt'],
       ['diagram', 'settings', 'viewport', 'private-coordinate'],
@@ -289,6 +364,72 @@ describe('one semantic CRDT document', () => {
       ).toThrow('private field');
       expect(a.encodedState()).toEqual(before);
       corrupt.destroy();
+    }
+  });
+  it('rejects unresolved actor payloads before staging, importing or rebroadcasting them', () => {
+    const { a, value } = peers();
+    const before = a.encodedState();
+    const corrupt = new Y.Doc();
+    const incomplete = new Y.Doc();
+    try {
+      Y.applyUpdate(corrupt, before);
+      corrupt.clientID = 123456789;
+      const fields = corrupt.getMap('fields');
+      fields.set(JSON.stringify(['nodes', value.nodes[0].id, 'description']), [
+        'value',
+        'Missing actor prefix',
+      ]);
+      const vector = Y.encodeStateVector(corrupt);
+      fields.set(JSON.stringify(['nodes', value.nodes[0].id, 'metadata', 'sourceSecret']), [
+        'value',
+        'Excluded opaque metadata',
+      ]);
+      const delta = Y.encodeStateAsUpdate(corrupt, vector);
+      Y.applyUpdate(incomplete, before);
+      Y.applyUpdate(incomplete, delta);
+      expect(incomplete.store.pendingStructs).not.toBeNull();
+      expect(
+        incomplete
+          .getMap('fields')
+          .has(JSON.stringify(['nodes', value.nodes[0].id, 'metadata', 'sourceSecret'])),
+      ).toBe(false);
+      const state = Y.encodeStateAsUpdate(incomplete);
+      expect(() =>
+        a.prepareRemote(encodeCollaborationUpdate(new Uint8Array([0]), delta), value),
+      ).toThrow('unresolved document dependencies');
+      expect(() => new CollaborativeDocument(value, a.scope, state)).toThrow(
+        'unresolved document dependencies',
+      );
+      expect(() => a.mergeNativeSnapshot(state, value)).toThrow('unresolved document dependencies');
+      expect(a.encodedState()).toEqual(before);
+      expect(decodeCollaborationUpdate(a.diff(new Uint8Array([0]))).delta).toEqual(before);
+    } finally {
+      corrupt.destroy();
+      incomplete.destroy();
+    }
+  });
+  it('rejects unresolved delete sets while preserving the accepted document', () => {
+    const { a, value } = peers();
+    const before = a.encodedState();
+    const corrupt = new Y.Doc();
+    const incomplete = new Y.Doc();
+    try {
+      corrupt.clientID = 123456789;
+      const fields = corrupt.getMap('fields');
+      fields.set(JSON.stringify(['nodes', value.nodes[0].id, 'title']), ['value', 'Unseen edit']);
+      const vector = Y.encodeStateVector(corrupt);
+      fields.delete(JSON.stringify(['nodes', value.nodes[0].id, 'title']));
+      const delta = Y.encodeStateAsUpdate(corrupt, vector);
+      Y.applyUpdate(incomplete, before);
+      Y.applyUpdate(incomplete, delta);
+      expect(incomplete.store.pendingDs).not.toBeNull();
+      expect(() =>
+        a.prepareRemote(encodeCollaborationUpdate(new Uint8Array([0]), delta), value),
+      ).toThrow('unresolved document dependencies');
+      expect(a.encodedState()).toEqual(before);
+    } finally {
+      corrupt.destroy();
+      incomplete.destroy();
     }
   });
   it('validates peer sync vectors before encoding a state diff', () => {
@@ -364,6 +505,98 @@ describe('one semantic CRDT document', () => {
     expect(a.graph(value).simulation!.nodes.find((node) => node.id === id)).toMatchObject({
       work: { capacity: 3, costPerHour: 50 },
     });
+  });
+  it('requires metadata opt-in for simulation entities and scenario overrides', () => {
+    const value = createSimulationGraph();
+    const simulation = value.simulation!;
+    const scenario = simulation.scenarios[0];
+    for (const collection of ['nodes', 'particleTypes', 'resources'] as const) {
+      simulation[collection][0].metadata = { sourceEvidence: `Private ${collection} evidence` };
+      scenario.overrides[collection] = {
+        [simulation[collection][0].id]: {
+          metadata: { sourceEvidence: `Private ${collection} scenario evidence` },
+        },
+      };
+    }
+    simulation.particleTypes[0].attributes = { route: 'Shared execution attribute' };
+    const { a, b } = peers(value);
+    const projection = sharedGraph(value, a.scope);
+    expect(JSON.stringify(projection)).not.toContain('Private');
+    expect(new TextDecoder().decode(a.encodedState())).not.toContain('Private');
+    expect(JSON.stringify(projection)).toContain('Shared execution attribute');
+    const fresh = blankGraph('New local recipient');
+    fresh.diagram.id = value.diagram.id;
+    const received = localGraph(projection, fresh, a.scope);
+    expect(JSON.stringify(received)).not.toContain('Private');
+    const opened = new CollaborativeDocument(received, a.scope, a.encodedState());
+    documents.push(opened);
+    const local = structuredClone(value);
+    local.simulation!.nodes[0].metadata = { sourceEvidence: 'Private recipient evidence' };
+    local.simulation!.scenarios[0].overrides.nodes![simulation.nodes[0].id]!.metadata = null;
+    expect(a.hasSharedChanges(value, local)).toBe(false);
+    const next = edit(value, (graph) => {
+      graph.simulation!.defaults.durationSeconds += 60;
+    });
+    const changed = b.applyRemote(a.applyLocal(value, next, writable).update, local).graph;
+    expect(
+      changed.simulation!.nodes.find((node) => node.id === simulation.nodes[0].id)?.metadata,
+    ).toEqual(local.simulation!.nodes[0].metadata);
+    expect(
+      changed.simulation!.particleTypes.find((type) => type.id === simulation.particleTypes[0].id)
+        ?.metadata,
+    ).toEqual(local.simulation!.particleTypes[0].metadata);
+    expect(
+      changed.simulation!.resources.find((resource) => resource.id === simulation.resources[0].id)
+        ?.metadata,
+    ).toEqual(local.simulation!.resources[0].metadata);
+    expect(
+      changed.simulation!.scenarios.find((entry) => entry.id === scenario.id)?.overrides,
+    ).toEqual(local.simulation!.scenarios[0].overrides);
+    expect(changed.simulation!.defaults.durationSeconds).toBe(
+      next.simulation!.defaults.durationSeconds,
+    );
+    const opted = new CollaborativeDocument(value, { ...a.scope, shareMetadata: true });
+    documents.push(opted);
+    expect(new TextDecoder().decode(opted.encodedState())).toContain('Private nodes evidence');
+    expect(new TextDecoder().decode(opted.encodedState())).toContain(
+      'Private nodes scenario evidence',
+    );
+  });
+  it('rejects excluded simulation metadata even beneath a missing semantic entity', () => {
+    const { a, value } = peers(createSimulationGraph());
+    const before = a.encodedState();
+    const scenario = value.simulation!.scenarios[0];
+    for (const collection of ['nodes', 'particleTypes', 'resources'] as const) {
+      for (const path of [
+        ['simulation', collection, 'missing-entity', 'metadata', 'secret'],
+        [
+          'simulation',
+          'scenarios',
+          scenario.id,
+          'overrides',
+          collection,
+          'missing-entity',
+          'metadata',
+          'secret',
+        ],
+      ]) {
+        const corrupt = new Y.Doc();
+        try {
+          Y.applyUpdate(corrupt, before);
+          const vector = Y.encodeStateVector(corrupt);
+          corrupt.getMap('fields').set(JSON.stringify(path), ['value', 'Excluded metadata']);
+          expect(() =>
+            a.prepareRemote(
+              encodeCollaborationUpdate(vector, Y.encodeStateAsUpdate(corrupt, vector)),
+              value,
+            ),
+          ).toThrow('private field');
+          expect(a.encodedState()).toEqual(before);
+        } finally {
+          corrupt.destroy();
+        }
+      }
+    }
   });
   it('stages and commits a valid 9 MiB full refresh without applying the incremental budget', () => {
     const value = graph();

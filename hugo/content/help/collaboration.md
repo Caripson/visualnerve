@@ -8,6 +8,12 @@ Realtime collaboration is optional. Ordinary diagrams still work locally without
 
 **This integration has not been independently audited.** Evaluate it against your organization's data and device policies before sharing sensitive material. It is not an enterprise identity service or a promise of regulatory compliance.
 
+The Collaboration panel shows this review limitation before you create or join a
+room. Collaboration is a deliberate sharing choice: keep working locally when
+the diagram should not leave your browser. Self-hosting gives you control of the
+relay and deployment, but uses the same client/protocol and does not eliminate
+software defects or compromised participant devices.
+
 ## Start with a small example
 
 1. Unlock your local workspace and open a diagram containing invented data.
@@ -17,7 +23,7 @@ Realtime collaboration is optional. Ordinary diagrams still work locally without
 5. The recipient unlocks their own browser workspace, opens the invitation and requests access. The owner reviews the pending device and approves it as an **Editor** or **Viewer**.
 6. Wait for synchronization to finish before editing. Confirm both devices show the expected participants and roles, then try changing one title and moving another node.
 
-An invitation is not automatic approval. The owner's approval binds access to the participant's current device. A display name is a label chosen by a participant, not a verified legal identity. While waiting, the recipient sees **Your device fingerprint**. Compare that complete fingerprint with the owner's pending request through a separate trusted channel before approval; comparing a name alone does not verify the device.
+An invitation is not automatic approval. The owner's browser verifies the participant's signed proof binding this room, the device fingerprint, the MLS public key and KeyPackage, and its expiry before adding that device. The owner's approval binds access to the participant's current device. A display name is a label chosen by a participant, not a verified legal identity. While waiting, the recipient sees **Your device fingerprint**. Compare that complete fingerprint with the owner's pending request through a separate trusted channel before approval; comparing a name alone does not verify the device.
 
 ![A participant waiting for approval on a phone, with the owner and participant device fingerprints and the room's disclosure choices.](/help/images/collaboration-approval-mobile.webp)
 
@@ -37,9 +43,11 @@ The default shared drawing includes titles, descriptions, relationships, geometr
 
 | Choice | What it adds | Default |
 | --- | --- | --- |
-| Metadata and source evidence | Custom metadata and retained code/SQL evidence attached to the graph | Off |
+| Metadata and integration IDs | Custom metadata, retained code/SQL evidence, integration external IDs and metadata on simulation entities/scenario overrides | Off |
 | Referenced owner profiles | Assigned owner profiles and ownership references; unreferenced workspace profiles stay private | Off |
 | CSV datasets | Original CSV datasets and their analysis configuration, allowing participants to explore those sources | Off |
+
+Simulation semantic IDs, particle routing attributes and processing assumptions remain shared: participants need them to understand and run the same process. Excluded metadata and integration IDs already present in a recipient’s local diagram stay local during updates and approved rejoin. Native graph extension fields are part of the drawing; putting sensitive information in an arbitrary extension does not make it private metadata.
 
 Turning a choice off does not anonymize titles or descriptions. A grouped node named after a customer still shares that customer's name. Metadata can contain literals or secrets; raw datasets can disclose complete rows beyond the values visible on the canvas. Choose the room's disclosure scope before sharing it. To change the scope, start a new room with the reviewed scope rather than assuming already received copies can be recalled.
 
@@ -64,6 +72,8 @@ Each participant's local vault must remain unlocked. MCP also needs its own expl
 ## Understand saving and simultaneous edits
 
 Edits are merged per field using Yjs. Two people can change different properties without replacing each other's whole node. The accepted graph still undergoes Visual Nerve's reference and model validation, and local saves use the existing encrypted transaction boundary.
+
+Malformed presence and sync requests are rejected before changing the drawing or participant list. Known-invalid, cryptographically authenticated application framing or permissions are rejected without ending every recipient's session. Expired/overloaded message assembly, uncertain cryptographic state, invalid membership policy and persistence failures still stop the session safely; the app does not silently drop a possibly valid edit while showing a live connection.
 
 Some simultaneous changes cannot form a valid model—for example, deleting an object while another participant creates a relationship to it. A conflict stops normal synchronization rather than silently deleting evidence or accepting a broken graph. Inspect the visible conflict, keep your local diagram, and coordinate a reviewed recovery or a new room. Do not treat an offline or conflict indicator as confirmation that all edits reached everyone.
 

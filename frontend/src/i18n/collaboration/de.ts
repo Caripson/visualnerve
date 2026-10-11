@@ -1,5 +1,7 @@
 import type { CollaborationMessages } from './en';
 const messages = {
+  'collaboration.reviewNotice':
+    'Die optionale Zusammenarbeit wurde nicht unabhängig sicherheitsgeprüft. Prüfen Sie das Diagramm vor dem Teilen; zugelassene Teilnehmer können Kopien behalten. Arbeiten Sie lokal, wenn die Informationen diesen Browser nicht verlassen sollen.',
   'collaboration.title': 'Zusammenarbeit in Echtzeit',
   'collaboration.intro':
     'Arbeiten Sie gemeinsam an einem Diagramm. Der Eigentümer genehmigt jedes Gerät; die Inhalte werden zwischen den Teilnehmenden verschlüsselt.',

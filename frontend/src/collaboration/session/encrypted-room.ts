@@ -7,20 +7,29 @@ import type {
   SignedRoomPolicy,
   ServerFrame,
 } from '../../../../collaboration-worker/src/protocol';
-import { identity as validateIdentity } from '../../../../collaboration-worker/src/validation';
+import { sameIdentity } from '../../../../collaboration-worker/src/validation';
 import { MlsSession } from '../crypto';
 import { assertMlsPolicy, type MlsProcessResult } from '../crypto-types';
 import {
   type TransportIdentity,
   createTransportIdentity,
-  credentialId,
   decodeBytes,
 } from '../transport/identity';
-import { RoomTransport, CollaborationRelayError } from '../transport/room-transport';
-import { binaryHash, verifyPeerCommand, verifyRoomPolicy } from '../transport/policy';
+import {
+  RoomTransport,
+  CollaborationRelayError,
+  CollaborationPeerMessageError,
+} from '../transport/room-transport';
+import {
+  binaryHash,
+  verifyPeerCommand,
+  verifyPendingJoin,
+  verifyRoomPolicy,
+} from '../transport/policy';
 import {
   CollaborationMessageAssembler,
   CollaborationMessageFramer,
+  CollaborationFramingError,
   type CollaborationPayloadKind,
   type CollaborationReassembledMessage,
 } from '../sync/message-framing';
@@ -189,22 +198,9 @@ export class EncryptedRoom {
     if (frame.type === 'pending') return;
     if (frame.type === 'join-request') {
       if (this.role !== 'owner') throw new Error('Unexpected admission request.');
-      validateIdentity({
-        deviceId: frame.request.deviceId,
-        signingKey: frame.request.signingKey,
-        credentialId: frame.request.credentialId,
-        mlsSignatureKey: frame.request.mlsSignatureKey,
-      });
-      if ((await credentialId(frame.request.signingKey)) !== frame.request.credentialId)
-        throw new Error('The admission fingerprint does not match the supplied device key.');
-      decodeBytes(frame.request.keyPackage, 32 * 1024);
-      if (
-        !Number.isSafeInteger(frame.request.expiresAt) ||
-        frame.request.expiresAt <= Date.now() ||
-        frame.request.expiresAt > Date.now() + 610_000
-      )
-        throw new Error('Invalid admission expiry.');
-      this.options.onJoin(frame.request);
+      const request = await verifyPendingJoin(frame.request, this.options.roomId);
+      this.check();
+      this.options.onJoin(request);
       return;
     }
     if (frame.type === 'authenticated') {
@@ -344,7 +340,25 @@ export class EncryptedRoom {
           return message;
         });
         if (!result?.payload) return;
-        completed = await this.assembler.accept(member.deviceId, approvedEpoch, result.payload);
+        try {
+          completed = await this.assembler.accept(member.deviceId, approvedEpoch, result.payload);
+        } catch (error) {
+          // The MLS application was authenticated and its receiver generation is
+          // consumed. Invalid inner framing cannot change membership or a document.
+          // Assembly expiry/resource pressure can drop valid edits, so they must
+          // stop synchronization visibly instead of leaving a stale "live" peer.
+          // Lock/epoch cancellation and unknown failures also remain fatal.
+          if (
+            error instanceof CollaborationFramingError &&
+            [
+              'COLLABORATION_INVALID_FRAME',
+              'COLLABORATION_FRAME_CONFLICT',
+              'COLLABORATION_HASH_MISMATCH',
+            ].includes(error.code)
+          )
+            throw new CollaborationPeerMessageError(error.message);
+          throw error;
+        }
         if (!completed) return;
         this.check();
         if (approvedEpoch !== this.epoch) return;
@@ -352,7 +366,9 @@ export class EncryptedRoom {
           wireKinds[completed.kind] !== (command.body as EncryptedPacket).payloadKind ||
           (member.role === 'viewer' && !['presence', 'sync'].includes(completed.kind))
         )
-          throw new Error('The encrypted operation exceeds the participant permission.');
+          throw new CollaborationPeerMessageError(
+            'The encrypted operation exceeds the participant permission.',
+          );
         await this.options.onMessage(completed.kind, completed.payload, member);
       } finally {
         message?.payload?.fill(0);
@@ -469,11 +485,23 @@ export class EncryptedRoom {
     return this.transport.send({ kind }, this.epoch);
   }
   async changeMembers(members: RoomMember[], admission?: PendingJoin) {
+    members = structuredClone(members);
     this.cancelPendingSends();
     await this.serialized(async () => {
       if (this.role !== 'owner' || !this.policy)
         throw new Error('Only the room owner can change access.');
       const previous = this.policy;
+      const added = members.filter(
+        (member) => !previous.policy.members.some((prior) => prior.deviceId === member.deviceId),
+      );
+      if (admission) {
+        admission = await verifyPendingJoin(admission, this.options.roomId);
+        this.check();
+        if (added.length !== 1 || !sameIdentity(added[0], admission))
+          throw new Error('The new participant differs from the verified admission.');
+      } else if (added.length) {
+        throw new Error('A device-signed admission is required for a new participant.');
+      }
       const removed = previous.policy.members.find(
         (member) => !members.some((next) => next.deviceId === member.deviceId),
       );

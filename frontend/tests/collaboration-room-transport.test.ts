@@ -5,14 +5,18 @@ import type {
   ServerFrame,
   SignedRoomPolicy,
 } from '../../collaboration-worker/src/protocol';
-import { relayLimits } from '../../collaboration-worker/src/protocol';
+import { admissionInput, relayLimits } from '../../collaboration-worker/src/protocol';
 import {
   createTransportIdentity,
   encodeBytes,
   verifyTransportSignature,
   type TransportIdentity,
 } from '../src/collaboration/transport/identity';
-import { relayOrigin, RoomTransport } from '../src/collaboration/transport/room-transport';
+import {
+  CollaborationPeerMessageError,
+  relayOrigin,
+  RoomTransport,
+} from '../src/collaboration/transport/room-transport';
 
 /** Deterministic transport peer; protocol signatures still use native WebCrypto. */
 class Socket {
@@ -61,6 +65,8 @@ async function fixture(
   overrides: {
     onFrame?: (frame: ServerFrame) => Promise<void> | void;
     identity?: TransportIdentity;
+    invitation?: string;
+    keyPackage?: string;
   } = {},
 ) {
   const identity = overrides.identity ?? (await createTransportIdentity());
@@ -89,6 +95,8 @@ async function fixture(
     roomId,
     identity,
     device,
+    invitation: overrides.invitation,
+    keyPackage: overrides.keyPackage,
     onFrame,
     onError,
     onDisconnect,
@@ -162,6 +170,33 @@ describe('collaboration browser transport', () => {
       device: value.device,
     });
     expect(auth).not.toHaveProperty('invitation');
+    expect(auth).not.toHaveProperty('admission');
+  });
+  it('separately signs public admission data for a new join and omits it on approved reconnect', async () => {
+    const invitation = encodeBytes(crypto.getRandomValues(new Uint8Array(32)));
+    const keyPackage = encodeBytes(crypto.getRandomValues(new Uint8Array(64)));
+    const value = await fixture({ invitation, keyPackage });
+    const { auth } = await value.connect();
+    expect(auth.invitation).toBe(invitation);
+    expect(auth.keyPackage).toBe(keyPackage);
+    expect(auth.admission.expiresAt).toBeGreaterThan(Date.now());
+    expect(
+      await verifyTransportSignature(
+        value.device,
+        'admission',
+        admissionInput(value.roomId, value.device, keyPackage, auth.admission.expiresAt),
+        auth.admission.signature,
+      ),
+    ).toBe(true);
+    const { signature, ...unsigned } = auth;
+    expect(await verifyTransportSignature(value.device, 'authenticate', unsigned, signature)).toBe(
+      true,
+    );
+    value.transport.disconnect();
+    const reconnected = await value.connect();
+    expect(reconnected.auth).not.toHaveProperty('admission');
+    expect(reconnected.auth).not.toHaveProperty('keyPackage');
+    expect(reconnected.auth).not.toHaveProperty('invitation');
   });
   it('creates only the owner-signed public policy and omits credentials/cache/redirects', async () => {
     const value = await fixture();
@@ -203,6 +238,44 @@ describe('collaboration browser transport', () => {
     await expect(response).resolves.toBe('round-trip');
     expect(value.onError).not.toHaveBeenCalled();
   });
+  it('continues receiving and sending after a known authenticated peer application rejection', async () => {
+    let relayMessages = 0;
+    const callback = vi.fn((frame: ServerFrame) => {
+      if (frame.type !== 'relay') return;
+      if (++relayMessages === 1)
+        throw new CollaborationPeerMessageError('The encrypted operation exceeds permission.');
+    });
+    const value = await fixture({ onFrame: callback }),
+      { socket } = await value.connect();
+    socket.emit({ type: 'relay', protocol: 1, command: {} });
+    socket.emit({ type: 'relay', protocol: 1, command: {} });
+    await vi.waitFor(() => expect(relayMessages).toBe(2));
+    socket.onSend = (frame) => {
+      if (frame.type === 'command')
+        socket.emit({ type: 'ack', protocol: 1, sequence: frame.sequence, result: 'still-live' });
+    };
+    await expect(value.transport.send({ kind: 'inspect' }, 0)).resolves.toBe('still-live');
+    expect(socket.readyState).toBe(Socket.OPEN);
+    expect(value.onError).not.toHaveBeenCalled();
+    expect(value.onDisconnect).not.toHaveBeenCalled();
+  });
+  it.each(['relay', 'policy'] as const)(
+    'keeps uncertain crypto and membership failures fatal for %s frames',
+    async (type) => {
+      const value = await fixture({
+          onFrame(frame) {
+            if (frame.type === type)
+              throw type === 'relay'
+                ? new Error('The collaboration encryption outcome is unknown.')
+                : new CollaborationPeerMessageError('A membership commit is invalid.');
+          },
+        }),
+        { socket } = await value.connect();
+      socket.emit({ type, protocol: 1 });
+      await vi.waitFor(() => expect(value.onError).toHaveBeenCalledOnce());
+      expect(socket.readyState).toBe(3);
+    },
+  );
   it('uses a fresh challenge and resets sequence after reconnect, rejecting old connection callbacks', async () => {
     const value = await fixture(),
       first = await value.connect();
@@ -321,7 +394,7 @@ describe('collaboration browser transport', () => {
     });
     const blocked = {
       ...identity,
-      async sign(domain: 'policy' | 'authenticate' | 'command', payload: unknown) {
+      async sign(domain: 'policy' | 'authenticate' | 'command' | 'admission', payload: unknown) {
         if (domain === 'command') await barrier;
         return nativeSign(domain, payload);
       },

@@ -1,4 +1,6 @@
 const messages = {
+  'collaboration.reviewNotice':
+    'Optional collaboration has not been independently audited. Review the diagram before sharing; approved participants can keep copies. Use local editing when the information should not leave this browser.',
   'collaboration.title': 'Live collaboration',
   'collaboration.intro':
     'Work on one diagram together. The owner approves every device; diagram content is encrypted between participants.',

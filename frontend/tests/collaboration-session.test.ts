@@ -7,8 +7,10 @@ import type {
   SignedCommand,
   SignedRoomPolicy,
 } from '../../collaboration-worker/src/protocol';
+import { admissionInput, relayLimits } from '../../collaboration-worker/src/protocol';
 import {
   CollaborationRelayError,
+  CollaborationPeerMessageError,
   type RoomTransportOptions,
 } from '../src/collaboration/transport/room-transport';
 import type {
@@ -23,6 +25,7 @@ import {
 } from '../src/collaboration/transport/identity';
 import { binaryHash } from '../src/collaboration/transport/policy';
 import {
+  CollaborationFramingError,
   CollaborationMessageAssembler,
   CollaborationMessageFramer,
 } from '../src/collaboration/sync/message-framing';
@@ -165,6 +168,7 @@ afterEach(() => {
   identities.length = 0;
   vi.unstubAllGlobals();
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 async function participant() {
   const identity = await createTransportIdentity();
@@ -202,16 +206,31 @@ async function fixture(patch: Partial<EncryptedRoomOptions> = {}) {
 }
 async function admit(f: Awaited<ReturnType<typeof fixture>>, role: 'editor' | 'viewer' = 'editor') {
   const peer = await participant();
-  const request: PendingJoin = {
-    ...peer.device,
-    keyPackage: encodeBytes(Uint8Array.of(7, 8, 9)),
-    expiresAt: Date.now() + 600_000,
-  };
+  const request = await admission(f.options.roomId, peer);
   await f.room.changeMembers(
     [...f.room.currentPolicy!.policy.members, { ...peer.device, role }],
     request,
   );
   return peer;
+}
+async function admission(
+  roomId: string,
+  peer: Awaited<ReturnType<typeof participant>>,
+): Promise<PendingJoin> {
+  const keyPackage = encodeBytes(Uint8Array.of(7, 8, 9));
+  const expiresAt = Date.now() + relayLimits.pendingJoinMs;
+  return {
+    ...peer.device,
+    keyPackage,
+    expiresAt,
+    admission: {
+      expiresAt,
+      signature: await peer.identity.sign(
+        'admission',
+        admissionInput(roomId, peer.device, keyPackage, expiresAt),
+      ),
+    },
+  };
 }
 async function relay(
   f: Awaited<ReturnType<typeof fixture>>,
@@ -256,14 +275,10 @@ async function relay(
   };
 }
 describe('encrypted room session authorization and lifecycle', () => {
-  it('independently verifies a pending device thumbprint before showing an owner approval request', async () => {
+  it('independently verifies a device-signed pending admission before showing an owner approval request', async () => {
     const f = await fixture(),
       peer = await participant();
-    const request: PendingJoin = {
-      ...peer.device,
-      keyPackage: encodeBytes(Uint8Array.of(7, 8, 9)),
-      expiresAt: Date.now() + 600_000,
-    };
+    const request = await admission(f.options.roomId, peer);
     await f.transport.options.onFrame({ type: 'join-request', protocol: 1, request });
     expect(f.options.onJoin).toHaveBeenCalledWith(request);
     vi.mocked(f.options.onJoin).mockClear();
@@ -275,6 +290,68 @@ describe('encrypted room session authorization and lifecycle', () => {
       }),
     ).rejects.toThrow(/identity|fingerprint|thumbprint/i);
     expect(f.options.onJoin).not.toHaveBeenCalled();
+  });
+  it('rejects a changed or missing admission proof before showing it or staging an MLS join', async () => {
+    const f = await fixture(),
+      peer = await participant();
+    const request = await admission(f.options.roomId, peer);
+    const noProof = structuredClone(request) as Partial<PendingJoin>;
+    delete noProof.admission;
+    for (const invalid of [
+      { ...request, keyPackage: encodeBytes(Uint8Array.of(21, 22)) },
+      { ...request, mlsSignatureKey: encodeBytes(crypto.getRandomValues(new Uint8Array(32))) },
+      noProof,
+    ]) {
+      await expect(
+        f.transport.options.onFrame({
+          type: 'join-request',
+          protocol: 1,
+          request: invalid as PendingJoin,
+        }),
+      ).rejects.toThrow();
+      await expect(
+        f.room.changeMembers(
+          [...f.room.currentPolicy!.policy.members, { ...peer.device, role: 'editor' }],
+          invalid as PendingJoin,
+        ),
+      ).rejects.toThrow();
+    }
+    expect(f.options.onJoin).not.toHaveBeenCalled();
+    expect(f.mls.prepareAddMember).not.toHaveBeenCalled();
+    expect(f.transport.send).not.toHaveBeenCalled();
+  });
+  it('rechecks a displayed admission after mutation or expiry before staging membership', async () => {
+    const f = await fixture(),
+      peer = await participant();
+    const request = await admission(f.options.roomId, peer);
+    await f.transport.options.onFrame({ type: 'join-request', protocol: 1, request });
+    const displayed = vi.mocked(f.options.onJoin).mock.calls[0][0];
+    displayed.keyPackage = encodeBytes(Uint8Array.of(31, 32));
+    await expect(
+      f.room.changeMembers(
+        [...f.room.currentPolicy!.policy.members, { ...peer.device, role: 'editor' }],
+        displayed,
+      ),
+    ).rejects.toThrow(/admission/i);
+    vi.spyOn(Date, 'now').mockReturnValue(request.expiresAt);
+    await expect(
+      f.room.changeMembers(
+        [...f.room.currentPolicy!.policy.members, { ...peer.device, role: 'editor' }],
+        request,
+      ),
+    ).rejects.toThrow(/EXPIRY/i);
+    expect(f.mls.prepareAddMember).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+  it('rechecks workspace cancellation after admission verification before showing or staging it', async () => {
+    const f = await fixture(),
+      peer = await participant();
+    const request = await admission(f.options.roomId, peer);
+    const verifying = f.transport.options.onFrame({ type: 'join-request', protocol: 1, request });
+    f.abort.abort();
+    await expect(verifying).rejects.toThrow(/locked|closed/);
+    expect(f.options.onJoin).not.toHaveBeenCalled();
+    expect(f.mls.prepareAddMember).not.toHaveBeenCalled();
   });
   it('creates a signed owner-only group and binds admitted KeyPackage to its approved MLS signature key', async () => {
     const f = await fixture();
@@ -500,8 +577,67 @@ describe('encrypted room session authorization and lifecycle', () => {
     const { command } = await relay(f, peer, 'update', { payloadKind: 'presence' });
     await expect(
       f.transport.options.onFrame({ type: 'relay', protocol: 1, command }),
-    ).rejects.toThrow(/permission/);
+    ).rejects.toThrow(CollaborationPeerMessageError);
     expect(f.options.onMessage).not.toHaveBeenCalled();
+    const valid = await relay(f, peer, 'presence');
+    await f.transport.options.onFrame({ type: 'relay', protocol: 1, command: valid.command });
+    expect(f.options.onMessage).toHaveBeenCalledWith(
+      'presence',
+      expect.any(Uint8Array),
+      expect.objectContaining({ deviceId: peer.device.deviceId }),
+    );
+  });
+  it('classifies malformed authenticated application framing without hiding crypto failures', async () => {
+    const f = await fixture(),
+      peer = await admit(f, 'viewer');
+    const { command } = await relay(f, peer, 'presence');
+    const plaintext = Uint8Array.of(1, 2, 3);
+    f.mls.process.mockResolvedValueOnce({
+      kind: 'application',
+      senderDeviceId: peer.device.deviceId,
+      senderSignaturePublicKey: peer.device.mlsSignatureKey,
+      epoch: f.room.epoch,
+      payload: plaintext,
+    });
+    await expect(
+      f.transport.options.onFrame({ type: 'relay', protocol: 1, command }),
+    ).rejects.toThrow(CollaborationPeerMessageError);
+    expect(plaintext.every((byte) => byte === 0)).toBe(true);
+    expect(f.options.onMessage).not.toHaveBeenCalled();
+    const valid = await relay(f, peer, 'presence');
+    await f.transport.options.onFrame({ type: 'relay', protocol: 1, command: valid.command });
+    expect(f.options.onMessage).toHaveBeenCalledOnce();
+    const failed = await relay(f, peer, 'presence');
+    f.mls.process.mockRejectedValueOnce(
+      new Error('The collaboration encryption outcome is unknown.'),
+    );
+    await expect(
+      f.transport.options.onFrame({ type: 'relay', protocol: 1, command: failed.command }),
+    ).rejects.toThrow(/outcome is unknown/);
+  });
+  it.each([
+    'COLLABORATION_MESSAGE_EXPIRED',
+    'COLLABORATION_MESSAGE_LIMIT',
+    'COLLABORATION_CLOSED',
+    'COLLABORATION_UNKNOWN_ASSEMBLY_FAILURE',
+  ])('keeps %s fatal instead of silently dropping a possibly valid update', async (code) => {
+    const f = await fixture(),
+      peer = await admit(f);
+    const { command, frame } = await relay(f, peer);
+    const failure = new CollaborationFramingError(code, 'State synchronization is required.');
+    const spy = vi
+      .spyOn(CollaborationMessageAssembler.prototype, 'accept')
+      .mockRejectedValueOnce(failure);
+    try {
+      await expect(
+        f.transport.options.onFrame({ type: 'relay', protocol: 1, command }),
+      ).rejects.toBe(failure);
+      expect(failure).not.toBeInstanceOf(CollaborationPeerMessageError);
+      expect(f.options.onMessage).not.toHaveBeenCalled();
+      expect(frame.every((byte) => byte === 0)).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
   });
   it('independently rejects a valid targeted ciphertext sent by the relay to a different participant', async () => {
     const f = await fixture(),

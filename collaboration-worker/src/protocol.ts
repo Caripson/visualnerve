@@ -66,6 +66,11 @@ export interface Challenge {
   nonce: string;
   expiresAt: number;
 }
+/** Public proof of the joining device's complete cryptographic identity. */
+export interface AdmissionProof {
+  expiresAt: number;
+  signature: string;
+}
 export interface Authentication {
   type: "authenticate";
   protocol: 1;
@@ -77,6 +82,8 @@ export interface Authentication {
   invitation?: string;
   /** Public MLS KeyPackage; never a private key or document. */
   keyPackage?: string;
+  /** Required for new joins; safe to forward without the invitation secret. */
+  admission?: AdmissionProof;
   signature: string;
 }
 export type RelayPayloadKind =
@@ -122,6 +129,7 @@ export interface SignedCommand {
 export interface PendingJoin extends DeviceIdentity {
   keyPackage: string;
   expiresAt: number;
+  admission: AdmissionProof;
 }
 export type ServerFrame =
   | Challenge
@@ -161,10 +169,36 @@ export function canonical(value: unknown): string {
   throw new Error("Non-canonical protocol value");
 }
 export function signingInput(
-  domain: "policy" | "authenticate" | "command",
+  domain: "policy" | "authenticate" | "command" | "admission",
   value: unknown,
 ): Uint8Array {
   return new TextEncoder().encode(
     `visual-nerve/collaboration/${domain}/v1\n${canonical(value)}`,
   );
+}
+
+/** Reconstruct exactly the device-signed public admission, never a TLS auth frame. */
+export function admissionInput(
+  roomId: string,
+  device: DeviceIdentity,
+  keyPackage: string,
+  expiresAt: number,
+) {
+  return {
+    protocol: collaborationProtocol,
+    roomId,
+    device: {
+      deviceId: device.deviceId,
+      signingKey: {
+        kty: device.signingKey.kty,
+        crv: device.signingKey.crv,
+        x: device.signingKey.x,
+        y: device.signingKey.y,
+      },
+      credentialId: device.credentialId,
+      mlsSignatureKey: device.mlsSignatureKey,
+    },
+    keyPackage,
+    expiresAt,
+  };
 }

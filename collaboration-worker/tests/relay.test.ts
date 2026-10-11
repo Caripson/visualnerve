@@ -9,6 +9,7 @@ import { deviceRateLimits, type PublicDeviceRate } from "../src/device-rate";
 import { decode, encode } from "../src/validation";
 import {
   approve,
+  admission,
   Client,
   clients,
   create,
@@ -243,9 +244,14 @@ describe("Native WebSocket proof, invitation and owner approval", () => {
       owner = await (await Client.open(fixture)).authorized();
     const token = await owner.invite(),
       guest = await Client.open(fixture, await device());
-    await guest.authenticate(token.invitation);
+    const auth = await guest.authenticate(token.invitation);
     await guest.next("pending");
-    await owner.next("join-request");
+    const join = await owner.next("join-request");
+    expect(join.request.admission).toEqual(auth.admission);
+    expect(join.request.expiresAt).toBe(auth.admission!.expiresAt);
+    expect(join.request).not.toHaveProperty("invitation");
+    expect(join.request).not.toHaveProperty("connectionId");
+    expect(join.request).not.toHaveProperty("nonce");
     const replay = await Client.open(fixture, await device());
     await replay.authenticate(token.invitation);
     expect((await replay.next("error")).code).toBe("INVITATION_REJECTED");
@@ -262,6 +268,69 @@ describe("Native WebSocket proof, invitation and owner approval", () => {
     );
     expect(JSON.stringify(stored)).not.toContain(token.invitation);
     expect(JSON.stringify(stored)).toContain("keyPackage");
+    expect(JSON.stringify(stored)).toContain(auth.admission!.signature);
+    expect(JSON.stringify(stored)).not.toContain(auth.signature);
+  });
+  it("requires a public admission proof and rejects a changed bound KeyPackage or MLS key before consuming the invitation", async () => {
+    const fixture = await create(),
+      owner = await (await Client.open(fixture)).authorized();
+    const token = await owner.invite();
+    for (const changedField of [
+      "missing",
+      "keyPackage",
+      "mlsSignatureKey",
+    ] as const) {
+      const joining = await device(),
+        client = await Client.open(fixture, joining);
+      const value = await client.authentication(token.invitation);
+      if (changedField === "missing") delete value.admission;
+      else if (changedField === "keyPackage")
+        value.keyPackage = encode(Uint8Array.of(21, 22));
+      else
+        value.device = {
+          ...value.device,
+          mlsSignatureKey: encode(crypto.getRandomValues(new Uint8Array(32))),
+        };
+      client.socket.send(
+        canonical({
+          ...value,
+          signature: await sign("authenticate", value, joining.key),
+        }),
+      );
+      expect((await client.next("error")).code).toBe(
+        changedField === "missing" ? "INVALID_ENVELOPE" : "INVALID_SIGNATURE",
+      );
+      expect(
+        owner.received.filter((frame) => frame.type === "join-request"),
+      ).toHaveLength(0);
+    }
+    const valid = await Client.open(fixture, await device());
+    await valid.authenticate(token.invitation);
+    await valid.next("pending");
+    await owner.next("join-request");
+  });
+  it("rejects expired or overlong device-signed admission expiry", async () => {
+    const fixture = await create(),
+      owner = await (await Client.open(fixture)).authorized();
+    const token = await owner.invite();
+    for (const expiresAt of [
+      Date.now() - 1,
+      Date.now() + relayLimits.pendingJoinMs + 30_000,
+    ]) {
+      const joining = await device(),
+        client = await Client.open(fixture, joining);
+      const value = await client.authentication(token.invitation);
+      value.admission = await admission(fixture.id, joining, expiresAt);
+      client.socket.send(
+        canonical({
+          ...value,
+          signature: await sign("authenticate", value, joining.key),
+        }),
+      );
+      expect((await client.next("error")).code).toBe(
+        "INVALID_ADMISSION_EXPIRY",
+      );
+    }
   });
   it("owner approves editor atomically with signed ACL, epoch and recipient-only Welcome", async () => {
     const fixture = await create(),
@@ -429,6 +498,43 @@ describe("Actual relay authorization, epoch fencing and privacy", () => {
       ciphertext: ciphertext(),
     });
     expect((await viewer.next("error")).code).toBe("ROLE_FORBIDDEN");
+  });
+  it("rejects non-string payload kinds without forwarding or disconnecting the room", async () => {
+    const fixture = await create(),
+      owner = await (await Client.open(fixture)).authorized(),
+      viewer = await pending(owner);
+    await approve(owner, viewer, "viewer");
+    for (const payloadKind of [
+      ["application"],
+      ["presence"],
+      ["snapshot"],
+      ["sync-request"],
+      null,
+      {},
+      true,
+      1,
+    ]) {
+      await viewer.command({
+        kind: "relay",
+        payloadKind,
+        ciphertext: ciphertext(),
+      } as unknown as Parameters<Client["command"]>[0]);
+      expect((await viewer.next("error")).code).toBe("INVALID_PAYLOAD_KIND");
+    }
+    await owner.command({ kind: "inspect" });
+    await owner.next("ack");
+    expect(
+      owner.received.filter((frame) => frame.type === "relay"),
+    ).toHaveLength(0);
+    await viewer.command({
+      kind: "relay",
+      payloadKind: "presence",
+      ciphertext: ciphertext(),
+    });
+    expect((await owner.next("relay")).command.body).toMatchObject({
+      payloadKind: "presence",
+    });
+    await viewer.next("ack");
   });
   it("editor cannot create invitations, approve members or delete the room", async () => {
     const fixture = await create(),

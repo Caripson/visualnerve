@@ -15,6 +15,11 @@ import type { SharedRole } from '../access';
 import type { EncryptedRoom, EncryptedPacket } from './encrypted-room';
 import { encodeBytes } from '../transport/identity';
 import { compressPayload } from './payload-codec';
+import {
+  CollaborationEnvelopeError,
+  validateCollaborationStateVector,
+} from '../document/update-envelope';
+import { CollaborationPeerMessageError } from '../transport/room-transport';
 const encoder = new TextEncoder();
 export interface DocumentGatewayOptions {
   workspace: Workspace;
@@ -295,6 +300,14 @@ export class CollaborationDocumentGateway {
     );
   }
   async respondSync(vector: Uint8Array, recipient: string) {
+    this.check();
+    try {
+      validateCollaborationStateVector(vector);
+    } catch (error) {
+      if (error instanceof CollaborationEnvelopeError)
+        throw new CollaborationPeerMessageError(error.message);
+      throw error;
+    }
     let update: Uint8Array;
     try {
       update = this.document.diff(vector);

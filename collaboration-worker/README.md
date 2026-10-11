@@ -80,6 +80,17 @@ Disabling the Worker does not delete users' local encrypted documents. Removing 
 
 ## Wire protocol and trust boundaries
 
+New joins include a separate public `admission` proof. Its device signature uses
+the `admission/v1` domain and binds the exact room, complete P-256/MLS public
+identity, public KeyPackage and expiry. The relay validates the proof before
+consuming an invitation; the owner browser independently validates it before
+displaying the request and again before changing MLS membership. Pending expiry
+is the device-signed value, nominally ten minutes, with ten seconds of future clock
+skew tolerance. The persisted/forwarded proof contains no invitation secret or
+private key. An already admitted reconnect sends no invitation, KeyPackage or
+admission proof. Updated browser and relay versions must be deployed together;
+missing/invalid admission proofs cannot fall back to trusting relay labels.
+
 `src/protocol.ts` contains the portable protocol types and canonical signing input used by the browser and relay. WebSocket URLs contain a room identifier, never a bearer token or invitation secret. A short-lived server challenge requires proof of possession of the device's P-256 key. Invitation secrets are sent only inside the authenticated TLS connection and are stored by the relay only as hashes.
 
 The owner independently signs each ACL policy. Membership changes advance the policy revision and MLS epoch together and bind the exact decoded Commit/Welcome hashes. The relay persists the new public policy before acknowledging the owner. Clients validate that policy, the pinned owner identity and the actual MLS membership change. A viewer's key cannot authorize application mutations. Replayed transport sequence numbers and stale epochs are rejected.

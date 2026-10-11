@@ -8,6 +8,7 @@ import {
 import { binaryHash, tokenHash, verify, verifyIdentity } from "./auth";
 import {
   canonical,
+  admissionInput,
   relayLimits,
   type Authentication,
   type Challenge,
@@ -19,11 +20,14 @@ import {
 } from "./protocol";
 import {
   decode,
+  admissionProof,
+  admissionExpiry,
   deviceId,
   encode,
   identity,
   integer,
   record,
+  relayPayloadKind,
   RelayError,
   roomId,
   sameIdentity,
@@ -305,17 +309,12 @@ export class CollaborationRoom extends DurableObject<RelayEnv> {
             ["kind", "payloadKind", "ciphertext"],
             ["recipient"],
           );
-          if (
-            !["application", "presence", "snapshot", "sync-request"].includes(
-              String(payload.payloadKind),
-            )
-          )
-            throw new RelayError("INVALID_PAYLOAD_KIND");
+          const payloadKind = relayPayloadKind(payload.payloadKind);
           decode(payload.ciphertext, relayLimits.ciphertextBytes);
           if (payload.recipient !== undefined) deviceId(payload.recipient);
           if (
             member.role === "viewer" &&
-            ["application", "snapshot"].includes(body.payloadKind)
+            ["application", "snapshot"].includes(payloadKind)
           )
             throw new RelayError("ROLE_FORBIDDEN", 403);
           if (
@@ -454,7 +453,7 @@ export class CollaborationRoom extends DurableObject<RelayEnv> {
         "device",
         "signature",
       ],
-      ["invitation", "keyPackage"],
+      ["invitation", "keyPackage", "admission"],
     );
     const auth = object as unknown as Authentication;
     if (
@@ -483,7 +482,11 @@ export class CollaborationRoom extends DurableObject<RelayEnv> {
     )
       throw new RelayError("DEVICE_SOCKET_LIMIT", 429);
     if (member) {
-      if (auth.invitation !== undefined || auth.keyPackage !== undefined)
+      if (
+        auth.invitation !== undefined ||
+        auth.keyPackage !== undefined ||
+        auth.admission !== undefined
+      )
         throw new RelayError("UNEXPECTED_JOIN_DATA");
       state.device = device;
       state.authenticated = true;
@@ -499,6 +502,18 @@ export class CollaborationRoom extends DurableObject<RelayEnv> {
     this.prune();
     decode(auth.invitation, 32, 32);
     decode(auth.keyPackage, relayLimits.keyPackageBytes);
+    const admission = admissionProof(auth.admission);
+    await verify(
+      device.signingKey,
+      "admission",
+      admissionInput(
+        auth.roomId,
+        device,
+        auth.keyPackage!,
+        admission.expiresAt,
+      ),
+      admission.signature,
+    );
     const hash = await tokenHash(auth.invitation!);
     const invitation = this.room!.invitations.find(
       (invite) =>
@@ -516,6 +531,7 @@ export class CollaborationRoom extends DurableObject<RelayEnv> {
       this.room!.policy.policy.members.length >= relayLimits.members
     )
       throw new RelayError("MEMBER_LIMIT", 429);
+    admissionExpiry(admission.expiresAt);
     // Consume exactly once only after all checks, within the serialized event.
     this.room!.invitations = this.room!.invitations.filter(
       (invite) => invite !== invitation,
@@ -523,7 +539,8 @@ export class CollaborationRoom extends DurableObject<RelayEnv> {
     const pending: PendingJoin = {
       ...device,
       keyPackage: auth.keyPackage!,
-      expiresAt: Date.now() + relayLimits.pendingJoinMs,
+      expiresAt: admission.expiresAt,
+      admission,
     };
     this.room!.pending.push(pending);
     await this.save();

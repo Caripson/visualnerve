@@ -1,5 +1,7 @@
 import type { CollaborationMessages } from './en';
 const messages = {
+  'collaboration.reviewNotice':
+    'Valinnaiselle yhteistyölle ei ole tehty riippumatonta tietoturva-auditointia. Tarkista kaavio ennen jakamista; hyväksytyt osallistujat voivat säilyttää kopioita. Työskentele paikallisesti, jos tietojen ei pidä poistua tästä selaimesta.',
   'collaboration.title': 'Reaaliaikainen yhteistyö',
   'collaboration.intro':
     'Työskentele yhdessä muiden kanssa samassa kaaviossa. Omistaja hyväksyy jokaisen laitteen; sisältö salataan osallistujien välillä.',

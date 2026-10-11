@@ -127,10 +127,14 @@ Compromised client devices or delivered application code can read unlocked conte
 The tests exercise the actual OpenMLS adapter, Cloudflare workerd relay and
 encrypted browser repositories.
 
+The [2026-10-11 internal review](COLLABORATION_SECURITY_REVIEW.md) records the
+admission-proof, disclosure, CRDT and peer-rejection hardening and its regression
+coverage. This is a separate internal engineering review, not an external audit.
+
 | Verification                     | Coverage                                                                                                                                                                                                                                          |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Rust adapter                     | 17 tests for authentic authorship, membership, rotation, tampering, replay and removal                                                                                                                                                            |
-| Native relay                     | 36 tests with Web Crypto, Durable Object storage, real WebSockets, public policy validation, hibernation and retained rate budgets                                                                                                                |
+| Native relay                     | 39 tests with Web Crypto, Durable Object storage, real WebSockets, public policy validation, hibernation and retained rate budgets                                                                                                                |
 | Deployment helper                | 6 synthetic tests; credentials are excluded from arguments/configuration and truncated output cannot expose a partial credential at a dropped chunk boundary                                                                                      |
 | Real browser workers             | Standard MLS encryption and revocation under the deployed-style CSP; Chromium is checked locally and Chromium/Firefox/WebKit are required by CI                                                                                                   |
 | Two encrypted browser workspaces | Concurrent field edits, UI/API parity, approval, Viewer restrictions, five immediate role-change cycles, atomic commit rollback, offline/rejoin reconciliation, removal and lock                                                                  |

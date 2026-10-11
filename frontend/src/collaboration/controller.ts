@@ -28,6 +28,7 @@ import { collaborationPermissions } from './access';
 import { CollaborativeDocument } from './document/document';
 import { mergeCollaborationSnapshot } from './document/merge-snapshot';
 import { credentialId } from './transport/identity';
+import { CollaborationPeerMessageError } from './transport/room-transport';
 const encoder = new TextEncoder();
 /** One live session per unlocked browser tab. Other local diagrams stay local. */
 export class CollaborationController implements CollaborationUiController {
@@ -393,7 +394,14 @@ export class CollaborationController implements CollaborationUiController {
   ) {
     this.check();
     if (kind === 'presence') {
-      const presence = presenceMessage(payload);
+      let presence: ReturnType<typeof presenceMessage>;
+      try {
+        // Parse before changing presence. A rejected peer label/pointer is not
+        // an uncertain MLS outcome and must not close every recipient's room.
+        presence = presenceMessage(payload);
+      } catch {
+        throw new CollaborationPeerMessageError('Invalid collaboration presence.');
+      }
       const now = Date.now();
       this.update({
         participants: this.snapshot.participants.map((member) =>

@@ -5,13 +5,19 @@ import type {
   RoomPolicy,
   SignedCommand,
   SignedRoomPolicy,
+  PendingJoin,
 } from '../../collaboration-worker/src/protocol';
+import { admissionInput, relayLimits } from '../../collaboration-worker/src/protocol';
 import {
   createTransportIdentity,
   encodeBytes,
   type TransportIdentity,
 } from '../src/collaboration/transport/identity';
-import { verifyPeerCommand, verifyRoomPolicy } from '../src/collaboration/transport/policy';
+import {
+  verifyPeerCommand,
+  verifyPendingJoin,
+  verifyRoomPolicy,
+} from '../src/collaboration/transport/policy';
 
 const devices: TransportIdentity[] = [];
 beforeEach(() => vi.stubGlobal('crypto', webcrypto));
@@ -69,6 +75,82 @@ async function message(
   };
   return { ...unsigned, signature: await participant.identity.sign('command', unsigned) };
 }
+async function admission(
+  roomId: string,
+  joining: Awaited<ReturnType<typeof device>>,
+): Promise<PendingJoin> {
+  const keyPackage = encodeBytes(crypto.getRandomValues(new Uint8Array(64)));
+  const expiresAt = Date.now() + relayLimits.pendingJoinMs;
+  return {
+    ...joining.value,
+    keyPackage,
+    expiresAt,
+    admission: {
+      expiresAt,
+      signature: await joining.identity.sign(
+        'admission',
+        admissionInput(roomId, joining.value, keyPackage, expiresAt),
+      ),
+    },
+  };
+}
+describe('independent device-signed admission verification', () => {
+  it('accepts a legitimate public proof and isolates it from subsequent input mutation', async () => {
+    const joining = await device(),
+      roomId = crypto.randomUUID();
+    const request = structuredClone(await admission(roomId, joining));
+    const verified = await verifyPendingJoin(request, roomId);
+    expect(verified).toEqual(request);
+    request.signingKey.x = encodeBytes(crypto.getRandomValues(new Uint8Array(32)));
+    request.admission.signature = encodeBytes(crypto.getRandomValues(new Uint8Array(64)));
+    expect(verified.signingKey).not.toEqual(request.signingKey);
+    expect(verified.admission.signature).not.toBe(request.admission.signature);
+  });
+  it('rejects a single changed bound identity, room, KeyPackage, or expiry', async () => {
+    const joining = await device(),
+      other = await device(),
+      roomId = crypto.randomUUID();
+    const request = await admission(roomId, joining);
+    const expiresAt = request.expiresAt - 1000;
+    for (const changed of [
+      { ...request, deviceId: crypto.randomUUID() },
+      { ...request, signingKey: other.value.signingKey },
+      { ...request, credentialId: '0'.repeat(64) },
+      { ...request, mlsSignatureKey: other.value.mlsSignatureKey },
+      { ...request, keyPackage: encodeBytes(Uint8Array.of(21, 22)) },
+      { ...request, expiresAt, admission: { ...request.admission, expiresAt } },
+    ])
+      await expect(verifyPendingJoin(changed, roomId)).rejects.toThrow(/admission/i);
+    await expect(verifyPendingJoin(request, crypto.randomUUID())).rejects.toThrow(/admission/i);
+  });
+  it('rejects missing proofs, invalid finite expiry bounds, other signed domains, and protocols', async () => {
+    const joining = await device(),
+      roomId = crypto.randomUUID();
+    const request = await admission(roomId, joining);
+    const { admission: _proof, ...withoutProof } = request;
+    await expect(verifyPendingJoin(withoutProof, roomId)).rejects.toThrow();
+    for (const expiresAt of [
+      NaN,
+      Infinity,
+      Date.now(),
+      Date.now() + relayLimits.pendingJoinMs + 30_000,
+    ])
+      await expect(
+        verifyPendingJoin(
+          { ...request, expiresAt, admission: { ...request.admission, expiresAt } },
+          roomId,
+        ),
+      ).rejects.toThrow();
+    const input = admissionInput(roomId, joining.value, request.keyPackage, request.expiresAt);
+    for (const signature of [
+      await joining.identity.sign('authenticate', input),
+      await joining.identity.sign('admission', { ...input, protocol: 2 }),
+    ])
+      await expect(
+        verifyPendingJoin({ ...request, admission: { ...request.admission, signature } }, roomId),
+      ).rejects.toThrow(/admission/i);
+  });
+});
 describe('independent owner-signed collaboration policy verification', () => {
   it('accepts valid policy and its identical repeated observation with the pinned owner', async () => {
     const { owner, signed } = await fixture();
@@ -214,6 +296,9 @@ describe('peer authority independent of the relay', () => {
     const good = await message(signed, editor);
     for (const body of [
       { kind: 'relay', payloadKind: 'unknown', ciphertext: 'AA' },
+      ...[['application'], ['presence'], ['snapshot'], ['sync-request'], null, {}, true, 1].map(
+        (payloadKind) => ({ kind: 'relay', payloadKind, ciphertext: 'AA' }),
+      ),
       { kind: 'relay', payloadKind: 'application', ciphertext: 'not+base64' },
       {
         kind: 'relay',

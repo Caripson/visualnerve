@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { blankGraph, newNode } from '../src/model/types';
 import { CollaborativeDocument } from '../src/collaboration/document/document';
 import { mergeCollaborationSnapshot } from '../src/collaboration/document/merge-snapshot';
+import { createSimulationGraph } from '../src/simulation/document';
 
 const scope = { shareMetadata: false, shareOwners: false, shareDatasets: false };
 const writable = { canWrite: true, assertActive() {} };
@@ -22,6 +23,7 @@ describe('validated fresh-device snapshot recovery', () => {
     owner.applyLocal(base, current, writable);
     const local = structuredClone(base);
     local.nodes[0].title = 'My saved offline title';
+    local.nodes[0].externalId = 'Private saved integration ID';
     local.diagram.settings.viewport = { x: 7, y: 8, zoom: 2 };
     local.diagram.folder = 'Private folder';
     const result = mergeCollaborationSnapshot(current, owner.encodedState(), local, prior, scope);
@@ -31,6 +33,8 @@ describe('validated fresh-device snapshot recovery', () => {
     });
     expect(result.graph.diagram.settings.viewport).toEqual(local.diagram.settings.viewport);
     expect(result.graph.diagram.folder).toBe(local.diagram.folder);
+    expect(result.graph.nodes[0].externalId).toBe(local.nodes[0].externalId);
+    expect(new TextDecoder().decode(result.state)).not.toContain('Private saved integration ID');
     const reopened = new CollaborativeDocument(result.graph, scope, result.state);
     expect(reopened.graph(result.graph)).toEqual(result.graph);
     owner.destroy();
@@ -42,6 +46,7 @@ describe('validated fresh-device snapshot recovery', () => {
     const unpublished = new CollaborativeDocument(base, scope, owner.encodedState()),
       local = structuredClone(base);
     local.nodes[0].title = 'Unapproved viewer change';
+    local.nodes[0].externalId = 'Private viewer integration ID';
     local.diagram.settings.viewport = { x: 7, y: 8, zoom: 2 };
     unpublished.applyLocal(base, local, writable);
     const prior = unpublished.encodedState();
@@ -54,9 +59,49 @@ describe('validated fresh-device snapshot recovery', () => {
       false,
     );
     expect(result.graph.nodes[0].title).toBe('Original');
+    expect(result.graph.nodes[0].externalId).toBe(local.nodes[0].externalId);
+    expect(new TextDecoder().decode(result.state)).not.toContain('Private viewer integration ID');
     expect(result.graph.diagram.settings.viewport).toEqual(local.diagram.settings.viewport);
     unpublished.destroy();
     owner.destroy();
+  });
+  it('retains excluded local simulation metadata through editor and viewer rejoin', () => {
+    const base = createSimulationGraph();
+    const owner = new CollaborativeDocument(base, scope);
+    try {
+      const prior = owner.encodedState();
+      const local = structuredClone(base);
+      local.simulation!.nodes[0].metadata = { sourceEvidence: 'Private saved node evidence' };
+      local.simulation!.particleTypes[0].metadata = { internal: 'Private particle evidence' };
+      local.simulation!.resources[0].metadata = { internal: 'Private resource evidence' };
+      local.simulation!.scenarios[0].overrides.nodes = {
+        [local.simulation!.nodes[0].id]: { metadata: { internal: 'Private scenario evidence' } },
+      };
+      for (const rebase of [true, false]) {
+        const result = mergeCollaborationSnapshot(
+          base,
+          owner.encodedState(),
+          local,
+          prior,
+          scope,
+          rebase,
+        );
+        for (const collection of ['nodes', 'particleTypes', 'resources'] as const) {
+          const entity = local.simulation![collection][0];
+          expect(
+            result.graph.simulation![collection].find((entry) => entry.id === entity.id)?.metadata,
+          ).toEqual(entity.metadata);
+        }
+        expect(
+          result.graph.simulation!.scenarios.find(
+            (scenario) => scenario.id === local.simulation!.scenarios[0].id,
+          )?.overrides,
+        ).toEqual(local.simulation!.scenarios[0].overrides);
+        expect(new TextDecoder().decode(result.state)).not.toContain('Private');
+      }
+    } finally {
+      owner.destroy();
+    }
   });
   it('accepts a native snapshot above the incremental 8 MiB bound without constructing a delta envelope', () => {
     const base = graph(),

@@ -1,5 +1,7 @@
 import type { CollaborationMessages } from './en';
 const messages = {
+  'collaboration.reviewNotice':
+    'Valgfritt samarbeid har ikke gjennomgått en uavhengig sikkerhetsrevisjon. Gjennomgå diagrammet før deling; godkjente deltakere kan beholde kopier. Arbeid lokalt hvis informasjonen ikke skal forlate denne nettleseren.',
   'collaboration.title': 'Samarbeid i sanntid',
   'collaboration.intro':
     'Arbeid sammen i ett diagram. Eieren godkjenner hver enhet; innholdet krypteres mellom deltakerne.',

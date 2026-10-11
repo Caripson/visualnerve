@@ -1,5 +1,6 @@
 import type { Graph } from '../../model/types';
 import { StorageError } from '../../model/errors';
+import type { SimulationModel } from '../../simulation/types';
 
 /** A human chooses disclosure once when creating/joining a room. Never infer consent. */
 export interface CollaborationShareScope {
@@ -58,9 +59,69 @@ const csvMetadata = new Set([
   'csvSourceRelationship',
   'csvModelVisible',
 ]);
-const entity = (value: object) =>
+const simulationMetadataCollections = ['nodes', 'particleTypes', 'resources'] as const;
+const simulationMetadataRoots = new Set<string>(simulationMetadataCollections);
+const sharedRoots = new Set([
+  'format',
+  'formatVersion',
+  'diagram',
+  'nodes',
+  'edges',
+  'owners',
+  'simulation',
+  'dataset',
+  'datasets',
+]);
+function scopedSimulation(model: SimulationModel, scope: CollaborationShareScope) {
+  const result = structuredClone(model);
+  if (!scope.shareMetadata) {
+    for (const collection of simulationMetadataCollections)
+      for (const entity of result[collection]) delete entity.metadata;
+    for (const scenario of result.scenarios)
+      for (const collection of simulationMetadataCollections) {
+        const patches = scenario.overrides[collection];
+        if (!patches) continue;
+        for (const [id, patch] of Object.entries(patches)) {
+          delete patch.metadata;
+          if (!Object.keys(patch).length) delete patches[id];
+        }
+        if (!Object.keys(patches).length) delete scenario.overrides[collection];
+      }
+  }
+  return result;
+}
+function restoreSimulationMetadata(shared: SimulationModel, local: SimulationModel) {
+  for (const collection of simulationMetadataCollections) {
+    const previous = new Map(local[collection].map((entity) => [entity.id, entity]));
+    for (const entity of shared[collection]) {
+      const metadata = previous.get(entity.id)?.metadata;
+      if (metadata !== undefined) entity.metadata = structuredClone(metadata);
+    }
+  }
+  const previousScenarios = new Map(local.scenarios.map((scenario) => [scenario.id, scenario]));
+  for (const scenario of shared.scenarios) {
+    const previous = previousScenarios.get(scenario.id);
+    for (const collection of simulationMetadataCollections) {
+      const ids = new Set(shared[collection].map((entity) => entity.id));
+      for (const [id, patch] of Object.entries(previous?.overrides[collection] ?? {})) {
+        if (!ids.has(id) || !Object.hasOwn(patch, 'metadata')) continue;
+        const patches = (scenario.overrides[collection] ??= {}) as Record<
+          string,
+          { metadata?: unknown }
+        >;
+        (patches[id] ??= {}).metadata = structuredClone(patch.metadata);
+      }
+    }
+  }
+}
+const entity = (value: object, scope: CollaborationShareScope) =>
   Object.fromEntries(
-    Object.entries(value).filter(([key, value]) => !localClocks.has(key) && value !== undefined),
+    Object.entries(value).filter(
+      ([key, value]) =>
+        !localClocks.has(key) &&
+        value !== undefined &&
+        (scope.shareMetadata || key !== 'externalId'),
+    ),
   );
 const metadata = (value: Record<string, unknown>, scope: CollaborationShareScope, node = false) => {
   const result = structuredClone(
@@ -96,11 +157,23 @@ export function assertCollaborationFieldScope(
     } // The structural decoder rejects malformed paths.
     if (!Array.isArray(path) || path.some((part) => typeof part !== 'string')) continue;
     const [root, entityId, property, child] = path;
+    if (path.length && !sharedRoots.has(root)) fail();
     if (root === 'dataset' || root === 'datasets') {
       if (!scope.shareDatasets) fail();
     }
     if (root === 'owners' && path.length > 1 && !scope.shareOwners) fail();
+    if (
+      root === 'simulation' &&
+      !scope.shareMetadata &&
+      ((simulationMetadataRoots.has(entityId) && child === 'metadata') ||
+        (entityId === 'scenarios' &&
+          child === 'overrides' &&
+          simulationMetadataRoots.has(path[4]) &&
+          path[6] === 'metadata'))
+    )
+      fail();
     if (root === 'diagram') {
+      if (entityId === 'externalId' && !scope.shareMetadata) fail();
       if (['version', 'createdAt', 'updatedAt', 'favorite', 'folder'].includes(entityId)) fail();
       if (entityId === 'metadata' && path.length > 2 && !scope.shareMetadata) fail();
       if (
@@ -112,6 +185,7 @@ export function assertCollaborationFieldScope(
         fail();
     }
     if (['nodes', 'edges', 'owners'].includes(root)) {
+      if (property === 'externalId' && !scope.shareMetadata) fail();
       if (['version', 'createdAt', 'updatedAt'].includes(property)) fail();
       if (root === 'nodes' && !scope.shareOwners) {
         if (property === 'ownerId') fail();
@@ -148,7 +222,7 @@ export function assertCollaborationFieldScope(
 
 /** The CRDT contains this projection only, never the local workspace/setting tables. */
 export function sharedGraph(graph: Graph, scope: CollaborationShareScope): SharedGraph {
-  const diagram = entity(graph.diagram);
+  const diagram = entity(graph.diagram, scope);
   delete diagram.favorite;
   delete diagram.folder;
   diagram.metadata = scope.shareMetadata ? structuredClone(graph.diagram.metadata) : {};
@@ -160,7 +234,7 @@ export function sharedGraph(graph: Graph, scope: CollaborationShareScope): Share
     ),
   );
   const nodes = graph.nodes.map((node) => {
-    const value = entity(node);
+    const value = entity(node, scope);
     value.metadata = metadata(node.metadata, scope, true);
     if (!scope.shareOwners) {
       delete value.ownerId;
@@ -175,7 +249,7 @@ export function sharedGraph(graph: Graph, scope: CollaborationShareScope): Share
     ? graph.owners
         .filter((owner) => referencedOwners.has(owner.id))
         .map((owner) => ({
-          ...entity(owner),
+          ...entity(owner, scope),
           metadata: scope.shareMetadata ? owner.metadata : {},
         }))
     : [];
@@ -185,11 +259,11 @@ export function sharedGraph(graph: Graph, scope: CollaborationShareScope): Share
     diagram,
     nodes,
     edges: graph.edges.map((edge) => ({
-      ...entity(edge),
+      ...entity(edge, scope),
       metadata: metadata(edge.metadata, scope),
     })),
     owners,
-    ...(graph.simulation ? { simulation: graph.simulation } : {}),
+    ...(graph.simulation ? { simulation: scopedSimulation(graph.simulation, scope) } : {}),
     ...(scope.shareDatasets && graph.dataset ? { dataset: graph.dataset } : {}),
     ...(scope.shareDatasets && graph.datasets ? { datasets: graph.datasets } : {}),
   };
@@ -210,6 +284,13 @@ export function localGraph(
   const nodes = new Map(local.nodes.map((node) => [node.id, node]));
   const edges = new Map(local.edges.map((edge) => [edge.id, edge]));
   const owners = new Map(local.owners.map((owner) => [owner.id, owner]));
+  const restoreExternalId = (shared: object, previous?: object) => {
+    if (scope.shareMetadata) return;
+    const result = shared as { externalId?: unknown };
+    delete result.externalId;
+    const value = (previous as { externalId?: unknown } | undefined)?.externalId;
+    if (value !== undefined) result.externalId = structuredClone(value);
+  };
   const clocks = (value: { version: number; createdAt: string; updatedAt: string } | undefined) =>
     value
       ? { version: value.version, createdAt: value.createdAt, updatedAt: value.updatedAt }
@@ -227,12 +308,14 @@ export function localGraph(
       ...result.diagram.settings,
     },
   };
+  restoreExternalId(result.diagram, local.diagram);
   // Remove shared settings which were explicitly deleted, preserving private/custom settings.
   for (const key of [...sharedSettings, ...(scope.shareDatasets ? datasetSettings : [])])
     if (!(key in (shared.diagram as Graph['diagram']).settings))
       delete result.diagram.settings[key];
   result.nodes = result.nodes.map((node) => {
     const previous = nodes.get(node.id);
+    restoreExternalId(node, previous);
     const privateMetadata = previous ? structuredClone(previous.metadata) : {};
     delete privateMetadata.spatial;
     if (scope.shareDatasets) for (const key of csvMetadata) delete privateMetadata[key];
@@ -248,6 +331,7 @@ export function localGraph(
     };
   });
   result.edges = result.edges.map((edge) => {
+    restoreExternalId(edge, edges.get(edge.id));
     const privateMetadata = structuredClone(edges.get(edge.id)?.metadata ?? {});
     if (scope.shareDatasets) for (const key of csvMetadata) delete privateMetadata[key];
     return {
@@ -257,11 +341,25 @@ export function localGraph(
     };
   });
   result.owners = scope.shareOwners
-    ? result.owners.map((owner) => ({ ...owner, ...clocks(owners.get(owner.id)) }))
+    ? result.owners.map((owner) => {
+        const previous = owners.get(owner.id);
+        restoreExternalId(owner, previous);
+        return {
+          ...owner,
+          ...clocks(previous),
+          ...(!scope.shareMetadata && previous
+            ? { metadata: structuredClone(previous.metadata) }
+            : {}),
+        };
+      })
     : structuredClone(local.owners);
   if (!scope.shareDatasets) {
     if (local.dataset) result.dataset = local.dataset;
     if (local.datasets) result.datasets = local.datasets;
+  }
+  if (!scope.shareMetadata && result.simulation) {
+    result.simulation = scopedSimulation(result.simulation, scope);
+    if (local.simulation) restoreSimulationMetadata(result.simulation, local.simulation);
   }
   return result;
 }

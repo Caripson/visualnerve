@@ -3,17 +3,36 @@ import type {
   SignedCommand,
   SignedRoomPolicy,
   RoomMember,
+  PendingJoin,
 } from '../../../../collaboration-worker/src/protocol';
-import { canonical } from '../../../../collaboration-worker/src/protocol';
+import { admissionInput, canonical } from '../../../../collaboration-worker/src/protocol';
 import {
   signedPolicy,
   sameIdentity,
   record,
   decode,
   deviceId,
+  relayPayloadKind,
+  pendingJoin,
 } from '../../../../collaboration-worker/src/validation';
 import { relayLimits } from '../../../../collaboration-worker/src/protocol';
 import { credentialId, verifyTransportSignature } from './identity';
+
+/** The relay can forward public admissions, but cannot create or change them. */
+export async function verifyPendingJoin(input: unknown, roomId: string): Promise<PendingJoin> {
+  const request = pendingJoin(input);
+  if (
+    !(await verifyTransportSignature(
+      request,
+      'admission',
+      admissionInput(roomId, request, request.keyPackage, request.expiresAt),
+      request.admission.signature,
+    ))
+  )
+    throw new Error('The admission device identity or signature could not be verified.');
+  // Expiry may pass while WebCrypto is verifying the immutable snapshot.
+  return pendingJoin(request);
+}
 
 /** Server admission is not proof of identity. Every browser verifies the pinned owner. */
 export async function verifyRoomPolicy(
@@ -93,14 +112,11 @@ export async function verifyPeerCommand(
     'signature',
   ]);
   const body = record(command.body, ['kind', 'payloadKind', 'ciphertext'], ['recipient']);
-  if (
-    body.kind !== 'relay' ||
-    !['application', 'presence', 'snapshot', 'sync-request'].includes(String(body.payloadKind))
-  )
-    throw new Error('Unexpected peer command.');
+  if (body.kind !== 'relay') throw new Error('Unexpected peer command.');
+  const payloadKind = relayPayloadKind(body.payloadKind);
   decode(body.ciphertext, relayLimits.ciphertextBytes);
   if (body.recipient !== undefined) deviceId(body.recipient);
-  if (member.role === 'viewer' && !['presence', 'sync-request'].includes(String(body.payloadKind)))
+  if (member.role === 'viewer' && !['presence', 'sync-request'].includes(payloadKind))
     throw new Error('A read-only participant attempted to change the shared document.');
   const { signature, ...unsigned } = command;
   if (!(await verifyTransportSignature(member, 'command', unsigned, signature)))

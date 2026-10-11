@@ -1,5 +1,7 @@
 import type { CollaborationMessages } from './en';
 const messages = {
+  'collaboration.reviewNotice':
+    'La colaboración opcional no ha sido auditada de forma independiente. Revisa el diagrama antes de compartirlo; los participantes aprobados pueden conservar copias. Trabaja localmente si la información no debe salir de este navegador.',
   'collaboration.title': 'Colaboración en tiempo real',
   'collaboration.intro':
     'Trabaja con otras personas en un diagrama. El propietario aprueba cada dispositivo; el contenido se cifra entre los participantes.',

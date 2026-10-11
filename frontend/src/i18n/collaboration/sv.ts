@@ -1,5 +1,7 @@
 import type { CollaborationMessages } from './en';
 const messages = {
+  'collaboration.reviewNotice':
+    'Frivilligt samarbete har inte genomgått en oberoende säkerhetsrevision. Granska diagrammet före delning; godkända deltagare kan behålla kopior. Arbeta lokalt om informationen inte ska lämna denna webbläsare.',
   'collaboration.title': 'Samarbete i realtid',
   'collaboration.intro':
     'Arbeta tillsammans i ett diagram. Ägaren godkänner varje enhet; diagrammets innehåll krypteras mellan deltagarna.',

@@ -240,6 +240,7 @@ export function CollaborationPanel({
       className="collaboration-panel"
     >
       <p>{t('collaboration.intro')}</p>
+      <p className="collaboration-notice">{t('collaboration.reviewNotice')}</p>
       <div className={`collaboration-status status-${snapshot.status}`} role="status">
         <span
           className={`collaboration-dot ${snapshot.status === 'live' ? 'connected' : ''}`}

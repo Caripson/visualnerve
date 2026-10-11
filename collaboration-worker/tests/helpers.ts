@@ -3,8 +3,11 @@ import { expect } from "vitest";
 import { binaryHash, fingerprint } from "../src/auth";
 import {
   canonical,
+  admissionInput,
+  relayLimits,
   signingInput,
   type Authentication,
+  type AdmissionProof,
   type Challenge,
   type DeviceIdentity,
   type PolicyCommand,
@@ -51,7 +54,7 @@ export async function device(): Promise<Device> {
   };
 }
 export async function sign(
-  domain: "policy" | "authenticate" | "command",
+  domain: "policy" | "authenticate" | "command" | "admission",
   value: unknown,
   key: CryptoKey,
 ) {
@@ -70,6 +73,20 @@ export async function signed(
   owner: Device,
 ): Promise<SignedRoomPolicy> {
   return { policy, signature: await sign("policy", policy, owner.key) };
+}
+export async function admission(
+  roomId: string,
+  joining: Device,
+  expiresAt = Date.now() + relayLimits.pendingJoinMs,
+): Promise<AdmissionProof> {
+  return {
+    expiresAt,
+    signature: await sign(
+      "admission",
+      admissionInput(roomId, joining.identity, joining.keyPackage, expiresAt),
+      joining.key,
+    ),
+  };
 }
 export async function fetchRelay(
   path: string,
@@ -191,7 +208,9 @@ export class Client {
       this.waiters.push(waiter);
     });
   }
-  async authenticate(invitation?: string) {
+  async authentication(
+    invitation?: string,
+  ): Promise<Omit<Authentication, "signature">> {
     const value: Omit<Authentication, "signature"> = {
       type: "authenticate",
       protocol: 1,
@@ -199,8 +218,18 @@ export class Client {
       connectionId: this.challenge.connectionId,
       nonce: this.challenge.nonce,
       device: this.device.identity,
-      ...(invitation ? { invitation, keyPackage: this.device.keyPackage } : {}),
+      ...(invitation
+        ? {
+            invitation,
+            keyPackage: this.device.keyPackage,
+            admission: await admission(this.fixture.id, this.device),
+          }
+        : {}),
     };
+    return value;
+  }
+  async authenticate(invitation?: string) {
+    const value = await this.authentication(invitation);
     const frame = {
       ...value,
       signature: await sign("authenticate", value, this.device.key),

@@ -480,6 +480,36 @@ describe('collaboration controller lifecycle against the encrypted repository', 
     expect((await repo.getGraph(graph.diagram.id)).nodes[0].title).toBe('Saved offline local edit');
     expect(controller.getSnapshot().status).toBe('idle');
   });
+  it('rejects malformed peer presence before changes while retaining the live room', async () => {
+    const encoder = new TextEncoder();
+    await controller.create(graph.diagram.id, 'Owner', scope);
+    const room = opened.at(-1)!;
+    const peer: RoomMember = { ...room.device, deviceId: 'approved-viewer-peer', role: 'viewer' };
+    room.currentPolicy.policy.members.push(peer);
+    room.options.onPolicy(room.currentPolicy);
+    const before = controller.getSnapshot().participants;
+    for (const payload of [
+      new Uint8Array([255]),
+      encoder.encode(JSON.stringify({ name: 42, selectedNodeIds: [], actor: 'human' })),
+      encoder.encode(JSON.stringify({ name: 'Viewer', selectedNodeIds: [], actor: 'owner' })),
+    ]) {
+      await expect(room.options.onMessage('presence', payload, peer)).rejects.toMatchObject({
+        name: 'CollaborationPeerMessageError',
+      });
+      expect(controller.getSnapshot().participants).toEqual(before);
+      expect(controller.getSnapshot().status).toBe('live');
+      expect(room.dispose).not.toHaveBeenCalled();
+    }
+    await room.options.onMessage(
+      'presence',
+      encoder.encode(JSON.stringify({ name: 'Viewer', selectedNodeIds: [], actor: 'human' })),
+      peer,
+    );
+    expect(
+      controller.getSnapshot().participants.find((p) => p.deviceId === peer.deviceId)?.name,
+    ).toBe('Viewer');
+    expect(controller.getSnapshot().status).toBe('live');
+  });
   it('refreshes an accepted 9 MiB document under a new live epoch without freezing its room', async () => {
     const large = structuredClone(graph);
     large.nodes[0].description = 'x'.repeat(9 * 1024 * 1024);
@@ -509,9 +539,12 @@ describe('collaboration controller lifecycle against the encrypted repository', 
       plain.fill(0);
       bytes.fill(0);
     }
-    await expect(room.options.onMessage('sync', new Uint8Array([1, 128]), peer)).rejects.toThrow(
-      'envelope',
-    );
+    await expect(
+      room.options.onMessage('sync', new Uint8Array([1, 128]), peer),
+    ).rejects.toMatchObject({
+      name: 'CollaborationPeerMessageError',
+      message: expect.stringContaining('envelope'),
+    });
     expect(sent).toHaveLength(2);
     expect(room.dispose).not.toHaveBeenCalled();
     expect((await repo.getGraph(graph.diagram.id)).nodes[0].description).toHaveLength(

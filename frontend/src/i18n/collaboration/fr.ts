@@ -1,5 +1,7 @@
 import type { CollaborationMessages } from './en';
 const messages = {
+  'collaboration.reviewNotice':
+    'La collaboration facultative n’a pas fait l’objet d’un audit de sécurité indépendant. Vérifiez le diagramme avant de le partager ; les participants approuvés peuvent conserver des copies. Travaillez localement si les informations ne doivent pas quitter ce navigateur.',
   'collaboration.title': 'Collaboration en temps réel',
   'collaboration.intro':
     'Travaillez ensemble sur un diagramme. Le propriétaire approuve chaque appareil ; le contenu est chiffré entre les participants.',

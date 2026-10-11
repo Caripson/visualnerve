@@ -26,6 +26,7 @@ async function unavailable(page: Page) {
   const dialog = await containedDialog(page, 'Live collaboration');
   await expect(dialog).toContainText('The collaboration relay is not configured.');
   await expect(dialog).toContainText('Your local workspace works normally.');
+  await expect(dialog).toContainText('Optional collaboration has not been independently audited.');
   await expect(dialog.getByRole('button', { name: 'Start private room', exact: true })).toHaveCount(
     0,
   );
