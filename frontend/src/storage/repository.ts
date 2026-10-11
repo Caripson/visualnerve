@@ -56,6 +56,8 @@ import {
   isPresentationVoiceId,
 } from '../presentation/types';
 import type { AnalysisCommandOptions } from './analysis-commands';
+import type { AnalyticsJobAuthority } from './analytics-api-jobs';
+import { remapAnalytics } from '../analytics/remap';
 import { codeCapabilities } from '../code/capabilities';
 import { codeLanguages } from '../code/catalog';
 import { HistoryStore, historyStoreNames } from '../history/store';
@@ -79,6 +81,8 @@ import type { CollaborationActionContext } from '../collaboration/model/types';
 import { documentProfilePreference } from '../collaboration/profile-preference';
 
 export type CommandOptions = AnalysisCommandOptions & {
+  /** Retained original grant/vault lease for transient analysis jobs. */
+  analyticsJobAuthority?: () => Promise<AnalyticsJobAuthority>;
   /** Internal adapter context; never accepted from external request JSON. */
   collaborationContext?: CollaborationActionContext;
   /** Recheck external grants after queue waits and immediately before dispatch. */
@@ -206,8 +210,17 @@ export class Repository {
     beforeWrite?: (scope: WorkspaceStorage) => Promise<void>,
     projection?: SharedProjectionAuthority,
     changeBase?: Graph,
+    analyticsSignal?: AbortSignal,
   ): Promise<Graph> {
-    return this.persistGraph(input, expectedVersion, false, beforeWrite, projection, changeBase);
+    return this.persistGraph(
+      input,
+      expectedVersion,
+      false,
+      beforeWrite,
+      projection,
+      changeBase,
+      analyticsSignal,
+    );
   }
   private async persistGraph(
     input: Graph,
@@ -216,6 +229,7 @@ export class Repository {
     beforeWrite?: (scope: WorkspaceStorage) => Promise<void>,
     projection?: SharedProjectionAuthority,
     changeBase?: Graph,
+    analyticsSignal?: AbortSignal,
   ): Promise<Graph> {
     // Resolve optional modules before opening a native IndexedDB transaction.
     // Fetching a first-use chunk inside that transaction can commit it early.
@@ -235,6 +249,7 @@ export class Repository {
             beforeWrite,
             projection,
             changeBase,
+            analyticsSignal,
           ),
       );
     }
@@ -284,6 +299,7 @@ export class Repository {
         canonicalPositions,
         beforeWrite,
         projection,
+        analyticsSignal,
       );
       if (prepared && this.db.inTransaction)
         (this.db as import('./contracts').WorkspaceScope).afterCommit(() =>
@@ -302,8 +318,67 @@ export class Repository {
     canonicalPositions = false,
     beforeWrite?: (scope: WorkspaceStorage) => Promise<void>,
     projection?: SharedProjectionAuthority,
+    analyticsSignal?: AbortSignal,
   ): Promise<Graph> {
-    validateGraphFields(input);
+    // Worker validation must finish before a native transaction opens. Its
+    // independent result is private to this save and its original vault lease.
+    if (
+      input.diagram?.analytics !== undefined &&
+      !this.db.inTransaction &&
+      typeof Worker === 'function'
+    ) {
+      const operation = await this.db.captureOperation();
+      try {
+        await operation.check();
+        const { analyticsService } = await import('../analytics/service');
+        await operation.check();
+        const owned = await analyticsService.run(
+          { kind: 'validate', model: input.diagram.analytics },
+          {
+            signal: analyticsSignal
+              ? AbortSignal.any([operation.signal, analyticsSignal])
+              : operation.signal,
+            guard: async () => {
+              await operation.check();
+              analyticsSignal?.throwIfAborted();
+            },
+          },
+        );
+        await operation.check();
+        if (!('schemaVersion' in owned))
+          throw new StorageError(422, 'Analytics validation returned an invalid document.');
+        return await new Repository(operation.storage).commitGraph(
+          { ...input, diagram: { ...input.diagram, analytics: owned } },
+          expectedVersion,
+          canonicalPositions,
+          beforeWrite,
+          projection,
+          owned,
+        );
+      } catch (error) {
+        await operation.check();
+        throw error;
+      } finally {
+        operation.dispose();
+      }
+    }
+    return this.commitGraph(input, expectedVersion, canonicalPositions, beforeWrite, projection);
+  }
+  private async commitGraph(
+    input: Graph,
+    expectedVersion?: number,
+    canonicalPositions = false,
+    beforeWrite?: (scope: WorkspaceStorage) => Promise<void>,
+    projection?: SharedProjectionAuthority,
+    ownedAnalytics?: Graph['diagram']['analytics'],
+  ): Promise<Graph> {
+    // Only this exact worker-owned payload has already passed strict validation.
+    // Public validators and transaction-scoped saves keep their normal checks.
+    const validationView = (graph: Graph): Graph =>
+      ownedAnalytics !== undefined && graph.diagram.analytics === ownedAnalytics
+        ? { ...graph, diagram: { ...graph.diagram, analytics: undefined } }
+        : graph;
+    validateGraphFields(validationView(input));
     const saved = await this.db.atomic(
       'rw',
       [
@@ -349,7 +424,7 @@ export class Repository {
         const oldSources = new Map(
           (old ? graphDatasets(old) : []).map((source) => [source.id, source]),
         );
-        validateGraph(graph, [...oldSources.values()]);
+        validateGraph(validationView(graph), [...oldSources.values()]);
         const stamped = [] as typeof sources;
         for (const source of sources) {
           if (!oldSources.has(source.id)) {
@@ -547,6 +622,12 @@ export class Repository {
           Object.assign(graph, collaboration.remapGraphCollaboration(graph, { nodeIds, edgeIds }));
         if (graph.simulation)
           graph.simulation = remapSimulationModel(graph.simulation, nodeIds, edgeIds);
+        if (graph.diagram.analytics && collision)
+          graph.diagram.analytics = remapAnalytics(
+            graph.diagram.analytics,
+            nodeIds,
+            new Map([[source.diagram.id, graph.diagram.id]]),
+          );
         if (graph.diagram.settings.csvSuppressedRelationshipEdges)
           graph.diagram.settings.csvSuppressedRelationshipEdges =
             graph.diagram.settings.csvSuppressedRelationshipEdges.map((id) =>
@@ -977,6 +1058,14 @@ export class Repository {
       if (!read) throw new StorageError(405, 'Simulation capabilities require GET.');
       return structuredClone(simulationCapabilities) as T;
     }
+    if (collection === 'analytics') {
+      if (parts.length !== 2 || id !== 'capabilities' || url.search || url.hash)
+        throw new StorageError(404, 'Unknown analytics discovery endpoint.');
+      if (!read) throw new StorageError(405, 'Analytics capabilities require GET.');
+      const { analyticsCapabilities } = await import('../analytics/capabilities');
+      await this.commandReady(options);
+      return structuredClone(analyticsCapabilities) as T;
+    }
     if (method === 'POST' && ['diagram-files', 'sql', 'code', 'import'].includes(collection)) {
       const limits = await this.db.atomic('r', ['settings'], async (scope) => {
         const setting = await scope.settings.get(IMPORT_LIMIT_SETTING);
@@ -1183,6 +1272,37 @@ export class Repository {
       return (await exportCommand(graph, data, exportGuard)) as T;
     }
     if (collection === 'diagrams') {
+      if (id && action === 'analytics') {
+        const { analyticsCommand } = await loadOptionalCommand('analytics');
+        await this.commandReady(options);
+        const limit = await this.db.settings.get(IMPORT_LIMIT_SETTING);
+        return (await analyticsCommand(
+          {
+            getGraph: (key) => this.getGraph(key),
+            saveGraph: (graph, version, beforeWrite) =>
+              this.saveGraph(
+                graph,
+                version,
+                writeGuards(options.beforeWrite, beforeWrite),
+                undefined,
+                undefined,
+                options.signal,
+              ),
+          },
+          id,
+          parts,
+          url,
+          method,
+          payload,
+          {
+            signal: options.signal,
+            byteLimit: importLimitMb(limit?.value) * 1024 * 1024,
+            authorize: options.beforeRequest,
+            beforeWrite: options.beforeWrite,
+            createAuthority: options.analyticsJobAuthority,
+          },
+        )) as T;
+      }
       if (id && action === 'collaboration' && ['document', 'actions'].includes(parts[3])) {
         const { CollaborationDocumentCommands } = await import('../collaboration/document-api');
         await this.commandReady(options);
@@ -1232,16 +1352,58 @@ export class Repository {
       if (!id) {
         if (read) {
           const diagrams = await this.db.diagrams.orderBy('updatedAt').reverse().toArray();
+          if (url.searchParams.has('analytics')) {
+            if (
+              url.searchParams.get('analytics') !== 'true' ||
+              url.searchParams.getAll('analytics').length !== 1
+            )
+              throw new StorageError(422, 'Analytics discovery uses analytics=true.');
+            return diagrams
+              .filter((diagram) => !!diagram.analytics)
+              .map(({ analytics, ...diagram }) => ({
+                ...diagram,
+                analyticsSummary: {
+                  schemaVersion: analytics!.schemaVersion,
+                  engineVersion: analytics!.engineVersion,
+                  datasets: analytics!.datasets.length,
+                  series: analytics!.series.length,
+                },
+              })) as T;
+          }
           const type = url.searchParams.get('type');
           if (type !== null && !diagramTypes.includes(type as Diagram['type']))
             throw new StorageError(422, 'Choose a supported diagram type.');
           return (type ? diagrams.filter((diagram) => diagram.type === type) : diagrams) as T;
         }
-        const data = object(payload),
-          graph =
-            data.type === 'process-simulator'
-              ? createSimulationGraph(data.name as string)
-              : blankGraph(data.name as string, (data.type ?? 'blank') as Diagram['type']);
+        const data = object(payload);
+        if (data.template !== undefined) {
+          if (
+            data.template !== 'time-series-analysis' ||
+            !['example', 'import'].includes(String(data.mode ?? 'example'))
+          )
+            throw new StorageError(
+              422,
+              'Use the time-series-analysis template with example or import mode.',
+            );
+          const { instantiate } = await import('../templates/templates');
+          const graph = instantiate('time-series-analysis', data.name as string);
+          if (data.mode !== 'import') {
+            const { createAnalyticsExample } = await import('../analytics/example');
+            graph.diagram.analytics = remapAnalytics(await createAnalyticsExample(options.signal));
+          }
+          await this.commandReady(options);
+          const { template: _template, mode: _mode, ...fields } = data;
+          graph.diagram = {
+            ...graph.diagram,
+            ...fields,
+            analytics: graph.diagram.analytics,
+          } as Diagram;
+          return (await this.saveGraph(graph, 0, options.beforeWrite)).diagram as T;
+        }
+        const graph =
+          data.type === 'process-simulator'
+            ? createSimulationGraph(data.name as string)
+            : blankGraph(data.name as string, (data.type ?? 'blank') as Diagram['type']);
         graph.diagram = { ...graph.diagram, ...data } as Diagram;
         return (await this.saveGraph(graph, 0, options.beforeWrite)).diagram as T;
       }
@@ -1300,12 +1462,27 @@ export class Repository {
           );
         const preserved = {
           ...graph,
-          diagram: { ...graph.diagram, collaboration: current.diagram.collaboration },
+          diagram: {
+            ...graph.diagram,
+            collaboration: current.diagram.collaboration,
+            analytics: current.diagram.analytics,
+          },
         };
+        if (
+          graph.diagram.analytics !== undefined &&
+          JSON.stringify(graph.diagram.analytics) !== JSON.stringify(current.diagram.analytics)
+        )
+          throw new StorageError(
+            422,
+            'Use versioned analytics commands to update time-series content.',
+          );
         return (await this.saveGraph(
           preserved,
           data.baseVersion as number,
           options.beforeWrite,
+          undefined,
+          undefined,
+          options.signal,
         )) as T;
       }
       if (action === 'bulk')
@@ -1342,6 +1519,11 @@ export class Repository {
             return saved.edges.find((value) => value.id === edge.id) as T;
           }
           requireVersion(version, data.version);
+          if (Object.hasOwn(data, 'analytics'))
+            throw new StorageError(
+              422,
+              'Use versioned analytics commands to change time-series content.',
+            );
           if (Object.hasOwn(data, 'collaboration'))
             throw new StorageError(
               422,

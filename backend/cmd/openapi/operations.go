@@ -59,7 +59,7 @@ func addOperationPaths(add func(string, string, string, string, string, string),
 	}
 	health := schemas["Health"].(object)["properties"].(object)
 	health["tools"] = object{"type": "array", "items": object{"type": "string"}, "description": "MCP tool names provided by this bridge, currently visual_nerve_request and visual_nerve_api_docs."}
-	health["capabilities"] = object{"type": "array", "items": object{"type": "string"}, "description": "Supported bridge capabilities. Version 0.8.1 advertises operations-v1, endpoint-docs-v1, fork-join-v1, async-svg-export-v1, exchange-export-v1, collaboration-v1 and collaboration-document-v1; this is software discovery, not permission or workspace status."}
+	health["capabilities"] = object{"type": "array", "items": object{"type": "string"}, "description": "Supported bridge capabilities. Version 0.8.2 advertises operations-v1, endpoint-docs-v1, fork-join-v1, async-svg-export-v1, exchange-export-v1, collaboration-v1, collaboration-document-v1 and analytics-v1; this is software discovery, not permission or workspace status."}
 	for path, raw := range paths {
 		for method, raw := range raw.(object) {
 			op := raw.(object)

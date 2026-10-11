@@ -26,6 +26,15 @@ interface Command {
 }
 export function bridgeResponseStatus(path: string, method: string): number {
   const endpoint = path.replace(/^\/api\/v1/, '');
+  if (/^\/diagrams\/[^/]+\/analytics\/jobs\/[^/]+$/.test(endpoint) && method === 'DELETE')
+    return 200;
+  if (
+    method === 'POST' &&
+    /^\/diagrams\/[^/]+\/analytics\/(datasets|series|charts|indicators|measurements|rules|backtests|scenarios|jobs)$/.test(
+      endpoint,
+    )
+  )
+    return 201;
   return method === 'DELETE' &&
     endpoint !== '/presentation/video' &&
     !/^\/exports\/(svg|diagrams)\/[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(

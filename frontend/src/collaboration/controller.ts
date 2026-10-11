@@ -13,6 +13,7 @@ import { validateGraph } from '../model/validation';
 import type { CollaborationSnapshot, CollaborationUiController } from './types';
 import {
   defaultCollaborationShareScope,
+  sharedGraph,
   localGraph,
   type CollaborationShareScope,
   type SharedGraph,
@@ -255,6 +256,7 @@ export class CollaborationController implements CollaborationUiController {
       check();
       // Choosing a retained profile never substitutes for fresh device approval.
       let ownerGraph = await this.options.workspace.repo.getGraph(diagramId);
+      sharedGraph(ownerGraph, scope);
       const preference = await this.options.workspace.repo.db.settings.get(
         documentProfilePreference(diagramId),
       );
@@ -297,6 +299,7 @@ export class CollaborationController implements CollaborationUiController {
       const graph = await this.options.workspace.repo.getGraph(diagramId);
       check();
       validateGraph(graph);
+      sharedGraph(graph, this.snapshot.scope);
       const roomId = crypto.randomUUID();
       this.update({ roomId });
       const room = await EncryptedRoom.open(this.roomOptions(roomId, diagramId));

@@ -2,6 +2,7 @@ import { assertVoiceId, normalizeVoiceId, VOICE_SETTING } from '../presentation/
 import { VOICE_CHANGED } from '../presentation/speech/voice-events';
 import { workspaceStoreNames, type WorkspaceOperation, type WorkspaceStorage } from './contracts';
 import { useEditor } from '../state/editor';
+import { clearAnalyticsIfLoaded } from '../analytics/lifecycle';
 import { diffGraph } from '../state/history';
 import { ownersFor, type Graph } from '../model/types';
 import { graphDatasets } from '../data/model';
@@ -132,6 +133,23 @@ function mutatesDocument(path: string, method: string) {
   if (['nodes', 'edges', 'owners'].includes(collection)) return true;
   if (collection !== 'diagrams' || !id) return false;
   if (action === 'simulation' && ['runs', 'compare'].includes(entity)) return false;
+  if (
+    action === 'analytics' &&
+    ([
+      'query',
+      'measure',
+      'indicator',
+      'waterfall',
+      'evaluate',
+      'validate',
+      'project',
+      'compare',
+      'export',
+    ].includes(entity) ||
+      (entity === 'import' && ['preview', 'inspect'].includes(operation)) ||
+      (entity === 'jobs' && operation !== 'archive' && !path.includes('/archive')))
+  )
+    return false;
   if (['questions', 'build-brief', 'evidence'].includes(action)) return false;
   if (action === 'history') return !!entity && operation === 'restore' && method === 'POST';
   return true;
@@ -337,6 +355,7 @@ export class Workspace {
     });
   }
   stop() {
+    clearAnalyticsIfLoaded();
     this.lifecycle++;
     this.navigation++;
     this.stopped = true;
@@ -865,6 +884,7 @@ export class Workspace {
       .split('/')
       .filter(Boolean);
     const value = result as Partial<Graph> & {
+      baseVersion?: number;
       diagramId?: string;
       id?: string;
       version?: number;
@@ -872,6 +892,20 @@ export class Workspace {
       sourceNodeId?: unknown;
       targetNodeId?: unknown;
     };
+    if (
+      parts[0] === 'diagrams' &&
+      parts[1] === before.diagram.id &&
+      parts[2] === 'analytics' &&
+      method !== 'GET' &&
+      value?.diagramId === before.diagram.id &&
+      typeof value.baseVersion === 'number' &&
+      value.baseVersion > before.diagram.version
+    ) {
+      const graph = await repo.getGraph(before.diagram.id);
+      if (graph.diagram.version < value.baseVersion)
+        throw new StorageError(409, 'Analytics acknowledgement is ahead of the saved document.');
+      return graph;
+    }
     if (
       parts[0] === 'diagrams' &&
       parts[1] === before.diagram.id &&
@@ -1070,7 +1104,11 @@ export class Workspace {
     for (const authority of this.externalSvgJobs) authority.cancel();
     this.externalSvgJobs.clear();
   }
-  private async svgAuthority(accessChoice: number, lifecycle: number) {
+  private async svgAuthority(
+    accessChoice: number,
+    lifecycle: number,
+    authorityPath = '/exports/svg',
+  ) {
     // A child of the transient POST operation would be revoked when that response ends.
     // Capture the root storage lease and retain its original vault session instead.
     const operation = await this.repo.db.captureOperation();
@@ -1079,7 +1117,7 @@ export class Workspace {
       this.assertLifecycle(lifecycle);
       if (!useEditor.getState().privacyAcknowledged)
         throw new StorageError(403, 'Accept local storage before using the workspace.');
-      assertMcpAccess(this.mcpGrant(useEditor.getState().mcpAccess), '/exports/svg', 'POST');
+      assertMcpAccess(this.mcpGrant(useEditor.getState().mcpAccess), authorityPath, 'POST');
     };
     const authority = new ExternalSvgAuthority(
       operation,
@@ -1087,7 +1125,7 @@ export class Workspace {
       async (storage) => {
         await this.requireStorageConsent(storage);
         const permission = await storage.settings.get('mcp-access');
-        assertMcpAccess(mcpAccess(permission?.value), '/exports/svg', 'POST');
+        assertMcpAccess(mcpAccess(permission?.value), authorityPath, 'POST');
       },
       () => this.externalSvgJobs.delete(authority),
     );
@@ -1293,7 +1331,8 @@ export class Workspace {
         '/code/project/diagrams',
         '/diagram-files/preview',
       ].includes(endpoint) ||
-        diagramFile);
+        diagramFile ||
+        /^\/diagrams\/[^/]+\/analytics(?:\/|$)/.test(endpoint));
     const controller = analysis ? new AbortController() : undefined;
     if (controller) this.analysisCommands.add(controller);
     const unsubscribe = controller
@@ -1301,6 +1340,8 @@ export class Workspace {
           if (
             !state.privacyAcknowledged ||
             state.mcpAccess === 'off' ||
+            accessChoice !== this.accessChoice ||
+            job.lifecycle !== this.lifecycle ||
             ((endpoint.endsWith('/diagrams') || diagramFile) && state.mcpAccess !== 'write')
           )
             controller.abort();
@@ -1316,6 +1357,7 @@ export class Workspace {
           beforeRequest: authorize,
           beforeWrite: authorize,
           beforeHistoryWrite: authorize,
+          analyticsJobAuthority: () => this.svgAuthority(accessChoice, job.lifecycle, endpoint),
           beforeAnalysisSave: analysis
             ? async () => {
                 await operation.check();

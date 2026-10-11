@@ -30,6 +30,16 @@ Displaying fewer groups does not reduce the rows used in a measure. The current 
 
 [Explore CSV data](/help/csv/) · [Connect and refresh sources](/help/connected-data/)
 
+## Measure history and investigate signals
+
+**Time Series & Signal Analysis** follows Import → Explore → Measure → Detect → Validate → Simulate. Map local CSV, XLSX or JSON data, preserve gaps and units, and explore line, area, bar, valid OHLC and reconciled waterfall views.
+
+Measure changes and intervals, fit a regression, compare periods or calculate correlation. Configure signal rules with visible thresholds and causal baselines, inspect their evidence, and replay them against chronological history in Signal Lab. Explicit outcomes are required for predictive accuracy metrics.
+
+Compare reviewed Growth & Churn assumptions over the same future horizon. Observed history stays separate from scenario projections; a scenario range is not a statistical confidence interval. The packaged example uses five years of illustrative, reconciled customer and MRC data.
+
+[Explore the template](https://app.visualnerve.com/?demo=time-series-analysis) · [Follow the analysis guide](/help/time-series-analysis/)
+
 ## Read SQL and source code as connected structure
 
 SQL SELECT and WITH queries reveal source aliases, joins, output expressions and column lineage. Table definitions reveal columns, keys and foreign-key relationships. SQL is analyzed locally and never executed.

@@ -44,3 +44,7 @@ implementation, supported contracts and operation of the project.
 Verification records describe the revisions and environments actually tested.
 They are not blanket performance guarantees. The feature guides document current
 input limits, experimental settings and browser constraints.
+
+- [Time Series & Signal Analysis](TIME_SERIES_ANALYSIS.md) — semantic extension, engine, storage, permissions and bounds.
+- [Analytics methods](ANALYTICS_METHODS.md) — numerical definitions and causal validation.
+- [Analytics acceptance evidence](ANALYTICS_IMPLEMENTATION.md) — tests, benchmark and delivery scope.

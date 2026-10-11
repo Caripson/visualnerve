@@ -76,3 +76,7 @@ Import/restore ─┘
 ```
 
 Complete backup is a deliberate download. Merge retains current projects; Replace and global deletion each require explicit confirmation. Deployment uploads only allowlisted application files; CloudFront has GET/HEAD access and S3 has no browser upload permission. See [storage](docs/STORAGE.md), [privacy](docs/PRIVACY.md) and [deployment](docs/DEPLOYMENT.md).
+
+## Time Series & Signal Analysis
+
+The `time-series-analysis` template uses a versioned `Diagram.analytics` extension within the existing encrypted document. A lazy quantitative workspace and the local API/MCP call the same deterministic worker/numeric engine. Observations, measurements, causal signal episodes, chronological validation and assumption-based scenarios stay separate. Immutable archives retain their actual input snapshots. No new persistent store or mandatory backend is introduced. See [analytics architecture and bounds](docs/TIME_SERIES_ANALYSIS.md).

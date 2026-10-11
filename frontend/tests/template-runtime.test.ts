@@ -4,8 +4,18 @@ import { workspaceStorage } from '../src/storage/runtime';
 import { workspace } from '../src/storage/workspace';
 import { blankGraph, newNode } from '../src/model/types';
 
+const storage = vi.hoisted(() => {
+  const templates = { get: vi.fn() };
+  const operation = {
+    storage: { templates },
+    check: vi.fn(),
+    dispose: vi.fn(),
+    signal: new AbortController().signal,
+  };
+  return { templates, operation, captureOperation: vi.fn() };
+});
 vi.mock('../src/storage/runtime', () => ({
-  workspaceStorage: { templates: { get: vi.fn() } },
+  workspaceStorage: { templates: storage.templates, captureOperation: storage.captureOperation },
 }));
 vi.mock('../src/storage/workspace', () => ({ workspace: { create: vi.fn() } }));
 vi.mock('../src/storage/database', () => {
@@ -13,6 +23,9 @@ vi.mock('../src/storage/database', () => {
 });
 
 beforeEach(() => {
+  storage.captureOperation.mockReset().mockResolvedValue(storage.operation);
+  storage.operation.check.mockReset().mockResolvedValue(undefined);
+  storage.operation.dispose.mockReset();
   vi.mocked(workspaceStorage.templates.get).mockReset().mockResolvedValue(undefined);
   vi.mocked(workspace.create).mockReset().mockResolvedValue(undefined);
 });
@@ -52,6 +65,7 @@ describe('template creation through the selected workspace backend', () => {
         diagram: expect.objectContaining({ name: 'My process', type: 'process-simulator' }),
         simulation: expect.objectContaining({ schemaVersion: 1, nodes: [], edges: [] }),
       }),
+      storage.operation,
     );
   });
 
@@ -61,5 +75,17 @@ describe('template creation through the selected workspace backend', () => {
       'Workspace is locked.',
     );
     expect(workspace.create).not.toHaveBeenCalled();
+    expect(storage.operation.dispose).toHaveBeenCalledOnce();
+  });
+
+  it('does not publish a template if its originating unlock was revoked during preparation', async () => {
+    storage.operation.check
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('Workspace is locked.'));
+    await expect(createTemplateDiagram('mind-map', 'Revoked prepared diagram')).rejects.toThrow(
+      'Workspace is locked.',
+    );
+    expect(workspace.create).not.toHaveBeenCalled();
+    expect(storage.operation.dispose).toHaveBeenCalledOnce();
   });
 });

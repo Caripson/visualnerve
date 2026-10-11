@@ -95,3 +95,6 @@ These entry points keep earlier links and bookmarks useful.
 
 ### Present scenes and review an app specification
 [Storyboard scenes](/help/presentations/) and [Lovable specification review](/help/sharing/).
+
+### Time Series & Signal Analysis
+[Import history, measure change, inspect signals and compare what-if scenarios](/help/time-series-analysis/).

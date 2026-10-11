@@ -119,3 +119,7 @@ The encrypted physical vault permits a dedicated `collaboration` namespace, whil
 Shared graph mutations and private CRDT/outbox state use the same original vault journal and durable revision fence. A failed validation/save rolls back staged records; publication occurs only after commit. No independent nested journal is acquired from a repository graph transaction. The original session remains revocable while queued or executing; later unlock does not revive a write.
 
 Temporary network reconnect preserves the same unlocked live MLS device. Reload or lock/unlock creates a fresh device requiring owner approval; owner reload requires a new room. Saved room associations are not admission authority. Local cameras/view filters, folders/favorites and version timestamps remain local; referenced owners, metadata/source evidence and raw datasets share only under the explicit room scope. See [collaboration contract](../API.md#optional-realtime-collaboration).
+
+## Time-series analytics
+
+The optional `Diagram.analytics` extension uses the existing encrypted Diagram record and a separate chunkable payload field. It introduces no new store or workspace-schema migration. Native JSON/full backups include bounded retained analysis inputs. Lock/transfer/app teardown clear loaded analysis jobs through a thin lifecycle hook; API jobs retain the original grant/vault lease. See [analytics storage/compatibility](TIME_SERIES_ANALYSIS.md#persistence-and-compatibility).

@@ -1,0 +1,22 @@
+<section id="time-series" class="home-section section-width analytics-section">
+  <div class="analytics-product-copy">
+    <p class="eyebrow">TIME SERIES &amp; SIGNAL ANALYSIS</p>
+    <h2>Turn data into signals</h2>
+    <p class="analytics-product-intro">Measure change. Spot patterns. Explore what could happen next.</p>
+    <p>Import growth, churn, revenue, or other time-series data. Measure changes directly in your charts, define signal rules, review historical results, and compare what-if scenarios.</p>
+    <p>Work visually without AI, or connect your own tools through the local API and MCP bridge.</p>
+    <div class="site-actions"><a class="site-button" href="{{ partial "workspace-url.html" . }}?demo=time-series-analysis">Explore the template <span aria-hidden="true">↗</span></a><a class="site-text-link" href="/help/time-series-analysis/">Read the guide →</a></div>
+    <p><a class="site-text-link" href="/developers/#time-series-analysis">API &amp; MCP documentation →</a></p>
+    <p class="demo-note">The template opens after local storage consent and workspace unlock. The example is illustrative; scenarios describe assumptions, not guaranteed forecasts.</p>
+  </div>
+  <svg class="analytics-illustration" width="640" height="400" viewBox="0 0 640 400" role="img" aria-labelledby="analytics-illustration-title" focusable="false">
+    <title id="analytics-illustration-title">A time series with a data-anchored measurement, threshold and signal marker</title>
+    <g class="analytics-grid" fill="none" stroke-width="1"><path d="M44 72H610M44 142H610M44 212H610M44 282H610M44 352H610M100 52V352M220 52V352M340 52V352M460 52V352M580 52V352"/></g>
+    <path class="analytics-axis" d="M44 52V352H610" fill="none" stroke-width="2"/>
+    <path class="analytics-threshold" d="M44 164H610" fill="none" stroke-width="2" stroke-dasharray="8 7"/>
+    <path class="analytics-series" d="M52 292L80 277L108 284L136 254L164 267L192 241L220 252L248 223L276 233L304 206L332 212L360 184L388 190L416 173L444 140L472 150L500 113L528 126L556 93L584 105L610 77" fill="none" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+    <g class="analytics-measure" fill="none" stroke-width="2"><path d="M136 254V320H416V173M131 320H141M411 320H421"/><circle cx="136" cy="254" r="6"/><circle cx="416" cy="173" r="6"/></g>
+    <g class="analytics-signal"><path d="M444 119L457 140L444 161L431 140Z"/><circle cx="444" cy="140" r="29" fill="none" stroke-width="2"/></g>
+    <path class="analytics-scenario" d="M444 140Q524 138 610 145M444 140Q524 80 610 37" fill="none" stroke-width="3" stroke-dasharray="5 7"/>
+  </svg>
+</section>

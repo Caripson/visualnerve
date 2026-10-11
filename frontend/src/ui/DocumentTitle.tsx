@@ -104,7 +104,11 @@ export function DocumentTitle() {
           </button>
         </h1>
       )}
-      <span className="mode-badge">{diagramModeLabel(t, graph.diagram.type)}</span>
+      <span className="mode-badge">
+        {graph.diagram.analytics
+          ? 'Time Series & Signal Analysis'
+          : diagramModeLabel(t, graph.diagram.type)}
+      </span>
     </div>
   );
 }

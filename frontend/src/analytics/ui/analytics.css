@@ -1,0 +1,497 @@
+.analytics-workspace {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: var(--canvas);
+  color: var(--text);
+  padding: 22px clamp(12px, 2vw, 28px) 40px;
+}
+.analytics-workspace h1,
+.analytics-workspace h2,
+.analytics-workspace h3,
+.analytics-import h3 {
+  margin: 0 0 12px;
+  line-height: 1.25;
+}
+.analytics-workspace h1 {
+  font-size: clamp(21px, 2vw, 28px);
+}
+.analytics-workspace h2 {
+  font-size: 19px;
+}
+.analytics-workspace h3 {
+  font-size: 15px;
+}
+.analytics-workspace p,
+.analytics-import p {
+  line-height: 1.65;
+  margin: 8px 0 16px;
+}
+.analytics-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.analytics-kicker {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.analytics-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin: 0 0 20px;
+  padding: 4px 2px 10px;
+  scrollbar-width: thin;
+}
+.analytics-tabs button {
+  flex: 0 0 auto;
+  min-height: 42px;
+  border-radius: 9px;
+  padding: 9px 14px;
+  font-weight: 600;
+}
+.analytics-tabs button[aria-selected='true'] {
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.analytics-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: clamp(14px, 2vw, 22px);
+  min-width: 0;
+  margin-bottom: 16px;
+}
+.analytics-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 16px;
+}
+.analytics-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 14px;
+  align-items: end;
+}
+.analytics-workspace label,
+.analytics-import label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  line-height: 1.4;
+  font-size: 12px;
+  color: var(--muted);
+  min-width: 0;
+}
+.analytics-workspace input,
+.analytics-workspace select,
+.analytics-workspace textarea,
+.analytics-import input,
+.analytics-import select,
+.analytics-import textarea {
+  min-height: 42px;
+  width: 100%;
+  border-radius: 8px;
+  padding: 9px 11px;
+}
+.analytics-workspace button,
+.analytics-import button {
+  min-height: 44px;
+}
+.analytics-workspace fieldset,
+.analytics-import fieldset {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  margin: 16px 0;
+  min-width: 0;
+}
+.analytics-workspace legend,
+.analytics-import legend {
+  padding: 0 6px;
+  font-weight: 600;
+}
+.analytics-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.analytics-note {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 13px 16px;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.analytics-error {
+  color: var(--danger);
+  border-color: currentColor;
+}
+.analytics-success {
+  color: var(--accent);
+}
+.analytics-table-scroll {
+  overflow-x: auto;
+  max-height: 400px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+}
+.analytics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.analytics-table th {
+  text-align: left;
+  position: sticky;
+  top: 0;
+  background: var(--surface-alt);
+  color: var(--muted);
+  font-weight: 600;
+}
+.analytics-table th,
+.analytics-table td {
+  padding: 11px 13px;
+  border-bottom: 1px solid var(--border);
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.analytics-table tr:last-child td {
+  border-bottom: 0;
+}
+.analytics-table td.analytics-wrap {
+  white-space: normal;
+  min-width: 160px;
+}
+.analytics-empty {
+  text-align: center;
+  max-width: 720px;
+  margin: 38px auto;
+  padding: 32px 24px;
+}
+.analytics-empty svg {
+  color: var(--accent);
+  margin-bottom: 18px;
+}
+.analytics-example-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  padding: 5px 9px;
+  border-radius: 30px;
+}
+.analytics-chart {
+  width: 100%;
+  display: block;
+  height: auto;
+  overflow: visible;
+  touch-action: none;
+  user-select: none;
+}
+.analytics-chart-grid {
+  stroke: var(--grid);
+  stroke-width: 1;
+}
+.analytics-chart text {
+  fill: var(--muted);
+  font-size: 11px;
+  font-family: inherit;
+}
+.analytics-chart-shell {
+  position: relative;
+  min-width: 0;
+}
+.analytics-chart-readout {
+  min-height: 54px;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  padding: 12px 0 0;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.analytics-chart-readout strong {
+  color: var(--text);
+}
+.analytics-chart-toolbar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: 14px;
+}
+.analytics-chart-toolbar label {
+  min-width: 130px;
+  max-width: 240px;
+}
+.analytics-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: 30px;
+  font-size: 11px;
+}
+.analytics-series-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin: 12px 0;
+}
+.analytics-series-options label {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  border: 1px solid var(--border);
+  padding: 8px 11px;
+  border-radius: 9px;
+}
+.analytics-series-options input[type='checkbox'] {
+  width: 16px;
+  min-height: 16px;
+  margin: 0;
+}
+.analytics-color-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.analytics-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
+  gap: 12px;
+  margin: 15px 0;
+}
+.analytics-stat {
+  padding: 12px;
+  border-radius: 9px;
+  background: var(--surface-alt);
+  font-size: 12px;
+}
+.analytics-stat strong {
+  display: block;
+  font-size: 18px;
+  margin-top: 7px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.analytics-choice {
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+.analytics-choice strong {
+  font-size: 16px;
+}
+.analytics-choice span {
+  color: var(--muted);
+  line-height: 1.6;
+}
+.analytics-rule-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+  border-left: 3px solid var(--accent);
+  padding: 12px;
+  background: var(--surface-alt);
+  border-radius: 0 9px 9px 0;
+  margin: 12px 0;
+}
+.analytics-rule-row label {
+  flex: 1;
+  min-width: 140px;
+}
+.analytics-rule-tree {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  margin-top: 10px;
+}
+.analytics-rule-tree > .analytics-rule-tree {
+  margin-left: 14px;
+}
+.analytics-results {
+  overflow-wrap: anywhere;
+}
+.analytics-results pre {
+  max-height: 360px;
+  overflow: auto;
+  padding: 15px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  white-space: pre-wrap;
+  font-size: 11px;
+}
+.analytics-import-drop {
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 26px 18px;
+  text-align: center;
+  background: var(--surface-alt);
+  margin-bottom: 18px;
+}
+.analytics-import-drop input {
+  display: block;
+  max-width: 420px;
+  margin: 14px auto 0;
+}
+.analytics-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0;
+}
+.analytics-progress progress {
+  flex: 1;
+  height: 10px;
+  accent-color: var(--accent);
+}
+.analytics-signal-item {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin: 10px 0;
+}
+.analytics-signal-item strong {
+  font-size: 13px;
+}
+.analytics-signal-item p {
+  font-size: 12px;
+  margin: 8px 0;
+}
+.analytics-link {
+  color: var(--accent);
+}
+@media (max-width: 600px) {
+  .analytics-workspace {
+    padding-top: 16px;
+  }
+  .analytics-heading {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .analytics-heading p {
+    margin-bottom: 8px;
+  }
+  .analytics-tabs {
+    gap: 4px;
+    margin-bottom: 12px;
+  }
+  .analytics-tabs button {
+    padding: 9px 11px;
+    font-size: 11px;
+  }
+  .analytics-panel-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .analytics-chart-toolbar label {
+    max-width: none;
+    flex: 1;
+    min-width: 125px;
+  }
+  .analytics-fields {
+    grid-template-columns: 1fr;
+  }
+  .analytics-chart-readout {
+    gap: 8px 14px;
+  }
+  .analytics-empty {
+    margin: 10px auto;
+    padding: 24px 12px;
+  }
+  .analytics-rule-row label {
+    min-width: 100%;
+  }
+  .analytics-rule-tree > .analytics-rule-tree {
+    margin-left: 5px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .analytics-workspace *,
+  .analytics-import * {
+    scroll-behavior: auto;
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.analytics-process-link {
+  margin: 20px 0;
+  border: 1px solid var(--border);
+  padding: 16px;
+  border-radius: 10px;
+}
+.analytics-process-link summary {
+  cursor: pointer;
+  padding: 8px 0;
+  min-height: 44px;
+}
+.analytics-signal-layout {
+  display: grid;
+  gap: 18px;
+  align-items: start;
+}
+@media (min-width: 1200px) {
+  .analytics-signal-layout {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  }
+  .analytics-signal-history {
+    max-height: 960px;
+    overflow: auto;
+  }
+}
+
+.analytics-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  list-style: none;
+  padding: 0;
+  margin: 14px 0;
+  font-size: 12px;
+}
+.analytics-chart-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}

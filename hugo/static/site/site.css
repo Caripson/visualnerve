@@ -1434,3 +1434,18 @@ input:focus-visible {
     transform: none;
   }
 }
+
+/* A transparent semantic illustration; the homepage never imports chart code. */
+.analytics-section { display: grid; grid-template-columns: 1fr 1.08fr; gap: clamp(2rem, 5vw, 5rem); align-items: center; }
+.analytics-product-copy h2 { margin-top: .4rem; }
+.analytics-product-copy p { max-width: 42rem; }
+.analytics-product-intro { font-size: 1.3rem; font-weight: 600; }
+.analytics-illustration { display: block; width: 100%; height: auto; overflow: visible; }
+.analytics-grid { stroke: currentColor; opacity: .1; }
+.analytics-axis { stroke: currentColor; opacity: .35; }
+.analytics-series { stroke: var(--accent, #286a57); }
+.analytics-threshold { stroke: #bc843e; }
+.analytics-measure { stroke: currentColor; opacity: .6; }
+.analytics-signal { fill: #bc843e; stroke: #bc843e; }
+.analytics-scenario { stroke: var(--accent, #286a57); opacity: .5; }
+@media (max-width: 760px) { .analytics-section { grid-template-columns: minmax(0, 1fr); } .analytics-illustration { max-width: 40rem; margin-inline: auto; } }

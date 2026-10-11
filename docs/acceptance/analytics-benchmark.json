@@ -1,0 +1,49 @@
+{
+  "environment": {
+    "cpu": "Intel Core i5-6500 @ 3.20 GHz",
+    "platform": "macOS / Darwin x64",
+    "runtime": "Node 22.17.0",
+    "browser": "Google Chrome 155.0.8059.39, isolated headless profile",
+    "data": "Synthetic fixtures only",
+    "productionDeployed": false
+  },
+  "node": {
+    "date": "2026-10-11T22:31:59.039Z",
+    "runtime": "v22.17.0",
+    "platform": "darwin",
+    "architecture": "x64",
+    "observations": 100000,
+    "series": 10,
+    "rules": 100,
+    "validationMs": 450.82409800000005,
+    "analysisMs": 687.0730600000002,
+    "archivePreparationMs": 1698.095594,
+    "archiveReconciliationMs": 2008.9980700000006,
+    "heapUsedBefore": 57887088,
+    "heapUsedAfter": 245466520,
+    "rssBefore": 132128768,
+    "rssAfter": 465100800,
+    "evaluated": 1000000,
+    "unknown": 0,
+    "scope": "Node engine benchmark; browser interaction/cancellation requires separate browser evidence; memory is sampled process usage, not peak."
+  },
+  "browser": {
+    "observations": 100000,
+    "series": 10,
+    "rules": 100,
+    "renderedPoints": 1152,
+    "completeMs": 11463,
+    "cancellationMs": 222,
+    "frames": 550,
+    "maxFrameGapMs": 349.8999999999978,
+    "jsHeapBytes": 477259105,
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36"
+  },
+  "notes": [
+    "Node timings separate validation, numerical evaluation and immutable archive preparation/reconciliation.",
+    "Browser completeMs covers the real worker-driven UI workflow; all observations participate in analysis while rendered points are bounded.",
+    "Memory values are samples, not peaks. Renderer JavaScript heap excludes total browser and worker memory.",
+    "The fixed desktop workload verifies 100000 observations, 10 series and 100 simple rules, not unlimited scale or physical mobile hardware.",
+    "Cancellation, chart pan/zoom and maximum animation-frame gap are asserted by the browser acceptance fixture."
+  ]
+}

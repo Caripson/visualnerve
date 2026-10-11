@@ -33,6 +33,9 @@ type Diagram struct {
 	// activity; the authoritative browser validates mutations and references.
 	// Live device credentials and private room state are never persisted here.
 	Collaboration Meta `json:"collaboration,omitempty"`
+	// Optional schema-version-1 time-series extension. The browser owns strict
+	// validation, encryption and calculations; the bridge stores no user data.
+	Analytics Meta `json:"analytics,omitempty"`
 }
 type Node struct {
 	Base

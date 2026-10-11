@@ -198,6 +198,78 @@ Process Simulator models optionally contain `processes: [{id, name, parentId?}]`
 
 Parent totals include descendants. Scope completion counts successful visits, while global completion counts final Outcomes. Scope resource costs allocate occupied units; idle shared-pool costs remain global. Read the capability metadata and full schema when comparing values across levels.
 
+## Time-series analysis
+
+**Import → Explore → Measure → Detect → Validate → Simulate.** The Time Series & Signal Analysis template adds strictly typed, versioned `diagram.analytics` to the same encrypted local document. It does not need AI, a cloud database or a Process Simulator model. UI, REST and MCP use the same deterministic worker calculations. [User guide](/help/time-series-analysis/) · [Exact API schemas](/api/docs/).
+
+First check direct `GET http://127.0.0.1:4317/api/v1/health` for `analytics-v1`. An old bridge binary needs an explicit update; refreshing the website does not update it. In an MCP client, begin with **visual_nerve_api_docs** and `{ "document": "guide" }`, then read exact schemas using `{ "document": "endpoint", "path": "/diagrams/{diagramId}/analytics/import/commit", "method": "POST" }`. The same **visual_nerve_request** tool handles every analysis command, with paths omitting `/api/v1`.
+
+Discover `/analytics/capabilities` for methods, defaults, warm-up, units, permissions and limits. List `/diagrams?analytics=true` for compact analysis-document metadata; it omits the observations and retained result inputs. Create the bundled synthetic example with write access:
+
+```json
+{
+  "path": "/diagrams",
+  "method": "POST",
+  "data": {
+    "name": "Illustrative Growth & Churn",
+    "template": "time-series-analysis",
+    "mode": "example"
+  }
+}
+```
+
+Use `mode:"import"` to begin empty. Creation returns an ordinary Diagram UUID. Read `/diagrams/DIAGRAM_UUID/analytics` for the current `baseVersion` and canonical analysis identities. Writes return `{diagramId,baseVersion,analytics}` with the new saved version and compact configuration. Use those identities rather than names or canvas coordinates. Stored/API timestamps use canonical UTC millisecond ISO, for example `2025-01-01T00:00:00.000Z`.
+
+For a complete executable example, run this from a current repository checkout with Node.js and an isolated, connected browser granted Read + write:
+
+```sh
+# REST commands through the existing local browser bridge.
+node scripts/examples/analytics.mjs
+
+# Identical workflow through MCP, beginning with tool/docs discovery.
+node scripts/examples/analytics.mjs --mcp
+```
+
+[Read the synthetic example source](https://github.com/Caripson/visualnerve/blob/main/scripts/examples/analytics.mjs). Each invocation intentionally creates one new **Illustrative example data** document. It discovers capabilities, previews and commits CSV, measures 2% → 3% as +1 percentage point and +50% relative change, evaluates a confirmed churn rule, reproduces historical signal episodes, compares three reviewed scenarios and archives a worker result with its original observations. Optional protected `VISUAL_NERVE_BRIDGE_TOKEN`, `VISUAL_NERVE_WORKSPACE_ID` and `VISUAL_NERVE_BRIDGE_ORIGIN` settings use the existing bridge conventions; secrets are not printed.
+
+The sequence below uses `D=/diagrams/DIAGRAM_UUID/analytics`. Read the exact endpoint schema before filling a definition:
+
+| Step     | Operation                                                                                | Review and effect                                                                                                                     |
+| -------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Inspect  | `POST D/import/inspect` with `{source,seriesColumn?}`                                    | Read-only columns, samples, worksheets and optional long-format series names                                                          |
+| Preview  | `POST D/import/preview` with `{datasetId,source,mapping}`                                | Explicit wide/long layout, date/timezone, decimal, percent, dimensions, duplicate and missing-value policies; review localized issues |
+| Commit   | `POST D/import/commit` with `{baseVersion,input,mode,confirmed:true}`                    | Write; atomic create/replace/update after review                                                                                      |
+| Measure  | Save `POST D/measurements` with `{baseVersion,value}`, then `POST D/measure` with `{id}` | Definitions are persistent writes; calculation is an unsaved read-only preview                                                        |
+| Detect   | Save `POST D/rules` with `{baseVersion,value}`, then `POST D/evaluate` with `{ruleIds}`  | Validated JSON rules, causal baselines and explicit warm-up; calculated evidence is separate from acknowledgement                     |
+| Validate | Save `POST D/backtests` with `{baseVersion,value}`, then `POST D/validate` with `{id}`   | Chronological train/validation/holdout; no precision/recall without a defined outcome/horizon                                         |
+| Simulate | Save reviewed `POST D/scenarios`, then `POST D/project` with `{id}`                      | Separate assumption-based customer/MRC projections; observed history is preserved                                                     |
+| Compare  | `POST D/compare` with `{scenarioIds:[...]}`                                              | Same start, resolution, horizon and currency; scenario spread is not a confidence interval                                            |
+
+For example, a saved rule definition can use:
+
+```json
+{
+  "id": "retention-pressure",
+  "name": "Retention pressure",
+  "version": 1,
+  "enabled": true,
+  "family": "sustained",
+  "seriesId": "churn",
+  "severity": "warning",
+  "parameters": { "comparator": ">", "threshold": 0.02, "consecutive": 3 }
+}
+```
+
+Here `churn` must be the actual semantic ID of an imported ratio series whose risk population is defined. Wrap the definition in `{baseVersion,value}` when saving. The rule confirms only after three consecutive complete valid periods; a gap breaks confirmation. Severity is configured, not a probability. Signal `value` keeps the observed unit, while `deviationMagnitude`, `deviationUnit` and `thresholdUnit` report method scores separately.
+
+Use `/query?offset=0&limit=100` for bounded original-data pages. Explicit aggregation obeys snapshot/flow/rate meaning. `/waterfall` reconciles real opening/closing/component values, and OHLC queries require real intraperiod observations or validated imported OHLC. Missing observations stay missing. Neither pooled segment rates nor a monthly scalar invents temporal cohort churn or candlestick wick variation.
+
+Long calculations use `POST D/jobs` with `{kind,input}`. Inspect `/jobs/ID` for progress, `/jobs/ID/result` for item pages and DELETE `/jobs/ID` to cancel/erase. Import, query, waterfall, measurement, indicator, signal, validation and scenario computations use the same engine as UI previews. Saving an analysis archive uses `POST /jobs/ID/archive` at the current version. Saved `/results/ID/content` pages numerical content; `/results/ID/input?datasetId=ID&offset=0&limit=100` reconstructs the retained original observations after a refresh. Query/inspection/waterfall view jobs do not create archives.
+
+Response pages allow 1–1,000 items and analytics responses have an 8 MiB budget, separate from the existing 32 MiB request transport. The browser file-size preference does not enlarge either. Two API jobs can run concurrently; four terminal jobs and 32 MiB total transient inputs/results remain for up to 15 minutes, with a 120-second calculation deadline. Lock, reload or original-grant revocation erases them. Saved encrypted archives have explicit retention of 12 results and 3 dataset-version sets; removing an archive also removes its original input.
+
+An available, unlocked browser with the right grant remains necessary for headless analysis. Analysis and polling never extend its idle session. Read only allows pure previews, data/result queries and transient cancellation; saving imports, definitions, histories or archives requires write access. Existing operation reservations, exact retry identities and `baseVersion` checks apply. Inspect a timed-out write's receipt and saved model before retrying; it may already have committed.
+
 ## Handle versions, failures and boundaries
 
 | Status | Typical action                                                                                       |

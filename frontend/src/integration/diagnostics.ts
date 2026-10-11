@@ -49,6 +49,7 @@ export class BridgeDiagnostics {
         'fork-join-v1',
         'async-svg-export-v1',
         'exchange-export-v1',
+        'analytics-v1',
       ].every((capability) => capabilities.includes(capability));
     this.publish({ state: current ? 'current' : 'update-required', version });
     return true;

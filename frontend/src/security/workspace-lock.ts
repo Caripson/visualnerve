@@ -9,6 +9,7 @@ import { disposeVideoExport } from '../presentation/video-service';
 import { speechService } from '../presentation/speech/service';
 import type { VaultSession } from './vault-session';
 import { clearSvgJobsIfLoaded } from '../export/svg-job-lifecycle';
+import { clearAnalyticsIfLoaded } from '../analytics/lifecycle';
 
 /** Register once at the application boundary, never in an API password endpoint. */
 export function bindWorkspaceLock(session: VaultSession) {
@@ -18,6 +19,7 @@ export function bindWorkspaceLock(session: VaultSession) {
     bridge.restrictToControl();
     workspace.stop();
     clearSvgJobsIfLoaded();
+    clearAnalyticsIfLoaded();
     useEditor.getState().setGraph(null);
     useEditor.setState({
       diagrams: [],

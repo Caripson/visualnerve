@@ -1,5 +1,7 @@
 import manifest from './manifest.json';
-import { base, type Graph } from '../model/types';
+import { base, blankGraph, type Graph } from '../model/types';
+import { blankAnalytics } from '../analytics/validation';
+import { remapAnalytics } from '../analytics/remap';
 import { createSimulationGraph } from '../simulation/document';
 import { remapSimulationModel } from '../simulation/copy';
 import { createEmptySimulationModel } from '../simulation/starter';
@@ -9,6 +11,11 @@ import { remapGraphCollaboration } from '../collaboration/model/remap';
 const files = import.meta.glob<Graph>('./*.json', { eager: true, import: 'default' });
 export const templates = manifest;
 export function instantiate(key: string, name: string, source?: Graph): Graph {
+  if (key === 'time-series-analysis' && !source) {
+    const graph = blankGraph(name, 'freeform');
+    graph.diagram.analytics = blankAnalytics();
+    return graph;
+  }
   if (key === 'process-simulator' && !source) return createSimulationGraph(name);
   if (key === 'process-simulator-blank' && !source)
     return createSimulationGraph(name, createEmptySimulationModel());
@@ -41,6 +48,8 @@ export function instantiate(key: string, name: string, source?: Graph): Graph {
     targetNodeId: ids.get(e.targetNodeId)!,
   }));
   if (graph.simulation) graph.simulation = remapSimulationModel(graph.simulation, ids, ids);
+  if (graph.diagram.analytics)
+    graph.diagram.analytics = remapAnalytics(graph.diagram.analytics, ids);
   if (graph.diagram.collaboration)
     Object.assign(graph, remapGraphCollaboration(graph, { nodeIds: ids, edgeIds: ids }));
   if (graph.diagram.type === 'mindmap' && graph.nodes[0]) graph.nodes[0].title = name;

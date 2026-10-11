@@ -76,5 +76,11 @@
     "name": "System Architecture",
     "type": "dependency",
     "nodes": 4
+  },
+  {
+    "key": "time-series-analysis",
+    "name": "Time Series & Signal Analysis",
+    "type": "freeform",
+    "nodes": 0
   }
 ]

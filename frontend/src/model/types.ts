@@ -8,6 +8,7 @@ import type { OverviewConfig } from '../overview/types';
 import type { BuildSpecificationDraft } from '../export/build-specification-draft';
 import type { SimulationModel } from '../simulation/types';
 import type { CollaborationDocument } from '../collaboration/model/types';
+import type { AnalyticsExtension } from '../analytics/types';
 export type { DrawingLayer, DrawingStroke } from '../drawing/types';
 
 export const diagramTypes = [
@@ -60,6 +61,8 @@ export interface Diagram extends Base {
   metadata: Metadata;
   /** Portable collaboration work, distinct from private live-room credentials. */
   collaboration?: CollaborationDocument;
+  /** Versioned time-series semantics and results, encrypted with this document. */
+  analytics?: AnalyticsExtension;
   settings: {
     viewport?: { x: number; y: number; zoom: number };
     grid?: boolean;

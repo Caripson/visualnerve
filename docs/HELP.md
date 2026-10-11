@@ -1,12 +1,12 @@
 # Help architecture and maintenance
 
-The public Help is a local, static Hugo documentation section at `/help/`. It has 16 task-oriented guides, real application screenshots, topic navigation, per-guide contents, adjacent-guide links and full-text search. It shares `/appearance.js` and the workspace palette. Search and reading require no bridge, backend, workspace consent or diagram access.
+The public Help is a local, static Hugo documentation section at `/help/`. It has 18 task-oriented guides, real application screenshots, topic navigation, per-guide contents, adjacent-guide links and full-text search. It shares `/appearance.js` and the workspace palette. Search and reading require no bridge, backend, workspace consent or diagram access.
 
 ## Coverage
 
 | Guide           | Product surface                                                                                                                                    |
 | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| getting-started | Consent, all twelve templates, first workflow, desktop/mobile navigation, local saving                                                             |
+| getting-started | Consent, all fourteen templates, first workflow, desktop/mobile navigation, local saving                                                             |
 | editing         | All visual object kinds, connections, properties, status/quick actions, owners/search/filters, groups, drawing, copy/undo/delete, shortcuts        |
 | layouts         | Mind map editing, Balanced/directional/radial layout, focus mode, ordinary modes, dated timelines                                                  |
 | 3d              | Styled card relief, camera gizmo/orientations, object placement, synchronized 2D moves, fallback/export/view limits                                |
@@ -21,11 +21,12 @@ The public Help is a local, static Hugo documentation section at `/help/`. It ha
 | sharing         | Restorable/visual outputs, scopes/resolution/PDF tiling, Markdown/JSON imports, backups, Lovable specification/handoff                             |
 | settings        | Appearance, storage/offline, portable backup/restore, retention/import limits, speech, MCP grants, conflicts and deletion                          |
 | api-mcp         | Local process/addresses/setup, discovery, targeting/versioning, practical code/3D/simulation requests and demand stress testing                    |
+| time-series-analysis | Local time-series import, semantic charting, saved measurements, causal signals, Signal Lab, explicit Growth & Churn scenarios, API/MCP and bounded encrypted archives |
 | troubleshooting | Recovery procedures, missing work, import/save/view/voice/video/simulation/integration/mobile issues                                               |
 
 ## Add or update a guide
 
-1. Edit `hugo/content/help/<slug>.md`. Keep unique weights 1–16, a descriptive title and a one-sentence summary. Use source-verified UI labels and distinguish desktop/mobile routes.
+1. Edit `hugo/content/help/<slug>.md`. Keep unique weights 1–18, a descriptive title and a one-sentence summary. Use source-verified UI labels and distinguish desktop/mobile routes.
 2. Explain purpose, action steps, expected results, examples, common problems, limits and related guides. Do not claim execution/compiler analysis/cloud synchronization where the tool supplies only structure or local state.
 3. Capture actual current UI using synthetic data. Use descriptive alt text and a caption matching what is visible. Screenshots are clickable, lazy-loaded and capped at natural dimensions.
 4. Keep cross-page hashes valid. `/help/` retains all previous guide anchors for incoming API/Privacy/bookmark links.

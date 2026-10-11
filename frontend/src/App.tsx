@@ -1,6 +1,8 @@
 import { useI18n } from './i18n';
 import { PresentationFeature } from './presentation/PresentationFeature';
 import { SimulationFeature } from './simulation/SimulationFeature';
+import { AnalyticsFeature } from './analytics/AnalyticsFeature';
+import { AnalyticsToolbar } from './analytics/AnalyticsToolbar';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { appUpdates } from './updates/runtime';
 import { ReactFlowProvider } from '@xyflow/react';
@@ -679,7 +681,7 @@ export function App() {
   return (
     <ReactFlowProvider>
       <div
-        className={`application ${focusMap && graph?.diagram.type === 'mindmap' ? 'map-focus' : ''}`}
+        className={`application ${graph?.diagram.analytics ? 'analytics-active' : ''} ${focusMap && graph?.diagram.type === 'mindmap' ? 'map-focus' : ''}`}
         data-compact-layout={compact ? 'true' : undefined}
         data-has-document={graph ? 'true' : undefined}
         data-mobile-panel={mobilePanel ?? ''}
@@ -712,11 +714,15 @@ export function App() {
           <PreferenceSaveNotice settings={() => open('settings')} />
           {graph ? (
             <>
-              <Toolbar
-                open={open}
-                showFilters={filters}
-                toggleFilters={() => setFilters((v) => !v)}
-              />
+              {graph.diagram.analytics ? (
+                <AnalyticsToolbar open={open} />
+              ) : (
+                <Toolbar
+                  open={open}
+                  showFilters={filters}
+                  toggleFilters={() => setFilters((v) => !v)}
+                />
+              )}
               {filters && <FilterBar />}
               {status === 'conflict' && (
                 <div className="notice conflict-notice">
@@ -758,23 +764,40 @@ export function App() {
                   )}
                 </div>
               )}
-              <SimulationFeature />
-              <Canvas />
+              {graph.diagram.analytics ? (
+                <AnalyticsFeature />
+              ) : (
+                <>
+                  <SimulationFeature />
+                  <Canvas />
+                </>
+              )}
               <PresentationFeature />
               <div className="canvas-statusbar">
                 <span>
                   <LocalBadge onClick={() => open('settings')} />{' '}
-                  {plural(
-                    graph.dataset ? 'app.visibleNodeCountOne' : 'app.nodeCountOne',
-                    graph.dataset ? 'app.visibleNodeCount' : 'app.nodeCount',
-                    viewCounts.nodes,
-                  )}{' '}
-                  <i>·</i>{' '}
-                  {plural('app.connectionCountOne', 'app.connectionCount', viewCounts.edges)}
-                  {viewCounts.hidden > 0 && (
+                  {graph.diagram.analytics ? (
                     <>
-                      {' '}
-                      <i>·</i> {t('app.hiddenCount', { count: viewCounts.hidden })}
+                      {graph.diagram.analytics.datasets
+                        .reduce((count, dataset) => count + dataset.observations.length, 0)
+                        .toLocaleString()}{' '}
+                      observations <i>·</i> {graph.diagram.analytics.series.length} series
+                    </>
+                  ) : (
+                    <>
+                      {plural(
+                        graph.dataset ? 'app.visibleNodeCountOne' : 'app.nodeCountOne',
+                        graph.dataset ? 'app.visibleNodeCount' : 'app.nodeCount',
+                        viewCounts.nodes,
+                      )}{' '}
+                      <i>·</i>{' '}
+                      {plural('app.connectionCountOne', 'app.connectionCount', viewCounts.edges)}
+                      {viewCounts.hidden > 0 && (
+                        <>
+                          {' '}
+                          <i>·</i> {t('app.hiddenCount', { count: viewCounts.hidden })}
+                        </>
+                      )}
                     </>
                   )}
                 </span>

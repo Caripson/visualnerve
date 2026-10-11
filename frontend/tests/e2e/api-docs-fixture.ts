@@ -14,9 +14,22 @@ export async function openAPIEndpoint(page: Page, method: string, path: string) 
   await expect
     .poll(
       async () => {
-        if (await endpoint.count()) return true;
+        if (await endpoint.count()) {
+          await endpoint.scrollIntoViewIfNeeded();
+          return await endpoint.isVisible();
+        }
         await page.mouse.wheel(0, Math.floor((page.viewportSize()?.height ?? 800) / 2));
-        return (await endpoint.count()) > 0;
+        // Wheel delivery precedes the virtual list's next layout. Do not accept
+        // an overscan row that a pending scroll is about to unmount.
+        await page.evaluate(
+          () =>
+            new Promise<void>((resolve) =>
+              requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+            ),
+        );
+        if (!(await endpoint.count())) return false;
+        await endpoint.scrollIntoViewIfNeeded();
+        return await endpoint.isVisible();
       },
       { intervals: [100, 200], message: `Scroll to the documented ${method} ${path} operation` },
     )

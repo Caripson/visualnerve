@@ -34,7 +34,7 @@ async function imagesLoaded(page: Page) {
     .toBe(true);
 }
 
-test('the help hub and all 17 guides have real screenshots, valid local links and working anchors', async ({
+test('the help hub and all 18 guides have real screenshots, valid local links and working anchors', async ({
   browser,
   request,
 }) => {
@@ -50,14 +50,14 @@ test('the help hub and all 17 guides have real screenshots, valid local links an
   try {
     await page.goto(`${publicURL}/help/`);
     const guides = await index(page);
-    expect(guides).toHaveLength(17);
-    expect(new Set(guides.map((guide) => guide.url)).size).toBe(17);
+    expect(guides).toHaveLength(18);
+    expect(new Set(guides.map((guide) => guide.url)).size).toBe(18);
     expect(guides.map((guide) => guide.url)).toContain('/help/collaboration/');
     await expect(
       page.getByRole('region', { name: 'All guides', exact: true }).locator('a'),
-    ).toHaveCount(17);
+    ).toHaveCount(18);
     await expect(page.locator('.help-guide-number')).toHaveText(
-      Array.from({ length: 17 }, (_, position) => String(position + 1).padStart(2, '0')),
+      Array.from({ length: 18 }, (_, position) => String(position + 1).padStart(2, '0')),
     );
     const links = new Set<string>();
     const anchors = new Map<string, Set<string>>();
@@ -210,7 +210,8 @@ for (const width of [1440, 390, 320]) {
         if (width < 900) {
           const topics = page.locator('.help-mobile-topics');
           await topics.getByText('Topics', { exact: true }).click();
-          await expect(topics.getByRole('link')).toHaveCount(18);
+          // Every guide remains reachable beside the separate Help home link.
+          await expect(topics.getByRole('link')).toHaveCount(guides.length + 1);
           await expect(
             topics.getByRole('link', { name: 'Collaborate on a diagram', exact: true }),
           ).toHaveAttribute('href', '/help/collaboration/');

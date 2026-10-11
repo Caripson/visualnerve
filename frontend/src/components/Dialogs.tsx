@@ -33,6 +33,7 @@ export function NewDiagram({ close }: { close: () => void }) {
   const { t: translate } = useI18n();
   const [name, setName] = useState('Untitled diagram');
   const [template, setTemplate] = useState('blank');
+  const [analyticsMode, setAnalyticsMode] = useState<'example' | 'import'>('example');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   return (
@@ -43,7 +44,7 @@ export function NewDiagram({ close }: { close: () => void }) {
           if (!name.trim()) return;
           setBusy(true);
           try {
-            await createTemplateDiagram(template, name);
+            await createTemplateDiagram(template, name, analyticsMode);
             close();
           } catch (e) {
             setError((e as Error).message);
@@ -70,30 +71,84 @@ export function NewDiagram({ close }: { close: () => void }) {
               className={`template-option ${template === t.key ? 'selected' : ''}`}
               onClick={() => setTemplate(t.key)}
             >
-              <div className={`template-preview preview-${t.type}`}>
-                <span />
-                <i />
-                <i />
-                <i />
+              <div
+                className={`template-preview ${t.key === 'time-series-analysis' ? 'preview-analytics' : `preview-${t.type}`}`}
+                aria-hidden="true"
+              >
+                {t.key === 'time-series-analysis' ? (
+                  <svg viewBox="0 0 140 64">
+                    <path d="M8 52H132M8 8V52" fill="none" stroke="currentColor" opacity=".3" />
+                    <path
+                      d="M10 45L26 38L42 40L58 27L74 31L90 14L106 19L130 8"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                    />
+                    <path
+                      d="M8 25H132"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeDasharray="4 4"
+                      opacity=".5"
+                    />
+                    <circle cx="90" cy="14" r="4" fill="currentColor" />
+                  </svg>
+                ) : (
+                  <>
+                    <span />
+                    <i />
+                    <i />
+                    <i />
+                  </>
+                )}
               </div>
               <b>{templateLabel(translate, t.key, t.name)}</b>
               <small>
-                {t.key === 'process-simulator-blank'
-                  ? translate('dialogs.templateGuidedProcessHint')
-                  : t.key === 'process-simulator'
-                    ? translate('dialogs.templateKioskHint')
-                    : t.key === 'delivery-network-simulator'
-                      ? translate('dialogs.templateNestedProcessHint')
-                      : t.nodes
-                        ? translate('dialogs.templateCounts', {
-                            count: t.nodes,
-                            type: diagramModeLabel(translate, t.type),
-                          })
-                        : translate('dialogs.blankTemplateHint')}
+                {t.key === 'time-series-analysis'
+                  ? 'Import → Explore → Measure → Detect → Validate → Simulate'
+                  : t.key === 'process-simulator-blank'
+                    ? translate('dialogs.templateGuidedProcessHint')
+                    : t.key === 'process-simulator'
+                      ? translate('dialogs.templateKioskHint')
+                      : t.key === 'delivery-network-simulator'
+                        ? translate('dialogs.templateNestedProcessHint')
+                        : t.nodes
+                          ? translate('dialogs.templateCounts', {
+                              count: t.nodes,
+                              type: diagramModeLabel(translate, t.type),
+                            })
+                          : translate('dialogs.blankTemplateHint')}
               </small>
             </button>
           ))}
         </div>
+        {template === 'time-series-analysis' && (
+          <fieldset className="analytics-template-choice">
+            <legend>Start your analysis</legend>
+            <label>
+              <input
+                type="radio"
+                name="analytics-start"
+                checked={analyticsMode === 'example'}
+                onChange={() => setAnalyticsMode('example')}
+              />{' '}
+              Use example data
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="analytics-start"
+                checked={analyticsMode === 'import'}
+                onChange={() => setAnalyticsMode('import')}
+              />{' '}
+              Import your data
+            </label>
+            <p>
+              Growth & Churn includes illustrative example data. Your analysis is saved in the
+              encrypted local workspace.
+            </p>
+          </fieldset>
+        )}
         {error && <p className="form-error">{presentationMessage(error, translate)}</p>}
         <div className="modal-actions">
           <button type="button" onClick={close}>

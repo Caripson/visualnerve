@@ -34,6 +34,7 @@ it('checks actual advertised tools and capabilities rather than trusting a versi
       'fork-join-v1',
       'async-svg-export-v1',
       'exchange-export-v1',
+      'analytics-v1',
     ],
   });
   expect(diagnostic.snapshot()).toEqual({ state: 'current', version: '0.6.0' });

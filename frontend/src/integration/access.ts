@@ -5,14 +5,20 @@ export function mcpAccess(value: unknown): McpAccess {
 }
 export function assertMcpAccess(access: McpAccess, path: string, method: string) {
   if (access === 'off') throw new StorageError(403, 'MCP access is off in this browser.');
+  const exactPath = path.replace(/^\/api\/v1/, '');
+  const endpoint = new URL(path, 'http://browser.local').pathname.replace(/^\/api\/v1/, '');
   const reading =
     method === 'GET' ||
     (method === 'POST' &&
-      /^\/diagrams\/[\da-f-]{36}\/(questions|build-brief)$/i.test(
-        path.replace(/^\/api\/v1/, ''),
+      /^\/diagrams\/[\da-f-]{36}\/analytics\/(query|measure|indicator|waterfall|evaluate|validate|project|compare|export|import\/(preview|inspect)|jobs)$/i.test(
+        endpoint,
       )) ||
-    (method === 'POST' &&
-      /^\/diagrams\/[\da-f-]{36}\/simulation\/compare$/i.test(path.replace(/^\/api\/v1/, ''))) ||
+    (method === 'DELETE' &&
+      /^\/diagrams\/[\da-f-]{36}\/analytics\/jobs\/[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(
+        endpoint,
+      )) ||
+    (method === 'POST' && /^\/diagrams\/[\da-f-]{36}\/(questions|build-brief)$/i.test(exactPath)) ||
+    (method === 'POST' && /^\/diagrams\/[\da-f-]{36}\/simulation\/compare$/i.test(exactPath)) ||
     (method === 'POST' &&
       [
         '/export',
@@ -22,10 +28,10 @@ export function assertMcpAccess(access: McpAccess, path: string, method: string)
         '/code/preview',
         '/code/project/preview',
         '/diagram-files/preview',
-      ].includes(path.replace(/^\/api\/v1/, ''))) ||
+      ].includes(exactPath)) ||
     (method === 'DELETE' &&
       /^\/exports\/(svg|diagrams)\/[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(
-        path.replace(/^\/api\/v1/, ''),
+        exactPath,
       ));
   if (access === 'read' && !reading)
     throw new StorageError(

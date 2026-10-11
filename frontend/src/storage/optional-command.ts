@@ -1,4 +1,8 @@
-type Kind = 'analysis' | 'diagram-file' | 'simulation' | 'understanding';
+type Kind = 'analysis' | 'diagram-file' | 'simulation' | 'understanding' | 'analytics';
+
+export function loadOptionalCommand(
+  kind: 'analytics',
+): Promise<typeof import('./analytics-commands')>;
 
 export function loadOptionalCommand(
   kind: 'analysis',
@@ -14,6 +18,8 @@ export function loadOptionalCommand(
 ): Promise<typeof import('./understanding-commands')>;
 export function loadOptionalCommand(kind: Kind) {
   switch (kind) {
+    case 'analytics':
+      return import('./analytics-commands');
     case 'analysis':
       return import('./analysis-commands');
     case 'diagram-file':

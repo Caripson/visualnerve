@@ -7,12 +7,16 @@ export function useStarterDemo(ready: boolean, acknowledged: boolean) {
   const started = useRef(false);
   useEffect(() => {
     if (!ready || !acknowledged || started.current) return;
-    if (new URL(location.href).searchParams.get('demo') !== 'kiosk') return;
+    const demo = new URL(location.href).searchParams.get('demo');
+    if (!['kiosk', 'time-series-analysis'].includes(demo ?? '')) return;
     started.current = true;
-    void createTemplateDiagram('process-simulator', 'Kiosk package pickup')
+    void createTemplateDiagram(
+      demo === 'kiosk' ? 'process-simulator' : 'time-series-analysis',
+      demo === 'kiosk' ? 'Kiosk package pickup' : 'Growth & Churn',
+    )
       .then(() => {
         const url = new URL(location.href);
-        if (url.searchParams.get('demo') === 'kiosk') url.searchParams.delete('demo');
+        if (url.searchParams.get('demo') === demo) url.searchParams.delete('demo');
         history.replaceState(history.state, '', url.pathname + url.search + url.hash);
       })
       .catch((error) => useEditor.setState({ status: 'error', message: (error as Error).message }));

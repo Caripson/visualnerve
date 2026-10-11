@@ -103,6 +103,16 @@ Then use **visual_nerve_request** for a command:
 
 Paths omit `/api/v1`. When distinct workspaces are connected, pass `workspaceId` explicitly. Stable semantic IDs and version checks let the client work with actual diagram content instead of guessing from rendered coordinates.
 
+## Analyze time series through the same engine
+
+After reading the bundled guide, discover `GET /analytics/capabilities` with **visual_nerve_request**. List analysis documents using `/diagrams?analytics=true`; inspect their datasets, units, saved measurements, rules, signal history and reviewed scenarios semantically.
+
+Pure measurement, detection, validation and scenario previews are available with Read only. Import commits, definition changes and saved archives require Read + write. Bounded jobs expose progress, cancellation and paginated results. All operations use the browser's numerical implementation and encrypted workspace; the bridge has no separate analysis database.
+
+Use an open, unlocked browser with a current grant. Analysis does not extend the idle session, and there are no background server alarms after the browser closes. An older bridge must be updated separately to advertise `analytics-v1`.
+
+[Complete REST and MCP workflow](/developers/#time-series-analysis) · [Analysis semantics and limits](/help/time-series-analysis/)
+
 ## Useful requests to give a client
 
 - “Read the API guide, list my diagrams and explain the relationships in this process.” Start with Read only.

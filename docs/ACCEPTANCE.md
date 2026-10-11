@@ -1,5 +1,13 @@
 # Acceptance evidence
 
+## Time Series & Signal Analysis
+
+The time-series feature has its own AT01–AT38 delivery contract and evidence ledger in
+[ANALYTICS_IMPLEMENTATION.md](ANALYTICS_IMPLEMENTATION.md). It records the implementation boundaries,
+test fixtures, actual execution results, benchmark environment, encrypted persistence scope and release status.
+Use that ledger for current analytics evidence; the historical results below describe their stated revisions.
+Production deployment is a separate manual workflow.
+
 Initial acceptance was verified on 2026-10-05 in the provided Linux/WSL workspace with Go 1.27.1, Node 24.2.0, Hugo 0.165.0 and Playwright Chromium. Later verification records follow below; the [2026-10-07 product audit](#2026-10-07-deep-product-audit) is the latest. [REQUIREMENTS.md](REQUIREMENTS.md) maps each specification section to its implementation and checks.
 
 ## Final report

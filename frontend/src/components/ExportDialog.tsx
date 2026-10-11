@@ -26,6 +26,7 @@ import { BackupSecurityNotice } from '../security/BackupSecurityNotice';
 import { isEncryptedWorkspaceSurface } from '../security/surface';
 export function ExportDialog({ close }: { close: () => void }) {
   const { t } = useI18n();
+  const analytics = useEditor((state) => !!state.graph?.diagram.analytics);
   const mounted = useRef(true);
   const exporting = useRef<AbortController | undefined>(undefined);
   useEffect(() => {
@@ -114,13 +115,23 @@ export function ExportDialog({ close }: { close: () => void }) {
           }}
         >
           <option value="json">{t('dialogs.exportJsonOption')}</option>
-          <option value="markdown">{t('dialogs.exportMarkdownOption')}</option>
-          <option value="drawio">{t('dialogs.exportDrawioOption')}</option>
-          <option value="svg">{t('dialogs.exportSvgOption')}</option>
-          <option value="png">{t('dialogs.exportPngOption')}</option>
-          <option value="pdf">{t('dialogs.exportPdfOption')}</option>
+          {!analytics && (
+            <>
+              <option value="markdown">{t('dialogs.exportMarkdownOption')}</option>
+              <option value="drawio">{t('dialogs.exportDrawioOption')}</option>
+              <option value="svg">{t('dialogs.exportSvgOption')}</option>
+              <option value="png">{t('dialogs.exportPngOption')}</option>
+              <option value="pdf">{t('dialogs.exportPdfOption')}</option>
+            </>
+          )}
         </select>
       </Field>
+      {analytics && (
+        <p>
+          Native JSON includes the complete analytics model and retained result inputs. Use the
+          analysis panels to export observations and calculated results separately.
+        </p>
+      )}
       {(format === 'json' || format === 'markdown') && (
         <BackupSecurityNotice encrypted={isEncryptedWorkspaceSurface()} />
       )}

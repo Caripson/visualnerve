@@ -30,6 +30,16 @@ Connect another file through a deliberate key match, such as Customer ID. Review
 
 [Explore grouped data](/help/csv/) · [Connect sources](/help/connected-data/)
 
+## Investigate changes in growth and retention
+
+Map customer, churn, MRC, sales or operational history without AI. Distinguish balances from period flows and rates, preserve missing observations, and measure a change before interpreting it.
+
+**Try this:** open Growth & Churn, inspect the persistent retention shift, configure three complete months of confirmation, and review the resulting signal history. Compare Baseline, Current trend and Stress assumptions without modifying the observations.
+
+Signal Lab can reproduce detection against chronological history. Evaluating whether signals precede an outcome requires an explicit outcome and horizon; correlation and historical fit alone do not establish cause or predictive reliability.
+
+[Start time-series analysis](https://app.visualnerve.com/?demo=time-series-analysis) · [Read the practical guide](/help/time-series-analysis/)
+
 ## Read an unfamiliar codebase
 
 Import a ZIP code project, a folder, or the files you want to understand. Folder relationships summarizes connected directories with descendant file counts; File overview shows the supplied modules and their recognized dependencies; Declarations and dependencies shows individual functions, classes, paragraphs or other language structures.

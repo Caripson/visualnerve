@@ -303,6 +303,11 @@ export function assertCollaborationFieldScope(
 
 /** The CRDT contains this projection only, never the local workspace/setting tables. */
 export function sharedGraph(graph: Graph, scope: CollaborationShareScope): SharedGraph {
+  if (graph.diagram.analytics)
+    throw new StorageError(
+      422,
+      'Live rooms do not yet support the analytics extension. Use an explicit encrypted backup or native JSON export to share this analysis.',
+    );
   const diagram = entity(graph.diagram, scope);
   delete diagram.favorite;
   delete diagram.folder;
