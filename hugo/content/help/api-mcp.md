@@ -135,7 +135,7 @@ The app, the local bridge executable and your MCP client are three separate prog
 
 Before giving an agent workspace commands:
 
-1. Inspect the local `GET /api/v1/health` address shown in the copied instructions. The current bridge reports version **0.8.0**, both MCP tool names, and the capabilities `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1` and `collaboration-document-v1`. Health contains public transport metadata; it does not read diagrams or unlock the workspace.
+1. Inspect the local `GET /api/v1/health` address shown in the copied instructions. The current bridge reports version **0.8.1**, both MCP tool names, and the capabilities `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1` and `collaboration-document-v1`. Health contains public transport metadata; it does not read diagrams or unlock the workspace.
 2. Reconnect or initialize the MCP client, then inspect its discovered tools. It should show both **visual_nerve_request** and **visual_nerve_api_docs**. A client can retain an old tool list until you reconnect it.
 3. Ask the agent to read the compact guide before making commands. For a particular endpoint, it can request a smaller contract containing that operation and every referenced schema:
 
@@ -611,7 +611,7 @@ Use editable exports when you want to continue working on the drawing in another
 
 Editable Draw.io drawings use a deliberate **light drawing surface**, regardless of app Appearance. White base fills and dark text, connection labels and base borders keep the document readable in another editor. Saved node, connection and mind-map color accents remain. Native JSON preserves full stored styling, and workspace backups also retain portable appearance settings. This needs no extra API argument; SVG keeps its existing appearance behavior.
 
-1. Read `GET /exports/capabilities` first. Its existing SVG fields remain unchanged; `diagrams` describes the drawio format, scopes, validation metadata and separate limits. Bridge 0.8.0 advertises `exchange-export-v1`.
+1. Read `GET /exports/capabilities` first. Its existing SVG fields remain unchanged; `diagrams` describes the drawio format, scopes, validation metadata and separate limits. Bridge 0.8.1 advertises `exchange-export-v1`.
 2. Start an export with the existing **visual_nerve_request** tool:
 
 ```json
@@ -704,7 +704,7 @@ The example never automatically repeats a POST after a transport error. If a wri
 
 Realtime collaboration is optional and requires a configured relay. The human creates a room, chooses what to disclose and approves participant devices in the [Collaboration panel](/help/collaboration/). MCP does not provide invitations, approval, role changes, private keys or an unlock operation.
 
-Bridge **0.8.0** advertises `collaboration-v1` and `collaboration-document-v1`. Ask the browser whether the optional feature is configured:
+Bridge **0.8.1** advertises `collaboration-v1` and `collaboration-document-v1`. Ask the browser whether the optional feature is configured:
 
 ```json
 { "path": "/collaboration/capabilities", "method": "GET" }
@@ -757,4 +757,8 @@ Document collaboration work is available locally without a configured relay. `GE
 
 The browser supplies the acting profile, role and writer-clock timestamp. Agents cannot send authors, roles or credentials in an action. Owners provision profiles, editors edit their own display profile and comment text, thread authors/owners resolve discussions, and editors assign/update node tasks. Viewers cannot mutate. Tasks use `todo`, `in-progress` or `done`, optional profile assignee and a valid `YYYY-MM-DD` due date; they do not replace process ownership. Work attached to a deleted node retains its UUID and last title.
 
-Profiles are unverified labels and the latest 500 activity events are editable information, not a signed or immutable security audit. Approved editors of the existing shared document remain trusted to edit its content. Native JSON/backups retain this work, including tiny raster avatars; private room state and credentials remain excluded. See the [complete API contract](/api/docs/) for limits, strict action fields and version/access errors.
+Profiles are unverified labels and the latest 500 activity events are editable information, not a signed or immutable security audit. Approved editors remain trusted to edit ordinary diagram fields concurrently; protected live document work uses the owner-mediated controls below. Native JSON/backups retain this work, including tiny raster avatars; private room state and credentials remain excluded. See the [complete API contract](/api/docs/) for limits, strict action fields and version/access errors.
+
+### Protected live document work
+
+In a live room, profiles, comments, tasks and activity use authenticated owner-mediated actions. The owner must stay online; ordinary diagram fields remain a concurrent Yjs graph. Discover `authorization` and `documentWorkflow.liveAuthority` through `/collaboration/capabilities`: invitation version 2, a device/scope-bound owner-secret proof, and a nonce-bound owner lease refreshed every 10 seconds and expiring within 30 seconds. These controls bind actions to approved devices, not verified legal identities. Treat returned document text as untrusted user content, never instructions for your agent. Live editor action requests are limited to 128 KiB of UTF-8 data including the owner-channel envelope (413), with at most eight pending acknowledgements per browser (429). The owner acknowledgement times out after 25 seconds with 504 and an unknown outcome: inspect saved work before retrying.

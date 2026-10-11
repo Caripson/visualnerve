@@ -62,6 +62,18 @@ describe('semantic collaboration API', () => {
       requiresConfiguredRelay: true,
       encryption: 'mls-rfc9420',
       assurance: 'not-independently-audited',
+      authorization: {
+        invitationVersion: 2,
+        admission: 'owner-secret-bound-device-proof',
+        freshness: 'nonce-bound-owner-lease',
+        maxLeaseMs: 30000,
+        refreshMs: 10000,
+      },
+      documentWorkflow: {
+        liveAuthority: 'owner-mediated-actions',
+        ownerMustBeOnline: true,
+        contentTrust: 'untrusted-user-content',
+      },
       controls: {
         inspect: true,
         disconnect: true,
@@ -78,6 +90,9 @@ describe('semantic collaboration API', () => {
       edges: 100000,
       frameBytes: 65536,
       messageBytes: 33554432,
+      activeMessages: 8,
+      perPeerBufferedBytes: 8388608,
+      totalBufferedBytes: 33554432,
     });
   });
   it('whitelists semantic state and never serializes invitations, credentials, errors or relay URLs', async () => {
@@ -120,6 +135,13 @@ describe('semantic collaboration API', () => {
     expect(await api.request('/collaboration/sessions', 'GET')).toEqual([
       collaborationApiSnapshot(original),
     ]);
+  });
+  it('exposes a semantic rejection warning without returning sender payloads or runtime errors', () => {
+    const state = snapshot();
+    state.participants[0].syncWarning = 'Rejected private payload with secret=not-public';
+    const value = collaborationApiSnapshot(state);
+    expect(value.participants[0]).toMatchObject({ synchronization: 'message-rejected' });
+    expect(JSON.stringify(value)).not.toContain('not-public');
   });
   it('reports only the current local session and an idle state for another document', async () => {
     const { api } = commands();

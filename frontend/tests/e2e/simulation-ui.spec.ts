@@ -237,9 +237,32 @@ test('AT-25/27 bounded renderer shows only active transit on valid edges and cap
     if (particle.status === 'processing')
       expect(particle.processingEndsAtSeconds).toBeGreaterThan(state.timeSeconds);
   }
+  // The live event ring deliberately retains only the latest 500 events.
+  // Inspect the early scaling decisions by deterministic replay, independent
+  // of how much simulated time passes while browser assertions are running.
+  expect(state.events.length).toBeLessThanOrEqual(500);
+  expect(state.retained.droppedEvents).toBeGreaterThan(0);
+  const replayResponse = await request.post(
+    `/api/v1/diagrams/${graph.diagram.id}/simulation/runs/${run.id}/seek`,
+    { data: { timeSeconds: 4 } },
+  );
+  expect(replayResponse.ok()).toBeTruthy();
+  const replay = await replayResponse.json();
+  expect(replay.nodes[work.id].capacity).toBe(3);
   expect(
-    state.events.some((event: { type: string }) => event.type === 'CAPACITY_SCALE_UP'),
-  ).toBeTruthy();
+    replay.events
+      .filter(
+        (event: { type: string; nodeId?: string }) =>
+          event.type === 'CAPACITY_SCALE_UP' && event.nodeId === work.id,
+      )
+      .map((event: { previousCapacity: number; capacity: number }) => [
+        event.previousCapacity,
+        event.capacity,
+      ]),
+  ).toEqual([
+    [1, 2],
+    [2, 3],
+  ]);
   const persisted = (await (
     await request.get(`/api/v1/diagrams/${graph.diagram.id}`)
   ).json()) as Graph;

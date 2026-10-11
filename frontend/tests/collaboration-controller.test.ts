@@ -34,6 +34,7 @@ import { decodeCollaborationUpdate } from '../src/collaboration/document/update-
 import { compressPayload, decompressPayload } from '../src/collaboration/session/payload-codec';
 import { hasCollaborationUpdateTask } from '../src/collaboration/update-task';
 import { CollaborationDocumentGateway } from '../src/collaboration/session/document-gateway';
+import { CollaborationConnectionError } from '../src/collaboration/transport/room-transport';
 
 // Real encrypted storage/repository/CRDT; only remote room admission/MLS setup
 // is deferred to expose lifecycle races without a network or private key fixture.
@@ -54,6 +55,10 @@ let session: VaultSession,
 let privateStore: CollaborationPrivateStore, controller: CollaborationController, graph: Graph;
 const opened: FakeRoom[] = [];
 class FakeRoom {
+  assertAuthorized() {}
+  get policyFresh() {
+    return true;
+  }
   readonly device: DeviceIdentity;
   readonly currentPolicy: SignedRoomPolicy;
   epoch = 0;
@@ -175,7 +180,7 @@ async function freshRejoin(role: 'editor' | 'viewer') {
     role: 'owner',
   };
   owner.credentialId = await credentialId(owner.signingKey);
-  const prior = new CollaborativeDocument(graph, scope);
+  const prior = new CollaborativeDocument(graph, scope, undefined, true);
   let payload: Uint8Array;
   try {
     await privateStore.save(
@@ -195,7 +200,8 @@ async function freshRejoin(role: 'editor' | 'viewer') {
     payload = await compressPayload(
       new TextEncoder().encode(
         JSON.stringify({
-          version: 1,
+          version: 2,
+          workflow: { revision: 0, document: graph.diagram.collaboration },
           scope,
           document: sharedGraph(graph, scope),
           state: encodeBytes(prior.encodedState()),
@@ -219,17 +225,24 @@ async function freshRejoin(role: 'editor' | 'viewer') {
     room.currentPolicy.policy.members = [owner, { ...room.device, role }];
     return room;
   });
+  const invitationExpiresAt = Date.now() + 60_000;
   await controller.join(
     invitationUrl(
       {
-        version: 1,
+        version: 2,
+        authorization: {
+          invitationId: crypto.randomUUID(),
+          secret: encodeBytes(new Uint8Array(32).fill(9)),
+          scope,
+          expiresAt: invitationExpiresAt,
+        },
         roomId,
         diagramId: graph.diagram.id,
         relay: 'https://relay.example.com',
         ownerDeviceId: owner.deviceId,
         ownerCredential: owner.credentialId,
         ticket: encodeBytes(new Uint8Array(32).fill(7)),
-        expiresAt: Date.now() + 60_000,
+        expiresAt: invitationExpiresAt,
         scope,
       },
       'https://app.visualnerve.com',
@@ -329,6 +342,22 @@ describe('collaboration controller lifecycle against the encrypted repository', 
       roomId: room.options.roomId,
       selfDeviceId: room.device.deviceId,
     });
+  });
+  it('preserves local editing and an encrypted outbox when background synchronization loses the connection', async () => {
+    await controller.create(graph.diagram.id, 'Owner', scope);
+    const room = opened[0];
+    room.message.mockRejectedValue(
+      new CollaborationConnectionError('Reconnect before sending changes.'),
+    );
+    await room.options.onReady();
+    await vi.waitFor(() => expect(controller.getSnapshot().status).toBe('offline'));
+    const before = await repo.getGraph(graph.diagram.id);
+    await workspace.execute(`/nodes/${before.nodes[0].id}`, 'PATCH', {
+      version: before.nodes[0].version,
+      title: 'Still saved locally',
+    });
+    expect((await repo.getGraph(graph.diagram.id)).nodes[0].title).toBe('Still saved locally');
+    expect(controller.getSnapshot().status).not.toBe('error');
   });
   it('freezes the initial graph before asynchronous MLS admission and synchronously replaces the gate', async () => {
     const admission = deferred<FakeRoom>(),
@@ -608,11 +637,11 @@ describe('collaboration controller lifecycle against the encrypted repository', 
     await room.options.onReady();
     expect(controller.getSnapshot().status).toBe('live');
     expect(collaborationPermissions.role(graph.diagram.id)).toBe('owner');
-    expect(sent).toHaveLength(1);
+    await vi.waitFor(() => expect(sent).toHaveLength(1), { timeout: 30000 });
     const peer: RoomMember = { ...room.device, deviceId: 'approved-older-peer', role: 'editor' };
     room.currentPolicy.policy.members.push(peer);
     await room.options.onMessage('sync', new Uint8Array([1, 123, 1]), peer);
-    expect(sent).toHaveLength(2);
+    await vi.waitFor(() => expect(sent).toHaveLength(2), { timeout: 30000 });
     for (const bytes of sent) {
       const plain = await decompressPayload(bytes, new AbortController().signal);
       const envelope = decodeCollaborationUpdate(plain);
@@ -627,7 +656,7 @@ describe('collaboration controller lifecycle against the encrypted repository', 
       name: 'CollaborationPeerMessageError',
       message: expect.stringContaining('envelope'),
     });
-    expect(sent).toHaveLength(2);
+    await vi.waitFor(() => expect(sent).toHaveLength(2), { timeout: 30000 });
     expect(room.dispose).not.toHaveBeenCalled();
     expect((await repo.getGraph(graph.diagram.id)).nodes[0].description).toHaveLength(
       9 * 1024 * 1024,

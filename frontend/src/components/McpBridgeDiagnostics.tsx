@@ -7,7 +7,7 @@ export function McpBridgeDiagnostics() {
   const { t } = useI18n();
   if (diagnostic.state !== 'update-required') return null;
   return (
-    <div className="settings-message" role="status">
+    <div className="settings-message settings-copy" role="status">
       <p>{t('integration.bridge.updateRequired')}</p>
       {diagnostic.version && (
         <p>{t('integration.bridge.detectedVersion', { version: diagnostic.version })}</p>

@@ -21,7 +21,7 @@ export async function verifyIdentity(device: DeviceIdentity) {
 }
 export async function verify(
   key: TransportPublicKey,
-  domain: "policy" | "authenticate" | "command" | "admission",
+  domain: "policy" | "authenticate" | "command" | "admission" | "lease",
   value: unknown,
   signature: string,
 ) {

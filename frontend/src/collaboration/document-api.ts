@@ -93,6 +93,16 @@ export class CollaborationDocumentCommands {
     const context: CollaborationActionContext = bound
       ? { ...bound, source: options.collaborationContext?.source ?? 'api' }
       : (options.collaborationContext ?? { role: 'owner', profileId: localId, source: 'api' });
+    const live = collaborationPermissions.applyDocumentAction(
+      id,
+      value.action,
+      context,
+      async () => {
+        await options.beforeRequest?.();
+        collaborationPermissions.assertWrite(id);
+      },
+    );
+    if (live) return live;
     const changed = mutateCollaboration(graph, value.action, context);
     if (changed === graph) return graph;
     const selected =

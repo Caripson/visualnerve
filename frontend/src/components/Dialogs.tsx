@@ -359,7 +359,7 @@ export function SettingsDialog({
     retry,
   } = useI18n();
   return (
-    <Modal title={t('app.settings')} close={close}>
+    <Modal title={t('app.settings')} close={close} className="settings-dialog">
       <section className="app-language-settings" aria-label={t('settings.appLanguage')}>
         <Field title={t('settings.appLanguage')}>
           <select

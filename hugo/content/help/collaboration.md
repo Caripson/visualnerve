@@ -54,7 +54,7 @@ This is a compact action list beside the model. Due dates are descriptive: there
 
 **Activity** summarizes meaningful model and document-work changes. Moving a node alone does not fill the feed with drag frames. The latest **500** entries are retained. A logical sequence orders entries independently of device clocks; concurrent entries use a stable ID tie-breaker. Displayed dates still come from contributors' devices.
 
-This is **informational, editable diagram content, not an immutable audit log**. Approved editors can modify shared document content, person labels are not independently verified, and imported history is not evidence of verified authorship. Do not use it as regulatory or legal audit evidence.
+This is **informational diagram content, not an immutable audit log**. In a live room, the owner records accepted actions and checks their device-to-profile binding. Editors cannot publish fabricated activity or rewrite another person’s profile/comment through raw diagram updates. Person labels are still not independently verified, and imported local history is not evidence of verified authorship. Do not use this feed as regulatory or legal audit evidence.
 
 ![The bounded activity feed summarizes comments, tasks and semantic diagram changes.](/help/images/collaboration-document-activity.webp)
 
@@ -73,7 +73,9 @@ One document supports **128 profiles**, **2,000 threads and 2,000 messages in to
 5. The recipient unlocks their own browser workspace, opens the invitation and requests access. The owner reviews the pending device and approves it as an **Editor** or **Viewer**.
 6. Wait for synchronization to finish before editing. Confirm both devices show the expected participants and roles, then try changing one title and moving another node.
 
-An invitation is not automatic approval. The owner's browser verifies the participant's signed proof binding this room, the device fingerprint, the MLS public key and KeyPackage, and its expiry before adding that device. The owner's approval binds access to the participant's current device. A display name is a label chosen by a participant, not a verified legal identity. While waiting, the recipient sees **Your device fingerprint**. Compare that complete fingerprint with the owner's pending request through a separate trusted channel before approval; comparing a name alone does not verify the device.
+![The room setup explains disclosure choices and the requirement to keep the owner online.](/help/images/collaboration-create-room.webp)
+
+An invitation is not automatic approval. Version-2 links contain a separate one-use secret in the URL fragment; the owner checks a secret-bound proof of the intended device and sharing scope before displaying its admission request. The relay never receives that secret. Older invitation links are rejected; request a new link from the owner. The owner's browser verifies the participant's signed proof binding this room, the device fingerprint, the MLS public key and KeyPackage, and its expiry before adding that device. The owner's approval binds access to the participant's current device. A display name is a label chosen by a participant, not a verified legal identity. While waiting, the recipient sees **Your device fingerprint**. Compare that complete fingerprint with the owner's pending request through a separate trusted channel before approval; comparing a name alone does not verify the device.
 
 ![A participant waiting for approval on a phone, with the owner and participant device fingerprints and the room's disclosure choices.](/help/images/collaboration-approval-mobile.webp)
 
@@ -121,11 +123,21 @@ Each participant's local vault must remain unlocked. MCP also needs its own expl
 
 ![The live participant dock remains clear of canvas controls on a phone.](/help/images/collaboration-document-mobile-canvas.webp)
 
+## Keep the owner online
+
+The owner must keep the room open in an unlocked browser. Each other participant requests a fresh, nonce-bound permission confirmation every **10 seconds**. The confirmation is tied to the current room policy and encryption epoch and expires within **30 seconds of the recipient’s request**. If the owner goes offline, traffic is withheld, or the policy cannot be confirmed, sharing stops with a visible message. Your already saved local diagram remains in your encrypted workspace.
+
+Removal and downgrades are enforced when the updated policy arrives. The freshness limit also bounds an old session when the relay withholds that policy; it does **not** promise instantaneous revocation during a network partition. A compromised participant can retain anything already received. Removing a device, changing a password, closing a room or making a new invitation cannot erase screenshots, exports, backups or earlier plaintext copies.
+
+Profiles, comments, tasks and activity use a separate **owner-mediated action channel**. The owner checks the authenticated device’s assigned profile and permission, saves the accepted action, then distributes its checkpoint. Your pending action is not shown as saved until acknowledged. If an acknowledgement times out, the action’s outcome is unknown: inspect the latest document before repeating it. Geometry and ordinary diagram fields still merge concurrently through Yjs. Local document work outside a live room continues to work offline.
+
+Reload requires a fresh device invitation and approval. Local comment/task changes made after leaving are not silently merged into owner-authoritative work on rejoin; a recovered local copy preserves differing saved work. Unreleased older CRDT room formats need a new room. Ordinary diagram JSON and backup formats remain compatible.
+
 ## Understand saving and simultaneous edits
 
 Edits are merged per field using Yjs. Two people can change different properties without replacing each other's whole node. The accepted graph still undergoes Visual Nerve's reference and model validation, and local saves use the existing encrypted transaction boundary.
 
-Malformed presence and sync requests are rejected before changing the drawing or participant list. Known-invalid, cryptographically authenticated application framing or permissions are rejected without ending every recipient's session. Expired/overloaded message assembly, uncertain cryptographic state, invalid membership policy and persistence failures still stop the session safely; the app does not silently drop a possibly valid edit while showing a live connection.
+Malformed presence and sync requests are rejected before changing the drawing or participant list. Known-invalid, cryptographically authenticated application framing or permissions are rejected without ending every recipient's session. Assembly limits are isolated per participant. A rejected message shows a warning beside that participant and preserves the accepted local drawing; missing graph dependencies request a fresh state. Check the warning and coordinate recovery, or remove the device. This does not confirm that the rejected sender’s edits synchronized. Uncertain cryptographic state, invalid membership policy and persistence failures still stop the local session safely.
 
 Some simultaneous changes cannot form a valid model—for example, deleting an object while another participant creates a relationship to it. Removing an unused profile while another participant assigns a task to it is another conflicting reference change; keep the profile until assignments are agreed. A conflict stops normal synchronization rather than silently deleting evidence or accepting a broken graph. Inspect the visible conflict, keep your local diagram, and coordinate a reviewed recovery or a new room. Do not treat an offline or conflict indicator as confirmation that all edits reached everyone.
 

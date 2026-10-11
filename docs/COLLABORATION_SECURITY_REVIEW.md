@@ -12,6 +12,8 @@ The corrections described below belong to the commit containing this report.
 The existing external-review release prerequisite has not been removed by this
 report. Any different beta release policy requires an explicit owner decision.
 
+**Historical scope:** the verification below describes the earlier internal review. The subsequent source review of `84c6402` found additional admission, workflow, availability and policy-freshness defects. Its remediation is recorded in [the follow-up](COLLABORATION_REMEDIATION.md); the older peer-failure behavior below is superseded there.
+
 ## Scope and threat assumptions
 
 The review follows the relay admission boundary, browser transport signatures,

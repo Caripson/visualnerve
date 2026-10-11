@@ -15,24 +15,33 @@ export function mergeCollaborationSnapshot(
   priorNative: Uint8Array,
   scope: CollaborationShareScope,
   rebaseLocalChanges = true,
+  protectedWorkflow = false,
 ): { graph: Graph; state: Uint8Array } {
   if (ownerGraph.diagram.id !== localSaved.diagram.id)
     throw new CollaborationDocumentError(
       'COLLABORATION_DOCUMENT_MISMATCH',
       'The owner snapshot belongs to another document or sharing scope.',
     );
-  const owner = new CollaborativeDocument(ownerGraph, scope, ownerNative);
+  if (protectedWorkflow)
+    localSaved = {
+      ...localSaved,
+      diagram: {
+        ...localSaved.diagram,
+        collaboration: structuredClone(ownerGraph.diagram.collaboration),
+      },
+    };
+  const owner = new CollaborativeDocument(ownerGraph, scope, ownerNative, protectedWorkflow);
   let prior: CollaborativeDocument | undefined;
   let merged: CollaborativeDocument | undefined;
   try {
     // A former Editor may have unpublished changes in the prior CRDT itself.
     // A newly approved Viewer cannot merge those changes into the shared state.
     if (!rebaseLocalChanges) return { graph: owner.graph(localSaved), state: owner.encodedState() };
-    prior = new CollaborativeDocument(localSaved, scope, priorNative);
+    prior = new CollaborativeDocument(localSaved, scope, priorNative, protectedWorkflow);
     const previous = prior.graph(localSaved);
     const accepted = prior.mergeNativeSnapshot(owner.encodedState(), localSaved);
     if (!prior.hasSharedChanges(previous, localSaved)) return accepted;
-    merged = new CollaborativeDocument(accepted.graph, scope, accepted.state);
+    merged = new CollaborativeDocument(accepted.graph, scope, accepted.state, protectedWorkflow);
     const rebased = merged.prepareLocal(previous, localSaved, {
       canWrite: true,
       assertActive() {},

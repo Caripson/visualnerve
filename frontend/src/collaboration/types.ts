@@ -24,6 +24,7 @@ export interface CollaborationParticipant {
   profileId?: string;
   color?: string;
   avatarDataUrl?: string;
+  syncWarning?: string;
 }
 export interface CollaborationJoinRequest {
   deviceId: string;

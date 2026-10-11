@@ -1,5 +1,7 @@
 import type { CollaborationMessages } from './en';
 const messages = {
+  'collaboration.authorizationNotice':
+    'El propietario debe mantener la sala abierta. Los permisos se renuevan cada 10 segundos; si no se pueden confirmar, la colaboración se detiene en 30 segundos. El diagrama local guardado se conserva.',
   'collaboration.reviewNotice':
     'La colaboración opcional no ha sido auditada de forma independiente. Revisa el diagrama antes de compartirlo; los participantes aprobados pueden conservar copias. Trabaja localmente si la información no debe salir de este navegador.',
   'collaboration.title': 'Colaboración en tiempo real',

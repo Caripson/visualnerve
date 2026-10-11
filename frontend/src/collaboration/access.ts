@@ -1,6 +1,6 @@
 import type { Graph } from '../model/types';
 import { StorageError } from '../model/errors';
-import type { CollaborationActionContext } from './model/types';
+import type { CollaborationAction, CollaborationActionContext } from './model/types';
 
 export type SharedRole = 'owner' | 'editor' | 'viewer';
 export interface SharedAccess {
@@ -12,6 +12,11 @@ export interface SharedAccess {
   redo?(): boolean;
   documentContext?(): CollaborationActionContext;
   activeProfileIds?(): readonly string[];
+  applyDocumentAction?(
+    action: CollaborationAction,
+    context: CollaborationActionContext,
+    check: () => Promise<void>,
+  ): Promise<Graph>;
 }
 export class CollaborationAccessError extends StorageError {
   readonly code = 'COLLABORATION_READ_ONLY';
@@ -46,6 +51,19 @@ export class CollaborationPermissions {
     if (!access) return undefined;
     access.check();
     return access.documentContext?.() ?? { role: access.role, source: 'api' };
+  }
+  hasWorkflow(diagramId: string): boolean {
+    return !!this.bindings.get(diagramId)?.applyDocumentAction;
+  }
+  applyDocumentAction(
+    diagramId: string,
+    action: CollaborationAction,
+    context: CollaborationActionContext,
+    check: () => Promise<void>,
+  ): Promise<Graph> | undefined {
+    const access = this.bindings.get(diagramId);
+    access?.check();
+    return access?.applyDocumentAction?.(action, context, check);
   }
   activeProfileIds(diagramId: string): readonly string[] {
     const access = this.bindings.get(diagramId);

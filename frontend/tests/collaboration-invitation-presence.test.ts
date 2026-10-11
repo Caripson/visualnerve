@@ -14,15 +14,22 @@ const bytes = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)
 beforeEach(() => vi.stubGlobal('crypto', webcrypto));
 afterEach(() => vi.unstubAllGlobals());
 function invitation(): CollaborationInvitation {
+  const expiresAt = Date.now() + 600_000;
   return {
-    version: 1,
+    version: 2,
+    authorization: {
+      invitationId: crypto.randomUUID(),
+      secret: encodeBytes(crypto.getRandomValues(new Uint8Array(32))),
+      expiresAt,
+      scope: { shareMetadata: false, shareOwners: false, shareDatasets: false },
+    },
     roomId: crypto.randomUUID(),
     diagramId: crypto.randomUUID(),
     relay,
     ownerDeviceId: crypto.randomUUID(),
     ownerCredential: 'a'.repeat(64),
     ticket: encodeBytes(crypto.getRandomValues(new Uint8Array(32))),
-    expiresAt: Date.now() + 600_000,
+    expiresAt,
     scope: { shareMetadata: false, shareOwners: false, shareDatasets: false },
   };
 }
@@ -32,6 +39,7 @@ describe('local collaboration invitation parsing', () => {
     const url = invitationUrl(value, origin);
     expect(new URL(url).search).toBe('');
     expect(url.split('#')[0]).not.toContain(value.ticket);
+    expect(url.split('#')[0]).not.toContain(value.authorization.secret);
     expect(readInvitation(url, origin, relay)).toEqual(value);
   });
   it('rejects another app/relay, query secrets, paths, malformed or oversized fragments', () => {
@@ -52,6 +60,8 @@ describe('local collaboration invitation parsing', () => {
   it('rejects expired/far-future invitations, malformed identity/ticket and undeclared sharing fields', () => {
     const value = invitation();
     for (const patch of [
+      { version: 1 },
+      { authorization: undefined },
       { expiresAt: Date.now() - 1 },
       { expiresAt: Date.now() + 1_000_000 },
       { ownerCredential: 'not-a-thumbprint' },

@@ -62,6 +62,7 @@ export class CollaborativeDocument {
     graph: Graph,
     scope: CollaborationShareScope = defaultCollaborationShareScope,
     state?: Uint8Array,
+    readonly protectedWorkflow = false,
   ) {
     validateGraph(graph);
     this.diagramId = graph.diagram.id;
@@ -87,12 +88,12 @@ export class CollaborativeDocument {
     } else {
       this.doc.transact(() => {
         const contract = this.doc.getMap('contract');
-        contract.set('version', 1);
+        contract.set('version', this.protectedWorkflow ? 2 : 1);
+        if (this.protectedWorkflow) contract.set('workflowAuthority', 'owner');
         contract.set('diagramId', this.diagramId);
         contract.set('scope', this.scope);
         const fields = this.doc.getMap('fields');
-        for (const [key, value] of flattenShared(sharedGraph(graph, this.scope)))
-          fields.set(key, value);
+        for (const [key, value] of flattenShared(this.shared(graph))) fields.set(key, value);
       }, initialOrigin);
     }
     this.project(this.doc, graph);
@@ -102,6 +103,11 @@ export class CollaborativeDocument {
     });
   }
 
+  private shared(graph: Graph) {
+    const value = sharedGraph(graph, this.scope);
+    if (this.protectedWorkflow) delete (value.diagram as Graph['diagram']).collaboration;
+    return value;
+  }
   private active() {
     if (this.disposed) fail('COLLABORATION_CLOSED', 'The shared document has closed.', 423);
   }
@@ -139,8 +145,9 @@ export class CollaborativeDocument {
     // bounded causal vector required by the next local edit or synchronization.
     validateCollaborationStateVector(Y.encodeStateVector(doc));
     if (
-      contract.size !== 3 ||
-      contract.get('version') !== 1 ||
+      contract.size !== (this.protectedWorkflow ? 4 : 3) ||
+      contract.get('version') !== (this.protectedWorkflow ? 2 : 1) ||
+      (this.protectedWorkflow && contract.get('workflowAuthority') !== 'owner') ||
       contract.get('diagramId') !== this.diagramId ||
       !equal(contract.get('scope'), this.scope) ||
       local.diagram.id !== this.diagramId
@@ -149,9 +156,11 @@ export class CollaborativeDocument {
         'COLLABORATION_DOCUMENT_MISMATCH',
         'This update belongs to another document or sharing scope.',
       );
-    assertCollaborationFieldScope(fields, this.scope);
+    assertCollaborationFieldScope(fields, this.scope, !this.protectedWorkflow);
     const value = expandShared(fields);
     const graph = localGraph(value, local, this.scope);
+    if (this.protectedWorkflow)
+      graph.diagram.collaboration = structuredClone(local.diagram.collaboration);
     if (
       graph.diagram.id !== this.diagramId ||
       graph.nodes.length > collaborationDocumentLimits.nodes ||
@@ -160,7 +169,7 @@ export class CollaborativeDocument {
     )
       fail('COLLABORATION_LIMIT', 'The shared document exceeds its object limits.');
     validateGraph(graph);
-    const allowed = flattenShared(sharedGraph(graph, this.scope));
+    const allowed = flattenShared(this.shared(graph));
     const received = flattenShared(value);
     if (
       allowed.size !== received.size ||
@@ -187,8 +196,8 @@ export class CollaborativeDocument {
   }
   hasSharedChanges(before: Graph, after: Graph): boolean {
     this.active();
-    const previous = flattenShared(sharedGraph(before, this.scope));
-    const next = flattenShared(sharedGraph(after, this.scope));
+    const previous = flattenShared(this.shared(before));
+    const next = flattenShared(this.shared(after));
     return (
       previous.size !== next.size ||
       [...next].some(([key, value]) => !equal(previous.get(key), value))
@@ -287,8 +296,8 @@ export class CollaborativeDocument {
     if (before.diagram.id !== this.diagramId || after.diagram.id !== this.diagramId)
       fail('COLLABORATION_DOCUMENT_MISMATCH', 'The edit belongs to another document.');
     validateGraph(after);
-    const previous = flattenShared(sharedGraph(before, this.scope));
-    const next = flattenShared(sharedGraph(after, this.scope));
+    const previous = flattenShared(this.shared(before));
+    const next = flattenShared(this.shared(after));
     const staged = this.clone(true);
     try {
       staged.transact(() => {

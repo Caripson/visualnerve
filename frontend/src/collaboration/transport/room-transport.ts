@@ -1,3 +1,4 @@
+import { proveInvitation, type InvitationAuthorization } from './invitation-authorization';
 import {
   collaborationProtocol,
   admissionInput,
@@ -22,6 +23,7 @@ export interface RoomTransportOptions {
   identity: TransportIdentity;
   device: DeviceIdentity;
   invitation?: string;
+  invitationAuthorization?: InvitationAuthorization;
   keyPackage?: string;
   onFrame(frame: ServerFrame): Promise<void> | void;
   onDisconnect(): void;
@@ -32,6 +34,13 @@ interface PendingCommand {
   resolve(result: unknown): void;
   reject(error: Error): void;
   timer: ReturnType<typeof setTimeout>;
+}
+/** A known transport interruption; a dispatched write can still have an unknown outcome. */
+export class CollaborationConnectionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CollaborationConnectionError';
+  }
 }
 /** A correlated relay rejection has a known outcome, unlike a timeout. */
 export class CollaborationRelayError extends Error {
@@ -118,7 +127,8 @@ export class RoomTransport {
     this.socket = socket;
     const connected = new Promise<void>((resolve, reject) => {
       const timer = setTimeout(
-        () => this.fail(new Error('The collaboration connection timed out.')),
+        () =>
+          this.fail(new CollaborationConnectionError('The collaboration connection timed out.')),
         relayLimits.challengeMs + 5000,
       );
       this.connecting = { resolve, reject, timer };
@@ -199,7 +209,7 @@ export class RoomTransport {
     socket.onclose = () => {
       if (generation !== this.generation) return;
       this.disconnect(
-        new Error(
+        new CollaborationConnectionError(
           'The collaboration connection closed; a pending write may already have been delivered.',
         ),
       );
@@ -207,7 +217,11 @@ export class RoomTransport {
     };
     socket.onerror = () => {
       if (generation === this.generation)
-        this.fail(new Error('The collaboration relay could not be reached.'));
+        this.fail(
+          new CollaborationConnectionError(
+            'The collaboration relay could not be reached; a pending write outcome is unknown. Reconcile room state before retrying.',
+          ),
+        );
     };
     return connected;
   }
@@ -227,12 +241,27 @@ export class RoomTransport {
     decode(challenge.nonce, 32, 32);
     this.connectionId = challenge.connectionId;
     const joining = this.admissionPending && this.options.invitation;
-    if (joining && !this.options.keyPackage)
+    if (joining && (!this.options.keyPackage || !this.options.invitationAuthorization))
       throw new Error('The admission request is missing its public KeyPackage.');
-    const expiresAt = Date.now() + relayLimits.pendingJoinMs;
+    const expiresAt = joining
+      ? Math.min(
+          Date.now() + relayLimits.pendingJoinMs,
+          this.options.invitationAuthorization!.expiresAt,
+        )
+      : Date.now() + relayLimits.pendingJoinMs;
+    const authorization = joining
+      ? await proveInvitation(
+          this.options.roomId,
+          this.options.device,
+          this.options.keyPackage!,
+          expiresAt,
+          this.options.invitationAuthorization!,
+        )
+      : undefined;
     const admission = joining
       ? {
           expiresAt,
+          authorization: authorization!,
           signature: await this.options.identity.sign(
             'admission',
             admissionInput(
@@ -240,6 +269,7 @@ export class RoomTransport {
               this.options.device,
               this.options.keyPackage!,
               expiresAt,
+              authorization!,
             ),
           ),
         }
@@ -260,15 +290,26 @@ export class RoomTransport {
       ...(admission ? { admission } : {}),
     };
     const signature = await this.options.identity.sign('authenticate', unsigned);
-    if (generation !== this.generation) throw new Error('The collaboration connection changed.');
-    this.socket!.send(JSON.stringify({ ...unsigned, signature }));
+    if (generation !== this.generation)
+      throw new CollaborationConnectionError('The collaboration connection changed.');
+    try {
+      this.socket!.send(JSON.stringify({ ...unsigned, signature }));
+    } catch {
+      const error = new CollaborationConnectionError(
+        'The collaboration authentication connection failed. Reconnect before requesting access again.',
+      );
+      this.disconnect(error);
+      throw error;
+    }
   }
 
   send(body: SignedCommand['body'], epoch: number): Promise<unknown> {
     let result!: Promise<unknown>;
     const write = this.writer.then(async () => {
       if (!this.socket || this.socket.readyState !== WebSocket.OPEN || !this.connectionId)
-        throw new Error('Reconnect to the collaboration room before sending changes.');
+        throw new CollaborationConnectionError(
+          'Reconnect to the collaboration room before sending changes.',
+        );
       if (this.pending.size >= 64) throw new Error('The collaboration relay is busy.');
       const generation = this.generation;
       const sequence = this.sequence + 1;
@@ -283,7 +324,8 @@ export class RoomTransport {
         body,
       };
       const signature = await this.options.identity.sign('command', unsigned);
-      if (generation !== this.generation) throw new Error('The collaboration connection changed.');
+      if (generation !== this.generation)
+        throw new CollaborationConnectionError('The collaboration connection changed.');
       const encoded = JSON.stringify({ ...unsigned, signature });
       if (new TextEncoder().encode(encoded).length > relayLimits.envelopeBytes)
         throw new Error('The collaboration message exceeds the relay limit.');
@@ -291,7 +333,7 @@ export class RoomTransport {
         const timer = setTimeout(() => {
           this.pending.delete(sequence);
           reject(
-            new Error(
+            new CollaborationConnectionError(
               'The collaboration write outcome is unknown. Reconcile room state before retrying.',
             ),
           );
@@ -304,17 +346,22 @@ export class RoomTransport {
       try {
         this.socket.send(encoded);
       } catch {
-        this.disconnect(
-          new Error('The collaboration write outcome is unknown. Reconcile before retrying.'),
+        const error = new CollaborationConnectionError(
+          'The collaboration write outcome is unknown. Reconcile before retrying.',
         );
-        throw new Error('The collaboration message could not be sent. Reconnect before retrying.');
+        this.disconnect(error);
+        throw error;
       }
     });
     this.writer = write.catch(() => {});
     return write.then(() => result);
   }
 
-  disconnect(error = new Error('The collaboration connection was closed.')): void {
+  disconnect(
+    error = new CollaborationConnectionError(
+      'The collaboration connection was closed; a pending write outcome is unknown. Reconcile room state before retrying.',
+    ),
+  ): void {
     ++this.generation;
     const socket = this.socket;
     this.socket = undefined;

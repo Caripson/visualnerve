@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	bridgeVersion       = "0.8.0"
+	bridgeVersion       = "0.8.1"
 	operationRetention  = 15 * time.Minute
 	maxBridgeOperations = 1024
 	maxPendingCommands  = 256

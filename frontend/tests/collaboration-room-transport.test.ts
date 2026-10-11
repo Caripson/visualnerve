@@ -13,6 +13,7 @@ import {
   type TransportIdentity,
 } from '../src/collaboration/transport/identity';
 import {
+  CollaborationConnectionError,
   CollaborationPeerMessageError,
   relayOrigin,
   RoomTransport,
@@ -96,6 +97,14 @@ async function fixture(
     identity,
     device,
     invitation: overrides.invitation,
+    invitationAuthorization: overrides.invitation
+      ? {
+          invitationId: crypto.randomUUID(),
+          secret: encodeBytes(crypto.getRandomValues(new Uint8Array(32))),
+          expiresAt: Date.now() + 600_000,
+          scope: { shareMetadata: false, shareOwners: false, shareDatasets: false },
+        }
+      : undefined,
     keyPackage: overrides.keyPackage,
     onFrame,
     onError,
@@ -179,12 +188,21 @@ describe('collaboration browser transport', () => {
     const { auth } = await value.connect();
     expect(auth.invitation).toBe(invitation);
     expect(auth.keyPackage).toBe(keyPackage);
+    expect(auth.admission.authorization.proof).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(auth.admission.authorization).not.toHaveProperty('secret');
+    expect(JSON.stringify(auth)).not.toContain('invitationAuthorization');
     expect(auth.admission.expiresAt).toBeGreaterThan(Date.now());
     expect(
       await verifyTransportSignature(
         value.device,
         'admission',
-        admissionInput(value.roomId, value.device, keyPackage, auth.admission.expiresAt),
+        admissionInput(
+          value.roomId,
+          value.device,
+          keyPackage,
+          auth.admission.expiresAt,
+          auth.admission.authorization,
+        ),
         auth.admission.signature,
       ),
     ).toBe(true);
@@ -311,11 +329,63 @@ describe('collaboration browser transport', () => {
       { kind: 'relay', payloadKind: 'application', ciphertext: 'AA' },
       0,
     );
-    const rejected = expect(result).rejects.toThrow(/outcome is unknown.*Reconcile/);
+    const rejected = expect(result).rejects.toMatchObject({
+      name: 'CollaborationConnectionError',
+      message: expect.stringMatching(/outcome is unknown.*Reconcile/),
+    });
     await socket.next('command');
     await vi.advanceTimersByTimeAsync(15_001);
     await rejected;
     expect(socket.frames.filter((frame) => frame.type === 'command')).toHaveLength(1);
+  });
+  it('reports disconnected background sends with the explicit connection error', async () => {
+    const value = await fixture();
+    await expect(value.transport.send({ kind: 'inspect' }, 0)).rejects.toThrow(
+      CollaborationConnectionError,
+    );
+    await value.connect();
+    value.transport.disconnect();
+    await expect(value.transport.send({ kind: 'inspect' }, 0)).rejects.toMatchObject({
+      name: 'CollaborationConnectionError',
+      message: expect.stringMatching(/Reconnect.*before sending/),
+    });
+    expect(value.onError).not.toHaveBeenCalled();
+  });
+  it.each(['disconnect', 'close', 'error', 'send-failure'] as const)(
+    'preserves an unknown dispatched outcome as a connection error after %s',
+    async (failure) => {
+      const value = await fixture(),
+        { socket } = await value.connect();
+      if (failure === 'send-failure')
+        socket.onSend = () => {
+          throw new Error('Native WebSocket send failed');
+        };
+      const pending = value.transport.send({ kind: 'inspect' }, 0);
+      const rejected = expect(pending).rejects.toMatchObject({
+        name: 'CollaborationConnectionError',
+        message: expect.stringMatching(/unknown|may already have been delivered/),
+      });
+      await socket.next('command');
+      if (failure === 'disconnect') value.transport.disconnect();
+      if (failure === 'close') socket.close();
+      if (failure === 'error') socket.onerror?.();
+      await rejected;
+      expect(socket.frames.filter((frame) => frame.type === 'command')).toHaveLength(1);
+      if (failure === 'error')
+        expect(value.onError).toHaveBeenCalledWith(expect.any(CollaborationConnectionError));
+    },
+  );
+  it('reports the initial connection timeout as a connection error', async () => {
+    vi.useFakeTimers();
+    const value = await fixture();
+    const connecting = value.transport.connect();
+    const rejected = expect(connecting).rejects.toMatchObject({
+      name: 'CollaborationConnectionError',
+      message: expect.stringMatching(/connection timed out/),
+    });
+    await vi.advanceTimersByTimeAsync(relayLimits.challengeMs + 5001);
+    await rejected;
+    expect(value.onError).toHaveBeenCalledWith(expect.any(CollaborationConnectionError));
   });
   it('rejects pending ACKs on close and cannot reconnect a permanently closed transport', async () => {
     const value = await fixture(),
@@ -343,6 +413,7 @@ describe('collaboration browser transport', () => {
       { socket } = await value.connect();
     socket.emit(frame);
     await vi.waitFor(() => expect(value.onError).toHaveBeenCalledTimes(1));
+    expect(value.onError.mock.calls[0][0]).not.toBeInstanceOf(CollaborationConnectionError);
     expect(socket.readyState).toBe(3);
   });
   it('returns structured rejection to the matching pending command without dropping another ACK', async () => {
@@ -384,6 +455,11 @@ describe('collaboration browser transport', () => {
     };
     await value.transport.send({ kind: 'inspect' }, 0);
     expect(socket.frames.find((frame) => frame.type === 'command').sequence).toBe(1);
+    vi.spyOn(value.identity, 'sign').mockRejectedValueOnce(new Error('Native signing failed'));
+    await expect(value.transport.send({ kind: 'inspect' }, 0)).rejects.toMatchObject({
+      name: 'Error',
+      message: 'Native signing failed',
+    });
   });
   it('cannot publish a signed packet after close occurs during native signing', async () => {
     const identity = await createTransportIdentity(),
@@ -402,7 +478,10 @@ describe('collaboration browser transport', () => {
     const value = await fixture({ identity: blocked }),
       { socket } = await value.connect();
     const sending = value.transport.send({ kind: 'inspect' }, 0),
-      rejected = expect(sending).rejects.toThrow(/changed|closed|Reconnect/);
+      rejected = expect(sending).rejects.toMatchObject({
+        name: 'CollaborationConnectionError',
+        message: expect.stringMatching(/changed|closed|Reconnect/),
+      });
     await Promise.resolve();
     value.transport.close();
     release();

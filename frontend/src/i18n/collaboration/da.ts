@@ -1,5 +1,7 @@
 import type { CollaborationMessages } from './en';
 const messages = {
+  'collaboration.authorizationNotice':
+    'Ejeren skal holde rummet åbent. Tilladelser fornyes hvert 10. sekund; deling stopper inden for 30 sekunder, hvis de ikke kan bekræftes. Dit gemte lokale diagram bevares.',
   'collaboration.reviewNotice':
     'Valgfrit samarbejde har ikke gennemgået en uafhængig sikkerhedsrevision. Gennemgå diagrammet før deling; godkendte deltagere kan beholde kopier. Arbejd lokalt, hvis oplysningerne ikke må forlade denne browser.',
   'collaboration.title': 'Samarbejde i realtid',

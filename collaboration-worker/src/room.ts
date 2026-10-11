@@ -236,6 +236,7 @@ export class CollaborationRoom extends DurableObject<RelayEnv> {
         try {
           frame = JSON.parse(message);
         } catch {
+          if (!state.authenticated) socket.close(1008, "Invalid admission frame");
           throw new RelayError("INVALID_JSON");
         }
         if (!state.authenticated) {
@@ -511,6 +512,7 @@ export class CollaborationRoom extends DurableObject<RelayEnv> {
         device,
         auth.keyPackage!,
         admission.expiresAt,
+        admission.authorization,
       ),
       admission.signature,
     );
@@ -700,7 +702,7 @@ export class CollaborationRoom extends DurableObject<RelayEnv> {
       .filter(
         (other) =>
           now - other.rateWindow < 60_000 &&
-          other.device?.deviceId === state.device?.deviceId,
+          !!state.device && other.device?.deviceId === state.device.deviceId,
       );
     const baseline = {
       count: related.reduce((sum, other) => sum + other.rateCount, 0),
@@ -714,8 +716,8 @@ export class CollaborationRoom extends DurableObject<RelayEnv> {
         await this.scheduleAlarm(now + deviceRateLimits.windowMs);
       }
     } else if (
-      baseline.count >= relayLimits.messagesPerMinute ||
-      baseline.bytes + bytes > relayLimits.bytesPerMinute
+      state.rateCount >= 8 ||
+      state.rateBytes + bytes > 64 * 1024
     ) {
       throw new RelayError("RATE_LIMIT", 429);
     }

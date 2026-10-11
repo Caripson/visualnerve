@@ -1,5 +1,7 @@
 import type { CollaborationMessages } from './en';
 const messages = {
+  'collaboration.authorizationNotice':
+    'Le propriétaire doit garder la salle ouverte. Les autorisations sont renouvelées toutes les 10 secondes. Si elles ne peuvent pas être confirmées, le partage s’arrête sous 30 secondes. Votre diagramme local enregistré est conservé.',
   'collaboration.reviewNotice':
     'La collaboration facultative n’a pas fait l’objet d’un audit de sécurité indépendant. Vérifiez le diagramme avant de le partager ; les participants approuvés peuvent conserver des copies. Travaillez localement si les informations ne doivent pas quitter ce navigateur.',
   'collaboration.title': 'Collaboration en temps réel',

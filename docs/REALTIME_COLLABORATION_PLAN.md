@@ -20,7 +20,12 @@ server. UI, local API and MCP must use the same authoritative document model.
   our browser bindings or complete application audited; those need separate review.
 - The owner pins approved device identities and signs the room's complete role policy.
   Receivers verify both authenticated MLS authorship and owner-approved permissions.
-- Yjs reconciles concurrent edits per entity/field. Semantic validation still applies:
+- Ordinary graph fields reconcile through Yjs. Protected profiles, comments, tasks
+  and activity use owner-mediated semantic actions and versioned checkpoints.
+- Version-2 invitations bind admission to a separate one-use owner capability.
+  Nonowners renew exact-policy owner leases every 10 seconds, with a 30-second
+  challenge deadline; expired permission cannot authorize further live writes.
+- Yjs reconciles concurrent drawing edits per entity/field. Semantic validation still applies:
   converged data is not automatically a valid process or diagram.
 - Shared changes project into the existing validated, encrypted local repository.
   Local versions, camera, persisted view/selection preferences, personal settings
@@ -37,9 +42,9 @@ sync record ahead of the saved diagram.
 
 An authenticated frame can already be in flight when an owner changes membership.
 Clients discard earlier-epoch application frames without passing them into the new
-MLS ratchet. Exactly one preceding **public** policy is retained to authenticate
-adjacent in-flight frames; no old decryption keys or permission to apply those
-frames are retained. Current members resynchronize their complete CRDT in the new
+MLS ratchet. Structurally valid earlier-epoch frames are discarded before current
+role checks, however far behind they arrive; no prior decryption keys or permission
+to apply those frames are retained. Current members resynchronize their complete CRDT in the new
 epoch, including saved local changes.
 
 ## Modules and schemas
@@ -49,6 +54,7 @@ epoch, including saved local changes.
 | Relay, public admission and bounded metadata                                   | `collaboration-worker/src/`                                                                                                        |
 | Standard MLS adapter, canonical Linux WASM rebuild and retained Cargo licenses | `collaboration-crypto/`, `frontend/src/collaboration/crypto*`, `generated/`                                                        |
 | Owner policies, authenticated transport and ephemeral group session            | `frontend/src/collaboration/transport/`, `session/encrypted-room.ts`                                                               |
+| Protected workflow authority, actions and bounded owner checkpoints           | `frontend/src/collaboration/session/workflow.ts`                                                                                  |
 | Scoped field/entity CRDT and concurrent merge validation                       | `frontend/src/collaboration/document/`                                                                                             |
 | Atomic encrypted sync persistence and graph projection                         | `frontend/src/collaboration/persistence/`, `session/document-gateway.ts`, `security/collaboration-journal.ts`, existing `storage/` |
 | Room lifecycle, permissions, lazy UI and authenticated presence                | `frontend/src/collaboration/controller.ts`, `access.ts`, `ui/`, `CollaborationFeature.tsx`                                         |

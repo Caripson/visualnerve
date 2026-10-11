@@ -33,7 +33,7 @@ import type { VaultSession } from '../security/vault-session';
 import { VaultStorageError } from '../security/vault-storage';
 import { ExternalSvgAuthority } from './external-svg-authority';
 import { collaborationDocumentHooks } from '../collaboration/document-hooks';
-import type { SharedProjectionAuthority } from '../collaboration/access';
+import { collaborationPermissions, type SharedProjectionAuthority } from '../collaboration/access';
 
 /** Commit a pending local camera before a user-requested snapshot or navigation. */
 export function flushSpatialCamera() {
@@ -814,7 +814,19 @@ export class Workspace {
   ): Promise<T> {
     await this.requireStorageConsent(repo.db);
     await this.settled();
-    if (!mutatesDocument(path, method)) {
+    const workflowPath = new URL(path.replace(/^\/api\/v1/, ''), 'http://browser.local').pathname
+      .split('/')
+      .filter(Boolean);
+    const liveWorkflow =
+      method === 'POST' &&
+      workflowPath.length === 4 &&
+      workflowPath[0] === 'diagrams' &&
+      workflowPath[2] === 'collaboration' &&
+      workflowPath[3] === 'actions' &&
+      collaborationPermissions.hasWorkflow(workflowPath[1]);
+    // Owner-mediated actions persist via applySharedProjection. Do not hold this
+    // same queue while awaiting their acknowledgement (that would deadlock).
+    if (liveWorkflow || !mutatesDocument(path, method)) {
       await options.beforeRequest?.();
       const result = await repo.request<T>(path, method, data, options);
       await this.refresh(job);

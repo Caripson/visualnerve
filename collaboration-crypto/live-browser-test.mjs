@@ -256,6 +256,45 @@ try {
   checked.push(
     "Bidirectional Workspace API/UI edits; both vault journals atomically commit graph+CRDT/outbox; disk has only ciphertext",
   );
+  const workflowBefore = (await evaluate(owner, "graph")).diagram.collaboration;
+  await evaluate(guest, "sendProtectedNamespace");
+  await owner.waitForFunction(() =>
+    window.collaborationLiveTest
+      .snapshot()
+      .participants.some((peer) => peer.syncWarning),
+  );
+  assert.equal((await evaluate(owner, "snapshot")).status, "live");
+  assert.deepEqual(
+    (await evaluate(owner, "graph")).diagram.collaboration,
+    workflowBefore,
+  );
+  await evaluate(guest, "sendEditorCheckpoint");
+  await owner.waitForFunction(() =>
+    window.collaborationLiveTest.snapshot().error?.includes("permission"),
+  );
+  assert.equal((await evaluate(owner, "snapshot")).status, "live");
+  assert.deepEqual(
+    (await evaluate(owner, "graph")).diagram.collaboration,
+    workflowBefore,
+  );
+  const forbidden = await guest.evaluate(async () => {
+    try {
+      await window.collaborationLiveTest.changeOwnerProfile();
+      return null;
+    } catch (error) {
+      return { status: error.status, message: error.message };
+    }
+  });
+  assert.equal(forbidden?.status, 403);
+  assert.deepEqual(
+    (await evaluate(owner, "graph")).diagram.collaboration,
+    workflowBefore,
+  );
+  await evaluate(guest, "edit", "Valid edit after rejected peer messages");
+  await waitTitle(owner, "Valid edit after rejected peer messages");
+  checked.push(
+    "Actual MLS Editor cannot inject protected CRDT fields, forge an owner checkpoint or rewrite the owner profile; rejection preserves workflow and the room accepts subsequent valid edits",
+  );
   const graphBefore = await evaluate(guest, "graph"),
     privateBefore = await evaluate(guest, "privateState");
   await evaluate(guest, "failNextAtomic");
@@ -398,7 +437,9 @@ try {
     .getByRole("button", { name: "Confirm change", exact: true })
     .click();
   await guest.waitForFunction(
-    () => window.collaborationLiveTest.snapshot().role === "viewer",
+    () =>
+      window.collaborationLiveTest.snapshot().role === "viewer" &&
+      window.collaborationLiveTest.snapshot().status === "live",
   );
   let denied;
   for (let attempt = 0; attempt < 3; attempt++) {

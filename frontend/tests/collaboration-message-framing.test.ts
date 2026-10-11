@@ -47,9 +47,7 @@ describe('authenticated application message framing', () => {
   it('binds all chunks to the exact sender, epoch and diagram without destroying the valid pending message', async () => {
     const frames = await framer.encode('snapshot', new Uint8Array(40_000));
     await assembler.accept('device-12345', 3, frames[0]);
-    await expect(assembler.accept('device-98765', 3, frames[1])).rejects.toMatchObject({
-      code: 'COLLABORATION_FRAME_CONFLICT',
-    });
+    expect(await assembler.accept('device-98765', 3, frames[1])).toBeUndefined(); // Isolated sender namespace; it cannot steal another device's slots.
     await expect(assembler.accept('device-12345', 4, frames[1])).rejects.toMatchObject({
       code: 'COLLABORATION_FRAME_CONFLICT',
     });
@@ -99,11 +97,17 @@ describe('authenticated application message framing', () => {
       });
     await assembler.accept('device-12345', 1, frame(first, 0));
     expect(assembler.bufferedBytes).toBe(32 * 1024);
-    for (let part = 1; part < 1023; part++)
+    for (let part = 1; part < 256; part++)
       await assembler.accept('device-12345', 1, frame(first, part));
-    await assembler.accept('device-98765', 1, frame(second, 0));
+    await expect(assembler.accept('device-12345', 1, frame(first, 256))).rejects.toMatchObject({
+      code: 'COLLABORATION_MESSAGE_LIMIT',
+    });
+    for (const sender of ['device-98765', 'device-34567', 'device-45678']) {
+      const id = crypto.randomUUID();
+      for (let part = 0; part < 256; part++) await assembler.accept(sender, 1, frame(id, part));
+    }
     expect(assembler.bufferedBytes).toBe(32 * 1024 * 1024);
-    await expect(assembler.accept('device-98765', 1, frame(second, 1))).rejects.toMatchObject({
+    await expect(assembler.accept('device-56789', 1, frame(second, 0))).rejects.toMatchObject({
       code: 'COLLABORATION_MESSAGE_LIMIT',
       status: 429,
     });

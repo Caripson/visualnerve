@@ -1,4 +1,6 @@
 const messages = {
+  'collaboration.authorizationNotice':
+    'The owner must keep this room open. Permissions refresh every 10 seconds; sharing stops within 30 seconds if they cannot be confirmed. Your saved local diagram is preserved.',
   'collaboration.reviewNotice':
     'Optional collaboration has not been independently audited. Review the diagram before sharing; approved participants can keep copies. Use local editing when the information should not leave this browser.',
   'collaboration.title': 'Live collaboration',

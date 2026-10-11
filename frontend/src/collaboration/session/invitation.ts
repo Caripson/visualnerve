@@ -1,9 +1,12 @@
 import { record, roomId, deviceId, decode } from '../../../../collaboration-worker/src/validation';
 import { decodeBytes, encodeBytes } from '../transport/identity';
+import { canonical } from '../../../../collaboration-worker/src/protocol';
+import type { InvitationAuthorization } from '../transport/invitation-authorization';
 import { relayOrigin } from '../transport/room-transport';
 import type { CollaborationShareScope } from '../document/scope';
 export interface CollaborationInvitation {
-  version: 1;
+  version: 2;
+  authorization: InvitationAuthorization;
   roomId: string;
   diagramId: string;
   relay: string;
@@ -39,6 +42,7 @@ export function readInvitation(
   );
   record(value, [
     'version',
+    'authorization',
     'roomId',
     'diagramId',
     'relay',
@@ -51,9 +55,22 @@ export function readInvitation(
   roomId(value.roomId);
   deviceId(value.ownerDeviceId);
   decode(value.ticket, 32, 32);
+  const authorization = record(value.authorization, [
+    'invitationId',
+    'secret',
+    'expiresAt',
+    'scope',
+  ]);
+  roomId(authorization.invitationId);
+  decode(authorization.secret, 32, 32);
+  if (authorization.expiresAt !== value.expiresAt)
+    throw new Error('The invitation authorization expiry differs.');
+  record(authorization.scope, ['shareMetadata', 'shareOwners', 'shareDatasets']);
+  if (canonical(authorization.scope) !== canonical(value.scope))
+    throw new Error('The invitation sharing scope differs from its authorization.');
   record(value.scope, ['shareMetadata', 'shareOwners', 'shareDatasets']);
   if (
-    value.version !== 1 ||
+    value.version !== 2 ||
     !uuid.test(value.diagramId) ||
     !/^[a-f0-9]{64}$/.test(value.ownerCredential) ||
     relayOrigin(value.relay) !== relayOrigin(configuredRelay) ||

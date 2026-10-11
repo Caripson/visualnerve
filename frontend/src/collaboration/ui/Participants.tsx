@@ -189,6 +189,7 @@ export function Participants({
                     <span className="collaboration-badge">{t('collaboration.agent')}</span>
                   )}
                 </p>
+                {participant.syncWarning && <p role="status">{participant.syncWarning}</p>}
                 {participant.selectedNodeIds.length > 0 && (
                   <p className="muted">
                     {t('collaboration.selected', { count: participant.selectedNodeIds.length })}

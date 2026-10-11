@@ -81,8 +81,9 @@ and `usePresenceDock.ts` reserve clear canvas space around actual controls,
 player, drawers and update notices. Avatar upload decoding is bounded separately
 from the persisted raster validation.
 
-The existing API/MCP surface is version **0.8.0**, with capability
-`collaboration-document-v1`. `backend/cmd/openapi/collaboration-document.go`
+The initial document-work implementation targeted API/MCP version **0.8.0**,
+with capability `collaboration-document-v1`. The current surface is **0.8.1**;
+see `API.md` for the current contract. `backend/cmd/openapi/collaboration-document.go`
 generates the action/document schemas and the server's MCP description exposes
 both new paths. `API.md`, `docs/MCP.md`, `EXPORT_FORMAT.md`, README and the Help,
 privacy and security pages describe the same behavior. All eight app languages

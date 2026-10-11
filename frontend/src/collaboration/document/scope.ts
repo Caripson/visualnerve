@@ -219,6 +219,7 @@ const metadata = (value: Record<string, unknown>, scope: CollaborationShareScope
 export function assertCollaborationFieldScope(
   entries: Iterable<[string, unknown]>,
   scope: CollaborationShareScope,
+  allowWorkflow = true,
 ) {
   const fail = (): never => {
     throw new StorageError(
@@ -251,7 +252,8 @@ export function assertCollaborationFieldScope(
     )
       fail();
     if (root === 'diagram') {
-      if (entityId === 'collaboration' && !validDocumentPath(path, value)) fail();
+      if (entityId === 'collaboration' && (!allowWorkflow || !validDocumentPath(path, value)))
+        fail();
       if (entityId === 'externalId' && !scope.shareMetadata) fail();
       if (['version', 'createdAt', 'updatedAt', 'favorite', 'folder'].includes(entityId)) fail();
       if (entityId === 'metadata' && path.length > 2 && !scope.shareMetadata) fail();

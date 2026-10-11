@@ -21,6 +21,13 @@ export function collaborationCapabilities(configured: boolean) {
     sharedModel: 'yjs-per-field',
     encryption: 'mls-rfc9420',
     authentication: 'owner-approved-device-and-owner-signed-acl',
+    authorization: {
+      invitationVersion: 2,
+      admission: 'owner-secret-bound-device-proof',
+      freshness: 'nonce-bound-owner-lease',
+      maxLeaseMs: 30_000,
+      refreshMs: 10_000,
+    },
     roles: ['owner', 'editor', 'viewer'],
     controls: {
       inspect: true,
@@ -50,6 +57,9 @@ export function collaborationCapabilities(configured: boolean) {
       mutate: '/diagrams/{id}/collaboration/actions',
       concurrency: 'baseVersion',
       actor: 'adapter-bound-document-profile',
+      liveAuthority: 'owner-mediated-actions',
+      ownerMustBeOnline: true,
+      contentTrust: 'untrusted-user-content',
       identity: 'unverified-document-label',
       activity: 'bounded-editable-client-clock-history',
       requiresConfiguredRelay: false,
@@ -121,6 +131,7 @@ export function collaborationApiSnapshot(snapshot: Readonly<CollaborationSnapsho
       ...(participant.actor ? { actor: participant.actor } : {}),
       ...(participant.profileId ? { profileId: participant.profileId } : {}),
       ...(participant.color ? { color: participant.color } : {}),
+      ...(participant.syncWarning ? { synchronization: 'message-rejected' } : {}),
     })),
     pendingJoinCount: snapshot.pendingJoins.length,
     ...(snapshot.syncProgress

@@ -1,5 +1,7 @@
 import type { CollaborationMessages } from './en';
 const messages = {
+  'collaboration.authorizationNotice':
+    'Der Eigentümer muss den Raum geöffnet lassen. Berechtigungen werden alle 10 Sekunden erneuert. Können sie nicht bestätigt werden, endet die Freigabe innerhalb von 30 Sekunden. Ihr lokal gespeichertes Diagramm bleibt erhalten.',
   'collaboration.reviewNotice':
     'Die optionale Zusammenarbeit wurde nicht unabhängig sicherheitsgeprüft. Prüfen Sie das Diagramm vor dem Teilen; zugelassene Teilnehmer können Kopien behalten. Arbeiten Sie lokal, wenn die Informationen diesen Browser nicht verlassen sollen.',
   'collaboration.title': 'Zusammenarbeit in Echtzeit',

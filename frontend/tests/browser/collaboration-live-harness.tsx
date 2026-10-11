@@ -1,5 +1,10 @@
 /** Test-only real controller/relay/MLS/vault fixture; never imported by the app. */
 import { createRoot } from 'react-dom/client';
+import * as Y from 'yjs';
+import { encodeCollaborationUpdate } from '../../src/collaboration/document/update-envelope';
+import { compressPayload } from '../../src/collaboration/session/payload-codec';
+import type { EncryptedRoom } from '../../src/collaboration/session/encrypted-room';
+import type { CollaborationDocumentGateway } from '../../src/collaboration/session/document-gateway';
 import { CollaborationController } from '../../src/collaboration/controller';
 import { CollaborationPrivateStore } from '../../src/collaboration/persistence/private-store';
 import { CollaborationPanel } from '../../src/collaboration/ui';
@@ -123,6 +128,53 @@ const test = {
     useEditor.getState().updateNode(graph.nodes[0].id, patch);
     await workspace.settled();
     return current();
+  },
+  // Deliberately bypass the honest local gateway from this disposable test client.
+  // The receiver still uses the production MLS, framing, projection and vault code.
+  sendProtectedNamespace: async () => {
+    const { room, gateway } = controller as unknown as {
+      room: EncryptedRoom;
+      gateway: CollaborationDocumentGateway;
+    };
+    const raw = new Y.Doc();
+    Y.applyUpdate(raw, gateway.document.encodedState());
+    const base = gateway.document.stateVector();
+    raw
+      .getMap('fields')
+      .set('["diagram","collaboration","profiles","forged","name"]', ['value', 'Forged owner']);
+    const bytes = encodeCollaborationUpdate(base, Y.encodeStateAsUpdate(raw, base));
+    raw.destroy();
+    const compressed = await compressPayload(bytes, new AbortController().signal);
+    try {
+      await room.message('update', compressed);
+    } finally {
+      bytes.fill(0);
+      compressed.fill(0);
+    }
+  },
+  sendEditorCheckpoint: async () => {
+    const { room, gateway } = controller as unknown as {
+      room: EncryptedRoom;
+      gateway: CollaborationDocumentGateway;
+    };
+    const bytes = new TextEncoder().encode(
+      JSON.stringify({ version: 1, ...gateway.workflow.checkpoint(await current()) }),
+    );
+    const compressed = await compressPayload(bytes, new AbortController().signal);
+    try {
+      await room.message('workflow-state', compressed);
+    } finally {
+      bytes.fill(0);
+      compressed.fill(0);
+    }
+  },
+  changeOwnerProfile: async () => {
+    const graph = await current();
+    const owner = graph.diagram.collaboration!.profiles[0];
+    return workspace.execute(`/diagrams/${graph.diagram.id}/collaboration/actions`, 'POST', {
+      baseVersion: graph.diagram.version,
+      action: { type: 'profile.update', id: owner.id, patch: { name: 'Forged owner' } },
+    });
   },
   reconnect: () => controller.reconnect(),
   lock: () => session.lock(),

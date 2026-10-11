@@ -169,26 +169,28 @@ export function VoiceSettings() {
           ))}
         </select>
       </label>
-      <p className="muted">{t('voice.defaultLocalHint')}</p>
-      <p className="muted">
-        {t('voice.qualityHint', {
-          quality: t(voice.quality === 'high' ? 'voice.qualityHigh' : 'voice.qualityMedium'),
-        })}
-      </p>
-      <p className="muted">
-        {cached.includes(draft)
-          ? t('voice.availableOffline')
-          : t('voice.firstDownloadHint', {
-              megabytes: Math.ceil(voice.modelBytes / 1024 / 1024),
-            })}{' '}
-        {t('voice.runtimeDownloadHint')}
-      </p>
-      <p className="muted">
-        {voice.license}.{' '}
-        <a href={voice.source} target="_blank" rel="noreferrer">
-          {t('voice.sourceLicenseLink')}
-        </a>
-      </p>
+      <div className="settings-copy">
+        <p className="muted">{t('voice.defaultLocalHint')}</p>
+        <p className="muted">
+          {t('voice.qualityHint', {
+            quality: t(voice.quality === 'high' ? 'voice.qualityHigh' : 'voice.qualityMedium'),
+          })}
+        </p>
+        <p className="muted">
+          {cached.includes(draft)
+            ? t('voice.availableOffline')
+            : t('voice.firstDownloadHint', {
+                megabytes: Math.ceil(voice.modelBytes / 1024 / 1024),
+              })}
+        </p>
+        <p className="muted">{t('voice.runtimeDownloadHint')}</p>
+        <p className="muted">
+          {voice.license}.{' '}
+          <a href={voice.source} target="_blank" rel="noreferrer">
+            {t('voice.sourceLicenseLink')}
+          </a>
+        </p>
+      </div>
       <div className="storage-actions">
         <button type="button" disabled={saving || draft === active} onClick={() => void save()}>
           {saving ? t('presentation.voiceSaving') : t('voice.saveAction')}

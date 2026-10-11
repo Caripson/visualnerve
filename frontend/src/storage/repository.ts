@@ -253,7 +253,7 @@ export class Repository {
         dataset: input.dataset ?? (input.datasets === undefined ? before.dataset : undefined),
         datasets: input.datasets ?? before.datasets,
       };
-    if (!projection && before && input.diagram.collaboration) {
+    if (!projection && before && input.diagram.collaboration && !shared) {
       const { appendSemanticActivity, retainCollaborationNodeTitles } =
         await import('../collaboration/model');
       const bound = collaborationPermissions.documentContext(input.diagram.id);
@@ -272,23 +272,7 @@ export class Repository {
             profileId,
             source: canonicalPositions ? ('ui' as const) : ('api' as const),
           };
-      // Summaries must obey the same disclosure scope as the document delta.
-      // Private metadata, owners and source evidence never leak via history.
-      if (shared) {
-        const scope = shared.scope;
-        if (scope) {
-          const { sharedGraph, localGraph } = await import('../collaboration/document/scope');
-          const empty = blankGraph(input.diagram.name, input.diagram.type);
-          empty.diagram.id = input.diagram.id;
-          const visibleBefore = localGraph(sharedGraph(before, scope), empty, scope);
-          const visibleAfter = localGraph(sharedGraph(input, scope), empty, scope);
-          const recorded = appendSemanticActivity(visibleBefore, visibleAfter, context);
-          input = {
-            ...input,
-            diagram: { ...input.diagram, collaboration: recorded.diagram.collaboration },
-          };
-        }
-      } else input = appendSemanticActivity(before, input, context);
+      input = appendSemanticActivity(before, input, context);
       input = retainCollaborationNodeTitles(input);
     }
     const prepared =

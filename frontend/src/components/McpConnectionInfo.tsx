@@ -30,7 +30,7 @@ export function McpConnectionInfo({ endpoint }: { endpoint: string }) {
     }
   };
   return (
-    <section aria-label={t('integration.addresses.region')}>
+    <section className="mcp-connection-info" aria-label={t('integration.addresses.region')}>
       <label className="field">
         <span>{t('integration.addresses.websiteLabel')}</span>
         <input aria-label={t('integration.addresses.websiteLabel')} readOnly value={website} />

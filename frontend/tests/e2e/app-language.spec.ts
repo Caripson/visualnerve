@@ -167,7 +167,9 @@ test('all languages fit mobile Settings in light, dark, narrow portrait and shor
   await page.getByRole('button', { name: 'Local only: storage and privacy', exact: true }).click();
   const dialog = page.getByRole('dialog');
   const selector = page.getByTestId('app-language');
+  const catalogs = new LocaleCatalogLoader();
   for (const { id } of APP_LOCALES) {
+    const catalog = await catalogs.load(id);
     await selector.selectOption(id);
     await expect(page.locator('html')).toHaveAttribute('lang', id);
     for (const colorScheme of ['light', 'dark'] as const) {
@@ -191,6 +193,37 @@ test('all languages fit mobile Settings in light, dark, narrow portrait and shor
         await selector.focus();
         await expect(selector).toBeFocused();
         await expect(dialog.locator('.modal-heading button')).toBeVisible();
+        const paragraphGaps = await dialog.evaluate((element) =>
+          [...element.querySelectorAll('p')].flatMap((paragraph) => {
+            const previous = paragraph.previousElementSibling;
+            if (!previous || !['P', 'STRONG'].includes(previous.tagName)) return [];
+            const before = previous.getBoundingClientRect();
+            const current = paragraph.getBoundingClientRect();
+            return before.height && current.height ? [current.top - before.bottom] : [];
+          }),
+        );
+        expect(paragraphGaps.length).toBeGreaterThanOrEqual(4);
+        for (const gap of paragraphGaps) expect(gap).toBeGreaterThanOrEqual(11);
+        await expect(
+          dialog
+            .getByRole('region', { name: catalog['voice.settingsRegion'], exact: true })
+            .locator('p')
+            .filter({ hasText: catalog['voice.runtimeDownloadHint'] }),
+        ).toHaveText(catalog['voice.runtimeDownloadHint']);
+        const addressLayout = await dialog
+          .getByRole('region', { name: catalog['integration.addresses.region'], exact: true })
+          .evaluate((element) => {
+            const style = getComputedStyle(element);
+            const fields = element.querySelectorAll('.field');
+            const previous = fields[1].previousElementSibling!;
+            return {
+              padding: parseFloat(style.paddingLeft),
+              paragraphGap:
+                fields[1].getBoundingClientRect().top - previous.getBoundingClientRect().bottom,
+            };
+          });
+        expect(addressLayout.padding).toBeGreaterThanOrEqual(12);
+        expect(addressLayout.paragraphGap).toBeGreaterThanOrEqual(11);
       }
     }
   }

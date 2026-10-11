@@ -1,5 +1,7 @@
 import type { CollaborationMessages } from './en';
 const messages = {
+  'collaboration.authorizationNotice':
+    'Omistajan on pidettävä huone avoinna. Käyttöoikeudet uusitaan 10 sekunnin välein. Jakaminen pysähtyy 30 sekunnin kuluessa, jos niitä ei voida vahvistaa. Tallennettu paikallinen kaavio säilyy.',
   'collaboration.reviewNotice':
     'Valinnaiselle yhteistyölle ei ole tehty riippumatonta tietoturva-auditointia. Tarkista kaavio ennen jakamista; hyväksytyt osallistujat voivat säilyttää kopioita. Työskentele paikallisesti, jos tietojen ei pidä poistua tästä selaimesta.',
   'collaboration.title': 'Reaaliaikainen yhteistyö',

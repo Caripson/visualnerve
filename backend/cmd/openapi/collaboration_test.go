@@ -51,7 +51,7 @@ func TestCollaborationSchemasKeepAdmissionPrivateAndDiscoverActualBudgets(t *tes
 		t.Fatal("do not overstate independent assurance")
 	}
 	limits := schemas["CollaborationLimits"].(object)["properties"].(object)
-	for field, limit := range map[string]int{"nodes": 20000, "edges": 100000, "stateBytes": 33554432, "updateBytes": 8388608, "frameBytes": 65536, "chunkBytes": 32768, "activeMessages": 8, "totalBufferedBytes": 33554432, "timeoutMs": 60000, "compressedPayloadBytes": 3145728, "plaintextPayloadBytes": 67108864} {
+	for field, limit := range map[string]int{"nodes": 20000, "edges": 100000, "stateBytes": 33554432, "updateBytes": 8388608, "frameBytes": 65536, "chunkBytes": 32768, "activeMessages": 8, "perPeerBufferedBytes": 8388608, "totalBufferedBytes": 33554432, "timeoutMs": 60000, "compressedPayloadBytes": 3145728, "plaintextPayloadBytes": 67108864} {
 		if !reflect.DeepEqual(limits[field].(object)["enum"], []int{limit}) {
 			t.Fatal("schema diverges from actual independent limit", field)
 		}
@@ -68,7 +68,7 @@ func TestCollaborationSchemasKeepAdmissionPrivateAndDiscoverActualBudgets(t *tes
 
 func TestGeneratedCollaborationPathsAreAdditiveAndNeverAddAdmissionCommands(t *testing.T) {
 	document := generatedCollaborationDocument(t)
-	if document["info"].(object)["version"] != "0.8.0" {
+	if document["info"].(object)["version"] != "0.8.1" {
 		t.Fatal("collaboration requires current additive version")
 	}
 	paths := document["paths"].(object)

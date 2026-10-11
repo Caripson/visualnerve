@@ -4,10 +4,11 @@ Collaboration is disabled in an ordinary production app build. The worker's exis
 
 The public worker hostname selected for this installation is `https://visual-nerve-collaboration.entis.workers.dev`. This is a public address, not an API token. Its actual availability and allowed origins must be verified during release; this document does not assert that it is deployed.
 
-The [2026-10-11 internal engineering review](COLLABORATION_SECURITY_REVIEW.md) records
-corrected boundaries and residual risks. It is not an independent external audit
+The [internal engineering review](COLLABORATION_SECURITY_REVIEW.md) and the
+[follow-up to the review of 84c6402](COLLABORATION_REMEDIATION.md) record corrected
+boundaries, regression evidence and residual risks. It is not an independent external audit
 and does not silently change the release prerequisite above. Release the updated
-relay and browser together: new joins require a participant-signed admission proof.
+relay and browser together: new joins require the version-2 one-use owner-secret-bound admission proof, and nonowners require a fresh owner lease. Live protected workflow uses a version-2 CRDT contract and owner-mediated checkpoints. Create new rooms for older unreleased room states; native diagrams and backups remain supported.
 Existing admitted reconnects retain their device proof-of-possession flow. Older
 unreleased app/relay versions without admission-proof support cannot admit new
 devices into this version. Retain local graphs and create new rooms for older CRDT

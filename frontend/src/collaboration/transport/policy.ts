@@ -18,14 +18,20 @@ import {
 import { relayLimits } from '../../../../collaboration-worker/src/protocol';
 import { credentialId, verifyTransportSignature } from './identity';
 
-/** The relay can forward public admissions, but cannot create or change them. */
+/** Verify device authorship; owner invitation possession is checked separately. */
 export async function verifyPendingJoin(input: unknown, roomId: string): Promise<PendingJoin> {
   const request = pendingJoin(input);
   if (
     !(await verifyTransportSignature(
       request,
       'admission',
-      admissionInput(roomId, request, request.keyPackage, request.expiresAt),
+      admissionInput(
+        roomId,
+        request,
+        request.keyPackage,
+        request.expiresAt,
+        request.admission.authorization,
+      ),
       request.admission.signature,
     ))
   )
@@ -83,10 +89,45 @@ export async function verifyRoomPolicy(
   return value;
 }
 
+/** Validate even discarded old frames without needing historical identities or keys. */
+export function validatePeerCommand(command: SignedCommand, expectedRoomId: string): void {
+  record(command, [
+    'type',
+    'protocol',
+    'roomId',
+    'connectionId',
+    'deviceId',
+    'sequence',
+    'epoch',
+    'body',
+    'signature',
+  ]);
+  if (
+    command.type !== 'command' ||
+    command.protocol !== 1 ||
+    command.roomId !== expectedRoomId ||
+    typeof command.connectionId !== 'string' ||
+    command.connectionId.length > 128 ||
+    !Number.isSafeInteger(command.sequence) ||
+    command.sequence < 1 ||
+    !Number.isSafeInteger(command.epoch) ||
+    command.epoch < 0
+  )
+    throw new Error('The collaboration message is not from an approved participant.');
+  deviceId(command.deviceId);
+  decode(command.signature, 64, 64);
+  const body = record(command.body, ['kind', 'payloadKind', 'ciphertext'], ['recipient']);
+  if (body.kind !== 'relay') throw new Error('Unexpected peer command.');
+  relayPayloadKind(body.payloadKind);
+  decode(body.ciphertext, relayLimits.ciphertextBytes);
+  if (body.recipient !== undefined) deviceId(body.recipient);
+}
+
 export async function verifyPeerCommand(
   command: SignedCommand,
   policy: SignedRoomPolicy,
 ): Promise<RoomMember> {
+  validatePeerCommand(command, policy.policy.roomId);
   const member = policy.policy.members.find((value) => value.deviceId === command.deviceId);
   if (
     !member ||

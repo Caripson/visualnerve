@@ -8,7 +8,7 @@ import {
 export interface TransportIdentity {
   readonly public: Omit<DeviceIdentity, 'mlsSignatureKey'>;
   sign(
-    domain: 'policy' | 'authenticate' | 'command' | 'admission',
+    domain: 'policy' | 'authenticate' | 'command' | 'admission' | 'lease',
     value: unknown,
   ): Promise<string>;
   destroy(): void;
@@ -80,7 +80,7 @@ export async function createTransportIdentity(): Promise<TransportIdentity> {
 
 export async function verifyTransportSignature(
   identity: Pick<DeviceIdentity, 'signingKey' | 'credentialId'>,
-  domain: 'policy' | 'authenticate' | 'command' | 'admission',
+  domain: 'policy' | 'authenticate' | 'command' | 'admission' | 'lease',
   value: unknown,
   signature: string,
 ): Promise<boolean> {

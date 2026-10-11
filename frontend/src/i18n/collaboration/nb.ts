@@ -1,5 +1,7 @@
 import type { CollaborationMessages } from './en';
 const messages = {
+  'collaboration.authorizationNotice':
+    'Eieren må holde rommet åpent. Tillatelser fornyes hvert 10. sekund; deling stopper innen 30 sekunder hvis de ikke kan bekreftes. Det lagrede lokale diagrammet bevares.',
   'collaboration.reviewNotice':
     'Valgfritt samarbeid har ikke gjennomgått en uavhengig sikkerhetsrevisjon. Gjennomgå diagrammet før deling; godkjente deltakere kan beholde kopier. Arbeid lokalt hvis informasjonen ikke skal forlate denne nettleseren.',
   'collaboration.title': 'Samarbeid i sanntid',

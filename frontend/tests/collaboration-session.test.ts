@@ -23,6 +23,8 @@ import {
   encodeBytes,
   type TransportIdentity,
 } from '../src/collaboration/transport/identity';
+import { leaseInput, policyLeaseLimits } from '../src/collaboration/transport/policy-lease';
+import { proveInvitation } from '../src/collaboration/transport/invitation-authorization';
 import { binaryHash } from '../src/collaboration/transport/policy';
 import {
   CollaborationFramingError,
@@ -219,15 +221,25 @@ async function admission(
 ): Promise<PendingJoin> {
   const keyPackage = encodeBytes(Uint8Array.of(7, 8, 9));
   const expiresAt = Date.now() + relayLimits.pendingJoinMs;
+  const owner = rooms.find(
+    (room) => room.currentPolicy?.policy.roomId === roomId && room.role === 'owner',
+  );
+  if (!owner) throw new Error('No owner invitation fixture.');
+  const issued = owner.createInvitationAuthorization(
+    { shareMetadata: false, shareOwners: false, shareDatasets: false },
+    expiresAt,
+  );
+  const authorization = await proveInvitation(roomId, peer.device, keyPackage, expiresAt, issued);
   return {
     ...peer.device,
     keyPackage,
     expiresAt,
     admission: {
       expiresAt,
+      authorization,
       signature: await peer.identity.sign(
         'admission',
-        admissionInput(roomId, peer.device, keyPackage, expiresAt),
+        admissionInput(roomId, peer.device, keyPackage, expiresAt, authorization),
       ),
     },
   };
@@ -274,6 +286,140 @@ async function relay(
     frame,
   };
 }
+
+async function grantLease(
+  f: Awaited<ReturnType<typeof fixture>>,
+  owner: Awaited<ReturnType<typeof participant>>,
+  patch: Record<string, unknown> = {},
+) {
+  const challenge = (f.room as unknown as { leaseChallenge?: { nonce: string } }).leaseChallenge;
+  if (!challenge) throw new Error('No freshness challenge.');
+  const lease = {
+    ...(await leaseInput(f.room.currentPolicy!, f.room.device.deviceId, challenge.nonce)),
+    ...patch,
+  };
+  const signature = await owner.identity.sign('lease', lease);
+  const [payload] = await new CollaborationMessageFramer(f.options.diagramId).encode(
+    'lease',
+    new TextEncoder().encode(JSON.stringify({ lease, signature })),
+  );
+  f.mls.process.mockResolvedValueOnce({
+    kind: 'application',
+    senderDeviceId: owner.device.deviceId,
+    senderSignaturePublicKey: owner.device.mlsSignatureKey,
+    epoch: f.room.epoch,
+    payload,
+  });
+  const unsigned: Omit<SignedCommand, 'signature'> = {
+    type: 'command',
+    protocol: 1,
+    roomId: f.options.roomId,
+    connectionId: crypto.randomUUID(),
+    deviceId: owner.device.deviceId,
+    sequence: 1,
+    epoch: f.room.epoch,
+    body: {
+      kind: 'relay',
+      payloadKind: 'presence',
+      recipient: f.room.device.deviceId,
+      ciphertext: encodeBytes(crypto.getRandomValues(new Uint8Array(32))),
+    },
+  };
+  await f.transport.options.onFrame({
+    type: 'relay',
+    protocol: 1,
+    command: { ...unsigned, signature: await owner.identity.sign('command', unsigned) },
+  });
+}
+async function joined() {
+  const owner = await participant();
+  const f = await fixture({
+    invitation: encodeBytes(crypto.getRandomValues(new Uint8Array(32))),
+    ownerCredential: owner.device.credentialId,
+    ownerDeviceId: owner.device.deviceId,
+  });
+  const commit = encodeBytes(Uint8Array.of(1, 2, 3)),
+    welcome = encodeBytes(Uint8Array.of(4, 5, 6));
+  const policy = {
+    protocol: 1 as const,
+    roomId: f.options.roomId,
+    ownerDeviceId: owner.device.deviceId,
+    revision: 2,
+    epoch: 1,
+    members: [
+      { ...owner.device, role: 'owner' as const },
+      { ...f.room.device, role: 'editor' as const },
+    ],
+    transition: {
+      previousEpoch: 0,
+      commitHash: await binaryHash(Uint8Array.of(1, 2, 3)),
+      welcomeHashes: [
+        { deviceId: f.room.device.deviceId, hash: await binaryHash(Uint8Array.of(4, 5, 6)) },
+      ],
+    },
+  };
+  f.mls.join.mockImplementation(async () => {
+    f.mls.state = {
+      roomId: policy.roomId,
+      epoch: 1,
+      active: true,
+      ownDeviceId: f.room.device.deviceId,
+      ownerDeviceId: owner.device.deviceId,
+      members: policy.members.map((member, leafIndex) => ({
+        deviceId: member.deviceId,
+        transportKeyFingerprint: member.credentialId,
+        signaturePublicKey: member.mlsSignatureKey,
+        leafIndex,
+      })),
+    };
+  });
+  await f.transport.options.onFrame({
+    type: 'welcome',
+    protocol: 1,
+    policy: { policy, signature: await owner.identity.sign('policy', policy) },
+    commit,
+    ciphertext: welcome,
+  });
+  return { f, owner };
+}
+
+async function guestRoleTransition(
+  f: Awaited<ReturnType<typeof fixture>>,
+  owner: Awaited<ReturnType<typeof participant>>,
+  role: 'editor' | 'viewer',
+) {
+  const commitBytes = Uint8Array.of(31, 32, 33);
+  const previous = f.room.currentPolicy!.policy;
+  const next = {
+    ...previous,
+    epoch: previous.epoch + 1,
+    revision: previous.revision + 1,
+    members: previous.members.map((member) =>
+      member.deviceId === f.room.device.deviceId ? { ...member, role } : member,
+    ),
+    transition: {
+      previousEpoch: previous.epoch,
+      commitHash: await binaryHash(commitBytes),
+      welcomeHashes: [],
+    },
+  };
+  f.mls.process.mockImplementationOnce(async () => {
+    f.mls.state = { ...f.mls.state, epoch: next.epoch };
+    return {
+      kind: 'commit',
+      senderDeviceId: owner.device.deviceId,
+      senderSignaturePublicKey: owner.device.mlsSignatureKey,
+      epoch: next.epoch,
+    };
+  });
+  await f.transport.options.onFrame({
+    type: 'policy',
+    protocol: 1,
+    policy: { policy: next, signature: await owner.identity.sign('policy', next) },
+    commit: encodeBytes(commitBytes),
+  });
+}
+
 describe('encrypted room session authorization and lifecycle', () => {
   it('independently verifies a device-signed pending admission before showing an owner approval request', async () => {
     const f = await fixture(),
@@ -447,6 +593,88 @@ describe('encrypted room session authorization and lifecycle', () => {
     expect(f.mls.process).toHaveBeenCalledOnce();
     expect(f.options.onMessage).toHaveBeenCalledOnce();
   });
+  it('validates a new-epoch lease request only after the accepted owner commit finishes locally', async () => {
+    const f = await fixture(),
+      peer = await admit(f);
+    const confirm = f.mls.confirmPendingCommit.getMockImplementation()!;
+    for (let i = 0; i < 10; ++i) {
+      let release!: () => void, entered!: () => void;
+      const started = new Promise<void>((resolve) => {
+        entered = resolve;
+      });
+      const blocked = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      f.mls.confirmPendingCommit.mockImplementationOnce(async () => {
+        entered();
+        await blocked;
+        await confirm();
+      });
+      const previousEpoch = f.room.epoch;
+      const changing = f.room.changeMembers(
+        f.room.currentPolicy!.policy.members.map((member) =>
+          member.deviceId === peer.device.deviceId
+            ? { ...member, role: i % 2 === 0 ? ('viewer' as const) : ('editor' as const) }
+            : member,
+        ),
+      );
+      await started;
+      expect(f.room.epoch).toBe(previousEpoch);
+      const [payload] = await new CollaborationMessageFramer(f.options.diagramId).encode(
+        'lease-request',
+        new TextEncoder().encode(
+          JSON.stringify({ nonce: encodeBytes(crypto.getRandomValues(new Uint8Array(32))) }),
+        ),
+      );
+      f.mls.process.mockResolvedValueOnce({
+        kind: 'application',
+        senderDeviceId: peer.device.deviceId,
+        senderSignaturePublicKey: peer.device.mlsSignatureKey,
+        epoch: previousEpoch + 1,
+        payload,
+      });
+      const unsigned: Omit<SignedCommand, 'signature'> = {
+        type: 'command',
+        protocol: 1,
+        roomId: f.options.roomId,
+        connectionId: crypto.randomUUID(),
+        deviceId: peer.device.deviceId,
+        sequence: i + 1,
+        epoch: previousEpoch + 1,
+        body: {
+          kind: 'relay',
+          payloadKind: 'presence',
+          recipient: f.room.device.deviceId,
+          ciphertext: encodeBytes(crypto.getRandomValues(new Uint8Array(32))),
+        },
+      };
+      const before = (f.room as unknown as { cryptoQueue: Promise<unknown> }).cryptoQueue;
+      const receiving = Promise.resolve(
+        f.transport.options.onFrame({
+          type: 'relay',
+          protocol: 1,
+          command: { ...unsigned, signature: await peer.identity.sign('command', unsigned) },
+        }),
+      );
+      await vi.waitFor(() =>
+        expect((f.room as unknown as { cryptoQueue: Promise<unknown> }).cryptoQueue).not.toBe(
+          before,
+        ),
+      );
+      release();
+      await changing;
+      await receiving;
+      expect(f.room.epoch).toBe(previousEpoch + 1);
+      expect(f.options.onError).not.toHaveBeenCalled();
+    }
+    expect(f.mls.process).toHaveBeenCalledTimes(10);
+    expect(f.options.onMessage).not.toHaveBeenCalled();
+    expect(
+      f.transport.send.mock.calls.filter(
+        ([body]) => body.kind === 'relay' && body.payloadKind === 'presence',
+      ),
+    ).toHaveLength(10);
+  });
   it('does not deliver old-epoch plaintext if membership changes during message assembly', async () => {
     const f = await fixture(),
       peer = await admit(f);
@@ -484,7 +712,7 @@ describe('encrypted room session authorization and lifecycle', () => {
       spy.mockRestore();
     }
   });
-  it('authenticates and discards an adjacent old-epoch frame arriving after removal without retaining old decryption keys', async () => {
+  it('discards earlier-epoch frames after removal without retaining old decryption keys', async () => {
     const f = await fixture(),
       peer = await admit(f);
     const { command } = await relay(f, peer);
@@ -493,19 +721,14 @@ describe('encrypted room session authorization and lifecycle', () => {
     expect(f.room.epoch).toBe(2);
     expect(f.mls.process).not.toHaveBeenCalled();
     expect(f.options.onMessage).not.toHaveBeenCalled();
-    await expect(
-      f.transport.options.onFrame({
-        type: 'relay',
-        protocol: 1,
-        command: { ...command, signature: encodeBytes(crypto.getRandomValues(new Uint8Array(64))) },
-      }),
-    ).rejects.toThrow(/signature/);
-    // Only the immediately preceding public policy is retained. Older frames
-    // cannot extend a membership history or authorize a later epoch.
+    await f.transport.options.onFrame({
+      type: 'relay',
+      protocol: 1,
+      command: { ...command, signature: encodeBytes(crypto.getRandomValues(new Uint8Array(64))) },
+    });
+    // Discarding authorizes no action and needs no retained public policy history.
     await f.room.changeMembers(f.room.currentPolicy!.policy.members);
-    await expect(
-      f.transport.options.onFrame({ type: 'relay', protocol: 1, command }),
-    ).rejects.toThrow(/approved participant/);
+    await f.transport.options.onFrame({ type: 'relay', protocol: 1, command });
     expect(f.mls.process).not.toHaveBeenCalled();
   });
   it('unblocks the ordered policy reader after a correlated stale-epoch send and waits for a verified transition', async () => {
@@ -588,7 +811,8 @@ describe('encrypted room session authorization and lifecycle', () => {
     );
   });
   it('classifies malformed authenticated application framing without hiding crypto failures', async () => {
-    const f = await fixture(),
+    const onPeerRejected = vi.fn();
+    const f = await fixture({ onPeerRejected }),
       peer = await admit(f, 'viewer');
     const { command } = await relay(f, peer, 'presence');
     const plaintext = Uint8Array.of(1, 2, 3);
@@ -604,6 +828,7 @@ describe('encrypted room session authorization and lifecycle', () => {
     ).rejects.toThrow(CollaborationPeerMessageError);
     expect(plaintext.every((byte) => byte === 0)).toBe(true);
     expect(f.options.onMessage).not.toHaveBeenCalled();
+    expect(onPeerRejected).toHaveBeenCalledOnce();
     const valid = await relay(f, peer, 'presence');
     await f.transport.options.onFrame({ type: 'relay', protocol: 1, command: valid.command });
     expect(f.options.onMessage).toHaveBeenCalledOnce();
@@ -615,30 +840,28 @@ describe('encrypted room session authorization and lifecycle', () => {
       f.transport.options.onFrame({ type: 'relay', protocol: 1, command: failed.command }),
     ).rejects.toThrow(/outcome is unknown/);
   });
-  it.each([
-    'COLLABORATION_MESSAGE_EXPIRED',
-    'COLLABORATION_MESSAGE_LIMIT',
-    'COLLABORATION_CLOSED',
-    'COLLABORATION_UNKNOWN_ASSEMBLY_FAILURE',
-  ])('keeps %s fatal instead of silently dropping a possibly valid update', async (code) => {
-    const f = await fixture(),
-      peer = await admit(f);
-    const { command, frame } = await relay(f, peer);
-    const failure = new CollaborationFramingError(code, 'State synchronization is required.');
-    const spy = vi
-      .spyOn(CollaborationMessageAssembler.prototype, 'accept')
-      .mockRejectedValueOnce(failure);
-    try {
-      await expect(
-        f.transport.options.onFrame({ type: 'relay', protocol: 1, command }),
-      ).rejects.toBe(failure);
-      expect(failure).not.toBeInstanceOf(CollaborationPeerMessageError);
-      expect(f.options.onMessage).not.toHaveBeenCalled();
-      expect(frame.every((byte) => byte === 0)).toBe(true);
-    } finally {
-      spy.mockRestore();
-    }
-  });
+  it.each(['COLLABORATION_CLOSED', 'COLLABORATION_UNKNOWN_ASSEMBLY_FAILURE'])(
+    'keeps %s fatal instead of silently dropping a possibly valid update',
+    async (code) => {
+      const f = await fixture(),
+        peer = await admit(f);
+      const { command, frame } = await relay(f, peer);
+      const failure = new CollaborationFramingError(code, 'State synchronization is required.');
+      const spy = vi
+        .spyOn(CollaborationMessageAssembler.prototype, 'accept')
+        .mockRejectedValueOnce(failure);
+      try {
+        await expect(
+          f.transport.options.onFrame({ type: 'relay', protocol: 1, command }),
+        ).rejects.toBe(failure);
+        expect(failure).not.toBeInstanceOf(CollaborationPeerMessageError);
+        expect(f.options.onMessage).not.toHaveBeenCalled();
+        expect(frame.every((byte) => byte === 0)).toBe(true);
+      } finally {
+        spy.mockRestore();
+      }
+    },
+  );
   it('independently rejects a valid targeted ciphertext sent by the relay to a different participant', async () => {
     const f = await fixture(),
       peer = await admit(f);
@@ -824,9 +1047,9 @@ describe('encrypted room session authorization and lifecycle', () => {
       payloadKind: 'presence' as const,
       ciphertext: encodeBytes(Uint8Array.of(1, 2, 3)),
     };
-    await expect(f.room.send(new Array(501).fill(packet))).rejects.toThrow(/quota/);
+    await expect(f.room.send(new Array(351).fill(packet))).rejects.toThrow(/quota/);
     expect(f.transport.send).not.toHaveBeenCalled();
-    await f.room.send(new Array(500).fill(packet));
+    await f.room.send(new Array(350).fill(packet));
     f.transport.send.mockClear();
     const waiting = f.room.send([packet]);
     const rejection = expect(waiting).rejects.toMatchObject({ name: 'AbortError' });
@@ -843,7 +1066,7 @@ describe('encrypted room session authorization and lifecycle', () => {
       payloadKind: 'presence' as const,
       ciphertext: encodeBytes(Uint8Array.of(1, 2, 3)),
     };
-    await f.room.send(new Array(500).fill(packet));
+    await f.room.send(new Array(350).fill(packet));
     f.transport.send.mockClear();
     const waiting = f.room.send([packet]);
     const rejection = expect(waiting).rejects.toMatchObject({ name: 'AbortError' });
@@ -921,6 +1144,452 @@ describe('encrypted room session authorization and lifecycle', () => {
       ownerSignatureKey: owner.device.mlsSignatureKey,
     });
     expect(f.room.role).toBe('viewer');
+    expect(f.room.policyFresh).toBe(false);
+    expect(f.options.onReady).not.toHaveBeenCalled();
+    await grantLease(f, owner);
+    expect(f.room.policyFresh).toBe(true);
     await expect(f.room.encrypt('update', Uint8Array.of(1))).rejects.toThrow(/read only/);
+  });
+});
+
+describe('owner invitation capability and bounded policy freshness', () => {
+  it('rejects relay-fabricated self-signed admission without owner invitation possession', async () => {
+    const f = await fixture(),
+      peer = await participant();
+    const request = await admission(f.options.roomId, peer);
+    request.admission.authorization = {
+      ...request.admission.authorization,
+      invitationId: crypto.randomUUID(),
+      proof: encodeBytes(crypto.getRandomValues(new Uint8Array(32))),
+    };
+    request.admission.signature = await peer.identity.sign(
+      'admission',
+      admissionInput(
+        f.options.roomId,
+        peer.device,
+        request.keyPackage,
+        request.expiresAt,
+        request.admission.authorization,
+      ),
+    );
+    await expect(
+      f.transport.options.onFrame({ type: 'join-request', protocol: 1, request }),
+    ).rejects.toThrow(/owner invitation/);
+    await expect(
+      f.room.changeMembers(
+        [...f.room.currentPolicy!.policy.members, { ...peer.device, role: 'viewer' }],
+        request,
+      ),
+    ).rejects.toThrow(/owner invitation/);
+    expect(f.options.onJoin).not.toHaveBeenCalled();
+    expect(f.mls.prepareAddMember).not.toHaveBeenCalled();
+  });
+  it('binds the complete device, KeyPackage and disclosure scope and consumes an invitation once', async () => {
+    const f = await fixture(),
+      first = await participant(),
+      second = await participant();
+    const expiresAt = Date.now() + 60_000;
+    const issued = f.room.createInvitationAuthorization(
+      { shareMetadata: false, shareOwners: false, shareDatasets: false },
+      expiresAt,
+    );
+    const make = async (peer: Awaited<ReturnType<typeof participant>>) => {
+      const keyPackage = encodeBytes(Uint8Array.of(7, 8, 9));
+      const authorization = await proveInvitation(
+        f.options.roomId,
+        peer.device,
+        keyPackage,
+        expiresAt,
+        issued,
+      );
+      return {
+        ...peer.device,
+        keyPackage,
+        expiresAt,
+        admission: {
+          expiresAt,
+          authorization,
+          signature: await peer.identity.sign(
+            'admission',
+            admissionInput(f.options.roomId, peer.device, keyPackage, expiresAt, authorization),
+          ),
+        },
+      };
+    };
+    const request = await make(first),
+      changed = await make(second);
+    changed.admission.authorization = request.admission.authorization;
+    changed.admission.signature = await second.identity.sign(
+      'admission',
+      admissionInput(
+        f.options.roomId,
+        second.device,
+        changed.keyPackage,
+        expiresAt,
+        changed.admission.authorization,
+      ),
+    );
+    await expect(
+      f.transport.options.onFrame({ type: 'join-request', protocol: 1, request: changed }),
+    ).rejects.toThrow(/owner invitation/);
+    const scopeChanged = structuredClone(request);
+    scopeChanged.admission.authorization.scope.shareDatasets = true;
+    scopeChanged.admission.signature = await first.identity.sign(
+      'admission',
+      admissionInput(
+        f.options.roomId,
+        first.device,
+        request.keyPackage,
+        expiresAt,
+        scopeChanged.admission.authorization,
+      ),
+    );
+    await expect(
+      f.transport.options.onFrame({ type: 'join-request', protocol: 1, request: scopeChanged }),
+    ).rejects.toThrow(/owner invitation/);
+    await f.transport.options.onFrame({ type: 'join-request', protocol: 1, request });
+    await expect(
+      f.transport.options.onFrame({
+        type: 'join-request',
+        protocol: 1,
+        request: await make(second),
+      }),
+    ).rejects.toThrow(/owner invitation/);
+    await f.room.changeMembers(
+      [...f.room.currentPolicy!.policy.members, { ...first.device, role: 'viewer' }],
+      request,
+    );
+    await expect(
+      f.transport.options.onFrame({ type: 'join-request', protocol: 1, request }),
+    ).rejects.toThrow(/owner invitation/);
+  });
+  it('requires nonce-bound owner confirmation before nonowner publication or application readiness', async () => {
+    const { f, owner } = await joined();
+    expect(f.room.policyFresh).toBe(false);
+    expect(f.options.onReady).not.toHaveBeenCalled();
+    await expect(f.room.encrypt('update', Uint8Array.of(1))).rejects.toThrow(/lease expired/);
+    await expect(
+      grantLease(f, owner, { nonce: encodeBytes(crypto.getRandomValues(new Uint8Array(32))) }),
+    ).rejects.toThrow(CollaborationPeerMessageError);
+    expect(f.room.policyFresh).toBe(false);
+    await grantLease(f, owner);
+    expect(f.room.policyFresh).toBe(true);
+    expect(f.options.onReady).toHaveBeenCalledOnce();
+    await expect(f.room.encrypt('update', Uint8Array.of(1))).resolves.toHaveLength(1);
+  });
+  it('expires a withheld policy without trusting relay errors and cancels queued prepared publication', async () => {
+    vi.useFakeTimers();
+    const { f, owner } = await joined();
+    await grantLease(f, owner);
+    const packets = await f.room.encrypt('update', Uint8Array.of(1));
+    await vi.advanceTimersByTimeAsync(policyLeaseLimits.lifetimeMs + 1);
+    expect(f.options.onError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining('owner membership lease expired'),
+      }),
+    );
+    expect(f.mls.dispose).toHaveBeenCalledOnce();
+    expect(f.transport.close).toHaveBeenCalledOnce();
+    await expect(f.room.send(packets)).rejects.toThrow(/closed/);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it('revalidates freshness after async ratchet work instead of releasing expired ciphertext', async () => {
+    const { f, owner } = await joined();
+    await grantLease(f, owner);
+    const start = Date.now();
+    f.mls.encrypt.mockImplementationOnce(async () => {
+      vi.spyOn(Date, 'now').mockReturnValue(start + 31_000);
+      return encodeBytes(Uint8Array.of(1, 2, 3));
+    });
+    await expect(f.room.encrypt('update', Uint8Array.of(1))).rejects.toThrow(/lease expired/);
+    expect(
+      f.transport.send.mock.calls.filter(
+        ([body]) => body.kind === 'relay' && body.payloadKind === 'application',
+      ),
+    ).toHaveLength(0);
+  });
+  it.each(['COLLABORATION_MESSAGE_LIMIT', 'COLLABORATION_MESSAGE_EXPIRED'])(
+    'isolates %s to its sender and requests visible recovery',
+    async (code) => {
+      const onPeerRejected = vi.fn(),
+        f = await fixture({ onPeerRejected }),
+        peer = await admit(f),
+        remaining = await admit(f);
+      const { command } = await relay(f, peer);
+      vi.spyOn(CollaborationMessageAssembler.prototype, 'accept').mockRejectedValueOnce(
+        new CollaborationFramingError(code, 'Recovery required'),
+      );
+      await expect(
+        f.transport.options.onFrame({ type: 'relay', protocol: 1, command }),
+      ).rejects.toThrow(CollaborationPeerMessageError);
+      expect(onPeerRejected).toHaveBeenCalledWith(
+        expect.objectContaining({ deviceId: peer.device.deviceId }),
+        expect.objectContaining({ code }),
+      );
+      const next = await relay(f, remaining);
+      await f.transport.options.onFrame({ type: 'relay', protocol: 1, command: next.command });
+      expect(f.options.onMessage).toHaveBeenCalledOnce();
+      expect(f.mls.dispose).not.toHaveBeenCalled();
+    },
+  );
+  it('does not apply plaintext when the owner lease expires during asynchronous decryption', async () => {
+    const { f, owner } = await joined();
+    await grantLease(f, owner);
+    const { command, frame } = await relay(f, owner),
+      start = Date.now();
+    f.mls.process.mockImplementationOnce(async () => {
+      vi.spyOn(Date, 'now').mockReturnValue(start + 31_000);
+      return {
+        kind: 'application',
+        senderDeviceId: owner.device.deviceId,
+        senderSignaturePublicKey: owner.device.mlsSignatureKey,
+        epoch: f.room.epoch,
+        payload: frame,
+      };
+    });
+    await expect(
+      f.transport.options.onFrame({ type: 'relay', protocol: 1, command }),
+    ).rejects.toThrow(/lease expired/);
+    expect(f.options.onMessage).not.toHaveBeenCalled();
+    expect(frame.every((byte) => byte === 0)).toBe(true);
+  });
+  it('isolates a product peer rejection while preserving subsequent valid deliveries and fatal storage failures', async () => {
+    const onPeerRejected = vi.fn(),
+      f = await fixture({ onPeerRejected }),
+      peer = await admit(f);
+    vi.mocked(f.options.onMessage).mockRejectedValueOnce(
+      new CollaborationPeerMessageError('Invalid shared document'),
+    );
+    const invalid = await relay(f, peer);
+    await expect(
+      f.transport.options.onFrame({ type: 'relay', protocol: 1, command: invalid.command }),
+    ).rejects.toThrow(CollaborationPeerMessageError);
+    expect(onPeerRejected).toHaveBeenCalledWith(
+      expect.objectContaining({ deviceId: peer.device.deviceId }),
+      expect.objectContaining({ message: 'Invalid shared document' }),
+    );
+    const valid = await relay(f, peer);
+    await f.transport.options.onFrame({ type: 'relay', protocol: 1, command: valid.command });
+    vi.mocked(f.options.onMessage).mockRejectedValueOnce(
+      new Error('Encrypted vault commit failed'),
+    );
+    const failed = await relay(f, peer);
+    await expect(
+      f.transport.options.onFrame({ type: 'relay', protocol: 1, command: failed.command }),
+    ).rejects.toThrow(/vault commit failed/);
+    expect(onPeerRejected).toHaveBeenCalledOnce();
+  });
+  it('answers bounded lease controls without waiting behind a document quota reservation', async () => {
+    vi.useFakeTimers();
+    const f = await fixture(),
+      viewer = await admit(f, 'viewer');
+    const packet = {
+      payloadKind: 'presence' as const,
+      ciphertext: encodeBytes(Uint8Array.of(1, 2, 3)),
+    };
+    await f.room.send(new Array(350).fill(packet));
+    f.transport.send.mockClear();
+    const waiting = f.room.send([packet]);
+    const rejected = expect(waiting).rejects.toMatchObject({ name: 'AbortError' });
+    const [payload] = await new CollaborationMessageFramer(f.options.diagramId).encode(
+      'lease-request',
+      new TextEncoder().encode(
+        JSON.stringify({ nonce: encodeBytes(crypto.getRandomValues(new Uint8Array(32))) }),
+      ),
+    );
+    f.mls.process.mockResolvedValueOnce({
+      kind: 'application',
+      senderDeviceId: viewer.device.deviceId,
+      senderSignaturePublicKey: viewer.device.mlsSignatureKey,
+      epoch: f.room.epoch,
+      payload,
+    });
+    const unsigned: Omit<SignedCommand, 'signature'> = {
+      type: 'command',
+      protocol: 1,
+      roomId: f.options.roomId,
+      connectionId: crypto.randomUUID(),
+      deviceId: viewer.device.deviceId,
+      sequence: 1,
+      epoch: f.room.epoch,
+      body: {
+        kind: 'relay',
+        payloadKind: 'presence',
+        recipient: f.room.device.deviceId,
+        ciphertext: encodeBytes(crypto.getRandomValues(new Uint8Array(32))),
+      },
+    };
+    await f.transport.options.onFrame({
+      type: 'relay',
+      protocol: 1,
+      command: { ...unsigned, signature: await viewer.identity.sign('command', unsigned) },
+    });
+    expect(f.transport.send).toHaveBeenCalledOnce();
+    expect(f.transport.send.mock.calls[0][0]).toMatchObject({
+      kind: 'relay',
+      payloadKind: 'presence',
+      recipient: viewer.device.deviceId,
+    });
+    f.abort.abort();
+    await rejected;
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it('discards delayed application and lease frames across several role changes before current ACL checks', async () => {
+    const f = await fixture(),
+      peer = await admit(f),
+      remaining = await admit(f);
+    const update = await relay(f, peer);
+    const control = await relay(f, peer, 'presence');
+    for (let i = 0; i < 5; ++i)
+      await f.room.changeMembers(
+        f.room.currentPolicy!.policy.members.map((member) =>
+          member.deviceId === peer.device.deviceId
+            ? { ...member, role: i % 2 === 0 ? ('viewer' as const) : ('editor' as const) }
+            : member,
+        ),
+      );
+    expect(f.room.epoch).toBeGreaterThan(update.command.epoch + 1);
+    await f.transport.options.onFrame({ type: 'relay', protocol: 1, command: update.command });
+    await f.transport.options.onFrame({ type: 'relay', protocol: 1, command: control.command });
+    expect(f.mls.process).not.toHaveBeenCalled();
+    expect(f.options.onMessage).not.toHaveBeenCalled();
+    const fresh = await relay(f, remaining);
+    await f.transport.options.onFrame({ type: 'relay', protocol: 1, command: fresh.command });
+    expect(f.options.onMessage).toHaveBeenCalledOnce();
+    // Current-epoch Viewer writes still fail, even after legitimate stale drops.
+    const unauthorized = await relay(f, peer);
+    await expect(
+      f.transport.options.onFrame({ type: 'relay', protocol: 1, command: unauthorized.command }),
+    ).rejects.toThrow(/read-only/);
+  });
+  it('rejects malformed and future-epoch frames instead of treating them as harmless stale traffic', async () => {
+    const f = await fixture(),
+      peer = await admit(f);
+    const old = await relay(f, peer);
+    await f.room.changeMembers(f.room.currentPolicy!.policy.members);
+    for (const command of [
+      { ...old.command, epoch: -1 },
+      { ...old.command, epoch: '0' },
+      { ...old.command, roomId: crypto.randomUUID() },
+      { ...old.command, body: { ...old.command.body, ciphertext: '%%%' } },
+      { ...old.command, body: { ...old.command.body, payloadKind: ['presence'] } },
+      { ...old.command, epoch: f.room.epoch + 1 },
+    ])
+      await expect(
+        f.transport.options.onFrame({
+          type: 'relay',
+          protocol: 1,
+          command: command as SignedCommand,
+        }),
+      ).rejects.toThrow();
+    expect(f.mls.process).not.toHaveBeenCalled();
+    expect(f.options.onMessage).not.toHaveBeenCalled();
+    const current = await relay(f, peer);
+    await expect(
+      f.transport.options.onFrame({
+        type: 'relay',
+        protocol: 1,
+        command: {
+          ...current.command,
+          signature: encodeBytes(crypto.getRandomValues(new Uint8Array(64))),
+        },
+      }),
+    ).rejects.toThrow(/signature/);
+    expect(f.mls.process).not.toHaveBeenCalled();
+  });
+  it('starts a fresh lease challenge for every rapid policy transition and tolerates correlated stale sends', async () => {
+    vi.useFakeTimers();
+    const { f, owner } = await joined();
+    const challenge = () =>
+      (f.room as unknown as { leaseChallenge?: { nonce: string } }).leaseChallenge?.nonce;
+    const seen = new Set([challenge()]);
+    for (let i = 0; i < 5; ++i) {
+      // The honest relay may already have accepted a later owner policy while
+      // this recipient's ordered reader is still processing the intermediate one.
+      f.transport.send.mockRejectedValueOnce(new CollaborationRelayError('STALE_EPOCH'));
+      await guestRoleTransition(f, owner, i % 2 === 0 ? 'viewer' : 'editor');
+      expect(challenge()).toBeTruthy();
+      expect(seen.has(challenge())).toBe(false);
+      seen.add(challenge());
+      expect(f.options.onError).not.toHaveBeenCalled();
+      expect(f.room.policyFresh).toBe(false);
+    }
+    expect(f.options.onReady).not.toHaveBeenCalled();
+    await grantLease(f, owner);
+    expect(f.room.policyFresh).toBe(true);
+    expect(f.options.onReady).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(f.options.onError).not.toHaveBeenCalled();
+  });
+  it('renews a fresh owner lease after fourteen immediate role transitions in one minute', async () => {
+    vi.useFakeTimers();
+    const { f, owner } = await joined();
+    await grantLease(f, owner);
+    for (let i = 0; i < 14; ++i) {
+      await guestRoleTransition(f, owner, i % 2 === 0 ? 'viewer' : 'editor');
+      expect(f.room.policyFresh).toBe(false);
+      await grantLease(f, owner);
+      expect(f.room.policyFresh).toBe(true);
+    }
+    expect(f.transport.send).toHaveBeenCalledTimes(15);
+    await vi.advanceTimersByTimeAsync(policyLeaseLimits.refreshMs);
+    await vi.waitFor(() => expect(f.transport.send).toHaveBeenCalledTimes(16));
+    await grantLease(f, owner);
+    expect(f.room.policyFresh).toBe(true);
+    expect(f.options.onError).not.toHaveBeenCalled();
+  });
+  it('retries an unanswered challenge without extending its authorization deadline', async () => {
+    vi.useFakeTimers();
+    const { f, owner } = await joined();
+    const challenge = () =>
+      (f.room as unknown as { leaseChallenge?: { nonce: string; wall: number } }).leaseChallenge;
+    const initial = { ...challenge()! };
+    await vi.advanceTimersByTimeAsync(policyLeaseLimits.refreshMs);
+    await vi.waitFor(() => expect(f.transport.send).toHaveBeenCalledTimes(2));
+    expect(challenge()).toMatchObject(initial);
+    await grantLease(f, owner);
+    expect(f.room.policyFresh).toBe(true);
+    await vi.advanceTimersByTimeAsync(initial.wall + policyLeaseLimits.lifetimeMs - Date.now());
+    expect(f.options.onError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining('owner membership lease expired'),
+      }),
+    );
+    expect(f.mls.dispose).toHaveBeenCalledOnce();
+  });
+  it('keeps the bounded control burst from spending current members renewal shares', async () => {
+    vi.useFakeTimers();
+    const f = await fixture();
+    const peers = await Promise.all(Array.from({ length: 31 }, () => participant()));
+    const state = f.room as unknown as {
+      policy: SignedRoomPolicy;
+      reserveLeaseControl: (peer: string, bytes: number) => boolean;
+      controlBudget: { messages: number; bytes: number };
+    };
+    state.policy = {
+      policy: {
+        ...f.room.currentPolicy!.policy,
+        members: [
+          ...f.room.currentPolicy!.policy.members,
+          ...peers.map((peer) => ({ ...peer.device, role: 'viewer' as const })),
+        ],
+      },
+      signature: f.room.currentPolicy!.signature,
+    };
+    // Exercise the queue reservation before transport publication: one sender
+    // tries to spend the whole minute before any other member renews.
+    const burst = peers[0].device.deviceId;
+    let reserved = 0;
+    while (state.reserveLeaseControl(burst, 4096)) ++reserved;
+    expect(reserved).toBeGreaterThan(12);
+    expect(reserved).toBeLessThanOrEqual(32);
+    for (const peer of peers.slice(1))
+      for (let i = 0; i < 7; ++i)
+        expect(state.reserveLeaseControl(peer.device.deviceId, 4096)).toBe(true);
+    expect(state.controlBudget.messages).toBe(224);
+    expect(state.controlBudget.bytes).toBeLessThanOrEqual(1024 * 1024);
+    expect(state.reserveLeaseControl(peers[1].device.deviceId, 4096)).toBe(false);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(state.reserveLeaseControl(burst, 4096)).toBe(true);
   });
 });

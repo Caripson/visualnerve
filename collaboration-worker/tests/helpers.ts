@@ -79,11 +79,23 @@ export async function admission(
   joining: Device,
   expiresAt = Date.now() + relayLimits.pendingJoinMs,
 ): Promise<AdmissionProof> {
+  const authorization = {
+    invitationId: crypto.randomUUID(),
+    scope: { shareMetadata: false, shareOwners: false, shareDatasets: false },
+    proof: encode(crypto.getRandomValues(new Uint8Array(32))),
+  };
   return {
+    authorization,
     expiresAt,
     signature: await sign(
       "admission",
-      admissionInput(roomId, joining.identity, joining.keyPackage, expiresAt),
+      admissionInput(
+        roomId,
+        joining.identity,
+        joining.keyPackage,
+        expiresAt,
+        authorization,
+      ),
       joining.key,
     ),
   };

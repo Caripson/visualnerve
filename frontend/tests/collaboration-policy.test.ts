@@ -81,15 +81,21 @@ async function admission(
 ): Promise<PendingJoin> {
   const keyPackage = encodeBytes(crypto.getRandomValues(new Uint8Array(64)));
   const expiresAt = Date.now() + relayLimits.pendingJoinMs;
+  const authorization = {
+    invitationId: crypto.randomUUID(),
+    scope: { shareMetadata: false, shareOwners: false, shareDatasets: false },
+    proof: encodeBytes(crypto.getRandomValues(new Uint8Array(32))),
+  };
   return {
     ...joining.value,
     keyPackage,
     expiresAt,
     admission: {
       expiresAt,
+      authorization,
       signature: await joining.identity.sign(
         'admission',
-        admissionInput(roomId, joining.value, keyPackage, expiresAt),
+        admissionInput(roomId, joining.value, keyPackage, expiresAt, authorization),
       ),
     },
   };
@@ -141,7 +147,13 @@ describe('independent device-signed admission verification', () => {
           roomId,
         ),
       ).rejects.toThrow();
-    const input = admissionInput(roomId, joining.value, request.keyPackage, request.expiresAt);
+    const input = admissionInput(
+      roomId,
+      joining.value,
+      request.keyPackage,
+      request.expiresAt,
+      request.admission.authorization,
+    );
     for (const signature of [
       await joining.identity.sign('authenticate', input),
       await joining.identity.sign('admission', { ...input, protocol: 2 }),

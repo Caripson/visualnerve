@@ -87,7 +87,17 @@ func TestGeneratedPortableCollaborationReferencesAndVersionedEndpoints(t *testin
 			}
 		}
 	}
-	if document["info"].(object)["version"] != "0.8.0" {
+	for _, status := range []string{"413", "429", "504"} {
+		if post["responses"].(object)[status] == nil {
+			t.Fatal("missing live action size, pending limit or unknown-outcome response", status)
+		}
+	}
+	for _, phrase := range []string{"128 KiB", "eight pending", "25 seconds", "unknown outcome", "before retrying"} {
+		if !strings.Contains(post["description"].(string), phrase) {
+			t.Fatal("missing live action resource/recovery contract", phrase)
+		}
+	}
+	if document["info"].(object)["version"] != "0.8.1" {
 		t.Fatal("document collaboration requires current additive API version")
 	}
 }

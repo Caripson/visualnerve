@@ -7,13 +7,31 @@ export const collaborationFrameLimits = Object.freeze({
   chunkBytes: 32 * 1024,
   messageBytes: 32 * 1024 * 1024,
   activeMessages: 8,
+  perPeerBufferedBytes: 8 * 1024 * 1024,
   totalBufferedBytes: 32 * 1024 * 1024,
   parts: 2048,
   timeoutMs: 60_000,
   replayIds: 256,
 });
-export type CollaborationPayloadKind = 'update' | 'snapshot' | 'sync' | 'presence';
-const kinds = new Set<CollaborationPayloadKind>(['update', 'snapshot', 'sync', 'presence']);
+export type CollaborationPayloadKind =
+  | 'update'
+  | 'snapshot'
+  | 'sync'
+  | 'presence'
+  | 'lease-request'
+  | 'lease'
+  | 'workflow-request'
+  | 'workflow-state';
+const kinds = new Set<CollaborationPayloadKind>([
+  'update',
+  'snapshot',
+  'sync',
+  'presence',
+  'lease-request',
+  'lease',
+  'workflow-request',
+  'workflow-state',
+]);
 const uuid = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 interface Frame {
   format: 'visualnerve-collaboration-chunk';
@@ -274,6 +292,7 @@ export class CollaborationMessageAssembler {
     senderDeviceId: string,
     epoch: number,
     bytes: Uint8Array,
+    authority?: { role: 'owner' | 'editor' | 'viewer'; wireKind: string },
   ): Promise<CollaborationReassembledMessage | undefined> {
     if (this.disposed) fail('COLLABORATION_CLOSED', 'The collaboration session has closed.', 423);
     if (
@@ -285,7 +304,32 @@ export class CollaborationMessageAssembler {
       invalid();
     this.expire();
     const frame = parse(bytes, this.diagramId);
-    const retired = this.retired.get(frame.messageId);
+    if (authority) {
+      const wire = ['presence', 'lease', 'lease-request'].includes(frame.kind)
+        ? 'presence'
+        : frame.kind === 'sync'
+          ? 'sync-request'
+          : frame.kind === 'snapshot'
+            ? 'snapshot'
+            : 'application';
+      if (
+        wire !== authority.wireKind ||
+        (authority.role === 'viewer' &&
+          !['presence', 'sync', 'lease-request'].includes(frame.kind)) ||
+        (['presence', 'sync', 'lease', 'lease-request'].includes(frame.kind) &&
+          frame.total !== 1) ||
+        (frame.kind === 'lease' && authority.role !== 'owner') ||
+        (frame.kind === 'workflow-state' && authority.role !== 'owner')
+      )
+        fail(
+          'COLLABORATION_INVALID_FRAME',
+          'This message exceeds the authenticated participant permission or control-message limit.',
+        );
+    }
+    // Identity is scoped to its authenticated sender. A participant cannot reserve
+    // another device's message ID or its assembly slots.
+    const key = `${senderDeviceId}:${frame.messageId}`;
+    const retired = this.retired.get(key);
     if (retired) {
       if (
         retired.sender !== senderDeviceId ||
@@ -304,7 +348,7 @@ export class CollaborationMessageAssembler {
         );
       return undefined;
     }
-    let entry = this.pending.get(frame.messageId);
+    let entry = this.pending.get(key);
     if (
       entry &&
       (entry.sender !== senderDeviceId ||
@@ -342,7 +386,14 @@ export class CollaborationMessageAssembler {
       return undefined;
     }
     if (
-      (!entry && this.pending.size >= collaborationFrameLimits.activeMessages) ||
+      (!entry &&
+        [...this.pending.values()].filter((pending) => pending.sender === senderDeviceId).length >=
+          collaborationFrameLimits.activeMessages) ||
+      [...this.pending.values()]
+        .filter((pending) => pending.sender === senderDeviceId)
+        .reduce((sum, pending) => sum + pending.receivedBytes, 0) +
+        chunk.byteLength >
+        collaborationFrameLimits.perPeerBufferedBytes ||
       this.buffered + chunk.byteLength > collaborationFrameLimits.totalBufferedBytes
     ) {
       chunk.fill(0);
@@ -362,7 +413,7 @@ export class CollaborationMessageAssembler {
         receivedBytes: 0,
         expires: this.now() + collaborationFrameLimits.timeoutMs,
       };
-      this.pending.set(frame.messageId, entry);
+      this.pending.set(key, entry);
       this.scheduleExpiry();
     }
     entry.chunks.set(frame.part, chunk);
@@ -382,11 +433,7 @@ export class CollaborationMessageAssembler {
     entry.assembled = payload;
     try {
       const actual = await hash(payload);
-      if (
-        this.disposed ||
-        generation !== this.generation ||
-        this.pending.get(frame.messageId) !== entry
-      )
+      if (this.disposed || generation !== this.generation || this.pending.get(key) !== entry)
         fail(
           'COLLABORATION_CLOSED',
           'The collaboration session changed while assembling this message.',
@@ -403,19 +450,27 @@ export class CollaborationMessageAssembler {
           'COLLABORATION_HASH_MISMATCH',
           'The complete collaboration message failed its integrity check.',
         );
-      this.pending.delete(frame.messageId);
+      this.pending.delete(key);
       this.buffered -= entry.receivedBytes;
       entry.assembled = undefined;
-      this.retire(frame.messageId, entry, false);
+      this.retire(key, entry, false);
       this.scheduleExpiry();
       return { messageId: frame.messageId, kind: frame.kind, payload };
     } catch (error) {
-      if (generation === this.generation) this.retire(frame.messageId, entry, true);
-      this.discard(frame.messageId, entry);
+      if (generation === this.generation) this.retire(key, entry, true);
+      this.discard(key, entry);
       payload.fill(0);
       this.scheduleExpiry();
       throw error;
     }
+  }
+  discardSender(senderDeviceId: string) {
+    for (const [id, entry] of this.pending)
+      if (entry.sender === senderDeviceId) {
+        this.retire(id, entry, true);
+        this.discard(id, entry);
+      }
+    this.scheduleExpiry();
   }
   /** Lock, a new MLS epoch or leaving the room invalidates in-flight hash work. */
   clear() {

@@ -3,6 +3,7 @@ import {
   type RelayPayloadKind,
   type DeviceIdentity,
   type AdmissionProof,
+  type AdmissionAuthorization,
   type PendingJoin,
   type SignedRoomPolicy,
   type TransportPublicKey,
@@ -129,14 +130,35 @@ export function admissionExpiry(value: unknown, now = Date.now()): number {
     throw new RelayError("INVALID_ADMISSION_EXPIRY");
   return expiresAt;
 }
+export function admissionAuthorization(value: unknown): AdmissionAuthorization {
+  const authorization = record(value, ["invitationId", "scope", "proof"]);
+  roomId(authorization.invitationId);
+  decode(authorization.proof, 32, 32);
+  const scope = record(authorization.scope, [
+    "shareMetadata",
+    "shareOwners",
+    "shareDatasets",
+  ]);
+  if (Object.values(scope).some((value) => typeof value !== "boolean"))
+    throw new RelayError("INVALID_ADMISSION_SCOPE");
+  return {
+    invitationId: authorization.invitationId as string,
+    scope: { ...scope } as unknown as AdmissionAuthorization["scope"],
+    proof: authorization.proof as string,
+  };
+}
 export function admissionProof(
   value: unknown,
   now = Date.now(),
 ): AdmissionProof {
-  const proof = record(value, ["expiresAt", "signature"]);
+  const proof = record(value, ["authorization", "expiresAt", "signature"]);
   const expiresAt = admissionExpiry(proof.expiresAt, now);
   decode(proof.signature, 64, 64);
-  return { expiresAt, signature: proof.signature as string };
+  return {
+    authorization: admissionAuthorization(proof.authorization),
+    expiresAt,
+    signature: proof.signature as string,
+  };
 }
 /** Take an isolated public snapshot before any asynchronous signature check. */
 export function pendingJoin(value: unknown, now = Date.now()): PendingJoin {

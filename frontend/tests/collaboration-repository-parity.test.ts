@@ -17,6 +17,7 @@ import { CollaborativeDocument } from '../src/collaboration/document/document';
 import { CollaborationDocumentGateway } from '../src/collaboration/session/document-gateway';
 import { CollaborationPrivateStore } from '../src/collaboration/persistence/private-store';
 import { encodeBytes } from '../src/collaboration/transport/identity';
+import { CollaborationPeerMessageError } from '../src/collaboration/transport/room-transport';
 import type { EncryptedRoom } from '../src/collaboration/session/encrypted-room';
 import type { SharedRole } from '../src/collaboration/access';
 import { withCollaborationJournal } from '../src/security/collaboration-journal';
@@ -65,7 +66,16 @@ beforeEach(async () => {
   sends.mockClear();
   errors.mockClear();
   room = {
-    currentPolicy: { policy: { roomId, ownerDeviceId: 'owner-device-1234' } },
+    assertAuthorized: () => {},
+    role: 'editor',
+    profileBindings: {},
+    currentPolicy: {
+      policy: {
+        roomId,
+        ownerDeviceId: 'owner-device-1234',
+        members: [{ deviceId: 'owner-device-1234', role: 'owner' }],
+      },
+    },
     epoch: 0,
     encrypt: vi.fn(async (_kind: unknown, bytes: Uint8Array) => [
       { payloadKind: 'application', ciphertext: encodeBytes(bytes) },
@@ -103,6 +113,99 @@ afterEach(async () => {
 });
 afterAll(() => cipher.destroyKeys(vault.keys));
 describe('one authoritative graph transaction for UI/API/peer edits', () => {
+  it('does not retain a live profile-removal lock after its device has been removed from membership', async () => {
+    (room as unknown as { role: string }).role = 'owner';
+    const context = { role: 'owner' as const, source: 'ui' as const };
+    const created = await gateway.workflow.action(
+      { type: 'profile.create', profile: { name: 'Removed device profile' } },
+      context,
+      async () => {},
+    );
+    const profileId = created.diagram.collaboration!.profiles[0].id;
+    room.profileBindings['removed-device'] = profileId;
+    const removed = await gateway.workflow.action(
+      { type: 'profile.remove', id: profileId },
+      context,
+      async () => {},
+    );
+    expect(removed.diagram.collaboration!.profiles).toHaveLength(0);
+    expect((await repo.getGraph(graph.diagram.id)).diagram.collaboration!.profiles).toHaveLength(0);
+  });
+
+  it('rejects a protected action when the encryption epoch changes before its encrypted transaction starts', async () => {
+    const before = await repo.getGraph(graph.diagram.id);
+    (room as unknown as { role: string }).role = 'owner';
+    let release!: () => void, entered!: () => void;
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const original = workspace.applySharedProjection.bind(workspace);
+    vi.spyOn(workspace, 'applySharedProjection').mockImplementationOnce(async (...args) => {
+      entered();
+      await barrier;
+      return original(...args);
+    });
+    const pending = gateway.workflow.action(
+      { type: 'profile.create', profile: { name: 'Pending profile' } },
+      { role: 'owner', source: 'ui' },
+      async () => {},
+    );
+    const rejected = expect(pending).rejects.toBeInstanceOf(CollaborationPeerMessageError);
+    await started;
+    (room as unknown as { epoch: number }).epoch++;
+    release();
+    await rejected;
+    expect(await repo.getGraph(graph.diagram.id)).toEqual(before);
+  });
+
+  it('rejects a queued projection when its sender loses permission before the encrypted transaction starts', async () => {
+    const before = await repo.getGraph(graph.diagram.id);
+    const peer = {
+      ...room.currentPolicy!.policy.members[0],
+      deviceId: 'other-editor',
+      role: 'editor' as const,
+    };
+    room.currentPolicy!.policy.members.push(peer);
+    const document = new CollaborativeDocument(
+      before,
+      undefined,
+      gateway.document.encodedState(),
+      true,
+    );
+    const changed = structuredClone(before);
+    changed.nodes[0].title = 'No longer authorized';
+    const update = document.prepareLocal(before, changed, {
+      canWrite: true,
+      assertActive: () => {},
+    }).update;
+    let release!: () => void, entered!: () => void;
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const original = workspace.applySharedProjection.bind(workspace);
+    vi.spyOn(workspace, 'applySharedProjection').mockImplementationOnce(async (...args) => {
+      entered();
+      await barrier;
+      return original(...args);
+    });
+    const receiving = gateway.receive(update, peer.deviceId);
+    const rejected = expect(receiving).rejects.toBeInstanceOf(CollaborationPeerMessageError);
+    await started;
+    (room as unknown as { epoch: number }).epoch++;
+    room.currentPolicy!.policy.members.find((member) => member.deviceId === peer.deviceId)!.role =
+      'viewer';
+    release();
+    await rejected;
+    expect(await repo.getGraph(graph.diagram.id)).toEqual(before);
+    document.destroy();
+  });
+
   it.each(['root-first', 'group-first'] as const)(
     'preserves opted-in CSV sources across actual UI autosave and honors explicit source removal (%s)',
     async (sortOrder) => {
@@ -134,7 +237,13 @@ describe('one authoritative graph transaction for UI/API/peer edits', () => {
       roomId = crypto.randomUUID();
       room = {
         ...room,
-        currentPolicy: { policy: { roomId, ownerDeviceId: 'owner-device-1234' } },
+        currentPolicy: {
+          policy: {
+            roomId,
+            ownerDeviceId: 'owner-device-1234',
+            members: [{ deviceId: 'owner-device-1234', role: 'owner' }],
+          },
+        },
       } as unknown as EncryptedRoom;
       gateway = new CollaborationDocumentGateway({
         workspace,
@@ -180,6 +289,7 @@ describe('one authoritative graph transaction for UI/API/peer edits', () => {
         saved,
         { shareMetadata: false, shareOwners: false, shareDatasets: true },
         gateway.document.encodedState(),
+        true,
       );
       try {
         const remote = structuredClone(saved);
@@ -289,6 +399,7 @@ describe('one authoritative graph transaction for UI/API/peer edits', () => {
       graph,
       { shareMetadata: false, shareOwners: false, shareDatasets: false },
       gateway.document.encodedState(),
+      true,
     );
     try {
       const remote = structuredClone(graph);
@@ -308,6 +419,7 @@ describe('one authoritative graph transaction for UI/API/peer edits', () => {
         merged,
         { shareMetadata: false, shareOwners: false, shareDatasets: false },
         privateState!.state.crdtState,
+        true,
       );
       try {
         expect(restored.stateVector()).toEqual(gateway.document.stateVector());

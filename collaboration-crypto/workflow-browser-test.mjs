@@ -114,6 +114,9 @@ try {
   await panel(owner);
   await owner.getByLabel('Your display name',{exact:true}).fill('Alex');
   await shot(owner,'01-create-room');
+  await owner.evaluate(() => {document.documentElement.dataset.theme='dark';});
+  await shot(owner,'01-create-room-dark');
+  await owner.evaluate(() => {document.documentElement.dataset.theme='light';});
   await owner.getByLabel('I have reviewed the diagram and am allowed to share this information.',{exact:true}).check();
   await owner.getByRole('button',{name:'Start private room',exact:true}).click();
   await status(owner,'live');

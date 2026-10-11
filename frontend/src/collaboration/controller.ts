@@ -28,7 +28,10 @@ import { collaborationPermissions } from './access';
 import { CollaborativeDocument } from './document/document';
 import { mergeCollaborationSnapshot } from './document/merge-snapshot';
 import { credentialId } from './transport/identity';
-import { CollaborationPeerMessageError } from './transport/room-transport';
+import {
+  CollaborationPeerMessageError,
+  CollaborationConnectionError,
+} from './transport/room-transport';
 import type { CollaborationAction, CollaborationActionContext } from './model/types';
 import { documentProfilePreference } from './profile-preference';
 const encoder = new TextEncoder();
@@ -192,6 +195,22 @@ export class CollaborationController implements CollaborationUiController {
         check();
         return this.message(kind, payload, sender);
       },
+      onPeerRejected: (sender: RoomMember, error: Error) => {
+        if (!active()) return;
+        this.gateway?.discardPeer(sender.deviceId);
+        this.update({
+          participants: this.snapshot.participants.map((member) =>
+            member.deviceId === sender.deviceId
+              ? {
+                  ...member,
+                  syncWarning:
+                    'A message was rejected. Verify this participant or remove it from the room.',
+                }
+              : member,
+          ),
+          error: `Rejected a collaboration message: ${error.message} The saved diagram is unchanged by that message.`,
+        });
+      },
       onDisconnect: () => {
         if (active() && this.room)
           this.update({
@@ -317,6 +336,7 @@ export class CollaborationController implements CollaborationUiController {
       const room = await EncryptedRoom.open({
         ...this.roomOptions(invitation.roomId, invitation.diagramId),
         invitation: invitation.ticket,
+        invitationAuthorization: invitation.authorization,
         ownerCredential: invitation.ownerCredential,
         ownerDeviceId: invitation.ownerDeviceId,
       });
@@ -354,6 +374,7 @@ export class CollaborationController implements CollaborationUiController {
       check,
       role: () => {
         check();
+        room.assertAuthorized();
         const role = room.role;
         if (!role) throw new Error('No approved document permission.');
         return ['connecting', 'syncing', 'awaiting-approval'].includes(this.snapshot.status)
@@ -427,7 +448,9 @@ export class CollaborationController implements CollaborationUiController {
       if (changed) await this.gateway.epochChanged();
       else {
         await this.gateway.epochChanged();
-        await this.gateway.requestSync();
+        void this.gateway.requestSync().catch((error) => {
+          if (this.current(generation, lease)) this.backgroundFailure(error);
+        });
       }
       check();
       this.startPresence();
@@ -440,7 +463,15 @@ export class CollaborationController implements CollaborationUiController {
     this.update({ status: 'syncing' });
     // The owner is informed by a semantic encrypted sync request, even if its
     // post-approval snapshot was lost. No document is read from the relay.
-    await room.message('sync', new Uint8Array([0]), room.currentPolicy!.policy.ownerDeviceId);
+    void room
+      .message('sync', new Uint8Array([0]), room.currentPolicy!.policy.ownerDeviceId)
+      .catch((error) => {
+        if (this.current(generation, lease)) this.backgroundFailure(error);
+      });
+  }
+  private backgroundFailure(error: Error) {
+    if (error instanceof CollaborationConnectionError) this.update({ status: 'offline' });
+    else this.fail(error);
   }
   private async message(
     kind: Parameters<EncryptedRoom['message']>[0],
@@ -448,6 +479,7 @@ export class CollaborationController implements CollaborationUiController {
     sender: RoomMember,
   ) {
     this.check();
+    const messageEpoch = this.room!.epoch;
     if (kind === 'presence') {
       let presence: ReturnType<typeof presenceMessage>;
       try {
@@ -480,16 +512,23 @@ export class CollaborationController implements CollaborationUiController {
       this.refreshProfiles();
       return;
     }
+    if (kind === 'workflow-request') {
+      if (!this.gateway)
+        throw new CollaborationPeerMessageError('The owner document is not ready.');
+      await this.gateway.workflow.receiveRequest(payload, sender);
+      return;
+    }
     if (kind === 'sync') {
       if (!this.gateway || this.room!.role === 'viewer') return;
-      if (this.room!.role === 'owner' && payload.length === 1 && payload[0] === 0)
-        await this.gateway.snapshot(sender.deviceId);
-      else await this.gateway.respondSync(payload, sender.deviceId);
+      this.gateway.respondInBackground(payload, sender.deviceId);
       return;
     }
     const bytes = await decompressPayload(payload, this.lease!.signal);
     try {
-      if (kind === 'snapshot') {
+      if (kind === 'workflow-state') {
+        if (!this.gateway) return;
+        await this.gateway.workflow.receiveState(bytes, sender);
+      } else if (kind === 'snapshot') {
         if (sender.role !== 'owner')
           throw new Error('Only the approved owner may initialize a shared document.');
         await this.acceptSnapshot(bytes);
@@ -502,7 +541,7 @@ export class CollaborationController implements CollaborationUiController {
           );
           return;
         }
-        await this.gateway.receive(bytes);
+        await this.gateway.receive(bytes, sender.deviceId, messageEpoch);
       }
     } finally {
       bytes.fill(0);
@@ -516,9 +555,18 @@ export class CollaborationController implements CollaborationUiController {
       snapshot = this.snapshot;
     const check = () => this.checkSession(generation, lease);
     const input = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
-    record(input, ['version', 'scope', 'document', 'state'], ['profileBindings']);
-    if (input.version !== 1 || JSON.stringify(input.scope) !== JSON.stringify(snapshot.scope))
+    record(input, ['version', 'scope', 'document', 'state', 'workflow'], ['profileBindings']);
+    if (input.version !== 2 || JSON.stringify(input.scope) !== JSON.stringify(snapshot.scope))
       throw new Error('The snapshot sharing scope differs from the accepted invitation.');
+    if (
+      !input.workflow ||
+      !Number.isSafeInteger(input.workflow.revision) ||
+      input.workflow.revision < 0 ||
+      Object.keys(input.workflow).some((key) => !['revision', 'document'].includes(key)) ||
+      JSON.stringify(input.workflow.document) !==
+        JSON.stringify(input.document.diagram.collaboration)
+    )
+      throw new Error('Invalid owner workflow checkpoint.');
     const id = snapshot.diagramId!;
     // Drain already queued local work, then freeze content before any reads or
     // recovery awaits. Otherwise a newer saved edit could be overwritten by a
@@ -592,10 +640,18 @@ export class CollaborationController implements CollaborationUiController {
       if (graph.diagram.id !== id) throw new Error('The snapshot belongs to another diagram.');
       state = decodeBytes(input.state, 32 * 1024 * 1024);
       if (existing && association) {
-        if (room.role === 'viewer') {
-          const source = new CollaborativeDocument(graph, snapshot.scope, state);
+        if (
+          room.role === 'viewer' ||
+          JSON.stringify(existing.diagram.collaboration) !==
+            JSON.stringify(graph.diagram.collaboration)
+        ) {
+          const source = new CollaborativeDocument(graph, snapshot.scope, state, true);
           try {
-            if (source.hasSharedChanges(source.graph(existing), existing)) {
+            if (
+              source.hasSharedChanges(source.graph(existing), existing) ||
+              JSON.stringify(existing.diagram.collaboration) !==
+                JSON.stringify(graph.diagram.collaboration)
+            ) {
               const recovery = structuredClone(existing);
               recovery.diagram.name = `${existing.diagram.name} — recovered local copy`;
               const copy = await this.options.workspace.repo.importGraph(recovery, async () =>
@@ -617,12 +673,16 @@ export class CollaborationController implements CollaborationUiController {
           association.state.crdtState,
           { ...snapshot.scope },
           room.role !== 'viewer',
+          true,
         );
         graph = merged.graph;
         state.fill(0);
         state = merged.state;
       }
-      const initialized = new CollaborationDocumentGateway(this.gatewayOptions(graph, state));
+      const initialized = new CollaborationDocumentGateway({
+        ...this.gatewayOptions(graph, state),
+        workflowRevision: input.workflow.revision,
+      });
       gateway = initialized;
       state.fill(0);
       const authority = collaborationPermissions.projection(id, check);
@@ -664,14 +724,11 @@ export class CollaborationController implements CollaborationUiController {
       generation = this.generation,
       lease = this.lease!,
       snapshot = this.snapshot;
-    const result = (await room.control('invite')) as {
-      invitation: string;
-      expiresAt: number;
-      roomId: string;
-    };
+    const result = await room.createInvitation({ ...snapshot.scope });
     this.checkSession(generation, lease);
     const invitation: CollaborationInvitation = {
-      version: 1,
+      version: 2,
+      authorization: result.authorization,
       roomId: snapshot.roomId!,
       diagramId: snapshot.diagramId!,
       relay: this.relay(),

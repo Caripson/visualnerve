@@ -66,8 +66,20 @@ export interface Challenge {
   nonce: string;
   expiresAt: number;
 }
+export interface InvitationShareScope {
+  shareMetadata: boolean;
+  shareOwners: boolean;
+  shareDatasets: boolean;
+}
+/** Public capability proof. The owner-held secret never reaches the relay. */
+export interface AdmissionAuthorization {
+  invitationId: string;
+  scope: InvitationShareScope;
+  proof: string;
+}
 /** Public proof of the joining device's complete cryptographic identity. */
 export interface AdmissionProof {
+  authorization: AdmissionAuthorization;
   expiresAt: number;
   signature: string;
 }
@@ -169,7 +181,7 @@ export function canonical(value: unknown): string {
   throw new Error("Non-canonical protocol value");
 }
 export function signingInput(
-  domain: "policy" | "authenticate" | "command" | "admission",
+  domain: "policy" | "authenticate" | "command" | "admission" | "lease",
   value: unknown,
 ): Uint8Array {
   return new TextEncoder().encode(
@@ -183,8 +195,10 @@ export function admissionInput(
   device: DeviceIdentity,
   keyPackage: string,
   expiresAt: number,
+  authorization: AdmissionAuthorization,
 ) {
   return {
+    authorization,
     protocol: collaborationProtocol,
     roomId,
     device: {
