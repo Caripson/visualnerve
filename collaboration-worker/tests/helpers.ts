@@ -169,6 +169,7 @@ export class Client {
     readonly socket: WebSocket,
     readonly fixture: Fixture,
     readonly device: Device,
+    options?: WebSocketAcceptOptions,
   ) {
     socket.addEventListener("message", (event) => {
       const frame = JSON.parse(String(event.data)) as ServerFrame;
@@ -182,9 +183,13 @@ export class Client {
         waiter.resolve(frame);
       } else this.queued.push(frame);
     });
-    socket.accept();
+    socket.accept(options);
   }
-  static async open(fixture: Fixture, device = fixture.owner) {
+  static async open(
+    fixture: Fixture,
+    device = fixture.owner,
+    options?: WebSocketAcceptOptions,
+  ) {
     const response = await fetchRelay(
       `/v1/rooms/${fixture.id}/socket`,
       { headers: { Upgrade: "websocket" } },
@@ -194,7 +199,7 @@ export class Client {
       response.status,
       response.status === 101 ? undefined : await response.text(),
     ).toBe(101);
-    const client = new Client(response.webSocket!, fixture, device);
+    const client = new Client(response.webSocket!, fixture, device, options);
     clients.add(client);
     client.challenge = (await client.next("challenge")) as Challenge;
     return client;

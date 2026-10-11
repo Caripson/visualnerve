@@ -23,6 +23,8 @@ import type { SharedRole } from '../src/collaboration/access';
 import { withCollaborationJournal } from '../src/security/collaboration-journal';
 import { csvGraph, defaultAnalysis, parseCsv } from '../src/data/csv';
 import { useEditor } from '../src/state/editor';
+import * as Y from 'yjs';
+import { encodeCollaborationUpdate } from '../src/collaboration/document/update-envelope';
 vi.setConfig({ testTimeout: 30000, hookTimeout: 30000 });
 const password = 'test-only collaboration repository password';
 const cipher = new VaultCrypto(webcrypto as unknown as Crypto);
@@ -113,6 +115,77 @@ afterEach(async () => {
 });
 afterAll(() => cipher.destroyKeys(vault.keys));
 describe('one authoritative graph transaction for UI/API/peer edits', () => {
+  it('requests one current editor at a time when the owner recovers a dropped aggregate update', async () => {
+    (room as unknown as { role: SharedRole }).role = 'owner';
+    role = 'owner';
+    for (const [deviceId, memberRole] of [
+      ['editor-one', 'editor'],
+      ['read-only', 'viewer'],
+      ['editor-two', 'editor'],
+    ] as const)
+      room.currentPolicy!.policy.members.push({
+        ...room.currentPolicy!.policy.members[0],
+        deviceId,
+        role: memberRole,
+      });
+    await gateway.requestSync();
+    await gateway.requestSync();
+    await gateway.requestSync();
+    expect(vi.mocked(room.message).mock.calls.map((call) => call[2])).toEqual([
+      'editor-one',
+      'editor-two',
+      'editor-one',
+    ]);
+    expect(errors).not.toHaveBeenCalled();
+  });
+  it.each(['owner', 'editor'] as const)(
+    'recovers aggregate missing-dependency pressure without falsely isolating the next honest editor (%s)',
+    async (receiverRole) => {
+      (room as unknown as { role: SharedRole }).role = receiverRole;
+      role = receiverRole;
+      const senders = ['editor-one', 'editor-two', 'editor-three', 'editor-four', 'editor-honest'];
+      for (const deviceId of senders)
+        room.currentPolicy!.policy.members.push({
+          ...room.currentPolicy!.policy.members[0],
+          deviceId,
+          role: 'editor',
+        });
+      const original = await repo.getGraph(graph.diagram.id);
+      const doc = new Y.Doc();
+      try {
+        Y.applyUpdate(doc, gateway.document.encodedState());
+        doc.clientID = 123456789;
+        const fields = doc.getMap('fields');
+        fields.set(JSON.stringify(['nodes', graph.nodes[0].id, 'description']), [
+          'value',
+          'Prefix',
+        ]);
+        const vector = Y.encodeStateVector(doc);
+        fields.set(JSON.stringify(['nodes', graph.nodes[0].id, 'title']), [
+          'value',
+          'Recovered title',
+        ]);
+        const incomplete = encodeCollaborationUpdate(vector, Y.encodeStateAsUpdate(doc, vector));
+        for (const sender of senders.slice(0, 4))
+          for (let index = 0; index < 8; index++) await gateway.receive(incomplete, sender);
+        await expect(gateway.receive(incomplete, senders[4])).resolves.toBeUndefined();
+        expect(await repo.getGraph(graph.diagram.id)).toEqual(original);
+        expect(errors).not.toHaveBeenCalled();
+        expect(room.message).toHaveBeenCalledTimes(1); // One coalesced shared recovery request.
+        expect(vi.mocked(room.message).mock.calls[0][2]).toBe(
+          receiverRole === 'owner' ? senders[0] : room.currentPolicy!.policy.ownerDeviceId,
+        );
+        await gateway.receive(
+          encodeCollaborationUpdate(new Uint8Array([0]), Y.encodeStateAsUpdate(doc)),
+          senders[4],
+        );
+        expect((await repo.getGraph(graph.diagram.id)).nodes[0].title).toBe('Recovered title');
+        expect(errors).not.toHaveBeenCalled();
+      } finally {
+        doc.destroy();
+      }
+    },
+  );
   it('does not retain a live profile-removal lock after its device has been removed from membership', async () => {
     (room as unknown as { role: string }).role = 'owner';
     const context = { role: 'owner' as const, source: 'ui' as const };

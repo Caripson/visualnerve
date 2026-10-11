@@ -1,4 +1,8 @@
-import { proveInvitation, type InvitationAuthorization } from './invitation-authorization';
+import {
+  CollaborationAdmissionRejectedError,
+  proveInvitation,
+  type InvitationAuthorization,
+} from './invitation-authorization';
 import {
   collaborationProtocol,
   admissionInput,
@@ -197,6 +201,10 @@ export class RoomTransport {
           }
         })
         .catch((error) => {
+          // An unapproved request has not touched membership/MLS state. Forged,
+          // expired or revoked invitation data must not close the owner's room.
+          if (frame.type === 'join-request' && error instanceof CollaborationAdmissionRejectedError)
+            return;
           // A rejected authenticated application must not let one participant
           // disconnect every recipient. Control or unknown crypto failures stay fatal.
           if (frame.type === 'relay' && error instanceof CollaborationPeerMessageError) return;

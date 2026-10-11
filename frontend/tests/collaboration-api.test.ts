@@ -93,6 +93,9 @@ describe('semantic collaboration API', () => {
       activeMessages: 8,
       perPeerBufferedBytes: 8388608,
       totalBufferedBytes: 33554432,
+      controlMessages: 8,
+      syncResponseIntervalMs: 10000,
+      syncResponsePayloadBytesPerMinute: 1048576,
     });
   });
   it('whitelists semantic state and never serializes invitations, credentials, errors or relay URLs', async () => {

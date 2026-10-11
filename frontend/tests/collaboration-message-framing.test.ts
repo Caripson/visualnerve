@@ -4,6 +4,7 @@ import { base64url, unbase64url } from '../src/security/vault-codec';
 import {
   CollaborationMessageFramer,
   CollaborationMessageAssembler,
+  CollaborationBufferBusyError,
   collaborationFrameLimits,
 } from '../src/collaboration/sync/message-framing';
 
@@ -107,10 +108,45 @@ describe('authenticated application message framing', () => {
       for (let part = 0; part < 256; part++) await assembler.accept(sender, 1, frame(id, part));
     }
     expect(assembler.bufferedBytes).toBe(32 * 1024 * 1024);
+    const lease = (await framer.encode('lease', new Uint8Array([4, 2])))[0];
+    const renewed = await assembler.accept('device-owner', 1, lease, {
+      role: 'owner',
+      wireKind: 'presence',
+    });
+    expect(renewed?.kind).toBe('lease');
+    expect([...renewed!.payload]).toEqual([4, 2]);
+    expect(assembler.bufferedBytes).toBe(collaborationFrameLimits.totalBufferedBytes);
+    await expect(
+      assembler.accept('device-viewer', 1, lease, { role: 'viewer', wireKind: 'presence' }),
+    ).rejects.toMatchObject({ code: 'COLLABORATION_INVALID_FRAME' });
+    const forgedLease = decode(lease);
+    forgedLease.data = base64url(new Uint8Array([9, 9]));
+    await expect(
+      assembler.accept(
+        'device-owner',
+        1,
+        encode({ ...forgedLease, messageId: crypto.randomUUID() }),
+        {
+          role: 'owner',
+          wireKind: 'presence',
+        },
+      ),
+    ).rejects.toMatchObject({ code: 'COLLABORATION_HASH_MISMATCH' });
     await expect(assembler.accept('device-56789', 1, frame(second, 0))).rejects.toMatchObject({
-      code: 'COLLABORATION_MESSAGE_LIMIT',
+      code: 'COLLABORATION_BUFFER_BUSY',
       status: 429,
     });
+    await expect(assembler.accept('device-56789', 1, frame(second, 0))).rejects.toBeInstanceOf(
+      CollaborationBufferBusyError,
+    );
+    // Backpressure has not retired or poisoned this honest sender/message.
+    // Releasing a contributor's allocation lets the exact frame make progress.
+    assembler.discardSender('device-45678');
+    expect(await assembler.accept('device-56789', 1, frame(second, 0))).toBeUndefined();
+    expect(assembler.bufferedBytes).toBeLessThanOrEqual(
+      collaborationFrameLimits.totalBufferedBytes,
+    );
+    expect(assembler.activeMessages).toBe(4);
     assembler.clear();
     expect(assembler.bufferedBytes).toBe(0);
   });
@@ -185,6 +221,41 @@ describe('authenticated application message framing', () => {
     await outcome;
     expect(assembler.activeMessages).toBe(0);
     expect(assembler.bufferedBytes).toBe(0);
+  });
+  it('bounds the independent control hash allowance and cancels it at lock without leaking buffers', async () => {
+    const frames = await framer.encode('lease', new Uint8Array([7, 8]));
+    const digest = unbase64url(decode(frames[0]).hash, 32);
+    const releases: Array<(value: ArrayBuffer) => void> = [];
+    const inputs: Uint8Array[] = [];
+    vi.spyOn(crypto.subtle, 'digest').mockImplementation((_algorithm, bytes) => {
+      inputs.push(bytes as Uint8Array);
+      return new Promise<ArrayBuffer>((resolve) => releases.push(resolve));
+    });
+    const verifying = [];
+    for (let index = 0; index < collaborationFrameLimits.controlMessages; index++) {
+      const outcome = assembler.accept(
+        'device-owner',
+        1,
+        encode({ ...decode(frames[0]), messageId: crypto.randomUUID() }),
+        { role: 'owner', wireKind: 'presence' },
+      );
+      verifying.push(expect(outcome).rejects.toMatchObject({ code: 'COLLABORATION_CLOSED' }));
+    }
+    await expect(
+      assembler.accept(
+        'device-owner',
+        1,
+        encode({ ...decode(frames[0]), messageId: crypto.randomUUID() }),
+        { role: 'owner', wireKind: 'presence' },
+      ),
+    ).rejects.toBeInstanceOf(CollaborationBufferBusyError);
+    expect(inputs).toHaveLength(collaborationFrameLimits.controlMessages);
+    expect(assembler.bufferedBytes).toBe(0);
+    expect(assembler.activeMessages).toBe(0);
+    assembler.clear();
+    expect(inputs.every((input) => input.every((byte) => byte === 0))).toBe(true);
+    for (const release of releases) release(digest.buffer as ArrayBuffer);
+    await Promise.all(verifying);
   });
   it('owns producer input before any await and cancels safely on the original session signal', async () => {
     const source = new Uint8Array([11, 12, 13]);

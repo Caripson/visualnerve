@@ -4,6 +4,7 @@ import { collaborationDocumentLimits, defaultCollaborationShareScope } from './d
 import { collaborationUpdateLimits } from './document/update-envelope';
 import { collaborationFrameLimits } from './sync/message-framing';
 import { collaborationPayloadLimits } from './session/payload-codec';
+import { collaborationSyncResponseLimits } from './session/sync-response-queue';
 import type { CollaborationSnapshot } from './types';
 import { collaborationLimits } from './model/types';
 
@@ -72,6 +73,8 @@ export function collaborationCapabilities(configured: boolean) {
       ...collaborationUpdateLimits,
       ...collaborationFrameLimits,
       ...collaborationPayloadLimits,
+      syncResponseIntervalMs: collaborationSyncResponseLimits.peerIntervalMs,
+      syncResponsePayloadBytesPerMinute: collaborationSyncResponseLimits.payloadBytesPerMinute,
     },
   } as const;
 }

@@ -7,6 +7,7 @@ import type {
 } from '../../../../collaboration-worker/src/protocol';
 import { admissionInput, canonical } from '../../../../collaboration-worker/src/protocol';
 import {
+  RelayError,
   signedPolicy,
   sameIdentity,
   record,
@@ -17,10 +18,22 @@ import {
 } from '../../../../collaboration-worker/src/validation';
 import { relayLimits } from '../../../../collaboration-worker/src/protocol';
 import { credentialId, verifyTransportSignature } from './identity';
+import { CollaborationAdmissionRejectedError } from './invitation-authorization';
 
 /** Verify device authorship; owner invitation possession is checked separately. */
 export async function verifyPendingJoin(input: unknown, roomId: string): Promise<PendingJoin> {
-  const request = pendingJoin(input);
+  const snapshot = (value: unknown) => {
+    try {
+      return pendingJoin(value);
+    } catch (error) {
+      if (error instanceof RelayError)
+        throw new CollaborationAdmissionRejectedError(
+          `The admission is invalid or expired (${error.code}).`,
+        );
+      throw error;
+    }
+  };
+  const request = snapshot(input);
   if (
     !(await verifyTransportSignature(
       request,
@@ -35,9 +48,11 @@ export async function verifyPendingJoin(input: unknown, roomId: string): Promise
       request.admission.signature,
     ))
   )
-    throw new Error('The admission device identity or signature could not be verified.');
+    throw new CollaborationAdmissionRejectedError(
+      'The admission device identity or signature could not be verified.',
+    );
   // Expiry may pass while WebCrypto is verifying the immutable snapshot.
-  return pendingJoin(request);
+  return snapshot(request);
 }
 
 /** Server admission is not proof of identity. Every browser verifies the pinned owner. */

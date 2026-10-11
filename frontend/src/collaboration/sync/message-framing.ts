@@ -12,6 +12,7 @@ export const collaborationFrameLimits = Object.freeze({
   parts: 2048,
   timeoutMs: 60_000,
   replayIds: 256,
+  controlMessages: 8,
 });
 export type CollaborationPayloadKind =
   | 'update'
@@ -73,6 +74,16 @@ export class CollaborationFramingError extends StorageError {
     status = 422,
   ) {
     super(status, message);
+  }
+}
+/** Aggregate receiver pressure does not identify a participant's message as abusive. */
+export class CollaborationBufferBusyError extends CollaborationFramingError {
+  constructor() {
+    super(
+      'COLLABORATION_BUFFER_BUSY',
+      'The shared receive buffer is temporarily full. Request state synchronization.',
+      429,
+    );
   }
 }
 const fail = (code: string, message: string, status = 422): never => {
@@ -223,6 +234,9 @@ export class CollaborationMessageFramer {
  */
 export class CollaborationMessageAssembler {
   private pending = new Map<string, Pending>();
+  // Small one-frame controls need no multipart slots. Reserve a separate,
+  // bounded hash-in-flight allowance so document pressure cannot suppress leases.
+  private controls = new Map<string, Pending>();
   private retired = new Map<string, Retired>();
   private buffered = 0;
   private generation = 0;
@@ -287,6 +301,67 @@ export class CollaborationMessageAssembler {
       },
       Math.max(1, expires - this.now()),
     );
+  }
+  private async control(
+    key: string,
+    sender: string,
+    epoch: number,
+    frame: Frame,
+    payload: Uint8Array,
+  ): Promise<CollaborationReassembledMessage | undefined> {
+    const current = this.controls.get(key);
+    if (current) {
+      payload.fill(0);
+      if (current.epoch !== epoch || current.frame.hash !== frame.hash)
+        fail(
+          'COLLABORATION_FRAME_CONFLICT',
+          'A control message was repeated with different content.',
+        );
+      return undefined;
+    }
+    if (this.controls.size >= collaborationFrameLimits.controlMessages) {
+      payload.fill(0);
+      throw new CollaborationBufferBusyError();
+    }
+    const { part: _part, data: _data, ...identity } = frame;
+    const entry: Pending = {
+      sender,
+      epoch,
+      frame: identity,
+      chunks: new Map(),
+      receivedBytes: 0,
+      expires: this.now() + collaborationFrameLimits.timeoutMs,
+      assembled: payload,
+    };
+    this.controls.set(key, entry);
+    const generation = this.generation;
+    try {
+      const digest = await hash(payload);
+      if (this.disposed || generation !== this.generation || this.controls.get(key) !== entry)
+        fail(
+          'COLLABORATION_CLOSED',
+          'The collaboration session changed while verifying this control.',
+          423,
+        );
+      if (this.now() >= entry.expires)
+        fail(
+          'COLLABORATION_MESSAGE_EXPIRED',
+          'The control message expired. Request state synchronization.',
+          409,
+        );
+      if (digest !== frame.hash)
+        fail('COLLABORATION_HASH_MISMATCH', 'The control message failed its integrity check.');
+      this.retire(key, entry, false);
+      entry.assembled = undefined;
+      return { messageId: frame.messageId, kind: frame.kind, payload };
+    } catch (error) {
+      if (generation === this.generation) this.retire(key, entry, true);
+      payload.fill(0);
+      throw error;
+    } finally {
+      if (this.controls.get(key) === entry) this.controls.delete(key);
+      this.scheduleExpiry();
+    }
   }
   async accept(
     senderDeviceId: string,
@@ -385,6 +460,8 @@ export class CollaborationMessageAssembler {
         fail('COLLABORATION_FRAME_CONFLICT', 'A chunk was repeated with different content.');
       return undefined;
     }
+    if (frame.total === 1 && ['presence', 'sync', 'lease', 'lease-request'].includes(frame.kind))
+      return this.control(key, senderDeviceId, epoch, frame, chunk);
     if (
       (!entry &&
         [...this.pending.values()].filter((pending) => pending.sender === senderDeviceId).length >=
@@ -393,8 +470,7 @@ export class CollaborationMessageAssembler {
         .filter((pending) => pending.sender === senderDeviceId)
         .reduce((sum, pending) => sum + pending.receivedBytes, 0) +
         chunk.byteLength >
-        collaborationFrameLimits.perPeerBufferedBytes ||
-      this.buffered + chunk.byteLength > collaborationFrameLimits.totalBufferedBytes
+        collaborationFrameLimits.perPeerBufferedBytes
     ) {
       chunk.fill(0);
       fail(
@@ -402,6 +478,10 @@ export class CollaborationMessageAssembler {
         'Too many pending collaboration messages. Request state synchronization.',
         429,
       );
+    }
+    if (this.buffered + chunk.byteLength > collaborationFrameLimits.totalBufferedBytes) {
+      chunk.fill(0);
+      throw new CollaborationBufferBusyError();
     }
     if (!entry) {
       const { part: _part, data: _data, ...identity } = frame;
@@ -470,12 +550,19 @@ export class CollaborationMessageAssembler {
         this.retire(id, entry, true);
         this.discard(id, entry);
       }
+    for (const [id, entry] of this.controls)
+      if (entry.sender === senderDeviceId) {
+        entry.assembled?.fill(0);
+        this.controls.delete(id);
+      }
     this.scheduleExpiry();
   }
   /** Lock, a new MLS epoch or leaving the room invalidates in-flight hash work. */
   clear() {
     this.generation++;
     for (const [id, entry] of this.pending) this.discard(id, entry);
+    for (const entry of this.controls.values()) entry.assembled?.fill(0);
+    this.controls.clear();
     this.retired.clear();
     if (this.timer) clearTimeout(this.timer);
     this.timer = undefined;

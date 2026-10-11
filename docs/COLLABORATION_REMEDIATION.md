@@ -1,5 +1,10 @@
 # Collaboration remediation — 2026-10-11
 
+The subsequent source review of `d621e1b` found an admission availability
+regression and additional resource-pressure risks. See
+[the follow-up corrections and evidence](COLLABORATION_FOLLOWUP.md). This report
+describes the first remediation round, not the complete current release evidence.
+
 This follow-up addresses the source review supplied for `84c6402`. The relay is
 considered capable of modifying, delaying and withholding traffic. Tests use
 invented documents, disposable browser vaults, real Web Crypto/OpenMLS workers

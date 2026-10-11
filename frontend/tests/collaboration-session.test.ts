@@ -28,6 +28,7 @@ import { proveInvitation } from '../src/collaboration/transport/invitation-autho
 import { binaryHash } from '../src/collaboration/transport/policy';
 import {
   CollaborationFramingError,
+  CollaborationBufferBusyError,
   CollaborationMessageAssembler,
   CollaborationMessageFramer,
 } from '../src/collaboration/sync/message-framing';
@@ -1153,6 +1154,52 @@ describe('encrypted room session authorization and lifecycle', () => {
 });
 
 describe('owner invitation capability and bounded policy freshness', () => {
+  it('treats aggregate receiver saturation as backpressure, then coalesces recovery without blaming the sender', async () => {
+    const onPeerRejected = vi.fn(),
+      onBufferAvailable = vi.fn(),
+      f = await fixture({ onPeerRejected, onBufferAvailable }),
+      peer = await admit(f);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    const accept = vi
+      .spyOn(CollaborationMessageAssembler.prototype, 'accept')
+      .mockRejectedValueOnce(new CollaborationBufferBusyError())
+      .mockRejectedValueOnce(new CollaborationBufferBusyError());
+    const discard = vi.spyOn(CollaborationMessageAssembler.prototype, 'discardSender');
+    for (let i = 0; i < 2; i++) {
+      const message = await relay(f, peer);
+      await f.transport.options.onFrame({ type: 'relay', protocol: 1, command: message.command });
+    }
+    expect(onPeerRejected).not.toHaveBeenCalled();
+    expect(discard).not.toHaveBeenCalled();
+    expect(f.options.onMessage).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(onBufferAvailable).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(onBufferAvailable).toHaveBeenCalledOnce();
+    accept.mockRestore();
+    const valid = await relay(f, peer);
+    await f.transport.options.onFrame({ type: 'relay', protocol: 1, command: valid.command });
+    expect(f.options.onMessage).toHaveBeenCalledOnce();
+    expect(f.options.onError).not.toHaveBeenCalled();
+  });
+  it.each(['dispose', 'cancelPendingSends'] as const)(
+    'cancels deferred buffer recovery on %s',
+    async (stop) => {
+      const onBufferAvailable = vi.fn(),
+        f = await fixture({ onBufferAvailable }),
+        peer = await admit(f);
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+      vi.spyOn(CollaborationMessageAssembler.prototype, 'accept').mockRejectedValueOnce(
+        new CollaborationBufferBusyError(),
+      );
+      const message = await relay(f, peer);
+      await f.transport.options.onFrame({ type: 'relay', protocol: 1, command: message.command });
+      f.room[stop]();
+      await vi.advanceTimersByTimeAsync(60_001);
+      expect(onBufferAvailable).not.toHaveBeenCalled();
+      expect(f.options.onError).not.toHaveBeenCalled();
+    },
+  );
   it('rejects relay-fabricated self-signed admission without owner invitation possession', async () => {
     const f = await fixture(),
       peer = await participant();

@@ -11,6 +11,7 @@ import type {
 } from '../../../../collaboration-worker/src/protocol';
 import { relayLimits } from '../../../../collaboration-worker/src/protocol';
 import {
+  CollaborationAdmissionRejectedError,
   verifyInvitation,
   type InvitationAuthorization,
 } from '../transport/invitation-authorization';
@@ -40,6 +41,8 @@ import {
   CollaborationMessageAssembler,
   CollaborationMessageFramer,
   CollaborationFramingError,
+  CollaborationBufferBusyError,
+  collaborationFrameLimits,
   type CollaborationPayloadKind,
   type CollaborationReassembledMessage,
 } from '../sync/message-framing';
@@ -60,6 +63,7 @@ export interface EncryptedRoomOptions {
   onDisconnect(): void;
   onEpochPending?(): void;
   onPeerRejected?(sender: RoomMember, error: Error): Promise<void> | void;
+  onBufferAvailable?(): Promise<void> | void;
   onError(error: Error): void;
 }
 export interface EncryptedPacket {
@@ -112,6 +116,7 @@ export class EncryptedRoom {
   private leaseRefresh?: ReturnType<typeof setInterval>;
   private leaseBoot?: { wall: number; monotonic: number };
   private leaseReady = false;
+  private bufferRecoveryTimer?: ReturnType<typeof setTimeout>;
   private controlBudget = { at: Date.now(), messages: 0, bytes: 0 };
   private peerControls = new Map<string, { at: number; messages: number }>();
   private constructor(
@@ -258,13 +263,15 @@ export class EncryptedRoom {
         invitation.authorization,
       ))
     )
-      throw new Error('This admission does not prove possession of an active owner invitation.');
+      throw new CollaborationAdmissionRejectedError(
+        'This admission does not prove possession of an active owner invitation.',
+      );
     this.check();
     if (
       this.invitations.get(request.admission.authorization.invitationId) !== invitation ||
       invitation.expiresAt <= Date.now()
     )
-      throw new Error('The owner invitation expired or was revoked.');
+      throw new CollaborationAdmissionRejectedError('The owner invitation expired or was revoked.');
     return invitation;
   }
   private check() {
@@ -681,6 +688,12 @@ export class EncryptedRoom {
             wireKind: (command.body as EncryptedPacket).payloadKind,
           });
         } catch (error) {
+          // Other senders may have filled the aggregate receiver budget. This
+          // backpressure is not evidence of abuse by the arriving participant.
+          if (error instanceof CollaborationBufferBusyError) {
+            this.recoverBufferPressure();
+            return;
+          }
           // The MLS application was authenticated and its receiver generation is
           // consumed. Invalid inner framing cannot change membership or a document.
           // Resource pressure retires only the authenticated sender and asks
@@ -795,8 +808,27 @@ export class EncryptedRoom {
     return pending;
   }
   cancelPendingSends() {
+    clearTimeout(this.bufferRecoveryTimer);
+    this.bufferRecoveryTimer = undefined;
     this.sendEpoch.abort();
     this.sendEpoch = new AbortController();
+  }
+  private recoverBufferPressure() {
+    if (this.bufferRecoveryTimer || !this.options.onBufferAvailable) return;
+    // Coalesce recovery outside the ordered receive loop, after incomplete
+    // assemblies expire. A lost bootstrap must not leave a recipient stranded.
+    this.bufferRecoveryTimer = setTimeout(() => {
+      this.bufferRecoveryTimer = undefined;
+      if (this.stopped || !this.ready || !this.policyFresh) return;
+      void Promise.resolve()
+        .then(() => {
+          this.assertAuthorized();
+          return this.options.onBufferAvailable?.();
+        })
+        .catch((error) => {
+          if (!this.stopped) this.options.onError(error);
+        });
+    }, collaborationFrameLimits.timeoutMs + 1);
   }
   async message(kind: CollaborationPayloadKind, payload: Uint8Array, recipient?: string) {
     const epoch = this.epoch;
@@ -957,6 +989,8 @@ export class EncryptedRoom {
     this.clearEpochWait();
     clearTimeout(this.leaseTimer);
     clearInterval(this.leaseRefresh);
+    clearTimeout(this.bufferRecoveryTimer);
+    this.bufferRecoveryTimer = undefined;
     this.leaseChallenge = undefined;
     this.leaseGranted = undefined;
     this.invitations.clear();

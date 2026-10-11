@@ -147,6 +147,11 @@ Undo tracks your own local operations rather than undoing another participant's 
 
 ## Encryption and the relay
 
+If several participants fill the shared receive buffer, Visual Nerve treats this as temporary congestion rather than blaming the next participant. It requests recovery after incomplete messages expire. Small permission and synchronization controls retain separate bounded space. Repeated requests for the whole drawing are coalesced and spaced according to the response size. A necessary large refresh can take longer; keep the tab open and watch the collaboration status. **Saved** still confirms only your local copy.
+
+An invalid, expired or revoked join request does not close the owner's room and cannot reach approval. Issue a fresh invitation if a link expires while it is being checked, and check device clocks. Network or relay flooding can still interrupt collaboration; encryption does not guarantee availability.
+
+
 Local saved records use the workspace's **AES-256-GCM encryption in IndexedDB**. Collaboration messages use **MLS (Messaging Layer Security, RFC 9420)** between approved devices, with 256-bit ChaCha20-Poly1305 message encryption, X25519 key agreement, Ed25519 message authentication and owner-signed membership policy. These are separate boundaries: the vault password and recovery key are never the room-sharing key and must never be placed in an invitation or sent to a participant.
 
 The configured Cloudflare relay delivers encrypted messages. It receives normal request metadata, room and device identifiers, public admission/membership data, connection state, message sizes and timing. It is not anonymous communication. Approved participants decrypt the deliberately shared model and can retain a readable copy.

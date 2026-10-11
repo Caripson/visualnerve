@@ -180,6 +180,11 @@ const test = {
   lock: () => session.lock(),
   unlock: () => session.unlock('Browser integration uses only this ephemeral test password'),
   leave: () => controller.leave(),
+  incomingSettled: async () => {
+    const room = (controller as unknown as { room?: EncryptedRoom }).room;
+    if (!room) throw new Error('Test room not available');
+    await (room as unknown as { transport: { reader: Promise<void> } }).transport.reader;
+  },
   epoch: () => (controller as unknown as { room?: { epoch: number } }).room?.epoch,
   disconnect: () => {
     const room = (controller as unknown as { room?: { transport?: { disconnect(): void } } }).room;

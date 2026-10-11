@@ -211,6 +211,15 @@ export class CollaborationController implements CollaborationUiController {
           error: `Rejected a collaboration message: ${error.message} The saved diagram is unchanged by that message.`,
         });
       },
+      onBufferAvailable: () => {
+        check();
+        if (this.gateway) return this.gateway.requestSync();
+        return this.room!.message(
+          'sync',
+          new Uint8Array([0]),
+          this.room!.currentPolicy!.policy.ownerDeviceId,
+        );
+      },
       onDisconnect: () => {
         if (active() && this.room)
           this.update({

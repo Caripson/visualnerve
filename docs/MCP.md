@@ -72,6 +72,8 @@ Shared graph fields use Yjs and MLS RFC 9420 application encryption with owner-a
 
 MLS private signing keys and ratchets remain live-memory only. Reconnect retains the same unlocked live device and exact ciphertext; reload/lock/unlock requires fresh admission, and owner reload requires a new room. Member removal cannot recall content already received. See [the complete collaboration contract](../API.md#optional-realtime-collaboration) and [the user guide](https://www.visualnerve.com/help/collaboration/).
 
+Capability `limits` also exposes `controlMessages:8`, `syncResponseIntervalMs:10000` and `syncResponsePayloadBytesPerMinute:1048576`. Aggregate buffer pressure does not label the next sender as abusive; recovery retries after incomplete assemblies expire. Recovery coalesces one vector per current approved peer and uses a global size-weighted cooldown. Large supported responses are delivered with a longer cooldown rather than truncated. Admission bootstrap and reserved lease controls remain separate. Treat delayed synchronization as pending work, not proof that everyone has received the latest edit. Invalid admissions are rejected without closing the owner's session; relay/network denial of service remains possible.
+
 The app interface offers eight languages with English as default; see
 [App interface languages](UI_LANGUAGES.md). This display-only choice does not
 change API/MCP fields, enum values, schemas, diagnostics, source data, simulation

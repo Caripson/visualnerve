@@ -6,6 +6,14 @@ import {
 } from '../../../../collaboration-worker/src/protocol';
 import { decodeBytes, encodeBytes } from './identity';
 
+/** Untrusted admission was rejected before any membership or MLS state changed. */
+export class CollaborationAdmissionRejectedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CollaborationAdmissionRejectedError';
+  }
+}
+
 /** RAM/fragment-only invitation capability; never pass this object to the relay. */
 export interface InvitationAuthorization {
   invitationId: string;

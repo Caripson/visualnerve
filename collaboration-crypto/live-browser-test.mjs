@@ -76,6 +76,7 @@ const vite = await createServer({
   server: { host: "127.0.0.1", port: 5177, strictPort: true, hmr: false },
 });
 let browser, owner, guest;
+let admissionObserved = () => {};
 const deadline = setTimeout(() => {
   console.error("Live collaboration test exceeded 240 seconds.");
   worker?.kill("SIGTERM");
@@ -133,6 +134,15 @@ try {
     // Grant only this fixture origin; no browser security checks are disabled.
     await context.grantPermissions(["local-network-access"], { origin });
     const page = await context.newPage();
+    if (name === "owner")
+      page.on("websocket", (socket) =>
+        socket.on("framereceived", ({ payload }) => {
+          try {
+            if (JSON.parse(String(payload)).type === "join-request")
+              admissionObserved();
+          } catch {}
+        }),
+      );
     page.setDefaultTimeout(30_000);
     page.on("pageerror", (error) => errors.push(`${name}: ${error.message}`));
     page.on("console", (message) => {
@@ -173,11 +183,52 @@ try {
   const invitation = await owner
     .getByRole("textbox", { name: "Private invitation link", exact: true })
     .inputValue();
+  // This disposable client keeps the valid relay ticket but substitutes the
+  // separate owner capability. Native relay authentication succeeds; the real
+  // owner socket reader must reject the resulting signed proof without failing.
+  const invalidLink = new URL(invitation);
+  const invalidInvitation = JSON.parse(
+    Buffer.from(invalidLink.hash.slice(15), "base64url").toString("utf8"),
+  );
+  invalidInvitation.authorization.secret = Buffer.alloc(32, 19).toString(
+    "base64url",
+  );
+  invalidLink.hash = `collaboration=${Buffer.from(JSON.stringify(invalidInvitation)).toString("base64url")}`;
+  const sawInvalidAdmission = new Promise((resolve) => {
+    admissionObserved = resolve;
+  });
+  await guest.getByRole("button", { name: "Join a room", exact: true }).click();
+  await guest.getByLabel("Your display name").fill("Unapproved test device");
+  await guest
+    .getByRole("textbox", { name: "Private invitation link", exact: true })
+    .fill(invalidLink.href);
+  await guest.getByRole("button", { name: "Request to join" }).click();
+  await waitStatus(guest, "awaiting-approval");
+  await sawInvalidAdmission;
+  await evaluate(owner, "incomingSettled");
+  const unaffectedOwner = await evaluate(owner, "snapshot");
+  assert.equal(unaffectedOwner.status, "live");
+  assert.equal(unaffectedOwner.pendingJoins.length, 0);
+  assert.equal(unaffectedOwner.participants.length, 1);
+  await evaluate(guest, "leave");
+  await owner
+    .getByRole("button", { name: "Create one-use invitation" })
+    .click();
+  await owner.waitForFunction((previous) => {
+    const url = window.collaborationLiveTest.snapshot().invitation?.url;
+    return !!url && url !== previous;
+  }, invitation);
+  const freshInvitation = await owner
+    .getByRole("textbox", { name: "Private invitation link", exact: true })
+    .inputValue();
+  checked.push(
+    "Invalid owner-capability proof reaches the actual owner socket, is rejected before approval, and preserves the live room for a fresh valid invitation",
+  );
   await guest.getByRole("button", { name: "Join a room", exact: true }).click();
   await guest.getByLabel("Your display name").fill("Guest browser");
   await guest
     .getByRole("textbox", { name: "Private invitation link", exact: true })
-    .fill(invitation);
+    .fill(freshInvitation);
   await guest.getByRole("button", { name: "Request to join" }).click();
   await waitStatus(guest, "awaiting-approval");
   await owner.getByRole("button", { name: "Approve device" }).waitFor();

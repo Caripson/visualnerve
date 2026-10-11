@@ -3,6 +3,8 @@ export const collaborationProtocol = 1 as const;
 export const relayLimits = {
   members: 32,
   sockets: 64,
+  /** Short-lived challenges without a verified member or invitation ticket. */
+  preAuthenticationSockets: 8,
   socketsPerDevice: 3,
   pendingJoins: 16,
   invitations: 16,

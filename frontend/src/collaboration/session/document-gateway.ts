@@ -28,6 +28,7 @@ import { CollaborationWorkflow, type WorkflowCheckpoint } from './workflow';
 import { appendSemanticActivity, retainCollaborationNodeTitles } from '../model';
 import type { RoomMember } from '../../../../collaboration-worker/src/protocol';
 import type { CollaborationActionContext } from '../model/types';
+import { CollaborationSyncResponseQueue } from './sync-response-queue';
 const encoder = new TextEncoder();
 export interface DocumentGatewayOptions {
   workspace: Workspace;
@@ -54,11 +55,26 @@ export class CollaborationDocumentGateway {
   private unbind: Array<() => void> = [];
   private stopped = false;
   private missing: Array<{ sender: string; epoch: number; bytes: Uint8Array }> = [];
+  private recoveryPeer = 0;
   readonly workflow: CollaborationWorkflow;
   private recoveryTimer?: ReturnType<typeof setTimeout>;
-  private syncResponses = new Map<string, number>();
+  private syncResponses: CollaborationSyncResponseQueue;
   constructor(private options: DocumentGatewayOptions) {
     this.document = new CollaborativeDocument(options.graph, options.scope, options.state, true);
+    this.syncResponses = new CollaborationSyncResponseQueue({
+      check: () => this.check(),
+      epoch: () => options.room.epoch,
+      allowed: (recipient, epoch) =>
+        epoch === options.room.epoch &&
+        !!options.room.currentPolicy!.policy.members.find(
+          (member) => member.deviceId === recipient,
+        ),
+      send: (vector, recipient, charge) =>
+        options.room.role === 'owner' && vector.length === 1 && vector[0] === 0
+          ? this.snapshot(recipient, charge)
+          : this.respondSync(vector, recipient, charge),
+      failure: (error) => this.backgroundFailure(error),
+    });
     this.workflow = new CollaborationWorkflow(
       {
         diagramId: options.graph.diagram.id,
@@ -365,9 +381,23 @@ export class CollaborationDocumentGateway {
     if (this.options.room.role === 'owner')
       this.workflow.broadcast(await this.options.workspace.repo.getGraph(this.document.diagramId));
   }
-  private async sendUpdate(update: Uint8Array, recipient?: string) {
+  private async sendUpdate(
+    update: Uint8Array,
+    recipient?: string,
+    charge?: (compressedBytes: number) => void,
+  ) {
+    const epoch = this.options.room.epoch;
     const compressed = await compressPayload(update, this.options.lease.signal);
     try {
+      if (
+        charge &&
+        (epoch !== this.options.room.epoch ||
+          !this.options.room.currentPolicy!.policy.members.some(
+            (member) => member.deviceId === recipient,
+          ))
+      )
+        return;
+      charge?.(compressed.byteLength);
       await this.options.room.message('update', compressed, recipient);
     } finally {
       compressed.fill(0);
@@ -449,12 +479,19 @@ export class CollaborationDocumentGateway {
           this.missing
             .filter((item) => item.sender === sender)
             .reduce((n, item) => n + item.bytes.length, update.length) >
-            2 * 1024 * 1024 ||
-          this.missing.length >= 32
+            2 * 1024 * 1024
         )
           throw new CollaborationPeerMessageError(
             'This participant has too many missing shared updates; request a fresh state synchronization.',
           );
+        if (this.missing.length >= 32) {
+          // Several individually bounded senders can exhaust the receiver's
+          // aggregate queue. The next valid sender did not cause a protocol
+          // violation: leave its existing state intact and recover the shared
+          // state instead of isolating that participant.
+          this.recoverMissing();
+          return;
+        }
         this.missing.push({ sender, epoch, bytes: new Uint8Array(update) });
         this.recoverMissing();
         return;
@@ -491,14 +528,27 @@ export class CollaborationDocumentGateway {
     };
     retry();
   }
-  async requestSync() {
-    await this.options.room.message(
-      'sync',
-      this.document.stateVector(),
-      this.options.room.currentPolicy!.policy.ownerDeviceId,
-    );
+  async requestSync(recipient?: string) {
+    const policy = this.options.room.currentPolicy!.policy;
+    if (!recipient && this.options.room.role === 'owner') {
+      // The owner already owns the canonical state. Missing actor prefixes, or
+      // an update dropped under aggregate pressure, need an editing peer's state.
+      const editors = policy.members.filter((member) => member.role === 'editor');
+      const missing = [...new Set(this.missing.map((item) => item.sender))].filter((sender) =>
+        editors.some((member) => member.deviceId === sender),
+      );
+      const candidates = missing.length ? missing : editors.map((member) => member.deviceId);
+      if (!candidates.length) return;
+      recipient = candidates[this.recoveryPeer++ % candidates.length];
+    }
+    recipient ??= policy.ownerDeviceId;
+    await this.options.room.message('sync', this.document.stateVector(), recipient);
   }
-  async respondSync(vector: Uint8Array, recipient: string) {
+  async respondSync(
+    vector: Uint8Array,
+    recipient: string,
+    charge?: (compressedBytes: number) => void,
+  ) {
     this.check();
     try {
       validateCollaborationStateVector(vector);
@@ -518,9 +568,10 @@ export class CollaborationDocumentGateway {
         throw error;
       update = this.document.diff(new Uint8Array([0]));
     }
-    await this.sendUpdate(update, recipient);
+    await this.sendUpdate(update, recipient, charge);
   }
-  async snapshot(recipient: string) {
+  async snapshot(recipient: string, charge?: (compressedBytes: number) => void) {
+    const epoch = this.options.room.epoch;
     const graph = await this.options.workspace.repo.getGraph(this.document.diagramId);
     this.check();
     const workflow = this.workflow.checkpoint(graph);
@@ -548,6 +599,15 @@ export class CollaborationDocumentGateway {
     const compressed = await compressPayload(bytes, this.options.lease.signal);
     bytes.fill(0);
     try {
+      if (
+        charge &&
+        (epoch !== this.options.room.epoch ||
+          !this.options.room.currentPolicy!.policy.members.some(
+            (member) => member.deviceId === recipient,
+          ))
+      )
+        return;
+      charge?.(compressed.byteLength);
       await this.options.room.message('snapshot', compressed, recipient);
     } finally {
       compressed.fill(0);
@@ -604,17 +664,7 @@ export class CollaborationDocumentGateway {
         throw new CollaborationPeerMessageError(error.message);
       throw error;
     }
-    const now = Date.now();
-    if (now - (this.syncResponses.get(recipient) ?? -Infinity) < 10_000) return;
-    this.syncResponses.set(recipient, now);
-    const owned = new Uint8Array(vector);
-    void (
-      this.options.room.role === 'owner' && owned.length === 1 && owned[0] === 0
-        ? this.snapshot(recipient)
-        : this.respondSync(owned, recipient)
-    )
-      .catch((error) => this.backgroundFailure(error))
-      .finally(() => owned.fill(0));
+    this.syncResponses.request(vector, recipient);
   }
   discardPeer(sender: string) {
     for (const item of this.missing) if (item.sender === sender) item.bytes.fill(0);
@@ -672,6 +722,7 @@ export class CollaborationDocumentGateway {
     if (this.stopped) return;
     this.stopped = true;
     if (this.recoveryTimer) clearTimeout(this.recoveryTimer);
+    this.syncResponses.dispose();
     for (const unbind of this.unbind) unbind();
     this.unbind = [];
     this.document.destroy();

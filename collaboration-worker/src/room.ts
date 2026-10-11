@@ -180,6 +180,7 @@ export class CollaborationRoom extends DurableObject<RelayEnv> {
         throw new RelayError("NOT_FOUND", 404);
       if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket")
         throw new RelayError("WEBSOCKET_REQUIRED", 426);
+      this.makeChallengeSlot();
       if (this.ctx.getWebSockets().length >= relayLimits.sockets)
         throw new RelayError("SOCKET_LIMIT", 429);
       const pair = new WebSocketPair();
@@ -688,6 +689,39 @@ export class CollaborationRoom extends DurableObject<RelayEnv> {
   }
   private state(socket: WebSocket): SocketState {
     return socket.deserializeAttachment() as SocketState;
+  }
+  private makeChallengeSlot() {
+    const challenges = this.ctx
+      .getWebSockets()
+      .filter((socket) => {
+        const state = this.state(socket);
+        return (
+          socket.readyState === WebSocket.OPEN &&
+          !state.authenticated &&
+          !state.pending
+        );
+      })
+      .sort(
+        (left, right) =>
+          this.state(left).challenge.expiresAt -
+          this.state(right).challenge.expiresAt,
+      );
+    // A room identifier is not an admission credential. Keep strangers from
+    // retaining every socket while an approved member tries to reconnect.
+    // Replacement affects only the oldest unproved challenge, never a member
+    // or an invitation-backed request waiting for the owner's approval.
+    const replacements = Math.max(
+      0,
+      challenges.length - relayLimits.preAuthenticationSockets + 1,
+      this.ctx.getWebSockets().length >= relayLimits.sockets &&
+        challenges.length > 0 ? 1 : 0,
+    );
+    for (let index = 0; index < replacements; index++) {
+      challenges.shift()!.close(1008, "Admission challenge replaced");
+    }
+    // The caller still enforces the aggregate cap, including sockets that the
+    // runtime retains during their close handshake. Continuous connection
+    // flooding remains a relay/network availability risk, not an identity.
   }
   private async rate(state: SocketState, bytes: number) {
     const now = Date.now();

@@ -2494,6 +2494,13 @@
             ],
             "type": "integer"
           },
+          "controlMessages": {
+            "description": "Maximum concurrent single-frame control verifications, with at most 256 KiB separate from multipart buffers. Aggregate receiver pressure is not participant abuse.",
+            "enum": [
+              8
+            ],
+            "type": "integer"
+          },
           "depth": {
             "description": "Independent client-side bounded collaboration budget; exceeding it rejects rather than truncates the shared model.",
             "enum": [
@@ -2585,6 +2592,20 @@
             ],
             "type": "integer"
           },
+          "syncResponseIntervalMs": {
+            "description": "Minimum interval per peer for coalesced background recovery responses; at most one state vector is queued per current approved peer.",
+            "enum": [
+              10000
+            ],
+            "type": "integer"
+          },
+          "syncResponsePayloadBytesPerMinute": {
+            "description": "Global cost-weighted recovery scheduling target in compressed payload bytes. A larger supported response remains valid and creates a proportional cooldown; this is not a strict rolling wire-byte quota. Human-approved admission bootstrap is separate.",
+            "enum": [
+              1048576
+            ],
+            "type": "integer"
+          },
           "timeoutMs": {
             "description": "Independent client-side bounded collaboration budget; exceeding it rejects rather than truncates the shared model.",
             "enum": [
@@ -2634,6 +2655,9 @@
           "parts",
           "timeoutMs",
           "replayIds",
+          "controlMessages",
+          "syncResponseIntervalMs",
+          "syncResponsePayloadBytesPerMinute",
           "compressedPayloadBytes",
           "plaintextPayloadBytes"
         ],

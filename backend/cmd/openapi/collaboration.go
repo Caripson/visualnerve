@@ -44,16 +44,20 @@ func addCollaborationSchemas(schemas object) {
 		"updateBytes": 8 * 1024 * 1024, "stateBytes": 32 * 1024 * 1024, "fields": 1000000, "depth": 48,
 		"vectorBytes": 64 * 1024, "actors": 4096, "frameBytes": 64 * 1024, "chunkBytes": 32 * 1024,
 		"messageBytes": 32 * 1024 * 1024, "activeMessages": 8, "perPeerBufferedBytes": 8 * 1024 * 1024, "totalBufferedBytes": 32 * 1024 * 1024,
-		"parts": 2048, "timeoutMs": 60000, "replayIds": 256,
+		"parts": 2048, "timeoutMs": 60000, "replayIds": 256, "controlMessages": 8,
+		"syncResponseIntervalMs": 10000, "syncResponsePayloadBytesPerMinute": 1024 * 1024,
 		"compressedPayloadBytes": 3 * 1024 * 1024, "plaintextPayloadBytes": 64 * 1024 * 1024,
 	} {
 		limits[field] = svgExportConstant(value, "Independent client-side bounded collaboration budget; exceeding it rejects rather than truncates the shared model.")
 	}
 	limits["activeMessages"].(object)["description"] = "Maximum simultaneous multipart assemblies per authenticated sender; single-frame presence, lease and sync controls cannot consume assembly slots."
 	limits["perPeerBufferedBytes"].(object)["description"] = "Maximum received incomplete multipart bytes per authenticated sender: 8 MiB."
+	limits["controlMessages"].(object)["description"] = "Maximum concurrent single-frame control verifications, with at most 256 KiB separate from multipart buffers. Aggregate receiver pressure is not participant abuse."
+	limits["syncResponseIntervalMs"].(object)["description"] = "Minimum interval per peer for coalesced background recovery responses; at most one state vector is queued per current approved peer."
+	limits["syncResponsePayloadBytesPerMinute"].(object)["description"] = "Global cost-weighted recovery scheduling target in compressed payload bytes. A larger supported response remains valid and creates a proportional cooldown; this is not a strict rolling wire-byte quota. Human-approved admission bootstrap is separate."
 	limits["updateBytes"].(object)["description"] = "Maximum causal incremental delta: 8 MiB. Nonempty base vectors retain this bound."
 	limits["stateBytes"].(object)["description"] = "Maximum encoded CRDT state and full-state refresh: 32 MiB. The existing update envelope uses canonical empty baseVector [0] for a full-state refresh; the same authenticated sender, sharing scope, actor and semantic model validation applies."
-	limitRequired := []string{"nodes", "edges", "owners", "jsonBytes", "updateBytes", "stateBytes", "fields", "depth", "vectorBytes", "actors", "frameBytes", "chunkBytes", "messageBytes", "activeMessages", "perPeerBufferedBytes", "totalBufferedBytes", "parts", "timeoutMs", "replayIds", "compressedPayloadBytes", "plaintextPayloadBytes"}
+	limitRequired := []string{"nodes", "edges", "owners", "jsonBytes", "updateBytes", "stateBytes", "fields", "depth", "vectorBytes", "actors", "frameBytes", "chunkBytes", "messageBytes", "activeMessages", "perPeerBufferedBytes", "totalBufferedBytes", "parts", "timeoutMs", "replayIds", "controlMessages", "syncResponseIntervalMs", "syncResponsePayloadBytesPerMinute", "compressedPayloadBytes", "plaintextPayloadBytes"}
 	schemas["CollaborationLimits"] = strictObject(limitRequired, limits)
 	schemas["CollaborationDocumentLimits"] = strictObject([]string{"profiles", "comments", "tasks", "activity", "name", "text", "taskTitle", "summary", "activityNodeIds", "avatarBytes", "avatarTotalBytes", "avatarDimension", "commentCharacters", "documentBytes"}, object{
 		"profiles": svgExportConstant(128, ""), "comments": svgExportConstant(2000, "Total threads and messages are independently capped at 2000."), "tasks": svgExportConstant(1000, ""), "activity": svgExportConstant(500, "Append-order retention."),
