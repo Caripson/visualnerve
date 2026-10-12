@@ -18,6 +18,12 @@
     "nodes": 5
   },
   {
+    "key": "ibm-flowcharting",
+    "name": "IBM Flowcharting Template",
+    "type": "flowchart",
+    "nodes": 51
+  },
+  {
     "key": "project-timeline",
     "name": "Project Timeline",
     "type": "timeline",
@@ -64,12 +70,6 @@
     "name": "Delivery network + returns",
     "type": "process-simulator",
     "nodes": 23
-  },
-  {
-    "key": "parallel-delivery-simulator",
-    "name": "Parallel SD-WAN delivery",
-    "type": "process-simulator",
-    "nodes": 10
   },
   {
     "key": "system-architecture",

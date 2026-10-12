@@ -1032,6 +1032,10 @@ const catalog = {
   'editor.properties.nodeParent': 'Parent du nœud',
   'editor.properties.nodeStatus': 'État du nœud',
   'editor.properties.nodeTags': 'Étiquettes du nœud',
+  'editor.properties.nodeBackground': 'Couleur de fond du nœud',
+  'editor.properties.themeBackground': 'Utiliser le fond du thème',
+  'editor.properties.nodeBackgroundHint':
+    'Le mode automatique suit l’apparence. La couleur choisie s’applique à la 2D, à la 3D et aux exports.',
   'editor.properties.nodeTitle': 'Titre du nœud',
   'editor.properties.nodeType': 'Type de nœud',
   'editor.properties.nodeUrl': 'URL du nœud',

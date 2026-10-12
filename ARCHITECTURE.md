@@ -77,6 +77,12 @@ Import/restore ─┘
 
 Complete backup is a deliberate download. Merge retains current projects; Replace and global deletion each require explicit confirmation. Deployment uploads only allowlisted application files; CloudFront has GET/HEAD access and S3 has no browser upload permission. See [storage](docs/STORAGE.md), [privacy](docs/PRIVACY.md) and [deployment](docs/DEPLOYMENT.md).
 
+## IBM Flowcharting and node appearance
+
+IBM Flowcharting uses optional `GraphNode.flowchartSymbol` on the existing graph model. `flowchart/ibm-symbols.ts` defines the stable catalog IDs, construction metadata and normalized outline/details/content bounds shared by native 2D rendering, SVG and spatial geometry. Browser `GET /flowchart/symbols` returns that same catalog; the bridge forwards it and bundles typed OpenAPI/MCP discovery. The `ibm-flowcharting` built-in remains a `flowchart` document. The appearance survives current persistence, graph exchange and history without adding a logical store, changing schema 8 or expanding semantic node kinds. See [notation and sources](docs/IBM_FLOWCHARTING.md).
+
+All nodes also use optional `backgroundColor` for an explicit six-digit hex fill, separate from the existing accent. `model/node-appearance.ts` validates it before any repository transaction or collaborative state commits. Partial updates remove it only for explicit null; omission preserves it. The shared native model carries it through encrypted persistence, history, native graph exchange and backups. Go DTOs and OpenAPI distinguish strict complete records from nullable partial resets.
+
 ## Time Series & Signal Analysis
 
 The `time-series-analysis` template uses a versioned `Diagram.analytics` extension within the existing encrypted document. A lazy quantitative workspace and the local API/MCP call the same deterministic worker/numeric engine. Observations, measurements, causal signal episodes, chronological validation and assumption-based scenarios stay separate. Immutable archives retain their actual input snapshots. No new persistent store or mandatory backend is introduced. See [analytics architecture and bounds](docs/TIME_SERIES_ANALYSIS.md).

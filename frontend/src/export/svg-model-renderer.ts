@@ -27,6 +27,10 @@ import {
   type SvgWorkerResponse,
 } from './svg-job-types';
 import type { MessageFormatter } from '../i18n/message-formatter';
+import { getIbmSymbol, type IBMSymbol } from '../flowchart/ibm-symbols';
+import { iconKey } from '../ui/icons';
+import { nodeBackgroundColor } from '../nodes/appearance';
+import { ibmPortPoint } from '../flowchart/ibm-ports';
 
 const mix = (accent: string, base: string, ratio: number) => {
   const rgb = (value: string) =>
@@ -198,11 +202,14 @@ export class SvgModelRenderer {
       node = view.data.node,
       topic = view.data.mindmap,
       theme = request.theme;
+    const ibm = getIbmSymbol(node.flowchartSymbol);
+    if (ibm && !topic) return this.ibmNode(card, index, request, ibm);
     const accent = svgPaint(topic?.color ?? node.color ?? view.data.owners[0]?.color, '#31766c');
     const shape = shapeNames[node.nodeType] ?? 'box',
       mindmap = !!topic,
       root = topic?.depth === 0,
       main = topic?.depth === 1;
+    const customBackground = nodeBackgroundColor(node.backgroundColor);
     let background = svgPaint(theme.node, '#ffffff'),
       border = svgPaint(theme.border, '#e2e5df'),
       ink = svgPaint(theme.text, '#1f2d28'),
@@ -217,6 +224,10 @@ export class SvgModelRenderer {
     if (shape === 'note') {
       background = mix('#eacd77', background, 0.13);
       border = '#d0bb74';
+    }
+    if (customBackground) {
+      background = customBackground;
+      ink = topicInk(customBackground);
     }
     if (node.status === 'done') border = svgPaint(theme.doneBorder, '#16803d');
     const left = shape === 'pill' ? 23 : root ? 22 : mindmap ? 14 : 14;
@@ -250,13 +261,13 @@ export class SvgModelRenderer {
       );
     if (shape === 'group')
       this.writer.add(
-        `<rect width="${width}" height="${height}" rx="7" fill="${xml(accent)}" fill-opacity="0.03" stroke="${xml(accent)}" stroke-dasharray="4 3"/>`,
+        `<rect ${attrs({ width, height, rx: 7, fill: customBackground ?? accent, 'fill-opacity': customBackground ? undefined : 0.03, stroke: accent, 'stroke-dasharray': '4 3' })}/>`,
       );
     this.writer.add(`<g clip-path="url(#${clip})">`);
     if (!mindmap) {
       this.writer.add(svgIcon(content.icon, left, 12, 12, accent));
       this.writer.add(
-        `<text ${attrs({ x: left + 17, y: 22, 'font-size': 8, 'font-family': 'Inter, sans-serif', 'letter-spacing': 0.7, fill: theme.muted })}>${xml(content.kind.toUpperCase())}</text>`,
+        `<text ${attrs({ x: left + 17, y: 22, 'font-size': 8, 'font-family': 'Inter, sans-serif', 'letter-spacing': 0.7, fill: customBackground ? ink : theme.muted })}>${xml(content.kind.toUpperCase())}</text>`,
       );
     } else if (root) this.writer.add(svgIcon(content.icon, (width - 24) / 2, 12, 24, accent));
     else if ((node.metadata.visualNerve as { icon?: string } | undefined)?.icon)
@@ -303,6 +314,128 @@ export class SvgModelRenderer {
       );
     this.writer.add('</g>');
   }
+  private ibmNode(card: Card, index: number, request: SvgWorkerRequest, symbol: IBMSymbol) {
+    const { view, width, height, content } = card,
+      node = view.data.node,
+      theme = request.theme,
+      accent = svgPaint(node.color ?? view.data.owners[0]?.color, '#31766c'),
+      border = node.status === 'done' ? svgPaint(theme.doneBorder, '#16803d') : accent,
+      customBackground = nodeBackgroundColor(node.backgroundColor),
+      background = customBackground ?? svgPaint(theme.node, '#ffffff'),
+      ink = customBackground ? topicInk(customBackground) : svgPaint(theme.text, '#1f2d28'),
+      area = symbol.contentBox,
+      left = area.x * width,
+      top = area.y * height,
+      innerWidth = area.width * width,
+      innerHeight = area.height * height,
+      clip = `vn-svg-ibm-content-${index}`;
+    this.writer.add(
+      `<g ${attrs({ 'data-node-id': view.id, 'data-node-status': node.status, 'data-flowchart-symbol': symbol.id, transform: `translate(${card.x} ${card.y})` })}><title>${xml(node.title)}</title><desc>${xml([symbol.label, node.description, ...content.runs.map((run) => run.text)].filter(Boolean).join('\n'))}</desc><defs><clipPath id="${clip}"><rect ${attrs({ x: left, y: top, width: innerWidth, height: innerHeight })}/></clipPath></defs><g ${attrs({ transform: `scale(${width / 100} ${height / 100})`, 'data-ibm-geometry': symbol.id })}>`,
+    );
+    this.writer.add(
+      `<path ${attrs({ 'data-ibm-outline': symbol.id, d: symbol.outlinePath, fill: background, stroke: border, 'stroke-width': 1.5, 'stroke-linejoin': 'round', 'vector-effect': 'non-scaling-stroke' })}/>`,
+    );
+    for (const d of symbol.detailPaths)
+      this.writer.add(
+        `<path ${attrs({ 'data-ibm-detail': symbol.id, d, fill: 'none', stroke: border, 'stroke-width': 1.5, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'vector-effect': 'non-scaling-stroke' })}/>`,
+      );
+    this.writer.add(`</g><g clip-path="url(#${clip})">`);
+    const center = left + innerWidth / 2,
+      iconSize = innerHeight > 72 ? 18 : 0,
+      iconBlock = iconSize ? iconSize + 4 : 0,
+      statusBlock = content.status ? 22 : 0,
+      lineHeight = 14 * 1.35,
+      allTitleLines = this.text.layout(
+        [{ text: node.title, size: 14, weight: 600 }],
+        Math.max(1, innerWidth),
+      ).lines,
+      titleLineLimit = Math.min(
+        3,
+        Math.max(1, Math.floor((innerHeight - iconBlock - statusBlock) / lineHeight)),
+      ),
+      titleLines = allTitleLines.slice(0, titleLineLimit);
+    if (allTitleLines.length > titleLineLimit) {
+      const last = titleLines[titleLines.length - 1],
+        characters = Array.from(last.text);
+      while (
+        characters.length &&
+        this.measure.measure(characters.join('') + '…', 14, 600) > innerWidth
+      )
+        characters.pop();
+      titleLines[titleLines.length - 1] = { ...last, text: characters.join('') + '…' };
+    }
+    const titleHeight = titleLines.length * lineHeight,
+      detailRoom = Math.max(0, innerHeight - iconBlock - titleHeight - statusBlock - 4),
+      detail = this.text
+        .layout(content.runs, Math.max(1, innerWidth))
+        .lines.slice(0, Math.min(3, Math.floor(detailRoom / 14))),
+      detailBlock = detail.length ? detail.length * 14 + 4 : 0,
+      totalHeight = iconBlock + titleHeight + statusBlock + detailBlock,
+      startY = top + Math.max(0, (innerHeight - totalHeight) / 2);
+    if (iconSize) {
+      const customIcon = iconKey(node.metadata),
+        iconLeft = center - iconSize / 2;
+      if (customIcon)
+        this.writer.add(
+          svgIcon(content.icon, iconLeft, startY, iconSize, accent, {
+            'data-area-icon': customIcon,
+          }),
+        );
+      else {
+        const iconScale = iconSize / 100;
+        this.writer.add(
+          `<g ${attrs({ 'data-ibm-icon': symbol.id, transform: `translate(${iconLeft} ${startY}) scale(${iconScale})` })}><path ${attrs({ d: symbol.outlinePath, fill: 'none', stroke: accent, 'stroke-width': 8 })}/>`,
+        );
+        for (const d of symbol.detailPaths)
+          this.writer.add(
+            `<path ${attrs({ d, fill: 'none', stroke: accent, 'stroke-width': 8 })}/>`,
+          );
+        this.writer.add('</g>');
+      }
+    }
+    const titleTop = startY + iconBlock;
+    for (const [lineIndex, line] of titleLines.entries())
+      this.writer.add(
+        `<text ${attrs({ 'data-ibm-title-line': lineIndex + 1, x: center, y: titleTop + 14 + lineIndex * lineHeight, 'text-anchor': 'middle', 'font-size': 14, 'font-family': 'Inter, sans-serif', 'font-weight': 600, fill: ink })}>${xml(line.text)}</text>`,
+      );
+    const statusY = titleTop + titleHeight + 4;
+    if (content.status) {
+      const statusSize = Math.min(innerWidth, this.measure.measure(content.status, 9, 650) + 25),
+        statusX = center - statusSize / 2,
+        palette =
+          node.status === 'done'
+            ? { background: theme.doneBackground, text: theme.doneText }
+            : theme.statusColors?.[node.status ?? ''],
+        statusInk = palette?.text ?? ink;
+      this.writer.add(
+        `<rect ${attrs({ 'data-status-badge': node.status, x: statusX, y: statusY, width: statusSize, height: 18, rx: 4, fill: palette?.background ?? background, stroke: border })}/>`,
+      );
+      const statusIcons: Record<string, string> = {
+        done: 'circle-check',
+        blocked: 'circle-alert',
+        planned: 'circle-dashed',
+        'in-progress': 'clock-3',
+      };
+      this.writer.add(
+        svgIcon(statusIcons[node.status ?? ''] ?? 'flag', statusX + 4, statusY + 3, 12, statusInk, {
+          'data-status-icon': node.status,
+        }),
+      );
+      this.writer.add(
+        `<text ${attrs({ x: statusX + 19, y: statusY + 12, 'font-size': 9, 'font-weight': 650, 'font-family': 'Inter, sans-serif', fill: statusInk })}>${xml(content.status)}</text>`,
+      );
+    }
+    for (const [lineIndex, line] of detail.entries())
+      this.writer.add(
+        `<text ${attrs({ x: center, y: titleTop + titleHeight + statusBlock + 4 + 10 + lineIndex * 14, 'text-anchor': 'middle', 'font-size': line.size, 'font-family': line.mono ? 'monospace' : 'Inter, sans-serif', 'font-weight': line.weight, fill: line.color ?? ink })}>${xml(line.text)}</text>`,
+      );
+    this.writer.add('</g>');
+    if (view.data.presentationNumber)
+      this.writer.add(
+        `<circle cx="${width - 4}" cy="0" r="10" fill="${xml(accent)}"/><text x="${width - 4}" y="4" text-anchor="middle" font-size="10" font-family="Inter, sans-serif" fill="${xml(topicInk(accent))}">${view.data.presentationNumber}</text>`,
+      );
+    this.writer.add('</g>');
+  }
   private textLines(lines: SvgTextLine[], x: number, color: string) {
     for (const element of this.text.elements(lines, x, color)) this.writer.add(element);
   }
@@ -324,6 +457,20 @@ export class SvgModelRenderer {
             : handle?.includes('right')
               ? 'right'
               : fallback;
+      const symbol = !card.view.data.mindmap && getIbmSymbol(card.view.data.node.flowchartSymbol);
+      if (symbol) {
+        const [x, y] = ibmPortPoint(symbol.id, direction);
+        return {
+          x: card.x + x * card.width,
+          y: card.y + y * card.height,
+          position: {
+            top: Position.Top,
+            bottom: Position.Bottom,
+            left: Position.Left,
+            right: Position.Right,
+          }[direction],
+        };
+      }
       return direction === 'top'
         ? { x: card.x + card.width / 2, y: card.y, position: Position.Top }
         : direction === 'bottom'

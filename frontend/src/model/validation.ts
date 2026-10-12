@@ -22,6 +22,8 @@ import { validateStoryboard } from '../presentation/storyboard';
 import { validateOverviewConfig } from '../overview/types';
 import { validateBuildSpecification } from '../export/build-specification';
 import { validateSimulationGraph } from '../simulation/document';
+import { getIbmSymbol } from '../flowchart/ibm-symbols';
+import { validateNodeBackgroundColor } from './node-appearance';
 
 export { StorageError } from './errors';
 const uuid = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
@@ -138,7 +140,7 @@ export function validateGraphFields(graph: Graph) {
   if (graph.diagram.analytics !== undefined) validateAnalytics(graph.diagram.analytics);
   // Validate native JSON fields before specialized projections inspect metadata
   // or the UI assumes tags/text are safe to render.
-  for (const node of graph.nodes) {
+  for (const [index, node] of graph.nodes.entries()) {
     validateFields(
       node,
       'Node',
@@ -156,6 +158,11 @@ export function validateGraphFields(graph: Graph) {
       true,
     );
     requireValue(typeof node.collapsed === 'boolean', 'Invalid node collapsed flag.');
+    requireValue(
+      node.flowchartSymbol === undefined || !!getIbmSymbol(node.flowchartSymbol),
+      'Unsupported IBM flowchart symbol.',
+    );
+    validateNodeBackgroundColor(node.backgroundColor, `nodes.${index}.backgroundColor`);
     // API null aliases clear ownership or detach a parent before normalization.
     for (const field of ['ownerId', 'parentId'] as const)
       requireValue(

@@ -1,12 +1,12 @@
 # Help architecture and maintenance
 
-The public Help is a local, static Hugo documentation section at `/help/`. It has 18 task-oriented guides, real application screenshots, topic navigation, per-guide contents, adjacent-guide links and full-text search. It shares `/appearance.js` and the workspace palette. Search and reading require no bridge, backend, workspace consent or diagram access.
+The public Help is a local, static Hugo documentation section at `/help/`. It has 20 task-oriented guides, real application screenshots, topic navigation, per-guide contents, adjacent-guide links and full-text search. It shares `/appearance.js` and the workspace palette. Search and reading require no bridge, backend, workspace consent or diagram access.
 
 ## Coverage
 
 | Guide           | Product surface                                                                                                                                    |
 | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| getting-started | Consent, all fourteen templates, first workflow, desktop/mobile navigation, local saving                                                             |
+| getting-started | Consent, template choices, first workflow, desktop/mobile navigation, local saving                                                             |
 | editing         | All visual object kinds, connections, properties, status/quick actions, owners/search/filters, groups, drawing, copy/undo/delete, shortcuts        |
 | layouts         | Mind map editing, Balanced/directional/radial layout, focus mode, ordinary modes, dated timelines                                                  |
 | 3d              | Styled card relief, camera gizmo/orientations, object placement, synchronized 2D moves, fallback/export/view limits                                |
@@ -21,12 +21,15 @@ The public Help is a local, static Hugo documentation section at `/help/`. It ha
 | sharing         | Restorable/visual outputs, scopes/resolution/PDF tiling, Markdown/JSON imports, backups, Lovable specification/handoff                             |
 | settings        | Appearance, storage/offline, portable backup/restore, retention/import limits, speech, MCP grants, conflicts and deletion                          |
 | api-mcp         | Local process/addresses/setup, discovery, targeting/versioning, practical code/3D/simulation requests and demand stress testing                    |
+| collaboration   | Local room creation, device approval, participant roles, shared profiles, comments, tasks and activity on desktop/mobile                         |
 | time-series-analysis | Local time-series import, semantic charting, saved measurements, causal signals, Signal Lab, explicit Growth & Churn scenarios, API/MCP and bounded encrypted archives |
+| ibm-flowcharting | Original 25-hole and revised 26-hole IBM forms, 43 catalog entries, native object editing, 2D/3D and exports |
+| flowchart-symbols | Practical use of all 32 completed symbols, two apertures, four arrowheads and five original forms; source-verified distinctions and examples |
 | troubleshooting | Recovery procedures, missing work, import/save/view/voice/video/simulation/integration/mobile issues                                               |
 
 ## Add or update a guide
 
-1. Edit `hugo/content/help/<slug>.md`. Keep unique weights 1–18, a descriptive title and a one-sentence summary. Use source-verified UI labels and distinguish desktop/mobile routes.
+1. Edit `hugo/content/help/<slug>.md`. Keep unique weights 1–20, a descriptive title and a one-sentence summary. Use source-verified UI labels and distinguish desktop/mobile routes.
 2. Explain purpose, action steps, expected results, examples, common problems, limits and related guides. Do not claim execution/compiler analysis/cloud synchronization where the tool supplies only structure or local state.
 3. Capture actual current UI using synthetic data. Use descriptive alt text and a caption matching what is visible. Screenshots are clickable, lazy-loaded and capped at natural dimensions.
 4. Keep cross-page hashes valid. `/help/` retains all previous guide anchors for incoming API/Privacy/bookmark links.
@@ -38,21 +41,65 @@ Search results sit immediately below the field on desktop and mobile. Typing col
 
 ## Regenerate screenshots
 
-Build first. Capture tests use isolated browser storage and local fixture servers, never a user's browser profile, diagram or integration token. They do not send a Lovable prompt or download voice assets.
+The symbol-use reference embeds small inline SVGs from trusted Hugo data, with `currentColor` outlines that follow Help's saved/system appearance. `scripts/help-flowchart-symbols.mjs` generates `hugo/data/flowchart_symbols.json` from the same TypeScript catalog and recommended proportions as the editor. The normal build runs this before Hugo; run `node scripts/help-flowchart-symbols.mjs --check` to detect drift. `flowchart-help.test.ts` checks all 43 labels, categories, paths, details and proportions plus reference coverage. No application module is loaded by the guide. Its inline vectors are cached with the guide HTML.
+
+Build first. Capture tests use isolated browser storage, synthetic diagrams/profiles and local fixture servers, never a user's browser profile, content or integration token. They do not send a Lovable prompt or download voice assets. The published inventory has **69 Help light/dark pairs (138 WebPs)**, plus **four website device pairs** and one social preview. Counts below are unique contributions after duplicate captures.
 
 ```sh
 ./build.sh
 cd frontend
-VN_CAPTURE_HELP=1 npm run test:e2e -- help-screenshots.spec.ts
 ```
 
-The guided process setup, connected-node menu and live congestion images come from the corresponding functional tests:
+Run the required families from `frontend`:
 
-```bash
-VN_CAPTURE_PROCESS=1 npm run test:e2e -- process-wizard.spec.ts process-building.spec.ts process-hierarchy.spec.ts
+| Family | Command | Unique Help pairs | Output |
+| --- | --- | ---: | --- |
+| Main Help | `VN_CAPTURE_HELP=1 npm run test:e2e -- help-screenshots.spec.ts` | 29 | Help WebPs |
+| Guided processes | `VN_CAPTURE_PROCESS=1 npm run test:e2e -- process-wizard.spec.ts process-building.spec.ts process-hierarchy.spec.ts` | 6 | Help WebPs |
+| Source projects | `VN_CAPTURE_PROJECT=1 npm run test:e2e -- code-project.spec.ts project-file-limit.spec.ts` | 2 | Help WebPs |
+| Time series | `VN_CAPTURE_ANALYTICS=1 npm run test:e2e -- analytics-ui.spec.ts` | 7 | Help WebPs |
+| Language/settings | `VN_CAPTURE_LANGUAGE_HELP=1 npm run test:e2e -- language-help-screenshots.spec.ts` | 1 | Help WebPs; also refreshes Settings |
+| Encrypted workspace | `VN_CAPTURE_VAULT_HELP=1 npm run test:e2e -- vault-help-screenshots.spec.ts` | 5 | Help WebPs; also refreshes MCP Settings |
+| Presentation voice | `VN_CAPTURE_VOICE_HELP=1 npm run test:e2e -- voice-help-screenshots.spec.ts` | 1 | Help WebPs |
+| IBM workflow | `VN_CAPTURE_IBM=1 npm run test:e2e -- ibm-flowcharting.spec.ts --grep 'readable IBM workflow'` | 2 | Help WebPs |
+| Parallel execution | `VN_CAPTURE_PARALLEL=1 npm run test:e2e -- simulation-parallel.spec.ts` | 2 | PNGs in `docs/acceptance`; promote below |
+| Editable export | `VISUAL_NERVE_CAPTURE_EXCHANGE=1 npm run test:e2e -- exchange-export.spec.ts --grep 'capture editable export UI'` | 2 | PNGs in `docs/acceptance`; promote below |
+| App update | `npm run test:e2e -- app-updates.spec.ts --grep 'real update notice and controls fit'` | 2 | PNGs in Playwright test output; preserve/promote below |
+| Collaboration | From the repository root: `VN_CAPTURE_COLLABORATION=1 node collaboration-crypto/workflow-browser-test.mjs` | 10 | Actual app/relay workflow; verified PNG pairs promoted to Help WebPs |
+
+Run the whole Main Help file: its final case deliberately replaces the initial layouts, backup and COBOL views with readable examples. Run language and vault captures afterwards so their dedicated Settings/MCP views remain. Leave `VN_CAPTURE_ANALYTICS_SCENARIOS_ONLY` unset for all seven time-series pairs. The collaboration workflow uses disposable local owner/editor/viewer profiles, closes its room and writes a review manifest under `tmp/collaboration-workflow-review`; without its opt-in flag it keeps review PNGs and does not replace Help assets.
+
+Most families convert their genuine PNGs directly into `hugo/static/help/images`. Parallel and editable-export captures require this promotion from the repository root:
+
+```sh
+for name in parallel-delivery-desktop parallel-delivery-mobile export-editable-desktop export-editable-mobile
+do
+  for suffix in '' '-dark'
+  do
+    cwebp -lossless -m 6 -quiet "docs/acceptance/${name}${suffix}.png" \
+      -o "hugo/static/help/images/${name}${suffix}.webp"
+  done
+done
 ```
 
-The opt-in capture suite needs `cwebp` and converts genuine Playwright PNG captures to WebP. On this macOS host, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to the installed Chrome executable. Normal test runs skip capture and do not overwrite published screenshots. Review the output visually before committing; regenerate affected images after interface changes.
+App-update captures use `testInfo.outputPath`; preserve the four fresh PNGs before another Playwright invocation clears its default output directory. Convert each with `cwebp -lossless -m 6 -quiet INPUT.png -o OUTPUT.webp` using this mapping:
+
+| Captured PNG | Help WebP basename |
+| --- | --- |
+| `update-notice-1440-light.png` | `app-update` |
+| `update-notice-1440-dark.png` | `app-update-dark` |
+| `update-notice-390-light.png` | `app-update-mobile` |
+| `update-notice-390-dark.png` | `app-update-mobile-dark` |
+
+For website images, run `VN_CAPTURE_SITE=1 npm run test:e2e -- site-screenshots.spec.ts` from `frontend`. It writes actual desktop (1920 × 1080), laptop (1440 × 900), tablet (1024 × 1366) and phone (390 × 844) light/dark pairs to `hugo/static/site/images`. The social preview is a 1200 × 675 resize of the light desktop capture; refresh it separately from the repository root:
+
+```sh
+dwebp hugo/static/site/images/desktop.webp -o /tmp/visual-nerve-social.png
+cwebp -resize 1200 675 -q 85 -m 6 -quiet /tmp/visual-nerve-social.png \
+  -o hugo/static/site/images/social.webp
+```
+
+The capture workflow needs `cwebp` (`dwebp` for the social resize). On this macOS host, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to the installed Chrome executable. Normal test runs do not overwrite published screenshots. Review both themes and phone containment before committing. Keep conceptual collaboration illustrations, device-frame vectors and catalog SVG geometry separate from actual UI captures. **Rebuild after all image writes and promotions**, then verify the generated Help/site and offline assets; a successful capture does not update an existing build or production website.
 
 ## Verify
 

@@ -20,7 +20,7 @@ vi.mock('@xyflow/react', async (original) => ({
 
 afterEach(() => cleanup());
 
-it.each(['flowchart', 'mindmap', 'simulation'] as const)(
+it.each(['flowchart', 'ibm', 'mindmap', 'simulation'] as const)(
   'preserves the actual D3 touch gesture through %s dimension renders',
   (mode) => {
     const simulation = mode === 'simulation';
@@ -28,7 +28,14 @@ it.each(['flowchart', 'mindmap', 'simulation'] as const)(
       ? createSimulationGraph('Touch resize', createBasicModel({ capacity: 2 }))
       : blankGraph('Touch resize', mode === 'mindmap' ? 'mindmap' : 'flowchart');
     if (!simulation)
-      graph.nodes = [newNode(graph.diagram.id, { nodeType: 'process', width: 200, height: 140 })];
+      graph.nodes = [
+        newNode(graph.diagram.id, {
+          nodeType: 'process',
+          width: 200,
+          height: 140,
+          flowchartSymbol: mode === 'ibm' ? 'ibm-display' : undefined,
+        }),
+      ];
     const shape = simulation
       ? graph.nodes.find((node) => node.externalId === 'work')!
       : graph.nodes[0];
@@ -71,6 +78,13 @@ it.each(['flowchart', 'mindmap', 'simulation'] as const)(
       </ReactFlowProvider>
     );
     const { container, rerender } = render(component(200));
+    if (mode === 'ibm') {
+      expect(container.querySelector('[data-flowchart-symbol="ibm-display"]')).toBeTruthy();
+      expect(container.querySelector('.ibm-node-shape path')).toBeTruthy();
+      expect(container.querySelector('.ibm-node-content .node-title')?.textContent).toBe(
+        shape.title,
+      );
+    }
     const handle = container.querySelector('.react-flow__resize-control.handle.bottom.right')!;
     expect(handle).toBeTruthy();
     const touch = (type: 'touchStart' | 'touchMove' | 'touchEnd', x: number, y: number) => {

@@ -16,6 +16,42 @@ const theme: SvgTheme = {
   doneBorder: '#16803D',
 };
 describe('deliberate editable exchange content and canonical geometry', () => {
+  it('preserves explicit backgrounds and their contrast, warns about IBM shape simplification, and restores portable defaults', () => {
+    const graph = blankGraph('IBM portable fill', 'flowchart');
+    const node = newNode(graph.diagram.id, {
+      title: 'Validate records',
+      nodeType: 'process',
+      flowchartSymbol: 'ibm-predefined-process',
+      color: '#775491',
+      backgroundColor: '#172d55',
+      metadata: { privateContent: 'DO_NOT_EXPORT' },
+    });
+    graph.nodes = [node];
+    for (const [fill, ink] of [
+      ['#172d55', '#ffffff'],
+      ['#fff2c7', '#000000'],
+    ]) {
+      node.backgroundColor = fill;
+      const snapshot = exchangeGraphSnapshot(graph);
+      expect(JSON.stringify(snapshot)).not.toContain('DO_NOT_EXPORT');
+      expect(snapshot.nodes[0]).toMatchObject({
+        backgroundColor: fill,
+        flowchartSymbol: 'ibm-predefined-process',
+      });
+      const result = exchangeScene(snapshot, {}, theme);
+      expect(result.nodes[0]).toMatchObject({ fill, textColor: ink, stroke: '#775491' });
+      expect(
+        result.warnings.some((warning) => warning.code === 'IBM_SYMBOL_GEOMETRY_SIMPLIFIED'),
+      ).toBe(true);
+    }
+    delete node.backgroundColor;
+    const automatic = exchangeScene(exchangeGraphSnapshot(graph), {}, theme);
+    expect(automatic.nodes[0]).toMatchObject({
+      fill: '#FFFFFF',
+      textColor: '#1F2D28',
+      stroke: '#775491',
+    });
+  });
   it('uses the same readable light drawing in dark Appearance while retaining explicit accents', () => {
     const graph = blankGraph('Portable colors');
     const group = newNode(graph.diagram.id, { nodeType: 'group', title: 'Operations' });

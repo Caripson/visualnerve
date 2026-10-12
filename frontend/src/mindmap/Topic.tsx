@@ -15,6 +15,8 @@ import { AreaIcon, iconKey } from '../ui/icons';
 import { topicInk } from '../ui/colors';
 import { MetricSummary } from '../components/MetricSummary';
 import { NodeStatus } from '../ui/NodeStatus';
+import { nodeBackgroundColor, nodeBackgroundStyle } from '../nodes/appearance';
+import '../nodes/node-appearance.css';
 
 export const MindmapNode = memo(({ id, data, selected }: NodeProps<CanvasNode>) => {
   const { t, plural } = useI18n();
@@ -50,14 +52,21 @@ export const MindmapNode = memo(({ id, data, selected }: NodeProps<CanvasNode>) 
     if (child) useEditor.getState().beginEditing(child);
   };
   const color = topic?.color || '#23664d';
-  const ink = topicInk(color);
+  const ink = topicInk(nodeBackgroundColor(node.backgroundColor) ?? color);
   return (
     <div
       className={`mindmap-topic ${root ? 'mindmap-root' : main ? 'mindmap-main' : 'mindmap-leaf'} topic-${topic?.side ?? 'right'} ${selected && !exporting ? 'is-selected' : ''} ${overview ? 'topic-overview' : ''}`}
-      style={{ '--branch-color': color, '--topic-ink': ink } as CSSProperties}
+      style={
+        {
+          '--branch-color': color,
+          '--topic-ink': ink,
+          ...nodeBackgroundStyle(node.backgroundColor),
+        } as CSSProperties
+      }
       data-testid="graph-node"
       data-node-id={id}
       data-node-status={node.status || undefined}
+      data-node-background={nodeBackgroundColor(node.backgroundColor)}
       data-topic-depth={topic?.depth ?? 0}
       onDoubleClick={() => {
         if (!exporting) useEditor.getState().beginEditing(id);
@@ -112,6 +121,8 @@ export const MindmapNode = memo(({ id, data, selected }: NodeProps<CanvasNode>) 
           onChange={(e) => useEditor.setState({ editingTitle: e.target.value })}
           onBlur={() => finish(true)}
           onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
               finish(true, true);

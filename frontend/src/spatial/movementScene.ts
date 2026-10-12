@@ -106,8 +106,20 @@ export function spatialMovementPreview(
               Math.max(source.dimensions.x, source.dimensions.y) * 0.8,
             )
           : spatialEdgePoints(
-              cardConnectionPoint(source.position, target.position, source.dimensions, scale),
-              cardConnectionPoint(target.position, source.position, target.dimensions, scale),
+              cardConnectionPoint(
+                source.position,
+                target.position,
+                source.dimensions,
+                scale,
+                source.mesh.geometry.userData.flowchartSymbol,
+              ),
+              cardConnectionPoint(
+                target.position,
+                source.position,
+                target.dimensions,
+                scale,
+                target.mesh.geometry.userData.flowchartSymbol,
+              ),
               false,
               scale,
             );

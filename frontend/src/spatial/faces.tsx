@@ -118,7 +118,7 @@ export async function captureSpatialNodeFaces(
   graph: Graph,
   views: CanvasNode[],
   signal?: AbortSignal,
-  options?: { pixelRatio?: number },
+  options?: { pixelRatio?: number; side?: 'front' | 'back' },
 ): Promise<Map<string, HTMLCanvasElement>> {
   checkAbort(signal);
   const ratio = options?.pixelRatio ?? 2;
@@ -142,7 +142,7 @@ export async function captureSpatialNodeFaces(
     data: { ...view.data, exporting: true, resize: undefined },
   }));
   const container = document.createElement('div');
-  container.className = `spatial-face-capture export-canvas ${graph.diagram.type === 'mindmap' ? 'mindmap-canvas' : ''}`;
+  container.className = `spatial-face-capture export-canvas ${options?.side === 'back' ? 'spatial-face-back' : ''} ${graph.diagram.type === 'mindmap' ? 'mindmap-canvas' : ''}`;
   container.setAttribute('aria-hidden', 'true');
   container.setAttribute('inert', '');
   Object.assign(container.style, {

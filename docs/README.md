@@ -24,7 +24,7 @@ implementation, supported contracts and operation of the project.
 | Local API and MCP           | [API](../API.md), [OpenAPI](openapi.yaml), [MCP](MCP.md)                                                                                                                   |
 | Imports and analysis        | [CSV explorer](CSV_EXPLORER.md), [SQL](SQL_IMPORT.md), [code/project ZIP](CODE_IMPORT.md), [draw.io/Visio](DIAGRAM_IMPORT.md), [connected analysis](ANALYSIS_WORKFLOWS.md) |
 | Process Simulator           | [Model and engine](PROCESS_SIMULATOR.md), [acceptance criteria](PROCESS_SIMULATOR_ACCEPTANCE.md)                                                                           |
-| Diagrams and explanation    | [3D](SPATIAL_DIAGRAMS.md), [drawing](DRAWING.md), [understanding](UNDERSTANDING.md)                                                                                        |
+| Diagrams and explanation    | [IBM flowcharting](IBM_FLOWCHARTING.md), [symbol-use reference](../hugo/content/help/flowchart-symbols.md), [3D](SPATIAL_DIAGRAMS.md), [drawing](DRAWING.md), [understanding](UNDERSTANDING.md) |
 | Presentations and handoffs  | [Player/storyboards](PRESENTATION.md), [speech](SPEECH.md), [Lovable](LOVABLE.md)                                                                                          |
 | JSON, SVG and other exports | [Export formats](../EXPORT_FORMAT.md)                                                                                                                                      |
 | Mobile design               | [Mobile](MOBILE.md)                                                                                                                                                        |

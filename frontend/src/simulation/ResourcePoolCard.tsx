@@ -8,6 +8,8 @@ import { useSimulationSummary } from './summary-context';
 import { logicalNodeId } from './render-model';
 import { simulationNodeTraffic } from './traffic';
 import './process-hierarchy.css';
+import { nodeBackgroundColor, nodeBackgroundStyle } from '../nodes/appearance';
+import '../nodes/node-appearance.css';
 
 /** One shared pool, with genuine occupied units; no duplicated resource or logical Work. */
 export const ResourcePoolCard = memo(({ id, data }: NodeProps<CanvasNode>) => {
@@ -31,6 +33,8 @@ export const ResourcePoolCard = memo(({ id, data }: NodeProps<CanvasNode>) => {
       data-node-id={id}
       data-simulation-projected="true"
       data-simulation-logical-node={logicalId}
+      data-node-background={nodeBackgroundColor(data.node.backgroundColor)}
+      style={nodeBackgroundStyle(data.node.backgroundColor)}
     >
       <Handle type="target" position={Position.Left} id="in" isConnectable={false} />
       <Handle type="source" position={Position.Right} id="out" isConnectable={false} />

@@ -40,6 +40,101 @@ function edit(value: Graph, patch: (value: Graph) => void) {
 }
 
 describe('one semantic CRDT document', () => {
+  it('shares IBM appearance changes and clearing alongside concurrent ordinary edits', () => {
+    const value = graph();
+    value.nodes[0].flowchartSymbol = 'ibm-process';
+    value.nodes[0].backgroundColor = '#334455';
+    value.nodes[0].color = '#abcdef';
+    value.nodes[0].metadata = { privateNote: 'Recipient private evidence' };
+    const { a, b } = peers(value);
+    const shaped = edit(value, (graph) => {
+      graph.nodes[0].flowchartSymbol = 'ibm-predefined-process';
+      graph.nodes[0].backgroundColor = '#aB12Ef';
+    });
+    const titled = edit(value, (graph) => {
+      graph.nodes[0].title = 'Reusable order check';
+    });
+    const left = a.applyLocal(value, shaped, writable);
+    const right = b.applyLocal(value, titled, writable);
+    a.applyRemote(right.update, shaped);
+    b.applyRemote(left.update, titled);
+    const converged = a.graph(value);
+    expect(converged).toEqual(b.graph(value));
+    expect(converged.nodes.find((node) => node.id === value.nodes[0].id)).toMatchObject({
+      title: 'Reusable order check',
+      flowchartSymbol: 'ibm-predefined-process',
+      backgroundColor: '#aB12Ef',
+      color: '#abcdef',
+      metadata: { privateNote: 'Recipient private evidence' },
+    });
+    const cleared = edit(converged, (graph) => {
+      delete graph.nodes.find((node) => node.id === value.nodes[0].id)!.flowchartSymbol;
+      delete graph.nodes.find((node) => node.id === value.nodes[0].id)!.backgroundColor;
+    });
+    b.applyRemote(a.applyLocal(converged, cleared, writable).update, converged);
+    const clearedNode = b.graph(converged).nodes.find((node) => node.id === value.nodes[0].id)!;
+    expect(Object.hasOwn(clearedNode, 'flowchartSymbol')).toBe(false);
+    expect(Object.hasOwn(clearedNode, 'backgroundColor')).toBe(false);
+    expect(clearedNode.color).toBe('#abcdef');
+    expect(clearedNode.title).toBe('Reusable order check');
+  });
+
+  it('rejects an unsupported remote IBM appearance without changing or rebroadcasting state', () => {
+    const { a, value } = peers();
+    const before = a.encodedState();
+    const beforeGraph = a.graph(value);
+    const corrupt = new Y.Doc();
+    Y.applyUpdate(corrupt, before);
+    const vector = Y.encodeStateVector(corrupt);
+    corrupt
+      .getMap('fields')
+      .set(JSON.stringify(['nodes', value.nodes[0].id, 'flowchartSymbol']), [
+        'value',
+        'ibm-unknown',
+      ]);
+    expect(() =>
+      a.applyRemote(
+        encodeCollaborationUpdate(vector, Y.encodeStateAsUpdate(corrupt, vector)),
+        value,
+      ),
+    ).toThrow('flowchart symbol');
+    expect(a.encodedState()).toEqual(before);
+    expect(a.graph(value)).toEqual(beforeGraph);
+    corrupt.destroy();
+  });
+
+  it('rejects invalid remote fill without committing any accompanying ordinary edit', () => {
+    const { a, value } = peers();
+    const before = a.encodedState();
+    const beforeGraph = a.graph(value);
+    for (const invalid of [null, '#abc', 'red', {}]) {
+      const corrupt = new Y.Doc();
+      try {
+        Y.applyUpdate(corrupt, before);
+        const vector = Y.encodeStateVector(corrupt);
+        const fields = corrupt.getMap('fields');
+        fields.set(JSON.stringify(['nodes', value.nodes[0].id, 'title']), [
+          'value',
+          'Invalid peer title',
+        ]);
+        fields.set(JSON.stringify(['nodes', value.nodes[0].id, 'backgroundColor']), [
+          'value',
+          invalid,
+        ]);
+        expect(() =>
+          a.applyRemote(
+            encodeCollaborationUpdate(vector, Y.encodeStateAsUpdate(corrupt, vector)),
+            value,
+          ),
+        ).toThrow('six-digit hex color');
+        expect(a.encodedState()).toEqual(before);
+        expect(a.graph(value)).toEqual(beforeGraph);
+      } finally {
+        corrupt.destroy();
+      }
+    }
+  });
+
   it('merges simultaneous title and position edits without overwriting either field', () => {
     const { a, b, value } = peers();
     const title = edit(value, (graph) => {

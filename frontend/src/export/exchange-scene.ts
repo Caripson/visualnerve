@@ -3,6 +3,8 @@ import { blankGraph, emptyFilters, type Graph } from '../model/types';
 import { importedConnectionStyle } from '../imports/diagram/presentation';
 import { getCsvNode } from '../data/csv';
 import type { SvgTheme } from './svg-job-types';
+import { nodeBackgroundColor } from '../nodes/appearance';
+import { topicInk } from '../ui/colors';
 import {
   ExchangeExportError,
   exchangeLimits,
@@ -97,6 +99,8 @@ export function exchangeGraphSnapshot(graph: Graph): Graph {
       height: node.height,
       parentId: node.parentId,
       color: node.color,
+      backgroundColor: node.backgroundColor,
+      flowchartSymbol: node.flowchartSymbol,
       startDate: node.startDate,
       endDate: node.endDate,
       dueDate: node.dueDate,
@@ -286,9 +290,11 @@ export function exchangeScene(
       width,
       height,
       parentId: graph.diagram.type === 'timeline' ? undefined : parents.get(node.id),
-      fill,
+      fill: nodeBackgroundColor(node.backgroundColor) ?? fill,
       stroke: exchangeColor(node.color ?? view.data.mindmap?.color, stroke),
-      textColor,
+      textColor: nodeBackgroundColor(node.backgroundColor)
+        ? topicInk(node.backgroundColor!)
+        : textColor,
     };
   });
   const bounds = result.reduce(
@@ -331,6 +337,12 @@ export function exchangeScene(
       code: 'SIMULATION_STRUCTURE_ONLY',
       message:
         'Process Simulator exports logical structure and selected assumptions as labels. Execution, live state, scenarios, scaling rules and investment calculations remain in Visual Nerve.',
+    });
+  if (nodes.some((node) => node.flowchartSymbol))
+    warnings.push({
+      code: 'IBM_SYMBOL_GEOMETRY_SIMPLIFIED',
+      message:
+        'draw.io uses standard editable shapes for each node type. Use SVG, PNG or PDF for IBM stencil geometry, or native JSON for an editable faithful copy.',
     });
   if (options.scope !== 'selected')
     warnings.push({

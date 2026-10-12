@@ -1,0 +1,15 @@
+.spatial-title-editor {
+  position: absolute;
+  z-index: 8;
+  transform: translate(-50%, -50%);
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--node-bg);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 16px #0002;
+  box-sizing: border-box;
+}
+.spatial-title-editor .node-title {
+  text-align: center;
+  font-size: 14px;
+}

@@ -17,7 +17,10 @@ export default defineConfig(({ command }) => ({
       output: {
         entryFileNames: 'app.js',
         onlyExplicitManualChunks: true,
-        manualChunks: vendorChunk,
+        // Native cards and optional SVG/3D/tools share one semantic geometry catalog.
+        // It remains in the audited initial closure; only the controls are lazy.
+        manualChunks: (id) =>
+          id.endsWith('/src/flowchart/ibm-symbols.ts') ? 'flowchart-symbols' : vendorChunk(id),
         assetFileNames: (asset) =>
           asset.names.some((name) => name.endsWith('.css'))
             ? 'app.css'

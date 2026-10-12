@@ -99,6 +99,8 @@ func main() {
 	addCollaborationSchemas(schemas)
 	addWorkspaceSecuritySchemas(schemas)
 	addOperationSchemas(schemas)
+	addFlowchartSchemas(schemas)
+	addNodeAppearanceSchemas(schemas)
 	schemas["ImportLimitSettingInput"] = importLimitSettingSchema()
 	schemas["ProjectFileLimitSettingInput"] = projectFileLimitSettingSchema()
 	schemas["ProjectFileLimitSettingValue"] = projectFileLimitValueSchema()
@@ -117,6 +119,8 @@ func main() {
 			s["required"] = []string{"name", "type"}
 		}
 		if name == "Node" {
+			p["flowchartSymbol"] = ref("FlowchartSymbol")
+			p["backgroundColor"] = ref("NodeBackgroundColor")
 			p["metadata"].(object)["properties"] = object{"spatial": ref("SpatialNode"), "sqlQuerySource": ref("SqlQuerySource"), "sqlQueryResult": ref("SqlQueryResult"), "codeObject": ref("CodeObject"), "projectDirectory": ref("ProjectDirectory")}
 			p["nodeType"].(object)["enum"] = model.NodeTypes
 			s["required"] = []string{"title"}
@@ -139,7 +143,7 @@ func main() {
 		}
 		if name == "Diagram" {
 			create["required"] = []string{"name"}
-			cp["template"] = object{"type": "string", "enum": []string{"time-series-analysis"}, "description": "Create the first-class Time Series & Signal Analysis template on an existing diagram type. The local example uses the same engine as imported data."}
+			cp["template"] = object{"type": "string", "enum": []string{"time-series-analysis", "ibm-flowcharting"}, "description": "Create a built-in editable document. ibm-flowcharting uses type flowchart and rejects mode; time-series-analysis uses the same engine as imported data."}
 			cp["mode"] = object{"type": "string", "enum": []string{"example", "import"}, "default": "example", "description": "For template:time-series-analysis, choose locally packaged illustrative data or an empty import workspace."}
 		}
 		schemas[name+"Input"] = create
@@ -151,15 +155,19 @@ func main() {
 		if name == "Diagram" {
 			delete(pp, "analytics")
 		}
+		if name == "Node" {
+			pp["flowchartSymbol"] = object{"type": "string", "enum": append(append([]any{}, stringsToAny(model.FlowchartSymbols)...), nil), "nullable": true, "description": "A catalog ID changes appearance; null removes the saved field. Omission preserves it. " + flowchartPolicy}
+			pp["backgroundColor"] = ref("NodeBackgroundColorPatch")
+		}
 		patch["required"] = []string{"version"}
 		schemas[name+"Patch"] = patch
 	}
 	schemas["Graph"] = object{"type": "object", "required": []string{"format", "formatVersion", "diagram", "nodes", "edges", "owners"}, "properties": object{"format": object{"type": "string", "enum": []string{"visual-nerve"}}, "formatVersion": object{"type": "integer", "enum": []int{1}}, "diagram": ref("Diagram"), "nodes": object{"type": "array", "items": ref("Node")}, "edges": object{"type": "array", "items": ref("Edge")}, "owners": object{"type": "array", "items": ref("Owner")}}, "additionalProperties": false}
 	schemas["TemplateRecord"] = strictObject([]string{"id", "name", "builtin", "graph"}, object{
-		"id":   object{"type": "string", "minLength": 1, "description": "Stable template key, such as process-simulator-blank (guided empty setup) or process-simulator (kiosk example); template keys are not graph UUIDs."},
+		"id":   object{"type": "string", "minLength": 1, "description": "Stable template key, such as ibm-flowcharting, process-simulator-blank (guided empty setup) or process-simulator (kiosk example); template keys are not graph UUIDs."},
 		"name": object{"type": "string"}, "builtin": object{"type": "boolean"}, "graph": ref("Graph"),
 	})
-	schemas["TemplateRecord"].(object)["description"] = "Browser-local built-in or user template with its complete reusable native graph. A Process Simulator template includes graph.simulation. Discovery requires an accepted, connected browser and at least Read only access; records are not stored by the server."
+	schemas["TemplateRecord"].(object)["description"] = "Browser-local built-in or user template with its complete reusable native graph. IBM Flowcharting retains type flowchart and nodes[].flowchartSymbol; a Process Simulator template includes graph.simulation. Discovery requires an accepted, connected browser and at least Read only access; records are not stored by the server."
 	// CSV source records are validated in the browser and forwarded losslessly by the bridge.
 	schemas["CsvDataset"] = object{
 		"type":                 "object",
@@ -189,6 +197,10 @@ func main() {
 		delete(s, "required")
 		s["description"] = "Existing external-ID upserts accept partial fields and preserve the canonical UUID. Use versioned PATCH to update an existing entity by its UUID; bulk matches externalId only. If both id and externalId are supplied, they must identify the same entity. Duplicate explicit IDs or a conflicting existing ID reject the entire batch. New nodes require title, new owners require name, and new edges require endpoints."
 		props := s["properties"].(map[string]any)
+		if name == "Node" {
+			props["flowchartSymbol"] = clone(schemas["NodePatch"].(object)["properties"].(map[string]any)["flowchartSymbol"].(map[string]any))
+			props["backgroundColor"] = ref("NodeBackgroundColorPatch")
+		}
 		keys := []string{"ownerExternalId", "parentExternalId"}
 		if name == "Owner" {
 			keys = nil
@@ -265,7 +277,11 @@ func main() {
 	lockOperation := paths["/workspace/lock"].(object)["post"].(object)
 	lockOperation["description"] = workspaceSecurityPolicyDescription + workspaceSecurityReauthorizationDescription
 	lockOperation["requestBody"].(object)["required"] = false
-	add("GET", "/templates", "Discover browser-local templates and complete graphs, including guided Process Simulator and kiosk example", "", "TemplateRecord[]", "200")
+	add("GET", "/templates", "Discover browser-local templates and complete graphs, including IBM Flowcharting, guided Process Simulator and kiosk example", "", "TemplateRecord[]", "200")
+	add("GET", "/flowchart/symbols", "Discover the complete IBM Flowcharting symbol catalog; read-only access allowed", "", "FlowchartSymbolRecord[]", "200")
+	paths["/flowchart/symbols"].(object)["get"].(object)["description"] = flowchartPolicy
+	add("GET", "/flowchart/stencils", "Discover the exact original and revised IBM stencil cutout memberships; read-only access allowed", "", "FlowchartStencilRecord[]", "200")
+	paths["/flowchart/stencils"].(object)["get"].(object)["description"] = flowchartPolicy
 	add("GET", "/templates/{templateId}", "Read one browser-local template by its stable string key", "", "TemplateRecord", "200")
 	paths["/templates/{templateId}"].(object)["get"].(object)["parameters"] = []any{object{"name": "templateId", "in": "path", "required": true, "schema": object{"type": "string", "minLength": 1}}}
 	addPresentationPaths(add)
@@ -276,6 +292,7 @@ func main() {
 	addQuery(paths, "/diagrams", "type", object{"type": "string", "enum": model.DiagramTypes}, false)
 	addAnalyticsDiscovery(schemas, paths)
 	add("POST", "/diagrams", "Create a diagram", "DiagramInput", "Diagram", "201")
+	paths["/diagrams"].(object)["post"].(object)["description"] = flowchartPolicy
 	add("POST", "/spatial-diagrams", "Create and open a 3D diagram with independent 2D layout", "SpatialDiagramInput", "Graph", "201")
 	add("POST", "/sql/preview", "Preview a SELECT/WITH query or DDL without saving; allowed with read-only access", "SqlInput", "SqlImportResult", "200")
 	add("POST", "/sql/diagrams", "Analyze SQL locally, then save and open its diagram transactionally; write access required", "SqlInput", "Graph", "201")
@@ -321,10 +338,10 @@ func main() {
 	addCollaborationPaths(add, paths)
 	addOperationPaths(add, paths, schemas)
 	addAnalyticsErrorResponses(paths)
-	doc := object{"openapi": "3.0.3", "info": object{"title": "Visual Nerve local API", "version": "0.8.2", "description": "IndexedDB in the browser is authoritative and is the only database. This optional API forwards commands through a WebSocket bridge to an open browser with explicit storage acceptance and MCP access set to Read only or Read + write (default Off). Read-only access permits GET, POST /export, exact POST /exports/svg and /exports/diagrams, and exact DELETE /exports/svg/{jobId} or /exports/diagrams/{jobId} for transient export jobs, exact POST /sql/preview, /code/preview, /code/project/preview or /diagram-files/preview and exact diagram questions/build-brief previews, rejecting mutations with 403. Semantic overview, evidence-backed multi-level questions, local version history, editable storyboard scenes and reviewed app specifications share the same canonical graph and browser-local persistence. Draw.io XML and base64 Visio .vsdx ZIP files are analyzed locally without executing or fetching embedded content; POST /import saves only a selected native page and requires write access. Multipage imports require pageId from preview. Original XML/ZIP is transient. SQL SELECT/WITH visualization retains scoped aliases, expressions, joins and clauses locally; it never executes SQL or connects to a database. POST /sql/diagrams and POST /code/diagrams save and open validated graphs and require write access. GET /code/languages discovers 50 code languages plus Markdown. POST /code/project/preview and /code/project/diagrams accept strict base64 ZIP projects and files/symbols/folders modes, using the same local analysis engine. Project preview permits read-only access; saving requires write access. Code diagrams retain identifiers, paths, source lines and confidence; original source and nonstructural string values are discarded. The public static host provides no content API; endpoints target a loopback bridge only. Start the static server with --bridge. No application records are stored in the server. PATCH requires version; graph replacement requires baseVersion. Optional VISUAL_NERVE_BRIDGE_TOKEN protects all integration requests. PNG/PDF render in the browser. MCP is available at /mcp. Its initialize instructions advertise Process Simulator, native 2D and opt-in 3D. Process Simulator is a first-class local document with separately typed schemaVersion 1 semantics and the same deterministic worker engine for UI, API and MCP. Seeded runs return asynchronous IDs; headless execution needs no active canvas or animation but still requires a connected browser. Shared resources, queues, scaling, economics, replay and scenario results are semantically inspectable.  visual_nerve_api_docs provides a compact guide by default and the full bundled OpenAPI with document=openapi; the same documents are MCP resources. Documentation discovery requires no connected browser. The production browser workspace is at https://app.visualnerve.com/; https://www.visualnerve.com/ is the public product website. Former public /app paths redirect to the app root, while /app on the app origin returns 404. Browser records remain bound to their original origin and are never automatically moved or deleted. Local source-development builds may retain a development-only /app fixture. The exact app origin https://app.visualnerve.com without a path is the allowed production browser origin; Settings shows a separate local MCP HTTP URL for Codex and WebSocket URL for the browser. Public GET /mcp/ is setup documentation; local MCP POST /mcp and REST /api/v1 endpoints remain unchanged."}, "servers": []any{object{"url": "http://127.0.0.1:4317/api/v1", "description": "Optional local bridge on this computer"}}, "paths": paths, "components": object{"schemas": schemas, "responses": bridgeResponses(), "securitySchemes": object{"bearerAuth": object{"type": "http", "scheme": "bearer", "description": "Optional token for all local integration requests"}}}}
+	doc := object{"openapi": "3.0.3", "info": object{"title": "Visual Nerve local API", "version": "0.8.3", "description": "IndexedDB in the browser is authoritative and is the only database. This optional API forwards commands through a WebSocket bridge to an open browser with explicit storage acceptance and MCP access set to Read only or Read + write (default Off). Read-only access permits GET, POST /export, exact POST /exports/svg and /exports/diagrams, and exact DELETE /exports/svg/{jobId} or /exports/diagrams/{jobId} for transient export jobs, exact POST /sql/preview, /code/preview, /code/project/preview or /diagram-files/preview and exact diagram questions/build-brief previews, rejecting mutations with 403. Semantic overview, evidence-backed multi-level questions, local version history, editable storyboard scenes and reviewed app specifications share the same canonical graph and browser-local persistence. Draw.io XML and base64 Visio .vsdx ZIP files are analyzed locally without executing or fetching embedded content; POST /import saves only a selected native page and requires write access. Multipage imports require pageId from preview. Original XML/ZIP is transient. SQL SELECT/WITH visualization retains scoped aliases, expressions, joins and clauses locally; it never executes SQL or connects to a database. POST /sql/diagrams and POST /code/diagrams save and open validated graphs and require write access. GET /code/languages discovers 50 code languages plus Markdown. POST /code/project/preview and /code/project/diagrams accept strict base64 ZIP projects and files/symbols/folders modes, using the same local analysis engine. Project preview permits read-only access; saving requires write access. Code diagrams retain identifiers, paths, source lines and confidence; original source and nonstructural string values are discarded. The public static host provides no content API; endpoints target a loopback bridge only. Start the static server with --bridge. No application records are stored in the server. PATCH requires version; graph replacement requires baseVersion. Optional VISUAL_NERVE_BRIDGE_TOKEN protects all integration requests. PNG/PDF render in the browser. MCP is available at /mcp. Its initialize instructions advertise Process Simulator, native 2D and opt-in 3D. Process Simulator is a first-class local document with separately typed schemaVersion 1 semantics and the same deterministic worker engine for UI, API and MCP. Seeded runs return asynchronous IDs; headless execution needs no active canvas or animation but still requires a connected browser. Shared resources, queues, scaling, economics, replay and scenario results are semantically inspectable.  visual_nerve_api_docs provides a compact guide by default and the full bundled OpenAPI with document=openapi; the same documents are MCP resources. Documentation discovery requires no connected browser. The production browser workspace is at https://app.visualnerve.com/; https://www.visualnerve.com/ is the public product website. Former public /app paths redirect to the app root, while /app on the app origin returns 404. Browser records remain bound to their original origin and are never automatically moved or deleted. Local source-development builds may retain a development-only /app fixture. The exact app origin https://app.visualnerve.com without a path is the allowed production browser origin; Settings shows a separate local MCP HTTP URL for Codex and WebSocket URL for the browser. Public GET /mcp/ is setup documentation; local MCP POST /mcp and REST /api/v1 endpoints remain unchanged."}, "servers": []any{object{"url": "http://127.0.0.1:4317/api/v1", "description": "Optional local bridge on this computer"}}, "paths": paths, "components": object{"schemas": schemas, "responses": bridgeResponses(), "securitySchemes": object{"bearerAuth": object{"type": "http", "scheme": "bearer", "description": "Optional token for all local integration requests"}}}}
 	doc["info"].(object)["description"] = doc["info"].(object)["description"].(string) + " " + workspaceSecurityPolicyDescription + workspaceSecurityReauthorizationDescription + " The app interface supports en, da, nb, sv, fi, de, es and fr, selected in browser Settings; English is the default. This display-only technical preference does not change canonical API/MCP field names, enum values, errors, schemas, source data or deterministic results. It is not a private workspace setting, is excluded from backups, and does not change narration voice. Help and API documentation remain in English."
 	doc["info"].(object)["description"] = doc["info"].(object)["description"].(string) + " visual_nerve_api_docs also supports document:endpoint with an exact documented path template and uppercase method, returning that operation with shared path parameters and its complete transitive component/security dependencies. No browser, external fetch or schema truncation is involved. Canonical IDs are UUIDs; externalId is an optional client-defined integration string. Bulk updates match externalId only; use versioned PATCH to edit by canonical UUID."
-	doc["info"].(object)["description"] = doc["info"].(object)["description"].(string) + " " + operationPolicyDescription + " " + collaborationPolicy + " " + collaborationDocumentPolicy + " " + analyticsPolicy
+	doc["info"].(object)["description"] = doc["info"].(object)["description"].(string) + " " + operationPolicyDescription + " " + collaborationPolicy + " " + collaborationDocumentPolicy + " " + analyticsPolicy + " " + nodeAppearancePolicy
 	raw, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {
 		panic(err)

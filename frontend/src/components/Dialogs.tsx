@@ -29,6 +29,7 @@ import { BackupSecurityNotice } from '../security/BackupSecurityNotice';
 import { VaultSettings } from '../security/VaultSettings';
 import { vaultSession } from '../storage/runtime';
 import { isEncryptedWorkspaceSurface } from '../security/surface';
+import { getIbmSymbol } from '../flowchart/ibm-symbols';
 export function NewDiagram({ close }: { close: () => void }) {
   const { t: translate } = useI18n();
   const [name, setName] = useState('Untitled diagram');
@@ -72,10 +73,49 @@ export function NewDiagram({ close }: { close: () => void }) {
               onClick={() => setTemplate(t.key)}
             >
               <div
-                className={`template-preview ${t.key === 'time-series-analysis' ? 'preview-analytics' : `preview-${t.type}`}`}
+                className={`template-preview ${t.key === 'ibm-flowcharting' ? 'preview-ibm' : t.key === 'time-series-analysis' ? 'preview-analytics' : `preview-${t.type}`}`}
+                style={
+                  t.key === 'ibm-flowcharting'
+                    ? { display: 'grid', placeItems: 'center', color: 'var(--accent)' }
+                    : undefined
+                }
                 aria-hidden="true"
               >
-                {t.key === 'time-series-analysis' ? (
+                {t.key === 'ibm-flowcharting' ? (
+                  <svg viewBox="0 0 140 64" style={{ width: '90%', height: '90%' }}>
+                    <path
+                      d="M34 32H51M83 32H104"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    />
+                    <path
+                      d="M47 29L51 32L47 35M100 29L104 32L100 35"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    />
+                    {(
+                      [
+                        ['ibm-process', 'translate(4 18) scale(.3 .28)'],
+                        ['ibm-decision', 'translate(51 13) scale(.32 .38)'],
+                        ['ibm-document', 'translate(104 18) scale(.3 .3)'],
+                      ] as const
+                    ).map(([id, transform]) => (
+                      <path
+                        key={id}
+                        data-ibm-preview={id}
+                        d={getIbmSymbol(id)!.outlinePath}
+                        transform={transform}
+                        fill="var(--surface)"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        vectorEffect="non-scaling-stroke"
+                        strokeLinejoin="round"
+                      />
+                    ))}
+                  </svg>
+                ) : t.key === 'time-series-analysis' ? (
                   <svg viewBox="0 0 140 64">
                     <path d="M8 52H132M8 8V52" fill="none" stroke="currentColor" opacity=".3" />
                     <path
@@ -104,20 +144,22 @@ export function NewDiagram({ close }: { close: () => void }) {
               </div>
               <b>{templateLabel(translate, t.key, t.name)}</b>
               <small>
-                {t.key === 'time-series-analysis'
-                  ? 'Import → Explore → Measure → Detect → Validate → Simulate'
-                  : t.key === 'process-simulator-blank'
-                    ? translate('dialogs.templateGuidedProcessHint')
-                    : t.key === 'process-simulator'
-                      ? translate('dialogs.templateKioskHint')
-                      : t.key === 'delivery-network-simulator'
-                        ? translate('dialogs.templateNestedProcessHint')
-                        : t.nodes
-                          ? translate('dialogs.templateCounts', {
-                              count: t.nodes,
-                              type: diagramModeLabel(translate, t.type),
-                            })
-                          : translate('dialogs.blankTemplateHint')}
+                {t.key === 'ibm-flowcharting'
+                  ? '26 stencil cutouts + completed symbols'
+                  : t.key === 'time-series-analysis'
+                    ? 'Import → Explore → Measure → Detect → Validate → Simulate'
+                    : t.key === 'process-simulator-blank'
+                      ? translate('dialogs.templateGuidedProcessHint')
+                      : t.key === 'process-simulator'
+                        ? translate('dialogs.templateKioskHint')
+                        : t.key === 'delivery-network-simulator'
+                          ? translate('dialogs.templateNestedProcessHint')
+                          : t.nodes
+                            ? translate('dialogs.templateCounts', {
+                                count: t.nodes,
+                                type: diagramModeLabel(translate, t.type),
+                              })
+                            : translate('dialogs.blankTemplateHint')}
               </small>
             </button>
           ))}

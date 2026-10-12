@@ -403,6 +403,12 @@ export const useEditor = create<Editor>((set, get) => ({
   beginEditing: (id) => {
     const state = get();
     if (state.editingNode === id) return;
+    if (!state.graph) return;
+    try {
+      collaborationPermissions.assertWrite(state.graph.diagram.id);
+    } catch {
+      return;
+    }
     state.finishEditing();
     const node = get().graph?.nodes.find((node) => node.id === id);
     if (node) set({ editingNode: id, editingTitle: node.title, focusNode: id });

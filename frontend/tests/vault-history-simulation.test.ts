@@ -8,6 +8,7 @@ import { EncryptedWorkspaceDatabase } from '../src/storage/encrypted-database';
 import { Repository } from '../src/storage/repository';
 import type { WorkspaceStorage } from '../src/storage/contracts';
 import { blankGraph, newNode } from '../src/model/types';
+import { ibmSymbols } from '../src/flowchart/ibm-symbols';
 import { parseCsv } from '../src/data/csv';
 import { HistoryStore } from '../src/history/store';
 import * as historyCodec from '../src/history/codec';
@@ -116,6 +117,65 @@ async function simulator() {
 }
 
 describe('history and simulation retain their originating encrypted scope', () => {
+  it('preserves all IBM stencil appearances through encryption, snapshots and backup restoration', async () => {
+    const source = blankGraph('Private IBM stencil catalog', 'flowchart');
+    source.nodes = ibmSymbols.map((symbol, index) =>
+      newNode(source.diagram.id, {
+        title: symbol.label,
+        nodeType: symbol.nodeType,
+        flowchartSymbol: symbol.id,
+        backgroundColor: index % 2 ? '#112233' : '#fFeEdD',
+        color: '#567890',
+      }),
+    );
+    const original = await repo.saveGraph(source, 0);
+    const appearance = (graph: typeof source) =>
+      graph.nodes.map(({ flowchartSymbol, backgroundColor, color }) => ({
+        flowchartSymbol,
+        backgroundColor,
+        color,
+      }));
+    expect(appearance(await repo.getGraph(original.diagram.id))).toEqual(appearance(source));
+    expect(
+      (await repo.getGraph(original.diagram.id)).nodes.map((node) => node.flowchartSymbol),
+    ).toEqual(source.nodes.map((node) => node.flowchartSymbol));
+    const snapshot = await repo.history.create(original.diagram.id, {
+      name: 'All original and revised appearances',
+      baseVersion: original.diagram.version,
+    });
+    const archived = await repo.history.read(original.diagram.id, snapshot.id);
+    expect(appearance(archived.graph)).toEqual(appearance(original));
+    expect(archived.graph.nodes.map((node) => node.flowchartSymbol)).toEqual(
+      original.nodes.map((node) => node.flowchartSymbol),
+    );
+    const backup = await db.backup();
+    await repo.request(`/nodes/${original.nodes[0].id}`, 'PATCH', {
+      version: original.nodes[0].version,
+      flowchartSymbol: null,
+      backgroundColor: null,
+    });
+    const restored = await repo.restore(backup, 'replace');
+    expect(appearance(restored.find((graph) => graph.diagram.id === original.diagram.id)!)).toEqual(
+      appearance(original),
+    );
+    expect(
+      restored
+        .find((graph) => graph.diagram.id === original.diagram.id)!
+        .nodes.map((node) => node.flowchartSymbol),
+    ).toEqual(original.nodes.map((node) => node.flowchartSymbol));
+    const restoredSnapshot = (await repo.history.list(original.diagram.id)).find(
+      (item) => item.name === snapshot.name,
+    )!;
+    expect(
+      appearance((await repo.history.read(original.diagram.id, restoredSnapshot.id)).graph),
+    ).toEqual(appearance(original));
+    expect(
+      (await repo.history.read(original.diagram.id, restoredSnapshot.id)).graph.nodes.map(
+        (node) => node.flowchartSymbol,
+      ),
+    ).toEqual(original.nodes.map((node) => node.flowchartSymbol));
+  });
+
   it('rolls back the safety snapshot and graph together when the scoped restore saver fails', async () => {
     const original = await diagram();
     const snapshot = await repo.history.create(original.diagram.id, {

@@ -1,0 +1,11 @@
+.vn-node[data-node-background],
+.mindmap-topic[data-node-background] {
+  color: var(--text);
+}
+.vn-node[data-node-background]:not(.shape-ibm),
+.mindmap-topic[data-node-background] {
+  background: var(--node-bg);
+}
+.mindmap-topic[data-node-background] .topic-title {
+  color: var(--text);
+}

@@ -14,6 +14,7 @@ cp node_modules/swagger-ui-dist/swagger-ui.css node_modules/swagger-ui-dist/swag
 cp "$VN_ROOT/docs/openapi.yaml" "$VN_ROOT/hugo/static/openapi.yaml"
 cd "$VN_ROOT"
 node scripts/licenses.mjs "$VN_GO"
+node scripts/help-flowchart-symbols.mjs
 hugo --source hugo --destination "$VN_ROOT/public" --cleanDestinationDir --baseURL "${SITE_URL:-https://visualnerve.caripson.com/}"
 if [[ "${HUGO_PARAMS_ENVIRONMENT:-}" == 'production' ]]; then
   node "$VN_ROOT/scripts/retire-public-workspace.mjs" "$VN_ROOT/public"

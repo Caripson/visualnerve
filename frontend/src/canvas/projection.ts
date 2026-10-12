@@ -15,6 +15,7 @@ import type { ExplorationResult } from '../analysis/types';
 import { importedConnectionStyle } from '../imports/diagram/presentation';
 import { isReadonlyCanvasNode } from './logical-geometry';
 import { SimulationCardSizing } from '../simulation/card-sizing';
+import { ibmSavedHandle } from '../flowchart/ibm-ports';
 export type NodeData = {
   node: GraphNode;
   owners: Owner[];
@@ -322,12 +323,16 @@ export function projectGraph(
       ? String(e.metadata.simulationProcessSourceHandle)
       : mindmap && source?.nodeType !== 'group'
         ? `source-${right ? 'right' : 'left'}`
-        : undefined;
+        : !mindmap
+          ? ibmSavedHandle(source, 'source', e.metadata.sourceHandle)
+          : undefined;
     const targetHandle = processPath
       ? String(e.metadata.simulationProcessTargetHandle)
       : mindmap && target?.nodeType !== 'group'
         ? `target-${right ? 'left' : 'right'}`
-        : undefined;
+        : !mindmap
+          ? ibmSavedHandle(target, 'target', e.metadata.targetHandle)
+          : undefined;
     const presentation = `${mindmap}:${!!branch}:${color}:${strokeWidth}:${sourceHandle}:${targetHandle}`;
     const cached = renderCache?.edges.get(e.id);
     if (

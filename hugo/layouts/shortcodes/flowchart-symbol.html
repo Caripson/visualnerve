@@ -1,0 +1,16 @@
+{{- $id := .Get "id" -}}
+{{- $symbol := index site.Data.flowchart_symbols $id -}}
+{{- if not $symbol -}}{{- errorf "Unknown flowchart help symbol %q in %s" $id .Page.File.Path -}}{{- end -}}
+{{- $title := .Get "title" | default $symbol.label -}}
+<section class="help-symbol-reference" id="{{ $id }}" data-symbol-category="{{ $symbol.category }}">
+  <div class="help-symbol-heading">
+    <svg class="help-flowchart-symbol" data-flowchart-symbol="{{ $id }}" viewBox="-12 -12 {{ add $symbol.width 24 }} {{ add $symbol.height 24 }}" role="img" aria-label="{{ $title }} symbol">
+      <g transform="scale({{ div $symbol.width 100.0 }} {{ div $symbol.height 100.0 }})">
+        <path d="{{ $symbol.outlinePath }}" vector-effect="non-scaling-stroke"/>
+        {{- range $symbol.detailPaths }}<path d="{{ . }}" vector-effect="non-scaling-stroke"/>{{ end -}}
+      </g>
+    </svg>
+    <h3>{{ $title }}</h3>
+  </div>
+  <div>{{ .Inner | markdownify }}</div>
+</section>

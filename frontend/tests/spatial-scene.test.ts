@@ -561,6 +561,44 @@ it('keeps the same 2D face colors and inherited branch borders in relief batches
   disposeSpatialScene(changedBatches.group);
 });
 
+it.each(['flowchart', 'mindmap'] as const)(
+  'preserves a separate background fill in %s relief without changing the border accent',
+  (type) => {
+    const graph = blankGraph('Custom relief fill', type);
+    const parent = newNode(graph.diagram.id, { title: 'Parent' });
+    const node = newNode(graph.diagram.id, {
+      title: 'Review',
+      parentId: type === 'mindmap' ? parent.id : undefined,
+      color: '#775491',
+      backgroundColor: '#172d55',
+      flowchartSymbol: type === 'flowchart' ? 'ibm-decision' : undefined,
+    });
+    graph.nodes = [parent, node];
+    const projection = projectGraph(graph, []);
+    const view = projection.nodes.find((item) => item.id === node.id)!;
+    expect(spatialNodeAppearance(view)).toEqual({
+      background: '#172d55',
+      color: '#ffffff',
+      accent: '#775491',
+    });
+    const batches = createSpatialBatches(
+      projection.nodes,
+      [],
+      new Map([
+        [parent.id, { x: 0, y: 0, z: 0 }],
+        [node.id, { x: 3, y: 0, z: 0 }],
+      ]),
+    );
+    const entry = batches.nodes.get(node.id)!;
+    const color = new THREE.Color();
+    entry.mesh.getColorAt(entry.index, color);
+    expect(color.getHexString()).toBe('172d55');
+    disposeSpatialScene(batches.group);
+    delete view.data.node.backgroundColor;
+    expect(spatialNodeAppearance(view).background).not.toBe('#172d55');
+  },
+);
+
 it('represents five thousand canonical objects and links in a handful of GPU batches', () => {
   const graph = blankGraph('Thousands of objects');
   graph.nodes = Array.from({ length: 5000 }, (_, index) =>

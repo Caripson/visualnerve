@@ -1,0 +1,23 @@
+.node-title.is-title-editing {
+  max-height: none;
+  min-height: 44px;
+  overflow: visible;
+}
+.node-title-input {
+  width: 100%;
+  min-height: 44px;
+  height: 64px;
+  max-height: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 4px 6px;
+  resize: none;
+  font: inherit;
+  line-height: inherit;
+  text-align: inherit;
+  color: inherit;
+  background: var(--node-bg);
+  border: 1px solid var(--node-accent, var(--accent));
+  border-radius: 4px;
+  outline-offset: 2px;
+}

@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import * as lucide from 'lucide-react';
 import { svgIcons } from '../src/export/svg-icons';
 import { describe, expect, it } from 'vitest';
-import { blankGraph, newNode, newEdge } from '../src/model/types';
+import { blankGraph, newNode, newEdge, nodeKinds } from '../src/model/types';
 import { SvgModelRenderer } from '../src/export/svg-model-renderer';
 import { SvgTextLayout, svgPaint, svgIcon } from '../src/export/svg-native';
 import { absoluteSVGPositions, svgScene } from '../src/export/svg-scene';
@@ -14,6 +14,7 @@ import type { SvgWorkerRequest } from '../src/export/svg-job-types';
 import { createSimulationGraph } from '../src/simulation/document';
 import { SimulationEngine } from '../src/simulation/engine';
 import { parallelModel } from './helpers/parallel-model';
+import { topicInk } from '../src/ui/colors';
 const measure = { measure: (text: string, size: number) => Array.from(text).length * size * 0.55 };
 const formatter = new MessageFormatter('en', en);
 function fixture(): SvgWorkerRequest {
@@ -54,6 +55,95 @@ function fixture(): SvgWorkerRequest {
 }
 const parse = (svg: string) => new DOMParser().parseFromString(svg, 'image/svg+xml');
 describe('background native SVG model renderer', () => {
+  it.each(['#172d55', '#fff2c7'])(
+    'exports exact %s node fill and contrasting titles across every ordinary kind and IBM, then restores the theme',
+    (backgroundColor) => {
+      const input = fixture();
+      input.graph.edges = [];
+      input.graph.nodes = [
+        ...nodeKinds.map((nodeType, index) =>
+          newNode(input.graph.diagram.id, {
+            title: `Review ${nodeType}`,
+            nodeType,
+            backgroundColor,
+            color: '#775491',
+            x: index * 300,
+          }),
+        ),
+        newNode(input.graph.diagram.id, {
+          title: 'IBM decision',
+          flowchartSymbol: 'ibm-decision',
+          backgroundColor,
+          color: '#775491',
+        }),
+      ];
+      const doc = parse(new SvgModelRenderer(measure).render(input, formatter).svg);
+      for (const node of input.graph.nodes) {
+        const card = doc.querySelector(`[data-node-id="${node.id}"]`)!,
+          outline = card.querySelector('[data-ibm-outline]') ?? card.querySelector(':scope > rect');
+        expect(outline?.getAttribute('fill'), node.nodeType).toBe(backgroundColor);
+        expect(outline?.getAttribute('fill-opacity')).toBeNull();
+        expect(
+          [...card.querySelectorAll('text')].every(
+            (text) => text.getAttribute('fill') === topicInk(backgroundColor),
+          ),
+        ).toBe(true);
+      }
+      for (const node of input.graph.nodes) delete node.backgroundColor;
+      const cleared = parse(new SvgModelRenderer(measure).render(input, formatter).svg);
+      expect(cleared.querySelector('[data-ibm-outline]')?.getAttribute('fill')).toBe(
+        input.theme.node,
+      );
+      const group = input.graph.nodes.find((node) => node.nodeType === 'group')!;
+      expect(
+        cleared.querySelector(`[data-node-id="${group.id}"] > rect`)?.getAttribute('fill-opacity'),
+      ).toBe('0.03');
+      const process = input.graph.nodes.find((node) => node.nodeType === 'process')!;
+      expect(
+        cleared.querySelector(`[data-node-id="${process.id}"] > rect`)?.getAttribute('fill'),
+      ).toBe(input.theme.node);
+    },
+  );
+  it('overrides mind-map branch fills at every depth while preserving icons, branch accents and status palettes', () => {
+    const input = fixture();
+    input.graph.diagram.type = 'mindmap';
+    input.graph.edges = [];
+    input.graph.nodes = ['#172d55', '#fff2c7', '#172d55'].map((backgroundColor, index) =>
+      newNode(input.graph.diagram.id, {
+        title: `Review depth ${index}`,
+        color: '#775491',
+        backgroundColor,
+        metadata: { visualNerve: { icon: 'work' } },
+        status: 'done',
+      }),
+    );
+    input.graph.nodes[1].parentId = input.graph.nodes[0].id;
+    input.graph.nodes[2].parentId = input.graph.nodes[1].id;
+    const doc = parse(new SvgModelRenderer(measure).render(input, formatter).svg);
+    for (const node of input.graph.nodes) {
+      const card = doc.querySelector(`[data-node-id="${node.id}"]`)!;
+      expect(card.querySelector(':scope > rect')?.getAttribute('fill')).toBe(node.backgroundColor);
+      expect(card.querySelector('g[clip-path] text')?.getAttribute('fill')).toBe(
+        topicInk(node.backgroundColor!),
+      );
+      expect(card.querySelector('g[clip-path] > g')?.getAttribute('stroke')).toBe(
+        node === input.graph.nodes[1] ? topicInk(node.backgroundColor!) : '#775491',
+      );
+      expect(card.querySelector('[data-status-badge="done"]')?.getAttribute('fill')).toBe(
+        input.theme.doneBackground,
+      );
+      expect(card.querySelector('[data-status-icon="done"]')?.getAttribute('stroke')).toBe(
+        input.theme.doneText,
+      );
+    }
+    delete input.graph.nodes[1].backgroundColor;
+    const cleared = parse(new SvgModelRenderer(measure).render(input, formatter).svg);
+    expect(
+      cleared
+        .querySelector(`[data-node-id="${input.graph.nodes[1].id}"] > rect`)
+        ?.getAttribute('fill'),
+    ).toBe('#775491');
+  });
   it('emits selectable native text, existing Lucide geometry, arrows, colors and saved positions without DOM or images', () => {
     const input = fixture(),
       before = structuredClone(input.graph),

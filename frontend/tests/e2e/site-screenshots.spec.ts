@@ -211,12 +211,18 @@ test('capture four distinct real app views at device viewport sizes', async ({ p
   await page.getByLabel('Simulation duration hours').fill('24');
   await page.getByRole('button', { name: 'Play simulation' }).click();
   await expect(page.locator('.simulation-run-status')).toHaveText('completed');
+  // Keep the completed run and each node's metrics visible while making the diagram readable.
+  await page.getByRole('button', { name: 'Hide simulation metrics', exact: true }).click();
   await page.getByRole('button', { name: 'Fit diagram', exact: true }).click();
+  await page.waitForTimeout(450);
+  await page.getByRole('button', { name: 'Zoom In', exact: true }).click();
   await page.waitForTimeout(450);
   const simulationNodes = page.locator('.canvas-shell [data-testid="graph-node"]');
   await expect(simulationNodes).toHaveCount(8);
-  for (const node of await simulationNodes.all())
+  for (const node of await simulationNodes.all()) {
     await expect(node).toBeInViewport({ ratio: 0.999 });
+    expect((await node.boundingBox())!.width).toBeGreaterThanOrEqual(150);
+  }
   await save(page, 'desktop');
 
   await page.setViewportSize({ width: 1440, height: 900 });

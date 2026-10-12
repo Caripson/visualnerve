@@ -97,7 +97,7 @@ func TestGeneratedPortableCollaborationReferencesAndVersionedEndpoints(t *testin
 			t.Fatal("missing live action resource/recovery contract", phrase)
 		}
 	}
-	if document["info"].(object)["version"] != "0.8.2" {
+	if document["info"].(object)["version"] != "0.8.3" {
 		t.Fatal("document collaboration requires current additive API version")
 	}
 }

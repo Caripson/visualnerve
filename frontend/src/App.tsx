@@ -640,14 +640,9 @@ export function App() {
       } else if (key === 'delete' || key === 'backspace') {
         e.preventDefault();
         s.remove(e.shiftKey);
-      } else if (
-        key === 'f2' &&
-        s.graph?.diagram.type === 'mindmap' &&
-        s.selectedNodes.length === 1
-      ) {
+      } else if (key === 'f2' && s.graph && s.selectedNodes.length === 1) {
         e.preventDefault();
-        if (getSpatialView(s.graph!).mode === '2d') s.beginEditing(s.selectedNodes[0]);
-        else useEditor.setState({ mobilePanel: 'details' });
+        s.beginEditing(s.selectedNodes[0]);
       } else if (
         s.graph?.diagram.type === 'mindmap' &&
         s.selectedNodes.length &&

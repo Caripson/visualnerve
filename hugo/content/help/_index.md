@@ -14,6 +14,8 @@ Visual Nerve turns ideas, data and code into diagrams you can explore, annotate,
 | --- | --- |
 | Get a first diagram onto the canvas | [Your first diagram](/help/getting-started/) |
 | Connect, group and mark objects as done | [Editing objects and relationships](/help/editing/) |
+| Draw a classic IBM flowchart in 2D or 3D | [IBM flowchart symbols](/help/ibm-flowcharting/) |
+| Understand which flowchart shape to choose | [Symbol meanings and practical examples](/help/flowchart-symbols/) |
 | Understand a large CSV without losing its relationships | [Explore a CSV](/help/csv/), then [connect and refresh sources](/help/connected-data/) |
 | See what a query or codebase depends on | [SQL queries and schemas](/help/sql/) or [source code](/help/code/) |
 | Find where capacity or queues hurt a business | [Process Simulator](/help/simulation/) |
@@ -44,6 +46,9 @@ These entry points keep earlier links and bookmarks useful.
 
 ### Edit your graph
 [Edit objects and relationships](/help/editing/) or [explore the same diagram in 3D](/help/3d/).
+
+### IBM flowcharting
+[Choose and edit the IBM stencil's completed symbols](/help/ibm-flowcharting/) in 2D and 3D, or [learn what every symbol means and when to use it](/help/flowchart-symbols/).
 
 ### Present a numbered walkthrough
 [Number objects, play, minimize, add narration and export video](/help/presentations/).

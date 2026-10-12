@@ -1,5 +1,33 @@
 # Acceptance evidence
 
+## IBM flowcharting and object appearance — 2026-10-12
+
+The [IBM flowcharting guide](IBM_FLOWCHARTING.md) records the primary-source scope: 43 catalog choices, comprising 32 completed revised symbols, two raw apertures, four arrowheads and five original forms. The original GX20-8020 stencil has 25 apertures; the revised -1/-2 stencils have 26. Revision membership describes shared outlines, while `/flowchart/stencils` exposes the original labels where their meanings differ. The [symbol-use reference](../hugo/content/help/flowchart-symbols.md) explains when to choose every shape and distinguishes Parallel Mode notation from simulator fork/join behavior.
+
+Browser API, OpenAPI and MCP discovery use version 0.8.3 and `ibm-flowcharting-v1`. Optional `flowchartSymbol` and `backgroundColor` survive canonical storage, encrypted history/backups and collaboration. Full/new records require a catalog symbol and a six-digit hexadecimal fill when supplied; partial edits preserve omitted values and clear either optional field with `null`. The fill is separate from the existing accent color. The retired SD-WAN template is removed only when it is the old built-in record; custom templates and previously created graphs remain.
+
+Recorded focused checks:
+
+| Check | Executed result |
+| --- | --- |
+| API, permission, collaboration and encrypted round trips | 53 tests passed across the focused IBM/appearance/collaboration/vault files; includes all 43 symbols with fills, null clearing, invalid-import rollback and concurrent title/appearance edits |
+| Bridge diagnostics, lifecycle, setup and settings | 46 tests passed; a pre-IBM 0.8.2 bridge warns, while the current capabilities satisfy discovery |
+| Shared Help geometry and public documentation accessibility | 8 tests passed in two files; all 43 labels, categories, outlines, details and recommended proportions match the editor catalog |
+| Isolated Hugo build and strict static audit | Build passed; 1,042 files audited, 352 offline assets, including the new reference page |
+| Isolated Chrome rendering | All 43 miniatures and their category counts verified at 1,440, 390 and 320 px with system, explicit light and explicit dark Appearance choices; no horizontal overflow, and SVG strokes inherit the actual palette |
+| Complete non-browser checks | `./scripts/test.sh` passed: 3,970 frontend tests in 358 files, Go race tests/vet and formatting; the frontend suite took 663.51 seconds |
+| Browser regression suite | 341 cases: 324 passed, 15 opt-in cases skipped and two failures; all five IBM cases passed, including native contour ports, readable front/back relief and touch editing |
+| Fresh browser recovery and screenshot workflows | 50 cases passed in 7.2 minutes, including all three MCP operation cases, all four parallel-process cases and the 14 screenshot opt-ins previously skipped |
+| Actual-app collaboration capture | Disposable local relay and isolated owner/editor/viewer profiles passed shared edits, comments, replies, task assignment/status and room closure; 20 light/dark WebPs match their verified PNGs losslessly |
+| Final rendered-page verification | 56 browser cases passed in 3.0 minutes after the final image rebuild: 20-guide Help, symbol search, anchors, offline images, Appearance, API reference and public pages at 320/390/768/1,440 px |
+| Final build and budgets | Vite/Hugo/OpenAPI/Go build passed; 1,042 audited files and 352 offline assets; entry 396,577 bytes, initial static-import closure 907,295 bytes, largest main-thread chunk 396,577 bytes, within unchanged release gates |
+
+The MCP failure was a Chrome context-creation stall before any page or test-body operation ran; its trace contains macOS Metal/display-link errors. It passed in the fresh browser without changing assertions or timeouts. The parallel fixture had been changed from a retired gallery template to programmatic model creation: its hierarchical overview intentionally does not save a temporary viewport. The fixture now selects **Show all steps** before its unchanged viewport/Saved assertions. No simulation or autosave behavior was changed to make it pass.
+
+These runs verify 340 distinct browser cases across the complete regression and fresh capture runs. The optional live Alan voice/model-download check was not run; existing deterministic audio/video browser regressions passed. Captures use synthetic content in isolated profiles. All 69 Help light/dark pairs, four website device pairs and the social preview were refreshed and visually reviewed, with matching pair dimensions and no empty rasters. A final targeted site capture passed after collapsing the actual metrics panel and zooming through real controls: all eight kiosk nodes remain fully visible and at least 150 px wide. The CSV caption now describes the visible mapping/cleanup/filter area and explains scrolling to the grouping preview.
+
+The trusted generator `node scripts/help-flowchart-symbols.mjs` runs before Hugo and supports `--check` to reject catalog drift. Help embeds the generated paths as inline SVGs using the actual Appearance palette; it loads no editor module to display them. Verification used macOS, Node 22.17.0, Chrome 155.0.8059.39 and Hugo 0.148.2. Graph format 1 and workspace schema 8 remain unchanged: no new store or data migration is required. This entry does not claim a production deployment.
+
 ## Time Series & Signal Analysis
 
 The time-series feature has its own AT01–AT38 delivery contract and evidence ledger in
@@ -8,7 +36,7 @@ test fixtures, actual execution results, benchmark environment, encrypted persis
 Use that ledger for current analytics evidence; the historical results below describe their stated revisions.
 Production deployment is a separate manual workflow.
 
-Initial acceptance was verified on 2026-10-05 in the provided Linux/WSL workspace with Go 1.27.1, Node 24.2.0, Hugo 0.165.0 and Playwright Chromium. Later verification records follow below; the [2026-10-07 product audit](#2026-10-07-deep-product-audit) is the latest. [REQUIREMENTS.md](REQUIREMENTS.md) maps each specification section to its implementation and checks.
+Initial acceptance was verified on 2026-10-05 in the provided Linux/WSL workspace with Go 1.27.1, Node 24.2.0, Hugo 0.165.0 and Playwright Chromium. Historical verification records below describe their stated revisions, including the [2026-10-07 product audit](#2026-10-07-deep-product-audit). [REQUIREMENTS.md](REQUIREMENTS.md) maps each specification section to its implementation and checks.
 
 ## Final report
 

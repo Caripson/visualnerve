@@ -45,4 +45,41 @@ describe('built-in template metadata upgrades', () => {
     await database.initialize();
     expect(await database.templates.toArray()).toEqual(records);
   });
+
+  it('retires the old packaged parallel example while retaining created diagrams', async () => {
+    const database = new WorkspaceDatabase(`template-retirement-${crypto.randomUUID()}`);
+    databases.push(database);
+    await database.initialize();
+    const graph = instantiate('process-simulator', 'My saved parallel process');
+    await database.diagrams.put(graph.diagram);
+    await database.templates.put({
+      id: 'parallel-delivery-simulator',
+      name: 'Old packaged example',
+      builtin: true,
+      graph,
+    });
+    // All current names already match; retirement must run before the no-op exit.
+    await database.initialize();
+    expect(await database.templates.get('parallel-delivery-simulator')).toBeUndefined();
+    expect(await database.diagrams.get(graph.diagram.id)).toEqual(graph.diagram);
+    expect(await database.templates.get('ibm-flowcharting')).toMatchObject({
+      builtin: true,
+      graph: { diagram: { type: 'flowchart' } },
+    });
+  });
+
+  it('preserves a private custom template that uses the retired example key', async () => {
+    const database = new WorkspaceDatabase(`template-private-${crypto.randomUUID()}`);
+    databases.push(database);
+    await database.open();
+    const custom = {
+      id: 'parallel-delivery-simulator',
+      name: 'My own process template',
+      builtin: false,
+      graph: instantiate('process-simulator', 'Private process'),
+    };
+    await database.templates.put(custom);
+    await database.initialize();
+    expect(await database.templates.get(custom.id)).toEqual(custom);
+  });
 });

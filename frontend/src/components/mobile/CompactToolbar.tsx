@@ -91,6 +91,7 @@ export function CompactToolbar(props: CompactToolbarProps) {
           <Plus size={19} />
           <span>{mindmap ? t('mobile.topic') : t('mobile.node')}</span>
         </button>
+        {props.symbolTools}
         <button
           aria-label={t('toolbar.fitDiagram')}
           title={t('toolbar.fitDiagram')}

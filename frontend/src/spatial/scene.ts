@@ -3,6 +3,10 @@ import type { Edge } from '@xyflow/react';
 import type { CanvasNode } from '../canvas/projection';
 import type { SpatialPoint } from './types';
 import { topicInk } from '../ui/colors';
+import { getIbmSymbol, type IBMSymbolId } from '../flowchart/ibm-symbols';
+import { ibmConnectionFraction, ibmReliefGeometry } from './ibm-relief';
+import { paintIbmFace } from './ibm-face';
+import { nodeBackgroundColor } from '../nodes/appearance';
 
 export const SPATIAL_NODE_LIMIT = 8000;
 export const SPATIAL_EDGE_LIMIT = 16000;
@@ -24,6 +28,8 @@ export function spatialNodeDimensions(view: CanvasNode, scale = 1) {
 /** Match the inherited branch colors and foreground contrast of the 2D cards. */
 export function spatialNodeAppearance(view: CanvasNode) {
   const accent = view.data.mindmap?.color || view.data.node.color || '#538971';
+  const custom = nodeBackgroundColor(view.data.node.backgroundColor);
+  if (custom) return { background: custom, color: topicInk(custom), accent };
   const depth = view.data.mindmap?.depth;
   if (depth === 1) return { background: accent, color: topicInk(accent), accent };
   const background = new THREE.Color('#ffffff');
@@ -162,6 +168,7 @@ export function spatialTextPlane(
     status?: string;
     kind?: string;
     fontSize?: number;
+    flowchartSymbol?: IBMSymbolId;
   } = {},
 ) {
   const width = options.width ?? 1.75;
@@ -171,49 +178,54 @@ export function spatialTextPlane(
   canvas.height = Math.max(96, Math.min(1024, Math.round((512 * height) / width)));
   const context = canvas.getContext('2d');
   if (!context) return undefined;
-  context.fillStyle = options.background ?? '#ffffff';
-  context.fillRect(0, 0, canvas.width, canvas.height);
-  context.fillStyle = options.color ?? '#182c25';
-  const fontSize = options.fontSize ?? Math.min(44, Math.max(22, canvas.height * 0.18));
-  const lineHeight = fontSize * 1.26;
-  context.font = `600 ${fontSize}px system-ui, sans-serif`;
-  context.textAlign = 'center';
-  context.textBaseline = 'middle';
-  const lines: string[] = [];
-  // Wrapping preserves useful titles on a card instead of placing a separate billboard above it.
-  for (const paragraph of text.split(/\r?\n/)) {
-    let line = '';
-    for (const word of paragraph.split(/\s+/)) {
-      const candidate = line ? `${line} ${word}` : word;
-      if (line && context.measureText(candidate).width > 456) {
-        lines.push(line);
-        line = word;
-      } else line = candidate;
-      while (context.measureText(line).width > 456 && line.length > 1) {
-        let length = line.length - 1;
-        while (length > 1 && context.measureText(line.slice(0, length)).width > 456) length--;
-        lines.push(line.slice(0, length));
-        line = line.slice(length);
+  const ibm = getIbmSymbol(options.flowchartSymbol);
+  if (ibm) paintIbmFace(context, ibm, text, options);
+  else {
+    context.fillStyle = options.background ?? '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = options.color ?? '#182c25';
+    const fontSize = options.fontSize ?? Math.min(44, Math.max(22, canvas.height * 0.18));
+    const lineHeight = fontSize * 1.26;
+    context.font = `600 ${fontSize}px system-ui, sans-serif`;
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    const lines: string[] = [];
+    // Wrapping preserves useful titles on a card instead of placing a separate billboard above it.
+    for (const paragraph of text.split(/\r?\n/)) {
+      let line = '';
+      for (const word of paragraph.split(/\s+/)) {
+        const candidate = line ? `${line} ${word}` : word;
+        if (line && context.measureText(candidate).width > 456) {
+          lines.push(line);
+          line = word;
+        } else line = candidate;
+        while (context.measureText(line).width > 456 && line.length > 1) {
+          let length = line.length - 1;
+          while (length > 1 && context.measureText(line.slice(0, length)).width > 456) length--;
+          lines.push(line.slice(0, length));
+          line = line.slice(length);
+        }
       }
+      lines.push(line);
     }
-    lines.push(line);
-  }
-  const statusSpace = options.status ? Math.min(38, canvas.height * 0.17) : 0;
-  const maxLines = Math.max(1, Math.floor((canvas.height - 28 - statusSpace) / lineHeight));
-  const visible = lines.slice(0, maxLines);
-  if (lines.length > maxLines) {
-    let last = visible.at(-1)!;
-    while (last.length > 1 && context.measureText(`${last}…`).width > 456) last = last.slice(0, -1);
-    visible[visible.length - 1] = `${last}…`;
-  }
-  const titleCenter = (canvas.height - statusSpace) / 2;
-  visible.forEach((line, index) =>
-    context.fillText(line, 256, titleCenter + (index - (visible.length - 1) / 2) * lineHeight),
-  );
-  if (options.status) {
-    context.font = `600 ${Math.min(24, fontSize * 0.65)}px system-ui, sans-serif`;
-    const label = `${isCompletedStatus(options.status) ? '✓ ' : ''}${options.status}`;
-    context.fillText(label, 256, canvas.height - statusSpace / 2 - 5, 456);
+    const statusSpace = options.status ? Math.min(38, canvas.height * 0.17) : 0;
+    const maxLines = Math.max(1, Math.floor((canvas.height - 28 - statusSpace) / lineHeight));
+    const visible = lines.slice(0, maxLines);
+    if (lines.length > maxLines) {
+      let last = visible.at(-1)!;
+      while (last.length > 1 && context.measureText(`${last}…`).width > 456)
+        last = last.slice(0, -1);
+      visible[visible.length - 1] = `${last}…`;
+    }
+    const titleCenter = (canvas.height - statusSpace) / 2;
+    visible.forEach((line, index) =>
+      context.fillText(line, 256, titleCenter + (index - (visible.length - 1) / 2) * lineHeight),
+    );
+    if (options.status) {
+      context.font = `600 ${Math.min(24, fontSize * 0.65)}px system-ui, sans-serif`;
+      const label = `${isCompletedStatus(options.status) ? '✓ ' : ''}${options.status}`;
+      context.fillText(label, 256, canvas.height - statusSpace / 2 - 5, 456);
+    }
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -221,11 +233,32 @@ export function spatialTextPlane(
   texture.minFilter = THREE.LinearFilter;
   const face = new THREE.Mesh(
     new THREE.PlaneGeometry(width, height),
-    new THREE.MeshBasicMaterial({ map: texture, side: THREE.FrontSide }),
+    new THREE.MeshBasicMaterial({
+      map: texture,
+      side: THREE.FrontSide,
+      transparent: !!ibm,
+      alphaTest: ibm ? 0.01 : 0,
+    }),
   );
+  face.userData.flowchartSymbol = options.flowchartSymbol;
   face.userData.faceWidth = width;
   face.userData.faceHeight = height;
   const back = new THREE.Mesh(face.geometry, face.material);
+  if (ibm) {
+    const backCanvas = document.createElement('canvas');
+    backCanvas.width = canvas.width;
+    backCanvas.height = canvas.height;
+    const backContext = backCanvas.getContext('2d');
+    if (backContext) {
+      paintIbmFace(backContext, ibm, text, options, true);
+      const backTexture = new THREE.CanvasTexture(backCanvas);
+      backTexture.colorSpace = THREE.SRGBColorSpace;
+      backTexture.generateMipmaps = false;
+      backTexture.minFilter = THREE.LinearFilter;
+      back.material = face.material.clone();
+      back.material.map = backTexture;
+    }
+  }
   // A separate outward-facing surface preserves the texture's left-to-right UVs.
   // Its local offset puts it just behind the relief, independently of card rotation.
   back.rotation.y = Math.PI;
@@ -239,14 +272,16 @@ export function spatialTextPlane(
 
 /** Native textures contain translucent fills and antialiased edges on both sides. */
 export function setSpatialFaceOpacity(face: SpatialFaceMesh, opacity: number) {
-  const transparent = face.userData.faceSource === '2d-node' || opacity < 1;
-  if (face.material.transparent !== transparent) {
-    face.material.transparent = transparent;
-    face.material.needsUpdate = true;
-  }
-  face.material.opacity = opacity;
-  for (const surface of spatialFaceSurfaces(face))
+  const transparent =
+    face.userData.faceSource === '2d-node' || !!face.userData.flowchartSymbol || opacity < 1;
+  for (const surface of spatialFaceSurfaces(face)) {
+    if (surface.material.transparent !== transparent) {
+      surface.material.transparent = transparent;
+      surface.material.needsUpdate = true;
+    }
+    surface.material.opacity = opacity;
     surface.userData.faceSource = face.userData.faceSource;
+  }
 }
 
 export function isCompletedStatus(status: string | undefined) {
@@ -296,6 +331,7 @@ interface ReliefProfile {
   radiusY: number;
   skew: number;
   inset: number;
+  symbol?: IBMSymbolId;
 }
 
 function reliefProfile(view: CanvasNode): ReliefProfile {
@@ -325,6 +361,7 @@ function reliefProfile(view: CanvasNode): ReliefProfile {
   // Quantize outwards so the relief cannot fill a transparent rounded face corner.
   const quantize = (value: number) => Math.min(0.5, Math.ceil(value * 512) / 512);
   return {
+    symbol: view.data.mindmap ? undefined : getIbmSymbol(view.data.node.flowchartSymbol)?.id,
     opacity: Number(view.style?.opacity ?? 1) * (kind === 'group' ? 0.03 : 1),
     radiusX: quantize(radius / (dimensions.width * 100)),
     radiusY: quantize((kind === 'database' ? 8 : radius) / (dimensions.height * 100)),
@@ -354,6 +391,7 @@ function clipReliefContour(points: THREE.Vector2[], boundary: number, keepLeft: 
 }
 
 function reliefGeometry(profile: ReliefProfile) {
+  if (profile.symbol) return ibmReliefGeometry(profile.symbol);
   const { radiusX: x, radiusY: y } = profile;
   const shape = new THREE.Shape();
   shape.moveTo(-0.5 + x, -0.5);
@@ -394,13 +432,19 @@ export function cardConnectionPoint(
   destination: SpatialPoint,
   dimensions: THREE.Vector3,
   scale: number,
+  symbol?: IBMSymbolId,
 ) {
   const direction = new THREE.Vector2(destination.x - point.x, destination.y - point.y);
-  const distance = Math.min(
-    direction.x ? dimensions.x / (2 * Math.abs(direction.x)) : Infinity,
-    direction.y ? dimensions.y / (2 * Math.abs(direction.y)) : Infinity,
-    0.48,
-  );
+  const symbolFraction = symbol
+    ? ibmConnectionFraction(symbol, direction.x / dimensions.x, direction.y / dimensions.y)
+    : undefined;
+  const distance =
+    symbolFraction ??
+    Math.min(
+      direction.x ? dimensions.x / (2 * Math.abs(direction.x)) : Infinity,
+      direction.y ? dimensions.y / (2 * Math.abs(direction.y)) : Infinity,
+      0.48,
+    );
   return {
     x: point.x + direction.x * distance,
     y: point.y + direction.y * distance,
@@ -427,7 +471,9 @@ export function createSpatialBatches(
   const nodeGroups = new Map<string, CanvasNode[]>();
   const profiles = new Map<string, ReliefProfile>();
   const profileKey = (profile: ReliefProfile) =>
-    `${profile.opacity}:${profile.radiusX}:${profile.radiusY}:${profile.skew}:${profile.inset}`;
+    profile.symbol
+      ? `${profile.opacity}:${profile.symbol}`
+      : `${profile.opacity}:${profile.radiusX}:${profile.radiusY}:${profile.skew}:${profile.inset}`;
   const fallbacks = new Map<number, string>();
   // Reserve a conservative fallback for each projection opacity (normally 1 and 0.2).
   const requestedProfiles = new Map(nodes.map((view) => [view.id, reliefProfile(view)]));
@@ -457,10 +503,15 @@ export function createSpatialBatches(
     const requested = requestedProfiles.get(view.id)!;
     let key = profileKey(requested);
     if (!profiles.has(key)) {
-      if (profiles.size < 32) profiles.set(key, requested);
+      if (
+        requested.symbol ||
+        [...profiles.values()].filter((profile) => !profile.symbol).length < 32
+      )
+        profiles.set(key, requested);
       else {
         const suitable = [...profiles].filter(
           ([, profile]) =>
+            !profile.symbol &&
             profile.opacity === requested.opacity &&
             profile.skew === requested.skew &&
             profile.radiusX >= requested.radiusX &&
@@ -588,8 +639,20 @@ export function createSpatialBatches(
     let points =
       !selfLoop && sourceDimensions && targetDimensions
         ? spatialEdgePoints(
-            cardConnectionPoint(source, target, sourceDimensions, scale),
-            cardConnectionPoint(target, source, targetDimensions, scale),
+            cardConnectionPoint(
+              source,
+              target,
+              sourceDimensions,
+              scale,
+              result.nodes.get(edge.source)?.mesh.geometry.userData.flowchartSymbol,
+            ),
+            cardConnectionPoint(
+              target,
+              source,
+              targetDimensions,
+              scale,
+              result.nodes.get(edge.target)?.mesh.geometry.userData.flowchartSymbol,
+            ),
             false,
             scale,
           )

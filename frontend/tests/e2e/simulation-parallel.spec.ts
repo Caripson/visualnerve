@@ -10,6 +10,7 @@ import type {
 import { createBasicModel } from '../../src/simulation/examples';
 import { runSimulation } from '../../src/simulation/engine';
 import { parallelModel } from '../helpers/parallel-model';
+import { ParallelDeliveryExample } from '../../src/simulation/parallel-delivery-example';
 
 async function semantic<T>(
   request: APIRequestContext,
@@ -65,6 +66,8 @@ async function create(request: APIRequestContext, name: string, model: Simulatio
 async function open(page: Page, request: APIRequestContext, graph: Graph) {
   await page.locator(`button[data-diagram-id="${graph.diagram.id}"]`).click();
   await expect(page.getByRole('region', { name: 'Process Simulator', exact: true })).toBeVisible();
+  // Save the canonical all-steps viewport; process overview is a temporary view.
+  await showAll(page);
   await expect
     .poll(async () => {
       const current = await semantic<Graph>(request, `/diagrams/${graph.diagram.id}`);
@@ -183,16 +186,16 @@ async function captureWaitingGuide(page: Page, graph: Graph, joinId: string) {
   await page.setViewportSize({ width: 1440, height: 980 });
 }
 
-test('parallel delivery template runs real required branches with identical UI, REST and MCP business results', async ({
+test('parallel delivery model runs real required branches with identical UI, REST and MCP business results', async ({
   page,
   request,
 }) => {
-  await page.getByRole('button', { name: /^New diagram/ }).click();
-  const creation = page.getByRole('dialog', { name: 'New diagram', exact: true });
-  await creation.getByRole('button', { name: /^Parallel SD-WAN delivery/ }).click();
-  await creation.getByLabel('New diagram name').fill('Required SD-WAN delivery');
-  await creation.getByRole('button', { name: 'Create diagram', exact: true }).click();
-  await saved(page);
+  const created = await create(
+    request,
+    'Required SD-WAN delivery',
+    new ParallelDeliveryExample().graph().simulation!,
+  );
+  await open(page, request, created);
   const graph = await graphFor(request, 'Required SD-WAN delivery');
   expect(graph.diagram.type).toBe('process-simulator');
   expect(graph.simulation).toMatchObject({ type: 'process-simulator', schemaVersion: 1 });

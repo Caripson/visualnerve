@@ -135,7 +135,7 @@ The app, the local bridge executable and your MCP client are three separate prog
 
 Before giving an agent workspace commands:
 
-1. Inspect the local `GET /api/v1/health` address shown in the copied instructions. The current bridge reports version **0.8.2**, both MCP tool names, and the capabilities `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1`, `collaboration-document-v1` and `analytics-v1`. Health contains public transport metadata; it does not read diagrams or unlock the workspace.
+1. Inspect the local `GET /api/v1/health` address shown in the copied instructions. The current bridge reports version **0.8.3**, both MCP tool names, and the capabilities `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1`, `collaboration-document-v1`, `analytics-v1` and `ibm-flowcharting-v1`. Health contains public transport metadata; it does not read diagrams or unlock the workspace.
 2. Reconnect or initialize the MCP client, then inspect its discovered tools. It should show both **visual_nerve_request** and **visual_nerve_api_docs**. A client can retain an old tool list until you reconnect it.
 3. Ask the agent to read the compact guide before making commands. For a particular endpoint, it can request a smaller contract containing that operation and every referenced schema:
 
@@ -393,6 +393,60 @@ Use `/code/project/preview` with strict base64 ZIP bytes. Read only can inspect 
 
 Choose `files`, `symbols` or `folders`. Folder nodes expose semantic `projectDirectory` metadata, combined dependencies expose `codeRelation.occurrences`, and `codeAnalysis.project` explains scan counts. Code and internal Markdown links use the same browser analysis as the UI. The 32 MiB envelope includes base64, so compressed archives must be below approximately 24 MiB and may need to be smaller. ZIP scan permits 120 seconds, followed by 30 seconds for analysis; these exact bridge routes allow 165 seconds. See [ZIP project help](/help/code/#import-a-zip-project) for exclusions, supported links and limits.
 
+## Rename and fill an object
+
+Read the object through `GET /nodes/{nodeId}` and use its current version to change its title or background:
+
+```json
+{
+  "path": "/nodes/<nodeId>",
+  "method": "PATCH",
+  "data": {
+    "version": 7,
+    "title": "Validate records",
+    "backgroundColor": "#E8F5EE"
+  }
+}
+```
+
+These ordinary node fields work with IBM symbols and other cards in 2D and 3D. `backgroundColor` is an optional six-digit hex fill; `color` remains the separate accent and outline. Omission in a partial update preserves the fill. Explicit `null` in PATCH or existing-node bulk upsert clears it so the current theme supplies the background. New or complete records accept a valid color or omission. Invalid values fail validation without applying the edit. UI renaming uses the same saved `title`; see [in-place editing](/help/editing/#rename-an-object-on-the-canvas).
+
+## Create and edit an IBM flowchart
+
+The [IBM Flowcharting Template](/help/ibm-flowcharting/) uses the same editable objects in 2D and 3D. Discover its catalog through the existing request tool:
+
+```json
+{ "path": "/flowchart/symbols", "method": "GET" }
+```
+
+The response is an array of 43 entries: 32 completed revised symbols, two raw stencil outlines, four arrowheads and five original forms. Exactly 26 have `physicalCutout: true`, scoped to the revised stencil. Each entry supplies its ID, label, ordinary node type, category, construction, revision membership and vector geometry. `GET /flowchart/stencils` returns the original 25-hole and two revised 26-hole inventories as `physicalCutoutSymbolIds` arrays; the original record's `symbolLabels` supplies historical names such as Processing/Annotation and Online Keyboard for shared IDs. These reads need an accepted, connected browser and either Read only or Read + write access.
+
+Create an editable diagram with Read + write:
+
+```json
+{
+  "path": "/diagrams",
+  "method": "POST",
+  "data": { "name": "IBM workflow", "template": "ibm-flowcharting" }
+}
+```
+
+The response is the saved Diagram with HTTP 201. Read its graph through `GET /diagrams/{diagramId}`. The template uses the ordinary `flowchart` type; it does not start a simulation.
+
+To change an existing object's symbol, read it first and send its current version:
+
+```json
+{
+  "path": "/nodes/<nodeId>",
+  "method": "PATCH",
+  "data": { "version": 7, "flowchartSymbol": "ibm-magnetic-disk" }
+}
+```
+
+Replace the example ID and version with saved values. The optional `flowchartSymbol` chooses appearance while retaining the existing `nodeType`. Omission in a partial update preserves it; explicit `null` in PATCH or existing-node bulk upsert removes it. New or complete objects accept a catalog ID or omission. Unknown IDs and invalid values fail validation. Use completed **Sort** or **Magnetic Tape** for their meaning; their aperture choices reproduce the bare stencil outlines.
+
+Native JSON and backups retain the ID; the shared catalog supplies 2D, 3D and SVG geometry. Existing permissions, version checks and [operation recovery](#recover-an-uncertain-write-without-creating-it-twice) apply. Direct REST uses the same paths prefixed by `/api/v1`; discover the complete schema in the [API reference](/api/docs/).
+
 ## Create ordinary diagram cards in 3D
 
 Create a spatial diagram through visual_nerve_request:
@@ -581,7 +635,7 @@ The IDs above are explanatory placeholders. Supply unique canonical node/edge UU
 
 Run the model through the existing simulation run endpoints. Original-case population and revenue remain single-counted; child tasks have their own processing, queues and resource allocations. `state.parallel` exposes active groups/branches, waiting parents and bounded correlated group summaries with `droppedGroups` describing omitted active groups. Particle tokens carry `rootParticleId`, `parentParticleId`, `forkGroupId`, `forkNodeId`, `joinNodeId` and `branchEdgeId` where applicable. A suspended parent and an arrived child can have status `waiting`; retired children have `joined` or `cancelled`. Node metrics at a join expose `join.waitingGroups`, `arrivedBranches`, `expectedBranches`, `completedGroups`, `cancelledGroups` and the observed synchronization-wait distribution. Its current queue counts arrived tasks waiting for their siblings. `PARTICLE_FORKED`, `BRANCH_JOINED`, `JOIN_COMPLETED`, `BRANCH_CANCELLED` and `PROCESS_CANCELLED` events provide correlation without inspecting coordinates. Retained live tokens and sampled particles include branches and suspended parents; business `created`, `completed`, `abandoned`, `failed` and `inSystem` count original cases. The 200,000 active-token limit applies to parents and children together.
 
-Discover the **Parallel SD-WAN delivery** template through `GET /templates` for a complete editable example. Headless, animated, scenario and replay runs use the same deterministic engine.
+Construct paired fork/join blocks through the UI's **+ → Parallel work** control or the versioned semantic simulation API using the structure above. Headless, animated, scenario and replay runs use the same deterministic engine.
 
 Route metrics retain exact connection-ID labels up to 2,000 characters. Longer histories use a bounded identifier: the first 200 characters followed by ` … [route:<8hex>-<8hex>; edges=N]`. The ordered dual digest and edge count are deterministic grouping identifiers, not a cryptographic integrity guarantee, and cannot reconstruct the complete itinerary. At most 256 distinct route buckets plus `[other routes]` are retained; all completed cases still contribute to metrics. This bounds nested branch history without dropping visited Work-node revenue attribution or changing case counts, costs or TTR.
 
@@ -609,9 +663,9 @@ The existing `POST /export` JSON/Markdown behavior is unchanged. Source graphs w
 
 Use editable exports when you want to continue working on the drawing in another editor. They preserve basic shapes, text, colors, groups and attached connectors using the saved 2D layout, including when the app is showing 3D. They do not transfer raw datasets, original source files, live capacity copies or complete simulation execution and scenarios. Keep native JSON or an encrypted workspace backup for a faithful model transfer.
 
-Editable Draw.io drawings use a deliberate **light drawing surface**, regardless of app Appearance. White base fills and dark text, connection labels and base borders keep the document readable in another editor. Saved node, connection and mind-map color accents remain. Native JSON preserves full stored styling, and workspace backups also retain portable appearance settings. This needs no extra API argument; SVG keeps its existing appearance behavior.
+Editable Draw.io drawings use a **light drawing surface**, regardless of app Appearance. Ordinary nodes default to white fills; an explicit `backgroundColor` is preserved with readable text contrast, alongside saved node, connection and mind-map color accents. IBM glyphs use the ordinary semantic node type's shape and report `IBM_SYMBOL_GEOMETRY_SIMPLIFIED`. Native JSON preserves exact glyph IDs and styling, and workspace backups also retain portable appearance settings. This needs no extra API argument; SVG keeps its existing appearance behavior.
 
-1. Read `GET /exports/capabilities` first. Its existing SVG fields remain unchanged; `diagrams` describes the drawio format, scopes, validation metadata and separate limits. Bridge 0.8.2 advertises `exchange-export-v1`.
+1. Read `GET /exports/capabilities` first. Its existing SVG fields remain unchanged; `diagrams` describes the drawio format, scopes, validation metadata and separate limits. Bridge 0.8.3 advertises `exchange-export-v1`.
 2. Start an export with the existing **visual_nerve_request** tool:
 
 ```json
@@ -704,7 +758,7 @@ The example never automatically repeats a POST after a transport error. If a wri
 
 Realtime collaboration is optional and requires a configured relay. The human creates a room, chooses what to disclose and approves participant devices in the [Collaboration panel](/help/collaboration/). MCP does not provide invitations, approval, role changes, private keys or an unlock operation.
 
-Bridge **0.8.2** advertises `collaboration-v1` and `collaboration-document-v1`. Ask the browser whether the optional feature is configured:
+Bridge **0.8.3** advertises `collaboration-v1` and `collaboration-document-v1`. Ask the browser whether the optional feature is configured:
 
 ```json
 { "path": "/collaboration/capabilities", "method": "GET" }

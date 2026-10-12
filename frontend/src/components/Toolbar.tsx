@@ -35,7 +35,7 @@ import { useEditor } from '../state/editor';
 import { fitDiagram } from '../drawing/navigation';
 import { nodeRegistry } from '../nodes/registry';
 import { layoutGraph, type Direction } from '../layouts/layout';
-import type { NodeKind, TimelineScale } from '../model/types';
+import type { GraphNode, NodeKind, TimelineScale } from '../model/types';
 import type { DialogName } from '../App';
 import { DocumentTitle } from '../ui/DocumentTitle';
 import { getSpatialView, setSpatialView } from '../spatial/types';
@@ -46,6 +46,7 @@ import { DataToolActions, ToolbarDataTools } from './ToolbarDataTools';
 import { UnderstandingActions, UnderstandingTools } from './UnderstandingTools';
 import { useCompactLayout } from '../hooks/useCompactLayout';
 import { CompactToolbar } from './mobile/CompactToolbar';
+import { LazyIbmSymbolPalette } from '../flowchart/LazyControls';
 export function Toolbar({
   open,
   showFilters,
@@ -153,6 +154,29 @@ export function Toolbar({
         : undefined;
     useEditor.getState().addNode({ nodeType: kind, ...point });
   };
+  const symbolTools =
+    graph.diagram.type === 'flowchart' ? (
+      <LazyIbmSymbolPalette
+        compact={compact}
+        add={(node: Partial<GraphNode>) => {
+          const rect = document.querySelector('.canvas-shell')?.getBoundingClientRect();
+          const size = { width: node.width ?? 200, height: node.height ?? 100 };
+          const point =
+            rect && !spatial
+              ? flow.screenToFlowPosition({
+                  x: rect.left + rect.width / 2,
+                  y: rect.top + rect.height / 2,
+                })
+              : { x: 0, y: 0 };
+          useEditor.getState().addNode({
+            ...node,
+            ...size,
+            x: point.x - size.width / 2,
+            y: point.y - size.height / 2,
+          });
+        }}
+      />
+    ) : undefined;
   if (compact)
     return (
       <CompactToolbar
@@ -180,6 +204,7 @@ export function Toolbar({
         }
         runLayout={runLayout}
         newSpatialExample={newSpatialExample}
+        symbolTools={symbolTools}
       />
     );
   return (
@@ -317,6 +342,7 @@ export function Toolbar({
                 <Plus size={15} />
                 {t('toolbar.addNode')}
               </button>
+              {symbolTools}
             </>
           )}
           <button

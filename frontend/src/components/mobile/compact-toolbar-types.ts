@@ -26,4 +26,5 @@ export type CompactToolbarProps = {
   fit: () => void;
   runLayout: () => Promise<void>;
   newSpatialExample: () => Promise<void>;
+  symbolTools?: ReactNode;
 };

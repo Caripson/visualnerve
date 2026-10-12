@@ -1018,6 +1018,10 @@ const catalog = {
   'editor.properties.nodeParent': 'Solmun ylätaso',
   'editor.properties.nodeStatus': 'Solmun tila',
   'editor.properties.nodeTags': 'Solmun tunnisteet',
+  'editor.properties.nodeBackground': 'Solmun taustaväri',
+  'editor.properties.themeBackground': 'Käytä teeman taustaa',
+  'editor.properties.nodeBackgroundHint':
+    'Automaattinen seuraa ulkoasua. Valittu väri näkyy 2D- ja 3D-näkymissä sekä viennissä.',
   'editor.properties.nodeTitle': 'Solmun otsikko',
   'editor.properties.nodeType': 'Solmun tyyppi',
   'editor.properties.nodeUrl': 'Solmun URL',

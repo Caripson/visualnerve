@@ -1,6 +1,6 @@
 import { statusLabel } from '../ui/editor-labels';
 import { useI18n } from '../i18n';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { Edge } from '@xyflow/react';
@@ -39,6 +39,8 @@ import { spatialDragPoint } from './drag';
 import { spatialMovementPreview } from './movementScene';
 import './spatial.css';
 import { captureSpatialNodeFaces } from './faces';
+import { SpatialTitle } from './SpatialTitle';
+import { isReadonlyNodeTitle } from '../canvas/logical-geometry';
 import type { OverviewProjection } from '../overview/types';
 import { isOverviewGroupId, isOverviewEdgeId } from '../overview/types';
 import { overviewRenderGraph } from '../overview/layout';
@@ -211,6 +213,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
   const selectedNodes = useEditor((state) => state.selectedNodes);
   const selectedEdges = useEditor((state) => state.selectedEdges);
   const focusNode = useEditor((state) => state.focusNode);
+  const editingNode = useEditor((state) => state.editingNode);
   const propsRef = useRef(props);
   propsRef.current = props;
   const host = useRef<HTMLDivElement>(null);
@@ -304,10 +307,12 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
         node.data.node.title,
         node.data.presentationNumber,
         node.data.node.color,
+        node.data.node.backgroundColor,
         node.data.mindmap?.color,
         node.data.mindmap?.depth,
         node.data.node.status,
         node.data.node.nodeType,
+        node.data.node.flowchartSymbol,
         node.width,
         node.height,
         node.data.node.metadata.spatial,
@@ -482,6 +487,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
                     labelBillboard: face instanceof THREE.Sprite,
                     source: face?.userData.faceSource,
                     side: face?.userData.spatialFaceBack ? 'back' : 'front',
+                    flowchartSymbol: instance.mesh.geometry.userData.flowchartSymbol,
                     textCorners: face ? faceCorners(face, camera, width, height) : [],
                   };
                 }),
@@ -728,6 +734,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     const raycaster = new THREE.Raycaster();
     raycaster.params.Line = { threshold: 0.07 };
     const pointers = new Set<number>();
+    let titleTap: { id: string; x: number; y: number; time: number } | undefined;
     let clickStart: { x: number; y: number; id: number } | undefined;
     let movement:
       | {
@@ -741,14 +748,14 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
           selectedAtStart: boolean;
         }
       | undefined;
-    const pointerPosition = (event: PointerEvent) => {
+    const pointerPosition = (event: PointerEvent | MouseEvent) => {
       const rectangle = canvas.getBoundingClientRect();
       return new THREE.Vector2(
         ((event.clientX - rectangle.left) / rectangle.width) * 2 - 1,
         -((event.clientY - rectangle.top) / rectangle.height) * 2 + 1,
       );
     };
-    const pick = (event: PointerEvent) => {
+    const pick = (event: PointerEvent | MouseEvent) => {
       raycaster.params.Line = { threshold: 0.07 * current.glyphScale };
       camera.updateMatrixWorld(true);
       raycaster.setFromCamera(pointerPosition(event), camera);
@@ -758,6 +765,20 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
         false,
       );
       return { identity: spatialIntersectionIdentity(hits[0]), hits };
+    };
+    const stationaryTitleTap = (event: PointerEvent, id: string) => {
+      if (event.pointerType !== 'touch' || !event.isPrimary) return;
+      const previous = titleTap;
+      titleTap = { id, x: event.clientX, y: event.clientY, time: event.timeStamp };
+      if (
+        previous?.id === id &&
+        event.timeStamp - previous.time < 350 &&
+        Math.hypot(previous.x - event.clientX, previous.y - event.clientY) < 12
+      ) {
+        titleTap = undefined;
+        const node = propsRef.current.graph.nodes.find((item) => item.id === id);
+        if (node && !isReadonlyNodeTitle(node)) useEditor.getState().beginEditing(node.id);
+      }
     };
     current.abortMovement = () => {
       const gesture = movement;
@@ -782,7 +803,10 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     const pointerDown = (event: PointerEvent) => {
       current.cancelPresentation('Camera movement interrupted.', true);
       pointers.add(event.pointerId);
-      if (pointers.size > 1) current.abortMovement();
+      if (pointers.size > 1) {
+        titleTap = undefined;
+        current.abortMovement();
+      }
       if (event.button === 0 && pointers.size === 1)
         clickStart = { x: event.clientX, y: event.clientY, id: event.pointerId };
       else clickStart = undefined;
@@ -861,18 +885,22 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
           Math.hypot(event.clientX - start.x, event.clientY - start.y) > 5 &&
           useEditor.getState().graph?.nodes === gesture.graph.nodes &&
           !lost
-        )
+        ) {
+          titleTap = undefined;
           useEditor
             .getState()
             .command('Move 3D objects', (graph) =>
               moveSpatialObjects(graph, gesture.ids, gesture.delta),
             );
-        else if (start && event.shiftKey && gesture.selectedAtStart) {
+        } else if (start && !lost) {
           const { identity } = pick(event);
-          if (identity.nodeId)
-            useEditor
-              .getState()
-              .select(useEditor.getState().selectedNodes.filter((id) => id !== identity.nodeId));
+          if (identity.nodeId) {
+            if (event.shiftKey && gesture.selectedAtStart)
+              useEditor
+                .getState()
+                .select(useEditor.getState().selectedNodes.filter((id) => id !== identity.nodeId));
+            else stationaryTitleTap(event, identity.nodeId);
+          }
         }
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -901,6 +929,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
                 : [...selected, identity.nodeId]
               : [identity.nodeId],
           );
+        stationaryTitleTap(event, identity.nodeId);
       } else if (
         identity.edgeId &&
         !identity.edgeId.startsWith('hierarchy:') &&
@@ -910,6 +939,8 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       else if (!hits.length) useEditor.getState().select([]);
     };
     const pointerCancel = (event: PointerEvent) => {
+      // A deliberate release after a completed tap emits lostpointercapture too.
+      if (event.type === 'pointercancel' || pointers.has(event.pointerId)) titleTap = undefined;
       pointers.delete(event.pointerId);
       clickStart = undefined;
       if (movement?.pointerId === event.pointerId) current.abortMovement();
@@ -918,11 +949,23 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     canvas.addEventListener('pointermove', pointerMove, true);
     canvas.addEventListener('pointerup', pointerUp, true);
     canvas.addEventListener('pointercancel', pointerCancel);
+    const doubleClick = (event: MouseEvent) => {
+      if (lost || propsRef.current.overview?.active) return;
+      const { identity } = pick(event);
+      const node = propsRef.current.graph.nodes.find((item) => item.id === identity.nodeId);
+      if (!node || isReadonlyNodeTitle(node)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      useEditor.getState().select([node.id]);
+      useEditor.getState().beginEditing(node.id);
+    };
+    canvas.addEventListener('dblclick', doubleClick);
     canvas.addEventListener('lostpointercapture', pointerCancel);
     const blur = () => {
       current.cancelPresentation('Camera movement interrupted.', true);
       pointers.clear();
       clickStart = undefined;
+      titleTap = undefined;
       current.abortMovement();
     };
     window.addEventListener('blur', blur);
@@ -1003,6 +1046,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       canvas.removeEventListener('pointermove', pointerMove, true);
       canvas.removeEventListener('pointerup', pointerUp, true);
       canvas.removeEventListener('pointercancel', pointerCancel);
+      canvas.removeEventListener('dblclick', doubleClick);
       canvas.removeEventListener('lostpointercapture', pointerCancel);
       window.removeEventListener('blur', blur);
       canvas.removeEventListener('keydown', keyDown);
@@ -1139,6 +1183,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
             color: appearance.color,
             status: node.status,
             kind: node.nodeType,
+            flowchartSymbol: view.data.mindmap ? undefined : node.flowchartSymbol,
           },
           opacity: Number(view.style?.opacity ?? 1),
         });
@@ -1229,12 +1274,22 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     );
     setFaceCaptureError('');
     setFaceCaptureBusy(true);
-    void captureSpatialNodeFaces(
-      propsRef.current.graph,
-      model.projected.nodes.filter((view) => pendingIds.has(view.id)),
-      abort.signal,
-    )
-      .then((canvases) => {
+    const pendingViews = model.projected.nodes.filter((view) => pendingIds.has(view.id));
+    void (async () => {
+      const front = await captureSpatialNodeFaces(
+        propsRef.current.graph,
+        pendingViews,
+        abort.signal,
+      );
+      const back = await captureSpatialNodeFaces(
+        propsRef.current.graph,
+        pendingViews.filter((view) => !!view.data.node.flowchartSymbol),
+        abort.signal,
+        { side: 'back' },
+      );
+      return { front, back };
+    })()
+      .then(({ front: canvases, back: backCanvases }) => {
         if (abort.signal.aborted || runtime.current !== current) return;
         for (const face of current.labelLayer.children as FaceMesh[]) {
           const canvas = canvases.get(face.userData.nodeId);
@@ -1251,6 +1306,22 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
           face.material.map = texture;
           face.material.alphaTest = 0.01;
           face.material.needsUpdate = true;
+          const backCanvas = backCanvases.get(face.userData.nodeId);
+          if (backCanvas) {
+            const back = spatialFaceSurfaces(face).find(
+              (surface) => surface.userData.spatialFaceBack,
+            );
+            if (back) {
+              if (back.material === face.material) back.material = face.material.clone();
+              else back.material.map?.dispose();
+              const backTexture = new THREE.CanvasTexture(backCanvas);
+              backTexture.colorSpace = THREE.SRGBColorSpace;
+              backTexture.generateMipmaps = false;
+              backTexture.minFilter = THREE.LinearFilter;
+              back.material.map = backTexture;
+              back.material.needsUpdate = true;
+            }
+          }
           face.userData.faceSource = '2d-node';
           setSpatialFaceOpacity(face, face.material.opacity);
           if (current.batches)
@@ -1380,6 +1451,35 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     [relationshipMatches.length],
   );
   const ready = rendererState === 'ready';
+  const projectTitle = useCallback((id: string) => {
+    const current = runtime.current;
+    const instance = current?.batches?.nodes.get(id);
+    const canvas = current?.renderer.domElement;
+    if (!current || !canvas) return;
+    current.camera.updateMatrixWorld(true);
+    const point = instance?.position.clone().project(current.camera);
+    const width = Math.max(1, canvas.clientWidth),
+      height = Math.max(1, canvas.clientHeight);
+    const editorWidth = Math.min(320, Math.max(120, width - 24));
+    // A filtered or offscreen selection still needs a reachable editor and Escape.
+    const onScreen = point && point.z >= -1 && point.z <= 1;
+    return {
+      x: Math.max(
+        editorWidth / 2 + 8,
+        Math.min(width - editorWidth / 2 - 8, onScreen ? ((point.x + 1) * width) / 2 : width / 2),
+      ),
+      y: Math.max(48, Math.min(height - 48, onScreen ? ((1 - point.y) * height) / 2 : height / 2)),
+      width: editorWidth,
+    };
+  }, []);
+  useEffect(() => {
+    const current = runtime.current;
+    if (!current) return;
+    current.controls.enabled = !editingNode && ready;
+    return () => {
+      if (runtime.current === current) current.controls.enabled = ready;
+    };
+  }, [editingNode, ready, sceneKey]);
   const outsideDataView = projected.nodes.filter(
     (node) => node.className === 'analysis-outside-data-view',
   ).length;
@@ -1403,6 +1503,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       }
     >
       <div ref={host} className="spatial-stage" />
+      <SpatialTitle graph={graph} project={projectTitle} />
       <NavigationGizmo
         camera={navigationCamera}
         disabled={!ready}

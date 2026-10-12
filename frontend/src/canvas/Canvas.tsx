@@ -92,7 +92,12 @@ import {
 import { attachCanvasPresentationCamera } from '../presentation/canvas-camera';
 import { presentation } from '../presentation/service';
 import { VIDEO_CANVAS_INFO, type VideoCanvasInfoRequest } from '../presentation/video-frame-events';
-import { absoluteCanvasMoves, canonicalGeometry, isReadonlyCanvasNode } from './logical-geometry';
+import {
+  absoluteCanvasMoves,
+  canonicalGeometry,
+  isReadonlyCanvasNode,
+  isReadonlyNodeTitle,
+} from './logical-geometry';
 const SpatialCanvas = lazy(() =>
   import('../spatial/SpatialCanvas')
     .then((module) => ({ default: module.SpatialCanvas }))
@@ -658,7 +663,7 @@ export function Canvas() {
     const node = flow.getNode(focus);
     if (node && !node.hidden) {
       const navigation = focusNavigation.start(() => {
-        if (useEditor.getState().editingNode === focus && graph?.diagram.type === 'mindmap') {
+        if (useEditor.getState().editingNode === focus) {
           const position = flow.getInternalNode(focus)?.internals.positionAbsolute ?? node.position;
           return flow.setCenter(
             position.x + (node.width ?? 180) / 2,
@@ -933,9 +938,13 @@ export function Canvas() {
           if (node.data.node.metadata.simulationProjected && isReadonlyCanvasNode(node.data.node))
             useEditor.getState().select([logicalNodeId(node.data.node)]);
         }}
-        onNodeDoubleClick={(_, node) => {
+        onNodeDoubleClick={(event, node) => {
           const processId = getSimulationProcessId(node.data.node);
           if (processId) openSimulationProcess(graph.diagram.id, processId);
+          else if (!isReadonlyNodeTitle(node.data.node)) {
+            event.stopPropagation();
+            useEditor.getState().beginEditing(node.id);
+          }
         }}
         onConnect={(c) =>
           c.source &&

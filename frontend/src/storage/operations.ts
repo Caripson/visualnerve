@@ -36,6 +36,12 @@ export async function initializeWorkspace(scope: WorkspaceStorage) {
   const names = new Map(
     (await scope.templates.metadata('name')).map((entry) => [entry.id, entry.value]),
   );
+  // Retire only the packaged gallery record; saved diagrams and private templates
+  // using its historical key remain the user's content.
+  if (names.has('parallel-delivery-simulator')) {
+    const retired = await scope.templates.get('parallel-delivery-simulator');
+    if (retired?.builtin) await scope.templates.delete(retired.id);
+  }
   const candidates = templates.filter((entry) => names.get(entry.key) !== entry.name);
   if (!candidates.length) return;
   // Inspect differing/missing names before seeding or renaming: a private custom

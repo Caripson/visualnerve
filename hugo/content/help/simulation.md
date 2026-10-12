@@ -245,13 +245,13 @@ A Router chooses one continuation. Use **Parallel work** when the same case need
 
 For a telecom delivery, access provisioning, equipment preparation and site readiness can happen at the same time. Installation must wait until all three are ready.
 
-1. Open the **Parallel SD-WAN delivery** template for a complete example, or select an existing Source or Work step and use its **+ → Parallel work** control. A complete block starts with two Work tasks and a **Wait for all** step. If the original step had a continuation, the block is inserted before it.
+1. Select an existing Source or Work step and use its **+ → Parallel work** control. A complete block starts with two Work tasks and a **Wait for all** step. If the original step had a continuation, the block is inserted before it.
 2. Give each branch a useful name and configure its processing time, capacity, costs and shared resource requirements. Each branch has a real queue and can compete with other branches for the same staff.
 3. Use **+ → Work step** on the Parallel work node to add another required branch. The new task is connected to the paired Wait for all node. Add intermediate steps with the normal connected-node control.
 4. Connect the Wait for all node to the next process step or Outcome. All outgoing connections from Parallel work are mandatory; every successful branch must reach its paired join.
 5. Play the model. The join shows the number of cases waiting and tasks ready. An early branch waits for the other tasks belonging to that same case, never for a different customer's task.
 
-The example supplies eight orders, three prerequisite tasks, shared engineers, a warehouse worker, installation and one billing outcome. **Assumptions** explains every rate, delay and cost. Compare the **Two additional engineers** scenario to see both the reduction in waiting and the increased staffing cost.
+The pictured example uses eight orders, three prerequisite tasks, shared engineers, a warehouse worker, installation and one billing outcome. Build the corresponding steps and shared resources in your own model, then review every rate, delay and cost in **Assumptions**. Add a scenario with two additional engineers to compare the reduction in waiting with the increased staffing cost.
 
 ![The SD-WAN readiness subprocess paused with required tasks and its selected Wait for all node showing actual correlated case and task counts.](/help/images/parallel-delivery-desktop.webp "Parallel work waits for the same case’s prerequisites. Resource contention and branch processing come from the simulation engine.")
 

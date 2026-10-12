@@ -1025,6 +1025,10 @@ const catalog = {
   'editor.properties.nodeParent': 'Elemento padre del nodo',
   'editor.properties.nodeStatus': 'Estado del nodo',
   'editor.properties.nodeTags': 'Etiquetas del nodo',
+  'editor.properties.nodeBackground': 'Color de fondo del nodo',
+  'editor.properties.themeBackground': 'Usar fondo del tema',
+  'editor.properties.nodeBackgroundHint':
+    'Automático sigue la apariencia. El color elegido se usa en 2D, 3D y exportaciones.',
   'editor.properties.nodeTitle': 'Título del nodo',
   'editor.properties.nodeType': 'Tipo de nodo',
   'editor.properties.nodeUrl': 'URL del nodo',

@@ -34,7 +34,7 @@ async function imagesLoaded(page: Page) {
     .toBe(true);
 }
 
-test('the help hub and all 18 guides have real screenshots, valid local links and working anchors', async ({
+test('the help hub and all 20 guides have real screenshots, valid local links and working anchors', async ({
   browser,
   request,
 }) => {
@@ -50,14 +50,16 @@ test('the help hub and all 18 guides have real screenshots, valid local links an
   try {
     await page.goto(`${publicURL}/help/`);
     const guides = await index(page);
-    expect(guides).toHaveLength(18);
-    expect(new Set(guides.map((guide) => guide.url)).size).toBe(18);
+    expect(guides).toHaveLength(20);
+    expect(new Set(guides.map((guide) => guide.url)).size).toBe(20);
     expect(guides.map((guide) => guide.url)).toContain('/help/collaboration/');
+    expect(guides.map((guide) => guide.url)).toContain('/help/ibm-flowcharting/');
+    expect(guides.map((guide) => guide.url)).toContain('/help/flowchart-symbols/');
     await expect(
       page.getByRole('region', { name: 'All guides', exact: true }).locator('a'),
-    ).toHaveCount(18);
+    ).toHaveCount(20);
     await expect(page.locator('.help-guide-number')).toHaveText(
-      Array.from({ length: 18 }, (_, position) => String(position + 1).padStart(2, '0')),
+      Array.from({ length: 20 }, (_, position) => String(position + 1).padStart(2, '0')),
     );
     const links = new Set<string>();
     const anchors = new Map<string, Set<string>>();
@@ -143,6 +145,53 @@ test('the help hub and all 18 guides have real screenshots, valid local links an
     ).toBe(0);
   } finally {
     await context.close();
+  }
+});
+
+test('the symbol-use reference is searchable and explains all 43 choices with appearance-aware vector shapes', async ({
+  page,
+}) => {
+  await page.goto('/help/');
+  const search = page.getByRole('combobox', { name: 'Search help', exact: true });
+  await search.fill('Magnetic Drum');
+  const results = page.getByRole('region', { name: 'Search results', exact: true });
+  const reference = results.locator('a[href="/help/flowchart-symbols/"]');
+  await expect(reference).toBeVisible();
+  await reference.click();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Choose the right flowchart symbol' }),
+  ).toBeVisible();
+  await expect(page.locator('.help-flowchart-symbol')).toHaveCount(43);
+  for (const [category, count] of [
+    ['symbol', 32],
+    ['outline', 2],
+    ['arrowhead', 4],
+    ['legacy', 5],
+  ] as const)
+    await expect(
+      page.locator(`.help-symbol-reference[data-symbol-category="${category}"]`),
+    ).toHaveCount(count);
+  await expect(page.locator('#ibm-parallel-mode')).toContainText(
+    'does not create Process Simulator fork/join semantics',
+  );
+  await expect(page.locator('#ibm-transmittal-tape')).toContainText(
+    'not a general network-transmission symbol',
+  );
+  for (const colorScheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme });
+    await expect(page.locator('html')).toHaveAttribute('data-theme', colorScheme);
+    expect(
+      await page.locator('.help-flowchart-symbol').evaluateAll((symbols) =>
+        symbols.every((symbol) => {
+          const path = symbol.querySelector('path')!;
+          return (
+            path.getAttribute('d')!.length > 0 &&
+            getComputedStyle(path).stroke === getComputedStyle(symbol).color
+          );
+        }),
+      ),
+    ).toBe(true);
+    await noOverflow(page, 1440);
   }
 });
 

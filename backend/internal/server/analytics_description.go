@@ -6,7 +6,7 @@ const mcpAnalyticsGuide = `
 
 ## Time Series & Signal Analysis
 
-This template is an optional diagram.analytics extension with schemaVersion:1 on an existing diagram type. Discover GET /analytics/capabilities and GET /diagrams?analytics=true first; compact discovery omits observations and archives. do not infer analytics from canvas positions. Bridge 0.8.2 direct GET /api/v1/health advertises analytics-v1. An old bridge must be rebuilt/replaced explicitly: updating the website does not update its local binary.
+This template is an optional diagram.analytics extension with schemaVersion:1 on an existing diagram type. Discover GET /analytics/capabilities and GET /diagrams?analytics=true first; compact discovery omits observations and archives. do not infer analytics from canvas positions. Bridge 0.8.3 direct GET /api/v1/health advertises analytics-v1. An old bridge must be rebuilt/replaced explicitly: updating the website does not update its local binary.
 
 Use visual_nerve_api_docs with document:"guide" before workspace commands, then document:"endpoint" with path:"/diagrams/{diagramId}/analytics/import/commit" and method:"POST" for the exact import contract and all referenced schemas. visual_nerve_request uses paths without /api/v1; the existing tools are unchanged. Keep https://app.visualnerve.com/ human-unlocked with the exact --allowed-origin https://app.visualnerve.com and a current grant. The public help/API website is https://www.visualnerve.com/; there is no production editor at app-origin /app/.
 

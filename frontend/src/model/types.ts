@@ -9,6 +9,7 @@ import type { BuildSpecificationDraft } from '../export/build-specification-draf
 import type { SimulationModel } from '../simulation/types';
 import type { CollaborationDocument } from '../collaboration/model/types';
 import type { AnalyticsExtension } from '../analytics/types';
+import type { IBMSymbolId } from '../flowchart/ibm-symbols';
 export type { DrawingLayer, DrawingStroke } from '../drawing/types';
 
 export const diagramTypes = [
@@ -87,6 +88,8 @@ export interface GraphNode extends Base {
   diagramId: string;
   externalId?: string;
   nodeType: NodeKind;
+  /** Optional IBM glyph; presentation is independent of the node's semantic kind. */
+  flowchartSymbol?: IBMSymbolId;
   title: string;
   description?: string;
   notes?: string;
@@ -99,6 +102,8 @@ export interface GraphNode extends Base {
   ownerIds: string[];
   status?: string;
   color?: string;
+  /** Optional six-digit hex fill; color remains the independent accent. */
+  backgroundColor?: string;
   startDate?: string;
   endDate?: string;
   dueDate?: string;

@@ -23,7 +23,7 @@ South;882010 - BBB Transport;Service;950,00
 
 Start with **Region → Customer**, a count and a sum of Amount. Filter Customer to names starting with AAA, and show only a small number of groups. You can add Product as another grouping level later.
 
-![The CSV import dialog showing column cleanup, filters, grouping choices and an analysis preview.](/help/images/csv-import.webp "Configure the data view before creating the diagram; changing a control updates the preview.")
+![Column mapping, cleanup and row filters in the CSV import dialog.](/help/images/csv-import.webp "Review columns and cleanup first. Scroll inside the dialog to choose grouping and inspect the diagram preview before creating it.")
 
 ## Clean columns before filtering and grouping
 

@@ -1,0 +1,46 @@
+.ibm-symbol-properties {
+  display: grid;
+  gap: 12px;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+}
+.ibm-symbol-properties p {
+  margin: 0;
+  line-height: 1.5;
+}
+.ibm-symbol-properties .field {
+  margin: 0;
+}
+.ibm-symbol-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ibm-symbol-preview svg {
+  flex-shrink: 0;
+}
+.ibm-symbol-preview p {
+  font-size: 12px;
+}
+.ibm-symbol-palette {
+  display: grid;
+  gap: 4px;
+}
+.ibm-symbol-palette button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  text-align: left;
+}
+.ibm-symbol-palette svg {
+  flex-shrink: 0;
+  color: var(--accent);
+  --node-accent: currentColor;
+}
+.ibm-symbol-palette small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 3px;
+}

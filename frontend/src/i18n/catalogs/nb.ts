@@ -1022,6 +1022,10 @@ const catalog = {
   'editor.properties.nodeParent': 'Nodens overordnede',
   'editor.properties.nodeStatus': 'Nodestatus',
   'editor.properties.nodeTags': 'Nodeetiketter',
+  'editor.properties.nodeBackground': 'Nodens bakgrunnsfarge',
+  'editor.properties.themeBackground': 'Bruk temaets bakgrunn',
+  'editor.properties.nodeBackgroundHint':
+    'Automatisk følger utseendet. En valgt farge brukes i 2D, 3D og eksport.',
   'editor.properties.nodeTitle': 'Nodetittel',
   'editor.properties.nodeType': 'Nodetype',
   'editor.properties.nodeUrl': 'Node-URL',

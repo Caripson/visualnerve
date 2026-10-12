@@ -4,6 +4,8 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { Layers } from 'lucide-react';
 import type { CanvasNode } from '../canvas/projection';
 import { ProcessSummary } from './ProcessSummary';
+import { nodeBackgroundColor, nodeBackgroundStyle } from '../nodes/appearance';
+import '../nodes/node-appearance.css';
 
 export const ProcessCard = memo(({ id, data }: NodeProps<CanvasNode>) => {
   const { t } = useI18n();
@@ -14,7 +16,13 @@ export const ProcessCard = memo(({ id, data }: NodeProps<CanvasNode>) => {
       data-node-id={id}
       data-simulation-projected="true"
       data-simulation-process-id={data.node.metadata.simulationProcessId as string}
-      style={{ '--node-accent': data.node.color || '#31766c' } as React.CSSProperties}
+      data-node-background={nodeBackgroundColor(data.node.backgroundColor)}
+      style={
+        {
+          '--node-accent': data.node.color || '#31766c',
+          ...nodeBackgroundStyle(data.node.backgroundColor),
+        } as React.CSSProperties
+      }
     >
       <Handle type="target" position={Position.Left} id="in" isConnectable={false} />
       <Handle type="source" position={Position.Right} id="out" isConnectable={false} />

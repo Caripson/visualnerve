@@ -1,10 +1,44 @@
 # MCP processes, understanding and diagram presentations
 
+## IBM Flowcharting through MCP
+
+Bridge **0.8.3** advertises `ibm-flowcharting-v1`. The same two tools and connected-browser permission rules apply. Read the catalog with Read only:
+
+```json
+{"path":"/flowchart/symbols","method":"GET"}
+```
+
+It returns an array of all 43 entries, with stable `ibm-*` IDs, labels, existing semantic `nodeType` defaults, `physicalCutout`, `category`, `construction`, `revisions`, normalized point geometry, 0..100 SVG paths and `contentBox`. Exactly 26 represent physical apertures of GX20-8020-1/-2, including four arrowheads. The catalog also includes completed composite symbols, two raw outlines and five `category:"legacy"` forms preserving original Input/Output, Predefined Process, Program Modification, Clerical Operation and Perforated Tape. `revisions` lists `GX20-8020`, `GX20-8020-1` and/or `GX20-8020-2` outline membership, where historical names/functions may differ; `physicalCutout` applies to the revised 26 only. `GET /flowchart/stencils` returns `{revision,label,physicalCutoutSymbolIds,symbolLabels?}` records for the exact original 25 and revised 26 memberships. Optional `symbolLabels` gives source-backed historical names for shared catalog IDs; use that alias for the selected revision. See [the source/revision guide](IBM_FLOWCHARTING.md).
+
+Inspect `GET /templates/ibm-flowcharting`, or create an editable built-in example with Read + write:
+
+```json
+{"path":"/diagrams","method":"POST","data":{"name":"Order processing","template":"ibm-flowcharting","type":"flowchart"}}
+```
+
+Creation returns Diagram; read its graph to obtain actual UUIDs and versions. `type` may be omitted, and `mode` is rejected. Use ordinary node creation, children and bulk commands to set `flowchartSymbol`. Existing node PATCH uses the current node version:
+
+```json
+{"path":"/nodes/NODE_UUID","method":"PATCH","data":{"version":7,"flowchartSymbol":"ibm-predefined-process"}}
+```
+
+The catalog ID is an appearance; keep the appropriate existing `nodeType`, for example `process`. Omission in partial updates preserves it. `flowchartSymbol:null` clears it on PATCH or existing external-ID bulk upserts. Complete/new records reject null, empty and unknown values with atomic 422. Exports, imports, backups and saved history preserve the optional field. IBM Parallel Mode does not configure Process Simulator fork/join execution.
+
+## Node background colors
+
+All ordinary and IBM nodes accept optional `backgroundColor`, exactly six-digit `#RRGGBB` with either letter case. It sets the fill separately from the existing `color` accent, title, icon metadata and `nodeType`. Omission keeps theme fill. Read the current version, then update with Read + write:
+
+```json
+{"path":"/nodes/NODE_UUID","method":"PATCH","data":{"version":7,"backgroundColor":"#aB12Ef"}}
+```
+
+Omission during partial updates preserves the fill. `backgroundColor:null` removes only this field on PATCH or an existing external-ID bulk upsert. Full/new records require omission or a valid hex string; null, empty, shorthand, alpha, named, object and non-hex values return structured 422 `INVALID_NODE_BACKGROUND_COLOR` with `issues`, saving nothing. Native JSON, encrypted persistence, history, backups and collaboration preserve the field. Read only allows inspection/export and rejects fill mutations. MCP endpoint discovery returns `NodeInput`, `NodePatch` and `BulkNode` with complete validation/reset schemas.
+
 ## Optional approved collaboration
 
 Read `limits` before assuming an existing diagram can be shared: object, JSON, CRDT-state and update budgets are independent. Incremental causal updates are limited to 8 MiB; full-state refreshes use the canonical empty base vector `[0]` and the 32 MiB CRDT-state limit, with the same role, sharing-scope and semantic validation. Compressed application payloads are limited to 3 MiB and decompressed payloads to 64 MiB; content can exceed those limits even when its node count fits. Exceeded limits reject the operation without silently omitting content.
 
-Bridge **0.8.2** advertises `collaboration-document-v1` alongside `collaboration-v1` and `analytics-v1`, without changing the two MCP tools. Discover the semantic controls first:
+Bridge **0.8.3** advertises `collaboration-document-v1` alongside `collaboration-v1` and `analytics-v1`, without changing the two MCP tools. Discover the semantic controls first:
 
 ```json
 { "path": "/collaboration/capabilities", "method": "GET" }
@@ -116,7 +150,7 @@ On the isolated encrypted app, the deployed Content Security Policy also restric
 
 ## Recover a write without creating duplicates
 
-Use a current bridge and refreshed app tab. Bridge version 0.8.2 reports `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1`, `collaboration-document-v1` and `analytics-v1` in health and its browser handshake, together with supported tool names. This reports software support; it does not reveal workspace data or grant access. Older browser tabs remain one-shot and cannot reserve or recover operation receipts.
+Use a current bridge and refreshed app tab. Bridge version 0.8.3 reports `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1`, `collaboration-document-v1`, `analytics-v1` and `ibm-flowcharting-v1` in health and its browser handshake, together with supported tool names. This reports software support; it does not reveal workspace data or grant access. Older browser tabs remain one-shot and cannot reserve or recover operation receipts.
 
 Read bridge software health through direct HTTP `GET /api/v1/health` (`/health` relative to the REST base). MCP `visual_nerve_request` with `path:"/health"` instead reads the connected browser's semantic IndexedDB health, without bridge-only tool/capability fields. Their absence in that browser response is not evidence of an outdated bridge.
 
@@ -167,7 +201,7 @@ The synchronous `/export` route accepts source graphs with at most 100 nodes and
 
 ## Export an editable Draw.io diagram
 
-Bridge 0.8.2 advertises `exchange-export-v1`. `GET /exports/capabilities` keeps all SVG fields and adds `diagrams`: the drawio format, scopes, independent budgets, byte chunk units and validation metadata. Use the existing request tool:
+Bridge 0.8.3 advertises `exchange-export-v1`. `GET /exports/capabilities` keeps all SVG fields and adds `diagrams`: the drawio format, scopes, independent budgets, byte chunk units and validation metadata. Use the existing request tool:
 
 ```json
 {
@@ -185,7 +219,7 @@ The `201` response is a job status, not the file. Poll `GET /exports/diagrams/{j
 
 Exports use saved logical nodes and canonical 2D geometry. Basic text/shapes/colors/groups and attached connectors are editable. Complete includes stored nodes hidden by temporary views. Selected requires 1–20,000 explicit existing canonical node UUIDs and includes only internal connections; include descendant IDs yourself for process hierarchies. Viewport is unsupported. Visible titles/descriptions, owner/status labels and simple process assumptions are readable; raw datasets, source files, arbitrary metadata and simulation execution/results are excluded. Icons, rich formatting and drawing can be simplified or omitted. Native JSON/workspace backup remains the full model transfer.
 
-Editable Draw.io drawings use a deliberate **light drawing surface**, independent of app Appearance: white base fills, dark text/labels/base borders and preserved stored node, connection and mind-map color accents. This keeps labels readable when opening the document in another editor. Native JSON retains full stored styling, and workspace backups retain portable appearance settings. SVG appearance is unchanged; no new API option is needed.
+Editable Draw.io drawings use a **light drawing surface**, independent of app Appearance. Ordinary nodes default to white fills; explicit `backgroundColor` is preserved with readable text contrast, alongside stored node, connection and mind-map color accents. IBM glyphs use semantic node-type shape approximations and report `IBM_SYMBOL_GEOMETRY_SIMPLIFIED`. Native JSON retains exact glyph IDs and styling, and workspace backups retain portable appearance settings. SVG appearance is unchanged; no new API option is needed.
 
 Transient local jobs retain their original session/grant and disappear on lock, reload, stop, cache clearing or explicit grant changes. Independent limits are 100,000 source nodes/500,000 source edges, 20,000 scoped nodes/100,000 internal edges, 5,000,000 text characters, 64 MiB output, two active/four terminal jobs, 128 MiB retained bytes, 15-minute retention and a two-minute deadline. Results before success return 409; invalid chunks return 422; unavailable original jobs return 404 after authorization. See [the complete binary contract](../API.md#editable-diagram-exchange).
 
@@ -330,7 +364,7 @@ Explicit authorized AI/API requests and ordinary exports expose readable content
 
 ## Parallel cases and background exports
 
-Bridge 0.8.2 bundles discoverable fork/join and asynchronous SVG contracts. The live browser must also be current. Inspect `GET /simulation/capabilities` and `GET /exports/capabilities`; transport health lists software, not grants. All supported MCP clients use the same `visual_nerve_request` tool and semantic endpoints.
+Bridge 0.8.3 bundles discoverable fork/join and asynchronous SVG contracts. The live browser must also be current. Inspect `GET /simulation/capabilities` and `GET /exports/capabilities`; transport health lists software, not grants. All supported MCP clients use the same `visual_nerve_request` tool and semantic endpoints.
 
 Create complete paired `fork`/`join` regions atomically through a versioned full-model PUT. All fork outgoing edges are mandatory tasks for one original case; a join waits for that case’s tasks, with one revenue outcome and actual shared resource allocations. UI, animated/MAX runs, API/MCP and replay share `SimulationEngine`. See [parallel fields and state](../API.md#parallel-processes-through-the-api).
 
@@ -418,4 +452,4 @@ Existing `operationId` receipts and version checks apply. After a 504/unknown ou
 
 See [complete API table](../API.md#time-series--signal-analysis), [user guide](https://www.visualnerve.com/help/time-series-analysis/), [methods](ANALYTICS_METHODS.md) and [implementation specification](ANALYTICS_IMPLEMENTATION.md).
 
-Bridge **0.8.2** advertises `analytics-v1`. Check this capability in direct `/api/v1/health`; a browser refresh does not replace an old installed bridge. Analytical vector export uses the existing request tool: `{"path":"/diagrams/DIAGRAM/analytics/export","method":"POST","data":{"scope":"chart","id":"CHART","format":"svg","options":{"appearance":"dark","width":1200}}}`. `indicator`, `scenario` and `measurement` scopes use the same exporter; measurement SVG supports saved regression definitions only, using actual fitted engine values (other tools keep JSON/CSV export); SVG returns a bounded whole graphic with explicit visual-sampling counts, whereas JSON/CSV data exports use paging. Read only permits these pure exports. Separate units, real OHLC, escaped labels and named reconciled waterfall components preserve semantic meaning.
+Bridge **0.8.3** advertises `analytics-v1`. Check this capability in direct `/api/v1/health`; a browser refresh does not replace an old installed bridge. Analytical vector export uses the existing request tool: `{"path":"/diagrams/DIAGRAM/analytics/export","method":"POST","data":{"scope":"chart","id":"CHART","format":"svg","options":{"appearance":"dark","width":1200}}}`. `indicator`, `scenario` and `measurement` scopes use the same exporter; measurement SVG supports saved regression definitions only, using actual fitted engine values (other tools keep JSON/CSV export); SVG returns a bounded whole graphic with explicit visual-sampling counts, whereas JSON/CSV data exports use paging. Read only permits these pure exports. Separate units, real OHLC, escaped labels and named reconciled waterfall components preserve semantic meaning.

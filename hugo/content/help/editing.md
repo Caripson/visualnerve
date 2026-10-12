@@ -30,7 +30,7 @@ To continue from an existing object, select it and choose **Add next** beside th
 ![The Add next menu offers a connected Process, Decision, End or Note beside the selected object.](/help/images/node-quick-add.webp "Continue a diagram from the selected card without returning to the main toolbar.")
 
 1. Choose a **New node type**, then **Add node**. Mind maps use **Add subtopic** instead; see [mind maps](/help/layouts/).
-2. Select the new card and enter a short **Title**.
+2. Select the new card and enter a short **Title**, or double-click its title to edit it on the canvas.
 3. Use **Description** for the explanation someone should read or hear in a walkthrough. **Notes** can hold supporting detail.
 4. Choose **Type**, **Area icon**, **Color** and **Status** to make the object recognizable. Supported status choices are **Planned**, **In progress**, **Blocked** and **Done**; **None** clears it.
 5. Assign an **Owner**, add **Tags**, and set **Start date**, **End date** or **Due date** where relevant.
@@ -40,6 +40,14 @@ To continue from an existing object, select it and choose **Add next** beside th
 ![Selected objects and relationships in the editor with their properties available.](/help/images/editor.webp "A selected card has editable semantic fields. Marking it Done adds an explicit completion marker; changing its color alone would not convey that status reliably.")
 
 The status belongs to the object and is preserved in other views and native exports. It does not execute a process or delete completed work. In Process Simulator, configure simulated completion and outcomes in [Assumptions](/help/simulation/); an editing status is a separate annotation.
+
+### Rename an object on the canvas
+
+Double-click an object's title, double-tap it on a touch screen, or select one object and press **F2**. Edit the title where it appears. **Enter** or moving focus saves it; **Escape** cancels the draft. This works for ordinary cards, IBM symbols and mind map topics in 2D. In [3D](/help/3d/), double-click or double-tap the object's face, or use F2 after selecting it. Undo reverses a saved rename.
+
+### Set an object's background
+
+Select an object and choose **Node background color** in Properties to fill its card or symbol. **Color** controls its accent and outline independently. Choose **Use theme background** to return the fill to the current light or dark appearance. The saved background follows the same object between 2D and 3D and is retained in native JSON and backups.
 
 ### Use the selection's quick actions
 
@@ -57,6 +65,8 @@ The floating selection toolbar offers **Edit**, **Status**, **Done / Reopen**, c
 | Group | A visual container for related objects |
 
 Type controls the native card's representation. Imported semantic details and simulator assumptions add their own meaning; changing a card's shape alone does not run code, query a database or create processing behavior.
+
+In a flowchart, use **IBM flowchart symbol** in Properties to choose a classic process, card, tape, storage or communication glyph. The selector changes appearance while retaining the object's ordinary type and information. The **IBM Flowcharting Template** provides an editable starting set; see [IBM flowcharting](/help/ibm-flowcharting/) for symbol choices and completed composites.
 
 ### Read long code and schema cards
 
@@ -145,7 +155,7 @@ These shortcuts apply when the canvas is active. Focus in a text field, dialog, 
 | Nudge selected objects | Arrow keys, 10 px; Shift+Arrow, 50 px |
 | Pan | Space+drag |
 | Mind map child / sibling | Tab / Enter |
-| Edit mind map topic | F2 or double-click |
+| Rename selected object | F2; double-click or double-tap its title in 2D, or its face in 3D |
 | Rename diagram with no selected object | F2, or click the document title |
 | Leave drawing / cancel a gesture | Escape |
 

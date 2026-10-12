@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { blankGraph } from '../src/model/types';
+import { blankGraph, newNode } from '../src/model/types';
 import { WorkspaceDatabase } from '../src/storage/database';
 import { Repository } from '../src/storage/repository';
 import { Workspace } from '../src/storage/workspace';
@@ -31,6 +31,30 @@ afterEach(async () => {
   await db.delete();
 });
 describe('collaboration through the existing workspace API authority', () => {
+  it('permits saved fill inspection while denying node fill mutations through a read-only grant', async () => {
+    const graph = await repo.getGraph(diagramId);
+    graph.nodes.push(newNode(diagramId, { title: 'Ordinary card', backgroundColor: '#AABBCC' }));
+    const saved = await repo.saveGraph(graph, graph.diagram.version);
+    const node = saved.nodes[0];
+    await workspace.setPreference('mcp-access', 'read');
+    expect(await workspace.external(`/nodes/${node.id}`, 'GET')).toMatchObject({
+      backgroundColor: '#AABBCC',
+    });
+    for (const backgroundColor of ['#001122', null])
+      await expect(
+        workspace.external(`/nodes/${node.id}`, 'PATCH', {
+          version: node.version,
+          backgroundColor,
+        }),
+      ).rejects.toMatchObject({ status: 403 });
+    await expect(
+      workspace.external(`/diagrams/${diagramId}/bulk`, 'POST', {
+        upsert: true,
+        nodes: [{ externalId: 'read-only-new', title: 'Forbidden', backgroundColor: '#001122' }],
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(await repo.getGraph(diagramId)).toEqual(saved);
+  });
   it('accepts the bridge null body for a read-only document inspection without enabling document work', async () => {
     await workspace.setPreference('mcp-access', 'read');
     const before = await repo.getGraph(diagramId);

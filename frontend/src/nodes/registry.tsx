@@ -37,7 +37,7 @@ import type { CanvasNode } from '../canvas/projection';
 import type { NodeKind } from '../model/types';
 import { useEditor } from '../state/editor';
 import { MindmapNode } from '../mindmap/Topic';
-import { AreaIcon } from '../ui/icons';
+import { AreaIcon, iconKey } from '../ui/icons';
 import { MetricSummary } from '../components/MetricSummary';
 import { NodeStatus } from '../ui/NodeStatus';
 import { SqlTableSummary } from '../components/SqlTableSummary';
@@ -48,7 +48,13 @@ import { SimulationNodeSummary } from '../simulation/NodeSummary';
 import { ResourcePoolCard } from '../simulation/ResourcePoolCard';
 import { ProcessCard } from '../simulation/ProcessCard';
 import { NodeQuickAdd } from './NodeQuickAdd';
-import { isReadonlyCanvasNode } from '../canvas/logical-geometry';
+import { isReadonlyCanvasNode, isReadonlyNodeTitle } from '../canvas/logical-geometry';
+import { getIbmSymbol } from '../flowchart/ibm-symbols';
+import { IbmSymbolGlyph } from '../flowchart/IbmSymbol';
+import { NodeTitle } from './NodeTitle';
+import { nodeBackgroundColor, nodeBackgroundStyle } from './appearance';
+import './node-appearance.css';
+import { IbmNodePorts } from '../flowchart/IbmNodePorts';
 
 export const nodeRegistry: Record<NodeKind, { label: string; icon: LucideIcon; shape: string }> = {
   generic: { label: 'Generic', icon: Box, shape: 'box' },
@@ -72,7 +78,7 @@ export const nodeRegistry: Record<NodeKind, { label: string; icon: LucideIcon; s
 function renderer(kind: NodeKind) {
   const config = nodeRegistry[kind];
   const Icon = config.icon;
-  const Component = memo(({ id, data, selected }: NodeProps<CanvasNode>) => {
+  const Component = memo(({ id, data, selected, width, height }: NodeProps<CanvasNode>) => {
     const { t } = useI18n();
     const { node, owners, exporting } = data;
     const projected = node.metadata.simulationProjected === true;
@@ -90,93 +96,40 @@ function renderer(kind: NodeKind) {
     const overview = smallZoom && !exporting && !selected;
     const updateNode = useEditor((s) => s.updateNode);
     const color = node.color || owners[0]?.color || '#31766c';
-    return (
-      <div
-        className={`vn-node shape-${config.shape} ${code ? 'code-node' : ''} ${overview ? 'node-overview' : ''} ${selected && !exporting ? 'is-selected' : ''}`}
-        style={{ '--node-accent': color } as React.CSSProperties}
-        data-testid="graph-node"
-        data-node-id={id}
-        data-node-status={node.status || undefined}
-        data-simulation-projected={projected || undefined}
-        data-capacity-unit={
-          typeof node.metadata.simulationCapacityUnit === 'number'
-            ? node.metadata.simulationCapacityUnit
-            : undefined
-        }
-        data-simulation-logical-node={
-          typeof node.metadata.simulationLogicalNodeId === 'string'
-            ? node.metadata.simulationLogicalNodeId
-            : undefined
-        }
-      >
-        {selected &&
-          !exporting &&
-          (!node.metadata.simulationLogicalNodeId ||
-            node.metadata.simulationLogicalNodeId === id) && (
-            <NodeQuickAdd
-              id={id}
-              above={
-                typeof node.metadata.simulationCapacityTotal === 'number' &&
-                node.metadata.simulationCapacityTotal > 1
-              }
-            />
-          )}
-        {data.presentationNumber && (
-          <span
-            className="presentation-node-number"
-            aria-label={t('editor.nodes.typeLabel.presentationStep', {
-              presentationNumber: String(data.presentationNumber),
-            })}
-          >
-            {data.presentationNumber}
-          </span>
-        )}
-        {selected && !exporting && !readonly && (
-          <NodeResizer
-            nodeId={id}
-            minWidth={code ? 220 : 100}
-            minHeight={data.minimumHeight ?? (code ? 150 : 50)}
-            handleClassName={code ? 'code-resize-handle' : undefined}
-            color="#267b6a"
-            onResizeEnd={resize}
-          />
-        )}
-        <Handle type="target" position={Position.Left} id="in" isConnectable={!readonly} />
-        <Handle type="source" position={Position.Right} id="out" isConnectable={!readonly} />
-        {node.metadata.simulationLayoutProjected === true && (
-          <>
-            <Handle type="target" position={Position.Bottom} id="in-bottom" isConnectable={false} />
-            <Handle type="source" position={Position.Top} id="out-top" isConnectable={false} />
-          </>
-        )}
+    const ibm = getIbmSymbol(node.flowchartSymbol);
+    const content = (
+      <>
         {!overview && (
-          <>
-            <Handle type="target" position={Position.Top} id="in-top" isConnectable={!readonly} />
-            <Handle
-              type="source"
-              position={Position.Bottom}
-              id="out-bottom"
-              isConnectable={!readonly}
-            />
-          </>
-        )}
-        {!overview && (
-          <div className="node-topline">
-            <AreaIcon metadata={node.metadata} fallback={directory ? Folder : Icon} size={13} />
-            <span className="node-kind">
-              {directory ? t('editor.nodes.directory.label') : nodeKindLabel(t, kind)}
-            </span>
-            <NodeStatus status={node.status} />
+          <div className={ibm ? 'node-topline ibm-node-icon' : 'node-topline'} title={ibm?.label}>
+            <>
+              {ibm && !iconKey(node.metadata) ? (
+                <IbmSymbolGlyph symbol={ibm} className="ibm-symbol-icon" size={13} />
+              ) : (
+                <AreaIcon metadata={node.metadata} fallback={directory ? Folder : Icon} size={13} />
+              )}
+            </>
+            {!ibm && (
+              <span className="node-kind">
+                {directory ? t('editor.nodes.directory.label') : nodeKindLabel(t, kind)}
+              </span>
+            )}
+            {!ibm && <NodeStatus status={node.status} />}
           </div>
         )}
-        <div className="node-title">{node.title}</div>
+        <NodeTitle
+          id={id}
+          title={node.title}
+          exporting={exporting}
+          readonly={isReadonlyNodeTitle(node)}
+        />
+        {ibm && !overview && <NodeStatus status={node.status} />}
         {!overview && <SimulationNodeSummary id={id} node={node} />}
         {overview && <NodeStatus status={node.status} overview />}
         {!overview && <MetricSummary node={node} />}
         {!overview && <SqlTableSummary node={node} />}
         {!overview && <SqlQuerySummary node={node} />}
         {!overview && <CodeSummary node={node} exporting={exporting} selected={selected} />}
-        {!overview && (
+        {!overview && (!ibm || owners.length > 0 || !!node.startDate || data.childCount > 0) && (
           <div className="node-bottomline">
             {owners.length > 0 && (
               <span className="node-owner">
@@ -209,6 +162,119 @@ function renderer(kind: NodeKind) {
             )}
           </div>
         )}
+      </>
+    );
+    return (
+      <div
+        className={`vn-node shape-${ibm ? 'ibm' : config.shape} ${code ? 'code-node' : ''} ${overview ? 'node-overview' : ''} ${selected && !exporting ? 'is-selected' : ''}`}
+        style={
+          {
+            '--node-accent': color,
+            ...nodeBackgroundStyle(node.backgroundColor),
+            ...(ibm
+              ? {
+                  '--ibm-content-x': `${ibm.contentBox.x * 100}%`,
+                  '--ibm-content-y': `${ibm.contentBox.y * 100}%`,
+                  '--ibm-content-width': `${ibm.contentBox.width * 100}%`,
+                  '--ibm-content-height': `${ibm.contentBox.height * 100}%`,
+                }
+              : {}),
+          } as React.CSSProperties
+        }
+        data-testid="graph-node"
+        data-node-id={id}
+        data-flowchart-symbol={ibm?.id}
+        data-node-background={nodeBackgroundColor(node.backgroundColor)}
+        data-node-status={node.status || undefined}
+        data-simulation-projected={projected || undefined}
+        data-capacity-unit={
+          typeof node.metadata.simulationCapacityUnit === 'number'
+            ? node.metadata.simulationCapacityUnit
+            : undefined
+        }
+        data-simulation-logical-node={
+          typeof node.metadata.simulationLogicalNodeId === 'string'
+            ? node.metadata.simulationLogicalNodeId
+            : undefined
+        }
+      >
+        {ibm && <IbmSymbolGlyph symbol={ibm} className="ibm-node-shape" />}
+        {selected &&
+          !exporting &&
+          (!node.metadata.simulationLogicalNodeId ||
+            node.metadata.simulationLogicalNodeId === id) && (
+            <NodeQuickAdd
+              id={id}
+              above={
+                typeof node.metadata.simulationCapacityTotal === 'number' &&
+                node.metadata.simulationCapacityTotal > 1
+              }
+            />
+          )}
+        {data.presentationNumber && (
+          <span
+            className="presentation-node-number"
+            aria-label={t('editor.nodes.typeLabel.presentationStep', {
+              presentationNumber: String(data.presentationNumber),
+            })}
+          >
+            {data.presentationNumber}
+          </span>
+        )}
+        {selected && !exporting && !readonly && (
+          <NodeResizer
+            nodeId={id}
+            minWidth={code ? 220 : 100}
+            minHeight={data.minimumHeight ?? (code ? 150 : 50)}
+            handleClassName={code ? 'code-resize-handle' : undefined}
+            color="#267b6a"
+            onResizeEnd={resize}
+          />
+        )}
+        {ibm ? (
+          <IbmNodePorts
+            id={id}
+            symbol={ibm.id}
+            width={width ?? node.width}
+            height={height ?? node.height}
+            connectable={!readonly}
+            exporting={exporting}
+            layoutProjected={node.metadata.simulationLayoutProjected === true}
+          />
+        ) : (
+          <>
+            <Handle type="target" position={Position.Left} id="in" isConnectable={!readonly} />
+            <Handle type="source" position={Position.Right} id="out" isConnectable={!readonly} />
+            {node.metadata.simulationLayoutProjected === true && (
+              <>
+                <Handle
+                  type="target"
+                  position={Position.Bottom}
+                  id="in-bottom"
+                  isConnectable={false}
+                />
+                <Handle type="source" position={Position.Top} id="out-top" isConnectable={false} />
+              </>
+            )}
+            {!overview && (
+              <>
+                <Handle
+                  type="target"
+                  position={Position.Top}
+                  id="in-top"
+                  isConnectable={!readonly}
+                />
+                <Handle
+                  type="source"
+                  position={Position.Bottom}
+                  id="out-bottom"
+                  isConnectable={!readonly}
+                />
+              </>
+            )}
+          </>
+        )}
+        {ibm ? <div className="ibm-node-content">{content}</div> : content}
       </div>
     );
   });

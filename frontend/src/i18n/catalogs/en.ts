@@ -1007,6 +1007,10 @@ const catalog = {
   'editor.properties.nodeParent': 'Node parent',
   'editor.properties.nodeStatus': 'Node status',
   'editor.properties.nodeTags': 'Node tags',
+  'editor.properties.nodeBackground': 'Node background color',
+  'editor.properties.themeBackground': 'Use theme background',
+  'editor.properties.nodeBackgroundHint':
+    'Automatic follows Appearance. A chosen color is shared by 2D, 3D and exports.',
   'editor.properties.nodeTitle': 'Node title',
   'editor.properties.nodeType': 'Node type',
   'editor.properties.nodeUrl': 'Node URL',

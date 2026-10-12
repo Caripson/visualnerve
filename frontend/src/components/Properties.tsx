@@ -35,6 +35,8 @@ import {
   CodeRelationProperties,
 } from './CodeProperties';
 import { SpatialProperties } from './SpatialProperties';
+import { LazyIbmSymbolProperties } from '../flowchart/LazyControls';
+import { NodeBackgroundField } from './NodeBackgroundField';
 export interface PropertiesProps {
   editCsv?: (datasetId?: string) => void;
   focusCsv?: (path: CsvPathEntry[], datasetId?: string) => void;
@@ -174,6 +176,10 @@ function PropertyPanel({
               placeholder={t('editor.properties.addContext')}
             />
           </Field>
+          {(graph.diagram.type === 'flowchart' || !!node.flowchartSymbol) && (
+            <LazyIbmSymbolProperties node={node} update={update} />
+          )}
+          <NodeBackgroundField node={node} update={update} />
           <div className="property-section">{t('editor.properties.responsibility')}</div>
           <Field title={t('editor.properties.owner')}>
             <select

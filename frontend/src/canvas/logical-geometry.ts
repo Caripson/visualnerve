@@ -13,6 +13,17 @@ export function isReadonlyCanvasNode(node: GraphNode): boolean {
   );
 }
 
+/** Packed layout positions are read only; a real canonical object's title remains editable. */
+export function isReadonlyNodeTitle(node: GraphNode): boolean {
+  const metadata = node.metadata;
+  return (
+    metadata.simulationProjected === true &&
+    (metadata.simulationLogicalNodeId !== node.id ||
+      metadata.simulationPoolSummary === true ||
+      typeof metadata.simulationProcessId === 'string')
+  );
+}
+
 /** Commit the user's displacement without saving automatic packing offsets as model coordinates. */
 export function canonicalGeometry(
   native: GraphNode,

@@ -59,6 +59,7 @@ import type { AnalysisCommandOptions } from './analysis-commands';
 import type { AnalyticsJobAuthority } from './analytics-api-jobs';
 import { remapAnalytics } from '../analytics/remap';
 import { codeCapabilities } from '../code/capabilities';
+import { ibmSymbols, ibmStencilForms } from '../flowchart/ibm-symbols';
 import { codeLanguages } from '../code/catalog';
 import { HistoryStore, historyStoreNames } from '../history/store';
 import { understandingActions } from './understanding-actions';
@@ -139,6 +140,9 @@ function patch<T extends Base>(value: T, data: Patch): T {
     ...fields
   } = data;
   const result = { ...value, ...fields } as T;
+  // Null clears only these optional appearance fields on partial updates.
+  for (const field of ['flowchartSymbol', 'backgroundColor'] as const)
+    if (fields[field] === null) delete (result as T & Record<string, unknown>)[field];
   if ('metadata' in data) {
     if (!data.metadata || typeof data.metadata !== 'object' || Array.isArray(data.metadata))
       throw new StorageError(422, 'Metadata must be an object.');
@@ -971,9 +975,14 @@ export class Repository {
   ): Promise<T> {
     const endpoint = path.replace(/^\/api\/v1/, '');
     if (
-      ['/health', '/simulation/capabilities', '/code/capabilities', '/code/languages'].includes(
-        endpoint,
-      ) ||
+      [
+        '/health',
+        '/simulation/capabilities',
+        '/code/capabilities',
+        '/code/languages',
+        '/flowchart/symbols',
+        '/flowchart/stencils',
+      ].includes(endpoint) ||
       isWorkspaceSecurityDiscovery(path, method)
     )
       return this.dispatchRequest(path, method, payload, options);
@@ -1057,6 +1066,12 @@ export class Repository {
         throw new StorageError(404, 'Unknown simulation discovery endpoint.');
       if (!read) throw new StorageError(405, 'Simulation capabilities require GET.');
       return structuredClone(simulationCapabilities) as T;
+    }
+    if (collection === 'flowchart') {
+      if (parts.length !== 2 || !['symbols', 'stencils'].includes(id) || url.search || url.hash)
+        throw new StorageError(404, 'Unknown flowchart discovery endpoint.');
+      if (!read) throw new StorageError(405, 'Flowchart symbol discovery requires GET.');
+      return structuredClone(id === 'symbols' ? ibmSymbols : ibmStencilForms) as T;
     }
     if (collection === 'analytics') {
       if (parts.length !== 2 || id !== 'capabilities' || url.search || url.hash)
@@ -1376,6 +1391,19 @@ export class Repository {
           return (type ? diagrams.filter((diagram) => diagram.type === type) : diagrams) as T;
         }
         const data = object(payload);
+        if (data.template === 'ibm-flowcharting') {
+          if (data.mode !== undefined || (data.type !== undefined && data.type !== 'flowchart'))
+            throw new StorageError(
+              422,
+              'IBM Flowcharting uses type flowchart and has no mode option.',
+            );
+          const { instantiate } = await import('../templates/templates');
+          await this.commandReady(options);
+          const graph = instantiate('ibm-flowcharting', data.name as string);
+          const { template: _template, ...fields } = data;
+          graph.diagram = { ...graph.diagram, ...fields, type: 'flowchart' } as Diagram;
+          return (await this.saveGraph(graph, 0, options.beforeWrite)).diagram as T;
+        }
         if (data.template !== undefined) {
           if (
             data.template !== 'time-series-analysis' ||
@@ -1383,7 +1411,7 @@ export class Repository {
           )
             throw new StorageError(
               422,
-              'Use the time-series-analysis template with example or import mode.',
+              'Choose ibm-flowcharting, or time-series-analysis with example or import mode.',
             );
           const { instantiate } = await import('../templates/templates');
           const graph = instantiate('time-series-analysis', data.name as string);

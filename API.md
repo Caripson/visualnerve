@@ -1,6 +1,6 @@
 # Optional local REST and MCP integration
 
-API **0.8.2** adds Time Series & Signal Analysis to the existing local command surface. Portable collaboration document work remains supported. The bridge advertises `collaboration-v1` , `collaboration-document-v1` and `analytics-v1`; a browser's `GET /collaboration/capabilities` separately reports whether the relay is configured. Room admission remains a human UI action.
+API **0.8.3** adds IBM Flowcharting discovery and templates, plus independent node background fills. Ordinary title/icon editing, Time Series & Signal Analysis and portable collaboration document work remain supported. The bridge advertises `collaboration-v1`, `collaboration-document-v1`, `analytics-v1` and `ibm-flowcharting-v1`; a browser's `GET /collaboration/capabilities` separately reports whether the relay is configured. Room admission remains a human UI action.
 
 The public product website is `https://www.visualnerve.com/`. The encrypted editor has one production entry: `https://app.visualnerve.com/`. The former public `/app` paths redirect there without forwarding query data; `/app` on the app origin returns HTTP 404. IndexedDB is origin-bound: existing records on older origins are not deleted, moved or synchronized by routing changes. Local source-development builds retain a development-only `/app/` editor for test fixtures. API/MCP command paths remain the same; allow the exact `https://app.visualnerve.com` origin when starting the local bridge.
 
@@ -55,7 +55,7 @@ Use `visual_nerve_request` for graph commands. HTTP documentation paths `/api/do
 
 ## Recover writes after a timeout
 
-Bridge version 0.8.2 advertises `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1` , `collaboration-document-v1` and `analytics-v1` through direct HTTP `GET /api/v1/health` (`/health` relative to the REST base) and its browser handshake; that transport response also lists supported MCP tools. These identify supported software, not workspace access. In contrast, `visual_nerve_request` with `{"path":"/health","method":"GET"}` reads semantic browser/IndexedDB health through the connected workspace. It does not expose bridge-only tools or capabilities, so their absence there does not mean that the bridge is outdated. Check the direct HTTP transport response when a newly documented bridge capability is unavailable. A current bridge and refreshed browser tab are needed for recoverable operations; older tabs remain one-shot and cannot reserve or recover receipts.
+Bridge version 0.8.3 advertises `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1` , `collaboration-document-v1`, `analytics-v1` and `ibm-flowcharting-v1` through direct HTTP `GET /api/v1/health` (`/health` relative to the REST base) and its browser handshake; that transport response also lists supported MCP tools. These identify supported software, not workspace access. In contrast, `visual_nerve_request` with `{"path":"/health","method":"GET"}` reads semantic browser/IndexedDB health through the connected workspace. It does not expose bridge-only tools or capabilities, so their absence there does not mean that the bridge is outdated. Check the direct HTTP transport response when a newly documented bridge capability is unavailable. A current bridge and refreshed browser tab are needed for recoverable operations; older tabs remain one-shot and cannot reserve or recover receipts.
 
 1. Reserve identity with `POST /operations` and exactly `{}` before sending a write. This requires an unlocked, connected browser with accepted storage and Read + write access.
 2. Read the returned `operationId`. It is an opaque server-issued token, distinct from graph UUIDs.
@@ -85,6 +85,26 @@ An authorized, already-open socket may remain as restricted control after lockin
 
 Authorized content requests and ordinary diagram exports return readable semantic information. `GET /workspace/export` is a readable `WorkspaceBackup`, not the encrypted backup downloaded through the browser UI. Downloaded encrypted backups keep their own credentials after live password changes; even content-key rotation cannot recall old copies. Full origin transfer is a separate, verified human workflow that preserves the source. See [workspace security and transfer](hugo/content/help/settings.md#workspace-security), [the storage schema](docs/ENCRYPTED_WORKSPACE_SCHEMA.md) and [MCP permissions](docs/MCP.md#encrypted-workspace-security).
 
+## IBM Flowcharting
+
+For practical meanings, examples and historical distinctions, see the [complete flowchart symbol reference](hugo/content/help/flowchart-symbols.md).
+
+IBM Flowcharting uses ordinary `type:"flowchart"` diagrams and the existing `nodeType` values. `GraphNode.flowchartSymbol` is an optional stable `ibm-*` catalog ID that selects the rendered appearance. Semantic node type, UUID, owners, metadata and relationships remain independent.
+
+`GET /flowchart/symbols` permits Read only and returns the full catalog as an array. Every entry has `id`, `label`, suggested `nodeType`, `physicalCutout`, `category` (`symbol`, `outline`, `arrowhead` or `legacy`), `revisions`, `construction` (`cutout`, `composite` or `drawn`), `outline`, `outlinePath`, `details`, `detailPaths` and `contentBox`. Point arrays and the content box use normalized 0..1 coordinates; SVG paths use a `0 0 100 100` viewBox. The catalog has 43 entries: 32 completed symbols from the revised IBM sleeve, two raw apertures, four arrowheads and five original forms. `revisions` lists `GX20-8020`, `GX20-8020-1` and/or `GX20-8020-2` outline membership; historical names/functions can differ for a shared outline. Exactly 26 entries set `physicalCutout:true`, specifically for the revised stencils. `GET /flowchart/stencils` returns `{revision,label,physicalCutoutSymbolIds,symbolLabels?}` records with the exact original 25 and revised 26 cutout sets. Optional `symbolLabels` maps catalog IDs to source-backed historical names when their meaning differs from the shared catalog label. Original Input/Output, Predefined Process, Program Modification, Clerical Operation and Perforated Tape have separate stable IDs (`ibm-legacy-input-output`, `ibm-legacy-predefined-process`, `ibm-program-modification`, `ibm-clerical-operation`, `ibm-perforated-tape`); see [sources and notation](docs/IBM_FLOWCHARTING.md).
+
+`GET /templates/ibm-flowcharting` reads the complete built-in example graph. Create an editable copy with Read + write:
+
+```json
+{"name":"Order processing","template":"ibm-flowcharting","type":"flowchart"}
+```
+
+Send this body to `POST /diagrams`; `type` may be omitted, and `mode` is rejected. The response is the created Diagram. Read `GET /diagrams/{diagramId}` for actual UUIDs and versions before editing. A plain `POST /diagrams` with `type:"flowchart"` still creates an ordinary flowchart.
+
+Create nodes, children or bulk entries with a catalog ID, for example `{"title":"Validate order","nodeType":"process","flowchartSymbol":"ibm-predefined-process"}`. Update an existing node with `PATCH /nodes/{nodeId}` and `{"version":CURRENT_VERSION,"flowchartSymbol":"ibm-sort"}`. An omitted partial-update field preserves its saved appearance. `flowchartSymbol:null` clears it on PATCH or an existing external-ID bulk upsert and restores ordinary node rendering. Complete/new node records accept omission or a valid catalog ID; null, empty strings and unsupported values return 422 without partial writes. Stale versions retain the existing 409 behavior.
+
+Graph replacement, native JSON export/import, templates, backups, copy/paste and saved history preserve this field. No schema migration, new table, exchange-format version, node type or diagram type is introduced. IBM Parallel Mode is notation; Process Simulator fork/join execution uses its separately typed semantic model.
+
 ## CRUD and graph operations
 
 | Method               | Route                               | Behavior                                                                                          |
@@ -95,6 +115,8 @@ Authorized content requests and ordinary diagram exports return readable semanti
 | POST                 | /sql/preview                        | Analyze SELECT/WITH or DDL locally; return graph/counts/warnings without saving                   |
 | POST                 | /sql/diagrams                       | Analyze SQL, save transactionally and open the diagram; return complete Graph                     |
 | GET                  | /code/languages                     | List 50 code language IDs plus Markdown, extensions and capabilities                              |
+| GET                  | /flowchart/stencils                 | Discover exact original 25 and revised 26 stencil cutout memberships                              |
+| GET                  | /flowchart/symbols                  | Discover all IBM symbol IDs, names, construction metadata and shared geometry                     |
 | GET                  | /code/capabilities                  | Discover independent source-file, archive, byte, graph and analysis limits                        |
 | POST                 | /code/preview                       | Analyze source files locally; return structural graph/counts/warnings without saving              |
 | POST                 | /code/project/preview               | Scan base64 ZIP and preview file/folder relationships; no save                                    |
@@ -122,6 +144,14 @@ Authorized content requests and ordinary diagram exports return readable semanti
 | PUT                  | /settings/project-source-file-limit | Save this browser's ZIP source-file limit from 500 to 10,000; write access required               |
 
 Creates return 201 and an entity (import returns Graph). Bulk/replacement return 200 and Graph. Deletes normally return 204; SVG job cancellation returns 200 with its cancelled status. Errors retain `{ "error": "message" }` and may add structured `code`/`issues`: 400 malformed JSON, 401 token missing/wrong, 403 origin/host rejected, storage not accepted or read-only mutation denied, 404 missing entity, 423 locked workspace, 409 stale version or duplicate identity, 413 local history capacity/quota, 422 validation, 428 missing update version, 503 no connected browser and 504 browser timeout. No partially committed graph remains after validation fails. Requests are limited to 32 MiB. All integration requests with a configured VISUAL_NERVE_BRIDGE_TOKEN need `Authorization: Bearer TOKEN`.
+
+## Node background colors
+
+All ordinary and IBM nodes accept optional `backgroundColor`, an exact six-digit hex string such as `"#aB12Ef"`. Letter case is preserved. This fill is independent of the existing `color` accent, title, icon metadata, `nodeType` and `flowchartSymbol`; omitting it uses the current theme fill.
+
+Set the field when creating nodes or children, in a complete native graph, or through versioned PATCH and bulk upserts. Partial updates preserve an omitted value. To reset an existing node to theme fill, send `{"version":7,"backgroundColor":null}` to `PATCH /nodes/{id}`, or `backgroundColor:null` on an existing external-ID bulk upsert. Reset removes only the fill. Read + write is required; Read only permits inspection and exports.
+
+Full/new node records reject explicit null. Empty, shorthand (`#abc`), alpha (`#11223344`), named, object and non-hex values return 422 with `code:"INVALID_NODE_BACKGROUND_COLOR"` and an `issues` entry identifying the node field. Invalid creates, bulk batches, graph replacement and JSON imports save nothing. Native JSON, encrypted storage, snapshots, backups, clipboard and collaboration preserve the field without a schema migration. Discover `NodeInput`, `NodePatch` and `BulkNode` with MCP endpoint documentation.
 
 ## Local import size preference
 
@@ -422,7 +452,7 @@ The IDs above are explanatory placeholders. Supply unique canonical node/edge UU
 
 Run the model through the existing simulation run endpoints. Original-case population and revenue remain single-counted; child tasks have their own processing, queues and resource allocations. `state.parallel` exposes active groups/branches, waiting parents and bounded correlated group summaries with `droppedGroups` describing omitted active groups. Particle tokens carry `rootParticleId`, `parentParticleId`, `forkGroupId`, `forkNodeId`, `joinNodeId` and `branchEdgeId` where applicable. A suspended parent and an arrived child can have status `waiting`; retired children have `joined` or `cancelled`. Node metrics at a join expose `join.waitingGroups`, `arrivedBranches`, `expectedBranches`, `completedGroups`, `cancelledGroups` and the observed synchronization-wait distribution. Its current queue counts arrived tasks waiting for their siblings. `PARTICLE_FORKED`, `BRANCH_JOINED`, `JOIN_COMPLETED`, `BRANCH_CANCELLED` and `PROCESS_CANCELLED` events provide correlation without inspecting coordinates. Retained live tokens and sampled particles include branches and suspended parents; business `created`, `completed`, `abandoned`, `failed` and `inSystem` count original cases. The 200,000 active-token limit applies to parents and children together.
 
-Discover the **Parallel SD-WAN delivery** template through `GET /templates` for a complete editable example. Headless, animated, scenario and replay runs use the same deterministic engine.
+Headless, animated, scenario and replay runs use the same deterministic fork/join engine.
 
 Route metrics retain exact connection-ID labels up to 2,000 characters. Longer histories use a bounded identifier: the first 200 characters followed by ` … [route:<8hex>-<8hex>; edges=N]`. The ordered dual digest and edge count are deterministic grouping identifiers, not a cryptographic integrity guarantee, and cannot reconstruct the complete itinerary. At most 256 distinct route buckets plus `[other routes]` are retained; all completed cases still contribute to metrics. This bounds nested branch history without dropping visited Work-node revenue attribution or changing case counts, costs or TTR.
 
@@ -467,7 +497,7 @@ All job routes permit **Read only** access and use the same local worker and aut
 
 The immutable snapshot contains saved logical nodes, internal connections and canonical 2D geometry, including when the app is in 3D. **Complete includes stored nodes hidden by temporary CSV/overview views.** Selected includes only explicit nodes and edges with both endpoints selected. API exchange selection does not implicitly expand process groups: include actual descendant node IDs read from the hierarchy. Basic shapes, text, colors, groups and attached connectors remain editable. Titles, descriptions, owner/status labels and simple process assumptions are deliberately readable. Icons, custom stencils, pen strokes, rich formatting and 3D relief may be simplified or omitted; long labels may need resizing in the destination editor.
 
-Editable Draw.io exports deliberately use a **light drawing surface**, regardless of the app's Appearance. White base fills and dark text, labels and base borders keep the drawing readable in its destination editor; stored node, connection and mind-map branch color accents are retained. This is a portable drawing style, not a capture of the app's dark theme. Native JSON preserves full stored styling; workspace backups also preserve portable appearance settings. SVG retains its existing appearance behavior. No extra export argument is required.
+Editable Draw.io exports use a **light drawing surface**, regardless of the app's Appearance. Nodes without explicit `backgroundColor` use white base fills; saved fills are retained with readable text contrast, alongside node, connection and mind-map branch accents. IBM silhouettes use ordinary semantic node-type approximations and return an explicit fidelity warning. Native JSON preserves the exact saved symbol and styling; PNG/PDF/SVG preserve native 2D glyphs. Workspace backups retain portable appearance settings. No extra export argument is required.
 
 Raw datasets, original source files, arbitrary metadata, simulation execution/results/scenarios, live capacity copies, audio and vault data are excluded. This is an editable drawing, not a full backup. Native JSON or workspace backup remains the faithful model transfer.
 

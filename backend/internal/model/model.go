@@ -39,28 +39,30 @@ type Diagram struct {
 }
 type Node struct {
 	Base
-	DiagramID   string   `json:"diagramId"`
-	ExternalID  string   `json:"externalId,omitempty"`
-	NodeType    string   `json:"nodeType"`
-	Title       string   `json:"title"`
-	Description string   `json:"description,omitempty"`
-	Notes       string   `json:"notes,omitempty"`
-	URL         string   `json:"url,omitempty"`
-	X           float64  `json:"x"`
-	Y           float64  `json:"y"`
-	Width       float64  `json:"width"`
-	Height      float64  `json:"height"`
-	OwnerID     string   `json:"ownerId,omitempty"`
-	OwnerIDs    []string `json:"ownerIds"`
-	Status      string   `json:"status,omitempty"`
-	Color       string   `json:"color,omitempty"`
-	StartDate   string   `json:"startDate,omitempty"`
-	EndDate     string   `json:"endDate,omitempty"`
-	DueDate     string   `json:"dueDate,omitempty"`
-	Tags        []string `json:"tags"`
-	ParentID    string   `json:"parentId,omitempty"`
-	Collapsed   bool     `json:"collapsed"`
-	Metadata    Meta     `json:"metadata"`
+	DiagramID       string   `json:"diagramId"`
+	ExternalID      string   `json:"externalId,omitempty"`
+	NodeType        string   `json:"nodeType"`
+	FlowchartSymbol string   `json:"flowchartSymbol,omitempty"`
+	Title           string   `json:"title"`
+	Description     string   `json:"description,omitempty"`
+	Notes           string   `json:"notes,omitempty"`
+	URL             string   `json:"url,omitempty"`
+	X               float64  `json:"x"`
+	Y               float64  `json:"y"`
+	Width           float64  `json:"width"`
+	Height          float64  `json:"height"`
+	OwnerID         string   `json:"ownerId,omitempty"`
+	OwnerIDs        []string `json:"ownerIds"`
+	Status          string   `json:"status,omitempty"`
+	Color           string   `json:"color,omitempty"`
+	BackgroundColor string   `json:"backgroundColor,omitempty"`
+	StartDate       string   `json:"startDate,omitempty"`
+	EndDate         string   `json:"endDate,omitempty"`
+	DueDate         string   `json:"dueDate,omitempty"`
+	Tags            []string `json:"tags"`
+	ParentID        string   `json:"parentId,omitempty"`
+	Collapsed       bool     `json:"collapsed"`
+	Metadata        Meta     `json:"metadata"`
 }
 type Edge struct {
 	Base
@@ -260,6 +262,12 @@ func ValidateNode(n Node) error {
 	if !Contains(NodeTypes, n.NodeType) {
 		return fmt.Errorf("unsupported node type %q", n.NodeType)
 	}
+	if n.FlowchartSymbol != "" && !Contains(FlowchartSymbols, n.FlowchartSymbol) {
+		return fmt.Errorf("unsupported flowchart symbol %q", n.FlowchartSymbol)
+	}
+	if n.BackgroundColor != "" && !validNodeBackgroundColor(n.BackgroundColor) {
+		return fmt.Errorf("node backgroundColor must be a six-digit hex color (#RRGGBB)")
+	}
 	for _, v := range []float64{n.X, n.Y, n.Width, n.Height} {
 		if math.IsNaN(v) || math.IsInf(v, 0) || math.Abs(v) > 1e8 {
 			return fmt.Errorf("invalid coordinates or dimensions")
@@ -395,6 +403,10 @@ func MergePatch(current any, patch map[string]json.RawMessage, target any) error
 		return err
 	}
 	for key, value := range patch {
+		if key == "backgroundColor" && strings.TrimSpace(string(value)) == "null" {
+			delete(base, key)
+			continue
+		}
 		if key == "metadata" {
 			a := Meta{}
 			b := Meta{}

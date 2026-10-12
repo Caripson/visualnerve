@@ -1031,6 +1031,10 @@ const catalog = {
   'editor.properties.nodeParent': 'Übergeordneter Knoten',
   'editor.properties.nodeStatus': 'Knotenstatus',
   'editor.properties.nodeTags': 'Knotentags',
+  'editor.properties.nodeBackground': 'Hintergrundfarbe des Knotens',
+  'editor.properties.themeBackground': 'Themenhintergrund verwenden',
+  'editor.properties.nodeBackgroundHint':
+    'Automatisch folgt dem Erscheinungsbild. Eine gewählte Farbe gilt für 2D, 3D und Exporte.',
   'editor.properties.nodeTitle': 'Knotentitel',
   'editor.properties.nodeType': 'Knotentyp',
   'editor.properties.nodeUrl': 'Knoten-URL',
