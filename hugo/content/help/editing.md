@@ -70,6 +70,12 @@ In a blank diagram or any ordinary template, use **IBM symbols** in the editing 
 
 The **Classic Flowcharting** template provides an editable starting set based on the IBM GX20-8020 stencil. You can use the same symbols without starting from that template. **Process Simulator** and **Time Series & Signal Analysis** retain their own tools; existing saved symbols can still be changed or cleared in Properties. See [IBM flowchart symbols](/help/ibm-flowcharting/) for choices and completed composites.
 
+### Use a notation collection
+
+Choose **Notation collections** in an ordinary diagram's toolbar to add HIPO, classic DFD, UML or BPMN symbols. Select an object to edit its notation fields, sections, references or named ports; select a relationship to edit its notation and endpoint roles. A document's notation profile guides creation and review while existing objects retain their explicit notation. [Choose the right collection and follow the editing steps](/help/notation-collections/).
+
+A notation object's **+ → Add next** menu offers symbols from its collection and diagram family. It creates a fresh element with empty sections and a starting relationship, rather than copying the selected object's values. Use the palette for ports and boundary events that need an owner attachment.
+
 ### Read long code and schema cards
 
 In 2D, code cards have an internal scroll area. Scroll inside it to read retained detail without zooming the entire diagram. Select the card and drag a corner handle to enlarge it; move the card by its header. Sizes save and support Undo. Full imported semantic properties remain available in Properties. Image, 3D and video views show the top of a card at its saved size, so enlarge it before exporting detail that must be visible. [Source code](/help/code/), [SQL](/help/sql/).

@@ -18,6 +18,14 @@ Use groups, collapsed branches, search and filters to keep a large diagram reada
 
 [Learn the editing controls](/help/editing/)
 
+## Choose a vocabulary for the system
+
+Use **HIPO** for functional hierarchy and input/process/output documentation, or a **classic DFD** in Yourdon–DeMarco or Gane–Sarson notation to trace information through processes and stores. **UML** offers editable starting examples for all 14 diagram families, including class compartments, component ports, lifelines, timing and runtime deployment. **BPMN** offers process, collaboration, conversation and choreography examples with activities, event markers and participant relationships.
+
+Notation properties and relationship ends stay part of the editable native diagram. These collections support graphical modeling and selected structural checks; they do not execute UML or BPMN or provide UML XMI or BPMN XML interchange. The separate Process Simulator supplies executable capacity and queue experiments.
+
+[Choose a notation collection](/help/notation-collections/) · [HIPO](/help/hipo/) · [Classic DFD](/help/dfd/) · [UML](/help/uml/) · [BPMN](/help/bpmn/)
+
 ## Turn rows into a useful visual question
 
 Import a CSV, clean columns, filter rows, choose grouping levels and calculate counts, sums, averages, medians or other measures. A large source can become a small, connected view of customers, regions or products.

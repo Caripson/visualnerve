@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import type { Graph, GraphNode } from '../../src/model/types';
 import { captureAppearancePair } from './capture-appearance';
+import templateManifest from '../../src/templates/manifest.json' with { type: 'json' };
 
 test.skip(process.env.VN_CAPTURE_SITE !== '1', 'Opt in to regenerate real device screenshots.');
 test.use({ colorScheme: 'light' });
@@ -484,7 +485,18 @@ test('capture the renamed template gallery in both appearances', async ({ page, 
   await page.getByRole('button', { name: /^New diagram/ }).click();
   const dialog = page.getByRole('dialog', { name: 'New diagram', exact: true });
   await dialog.getByLabel('New diagram name').fill('My next workflow');
-  await expect(dialog.locator('.template-option')).toHaveCount(14);
+  await expect(dialog.locator('.template-option')).toHaveCount(templateManifest.length);
+  await dialog.getByRole('combobox', { name: 'Template collection' }).selectOption('ordinary');
+  await expect(dialog.locator('.template-option')).toHaveCount(
+    templateManifest.filter(
+      (template) =>
+        !template.key.includes('simulator') &&
+        template.key !== 'time-series-analysis' &&
+        !['hipo', 'dfd-yourdon-demarco', 'dfd-gane-sarson'].includes(template.key) &&
+        !template.key.startsWith('uml-') &&
+        !template.key.startsWith('bpmn-'),
+    ).length,
+  );
   await expect(dialog.getByRole('button', { name: /Classic Flowcharting/ })).toBeVisible();
   await expect(
     dialog.getByText('Based on the IBM GX20-8020 stencil', { exact: false }),

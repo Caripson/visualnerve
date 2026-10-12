@@ -1,7 +1,26 @@
+import {
+  notationMarkerGeometry,
+  notationSpatialSegments,
+  notationRibbonPositions,
+} from '../notation/spatial-markers';
+import {
+  notationEdgeAppearance,
+  notationSourceIsGateway,
+  type NotationLineLayout,
+} from '../notation/edge-geometry';
+import type { EdgeNotation, NotationDecoration } from '../notation/types';
+import type { NodeNotation } from '../notation/types';
+import {
+  notationReliefGeometry,
+  notationConnectionFraction,
+  paintNotationFace,
+} from '../notation/spatial';
+import { notationGeometry } from '../notation/geometry';
 import * as THREE from 'three';
 import type { Edge } from '@xyflow/react';
 import type { CanvasNode } from '../canvas/projection';
 import type { SpatialPoint } from './types';
+import { spatialNotationWaypoints, type SpatialSheetOrigin } from './notation-route';
 import { topicInk } from '../ui/colors';
 import { getIbmSymbol, type IBMSymbolId } from '../flowchart/ibm-symbols';
 import { ibmConnectionFraction, ibmReliefGeometry } from './ibm-relief';
@@ -30,7 +49,10 @@ export function spatialNodeAppearance(view: CanvasNode) {
   const accent = view.data.mindmap?.color || view.data.node.color || '#538971';
   const custom = nodeBackgroundColor(view.data.node.backgroundColor);
   if (custom) return { background: custom, color: topicInk(custom), accent };
-  const depth = getIbmSymbol(view.data.node.flowchartSymbol) ? undefined : view.data.mindmap?.depth;
+  const depth =
+    view.data.node.notation || getIbmSymbol(view.data.node.flowchartSymbol)
+      ? undefined
+      : view.data.mindmap?.depth;
   if (depth === 1) return { background: accent, color: topicInk(accent), accent };
   const background = new THREE.Color('#ffffff');
   if (depth !== undefined) background.lerp(new THREE.Color(accent), depth === 0 ? 0.07 : 0.14);
@@ -169,6 +191,7 @@ export function spatialTextPlane(
     kind?: string;
     fontSize?: number;
     flowchartSymbol?: IBMSymbolId;
+    notation?: NodeNotation;
   } = {},
 ) {
   const width = options.width ?? 1.75;
@@ -179,7 +202,8 @@ export function spatialTextPlane(
   const context = canvas.getContext('2d');
   if (!context) return undefined;
   const ibm = getIbmSymbol(options.flowchartSymbol);
-  if (ibm) paintIbmFace(context, ibm, text, options);
+  if (options.notation) paintNotationFace(context, options.notation, text, options);
+  else if (ibm) paintIbmFace(context, ibm, text, options);
   else {
     context.fillStyle = options.background ?? '#ffffff';
     context.fillRect(0, 0, canvas.width, canvas.height);
@@ -236,21 +260,23 @@ export function spatialTextPlane(
     new THREE.MeshBasicMaterial({
       map: texture,
       side: THREE.FrontSide,
-      transparent: !!ibm,
-      alphaTest: ibm ? 0.01 : 0,
+      transparent: !!ibm || !!options.notation,
+      alphaTest: ibm || options.notation ? 0.01 : 0,
     }),
   );
   face.userData.flowchartSymbol = options.flowchartSymbol;
+  face.userData.notation = options.notation;
   face.userData.faceWidth = width;
   face.userData.faceHeight = height;
   const back = new THREE.Mesh(face.geometry, face.material);
-  if (ibm) {
+  if (ibm || options.notation) {
     const backCanvas = document.createElement('canvas');
     backCanvas.width = canvas.width;
     backCanvas.height = canvas.height;
     const backContext = backCanvas.getContext('2d');
     if (backContext) {
-      paintIbmFace(backContext, ibm, text, options, true);
+      if (options.notation) paintNotationFace(backContext, options.notation, text, options, true);
+      else if (ibm) paintIbmFace(backContext, ibm, text, options, true);
       const backTexture = new THREE.CanvasTexture(backCanvas);
       backTexture.colorSpace = THREE.SRGBColorSpace;
       backTexture.generateMipmaps = false;
@@ -273,7 +299,10 @@ export function spatialTextPlane(
 /** Native textures contain translucent fills and antialiased edges on both sides. */
 export function setSpatialFaceOpacity(face: SpatialFaceMesh, opacity: number) {
   const transparent =
-    face.userData.faceSource === '2d-node' || !!face.userData.flowchartSymbol || opacity < 1;
+    face.userData.faceSource === '2d-node' ||
+    !!face.userData.flowchartSymbol ||
+    !!face.userData.notation ||
+    opacity < 1;
   for (const surface of spatialFaceSurfaces(face)) {
     if (surface.material.transparent !== transparent) {
       surface.material.transparent = transparent;
@@ -298,6 +327,8 @@ export interface SpatialNodeInstance {
   color: THREE.Color;
 }
 export interface SpatialEdgeBatchRange {
+  notationLayout?: NotationLineLayout;
+  ribbon?: { mesh: THREE.Mesh; start: number; count: number };
   line: THREE.LineSegments;
   start: number;
   count: number;
@@ -314,6 +345,7 @@ export interface SpatialFrameInstance extends SpatialArrowInstance {
   captured?: boolean;
 }
 export interface SpatialBatches {
+  sheetOrigin: SpatialSheetOrigin;
   group: THREE.Group;
   pickable: THREE.Object3D[];
   nodes: Map<string, SpatialNodeInstance>;
@@ -332,6 +364,7 @@ interface ReliefProfile {
   skew: number;
   inset: number;
   symbol?: IBMSymbolId;
+  notation?: NodeNotation;
 }
 
 function reliefProfile(view: CanvasNode): ReliefProfile {
@@ -362,6 +395,7 @@ function reliefProfile(view: CanvasNode): ReliefProfile {
   const quantize = (value: number) => Math.min(0.5, Math.ceil(value * 512) / 512);
   return {
     symbol: getIbmSymbol(view.data.node.flowchartSymbol)?.id,
+    notation: view.data.node.notation,
     opacity: Number(view.style?.opacity ?? 1) * (kind === 'group' ? 0.03 : 1),
     radiusX: quantize(radius / (dimensions.width * 100)),
     radiusY: quantize((kind === 'database' ? 8 : radius) / (dimensions.height * 100)),
@@ -391,6 +425,7 @@ function clipReliefContour(points: THREE.Vector2[], boundary: number, keepLeft: 
 }
 
 function reliefGeometry(profile: ReliefProfile) {
+  if (profile.notation) return notationReliefGeometry(profile.notation);
   if (profile.symbol) return ibmReliefGeometry(profile.symbol);
   const { radiusX: x, radiusY: y } = profile;
   const shape = new THREE.Shape();
@@ -432,11 +467,32 @@ export function cardConnectionPoint(
   destination: SpatialPoint,
   dimensions: THREE.Vector3,
   scale: number,
-  symbol?: IBMSymbolId,
+  symbol?: IBMSymbolId | NodeNotation,
+  port?: string,
 ) {
   const direction = new THREE.Vector2(destination.x - point.x, destination.y - point.y);
+  if (symbol && typeof symbol !== 'string') {
+    const geometry = notationGeometry(symbol);
+    const side =
+      Math.abs(direction.x / dimensions.x) >= Math.abs(direction.y / dimensions.y)
+        ? direction.x >= 0
+          ? 'right'
+          : 'left'
+        : direction.y >= 0
+          ? 'top'
+          : 'bottom';
+    const anchor = geometry.anchors.find((value) => value.id === (port ?? side));
+    if (anchor)
+      return {
+        x: point.x + (anchor.x - 0.5) * dimensions.x,
+        y: point.y + (0.5 - anchor.y) * dimensions.y,
+        z: point.z + dimensions.z / 2 + 0.004 * scale,
+      };
+  }
   const symbolFraction = symbol
-    ? ibmConnectionFraction(symbol, direction.x / dimensions.x, direction.y / dimensions.y)
+    ? typeof symbol === 'string'
+      ? ibmConnectionFraction(symbol, direction.x / dimensions.x, direction.y / dimensions.y)
+      : notationConnectionFraction(symbol, direction.x / dimensions.x, direction.y / dimensions.y)
     : undefined;
   const distance =
     symbolFraction ??
@@ -458,8 +514,10 @@ export function createSpatialBatches(
   edges: Edge[],
   positions: Map<string, SpatialPoint>,
   scale = 1,
+  sheetOrigin: SpatialSheetOrigin = { centerX: 0, centerY: 0 },
 ): SpatialBatches {
   const result: SpatialBatches = {
+    sheetOrigin,
     group: new THREE.Group(),
     pickable: [],
     nodes: new Map(),
@@ -471,9 +529,11 @@ export function createSpatialBatches(
   const nodeGroups = new Map<string, CanvasNode[]>();
   const profiles = new Map<string, ReliefProfile>();
   const profileKey = (profile: ReliefProfile) =>
-    profile.symbol
-      ? `${profile.opacity}:${profile.symbol}`
-      : `${profile.opacity}:${profile.radiusX}:${profile.radiusY}:${profile.skew}:${profile.inset}`;
+    profile.notation
+      ? `${profile.opacity}:notation:${JSON.stringify(notationGeometry(profile.notation))}`
+      : profile.symbol
+        ? `${profile.opacity}:${profile.symbol}`
+        : `${profile.opacity}:${profile.radiusX}:${profile.radiusY}:${profile.skew}:${profile.inset}`;
   const fallbacks = new Map<number, string>();
   // Reserve a conservative fallback for each projection opacity (normally 1 and 0.2).
   const requestedProfiles = new Map(nodes.map((view) => [view.id, reliefProfile(view)]));
@@ -505,6 +565,7 @@ export function createSpatialBatches(
     if (!profiles.has(key)) {
       if (
         requested.symbol ||
+        requested.notation ||
         [...profiles.values()].filter((profile) => !profile.symbol).length < 32
       )
         profiles.set(key, requested);
@@ -620,11 +681,20 @@ export function createSpatialBatches(
     colors: number[];
     distances: number[];
     ids: string[];
-    ranges: Array<{ edge: Edge; start: number; count: number; color: THREE.Color }>;
+    ranges: Array<{
+      edge: Edge;
+      start: number;
+      count: number;
+      color: THREE.Color;
+      notationLayout?: NotationLineLayout;
+    }>;
   };
   const lineGroups = new Map<string, LineData>();
   const arrowEntries: Array<{
     edgeId: string;
+    decoration?: NotationDecoration;
+    hatched?: boolean;
+    ribbon?: boolean;
     point: THREE.Vector3;
     direction: THREE.Vector3;
     color: THREE.Color;
@@ -644,14 +714,18 @@ export function createSpatialBatches(
               target,
               sourceDimensions,
               scale,
-              result.nodes.get(edge.source)?.mesh.geometry.userData.flowchartSymbol,
+              result.nodes.get(edge.source)?.mesh.geometry.userData.notation ??
+                result.nodes.get(edge.source)?.mesh.geometry.userData.flowchartSymbol,
+              (edge.data?.notation as EdgeNotation | undefined)?.sourcePort,
             ),
             cardConnectionPoint(
               target,
               source,
               targetDimensions,
               scale,
-              result.nodes.get(edge.target)?.mesh.geometry.userData.flowchartSymbol,
+              result.nodes.get(edge.target)?.mesh.geometry.userData.notation ??
+                result.nodes.get(edge.target)?.mesh.geometry.userData.flowchartSymbol,
+              (edge.data?.notation as EdgeNotation | undefined)?.targetPort,
             ),
             false,
             scale,
@@ -666,14 +740,50 @@ export function createSpatialBatches(
         loopScale,
       );
     }
+    const notation = edge.data?.notation as EdgeNotation | undefined;
+    if (notation?.waypoints?.length && sourceDimensions && targetDimensions) {
+      points = spatialNotationWaypoints(
+        notation.waypoints,
+        cardConnectionPoint(
+          source,
+          target,
+          sourceDimensions,
+          scale,
+          result.nodes.get(edge.source)?.mesh.geometry.userData.notation ??
+            result.nodes.get(edge.source)?.mesh.geometry.userData.flowchartSymbol,
+          notation.sourcePort ?? 'right',
+        ),
+        cardConnectionPoint(
+          target,
+          source,
+          targetDimensions,
+          scale,
+          result.nodes.get(edge.target)?.mesh.geometry.userData.notation ??
+            result.nodes.get(edge.target)?.mesh.geometry.userData.flowchartSymbol,
+          notation.targetPort ?? 'left',
+        ),
+        sheetOrigin,
+        scale,
+      );
+    }
     // Explicitly colocated objects still have a real, pickable relationship.
     if (points.length < 2) points = spatialEdgePoints(source, target, true, scale);
     result.edgePoints.set(edge.id, points);
-    const style = edge.style?.strokeDasharray
-      ? String(edge.style.strokeDasharray).startsWith('2')
-        ? 'dotted'
-        : 'dashed'
-      : 'solid';
+    const context = {
+      sourceIsGateway: notationSourceIsGateway(
+        result.nodes.get(edge.source)?.mesh.geometry.userData.notation,
+      ),
+    };
+    const notationStyle = notation ? notationEdgeAppearance(notation, context) : undefined;
+    const style = notationStyle
+      ? notationStyle.heavy
+        ? 'heavy'
+        : notationStyle.line
+      : edge.style?.strokeDasharray
+        ? String(edge.style.strokeDasharray).startsWith('2')
+          ? 'dotted'
+          : 'dashed'
+        : 'solid';
     let data = lineGroups.get(style);
     if (!data) {
       data = { positions: [], colors: [], distances: [], ids: [], ranges: [] };
@@ -681,10 +791,13 @@ export function createSpatialBatches(
     }
     const color = batchColor(edge.style?.stroke, '#879c92');
     const start = data.positions.length / 3;
+    const visual = notation
+      ? notationSpatialSegments(notation, points, scale, undefined, context)
+      : undefined;
+    const segments =
+      visual?.segments ?? points.slice(1).map((point, index) => [points[index], point] as const);
     let distance = 0;
-    for (let index = 1; index < points.length; index++) {
-      const a = points[index - 1],
-        b = points[index];
+    for (const [a, b] of segments) {
       data.positions.push(a.x, a.y, a.z, b.x, b.y, b.z);
       data.colors.push(color.r, color.g, color.b, color.r, color.g, color.b);
       const nextDistance = distance + a.distanceTo(b);
@@ -692,20 +805,40 @@ export function createSpatialBatches(
       data.ids.push(edge.id);
       distance = nextDistance;
     }
-    data.ranges.push({ edge, start, count: data.positions.length / 3 - start, color });
-    const arrow = (atEnd: boolean) => {
-      const at = atEnd ? points.length - 4 : 3;
+    data.ranges.push({
+      edge,
+      start,
+      count: data.positions.length / 3 - start,
+      color,
+      notationLayout: visual?.layout,
+    });
+    const arrow = (atEnd: boolean, decoration?: NotationDecoration) => {
+      const at = decoration ? (atEnd ? points.length - 1 : 0) : atEnd ? points.length - 4 : 3;
       arrowEntries.push({
         edgeId: edge.id,
+        decoration,
+        hatched: atEnd && notationStyle?.hatch,
+        ribbon: atEnd && notationStyle?.ribbon,
         point: points[at],
         direction: atEnd
-          ? points[at + 1].clone().sub(points[at]).normalize()
-          : points[at - 1].clone().sub(points[at]).normalize(),
+          ? points[Math.min(at + 1, points.length - 1)]
+              .clone()
+              .sub(points[at === points.length - 1 ? at - 1 : at])
+              .normalize()
+          : points[Math.max(at - 1, 0)]
+              .clone()
+              .sub(points[at === 0 ? 1 : at])
+              .normalize(),
         color,
       });
     };
-    if (edge.markerEnd) arrow(true);
-    if (edge.markerStart) arrow(false);
+    if (notationStyle) {
+      if (notationStyle.targetDecoration !== 'none') arrow(true, notationStyle.targetDecoration);
+      if (notationStyle.sourceDecoration !== 'none') arrow(false, notationStyle.sourceDecoration);
+    } else {
+      if (edge.markerEnd) arrow(true);
+      if (edge.markerStart) arrow(false);
+    }
   }
   for (const [style, data] of lineGroups) {
     const geometry = new THREE.BufferGeometry();
@@ -716,7 +849,7 @@ export function createSpatialBatches(
     );
     geometry.setAttribute('lineDistance', new THREE.Float32BufferAttribute(data.distances, 1));
     const material =
-      style === 'solid'
+      style === 'solid' || style === 'heavy'
         ? new THREE.LineBasicMaterial({ vertexColors: true })
         : new THREE.LineDashedMaterial({
             vertexColors: true,
@@ -725,27 +858,74 @@ export function createSpatialBatches(
           });
     const line = new THREE.LineSegments(geometry, material);
     line.userData.segmentEdgeIds = data.ids;
+    let ribbon: THREE.Mesh | undefined;
+    if (style === 'heavy') {
+      const segments = Array.from(
+        { length: data.positions.length / 6 },
+        (_, index) =>
+          [
+            new THREE.Vector3(...data.positions.slice(index * 6, index * 6 + 3)),
+            new THREE.Vector3(...data.positions.slice(index * 6 + 3, index * 6 + 6)),
+          ] as const,
+      );
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute(
+        'position',
+        new THREE.Float32BufferAttribute(notationRibbonPositions(segments, 0.035 * scale), 3),
+      );
+      geometry.setAttribute(
+        'color',
+        new THREE.Float32BufferAttribute(
+          data.ids.flatMap((_, index) =>
+            Array.from({ length: 6 }, () => data.colors.slice(index * 6, index * 6 + 3)).flat(),
+          ),
+          3,
+        ).setUsage(THREE.DynamicDrawUsage),
+      );
+      ribbon = new THREE.Mesh(
+        geometry,
+        new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }),
+      );
+      ribbon.userData.triangleEdgeIds = data.ids.flatMap((id) => [id, id]);
+      result.group.add(ribbon);
+      result.pickable.push(ribbon);
+    }
     for (const range of data.ranges)
       result.edges.set(range.edge.id, {
         line,
         start: range.start,
         count: range.count,
         color: range.color,
+        notationLayout: range.notationLayout,
+        ribbon: ribbon
+          ? { mesh: ribbon, start: range.start * 3, count: range.count * 3 }
+          : undefined,
       });
     result.group.add(line);
     result.pickable.push(line);
   }
-  if (arrowEntries.length) {
+  const markerGroups = new Map<string, typeof arrowEntries>();
+  for (const entry of arrowEntries) {
+    const key = `${entry.decoration ?? 'generic-cone'}:${!!entry.hatched}:${!!entry.ribbon}`;
+    markerGroups.set(key, [...(markerGroups.get(key) ?? []), entry]);
+  }
+  for (const entries of markerGroups.values()) {
+    const decoration = entries[0].decoration;
     const mesh = new THREE.InstancedMesh(
-      new THREE.ConeGeometry(0.075 * scale, 0.22 * scale, 6),
+      decoration
+        ? notationMarkerGeometry(decoration, scale, entries[0].hatched, entries[0].ribbon)
+        : new THREE.ConeGeometry(0.075 * scale, 0.22 * scale, 6),
       new THREE.MeshBasicMaterial({ color: '#ffffff' }),
-      arrowEntries.length,
+      entries.length,
     );
-    mesh.userData.edgeIds = arrowEntries.map((entry) => entry.edgeId);
-    arrowEntries.forEach((entry, index) => {
+    mesh.userData.edgeIds = entries.map((entry) => entry.edgeId);
+    entries.forEach((entry, index) => {
       matrix.compose(
         entry.point,
-        new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), entry.direction),
+        new THREE.Quaternion().setFromUnitVectors(
+          new THREE.Vector3(decoration ? 1 : 0, decoration ? 0 : 1, 0),
+          entry.direction,
+        ),
         new THREE.Vector3(1, 1, 1),
       );
       mesh.setMatrixAt(index, matrix);
@@ -773,6 +953,8 @@ export function spatialIntersectionIdentity(hit: THREE.Intersection | undefined)
       nodeId: hit.object.userData.nodeIds?.[hit.instanceId],
       edgeId: hit.object.userData.edgeIds?.[hit.instanceId],
     };
+  if (hit.faceIndex != null && hit.object.userData.triangleEdgeIds)
+    return { edgeId: hit.object.userData.triangleEdgeIds[hit.faceIndex] };
   if (hit.index !== undefined && hit.object.userData.segmentEdgeIds)
     return { edgeId: hit.object.userData.segmentEdgeIds[Math.floor(hit.index / 2)] };
   return { nodeId: hit.object.userData.nodeId, edgeId: hit.object.userData.edgeId };
@@ -847,6 +1029,14 @@ export function selectSpatialBatches(
       attribute.setXYZ(index, chosen.r, chosen.g, chosen.b);
     attribute.addUpdateRange(entry.start * 3, entry.count * 3);
     attribute.needsUpdate = true;
+    if (entry.ribbon) {
+      const { mesh, start, count } = entry.ribbon,
+        colors = mesh.geometry.getAttribute('color') as THREE.BufferAttribute;
+      for (let index = start; index < start + count; index++)
+        colors.setXYZ(index, chosen.r, chosen.g, chosen.b);
+      colors.addUpdateRange(start * 3, count * 3);
+      colors.needsUpdate = true;
+    }
     for (const arrow of batches.arrows.get(id) ?? []) {
       arrow.mesh.setColorAt(arrow.index, chosen);
       arrow.mesh.instanceColor?.addUpdateRange(arrow.index * 3, 3);

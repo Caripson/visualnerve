@@ -6,6 +6,7 @@ cd "$VN_ROOT/backend"
 "$VN_GO" vet ./...
 cd "$VN_ROOT/frontend"
 if [[ ! -d node_modules ]]; then npm ci; fi
+node --test "$VN_ROOT/scripts/notation-contract.test.mjs"
 npm test
 npm run format:check
 if [[ "${1:-}" == '--e2e' ]]; then

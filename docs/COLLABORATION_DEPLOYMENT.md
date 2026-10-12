@@ -15,6 +15,16 @@ unreleased app/relay versions without admission-proof support cannot admit new
 devices into this version. Retain local graphs and create new rooms for older CRDT
 states containing fields excluded by the corrected sharing scope.
 
+Rooms created with notation on a diagram, node or relationship pin CRDT document
+contract version 3. This keeps older version-1/2 clients from accepting semantic
+fields they do not support. Version 3 remains pinned after all notation is cleared;
+owner-mediated workflow authority and Viewer/Editor restrictions are unchanged.
+Existing version-1/2 rooms remain valid for ordinary edits but reject adding notation
+with `409 COLLABORATION_NOTATION_REQUIRED`. Refresh all participants and create a
+new room before adding it. Active contracts are never upgraded in place; changed
+or unsupported snapshot contracts are rejected before persistence. This document
+version is separate from MLS, relay admission and native graph format versions.
+
 ## Prepare a pinned app package
 
 After reviewing the relay, build the normal site and prepare the separate app surface with one explicit public origin:

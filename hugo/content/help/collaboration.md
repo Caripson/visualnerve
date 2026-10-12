@@ -133,6 +133,8 @@ Profiles, comments, tasks and activity use a separate **owner-mediated action ch
 
 Reload requires a fresh device invitation and approval. Local comment/task changes made after leaving are not silently merged into owner-authoritative work on rejoin; a recovered local copy preserves differing saved work. Unreleased older CRDT room formats need a new room. Ordinary diagram JSON and backup formats remain compatible.
 
+Rooms containing HIPO, DFD, UML or BPMN notation require participants with the current [notation collection support](/help/notation-collections/). If an older room rejects a notation edit, retain the local diagram, update every participant's app and start a new room from that diagram. The owner must invite and approve participants again. Clearing notation from a room does not make that room compatible with an older client.
+
 ## Understand saving and simultaneous edits
 
 Edits are merged per field using Yjs. Two people can change different properties without replacing each other's whole node. The accepted graph still undergoes Visual Nerve's reference and model validation, and local saves use the existing encrypted transaction boundary.

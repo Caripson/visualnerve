@@ -1,0 +1,10 @@
+/* Selection highlights the visible semantic strokes without filling double lines or ribbons. */
+.react-flow__edge.selected .react-flow__edge-path.notation-edge-guide {
+  stroke-width: 0 !important;
+}
+.react-flow__edge.selected .react-flow__edge-path.notation-edge-heavy {
+  stroke-width: var(--notation-stroke-width, 3.5px) !important;
+}
+.react-flow__edge.selected .notation-edge-stroke {
+  stroke: var(--accent);
+}

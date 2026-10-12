@@ -126,6 +126,10 @@ export async function captureSpatialNodeFaces(
     throw new Error('Card capture resolution must be greater than zero and at most four.');
   const captures = new Map<string, HTMLCanvasElement>();
   if (!views.length) return captures;
+  if (views.some((view) => view.data.node.notation)) {
+    await abortable(import('../notation/Node'), signal);
+    checkAbort(signal);
+  }
   if (views.length > SPATIAL_FACE_CAPTURE_LIMIT)
     throw new Error(`Capture at most ${SPATIAL_FACE_CAPTURE_LIMIT} diagram cards at once.`);
   const nodes: CanvasNode[] = views.map((view) => ({

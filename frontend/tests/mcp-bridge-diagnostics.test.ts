@@ -36,6 +36,7 @@ it('checks actual advertised tools and capabilities rather than trusting a versi
       'exchange-export-v1',
       'analytics-v1',
       'ibm-flowcharting-v1',
+      'standard-notations-v1',
     ],
   });
   expect(diagnostic.snapshot()).toEqual({ state: 'current', version: '0.6.0' });
@@ -64,11 +65,11 @@ it('warns when a pre-IBM 0.8.2 bridge advertises the other current capabilities'
   expect(diagnostic.snapshot()).toEqual({ state: 'update-required', version: '0.8.2' });
   diagnostic.receive({
     type: 'bridge-info',
-    version: '0.8.3',
+    version: '0.9.0',
     tools: ['visual_nerve_request', 'visual_nerve_api_docs'],
-    capabilities: [...capabilities, 'ibm-flowcharting-v1'],
+    capabilities: [...capabilities, 'ibm-flowcharting-v1', 'standard-notations-v1'],
   });
-  expect(diagnostic.snapshot()).toEqual({ state: 'current', version: '0.8.3' });
+  expect(diagnostic.snapshot()).toEqual({ state: 'current', version: '0.9.0' });
   diagnostic.disconnect();
 });
 it('cancels stale detection when the connection ends', () => {
@@ -78,4 +79,25 @@ it('cancels stale detection when the connection ends', () => {
   diagnostic.disconnect();
   vi.advanceTimersByTime(5000);
   expect(diagnostic.snapshot().state).toBe('disconnected');
+});
+
+it('requires notation capability even from the previously current IBM bridge', () => {
+  const diagnostic = new BridgeDiagnostics();
+  diagnostic.connect();
+  diagnostic.receive({
+    type: 'bridge-info',
+    version: '0.8.3',
+    tools: ['visual_nerve_request', 'visual_nerve_api_docs'],
+    capabilities: [
+      'operations-v1',
+      'endpoint-docs-v1',
+      'fork-join-v1',
+      'async-svg-export-v1',
+      'exchange-export-v1',
+      'analytics-v1',
+      'ibm-flowcharting-v1',
+    ],
+  });
+  expect(diagnostic.snapshot()).toEqual({ state: 'update-required', version: '0.8.3' });
+  diagnostic.disconnect();
 });

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 source "$(dirname "$0")/scripts/env.sh"
+if [[ ! -d "$VN_ROOT/frontend/node_modules" ]]; then (cd "$VN_ROOT/frontend" && npm ci); fi
+node "$VN_ROOT/scripts/notation-contract.mjs"
 cd "$VN_ROOT/backend"
 "$VN_GO" run ./cmd/openapi "$VN_ROOT/docs/openapi.yaml"
 cd "$VN_ROOT/frontend"

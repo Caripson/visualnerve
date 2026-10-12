@@ -13,7 +13,7 @@ The app interface is available in English, Danish, Norwegian Bokmål, Swedish, F
 1. [Open the encrypted workspace](https://app.visualnerve.com/) in the browser and profile you intend to use for your work. On first use, complete the password and recovery steps below before accepting storage.
 2. Read the first-visit storage notice. Select the acknowledgement checkbox, then **Accept and continue**.
 3. Choose **New diagram**. On a phone, open **Projects** first.
-4. Pick a template, enter a **New diagram name**, then choose **Create diagram**.
+4. Pick a template, enter a **New diagram name**, then choose **Create diagram**. **Find a template** searches by name or family; **Template collection** narrows the grouped choices. UML offers fourteen families and BPMN offers four views, each with its own example preview.
 5. Wait for **Saved**. This confirms that the local database transaction has committed.
 
 The public website is at `www.visualnerve.com`; the encrypted editor is at `app.visualnerve.com`. The former website `/app` address redirects to this separate app root. It is not a second workspace entry. A different hostname has separate browser storage; the redirect never moves your data.
@@ -50,6 +50,10 @@ When **An update is ready** appears, choose **Later** to continue or **Update no
 | Mind Map                   | Expand a central idea into connected topics                   | Explore a product launch                                       |
 | Basic Flowchart            | Explain steps and decisions                                   | Describe an approval workflow                                  |
 | Classic Flowcharting       | Use classic flowchart symbols based on the IBM GX20-8020 stencil | Draw a workflow with predefined routines and magnetic storage |
+| HIPO                                             | Link a function hierarchy to input/process/output documentation               | Document how order functions use and produce information        |
+| Classic DFD — Yourdon / DeMarco or Gane / Sarson | Trace information between transformations, stores and external entities       | Map order data without implying an execution sequence           |
+| UML examples                                     | Model software with one of fourteen structural or behavioral diagram families | Describe classes, deployment, interactions or state changes     |
+| BPMN examples                                    | Describe a process, collaboration, conversation or choreography               | Distinguish participant messages from work within a participant |
 | Project Timeline           | Show work against dates                                       | Plan a delivery in phases                                      |
 | Customer Journey           | Show the stages someone experiences                           | Explain onboarding                                             |
 | Decision Tree              | Compare branches from successive choices                      | Classify support cases                                         |
@@ -63,6 +67,8 @@ When **An update is ready** appears, choose **Later** to continue or **Update no
 Ordinary diagram modes share native objects and relationships. You can change their presentation later without rebuilding the graph. **Process Simulator** is a separate document with its own simulation model; a normal flowchart does not start simulating merely because it contains arrows.
 
 For the historical stencil's shape names, completed composites and 2D/3D editing steps, see [IBM flowchart symbols](/help/ibm-flowcharting/).
+
+For HIPO, both classic DFD dialects, UML and BPMN, see [Choose a notation collection](/help/notation-collections/). Each example contains editable specialist symbols and relationships. You can also add that vocabulary to a blank or ordinary diagram through **Notation collections**.
 
 For existing material, use an importer instead of manually copying everything: [CSV](/help/csv/), [SQL](/help/sql/), [source code](/help/code/), [draw.io or Visio](/help/diagram-import/), or [native JSON and Markdown](/help/sharing/).
 

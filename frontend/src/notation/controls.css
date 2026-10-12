@@ -1,0 +1,52 @@
+.notation-palette {
+  display: grid;
+  gap: 6px;
+  margin-block: 12px;
+}
+.notation-palette button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 10px;
+  text-align: left;
+}
+.notation-palette svg {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.notation-palette small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+}
+.notation-properties {
+  display: grid;
+  gap: 12px;
+  padding-block: 16px;
+  border-top: 1px solid var(--border);
+}
+.notation-properties h3,
+.notation-properties p {
+  margin: 0;
+}
+.notation-compartment-editor {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-width: 0;
+}
+.notation-compartment-editor textarea {
+  font-family: ui-monospace, monospace;
+  resize: vertical;
+}
+.notation-validation {
+  max-height: 240px;
+  overflow: auto;
+  padding-left: 20px;
+}
+.notation-validation li {
+  margin-block: 8px;
+}

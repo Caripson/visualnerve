@@ -51,6 +51,7 @@ export class BridgeDiagnostics {
         'exchange-export-v1',
         'analytics-v1',
         'ibm-flowcharting-v1',
+        'standard-notations-v1',
       ].every((capability) => capabilities.includes(capability));
     this.publish({ state: current ? 'current' : 'update-required', version });
     return true;

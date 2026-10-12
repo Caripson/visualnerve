@@ -1,4 +1,6 @@
+import { notationAttachmentMoves } from '../notation/attachments';
 import { canvasAriaLabels, canvasNodeAriaLabel } from './aria-labels';
+import { notationConnectionPorts } from '../notation/ports';
 import { useI18n } from '../i18n';
 import {
   lazy,
@@ -306,19 +308,16 @@ export function Canvas() {
           ...(position.height !== undefined ? { height: position.height } : {}),
         });
         adjusted.set(id, geometry);
-        if (n.nodeType === 'group')
-          for (const child of descendantIds(graph.nodes, id))
-            if (!moves.has(child) && !readonlyNodes.current.has(child)) {
-              const c = index.get(child)!;
-              adjusted.set(child, { x: c.x + geometry.x - n.x, y: c.y + geometry.y - n.y });
-            }
       }
     }
     if (!adjusted.size) return;
-    s.command('Move or resize nodes', (g) => ({
-      ...g,
-      nodes: g.nodes.map((n) => (adjusted.has(n.id) ? { ...n, ...adjusted.get(n.id) } : n)),
-    }));
+    s.command('Move or resize nodes', (g) => {
+      const moves = notationAttachmentMoves(g.nodes, adjusted, readonlyNodes.current);
+      return {
+        ...g,
+        nodes: g.nodes.map((n) => (moves.has(n.id) ? { ...n, ...moves.get(n.id) } : n)),
+      };
+    });
   }, []);
   const resize = useCallback(
     (id: string, p: Geometry) => {
@@ -704,7 +703,46 @@ export function Canvas() {
       }
       state.select([...selected], state.selectedEdges);
     }
-    setNodes((prev) => applyNodeChanges(changes, prev));
+    setNodes((prev) => {
+      const next = applyNodeChanges(changes, prev);
+      if (!state.graph || state.graph.diagram.type === 'timeline') return next;
+      const positions = new Map(
+        changes.flatMap((change) =>
+          change.type === 'position' && change.position
+            ? [[change.id, change.position] as const]
+            : [],
+        ),
+      );
+      if (!positions.size) return next;
+      const byId = new Map(state.graph.nodes.map((node) => [node.id, node])),
+        rendered = new Map(byId);
+      for (const [id, node] of renderedNodes.current) rendered.set(id, node);
+      const absolute = absoluteCanvasMoves(rendered, positions),
+        direct = new Map<string, Partial<GraphNode>>();
+      for (const [id, position] of absolute) {
+        const node = byId.get(id);
+        if (node) direct.set(id, canonicalGeometry(node, renderedNodes.current.get(id), position));
+      }
+      const moved = notationAttachmentMoves(state.graph.nodes, direct, readonlyNodes.current);
+      const projectedPosition = (id: string) => {
+        const node = byId.get(id),
+          view = rendered.get(id),
+          patch = moved.get(id);
+        return {
+          x: (patch?.x ?? node?.x ?? 0) + (view?.x ?? 0) - (node?.x ?? 0),
+          y: (patch?.y ?? node?.y ?? 0) + (view?.y ?? 0) - (node?.y ?? 0),
+        };
+      };
+      return next.map((view) => {
+        if (!moved.has(view.id) || positions.has(view.id)) return view;
+        const node = byId.get(view.id);
+        if (!node) return view;
+        const position = projectedPosition(node.id),
+          parent = node.parentId ? byId.get(node.parentId) : undefined,
+          origin = parent?.nodeType === 'group' ? projectedPosition(parent.id) : { x: 0, y: 0 };
+        return { ...view, position: { x: position.x - origin.x, y: position.y - origin.y } };
+      });
+    });
   }, []);
   const edgeChanges = useCallback((changes: EdgeChange[]) => {
     const state = useEditor.getState();
@@ -951,7 +989,7 @@ export function Canvas() {
           c.target &&
           graph.nodes.some((node) => node.id === c.source) &&
           graph.nodes.some((node) => node.id === c.target) &&
-          useEditor.getState().connect(c.source, c.target)
+          useEditor.getState().connect(c.source, c.target, c.sourceHandle, c.targetHandle)
         }
         onReconnect={(edge, c) =>
           !readonlyEdges.current.has(edge.id) &&
@@ -959,9 +997,15 @@ export function Canvas() {
           c.target &&
           graph.nodes.some((node) => node.id === c.source) &&
           graph.nodes.some((node) => node.id === c.target) &&
-          useEditor
-            .getState()
-            .updateEdge(edge.id, { sourceNodeId: c.source, targetNodeId: c.target })
+          useEditor.getState().updateEdge(edge.id, {
+            sourceNodeId: c.source,
+            targetNodeId: c.target,
+            ...notationConnectionPorts(
+              graph.edges.find((item) => item.id === edge.id)!,
+              c.sourceHandle,
+              c.targetHandle,
+            ),
+          })
         }
         onNodeDragStop={(_, node, moved) =>
           commit(new Map((moved.length ? moved : [node]).map((n) => [n.id, n.position])))

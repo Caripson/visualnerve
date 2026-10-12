@@ -35,47 +35,50 @@ type Diagram struct {
 	Collaboration Meta `json:"collaboration,omitempty"`
 	// Optional schema-version-1 time-series extension. The browser owns strict
 	// validation, encryption and calculations; the bridge stores no user data.
-	Analytics Meta `json:"analytics,omitempty"`
+	Analytics Meta             `json:"analytics,omitempty"`
+	Notation  *NotationProfile `json:"notation,omitempty"`
 }
 type Node struct {
 	Base
-	DiagramID       string   `json:"diagramId"`
-	ExternalID      string   `json:"externalId,omitempty"`
-	NodeType        string   `json:"nodeType"`
-	FlowchartSymbol string   `json:"flowchartSymbol,omitempty"`
-	Title           string   `json:"title"`
-	Description     string   `json:"description,omitempty"`
-	Notes           string   `json:"notes,omitempty"`
-	URL             string   `json:"url,omitempty"`
-	X               float64  `json:"x"`
-	Y               float64  `json:"y"`
-	Width           float64  `json:"width"`
-	Height          float64  `json:"height"`
-	OwnerID         string   `json:"ownerId,omitempty"`
-	OwnerIDs        []string `json:"ownerIds"`
-	Status          string   `json:"status,omitempty"`
-	Color           string   `json:"color,omitempty"`
-	BackgroundColor string   `json:"backgroundColor,omitempty"`
-	StartDate       string   `json:"startDate,omitempty"`
-	EndDate         string   `json:"endDate,omitempty"`
-	DueDate         string   `json:"dueDate,omitempty"`
-	Tags            []string `json:"tags"`
-	ParentID        string   `json:"parentId,omitempty"`
-	Collapsed       bool     `json:"collapsed"`
-	Metadata        Meta     `json:"metadata"`
+	DiagramID       string        `json:"diagramId"`
+	ExternalID      string        `json:"externalId,omitempty"`
+	NodeType        string        `json:"nodeType"`
+	FlowchartSymbol string        `json:"flowchartSymbol,omitempty"`
+	Notation        *NodeNotation `json:"notation,omitempty"`
+	Title           string        `json:"title"`
+	Description     string        `json:"description,omitempty"`
+	Notes           string        `json:"notes,omitempty"`
+	URL             string        `json:"url,omitempty"`
+	X               float64       `json:"x"`
+	Y               float64       `json:"y"`
+	Width           float64       `json:"width"`
+	Height          float64       `json:"height"`
+	OwnerID         string        `json:"ownerId,omitempty"`
+	OwnerIDs        []string      `json:"ownerIds"`
+	Status          string        `json:"status,omitempty"`
+	Color           string        `json:"color,omitempty"`
+	BackgroundColor string        `json:"backgroundColor,omitempty"`
+	StartDate       string        `json:"startDate,omitempty"`
+	EndDate         string        `json:"endDate,omitempty"`
+	DueDate         string        `json:"dueDate,omitempty"`
+	Tags            []string      `json:"tags"`
+	ParentID        string        `json:"parentId,omitempty"`
+	Collapsed       bool          `json:"collapsed"`
+	Metadata        Meta          `json:"metadata"`
 }
 type Edge struct {
 	Base
-	DiagramID    string `json:"diagramId"`
-	ExternalID   string `json:"externalId,omitempty"`
-	SourceNodeID string `json:"sourceNodeId"`
-	TargetNodeID string `json:"targetNodeId"`
-	Label        string `json:"label,omitempty"`
-	EdgeType     string `json:"edgeType"`
-	Direction    string `json:"direction"`
-	Style        string `json:"style"`
-	Description  string `json:"description,omitempty"`
-	Metadata     Meta   `json:"metadata"`
+	DiagramID    string        `json:"diagramId"`
+	ExternalID   string        `json:"externalId,omitempty"`
+	SourceNodeID string        `json:"sourceNodeId"`
+	TargetNodeID string        `json:"targetNodeId"`
+	Label        string        `json:"label,omitempty"`
+	EdgeType     string        `json:"edgeType"`
+	Direction    string        `json:"direction"`
+	Style        string        `json:"style"`
+	Description  string        `json:"description,omitempty"`
+	Metadata     Meta          `json:"metadata"`
+	Notation     *EdgeNotation `json:"notation,omitempty"`
 }
 type Owner struct {
 	Base
@@ -229,6 +232,9 @@ func NormalizeOwner(o *Owner) {
 	emptyMeta(&o.Metadata)
 }
 func ValidateDiagram(d Diagram) error {
+	if err := ValidateNotationProfile(d.Notation); err != nil {
+		return err
+	}
 	if !ValidID(d.ID) {
 		return fmt.Errorf("diagram id must be a UUID")
 	}
@@ -253,6 +259,12 @@ func ValidateOwner(o Owner) error {
 	return nil
 }
 func ValidateNode(n Node) error {
+	if err := validateNodeNotationAppearance(n); err != nil {
+		return err
+	}
+	if err := ValidateNodeNotation(n.Notation); err != nil {
+		return err
+	}
 	if !ValidID(n.ID) || !ValidID(n.DiagramID) {
 		return fmt.Errorf("node and diagram ids must be UUIDs")
 	}
@@ -295,6 +307,9 @@ func ValidateNode(n Node) error {
 	return nil
 }
 func ValidateEdge(e Edge) error {
+	if err := ValidateEdgeNotation(e.Notation); err != nil {
+		return err
+	}
 	if !ValidID(e.ID) || !ValidID(e.DiagramID) || !ValidID(e.SourceNodeID) || !ValidID(e.TargetNodeID) {
 		return fmt.Errorf("edge ids and endpoints must be UUIDs")
 	}
@@ -307,6 +322,9 @@ func ValidateEdge(e Edge) error {
 	return nil
 }
 func ValidateGraph(g Graph) error {
+	if err := ValidateNotationGraph(g); err != nil {
+		return err
+	}
 	if err := ValidateDiagram(g.Diagram); err != nil {
 		return err
 	}
@@ -403,7 +421,7 @@ func MergePatch(current any, patch map[string]json.RawMessage, target any) error
 		return err
 	}
 	for key, value := range patch {
-		if key == "backgroundColor" && strings.TrimSpace(string(value)) == "null" {
+		if (key == "backgroundColor" || key == "notation") && strings.TrimSpace(string(value)) == "null" {
 			delete(base, key)
 			continue
 		}

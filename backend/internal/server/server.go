@@ -3,6 +3,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/subtle"
@@ -281,6 +282,9 @@ func (s *Server) forwardOperation(ctx context.Context, workspace, path, method s
 	if err := model.ValidatePresentationCommand(path, method, data); err != nil {
 		return reply{Status: 422}, err
 	}
+	if err := validateNotationCommand(path, method, data); err != nil {
+		return reply{Status: 422}, err
+	}
 	var key [16]byte
 	if _, err := rand.Read(key[:]); err != nil {
 		return reply{Status: 500}, err
@@ -324,7 +328,7 @@ func (s *Server) forwardOperation(ctx context.Context, workspace, path, method s
 		return operationFailure(429, "BRIDGE_BUSY", operationID, "Too many browser commands are pending. Inspect the existing operation before retrying a write."), nil
 	}
 	operationNew := false
-	if operation == nil && (action == "reserve" || method != "GET") && selected.instanceID != "" {
+	if operation == nil && (action == "reserve" || action == "execute") && selected.instanceID != "" {
 		operation, operationError = s.newOperationLocked(selected)
 		if operationError != nil {
 			s.mu.Unlock()
@@ -364,7 +368,7 @@ func (s *Server) forwardOperation(ctx context.Context, workspace, path, method s
 		command["operationAction"] = action
 		command["operationNew"] = operationNew
 	}
-	if path == "/workspace/lock" && method == "POST" && len(data) == 0 {
+	if (path == "/workspace/lock" && method == "POST" && len(data) == 0) || (notationReadCommand(path, method) && len(bytes.TrimSpace(data)) == 0) {
 		delete(command, "data")
 	}
 	if err := wsjson.Write(ctx, selected.conn, command); err != nil {

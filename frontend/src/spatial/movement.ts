@@ -1,4 +1,5 @@
 import type { Graph } from '../model/types';
+import { notationOwnedIds } from '../notation/attachments';
 import { spatialPlanarGeometry, spatialPositions } from './layout';
 import { getSpatialNode, setSpatialNode, spatialLimits, type SpatialPoint } from './types';
 
@@ -48,30 +49,9 @@ export function syncSpatialPositions(before: Graph, after: Graph): Graph {
   return changed ? { ...after, nodes } : after;
 }
 
-/** Moving a group includes nested descendants once; topic hierarchy is not a group. */
+/** Moving a host includes attached glyphs and native group contents, while topic hierarchy stays independent. */
 export function spatialMovementIds(graph: Graph, selected: Iterable<string>): Set<string> {
-  const ids = new Set(selected);
-  const children = new Map<string, string[]>();
-  const queue: string[] = [];
-  for (const node of graph.nodes) {
-    if (node.parentId) {
-      const siblings = children.get(node.parentId);
-      if (siblings) siblings.push(node.id);
-      else children.set(node.parentId, [node.id]);
-    }
-    if (ids.has(node.id) && node.nodeType === 'group') queue.push(node.id);
-  }
-  const visited = new Set<string>();
-  for (let index = 0; index < queue.length; index++) {
-    const id = queue[index];
-    if (visited.has(id)) continue;
-    visited.add(id);
-    for (const child of children.get(id) ?? []) {
-      ids.add(child);
-      queue.push(child);
-    }
-  }
-  return ids;
+  return notationOwnedIds(graph.nodes, selected);
 }
 
 /** One gesture writes one canonical command, with the existing 2D document intact. */

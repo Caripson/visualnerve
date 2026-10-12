@@ -36,6 +36,11 @@ import {
 } from './CodeProperties';
 import { SpatialProperties } from './SpatialProperties';
 import { LazyIbmSymbolProperties } from '../flowchart/LazyControls';
+import {
+  LazyNotationNodeProperties,
+  LazyNotationEdgeProperties,
+  LazyNotationDiagramProperties,
+} from '../notation/LazyControls';
 import { canUseFlowchartSymbols } from '../flowchart/availability';
 import { NodeBackgroundField } from './NodeBackgroundField';
 export interface PropertiesProps {
@@ -178,7 +183,18 @@ function PropertyPanel({
             />
           </Field>
           {(canUseFlowchartSymbols(graph.diagram) || !!node.flowchartSymbol) && (
-            <LazyIbmSymbolProperties node={node} update={update} />
+            <LazyIbmSymbolProperties
+              node={node}
+              update={(patch, coalesce) =>
+                update(
+                  { ...patch, ...(patch.flowchartSymbol ? { notation: undefined } : {}) },
+                  coalesce,
+                )
+              }
+            />
+          )}
+          {(canUseFlowchartSymbols(graph.diagram) || !!node.notation) && (
+            <LazyNotationNodeProperties node={node} graph={graph} update={update} />
           )}
           <NodeBackgroundField node={node} update={update} />
           <div className="property-section">{t('editor.properties.responsibility')}</div>
@@ -449,6 +465,13 @@ function PropertyPanel({
           <SqlRelationshipDetails edge={edge} />
           <SqlQueryRelationshipDetails edge={edge} />
           <CodeRelationProperties edge={edge} />
+          {(canUseFlowchartSymbols(graph.diagram) || !!edge.notation) && (
+            <LazyNotationEdgeProperties
+              edge={edge}
+              graph={graph}
+              update={(patch) => update(edge.id, patch)}
+            />
+          )}
           <Field title={t('editor.properties.relationship')}>
             <input
               aria-label={t('editor.properties.relationshipType')}
@@ -540,6 +563,7 @@ function PropertyPanel({
         <AnalysisTools onOpen={onOpenAnalysis} />
         <SpatialProperties graph={graph} />
         <CodeAnalysisProperties graph={graph} />
+        {canUseFlowchartSymbols(graph.diagram) && <LazyNotationDiagramProperties graph={graph} />}
         <div className="diagram-summary">
           <span className="eyebrow">{t('editor.properties.workspace')}</span>
           <h2>{d.name}</h2>

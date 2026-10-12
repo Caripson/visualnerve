@@ -1,5 +1,38 @@
 # Acceptance evidence
 
+## Notation collections — 2026-10-12
+
+[Notation collections](NOTATION_COLLECTIONS.md) records the five source-bounded vocabularies and 21 native examples: HIPO, two classic DFD dialects, fourteen UML diagram families and four BPMN views. Typed profiles, objects and relationships use graph format 1 and workspace schema 8. Graphical modeling, structural draft review and vector rendering remain distinct from execution, full metamodel conformance, UML XMI and BPMN XML interchange.
+
+The current catalog contains 134 node symbols and 42 relationship choices: HIPO 11/5, Yourdon–DeMarco DFD 6/1, Gane–Sarson DFD 6/1, UML 79/30 and BPMN 32/5 (symbols/relationships). Event definitions, activity markers, compartments and relationship-end properties are valid variants of these entries, not additional native node types. UML coverage is graphical support for all fourteen families, not a claim of 150 distinct node types or a complete UML metamodel.
+
+Executed release checks:
+
+| Check | Executed result |
+| --- | --- |
+| Canonical notation examples, editing, native exchange and contextual creation | 77 tests passed: 46 integration checks and 31 notation quick-add checks, covering all 21 templates, fresh IDs/references, sections, recommended dimensions and role-specific next relationships |
+| Existing connected-node behavior | 27 ordinary, simulation, parallel and process-layout checks passed in the same focused quick-add run |
+| Searchable template gallery and canonical thumbnails | 33 tests passed; all 35 templates remain discoverable, all 14 UML and four BPMN choices filter correctly, and all 21 previews use canonical contours, required UML keywords and shared relationship strokes/decorations without saving workspace content; combined-fragment operators/guards and non-initiating choreography band shading retain their shared geometry |
+| BPMN example containment | Two tests passed; process and collaboration contents stay inside their actual pool/lane bounds and clear the reserved participant title strips |
+| Strict isolated-app and offline packaging fixtures | 40 focused tests passed with 25 mandatory guides; index/navigation completeness and offline precache checks remain strict |
+| App publication review fixtures | 28 tests passed; fixtures discover the current 25-guide inventory without weakening hosting or approval policy |
+| Complete frontend unit/component suite | 4,339 tests passed in 373 files; 789.95 seconds |
+| Complete browser regression | 336 tests passed in 32.7 minutes; 16 explicitly opt-in cases skipped, with no failed cases |
+| Final visual and exchange regressions | 250 tests passed in six files after final content-region and toolbar layout corrections |
+| Notation browser workflows | Seven tests passed in 2.6 minutes: all 21 examples through native UI, REST and MCP; all 21 DOM and background-worker SVG exports; inline rename, sections, named ports, contextual creation, save/reload, attached-owner movement, actual PNG pixels and PDF content |
+| Responsive and 3D browser evidence | Palette and semantic Properties passed at 390/768/1,440 px in Light/Dark, including bounded toolbar/title widths; actual front/back 3D faces and edited positions survive returning to 2D |
+| Real Help captures and visual review | Four 1,440×980 Light/Dark image pairs captured from isolated synthetic workspaces; HIPO, DFD, UML and BPMN images, choreography and phone Properties were visually inspected |
+| Symbol-use documentation | Catalog-to-guide review maps every one of the 134 symbols and 42 relationships to a how/when reference row; no missing entries. The public API/MCP guide includes current capability discovery, example creation, graph inspection, pure review and versioned editing |
+| Final rendered Help and API documentation | 37 browser checks passed in 2.7 minutes after rebuilding the final guide text: accessibility, Appearance, API reference, all 25 guide links/anchors, local search, offline assets and 320/390/1,440 px Light/Dark layouts |
+| Go and contracts | All four Go packages passed race tests and vet; two deterministic catalog-generator tests passed, stale output is rejected, and OpenAPI regeneration was byte-identical |
+| Formatting, TypeScript and build | Prettier and strict TypeScript passed; production Vite/Hugo/OpenAPI/Go build and unchanged bundle budgets passed: entry 398,516 bytes, initial static-import closure 967,040 bytes; 1,063 audited app files and 373 offline assets |
+
+An independent source review instantiated all 21 examples and checked their native symbol and relationship inventories, metadata counts, compartment assignment and draft issues. All counts matched, every UML family used specialist constructs, no authored example section was omitted, and the examples reported no notation issues. This is bounded example evidence; it does not establish complete coverage of every UML metaclass, BPMN variant or textual grammar. The review identified fixed-section assignment, attachment movement/copy and UML frame-label defects; the corrections passed focused regressions and the final notation browser workflows.
+
+Native SVG uses shared notation geometry; Draw.io emits `NOTATION_MODEL_SIMPLIFIED` and remains an editable generic approximation. Attached-node deletion and UUID reference remapping use the same canonical lifecycle. Current notation-bearing collaboration rooms pin document contract 3; older rooms reject adding notation until participants update and start a new room. API/MCP version 0.9.0 advertises `standard-notations-v1`; users must update their local bridge binary to discover its new routes. Graph format 1 and workspace schema 8 are unchanged; optional typed fields require no new persistent store or data migration.
+
+Verification used macOS, Node 22.17.0, Chrome 155.0.8059.39, Hugo 0.148.2 and isolated test profiles. Chrome's diagnostic software-rendering mode is test-host evidence, not a cross-device performance guarantee. The complete browser regression passed, including current notation cases, encrypted storage, collaboration roles, imports, presentation, simulation and analytics. The skipped cases are opt-in capture/download workflows; the four new notation Help image pairs were captured in the separate successful notation run. The optional live Alan voice/model download was not tested. No production deployment has been triggered.
+
 ## IBM flowcharting and object appearance — 2026-10-12
 
 The [IBM flowcharting guide](IBM_FLOWCHARTING.md) records the primary-source scope: 43 catalog choices, comprising 32 completed revised symbols, two raw apertures, four arrowheads and five original forms. The original GX20-8020 stencil has 25 apertures; the revised -1/-2 stencils have 26. Revision membership describes shared outlines, while `/flowchart/stencils` exposes the original labels where their meanings differ. The [symbol-use reference](../hugo/content/help/flowchart-symbols.md) explains when to choose every shape and distinguishes Parallel Mode notation from simulator fork/join behavior.

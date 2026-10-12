@@ -18,7 +18,7 @@ test('MCP reservation, REST retry, status and canonical-ID bulk rejection share 
     return body.result;
   };
   const health = await (await request.get('/api/v1/health')).json();
-  expect(health.version).toBe('0.8.3');
+  expect(health.version).toBe('0.9.0');
   expect(health.capabilities).toEqual(
     expect.arrayContaining(['operations-v1', 'endpoint-docs-v1', 'analytics-v1']),
   );

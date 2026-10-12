@@ -30,13 +30,28 @@ import { VaultSettings } from '../security/VaultSettings';
 import { vaultSession } from '../storage/runtime';
 import { isEncryptedWorkspaceSurface } from '../security/surface';
 import { getIbmSymbol } from '../flowchart/ibm-symbols';
+import {
+  TemplatePreview,
+  notationTemplate,
+  templateCollections,
+  templateGroups,
+  templateGroup,
+  templateMatches,
+  type TemplateCollectionFilter,
+} from '../notation/TemplatePreview';
 export function NewDiagram({ close }: { close: () => void }) {
   const { t: translate } = useI18n();
   const [name, setName] = useState('Untitled diagram');
   const [template, setTemplate] = useState('blank');
+  const [query, setQuery] = useState('');
+  const [collection, setCollection] = useState<TemplateCollectionFilter>('all');
   const [analyticsMode, setAnalyticsMode] = useState<'example' | 'import'>('example');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const visibleTemplates = templates.filter((value) =>
+    templateMatches(value, query, collection, templateLabel(translate, value.key, value.name)),
+  );
+  const selectedTemplate = templates.find((value) => value.key === template)!;
   return (
     <Modal title={translate('workspace.newDiagram')} close={close} wide>
       <form
@@ -64,106 +79,173 @@ export function NewDiagram({ close }: { close: () => void }) {
           />
         </Field>
         <div className="eyebrow template-label">{translate('dialogs.templateHeading')}</div>
-        <div className="template-grid">
-          {templates.map((t) => (
-            <button
-              type="button"
-              key={t.key}
-              className={`template-option ${template === t.key ? 'selected' : ''}`}
-              onClick={() => setTemplate(t.key)}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 190px), 1fr))',
+            gap: 12,
+          }}
+        >
+          <Field title="Find a template">
+            <input
+              type="search"
+              aria-label="Find a template"
+              placeholder="Name, notation or diagram family"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') event.preventDefault();
+              }}
+            />
+          </Field>
+          <Field title="Template collection">
+            <select
+              aria-label="Template collection"
+              value={collection}
+              onChange={(event) => setCollection(event.target.value as TemplateCollectionFilter)}
             >
-              <div
-                className={`template-preview ${t.key === 'ibm-flowcharting' ? 'preview-ibm' : t.key === 'time-series-analysis' ? 'preview-analytics' : `preview-${t.type}`}`}
-                style={
-                  t.key === 'ibm-flowcharting'
-                    ? { display: 'grid', placeItems: 'center', color: 'var(--accent)' }
-                    : undefined
-                }
-                aria-hidden="true"
-              >
-                {t.key === 'ibm-flowcharting' ? (
-                  <svg viewBox="0 0 140 64" style={{ width: '90%', height: '90%' }}>
-                    <path
-                      d="M34 32H51M83 32H104"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                    />
-                    <path
-                      d="M47 29L51 32L47 35M100 29L104 32L100 35"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                    />
-                    {(
-                      [
-                        ['ibm-process', 'translate(4 18) scale(.3 .28)'],
-                        ['ibm-decision', 'translate(51 13) scale(.32 .38)'],
-                        ['ibm-document', 'translate(104 18) scale(.3 .3)'],
-                      ] as const
-                    ).map(([id, transform]) => (
-                      <path
-                        key={id}
-                        data-ibm-preview={id}
-                        d={getIbmSymbol(id)!.outlinePath}
-                        transform={transform}
-                        fill="var(--surface)"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        vectorEffect="non-scaling-stroke"
-                        strokeLinejoin="round"
-                      />
-                    ))}
-                  </svg>
-                ) : t.key === 'time-series-analysis' ? (
-                  <svg viewBox="0 0 140 64">
-                    <path d="M8 52H132M8 8V52" fill="none" stroke="currentColor" opacity=".3" />
-                    <path
-                      d="M10 45L26 38L42 40L58 27L74 31L90 14L106 19L130 8"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                    />
-                    <path
-                      d="M8 25H132"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeDasharray="4 4"
-                      opacity=".5"
-                    />
-                    <circle cx="90" cy="14" r="4" fill="currentColor" />
-                  </svg>
-                ) : (
-                  <>
-                    <span />
-                    <i />
-                    <i />
-                    <i />
-                  </>
-                )}
-              </div>
-              <b>{templateLabel(translate, t.key, t.name)}</b>
-              <small>
-                {t.key === 'ibm-flowcharting'
-                  ? 'Based on the IBM GX20-8020 stencil'
-                  : t.key === 'time-series-analysis'
-                    ? 'Import → Explore → Measure → Detect → Validate → Simulate'
-                    : t.key === 'process-simulator-blank'
-                      ? translate('dialogs.templateGuidedProcessHint')
-                      : t.key === 'process-simulator'
-                        ? translate('dialogs.templateKioskHint')
-                        : t.key === 'delivery-network-simulator'
-                          ? translate('dialogs.templateNestedProcessHint')
-                          : t.nodes
-                            ? translate('dialogs.templateCounts', {
-                                count: t.nodes,
-                                type: diagramModeLabel(translate, t.type),
-                              })
-                            : translate('dialogs.blankTemplateHint')}
-              </small>
-            </button>
-          ))}
+              {templateCollections.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </Field>
         </div>
+        <p role="status" style={{ fontSize: 12, color: 'var(--muted)' }}>
+          {visibleTemplates.length} of {templates.length} templates · Selected:{' '}
+          {templateLabel(translate, selectedTemplate.key, selectedTemplate.name)}
+        </p>
+        {!visibleTemplates.length && (
+          <p>No templates match. Try a shorter search or choose All templates.</p>
+        )}
+        {templateGroups.map((group) => {
+          const members = visibleTemplates.filter((value) => templateGroup(value.key) === group.id);
+          if (!members.length) return null;
+          return (
+            <section
+              key={group.id}
+              aria-labelledby={`template-group-${group.id}`}
+              style={{ marginTop: 18 }}
+            >
+              <h3 id={`template-group-${group.id}`} style={{ fontSize: 13, margin: '0 0 10px' }}>
+                {group.label}
+              </h3>
+              <div className="template-grid">
+                {members.map((t) => (
+                  <button
+                    type="button"
+                    key={t.key}
+                    className={`template-option ${template === t.key ? 'selected' : ''}`}
+                    aria-pressed={template === t.key}
+                    onClick={() => setTemplate(t.key)}
+                  >
+                    <div
+                      className={`template-preview ${notationTemplate(t.key) ? 'preview-notation' : t.key === 'ibm-flowcharting' ? 'preview-ibm' : t.key === 'time-series-analysis' ? 'preview-analytics' : `preview-${t.type}`}`}
+                      style={
+                        notationTemplate(t.key)
+                          ? { height: 84, color: 'var(--accent)', padding: 4 }
+                          : t.key === 'ibm-flowcharting'
+                            ? { display: 'grid', placeItems: 'center', color: 'var(--accent)' }
+                            : undefined
+                      }
+                      aria-hidden="true"
+                    >
+                      {notationTemplate(t.key) ? (
+                        <TemplatePreview templateKey={t.key} />
+                      ) : t.key === 'ibm-flowcharting' ? (
+                        <svg viewBox="0 0 140 64" style={{ width: '90%', height: '90%' }}>
+                          <path
+                            d="M34 32H51M83 32H104"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                          />
+                          <path
+                            d="M47 29L51 32L47 35M100 29L104 32L100 35"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                          />
+                          {(
+                            [
+                              ['ibm-process', 'translate(4 18) scale(.3 .28)'],
+                              ['ibm-decision', 'translate(51 13) scale(.32 .38)'],
+                              ['ibm-document', 'translate(104 18) scale(.3 .3)'],
+                            ] as const
+                          ).map(([id, transform]) => (
+                            <path
+                              key={id}
+                              data-ibm-preview={id}
+                              d={getIbmSymbol(id)!.outlinePath}
+                              transform={transform}
+                              fill="var(--surface)"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                              vectorEffect="non-scaling-stroke"
+                              strokeLinejoin="round"
+                            />
+                          ))}
+                        </svg>
+                      ) : t.key === 'time-series-analysis' ? (
+                        <svg viewBox="0 0 140 64">
+                          <path
+                            d="M8 52H132M8 8V52"
+                            fill="none"
+                            stroke="currentColor"
+                            opacity=".3"
+                          />
+                          <path
+                            d="M10 45L26 38L42 40L58 27L74 31L90 14L106 19L130 8"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="3"
+                          />
+                          <path
+                            d="M8 25H132"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeDasharray="4 4"
+                            opacity=".5"
+                          />
+                          <circle cx="90" cy="14" r="4" fill="currentColor" />
+                        </svg>
+                      ) : (
+                        <>
+                          <span />
+                          <i />
+                          <i />
+                          <i />
+                        </>
+                      )}
+                    </div>
+                    <b>{templateLabel(translate, t.key, t.name)}</b>
+                    <small>
+                      {notationTemplate(t.key)
+                        ? `${t.nodes} editable example objects · ${notationTemplate(t.key)!.diagramKind.replaceAll('-', ' ')}`
+                        : t.key === 'ibm-flowcharting'
+                          ? 'Based on the IBM GX20-8020 stencil'
+                          : t.key === 'time-series-analysis'
+                            ? 'Import → Explore → Measure → Detect → Validate → Simulate'
+                            : t.key === 'process-simulator-blank'
+                              ? translate('dialogs.templateGuidedProcessHint')
+                              : t.key === 'process-simulator'
+                                ? translate('dialogs.templateKioskHint')
+                                : t.key === 'delivery-network-simulator'
+                                  ? translate('dialogs.templateNestedProcessHint')
+                                  : t.nodes
+                                    ? translate('dialogs.templateCounts', {
+                                        count: t.nodes,
+                                        type: diagramModeLabel(translate, t.type),
+                                      })
+                                    : translate('dialogs.blankTemplateHint')}
+                    </small>
+                  </button>
+                ))}
+              </div>
+            </section>
+          );
+        })}
         {template === 'time-series-analysis' && (
           <fieldset className="analytics-template-choice">
             <legend>Start your analysis</legend>

@@ -23,6 +23,14 @@ UI and API export the same immutable model snapshot. Rendering does not become
 a second data source. Completed bytes stay in bounded memory and are erased on
 lock/cancellation; API/MCP jobs also retain their original integration grant.
 
+The 0.9.0 notation addition retains this editable-drawing boundary. HIPO, DFD,
+UML and BPMN objects are approximated by generic Draw.io shapes with an explicit
+`NOTATION_MODEL_SIMPLIFIED` warning; typed sections, named ports and relationship
+decorations do not survive that format. Native JSON preserves the complete
+notation model and native SVG renders its shared vector geometry. This note
+does not revise the historical 0.6.0 evidence below or claim specialist
+interchange conformance. See [notation acceptance](../ACCEPTANCE.md#notation-collections--2026-10-12).
+
 Editable drawings deliberately use a white surface and dark node/group/edge
 labels, independent of app Appearance. Stored node/edge color accents and
 derived mind map branch colors remain; pale line accents do not become pale

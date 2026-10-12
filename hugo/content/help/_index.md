@@ -16,6 +16,9 @@ Visual Nerve turns ideas, data and code into diagrams you can explore, annotate,
 | Connect, group and mark objects as done | [Editing objects and relationships](/help/editing/) |
 | Draw a classic IBM flowchart in 2D or 3D | [IBM flowchart symbols](/help/ibm-flowcharting/) |
 | Understand which flowchart shape to choose | [Symbol meanings and practical examples](/help/flowchart-symbols/) |
+| Document functions or information movement              | [HIPO](/help/hipo/) or [classic DFDs](/help/dfd/)                                      |
+| Model software structure, behavior or interactions      | [UML's 14 diagram families](/help/uml/)                                                |
+| Describe business work between participants             | [BPMN's four views](/help/bpmn/)                                                       |
 | Understand a large CSV without losing its relationships | [Explore a CSV](/help/csv/), then [connect and refresh sources](/help/connected-data/) |
 | See what a query or codebase depends on | [SQL queries and schemas](/help/sql/) or [source code](/help/code/) |
 | Find where capacity or queues hurt a business | [Process Simulator](/help/simulation/) |
@@ -39,67 +42,93 @@ Screenshots show the real tool with illustrative data. Button names match the En
 These entry points keep earlier links and bookmarks useful.
 
 ### Process Simulator
+
 [Build, run and compare processes](/help/simulation/), including shared resources, real queues, scaling, costs and replay.
 
 ### Move around
+
 [Navigate the canvas and use the pen layer](/help/editing/#navigate-the-canvas), with desktop and touch controls.
 
 ### Edit your graph
+
 [Edit objects and relationships](/help/editing/) or [explore the same diagram in 3D](/help/3d/).
 
 ### Classic Flowcharting {#ibm-flowcharting}
+
 [Choose and edit IBM stencil symbols](/help/ibm-flowcharting/) in blank diagrams or ordinary templates, including the Classic Flowcharting starting set, in 2D and 3D. [Learn what every symbol means and when to use it](/help/flowchart-symbols/).
 
+### Notation collections
+
+[Choose HIPO, classic DFD, UML or BPMN](/help/notation-collections/), then edit the collection's structured symbols, relationships, ports and references. [HIPO](/help/hipo/) documents functional hierarchy and IPO; [DFD](/help/dfd/) follows data; [UML](/help/uml/) models software views; [BPMN](/help/bpmn/) describes business work and participant communication.
+
 ### Present a numbered walkthrough
+
 [Number objects, play, minimize, add narration and export video](/help/presentations/).
 
 ### Owners, search and filters
+
 [Organize responsibility, find objects and narrow the view](/help/editing/#owners-search-and-filters).
 
 ### Layout and timelines
+
 [Mind maps, explicit layouts and date-based timelines](/help/layouts/).
 
 ### Draw over a diagram
+
 [Draw and erase on a separate saved layer](/help/editing/#draw-over-the-diagram).
 
 ### Import file size
+
 [Change the local import limit and understand the remaining limits](/help/settings/#import-file-size).
 
 ### Explore a CSV
+
 [Clean, filter, group and measure a CSV](/help/csv/).
 
 ### Connect sources and repeat an analysis
+
 [Relate files, explain values, refresh sources and save analysis views](/help/connected-data/).
 
 ### Import a SQL schema
+
 [Visualize SELECT/WITH queries and CREATE/ALTER schemas](/help/sql/).
 
 ### Visualize source code
+
 [Preview code projects and linked Markdown documents](/help/code/).
 
 ### Import draw.io or Visio
+
 [Convert a selected diagram page into native editable objects](/help/diagram-import/).
 
 ### Build an app with Lovable
+
 [Review and share an app specification](/help/sharing/).
 
 ### Save and work offline
+
 [Understand local saves, offline use and conflicts](/help/settings/).
 
 ### Update the app
+
 [Apply new fixes and features when you are ready, while keeping your saved workspace](/help/settings/#apply-an-app-update-when-you-are-ready).
 
 ### Exchange and backups
+
 [Choose an export format](/help/sharing/) or [back up and restore the whole workspace](/help/settings/).
 
 ### Codex and MCP
+
 [Install/start the optional local bridge, configure access and discover the API](/help/api-mcp/).
 
 ### Understand a large diagram
+
 [Use overview, relationship evidence, saved views and history](/help/understanding/).
 
 ### Present scenes and review an app specification
+
 [Storyboard scenes](/help/presentations/) and [Lovable specification review](/help/sharing/).
 
 ### Time Series & Signal Analysis
+
 [Import history, measure change, inspect signals and compare what-if scenarios](/help/time-series-analysis/).

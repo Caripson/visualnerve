@@ -1,0 +1,7069 @@
+{
+  "schemaVersion": 1,
+  "collections": [
+    {
+      "id": "hipo",
+      "label": "HIPO",
+      "diagramKinds": [
+        {
+          "id": "vtoc",
+          "label": "Visual Table of Contents"
+        },
+        {
+          "id": "overview-ipo",
+          "label": "Overview IPO"
+        },
+        {
+          "id": "detail-ipo",
+          "label": "Detail IPO"
+        }
+      ],
+      "sources": [
+        {
+          "title": "IBM Improved Programming Technologies — An Overview, GC20-1850-0 (1974)",
+          "url": "https://bitsavers.trailing-edge.com/pdf/ibm/generalInfo/GC20-1850-0_Improved_Programming_Technologies_-_An_Overview_1st_ed_197410.pdf",
+          "locator": "Chapter 5, printed pages 13–17, Figures 11–14"
+        },
+        {
+          "title": "IBM Preparing Method of Operation Diagrams — The HIPO Method, TR00.2209 (1971)",
+          "url": "https://bitsavers.trailing-edge.com/pdf/ibm/generalInfo/TR00.2209_Preparing_Method_of_Operation_Diagrams_-_The_HIPO_Method_Jul71.pdf",
+          "locator": "Printed pages 11–17: data areas and data/action/alteration/reference connectors"
+        },
+        {
+          "title": "IBM Flowcharting Techniques, GC20-8152-1 — supplemental media notation",
+          "url": "https://fulmanski.pl/zajecia/wdi/zajecia_20142015/materialy/IBM-FlowchartingTechniques-GC20-8152-1.pdf",
+          "locator": "Printed pages 2–7, Figure 1 and completed media symbols; supplemental to HIPO structure, not a verified GX20-1971 aperture inventory"
+        }
+      ],
+      "limitations": [
+        "Editable VTOC and IPO structure based on archived IBM publications, with explicitly supplemental IBM flowchart media; this does not reconstruct an unverified complete GX20-1971 media aperture inventory."
+      ]
+    },
+    {
+      "id": "dfd-yourdon",
+      "label": "Classic DFD — Yourdon / DeMarco",
+      "diagramKinds": [
+        {
+          "id": "context",
+          "label": "Context diagram"
+        },
+        {
+          "id": "data-flow",
+          "label": "Data-flow diagram"
+        }
+      ],
+      "sources": [
+        {
+          "title": "Edward Yourdon, Structured Analysis, Chapter 9: Dataflow Diagrams",
+          "url": "https://www.yourdon.com/strucanalysis/wiki/index.php?title=Chapter_9",
+          "locator": "Process, flow, store and terminator notation; context and leveled diagrams"
+        }
+      ],
+      "limitations": [
+        "Decomposition references and draft balancing checks are modeling aids; data transformations are not executed."
+      ]
+    },
+    {
+      "id": "dfd-gane-sarson",
+      "label": "Classic DFD — Gane / Sarson",
+      "diagramKinds": [
+        {
+          "id": "context",
+          "label": "Context diagram"
+        },
+        {
+          "id": "data-flow",
+          "label": "Data-flow diagram"
+        }
+      ],
+      "sources": [
+        {
+          "title": "Chris Gane and Trish Sarson, Structured Systems Analysis: Tools and Techniques (1977 edition)",
+          "url": "https://archive.org/details/structuredsystem0000gane",
+          "locator": "Data-flow diagram notation: numbered rounded processes, external entities and open-ended stores"
+        }
+      ],
+      "limitations": [
+        "The distinct graphical dialect is retained; no executable data-processing semantics."
+      ]
+    },
+    {
+      "id": "uml",
+      "label": "UML",
+      "diagramKinds": [
+        {
+          "id": "class",
+          "label": "Class diagram"
+        },
+        {
+          "id": "object",
+          "label": "Object diagram"
+        },
+        {
+          "id": "component",
+          "label": "Component diagram"
+        },
+        {
+          "id": "composite-structure",
+          "label": "Composite structure diagram"
+        },
+        {
+          "id": "package",
+          "label": "Package diagram"
+        },
+        {
+          "id": "deployment",
+          "label": "Deployment diagram"
+        },
+        {
+          "id": "profile",
+          "label": "Profile diagram"
+        },
+        {
+          "id": "use-case",
+          "label": "Use case diagram"
+        },
+        {
+          "id": "activity",
+          "label": "Activity diagram"
+        },
+        {
+          "id": "state-machine",
+          "label": "State machine diagram"
+        },
+        {
+          "id": "sequence",
+          "label": "Sequence diagram"
+        },
+        {
+          "id": "communication",
+          "label": "Communication diagram"
+        },
+        {
+          "id": "interaction-overview",
+          "label": "Interaction overview diagram"
+        },
+        {
+          "id": "timing",
+          "label": "Timing diagram"
+        }
+      ],
+      "sources": [
+        {
+          "title": "OMG Unified Modeling Language 2.5.1",
+          "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+          "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+        }
+      ],
+      "limitations": [
+        "Graphical modeling across all fourteen diagram kinds; not a complete UML metamodel, XMI interchange implementation, OCL evaluator or conformance certification."
+      ]
+    },
+    {
+      "id": "bpmn",
+      "label": "BPMN",
+      "diagramKinds": [
+        {
+          "id": "process",
+          "label": "Process diagram"
+        },
+        {
+          "id": "collaboration",
+          "label": "Collaboration diagram"
+        },
+        {
+          "id": "choreography",
+          "label": "Choreography diagram"
+        },
+        {
+          "id": "conversation",
+          "label": "Conversation diagram"
+        }
+      ],
+      "sources": [
+        {
+          "title": "OMG Business Process Model and Notation 2.0.2",
+          "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+          "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+        }
+      ],
+      "limitations": [
+        "Graphical families and applicable marker variants; no process execution, BPMN XML interchange or conformance certification."
+      ]
+    }
+  ],
+  "symbols": [
+    {
+      "collection": "hipo",
+      "id": "vtoc-module",
+      "label": "VTOC module",
+      "category": "hipo-module",
+      "geometry": "hipo-module",
+      "diagramKinds": [
+        "vtoc"
+      ],
+      "properties": [
+        {
+          "key": "moduleNumber",
+          "label": "Module number",
+          "type": "text"
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "IBM Improved Programming Technologies — An Overview, GC20-1850-0 (1974)",
+        "url": "https://bitsavers.trailing-edge.com/pdf/ibm/generalInfo/GC20-1850-0_Improved_Programming_Technologies_-_An_Overview_1st_ed_197410.pdf",
+        "locator": "Chapter 5, printed pages 13–17, Figures 11–14"
+      }
+    },
+    {
+      "collection": "hipo",
+      "id": "vtoc-reference",
+      "label": "VTOC module reference",
+      "category": "hipo-reference",
+      "geometry": "hipo-reference",
+      "diagramKinds": [
+        "vtoc"
+      ],
+      "properties": [
+        {
+          "key": "moduleNumber",
+          "label": "Module number",
+          "type": "text"
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "IBM Improved Programming Technologies — An Overview, GC20-1850-0 (1974)",
+        "url": "https://bitsavers.trailing-edge.com/pdf/ibm/generalInfo/GC20-1850-0_Improved_Programming_Technologies_-_An_Overview_1st_ed_197410.pdf",
+        "locator": "Chapter 5, printed pages 13–17, Figures 11–14"
+      }
+    },
+    {
+      "collection": "hipo",
+      "id": "ipo-chart",
+      "label": "Input / Process / Output chart",
+      "category": "hipo-ipo",
+      "geometry": "hipo-ipo",
+      "diagramKinds": [
+        "overview-ipo",
+        "detail-ipo"
+      ],
+      "properties": [
+        {
+          "key": "moduleNumber",
+          "label": "Module number",
+          "type": "text"
+        },
+        {
+          "key": "detail",
+          "label": "Detail level",
+          "type": "enum",
+          "values": [
+            "overview",
+            "detail"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 660,
+        "height": 300
+      },
+      "source": {
+        "title": "IBM Improved Programming Technologies — An Overview, GC20-1850-0 (1974)",
+        "url": "https://bitsavers.trailing-edge.com/pdf/ibm/generalInfo/GC20-1850-0_Improved_Programming_Technologies_-_An_Overview_1st_ed_197410.pdf",
+        "locator": "Chapter 5, printed pages 13–17, Figures 11–14"
+      },
+      "compartments": [
+        "Input",
+        "Process",
+        "Output",
+        "Extended description"
+      ]
+    },
+    {
+      "collection": "hipo",
+      "id": "data-area",
+      "label": "Data area",
+      "category": "rectangle",
+      "geometry": "rectangle",
+      "diagramKinds": [
+        "overview-ipo",
+        "detail-ipo"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "IBM Preparing Method of Operation Diagrams — The HIPO Method, TR00.2209 (1971)",
+        "url": "https://bitsavers.trailing-edge.com/pdf/ibm/generalInfo/TR00.2209_Preparing_Method_of_Operation_Diagrams_-_The_HIPO_Method_Jul71.pdf",
+        "locator": "Printed pages 11–17: data areas and data/action/alteration/reference connectors"
+      }
+    },
+    {
+      "collection": "hipo",
+      "id": "document",
+      "label": "Document / report",
+      "category": "classic-document",
+      "geometry": "classic-document",
+      "diagramKinds": [
+        "overview-ipo",
+        "detail-ipo"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "IBM Flowcharting Techniques, GC20-8152-1 — supplemental media notation",
+        "url": "https://fulmanski.pl/zajecia/wdi/zajecia_20142015/materialy/IBM-FlowchartingTechniques-GC20-8152-1.pdf",
+        "locator": "Printed pages 2–7, Figure 1 and completed media symbols; supplemental to HIPO structure, not a verified GX20-1971 aperture inventory"
+      }
+    },
+    {
+      "collection": "hipo",
+      "id": "manual-input",
+      "label": "Manual input",
+      "category": "classic-manual-input",
+      "geometry": "classic-manual-input",
+      "diagramKinds": [
+        "overview-ipo",
+        "detail-ipo"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "IBM Flowcharting Techniques, GC20-8152-1 — supplemental media notation",
+        "url": "https://fulmanski.pl/zajecia/wdi/zajecia_20142015/materialy/IBM-FlowchartingTechniques-GC20-8152-1.pdf",
+        "locator": "Printed pages 2–7, Figure 1 and completed media symbols; supplemental to HIPO structure, not a verified GX20-1971 aperture inventory"
+      }
+    },
+    {
+      "collection": "hipo",
+      "id": "display",
+      "label": "Display",
+      "category": "classic-display",
+      "geometry": "classic-display",
+      "diagramKinds": [
+        "overview-ipo",
+        "detail-ipo"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "IBM Flowcharting Techniques, GC20-8152-1 — supplemental media notation",
+        "url": "https://fulmanski.pl/zajecia/wdi/zajecia_20142015/materialy/IBM-FlowchartingTechniques-GC20-8152-1.pdf",
+        "locator": "Printed pages 2–7, Figure 1 and completed media symbols; supplemental to HIPO structure, not a verified GX20-1971 aperture inventory"
+      }
+    },
+    {
+      "collection": "hipo",
+      "id": "stored-data",
+      "label": "Online storage",
+      "category": "classic-online-storage",
+      "geometry": "classic-online-storage",
+      "diagramKinds": [
+        "overview-ipo",
+        "detail-ipo"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "IBM Flowcharting Techniques, GC20-8152-1 — supplemental media notation",
+        "url": "https://fulmanski.pl/zajecia/wdi/zajecia_20142015/materialy/IBM-FlowchartingTechniques-GC20-8152-1.pdf",
+        "locator": "Printed pages 2–7, Figure 1 and completed media symbols; supplemental to HIPO structure, not a verified GX20-1971 aperture inventory"
+      }
+    },
+    {
+      "collection": "hipo",
+      "id": "magnetic-tape",
+      "label": "Magnetic tape",
+      "category": "classic-magnetic-tape",
+      "geometry": "classic-magnetic-tape",
+      "diagramKinds": [
+        "overview-ipo",
+        "detail-ipo"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 140,
+        "height": 140
+      },
+      "source": {
+        "title": "IBM Flowcharting Techniques, GC20-8152-1 — supplemental media notation",
+        "url": "https://fulmanski.pl/zajecia/wdi/zajecia_20142015/materialy/IBM-FlowchartingTechniques-GC20-8152-1.pdf",
+        "locator": "Printed pages 2–7, Figure 1 and completed media symbols; supplemental to HIPO structure, not a verified GX20-1971 aperture inventory"
+      }
+    },
+    {
+      "collection": "hipo",
+      "id": "punched-card",
+      "label": "Punched card",
+      "category": "classic-punched-card",
+      "geometry": "classic-punched-card",
+      "diagramKinds": [
+        "overview-ipo",
+        "detail-ipo"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "IBM Flowcharting Techniques, GC20-8152-1 — supplemental media notation",
+        "url": "https://fulmanski.pl/zajecia/wdi/zajecia_20142015/materialy/IBM-FlowchartingTechniques-GC20-8152-1.pdf",
+        "locator": "Printed pages 2–7, Figure 1 and completed media symbols; supplemental to HIPO structure, not a verified GX20-1971 aperture inventory"
+      }
+    },
+    {
+      "collection": "hipo",
+      "id": "magnetic-disk",
+      "label": "Magnetic disk",
+      "category": "classic-magnetic-disk",
+      "geometry": "classic-magnetic-disk",
+      "diagramKinds": [
+        "overview-ipo",
+        "detail-ipo"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "IBM Flowcharting Techniques, GC20-8152-1 — supplemental media notation",
+        "url": "https://fulmanski.pl/zajecia/wdi/zajecia_20142015/materialy/IBM-FlowchartingTechniques-GC20-8152-1.pdf",
+        "locator": "Printed pages 2–7, Figure 1 and completed media symbols; supplemental to HIPO structure, not a verified GX20-1971 aperture inventory"
+      }
+    },
+    {
+      "collection": "dfd-yourdon",
+      "id": "process",
+      "label": "Process",
+      "category": "circle",
+      "geometry": "circle",
+      "diagramKinds": [
+        "context",
+        "data-flow"
+      ],
+      "properties": [
+        {
+          "key": "number",
+          "label": "Process number",
+          "type": "text"
+        },
+        {
+          "key": "level",
+          "label": "Decomposition level",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "Edward Yourdon, Structured Analysis, Chapter 9: Dataflow Diagrams",
+        "url": "https://www.yourdon.com/strucanalysis/wiki/index.php?title=Chapter_9",
+        "locator": "Process, flow, store and terminator notation; context and leveled diagrams"
+      }
+    },
+    {
+      "collection": "dfd-yourdon",
+      "id": "external-entity",
+      "label": "External entity",
+      "category": "rectangle",
+      "geometry": "rectangle",
+      "diagramKinds": [
+        "context",
+        "data-flow"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "Edward Yourdon, Structured Analysis, Chapter 9: Dataflow Diagrams",
+        "url": "https://www.yourdon.com/strucanalysis/wiki/index.php?title=Chapter_9",
+        "locator": "Process, flow, store and terminator notation; context and leveled diagrams"
+      }
+    },
+    {
+      "collection": "dfd-yourdon",
+      "id": "data-store",
+      "label": "Data store",
+      "category": "open-store",
+      "geometry": "open-store",
+      "diagramKinds": [
+        "context",
+        "data-flow"
+      ],
+      "properties": [
+        {
+          "key": "number",
+          "label": "Store number",
+          "type": "text"
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "Edward Yourdon, Structured Analysis, Chapter 9: Dataflow Diagrams",
+        "url": "https://www.yourdon.com/strucanalysis/wiki/index.php?title=Chapter_9",
+        "locator": "Process, flow, store and terminator notation; context and leveled diagrams"
+      }
+    },
+    {
+      "collection": "dfd-yourdon",
+      "id": "duplicate-external-entity",
+      "label": "Repeated external entity",
+      "category": "duplicate-entity",
+      "geometry": "duplicate-entity",
+      "diagramKinds": [
+        "context",
+        "data-flow"
+      ],
+      "properties": [
+        {
+          "key": "duplicate",
+          "label": "Repeated",
+          "type": "boolean"
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "Edward Yourdon, Structured Analysis, Chapter 9: Dataflow Diagrams",
+        "url": "https://www.yourdon.com/strucanalysis/wiki/index.php?title=Chapter_9",
+        "locator": "Process, flow, store and terminator notation; context and leveled diagrams"
+      }
+    },
+    {
+      "collection": "dfd-yourdon",
+      "id": "duplicate-data-store",
+      "label": "Repeated data store",
+      "category": "duplicate-open-store",
+      "geometry": "duplicate-open-store",
+      "diagramKinds": [
+        "context",
+        "data-flow"
+      ],
+      "properties": [
+        {
+          "key": "number",
+          "label": "Store number",
+          "type": "text"
+        },
+        {
+          "key": "duplicate",
+          "label": "Repeated",
+          "type": "boolean"
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "Edward Yourdon, Structured Analysis, Chapter 9: Dataflow Diagrams",
+        "url": "https://www.yourdon.com/strucanalysis/wiki/index.php?title=Chapter_9",
+        "locator": "Process, flow, store and terminator notation; context and leveled diagrams"
+      }
+    },
+    {
+      "collection": "dfd-yourdon",
+      "id": "note",
+      "label": "Annotation",
+      "category": "note",
+      "geometry": "note",
+      "diagramKinds": [
+        "context",
+        "data-flow"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "Edward Yourdon, Structured Analysis, Chapter 9: Dataflow Diagrams",
+        "url": "https://www.yourdon.com/strucanalysis/wiki/index.php?title=Chapter_9",
+        "locator": "Process, flow, store and terminator notation; context and leveled diagrams"
+      }
+    },
+    {
+      "collection": "dfd-gane-sarson",
+      "id": "process",
+      "label": "Process",
+      "category": "dfd-process",
+      "geometry": "dfd-process",
+      "diagramKinds": [
+        "context",
+        "data-flow"
+      ],
+      "properties": [
+        {
+          "key": "number",
+          "label": "Process number",
+          "type": "text"
+        },
+        {
+          "key": "level",
+          "label": "Decomposition level",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "Chris Gane and Trish Sarson, Structured Systems Analysis: Tools and Techniques (1977 edition)",
+        "url": "https://archive.org/details/structuredsystem0000gane",
+        "locator": "Data-flow diagram notation: numbered rounded processes, external entities and open-ended stores"
+      }
+    },
+    {
+      "collection": "dfd-gane-sarson",
+      "id": "external-entity",
+      "label": "External entity",
+      "category": "rectangle",
+      "geometry": "rectangle",
+      "diagramKinds": [
+        "context",
+        "data-flow"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "Chris Gane and Trish Sarson, Structured Systems Analysis: Tools and Techniques (1977 edition)",
+        "url": "https://archive.org/details/structuredsystem0000gane",
+        "locator": "Data-flow diagram notation: numbered rounded processes, external entities and open-ended stores"
+      }
+    },
+    {
+      "collection": "dfd-gane-sarson",
+      "id": "data-store",
+      "label": "Data store",
+      "category": "dfd-store",
+      "geometry": "dfd-store",
+      "diagramKinds": [
+        "context",
+        "data-flow"
+      ],
+      "properties": [
+        {
+          "key": "number",
+          "label": "Store number",
+          "type": "text"
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "Chris Gane and Trish Sarson, Structured Systems Analysis: Tools and Techniques (1977 edition)",
+        "url": "https://archive.org/details/structuredsystem0000gane",
+        "locator": "Data-flow diagram notation: numbered rounded processes, external entities and open-ended stores"
+      }
+    },
+    {
+      "collection": "dfd-gane-sarson",
+      "id": "duplicate-external-entity",
+      "label": "Repeated external entity",
+      "category": "duplicate-entity",
+      "geometry": "duplicate-entity",
+      "diagramKinds": [
+        "context",
+        "data-flow"
+      ],
+      "properties": [
+        {
+          "key": "duplicate",
+          "label": "Repeated",
+          "type": "boolean"
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "Chris Gane and Trish Sarson, Structured Systems Analysis: Tools and Techniques (1977 edition)",
+        "url": "https://archive.org/details/structuredsystem0000gane",
+        "locator": "Data-flow diagram notation: numbered rounded processes, external entities and open-ended stores"
+      }
+    },
+    {
+      "collection": "dfd-gane-sarson",
+      "id": "duplicate-data-store",
+      "label": "Repeated data store",
+      "category": "duplicate-dfd-store",
+      "geometry": "duplicate-dfd-store",
+      "diagramKinds": [
+        "context",
+        "data-flow"
+      ],
+      "properties": [
+        {
+          "key": "number",
+          "label": "Store number",
+          "type": "text"
+        },
+        {
+          "key": "duplicate",
+          "label": "Repeated",
+          "type": "boolean"
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "Chris Gane and Trish Sarson, Structured Systems Analysis: Tools and Techniques (1977 edition)",
+        "url": "https://archive.org/details/structuredsystem0000gane",
+        "locator": "Data-flow diagram notation: numbered rounded processes, external entities and open-ended stores"
+      }
+    },
+    {
+      "collection": "dfd-gane-sarson",
+      "id": "note",
+      "label": "Annotation",
+      "category": "note",
+      "geometry": "note",
+      "diagramKinds": [
+        "context",
+        "data-flow"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "Chris Gane and Trish Sarson, Structured Systems Analysis: Tools and Techniques (1977 edition)",
+        "url": "https://archive.org/details/structuredsystem0000gane",
+        "locator": "Data-flow diagram notation: numbered rounded processes, external entities and open-ended stores"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "class",
+      "label": "Class",
+      "category": "uml-class",
+      "geometry": "uml-class",
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 280,
+        "height": 210
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "compartments": [
+        "Attributes",
+        "Operations"
+      ]
+    },
+    {
+      "collection": "uml",
+      "id": "interface",
+      "label": "Interface",
+      "category": "uml-class",
+      "geometry": "uml-class",
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 280,
+        "height": 210
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "compartments": [
+        "Attributes",
+        "Operations"
+      ]
+    },
+    {
+      "collection": "uml",
+      "id": "enumeration",
+      "label": "Enumeration",
+      "category": "uml-class",
+      "geometry": "uml-class",
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 280,
+        "height": 210
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "compartments": [
+        "Literals"
+      ]
+    },
+    {
+      "collection": "uml",
+      "id": "data-type",
+      "label": "Data type",
+      "category": "uml-class",
+      "geometry": "uml-class",
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 280,
+        "height": 210
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "compartments": [
+        "Attributes",
+        "Operations"
+      ]
+    },
+    {
+      "collection": "uml",
+      "id": "association-class",
+      "label": "Association class",
+      "category": "uml-class",
+      "geometry": "uml-class",
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 280,
+        "height": 210
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "compartments": [
+        "Attributes",
+        "Operations"
+      ]
+    },
+    {
+      "collection": "uml",
+      "id": "template-classifier",
+      "label": "Template classifier",
+      "category": "uml-template",
+      "geometry": "uml-template",
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 350,
+        "height": 280
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "compartments": [
+        "Template parameters",
+        "Attributes",
+        "Operations"
+      ]
+    },
+    {
+      "collection": "uml",
+      "id": "qualifier",
+      "label": "Association qualifier",
+      "category": "rectangle",
+      "geometry": "rectangle",
+      "diagramKinds": [
+        "class"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 160,
+        "height": 60
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "compartments": [
+        "Qualifiers"
+      ]
+    },
+    {
+      "collection": "uml",
+      "id": "nary-association",
+      "label": "N-ary association",
+      "category": "diamond",
+      "geometry": "diamond",
+      "diagramKinds": [
+        "class"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 80,
+        "height": 80
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "object",
+      "label": "Object / instance specification",
+      "category": "uml-object",
+      "geometry": "uml-object",
+      "diagramKinds": [
+        "object",
+        "communication",
+        "deployment"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "compartments": [
+        "Slots"
+      ]
+    },
+    {
+      "collection": "uml",
+      "id": "provided-interface",
+      "label": "Provided interface",
+      "category": "provided-interface",
+      "geometry": "provided-interface",
+      "diagramKinds": [
+        "component",
+        "composite-structure"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 80,
+        "height": 80
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "required-interface",
+      "label": "Required interface",
+      "category": "required-interface",
+      "geometry": "required-interface",
+      "diagramKinds": [
+        "component",
+        "composite-structure"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 80,
+        "height": 80
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "component",
+      "label": "Component",
+      "category": "uml-component",
+      "geometry": "uml-component",
+      "diagramKinds": [
+        "component",
+        "deployment",
+        "composite-structure"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "compartments": [
+        "Provided interfaces",
+        "Required interfaces"
+      ]
+    },
+    {
+      "collection": "uml",
+      "id": "port",
+      "label": "Port",
+      "category": "rectangle",
+      "geometry": "rectangle",
+      "diagramKinds": [
+        "component",
+        "composite-structure"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 40,
+        "height": 40
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "part",
+      "label": "Part / property",
+      "category": "uml-object",
+      "geometry": "uml-object",
+      "diagramKinds": [
+        "composite-structure"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "compartments": [
+        "Properties"
+      ]
+    },
+    {
+      "collection": "uml",
+      "id": "collaboration",
+      "label": "Collaboration",
+      "category": "dashed-ellipse",
+      "geometry": "dashed-ellipse",
+      "diagramKinds": [
+        "composite-structure"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "package",
+      "label": "Package",
+      "category": "package",
+      "geometry": "package",
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 480,
+        "height": 280
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "container": true,
+      "compartments": [
+        "Members"
+      ]
+    },
+    {
+      "collection": "uml",
+      "id": "model",
+      "label": "Model",
+      "category": "package",
+      "geometry": "package",
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 480,
+        "height": 280
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "container": true,
+      "compartments": [
+        "Members"
+      ]
+    },
+    {
+      "collection": "uml",
+      "id": "profile",
+      "label": "Profile",
+      "category": "package",
+      "geometry": "package",
+      "diagramKinds": [
+        "profile"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 480,
+        "height": 280
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "container": true,
+      "compartments": [
+        "Members"
+      ]
+    },
+    {
+      "collection": "uml",
+      "id": "stereotype",
+      "label": "Stereotype",
+      "category": "uml-class",
+      "geometry": "uml-class",
+      "diagramKinds": [
+        "profile"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "compartments": [
+        "Properties",
+        "Constraints"
+      ]
+    },
+    {
+      "collection": "uml",
+      "id": "node",
+      "label": "node",
+      "category": "uml-node",
+      "geometry": "uml-node",
+      "diagramKinds": [
+        "deployment"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 480,
+        "height": 280
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "container": true,
+      "compartments": [
+        "Deployed artifacts"
+      ]
+    },
+    {
+      "collection": "uml",
+      "id": "device",
+      "label": "device",
+      "category": "uml-node",
+      "geometry": "uml-node",
+      "diagramKinds": [
+        "deployment"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 480,
+        "height": 280
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "container": true,
+      "compartments": [
+        "Deployed artifacts"
+      ]
+    },
+    {
+      "collection": "uml",
+      "id": "execution-environment",
+      "label": "execution environment",
+      "category": "uml-node",
+      "geometry": "uml-node",
+      "diagramKinds": [
+        "deployment"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 480,
+        "height": 280
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "container": true,
+      "compartments": [
+        "Deployed artifacts"
+      ]
+    },
+    {
+      "collection": "uml",
+      "id": "artifact",
+      "label": "Artifact",
+      "category": "artifact",
+      "geometry": "artifact",
+      "diagramKinds": [
+        "deployment",
+        "component"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "actor",
+      "label": "Actor",
+      "category": "actor",
+      "geometry": "actor",
+      "diagramKinds": [
+        "use-case"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 110,
+        "height": 160
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "use-case",
+      "label": "Use case",
+      "category": "ellipse",
+      "geometry": "ellipse",
+      "diagramKinds": [
+        "use-case"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "extension-point",
+      "label": "Extension points",
+      "category": "uml-class",
+      "geometry": "uml-class",
+      "diagramKinds": [
+        "use-case"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "compartments": [
+        "Extension points"
+      ]
+    },
+    {
+      "collection": "uml",
+      "id": "system-boundary",
+      "label": "Subject / system boundary",
+      "category": "rectangle",
+      "geometry": "rectangle",
+      "diagramKinds": [
+        "use-case"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 480,
+        "height": 280
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "container": true
+    },
+    {
+      "collection": "uml",
+      "id": "activity",
+      "label": "Activity",
+      "category": "rounded",
+      "geometry": "rounded",
+      "diagramKinds": [
+        "activity",
+        "interaction-overview"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 480,
+        "height": 280
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "container": true
+    },
+    {
+      "collection": "uml",
+      "id": "action",
+      "label": "Action",
+      "category": "rounded",
+      "geometry": "rounded",
+      "diagramKinds": [
+        "activity",
+        "interaction-overview"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "activity-parameter",
+      "label": "Activity parameter node",
+      "category": "rectangle",
+      "geometry": "rectangle",
+      "diagramKinds": [
+        "activity",
+        "interaction-overview"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 140,
+        "height": 60
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "exception-handler",
+      "label": "Exception handler",
+      "category": "lightning",
+      "geometry": "lightning",
+      "diagramKinds": [
+        "activity",
+        "interaction-overview"
+      ],
+      "properties": [
+        {
+          "key": "guard",
+          "label": "guard",
+          "type": "text"
+        }
+      ],
+      "defaultSize": {
+        "width": 80,
+        "height": 80
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "object-node",
+      "label": "object node",
+      "category": "rectangle",
+      "geometry": "rectangle",
+      "diagramKinds": [
+        "activity",
+        "interaction-overview"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "compartments": [
+        "State"
+      ]
+    },
+    {
+      "collection": "uml",
+      "id": "central-buffer",
+      "label": "central buffer",
+      "category": "rectangle",
+      "geometry": "rectangle",
+      "diagramKinds": [
+        "activity",
+        "interaction-overview"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "compartments": [
+        "State"
+      ]
+    },
+    {
+      "collection": "uml",
+      "id": "data-store",
+      "label": "data store",
+      "category": "rectangle",
+      "geometry": "rectangle",
+      "diagramKinds": [
+        "activity",
+        "interaction-overview"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "compartments": [
+        "State"
+      ]
+    },
+    {
+      "collection": "uml",
+      "id": "input-pin",
+      "label": "input pin",
+      "category": "rectangle",
+      "geometry": "rectangle",
+      "diagramKinds": [
+        "activity",
+        "interaction-overview"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 40,
+        "height": 40
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "output-pin",
+      "label": "output pin",
+      "category": "rectangle",
+      "geometry": "rectangle",
+      "diagramKinds": [
+        "activity",
+        "interaction-overview"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 40,
+        "height": 40
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "expansion-node",
+      "label": "expansion node",
+      "category": "expansion-node",
+      "geometry": "expansion-node",
+      "diagramKinds": [
+        "activity",
+        "interaction-overview"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 40,
+        "height": 40
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "initial-node",
+      "label": "Initial node",
+      "category": "filled-circle",
+      "geometry": "filled-circle",
+      "diagramKinds": [
+        "activity",
+        "interaction-overview"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 40,
+        "height": 40
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "activity-final",
+      "label": "Activity final",
+      "category": "bullseye",
+      "geometry": "bullseye",
+      "diagramKinds": [
+        "activity",
+        "interaction-overview"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 80,
+        "height": 80
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "flow-final",
+      "label": "Flow final",
+      "category": "cross-circle",
+      "geometry": "cross-circle",
+      "diagramKinds": [
+        "activity",
+        "interaction-overview"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 80,
+        "height": 80
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "decision",
+      "label": "Decision",
+      "category": "diamond",
+      "geometry": "diamond",
+      "diagramKinds": [
+        "activity",
+        "interaction-overview"
+      ],
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        }
+      ],
+      "defaultSize": {
+        "width": 100,
+        "height": 100
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "merge",
+      "label": "Merge",
+      "category": "diamond",
+      "geometry": "diamond",
+      "diagramKinds": [
+        "activity",
+        "interaction-overview"
+      ],
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        }
+      ],
+      "defaultSize": {
+        "width": 100,
+        "height": 100
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "fork",
+      "label": "Fork",
+      "category": "bar",
+      "geometry": "bar",
+      "diagramKinds": [
+        "activity",
+        "interaction-overview"
+      ],
+      "properties": [
+        {
+          "key": "orientation",
+          "label": "Orientation",
+          "type": "enum",
+          "values": [
+            "horizontal",
+            "vertical"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 200,
+        "height": 30
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "join",
+      "label": "Join",
+      "category": "bar",
+      "geometry": "bar",
+      "diagramKinds": [
+        "activity",
+        "interaction-overview"
+      ],
+      "properties": [
+        {
+          "key": "orientation",
+          "label": "Orientation",
+          "type": "enum",
+          "values": [
+            "horizontal",
+            "vertical"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 200,
+        "height": 30
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "partition",
+      "label": "Activity partition / swimlane",
+      "category": "lane",
+      "geometry": "lane",
+      "diagramKinds": [
+        "activity",
+        "interaction-overview"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "stereotype",
+          "type": "text"
+        },
+        {
+          "key": "orientation",
+          "label": "orientation",
+          "type": "enum",
+          "values": [
+            "horizontal",
+            "vertical"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 480,
+        "height": 280
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "container": true
+    },
+    {
+      "collection": "uml",
+      "id": "expansion-region",
+      "label": "Expansion region",
+      "category": "dashed-rounded",
+      "geometry": "dashed-rounded",
+      "diagramKinds": [
+        "activity",
+        "interaction-overview"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 480,
+        "height": 280
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "container": true
+    },
+    {
+      "collection": "uml",
+      "id": "interruptible-region",
+      "label": "Interruptible activity region",
+      "category": "dashed-rounded",
+      "geometry": "dashed-rounded",
+      "diagramKinds": [
+        "activity",
+        "interaction-overview"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 480,
+        "height": 280
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "container": true
+    },
+    {
+      "collection": "uml",
+      "id": "send-signal-action",
+      "label": "Send signal action",
+      "category": "send-signal",
+      "geometry": "send-signal",
+      "diagramKinds": [
+        "activity",
+        "interaction-overview"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "accept-event-action",
+      "label": "Accept event action",
+      "category": "accept-event",
+      "geometry": "accept-event",
+      "diagramKinds": [
+        "activity",
+        "interaction-overview"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "time-event-action",
+      "label": "Accept time event action",
+      "category": "hourglass",
+      "geometry": "hourglass",
+      "diagramKinds": [
+        "activity",
+        "interaction-overview"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "state",
+      "label": "State",
+      "category": "rounded",
+      "geometry": "rounded",
+      "diagramKinds": [
+        "state-machine"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "compartments": [
+        "Entry / do / exit",
+        "Internal transitions"
+      ]
+    },
+    {
+      "collection": "uml",
+      "id": "initial-state",
+      "label": "Initial pseudostate",
+      "category": "filled-circle",
+      "geometry": "filled-circle",
+      "diagramKinds": [
+        "state-machine"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 40,
+        "height": 40
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "final-state",
+      "label": "Final state",
+      "category": "bullseye",
+      "geometry": "bullseye",
+      "diagramKinds": [
+        "state-machine"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 80,
+        "height": 80
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "choice",
+      "label": "Choice pseudostate",
+      "category": "diamond",
+      "geometry": "diamond",
+      "diagramKinds": [
+        "state-machine"
+      ],
+      "properties": [
+        {
+          "key": "guard",
+          "label": "guard",
+          "type": "text"
+        }
+      ],
+      "defaultSize": {
+        "width": 100,
+        "height": 100
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "junction",
+      "label": "Junction pseudostate",
+      "category": "filled-circle",
+      "geometry": "filled-circle",
+      "diagramKinds": [
+        "state-machine"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 40,
+        "height": 40
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "fork-state",
+      "label": "fork pseudostate",
+      "category": "bar",
+      "geometry": "bar",
+      "diagramKinds": [
+        "state-machine"
+      ],
+      "properties": [
+        {
+          "key": "orientation",
+          "label": "orientation",
+          "type": "enum",
+          "values": [
+            "horizontal",
+            "vertical"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 200,
+        "height": 30
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "join-state",
+      "label": "join pseudostate",
+      "category": "bar",
+      "geometry": "bar",
+      "diagramKinds": [
+        "state-machine"
+      ],
+      "properties": [
+        {
+          "key": "orientation",
+          "label": "orientation",
+          "type": "enum",
+          "values": [
+            "horizontal",
+            "vertical"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 200,
+        "height": 30
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "shallow-history",
+      "label": "Shallow history",
+      "category": "history",
+      "geometry": "history",
+      "diagramKinds": [
+        "state-machine"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 80,
+        "height": 80
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "deep-history",
+      "label": "Deep history",
+      "category": "deep-history",
+      "geometry": "deep-history",
+      "diagramKinds": [
+        "state-machine"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 80,
+        "height": 80
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "entry-point",
+      "label": "Entry point",
+      "category": "circle",
+      "geometry": "circle",
+      "diagramKinds": [
+        "state-machine"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 80,
+        "height": 80
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "exit-point",
+      "label": "Exit point",
+      "category": "cross-circle",
+      "geometry": "cross-circle",
+      "diagramKinds": [
+        "state-machine"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 80,
+        "height": 80
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "terminate",
+      "label": "Terminate pseudostate",
+      "category": "cross",
+      "geometry": "cross",
+      "diagramKinds": [
+        "state-machine"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 80,
+        "height": 80
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "connection-point-reference",
+      "label": "Connection point reference",
+      "category": "circle",
+      "geometry": "circle",
+      "diagramKinds": [
+        "state-machine"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 80,
+        "height": 80
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "lifeline",
+      "label": "Lifeline",
+      "category": "lifeline",
+      "geometry": "lifeline",
+      "diagramKinds": [
+        "sequence"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 160,
+        "height": 400
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "activation",
+      "label": "Execution specification",
+      "category": "rectangle",
+      "geometry": "rectangle",
+      "diagramKinds": [
+        "sequence"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 40,
+        "height": 160
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "combined-fragment",
+      "label": "Combined fragment",
+      "category": "interaction-frame",
+      "geometry": "interaction-frame",
+      "diagramKinds": [
+        "sequence"
+      ],
+      "properties": [
+        {
+          "key": "operator",
+          "label": "operator",
+          "type": "enum",
+          "values": [
+            "alt",
+            "opt",
+            "loop",
+            "break",
+            "par",
+            "strict",
+            "seq",
+            "critical",
+            "neg",
+            "assert",
+            "ignore",
+            "consider"
+          ]
+        },
+        {
+          "key": "guard",
+          "label": "guard",
+          "type": "text"
+        }
+      ],
+      "defaultSize": {
+        "width": 480,
+        "height": 280
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "container": true,
+      "compartments": [
+        "Operands"
+      ]
+    },
+    {
+      "collection": "uml",
+      "id": "interaction-use",
+      "label": "Interaction use",
+      "category": "interaction-frame",
+      "geometry": "interaction-frame",
+      "diagramKinds": [
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "interaction",
+      "label": "Interaction",
+      "category": "interaction-frame",
+      "geometry": "interaction-frame",
+      "diagramKinds": [
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        },
+        {
+          "key": "classifier",
+          "label": "Classifier",
+          "type": "text"
+        },
+        {
+          "key": "abstract",
+          "label": "Abstract",
+          "type": "boolean"
+        },
+        {
+          "key": "static",
+          "label": "Static",
+          "type": "boolean"
+        },
+        {
+          "key": "visibility",
+          "label": "Visibility",
+          "type": "enum",
+          "values": [
+            "public",
+            "private",
+            "protected",
+            "package"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 480,
+        "height": 280
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "container": true
+    },
+    {
+      "collection": "uml",
+      "id": "continuation",
+      "label": "Continuation",
+      "category": "hexagon",
+      "geometry": "hexagon",
+      "diagramKinds": [
+        "sequence"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "timing-lifeline",
+      "label": "Timing lifeline",
+      "category": "timing-lifeline",
+      "geometry": "timing-lifeline",
+      "diagramKinds": [
+        "timing"
+      ],
+      "properties": [
+        {
+          "key": "classifier",
+          "label": "classifier",
+          "type": "text"
+        },
+        {
+          "key": "timeStart",
+          "label": "Start time",
+          "type": "number"
+        },
+        {
+          "key": "timeEnd",
+          "label": "End time",
+          "type": "number"
+        },
+        {
+          "key": "timingStates",
+          "label": "State timeline",
+          "type": "timing-states"
+        }
+      ],
+      "defaultSize": {
+        "width": 500,
+        "height": 160
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      },
+      "compartments": [
+        "States"
+      ]
+    },
+    {
+      "collection": "uml",
+      "id": "state-invariant",
+      "label": "State invariant",
+      "category": "rounded",
+      "geometry": "rounded",
+      "diagramKinds": [
+        "sequence",
+        "timing"
+      ],
+      "properties": [
+        {
+          "key": "guard",
+          "label": "guard",
+          "type": "text"
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "operand-guard",
+      "label": "Interaction operand guard",
+      "category": "constraint",
+      "geometry": "constraint",
+      "diagramKinds": [
+        "sequence",
+        "interaction-overview"
+      ],
+      "properties": [
+        {
+          "key": "guard",
+          "label": "guard",
+          "type": "text"
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "time-constraint",
+      "label": "Time constraint",
+      "category": "constraint",
+      "geometry": "constraint",
+      "diagramKinds": [
+        "sequence",
+        "timing"
+      ],
+      "properties": [
+        {
+          "key": "guard",
+          "label": "guard",
+          "type": "text"
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "duration-constraint",
+      "label": "Duration constraint",
+      "category": "constraint",
+      "geometry": "constraint",
+      "diagramKinds": [
+        "sequence",
+        "timing"
+      ],
+      "properties": [
+        {
+          "key": "guard",
+          "label": "guard",
+          "type": "text"
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "time-observation",
+      "label": "Time observation",
+      "category": "constraint",
+      "geometry": "constraint",
+      "diagramKinds": [
+        "sequence",
+        "timing"
+      ],
+      "properties": [
+        {
+          "key": "guard",
+          "label": "guard",
+          "type": "text"
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "duration-observation",
+      "label": "Duration observation",
+      "category": "constraint",
+      "geometry": "constraint",
+      "diagramKinds": [
+        "sequence",
+        "timing"
+      ],
+      "properties": [
+        {
+          "key": "guard",
+          "label": "guard",
+          "type": "text"
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "message-endpoint",
+      "label": "Found / lost message endpoint",
+      "category": "filled-circle",
+      "geometry": "filled-circle",
+      "diagramKinds": [
+        "sequence"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 40,
+        "height": 40
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "destruction",
+      "label": "Destruction occurrence",
+      "category": "cross",
+      "geometry": "cross",
+      "diagramKinds": [
+        "sequence"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 80,
+        "height": 80
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "note",
+      "label": "Comment / constraint",
+      "category": "note",
+      "geometry": "note",
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "properties": [
+        {
+          "key": "stereotype",
+          "label": "stereotype",
+          "type": "text"
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "task",
+      "label": "Task",
+      "category": "rounded",
+      "geometry": "rounded",
+      "diagramKinds": [
+        "process",
+        "collaboration"
+      ],
+      "properties": [
+        {
+          "key": "taskType",
+          "label": "Task type",
+          "type": "enum",
+          "values": [
+            "none",
+            "service",
+            "send",
+            "receive",
+            "user",
+            "manual",
+            "business-rule",
+            "script"
+          ]
+        },
+        {
+          "key": "loop",
+          "label": "Loop / instance marker",
+          "type": "enum",
+          "values": [
+            "none",
+            "standard",
+            "parallel-multi-instance",
+            "sequential-multi-instance"
+          ]
+        },
+        {
+          "key": "compensation",
+          "label": "Compensation",
+          "type": "boolean"
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "subprocess",
+      "label": "subprocess",
+      "category": "rounded",
+      "geometry": "rounded",
+      "diagramKinds": [
+        "process",
+        "collaboration"
+      ],
+      "properties": [
+        {
+          "key": "loop",
+          "label": "Loop / instance marker",
+          "type": "enum",
+          "values": [
+            "none",
+            "standard",
+            "parallel-multi-instance",
+            "sequential-multi-instance"
+          ]
+        },
+        {
+          "key": "collapsed",
+          "label": "Collapsed",
+          "type": "boolean"
+        },
+        {
+          "key": "compensation",
+          "label": "Compensation",
+          "type": "boolean"
+        }
+      ],
+      "defaultSize": {
+        "width": 480,
+        "height": 280
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      },
+      "container": true,
+      "compartments": [
+        "Details"
+      ]
+    },
+    {
+      "collection": "bpmn",
+      "id": "event-subprocess",
+      "label": "event subprocess",
+      "category": "dashed-rounded",
+      "geometry": "dashed-rounded",
+      "diagramKinds": [
+        "process",
+        "collaboration"
+      ],
+      "properties": [
+        {
+          "key": "loop",
+          "label": "Loop / instance marker",
+          "type": "enum",
+          "values": [
+            "none",
+            "standard",
+            "parallel-multi-instance",
+            "sequential-multi-instance"
+          ]
+        },
+        {
+          "key": "collapsed",
+          "label": "Collapsed",
+          "type": "boolean"
+        },
+        {
+          "key": "compensation",
+          "label": "Compensation",
+          "type": "boolean"
+        }
+      ],
+      "defaultSize": {
+        "width": 480,
+        "height": 280
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      },
+      "container": true,
+      "compartments": [
+        "Details"
+      ]
+    },
+    {
+      "collection": "bpmn",
+      "id": "transaction",
+      "label": "transaction",
+      "category": "transaction",
+      "geometry": "transaction",
+      "diagramKinds": [
+        "process",
+        "collaboration"
+      ],
+      "properties": [
+        {
+          "key": "loop",
+          "label": "Loop / instance marker",
+          "type": "enum",
+          "values": [
+            "none",
+            "standard",
+            "parallel-multi-instance",
+            "sequential-multi-instance"
+          ]
+        },
+        {
+          "key": "collapsed",
+          "label": "Collapsed",
+          "type": "boolean"
+        },
+        {
+          "key": "compensation",
+          "label": "Compensation",
+          "type": "boolean"
+        }
+      ],
+      "defaultSize": {
+        "width": 480,
+        "height": 280
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      },
+      "container": true,
+      "compartments": [
+        "Details"
+      ]
+    },
+    {
+      "collection": "bpmn",
+      "id": "call-activity",
+      "label": "call activity",
+      "category": "call-activity",
+      "geometry": "call-activity",
+      "diagramKinds": [
+        "process",
+        "collaboration"
+      ],
+      "properties": [
+        {
+          "key": "loop",
+          "label": "Loop / instance marker",
+          "type": "enum",
+          "values": [
+            "none",
+            "standard",
+            "parallel-multi-instance",
+            "sequential-multi-instance"
+          ]
+        },
+        {
+          "key": "collapsed",
+          "label": "Collapsed",
+          "type": "boolean"
+        },
+        {
+          "key": "compensation",
+          "label": "Compensation",
+          "type": "boolean"
+        }
+      ],
+      "defaultSize": {
+        "width": 480,
+        "height": 280
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      },
+      "container": true,
+      "compartments": [
+        "Details"
+      ]
+    },
+    {
+      "collection": "bpmn",
+      "id": "ad-hoc-subprocess",
+      "label": "ad hoc subprocess",
+      "category": "rounded",
+      "geometry": "rounded",
+      "diagramKinds": [
+        "process",
+        "collaboration"
+      ],
+      "properties": [
+        {
+          "key": "loop",
+          "label": "Loop / instance marker",
+          "type": "enum",
+          "values": [
+            "none",
+            "standard",
+            "parallel-multi-instance",
+            "sequential-multi-instance"
+          ]
+        },
+        {
+          "key": "collapsed",
+          "label": "Collapsed",
+          "type": "boolean"
+        },
+        {
+          "key": "compensation",
+          "label": "Compensation",
+          "type": "boolean"
+        }
+      ],
+      "defaultSize": {
+        "width": 480,
+        "height": 280
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      },
+      "container": true,
+      "compartments": [
+        "Details"
+      ]
+    },
+    {
+      "collection": "bpmn",
+      "id": "start-event",
+      "label": "Start event",
+      "category": "circle",
+      "geometry": "circle",
+      "diagramKinds": [
+        "process",
+        "collaboration",
+        "choreography"
+      ],
+      "properties": [
+        {
+          "key": "eventDefinition",
+          "label": "Event definition",
+          "type": "enum",
+          "values": [
+            "none",
+            "message",
+            "timer",
+            "error",
+            "escalation",
+            "cancel",
+            "compensation",
+            "conditional",
+            "link",
+            "signal",
+            "terminate",
+            "multiple",
+            "parallel-multiple"
+          ]
+        },
+        {
+          "key": "eventSubProcess",
+          "label": "Event subprocess start",
+          "type": "boolean"
+        },
+        {
+          "key": "nonInterrupting",
+          "label": "Non-interrupting",
+          "type": "boolean"
+        }
+      ],
+      "defaultSize": {
+        "width": 80,
+        "height": 128
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "intermediate-catch-event",
+      "label": "Intermediate catching event",
+      "category": "double-circle",
+      "geometry": "double-circle",
+      "diagramKinds": [
+        "process",
+        "collaboration",
+        "choreography"
+      ],
+      "properties": [
+        {
+          "key": "eventDefinition",
+          "label": "Event definition",
+          "type": "enum",
+          "values": [
+            "none",
+            "message",
+            "timer",
+            "error",
+            "escalation",
+            "cancel",
+            "compensation",
+            "conditional",
+            "link",
+            "signal",
+            "terminate",
+            "multiple",
+            "parallel-multiple"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 80,
+        "height": 128
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "intermediate-throw-event",
+      "label": "Intermediate throwing event",
+      "category": "double-circle",
+      "geometry": "double-circle",
+      "diagramKinds": [
+        "process",
+        "collaboration",
+        "choreography"
+      ],
+      "properties": [
+        {
+          "key": "eventDefinition",
+          "label": "Event definition",
+          "type": "enum",
+          "values": [
+            "none",
+            "message",
+            "timer",
+            "error",
+            "escalation",
+            "cancel",
+            "compensation",
+            "conditional",
+            "link",
+            "signal",
+            "terminate",
+            "multiple",
+            "parallel-multiple"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 80,
+        "height": 128
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "boundary-event",
+      "label": "Boundary event",
+      "category": "double-circle",
+      "geometry": "double-circle",
+      "diagramKinds": [
+        "process",
+        "collaboration"
+      ],
+      "properties": [
+        {
+          "key": "eventDefinition",
+          "label": "Event definition",
+          "type": "enum",
+          "values": [
+            "none",
+            "message",
+            "timer",
+            "error",
+            "escalation",
+            "cancel",
+            "compensation",
+            "conditional",
+            "link",
+            "signal",
+            "terminate",
+            "multiple",
+            "parallel-multiple"
+          ]
+        },
+        {
+          "key": "nonInterrupting",
+          "label": "Non-interrupting",
+          "type": "boolean"
+        }
+      ],
+      "defaultSize": {
+        "width": 80,
+        "height": 128
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "end-event",
+      "label": "End event",
+      "category": "end-circle",
+      "geometry": "end-circle",
+      "diagramKinds": [
+        "process",
+        "collaboration",
+        "choreography"
+      ],
+      "properties": [
+        {
+          "key": "eventDefinition",
+          "label": "Event definition",
+          "type": "enum",
+          "values": [
+            "none",
+            "message",
+            "timer",
+            "error",
+            "escalation",
+            "cancel",
+            "compensation",
+            "conditional",
+            "link",
+            "signal",
+            "terminate",
+            "multiple",
+            "parallel-multiple"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 80,
+        "height": 128
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "exclusive-gateway",
+      "label": "exclusive gateway",
+      "category": "exclusive-gateway",
+      "geometry": "exclusive-gateway",
+      "diagramKinds": [
+        "process",
+        "collaboration",
+        "choreography"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 100,
+        "height": 148
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "inclusive-gateway",
+      "label": "inclusive gateway",
+      "category": "inclusive-gateway",
+      "geometry": "inclusive-gateway",
+      "diagramKinds": [
+        "process",
+        "collaboration",
+        "choreography"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 100,
+        "height": 148
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "parallel-gateway",
+      "label": "parallel gateway",
+      "category": "parallel-gateway",
+      "geometry": "parallel-gateway",
+      "diagramKinds": [
+        "process",
+        "collaboration",
+        "choreography"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 100,
+        "height": 148
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "complex-gateway",
+      "label": "complex gateway",
+      "category": "complex-gateway",
+      "geometry": "complex-gateway",
+      "diagramKinds": [
+        "process",
+        "collaboration",
+        "choreography"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 100,
+        "height": 148
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "event-based-gateway",
+      "label": "Event-based gateway",
+      "category": "event-based-gateway",
+      "geometry": "event-based-gateway",
+      "diagramKinds": [
+        "process",
+        "collaboration",
+        "choreography"
+      ],
+      "properties": [
+        {
+          "key": "instantiating",
+          "label": "Instantiating",
+          "type": "boolean"
+        },
+        {
+          "key": "parallel",
+          "label": "Parallel event gateway",
+          "type": "boolean"
+        }
+      ],
+      "defaultSize": {
+        "width": 100,
+        "height": 148
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "pool",
+      "label": "Participant / pool",
+      "category": "lane",
+      "geometry": "lane",
+      "diagramKinds": [
+        "collaboration",
+        "process",
+        "conversation"
+      ],
+      "properties": [
+        {
+          "key": "collapsed",
+          "label": "Black-box participant",
+          "type": "boolean"
+        },
+        {
+          "key": "isCollection",
+          "label": "Multiple participant",
+          "type": "boolean"
+        }
+      ],
+      "defaultSize": {
+        "width": 780,
+        "height": 320
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      },
+      "container": true
+    },
+    {
+      "collection": "bpmn",
+      "id": "lane",
+      "label": "Lane",
+      "category": "lane",
+      "geometry": "lane",
+      "diagramKinds": [
+        "process",
+        "collaboration"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 720,
+        "height": 180
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      },
+      "container": true
+    },
+    {
+      "collection": "bpmn",
+      "id": "data-object",
+      "label": "data object",
+      "category": "artifact",
+      "geometry": "artifact",
+      "diagramKinds": [
+        "process",
+        "collaboration",
+        "choreography"
+      ],
+      "properties": [
+        {
+          "key": "isCollection",
+          "label": "Collection",
+          "type": "boolean"
+        }
+      ],
+      "defaultSize": {
+        "width": 120,
+        "height": 150
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "data-input",
+      "label": "data input",
+      "category": "artifact",
+      "geometry": "artifact",
+      "diagramKinds": [
+        "process",
+        "collaboration",
+        "choreography"
+      ],
+      "properties": [
+        {
+          "key": "isCollection",
+          "label": "Collection",
+          "type": "boolean"
+        }
+      ],
+      "defaultSize": {
+        "width": 120,
+        "height": 150
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "data-output",
+      "label": "data output",
+      "category": "artifact",
+      "geometry": "artifact",
+      "diagramKinds": [
+        "process",
+        "collaboration",
+        "choreography"
+      ],
+      "properties": [
+        {
+          "key": "isCollection",
+          "label": "Collection",
+          "type": "boolean"
+        }
+      ],
+      "defaultSize": {
+        "width": 120,
+        "height": 150
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "data-store",
+      "label": "Data store",
+      "category": "cylinder",
+      "geometry": "cylinder",
+      "diagramKinds": [
+        "process",
+        "collaboration",
+        "choreography"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "group",
+      "label": "Group",
+      "category": "dashed-rounded",
+      "geometry": "dashed-rounded",
+      "diagramKinds": [
+        "process",
+        "collaboration",
+        "choreography",
+        "conversation"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 480,
+        "height": 280
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      },
+      "container": true
+    },
+    {
+      "collection": "bpmn",
+      "id": "text-annotation",
+      "label": "Text annotation",
+      "category": "annotation",
+      "geometry": "annotation",
+      "diagramKinds": [
+        "process",
+        "collaboration",
+        "choreography",
+        "conversation"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "message",
+      "label": "Message",
+      "category": "envelope",
+      "geometry": "envelope",
+      "diagramKinds": [
+        "collaboration",
+        "choreography",
+        "conversation"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 100,
+        "height": 70
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "choreography-task",
+      "label": "choreography task",
+      "category": "choreography",
+      "geometry": "choreography",
+      "diagramKinds": [
+        "choreography"
+      ],
+      "properties": [
+        {
+          "key": "loop",
+          "label": "Loop / instance marker",
+          "type": "enum",
+          "values": [
+            "none",
+            "standard",
+            "parallel-multi-instance",
+            "sequential-multi-instance"
+          ]
+        },
+        {
+          "key": "collapsed",
+          "label": "collapsed",
+          "type": "boolean"
+        },
+        {
+          "key": "participant",
+          "label": "participant",
+          "type": "enum",
+          "values": [
+            "initiating",
+            "non-initiating"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 280,
+        "height": 280
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      },
+      "compartments": [
+        "Initiating participant",
+        "Activity",
+        "Other participant"
+      ]
+    },
+    {
+      "collection": "bpmn",
+      "id": "sub-choreography",
+      "label": "sub choreography",
+      "category": "choreography",
+      "geometry": "choreography",
+      "diagramKinds": [
+        "choreography"
+      ],
+      "properties": [
+        {
+          "key": "loop",
+          "label": "Loop / instance marker",
+          "type": "enum",
+          "values": [
+            "none",
+            "standard",
+            "parallel-multi-instance",
+            "sequential-multi-instance"
+          ]
+        },
+        {
+          "key": "collapsed",
+          "label": "collapsed",
+          "type": "boolean"
+        },
+        {
+          "key": "participant",
+          "label": "participant",
+          "type": "enum",
+          "values": [
+            "initiating",
+            "non-initiating"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 280,
+        "height": 280
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      },
+      "compartments": [
+        "Initiating participant",
+        "Activity",
+        "Other participant"
+      ]
+    },
+    {
+      "collection": "bpmn",
+      "id": "call-choreography",
+      "label": "call choreography",
+      "category": "choreography",
+      "geometry": "choreography",
+      "diagramKinds": [
+        "choreography"
+      ],
+      "properties": [
+        {
+          "key": "loop",
+          "label": "Loop / instance marker",
+          "type": "enum",
+          "values": [
+            "none",
+            "standard",
+            "parallel-multi-instance",
+            "sequential-multi-instance"
+          ]
+        },
+        {
+          "key": "collapsed",
+          "label": "collapsed",
+          "type": "boolean"
+        },
+        {
+          "key": "participant",
+          "label": "participant",
+          "type": "enum",
+          "values": [
+            "initiating",
+            "non-initiating"
+          ]
+        }
+      ],
+      "defaultSize": {
+        "width": 280,
+        "height": 280
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      },
+      "compartments": [
+        "Initiating participant",
+        "Activity",
+        "Other participant"
+      ]
+    },
+    {
+      "collection": "bpmn",
+      "id": "conversation",
+      "label": "conversation",
+      "category": "hexagon",
+      "geometry": "hexagon",
+      "diagramKinds": [
+        "conversation"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "sub-conversation",
+      "label": "sub conversation",
+      "category": "hexagon",
+      "geometry": "hexagon",
+      "diagramKinds": [
+        "conversation"
+      ],
+      "properties": [
+        {
+          "key": "collapsed",
+          "label": "collapsed",
+          "type": "boolean"
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "call-conversation",
+      "label": "call conversation",
+      "category": "hexagon",
+      "geometry": "hexagon",
+      "diagramKinds": [
+        "conversation"
+      ],
+      "properties": [],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "participant-band",
+      "label": "Choreography participant band",
+      "category": "rectangle",
+      "geometry": "rectangle",
+      "diagramKinds": [
+        "choreography"
+      ],
+      "properties": [
+        {
+          "key": "participant",
+          "label": "participant",
+          "type": "enum",
+          "values": [
+            "initiating",
+            "non-initiating"
+          ]
+        },
+        {
+          "key": "isCollection",
+          "label": "isCollection",
+          "type": "boolean"
+        }
+      ],
+      "defaultSize": {
+        "width": 220,
+        "height": 120
+      },
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    }
+  ],
+  "connectors": [
+    {
+      "collection": "hipo",
+      "id": "hierarchy",
+      "label": "Module hierarchy",
+      "line": "solid",
+      "sourceDecoration": "none",
+      "targetDecoration": "none",
+      "properties": [],
+      "diagramKinds": [
+        "vtoc",
+        "overview-ipo",
+        "detail-ipo"
+      ],
+      "source": {
+        "title": "IBM Preparing Method of Operation Diagrams — The HIPO Method, TR00.2209 (1971)",
+        "url": "https://bitsavers.trailing-edge.com/pdf/ibm/generalInfo/TR00.2209_Preparing_Method_of_Operation_Diagrams_-_The_HIPO_Method_Jul71.pdf",
+        "locator": "Printed pages 11–17: data areas and data/action/alteration/reference connectors"
+      }
+    },
+    {
+      "collection": "hipo",
+      "id": "data-flow",
+      "label": "Data flow",
+      "line": "solid",
+      "sourceDecoration": "none",
+      "targetDecoration": "open-arrow",
+      "properties": [],
+      "diagramKinds": [
+        "vtoc",
+        "overview-ipo",
+        "detail-ipo"
+      ],
+      "source": {
+        "title": "IBM Preparing Method of Operation Diagrams — The HIPO Method, TR00.2209 (1971)",
+        "url": "https://bitsavers.trailing-edge.com/pdf/ibm/generalInfo/TR00.2209_Preparing_Method_of_Operation_Diagrams_-_The_HIPO_Method_Jul71.pdf",
+        "locator": "Printed pages 11–17: data areas and data/action/alteration/reference connectors"
+      }
+    },
+    {
+      "collection": "hipo",
+      "id": "alteration-flow",
+      "label": "Alteration flow",
+      "line": "solid",
+      "sourceDecoration": "none",
+      "targetDecoration": "open-arrow",
+      "properties": [],
+      "diagramKinds": [
+        "vtoc",
+        "overview-ipo",
+        "detail-ipo"
+      ],
+      "source": {
+        "title": "IBM Preparing Method of Operation Diagrams — The HIPO Method, TR00.2209 (1971)",
+        "url": "https://bitsavers.trailing-edge.com/pdf/ibm/generalInfo/TR00.2209_Preparing_Method_of_Operation_Diagrams_-_The_HIPO_Method_Jul71.pdf",
+        "locator": "Printed pages 11–17: data areas and data/action/alteration/reference connectors"
+      }
+    },
+    {
+      "collection": "hipo",
+      "id": "action-flow",
+      "label": "Action flow",
+      "line": "solid",
+      "sourceDecoration": "none",
+      "targetDecoration": "filled-arrow",
+      "properties": [],
+      "diagramKinds": [
+        "vtoc",
+        "overview-ipo",
+        "detail-ipo"
+      ],
+      "source": {
+        "title": "IBM Preparing Method of Operation Diagrams — The HIPO Method, TR00.2209 (1971)",
+        "url": "https://bitsavers.trailing-edge.com/pdf/ibm/generalInfo/TR00.2209_Preparing_Method_of_Operation_Diagrams_-_The_HIPO_Method_Jul71.pdf",
+        "locator": "Printed pages 11–17: data areas and data/action/alteration/reference connectors"
+      }
+    },
+    {
+      "collection": "hipo",
+      "id": "reference",
+      "label": "Reference",
+      "line": "dotted",
+      "sourceDecoration": "none",
+      "targetDecoration": "open-arrow",
+      "properties": [],
+      "diagramKinds": [
+        "vtoc",
+        "overview-ipo",
+        "detail-ipo"
+      ],
+      "source": {
+        "title": "IBM Preparing Method of Operation Diagrams — The HIPO Method, TR00.2209 (1971)",
+        "url": "https://bitsavers.trailing-edge.com/pdf/ibm/generalInfo/TR00.2209_Preparing_Method_of_Operation_Diagrams_-_The_HIPO_Method_Jul71.pdf",
+        "locator": "Printed pages 11–17: data areas and data/action/alteration/reference connectors"
+      }
+    },
+    {
+      "collection": "dfd-yourdon",
+      "id": "data-flow",
+      "label": "Data flow",
+      "line": "solid",
+      "sourceDecoration": "none",
+      "targetDecoration": "open-arrow",
+      "properties": [],
+      "diagramKinds": [
+        "context",
+        "data-flow"
+      ],
+      "source": {
+        "title": "Edward Yourdon, Structured Analysis, Chapter 9: Dataflow Diagrams",
+        "url": "https://www.yourdon.com/strucanalysis/wiki/index.php?title=Chapter_9",
+        "locator": "Process, flow, store and terminator notation; context and leveled diagrams"
+      }
+    },
+    {
+      "collection": "dfd-gane-sarson",
+      "id": "data-flow",
+      "label": "Data flow",
+      "line": "solid",
+      "sourceDecoration": "none",
+      "targetDecoration": "open-arrow",
+      "properties": [],
+      "diagramKinds": [
+        "context",
+        "data-flow"
+      ],
+      "source": {
+        "title": "Chris Gane and Trish Sarson, Structured Systems Analysis: Tools and Techniques (1977 edition)",
+        "url": "https://archive.org/details/structuredsystem0000gane",
+        "locator": "Data-flow diagram notation: numbered rounded processes, external entities and open-ended stores"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "association",
+      "label": "Association",
+      "line": "solid",
+      "sourceDecoration": "none",
+      "targetDecoration": "none",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "navigable-association",
+      "label": "Navigable association",
+      "line": "solid",
+      "sourceDecoration": "none",
+      "targetDecoration": "open-arrow",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "aggregation",
+      "label": "Shared aggregation",
+      "line": "solid",
+      "sourceDecoration": "hollow-diamond",
+      "targetDecoration": "none",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "composition",
+      "label": "Composition",
+      "line": "solid",
+      "sourceDecoration": "filled-diamond",
+      "targetDecoration": "none",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "generalization",
+      "label": "Generalization",
+      "line": "solid",
+      "sourceDecoration": "none",
+      "targetDecoration": "hollow-triangle",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "realization",
+      "label": "Realization",
+      "line": "dashed",
+      "sourceDecoration": "none",
+      "targetDecoration": "hollow-triangle",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "dependency",
+      "label": "Dependency",
+      "line": "dashed",
+      "sourceDecoration": "none",
+      "targetDecoration": "open-arrow",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "usage",
+      "label": "Usage",
+      "line": "dashed",
+      "sourceDecoration": "none",
+      "targetDecoration": "open-arrow",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "package-import",
+      "label": "Package import",
+      "line": "dashed",
+      "sourceDecoration": "none",
+      "targetDecoration": "open-arrow",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "package-merge",
+      "label": "Package merge",
+      "line": "dashed",
+      "sourceDecoration": "none",
+      "targetDecoration": "open-arrow",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "extension",
+      "label": "Stereotype extension",
+      "line": "solid",
+      "sourceDecoration": "none",
+      "targetDecoration": "filled-triangle",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "include",
+      "label": "Include",
+      "line": "dashed",
+      "sourceDecoration": "none",
+      "targetDecoration": "open-arrow",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "extend",
+      "label": "Extend",
+      "line": "dashed",
+      "sourceDecoration": "none",
+      "targetDecoration": "open-arrow",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "link",
+      "label": "Instance link",
+      "line": "solid",
+      "sourceDecoration": "none",
+      "targetDecoration": "none",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "connector",
+      "label": "Connector",
+      "line": "solid",
+      "sourceDecoration": "none",
+      "targetDecoration": "none",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "control-flow",
+      "label": "Control flow",
+      "line": "solid",
+      "sourceDecoration": "none",
+      "targetDecoration": "open-arrow",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "object-flow",
+      "label": "Object flow",
+      "line": "solid",
+      "sourceDecoration": "none",
+      "targetDecoration": "open-arrow",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "transition",
+      "label": "Transition",
+      "line": "solid",
+      "sourceDecoration": "none",
+      "targetDecoration": "open-arrow",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "synchronous-message",
+      "label": "Synchronous message",
+      "line": "solid",
+      "sourceDecoration": "none",
+      "targetDecoration": "filled-arrow",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "asynchronous-message",
+      "label": "Asynchronous message",
+      "line": "solid",
+      "sourceDecoration": "none",
+      "targetDecoration": "open-arrow",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "reply",
+      "label": "Reply message",
+      "line": "dashed",
+      "sourceDecoration": "none",
+      "targetDecoration": "open-arrow",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "create-message",
+      "label": "Create message",
+      "line": "dashed",
+      "sourceDecoration": "none",
+      "targetDecoration": "open-arrow",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "delete-message",
+      "label": "Delete message",
+      "line": "solid",
+      "sourceDecoration": "none",
+      "targetDecoration": "filled-arrow",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "found-message",
+      "label": "Found message",
+      "line": "solid",
+      "sourceDecoration": "none",
+      "targetDecoration": "filled-arrow",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "lost-message",
+      "label": "Lost message",
+      "line": "solid",
+      "sourceDecoration": "none",
+      "targetDecoration": "filled-arrow",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "interrupting-flow",
+      "label": "Interrupting activity edge",
+      "line": "solid",
+      "sourceDecoration": "none",
+      "targetDecoration": "open-arrow",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "exception-flow",
+      "label": "Exception flow",
+      "line": "solid",
+      "sourceDecoration": "none",
+      "targetDecoration": "open-arrow",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "duration",
+      "label": "Duration interval",
+      "line": "solid",
+      "sourceDecoration": "open-arrow",
+      "targetDecoration": "open-arrow",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "template-binding",
+      "label": "Template binding",
+      "line": "dashed",
+      "sourceDecoration": "none",
+      "targetDecoration": "open-arrow",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "uml",
+      "id": "note-link",
+      "label": "Comment attachment",
+      "line": "dashed",
+      "sourceDecoration": "none",
+      "targetDecoration": "none",
+      "properties": [
+        {
+          "key": "guard",
+          "label": "Guard",
+          "type": "text"
+        },
+        {
+          "key": "trigger",
+          "label": "Trigger",
+          "type": "text"
+        },
+        {
+          "key": "effect",
+          "label": "Effect",
+          "type": "text"
+        },
+        {
+          "key": "messageNumber",
+          "label": "Message number",
+          "type": "text"
+        },
+        {
+          "key": "stereotype",
+          "label": "Stereotype",
+          "type": "text"
+        }
+      ],
+      "diagramKinds": [
+        "class",
+        "object",
+        "component",
+        "composite-structure",
+        "package",
+        "deployment",
+        "profile",
+        "use-case",
+        "activity",
+        "state-machine",
+        "sequence",
+        "communication",
+        "interaction-overview",
+        "timing"
+      ],
+      "source": {
+        "title": "OMG Unified Modeling Language 2.5.1",
+        "url": "https://www.omg.org/spec/UML/2.5.1/PDF",
+        "locator": "Clauses 7–20 notation subsections; Annex A diagram taxonomy"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "sequence-flow",
+      "label": "Sequence flow",
+      "line": "solid",
+      "sourceDecoration": "none",
+      "targetDecoration": "filled-arrow",
+      "properties": [
+        {
+          "key": "condition",
+          "label": "Condition",
+          "type": "text"
+        },
+        {
+          "key": "default",
+          "label": "Default flow",
+          "type": "boolean"
+        }
+      ],
+      "diagramKinds": [
+        "process",
+        "collaboration",
+        "choreography",
+        "conversation"
+      ],
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "message-flow",
+      "label": "Message flow",
+      "line": "dashed",
+      "sourceDecoration": "circle",
+      "targetDecoration": "open-arrow",
+      "properties": [],
+      "diagramKinds": [
+        "process",
+        "collaboration",
+        "choreography",
+        "conversation"
+      ],
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "association",
+      "label": "Association",
+      "line": "dotted",
+      "sourceDecoration": "none",
+      "targetDecoration": "none",
+      "properties": [],
+      "diagramKinds": [
+        "process",
+        "collaboration",
+        "choreography",
+        "conversation"
+      ],
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "data-association",
+      "label": "Data association",
+      "line": "dotted",
+      "sourceDecoration": "none",
+      "targetDecoration": "open-arrow",
+      "properties": [],
+      "diagramKinds": [
+        "process",
+        "collaboration",
+        "choreography",
+        "conversation"
+      ],
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    },
+    {
+      "collection": "bpmn",
+      "id": "conversation-link",
+      "label": "Conversation link",
+      "line": "solid",
+      "sourceDecoration": "none",
+      "targetDecoration": "none",
+      "properties": [],
+      "diagramKinds": [
+        "process",
+        "collaboration",
+        "choreography",
+        "conversation"
+      ],
+      "source": {
+        "title": "OMG Business Process Model and Notation 2.0.2",
+        "url": "https://www.omg.org/spec/BPMN/2.0.2/PDF",
+        "locator": "Clauses 7–11 graphical elements; Table 10.93 event variants; Clause 12 depiction resolution"
+      }
+    }
+  ],
+  "limits": {
+    "id": 80,
+    "label": 300,
+    "text": 2000,
+    "compartments": 16,
+    "linesPerCompartment": 200,
+    "compartmentText": 100000,
+    "ports": 32,
+    "waypoints": 256,
+    "timingStates": 128,
+    "coordinate": 100000000,
+    "multiplicity": 40
+  },
+  "bpmnEventContexts": {
+    "topLevelStart": [
+      "none",
+      "message",
+      "timer",
+      "conditional",
+      "signal",
+      "multiple",
+      "parallel-multiple"
+    ],
+    "eventSubProcessStart": [
+      "message",
+      "timer",
+      "error",
+      "escalation",
+      "compensation",
+      "conditional",
+      "signal",
+      "multiple",
+      "parallel-multiple"
+    ],
+    "nonInterruptingStart": [
+      "message",
+      "timer",
+      "escalation",
+      "conditional",
+      "signal",
+      "multiple",
+      "parallel-multiple"
+    ],
+    "intermediateCatch": [
+      "message",
+      "timer",
+      "conditional",
+      "link",
+      "signal",
+      "multiple",
+      "parallel-multiple"
+    ],
+    "boundary": [
+      "message",
+      "timer",
+      "error",
+      "escalation",
+      "cancel",
+      "compensation",
+      "conditional",
+      "signal",
+      "multiple",
+      "parallel-multiple"
+    ],
+    "nonInterruptingBoundary": [
+      "message",
+      "timer",
+      "escalation",
+      "conditional",
+      "signal",
+      "multiple",
+      "parallel-multiple"
+    ],
+    "intermediateThrow": [
+      "none",
+      "message",
+      "escalation",
+      "compensation",
+      "link",
+      "signal",
+      "multiple"
+    ],
+    "end": [
+      "none",
+      "message",
+      "error",
+      "escalation",
+      "cancel",
+      "compensation",
+      "signal",
+      "terminate",
+      "multiple"
+    ]
+  },
+  "umlAttachmentTargets": {
+    "port": [
+      "class",
+      "component",
+      "part",
+      "system-boundary"
+    ],
+    "activation": [
+      "lifeline"
+    ],
+    "qualifier": [
+      "class",
+      "interface",
+      "association-class"
+    ],
+    "activity-parameter": [
+      "activity"
+    ],
+    "input-pin": [
+      "action",
+      "send-signal-action",
+      "accept-event-action"
+    ],
+    "output-pin": [
+      "action",
+      "send-signal-action",
+      "accept-event-action"
+    ],
+    "expansion-node": [
+      "expansion-region"
+    ],
+    "connection-point-reference": [
+      "state"
+    ]
+  },
+  "compartmentLimits": {
+    "hipo": {
+      "ipo-chart": {
+        "default": 3,
+        "detail": 4
+      }
+    },
+    "bpmn": {
+      "choreography-task": 3,
+      "sub-choreography": 3,
+      "call-choreography": 3
+    }
+  }
+}

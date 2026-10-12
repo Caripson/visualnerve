@@ -55,6 +55,7 @@ import { NodeTitle } from './NodeTitle';
 import { nodeBackgroundColor, nodeBackgroundStyle } from './appearance';
 import './node-appearance.css';
 import { IbmNodePorts } from '../flowchart/IbmNodePorts';
+import { LazyNotationNode } from '../notation/LazyNode';
 
 export const nodeRegistry: Record<NodeKind, { label: string; icon: LucideIcon; shape: string }> = {
   generic: { label: 'Generic', icon: Box, shape: 'box' },
@@ -288,6 +289,7 @@ export const nodeTypes: NodeTypes = {
     (Object.keys(nodeRegistry) as NodeKind[]).map((kind) => [kind, renderer(kind)]),
   ),
   'mindmap-topic': MindmapNode,
+  'notation-node': LazyNotationNode,
   'simulation-process': ProcessCard,
   'simulation-resource-pool': ResourcePoolCard,
 };

@@ -17,6 +17,8 @@ import { isReadonlyCanvasNode } from './logical-geometry';
 import { SimulationCardSizing } from '../simulation/card-sizing';
 import { ibmSavedHandle } from '../flowchart/ibm-ports';
 import { getIbmSymbol } from '../flowchart/ibm-symbols';
+import { notationSourceIsGateway } from '../notation/edge-geometry';
+import { notationPortHandle } from '../notation/ports';
 export type NodeData = {
   node: GraphNode;
   owners: Owner[];
@@ -194,9 +196,11 @@ export function projectGraph(
             ? 'simulation-resource-pool'
             : typeof n.metadata.simulationProcessId === 'string'
               ? 'simulation-process'
-              : mindmap && n.nodeType !== 'group' && !getIbmSymbol(n.flowchartSymbol)
-                ? 'mindmap-topic'
-                : n.nodeType,
+              : n.notation
+                ? 'notation-node'
+                : mindmap && n.nodeType !== 'group' && !getIbmSymbol(n.flowchartSymbol)
+                  ? 'mindmap-topic'
+                  : n.nodeType,
         position: { x: geom.x - (grouped ? parent!.x : 0), y: geom.y - (grouped ? parent!.y : 0) },
         ...(grouped ? { parentId: parent!.id } : {}),
         width: geom.width ?? n.width,
@@ -334,7 +338,8 @@ export function projectGraph(
         : !mindmap
           ? ibmSavedHandle(target, 'target', e.metadata.targetHandle)
           : undefined;
-    const presentation = `${mindmap}:${!!branch}:${color}:${strokeWidth}:${sourceHandle}:${targetHandle}`;
+    const sourceIsGateway = notationSourceIsGateway(source?.notation);
+    const presentation = `${sourceIsGateway}:${mindmap}:${!!branch}:${color}:${strokeWidth}:${sourceHandle}:${targetHandle}`;
     const cached = renderCache?.edges.get(e.id);
     if (
       cached?.source === e &&
@@ -353,13 +358,16 @@ export function projectGraph(
         exploration && e.metadata.csvModelVisible === false
           ? `${e.label || e.edgeType} · outside current data view`
           : e.label,
-      type: processPath
-        ? 'simulation-process-connection'
-        : branch
-          ? 'mindmap-branch'
-          : mindmap
-            ? 'default'
-            : 'smoothstep',
+      type: e.notation
+        ? 'notation-edge'
+        : processPath
+          ? 'simulation-process-connection'
+          : branch
+            ? 'mindmap-branch'
+            : mindmap
+              ? 'default'
+              : 'smoothstep',
+      ...(e.notation ? { data: { notation: e.notation, sourceIsGateway } } : {}),
       ...(processPath
         ? {
             data: {
@@ -370,8 +378,8 @@ export function projectGraph(
             },
           }
         : {}),
-      sourceHandle,
-      targetHandle,
+      sourceHandle: notationPortHandle(source, e.notation?.sourcePort, 'source') ?? sourceHandle,
+      targetHandle: notationPortHandle(target, e.notation?.targetPort, 'target') ?? targetHandle,
       selected: simulationProjected ? false : selected,
       hidden,
       markerEnd: end ? { type: MarkerType.ArrowClosed, width: 16, height: 16 } : undefined,

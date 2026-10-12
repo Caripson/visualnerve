@@ -10,6 +10,7 @@ import type { SimulationModel } from '../simulation/types';
 import type { CollaborationDocument } from '../collaboration/model/types';
 import type { AnalyticsExtension } from '../analytics/types';
 import type { IBMSymbolId } from '../flowchart/ibm-symbols';
+import type { NodeNotation, EdgeNotation, NotationProfile } from '../notation/types';
 export type { DrawingLayer, DrawingStroke } from '../drawing/types';
 
 export const diagramTypes = [
@@ -64,6 +65,8 @@ export interface Diagram extends Base {
   collaboration?: CollaborationDocument;
   /** Versioned time-series semantics and results, encrypted with this document. */
   analytics?: AnalyticsExtension;
+  /** Versioned default collection; individual objects may use another notation. */
+  notation?: NotationProfile;
   settings: {
     viewport?: { x: number; y: number; zoom: number };
     grid?: boolean;
@@ -90,6 +93,7 @@ export interface GraphNode extends Base {
   nodeType: NodeKind;
   /** Optional IBM glyph; presentation is independent of the node's semantic kind. */
   flowchartSymbol?: IBMSymbolId;
+  notation?: NodeNotation;
   title: string;
   description?: string;
   notes?: string;
@@ -119,6 +123,7 @@ export interface GraphEdge extends Base {
   targetNodeId: string;
   label?: string;
   edgeType: string;
+  notation?: EdgeNotation;
   direction: 'forward' | 'backward' | 'both' | 'none';
   style: 'solid' | 'dashed' | 'dotted';
   description?: string;

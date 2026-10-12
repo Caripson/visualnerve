@@ -37,7 +37,7 @@ Encryption protects persisted records while locked, not content intentionally re
 
 ## Recoverable writes and bridge discovery
 
-Bridge version 0.8.3 advertises operations-v1, endpoint-docs-v1, fork-join-v1, async-svg-export-v1, exchange-export-v1, collaboration-v1, collaboration-document-v1, analytics-v1 and ibm-flowcharting-v1 with supported tool names in direct HTTP GET /api/v1/health (/health relative to the REST base) and the browser handshake. This identifies software support, not workspace content or authorization. visual_nerve_request with path:/health instead reads the connected browser's semantic IndexedDB health; it does not expose bridge-only tools or capabilities. Do not diagnose an old bridge from their absence in that browser response. Use a current bridge and refreshed browser tab; old tabs remain one-shot and cannot reserve/recover operation IDs.
+Bridge version 0.9.0 advertises operations-v1, endpoint-docs-v1, fork-join-v1, async-svg-export-v1, exchange-export-v1, collaboration-v1, collaboration-document-v1, analytics-v1, ibm-flowcharting-v1 and standard-notations-v1 with supported tool names in direct HTTP GET /api/v1/health (/health relative to the REST base) and the browser handshake. This identifies software support, not workspace content or authorization. visual_nerve_request with path:/health instead reads the connected browser's semantic IndexedDB health; it does not expose bridge-only tools or capabilities. Do not diagnose an old bridge from their absence in that browser response. Use a current bridge and refreshed browser tab; old tabs remain one-shot and cannot reserve/recover operation IDs.
 
 Before a write, call POST /operations with exactly {} to reserve a server-issued opaque operationId. This requires an unlocked connected browser, accepted storage and Read + write. Pass that ID as the optional operationId argument of visual_nerve_request, or REST header X-Visual-Nerve-Operation-Id. Successful command bodies are unchanged; identity appears in MCP structuredContent.operationId or the REST response header. GET /operations/{operationId} returns the original browser receipt {operationId,state,resultAvailable,status?,result?}; states are reserved, running, succeeded, failed and unknown. Opaque operation tokens are not graph UUIDs.
 
@@ -168,7 +168,7 @@ The bundled contract contains all supported command paths, inputs, response sche
 ## Optional realtime collaboration
 
 
-` + "\n" + mcpCollaborationPolicy + "\n" + mcpCollaborationDocumentPolicy + mcpAnalyticsGuide
+` + "\n" + mcpCollaborationPolicy + "\n" + mcpCollaborationDocumentPolicy + mcpAnalyticsGuide + "\n\n## Standard notation collections\n\n" + mcpNotationPolicy
 
 func mcpResources() []any {
 	return []any{

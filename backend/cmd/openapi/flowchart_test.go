@@ -27,7 +27,7 @@ func TestFlowchartContractPreservesAppearanceAcrossCRUDAndDiscovery(t *testing.T
 		}
 	}
 	input := schemas["DiagramInput"].(object)["properties"].(object)
-	if !reflect.DeepEqual(input["template"].(object)["enum"], []any{"time-series-analysis", "ibm-flowcharting"}) {
+	if !reflect.DeepEqual(input["template"].(object)["enum"], stringsToAny(append([]string{"time-series-analysis", "ibm-flowcharting"}, model.NotationTemplateKeys...))) {
 		t.Fatal("template must be discoverable while preserving analytics")
 	}
 	record := schemas["FlowchartSymbolRecord"].(object)
@@ -55,7 +55,7 @@ func TestFlowchartContractPreservesAppearanceAcrossCRUDAndDiscovery(t *testing.T
 	if schemas["FlowchartStencilRecord"].(object)["properties"].(object)["symbolLabels"].(object)["$ref"] != "#/components/schemas/FlowchartStencilSymbolLabels" {
 		t.Fatal("source-backed historical aliases must be discoverable")
 	}
-	if document["info"].(object)["version"] != "0.8.3" {
+	if document["info"].(object)["version"] != "0.9.0" {
 		t.Fatal("new capability needs a discoverable software version")
 	}
 }

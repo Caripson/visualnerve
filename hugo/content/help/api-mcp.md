@@ -135,7 +135,7 @@ The app, the local bridge executable and your MCP client are three separate prog
 
 Before giving an agent workspace commands:
 
-1. Inspect the local `GET /api/v1/health` address shown in the copied instructions. The current bridge reports version **0.8.3**, both MCP tool names, and the capabilities `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1`, `collaboration-document-v1`, `analytics-v1` and `ibm-flowcharting-v1`. Health contains public transport metadata; it does not read diagrams or unlock the workspace.
+1. Inspect the local `GET /api/v1/health` address shown in the copied instructions. The current bridge reports version **0.9.0**, both MCP tool names, and the capabilities `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1`, `collaboration-document-v1`, `analytics-v1`, `ibm-flowcharting-v1` and `standard-notations-v1`. Health contains public transport metadata; it does not read diagrams or unlock the workspace.
 2. Reconnect or initialize the MCP client, then inspect its discovered tools. It should show both **visual_nerve_request** and **visual_nerve_api_docs**. A client can retain an old tool list until you reconnect it.
 3. Ask the agent to read the compact guide before making commands. For a particular endpoint, it can request a smaller contract containing that operation and every referenced schema:
 
@@ -411,6 +411,71 @@ Read the object through `GET /nodes/{nodeId}` and use its current version to cha
 
 These ordinary node fields work with IBM symbols and other cards in 2D and 3D. `backgroundColor` is an optional six-digit hex fill; `color` remains the separate accent and outline. Omission in a partial update preserves the fill. Explicit `null` in PATCH or existing-node bulk upsert clears it so the current theme supplies the background. New or complete records accept a valid color or omission. Invalid values fail validation without applying the edit. UI renaming uses the same saved `title`; see [in-place editing](/help/editing/#rename-an-object-on-the-canvas).
 
+## Create and review a standard notation diagram
+
+Bridge/browser **0.9.0** adds `standard-notations-v1` through the same **visual_nerve_request** and **visual_nerve_api_docs** tools. [Update the local bridge and rediscover its tools](#check-the-bridge-and-discovered-tools) if this capability is missing; updating the website alone does not update the executable. The [collection guide](/help/notation-collections/) compares [HIPO](/help/hipo/), [Yourdon–DeMarco and Gane–Sarson DFD](/help/dfd/), [UML](/help/uml/) and [BPMN](/help/bpmn/).
+
+With a connected browser and Read only access, discover collections and inspect the chosen catalog:
+
+```json
+{ "path": "/notation/collections", "method": "GET" }
+```
+
+```json
+{ "path": "/notation/collections/uml", "method": "GET" }
+```
+
+The first returns five collection records. The second includes supported diagram kinds, node `symbols`, relationship `connectors`, applicable properties and primary sources. Exact `/notation/collections/uml/symbols` and `/notation/collections/uml/connectors` paths return the corresponding arrays. Choose actual catalog IDs and property combinations; a graphical notation does not imply executable simulation or complete UML/BPMN conformance.
+
+With Read + write, create one of the 21 supported notation examples:
+
+```json
+{
+  "path": "/diagrams",
+  "method": "POST",
+  "data": { "name": "Order domain", "template": "uml-class" }
+}
+```
+
+Creation returns the saved Diagram. Notation examples use the ordinary `freeform` type and reject `mode`. Omit `notation` to use the template's profile; a supplied profile must match it exactly. To inspect the resulting graph and its actual node IDs and versions, use the returned diagram ID:
+
+```json
+{ "path": "/diagrams/<diagramId>", "method": "GET" }
+```
+
+Review the saved draft with Read only access:
+
+```json
+{
+  "path": "/diagrams/<diagramId>/notation/validate",
+  "method": "POST",
+  "data": {}
+}
+```
+
+This exact POST accepts an omitted body or exactly `{}` and returns `{diagramId,baseVersion,issues}` without editing the graph, changing versions or allocating an operation receipt. Do not attach an `operationId` to this read command. Each issue supplies `code`, `path`, `message` and `severity`; incomplete or mixed draft semantics can be saved, while malformed notation and dangling references fail normal graph validation.
+
+To edit a class from the example, read its current version and use ordinary node PATCH:
+
+```json
+{
+  "path": "/nodes/<nodeId>",
+  "method": "PATCH",
+  "data": {
+    "version": 7,
+    "notation": {
+      "collection": "uml",
+      "symbol": "class",
+      "compartments": [{ "id": "attributes", "lines": ["orderNumber: String"] }]
+    }
+  }
+}
+```
+
+Replace the example ID and version with saved values. `diagram.notation` is an optional collection/family profile; node and edge `notation` retain their actual symbols and structured properties. Omission in PATCH preserves the saved field; a supplied notation object replaces it as a whole. `notation:null` clears it only in a versioned PATCH or an existing external-ID bulk upsert. Complete/new/import/replacement records reject null, unsupported fields or invalid references with atomic **422 INVALID_NOTATION**. A node cannot save both `notation` and IBM `flowchartSymbol`; clear the alternate field with null in the same partial edit when switching. Titles, native types, backgrounds and owners remain independent. Read the graph again before subsequent edits; moving hosts also updates attached objects' positions and versions.
+
+New [collaboration rooms](/help/collaboration/) containing notation pin document contract **3**, retained after notation is cleared. Existing version-1/2 rooms reject notation additions with **409 COLLABORATION_NOTATION_REQUIRED**. Refresh all participants and have the human create a new room; older clients reject contract 3 before applying its graph. Owner authority, Viewer/Editor roles and local MCP grants still apply. Process Simulator and Time Series & Signal Analysis keep their specialized tools. Native JSON, copies, encryption, history and backups preserve notation; visual exports are not UML XMI or BPMN XML interchange.
+
 ## Create and edit an IBM flowchart
 
 The [Classic Flowcharting template](/help/ibm-flowcharting/) provides an editable starting set based on the IBM GX20-8020 stencil. Its symbols can also be applied to objects in blank diagrams and ordinary templates, including Mind Map, Timeline, Process Map, architecture and responsibility diagrams. The template is optional, and the same saved objects appear in 2D and 3D. Discover the catalog through the existing request tool:
@@ -667,7 +732,7 @@ Use editable exports when you want to continue working on the drawing in another
 
 Editable Draw.io drawings use a **light drawing surface**, regardless of app Appearance. Ordinary nodes default to white fills; an explicit `backgroundColor` is preserved with readable text contrast, alongside saved node, connection and mind-map color accents. IBM glyphs use the ordinary semantic node type's shape and report `IBM_SYMBOL_GEOMETRY_SIMPLIFIED`. Native JSON preserves exact glyph IDs and styling, and workspace backups also retain portable appearance settings. This needs no extra API argument; SVG keeps its existing appearance behavior.
 
-1. Read `GET /exports/capabilities` first. Its existing SVG fields remain unchanged; `diagrams` describes the drawio format, scopes, validation metadata and separate limits. Bridge 0.8.3 advertises `exchange-export-v1`.
+1. Read `GET /exports/capabilities` first. Its existing SVG fields remain unchanged; `diagrams` describes the drawio format, scopes, validation metadata and separate limits. Bridge 0.9.0 advertises `exchange-export-v1`.
 2. Start an export with the existing **visual_nerve_request** tool:
 
 ```json
@@ -760,7 +825,7 @@ The example never automatically repeats a POST after a transport error. If a wri
 
 Realtime collaboration is optional and requires a configured relay. The human creates a room, chooses what to disclose and approves participant devices in the [Collaboration panel](/help/collaboration/). MCP does not provide invitations, approval, role changes, private keys or an unlock operation.
 
-Bridge **0.8.3** advertises `collaboration-v1` and `collaboration-document-v1`. Ask the browser whether the optional feature is configured:
+Bridge **0.9.0** advertises `collaboration-v1` and `collaboration-document-v1`. Ask the browser whether the optional feature is configured:
 
 ```json
 { "path": "/collaboration/capabilities", "method": "GET" }

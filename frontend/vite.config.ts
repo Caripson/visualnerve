@@ -19,8 +19,17 @@ export default defineConfig(({ command }) => ({
         onlyExplicitManualChunks: true,
         // Native cards and optional SVG/3D/tools share one semantic geometry catalog.
         // It remains in the audited initial closure; only the controls are lazy.
-        manualChunks: (id) =>
-          id.endsWith('/src/flowchart/ibm-symbols.ts') ? 'flowchart-symbols' : vendorChunk(id),
+        manualChunks: (id) => {
+          if (id.endsWith('/src/flowchart/ibm-symbols.ts')) return 'flowchart-symbols';
+          if (/\/src\/model\/(?:types|errors)\.ts$/.test(id)) return 'notation-model';
+          if (
+            /\/src\/notation\/(?:types|registry|validation|templates|remap|ports|lifecycle|connections)\.ts$/.test(
+              id,
+            )
+          )
+            return 'notation-model';
+          return vendorChunk(id);
+        },
         assetFileNames: (asset) =>
           asset.names.some((name) => name.endsWith('.css'))
             ? 'app.css'

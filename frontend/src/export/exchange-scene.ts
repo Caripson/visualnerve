@@ -128,7 +128,14 @@ export function exchangeGraphSnapshot(graph: Graph): Graph {
     style: edge.style,
     metadata: { exchangeStroke: importedConnectionStyle(edge).color },
   }));
-  snapshot.diagram.metadata = { exchangeSimulation: !!graph.simulation };
+  const notation =
+    !!graph.diagram.notation ||
+    graph.nodes.some((node) => !!node.notation) ||
+    graph.edges.some((edge) => !!edge.notation);
+  snapshot.diagram.metadata = {
+    exchangeSimulation: !!graph.simulation,
+    ...(notation ? { exchangeNotation: true } : {}),
+  };
   return snapshot;
 }
 
@@ -343,6 +350,12 @@ export function exchangeScene(
       code: 'IBM_SYMBOL_GEOMETRY_SIMPLIFIED',
       message:
         'draw.io uses standard editable shapes for each node type. Use SVG, PNG or PDF for IBM stencil geometry, or native JSON for an editable faithful copy.',
+    });
+  if (graph.diagram.metadata.exchangeNotation)
+    warnings.push({
+      code: 'NOTATION_MODEL_SIMPLIFIED',
+      message:
+        'draw.io approximates these objects with editable generic shapes. HIPO, DFD, UML and BPMN notation, structured sections, named ports and relationship decorations are not preserved. Use native JSON for the complete editable model or SVG for faithful vector geometry.',
     });
   if (options.scope !== 'selected')
     warnings.push({

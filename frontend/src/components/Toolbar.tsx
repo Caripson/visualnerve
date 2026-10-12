@@ -47,6 +47,7 @@ import { UnderstandingActions, UnderstandingTools } from './UnderstandingTools';
 import { useCompactLayout } from '../hooks/useCompactLayout';
 import { CompactToolbar } from './mobile/CompactToolbar';
 import { LazyIbmSymbolPalette } from '../flowchart/LazyControls';
+import { LazyNotationPalette } from '../notation/LazyControls';
 import { canUseFlowchartSymbols } from '../flowchart/availability';
 export function Toolbar({
   open,
@@ -155,27 +156,25 @@ export function Toolbar({
         : undefined;
     useEditor.getState().addNode({ nodeType: kind, ...point });
   };
+  const addSymbol = (node: Partial<GraphNode>) => {
+    const rect = document.querySelector('.canvas-shell')?.getBoundingClientRect();
+    const size = { width: node.width ?? 200, height: node.height ?? 100 };
+    const point =
+      rect && !spatial
+        ? flow.screenToFlowPosition({
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2,
+          })
+        : { x: 0, y: 0 };
+    useEditor
+      .getState()
+      .addNode({ ...node, ...size, x: point.x - size.width / 2, y: point.y - size.height / 2 });
+  };
   const symbolTools = canUseFlowchartSymbols(graph.diagram) ? (
-    <LazyIbmSymbolPalette
-      compact={compact}
-      add={(node: Partial<GraphNode>) => {
-        const rect = document.querySelector('.canvas-shell')?.getBoundingClientRect();
-        const size = { width: node.width ?? 200, height: node.height ?? 100 };
-        const point =
-          rect && !spatial
-            ? flow.screenToFlowPosition({
-                x: rect.left + rect.width / 2,
-                y: rect.top + rect.height / 2,
-              })
-            : { x: 0, y: 0 };
-        useEditor.getState().addNode({
-          ...node,
-          ...size,
-          x: point.x - size.width / 2,
-          y: point.y - size.height / 2,
-        });
-      }}
-    />
+    <>
+      <LazyIbmSymbolPalette compact add={addSymbol} />
+      <LazyNotationPalette compact add={addSymbol} graph={graph} />
+    </>
   ) : undefined;
   if (compact)
     return (

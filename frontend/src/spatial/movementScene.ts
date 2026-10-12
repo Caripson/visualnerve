@@ -1,7 +1,11 @@
 import * as THREE from 'three';
 import type { Edge } from '@xyflow/react';
 import type { SpatialPoint } from './types';
+import { spatialNotationWaypoints } from './notation-route';
 import { cardConnectionPoint, spatialEdgePoints, type SpatialBatches } from './scene';
+import { notationEdgeAppearance, notationSourceIsGateway } from '../notation/edge-geometry';
+import type { EdgeNotation } from '../notation/types';
+import { notationSpatialSegments, notationRibbonPositions } from '../notation/spatial-markers';
 
 /** Reversible GPU-only preview. It never writes the editor graph or creates new textures. */
 export function spatialMovementPreview(
@@ -45,6 +49,13 @@ export function spatialMovementPreview(
       const attribute = range.line.geometry.getAttribute(name) as THREE.BufferAttribute;
       if (!originals.has(attribute)) originals.set(attribute, new Float32Array(attribute.array));
     }
+    if (range.ribbon) {
+      edgeGeometries.add(range.ribbon.mesh.geometry);
+      const attribute = range.ribbon.mesh.geometry.getAttribute(
+        'position',
+      ) as THREE.BufferAttribute;
+      if (!originals.has(attribute)) originals.set(attribute, new Float32Array(attribute.array));
+    }
     for (const arrow of batches.arrows.get(edge.id) ?? []) remember(arrow.mesh, arrow.index);
   }
   const translate = (matrix: THREE.Matrix4, original: THREE.Matrix4, delta: THREE.Vector3) => {
@@ -71,7 +82,15 @@ export function spatialMovementPreview(
         const points = batches.edgePoints.get(face.userData.edgeId);
         if (points?.length)
           face.position
-            .copy(points[Math.floor(points.length / 2)])
+            .copy(
+              points[
+                face.userData.edgeEndpoint === 'source'
+                  ? 0
+                  : face.userData.edgeEndpoint === 'target'
+                    ? points.length - 1
+                    : Math.floor(points.length / 2)
+              ],
+            )
             .add(new THREE.Vector3(0, 0.13 * scale, 0.003));
       }
     }
@@ -111,18 +130,47 @@ export function spatialMovementPreview(
                 target.position,
                 source.dimensions,
                 scale,
-                source.mesh.geometry.userData.flowchartSymbol,
+                source.mesh.geometry.userData.notation ??
+                  source.mesh.geometry.userData.flowchartSymbol,
+                (edge.data?.notation as EdgeNotation | undefined)?.sourcePort,
               ),
               cardConnectionPoint(
                 target.position,
                 source.position,
                 target.dimensions,
                 scale,
-                target.mesh.geometry.userData.flowchartSymbol,
+                target.mesh.geometry.userData.notation ??
+                  target.mesh.geometry.userData.flowchartSymbol,
+                (edge.data?.notation as EdgeNotation | undefined)?.targetPort,
               ),
               false,
               scale,
             );
+        const notation = edge.data?.notation as EdgeNotation | undefined;
+        if (notation?.waypoints?.length)
+          points = spatialNotationWaypoints(
+            notation.waypoints,
+            cardConnectionPoint(
+              source.position,
+              target.position,
+              source.dimensions,
+              scale,
+              source.mesh.geometry.userData.notation ??
+                source.mesh.geometry.userData.flowchartSymbol,
+              notation.sourcePort ?? 'right',
+            ),
+            cardConnectionPoint(
+              target.position,
+              source.position,
+              target.dimensions,
+              scale,
+              target.mesh.geometry.userData.notation ??
+                target.mesh.geometry.userData.flowchartSymbol,
+              notation.targetPort ?? 'left',
+            ),
+            batches.sheetOrigin,
+            scale,
+          );
         if (points.length < 2)
           points = spatialEdgePoints(source.position, target.position, true, scale);
         batches.edgePoints.set(edge.id, points);
@@ -139,35 +187,65 @@ export function spatialMovementPreview(
         const distanceAttribute = range.line.geometry.getAttribute(
           'lineDistance',
         ) as THREE.BufferAttribute;
+        const context = {
+          sourceIsGateway: notationSourceIsGateway(source.mesh.geometry.userData.notation),
+        };
+        const visual = notation
+          ? notationSpatialSegments(notation, points, scale, range.notationLayout, context).segments
+          : Array.from(
+              { length: segments },
+              (_, index) => [pointAt(index), pointAt(index + 1)] as const,
+            );
         let distance = 0;
-        for (let index = 0; index < segments; index++) {
-          const a = pointAt(index),
-            b = pointAt(index + 1),
-            at = range.start + index * 2;
+        for (const [index, [a, b]] of visual.entries()) {
+          const at = range.start + index * 2;
           attribute.setXYZ(at, a.x, a.y, a.z);
           attribute.setXYZ(at + 1, b.x, b.y, b.z);
           distanceAttribute.setX(at, distance);
           distance += a.distanceTo(b);
           distanceAttribute.setX(at + 1, distance);
         }
+        if (range.ribbon) {
+          const { mesh, start, count } = range.ribbon,
+            ribbon = mesh.geometry.getAttribute('position') as THREE.BufferAttribute;
+          (ribbon.array as Float32Array).set(
+            notationRibbonPositions(visual, 0.035 * scale),
+            start * 3,
+          );
+          ribbon.addUpdateRange(start * 3, count * 3);
+          ribbon.needsUpdate = true;
+        }
         attribute.addUpdateRange(range.start * 3, range.count * 3);
         attribute.needsUpdate = true;
         distanceAttribute.addUpdateRange(range.start, range.count);
         distanceAttribute.needsUpdate = true;
         const arrows = batches.arrows.get(edge.id) ?? [];
+        const style = notation && notationEdgeAppearance(notation, context);
         let arrowIndex = 0;
         for (const atEnd of [true, false]) {
-          if (atEnd ? !edge.markerEnd : !edge.markerStart) continue;
+          if (
+            style
+              ? (atEnd ? style.targetDecoration : style.sourceDecoration) === 'none'
+              : atEnd
+                ? !edge.markerEnd
+                : !edge.markerStart
+          )
+            continue;
           const arrow = arrows[arrowIndex++];
           if (!arrow) continue;
-          const at = atEnd ? points.length - 4 : 3;
-          const direction = (atEnd ? points[at + 1] : points[at - 1])
-            .clone()
-            .sub(points[at])
-            .normalize();
+          const at = style ? (atEnd ? points.length - 1 : 0) : atEnd ? points.length - 4 : 3;
+          const direction = style
+            ? points[at]
+                .clone()
+                .sub(points[atEnd ? at - 1 : 1])
+                .normalize()
+            : (atEnd ? points[at + 1] : points[at - 1]).clone().sub(points[at]).normalize();
           matrix.compose(
             points[at],
-            new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction),
+            new THREE.Quaternion().setFromUnitVectors(
+              new THREE.Vector3(style ? 1 : 0, style ? 0 : 1, 0),
+              direction,
+            ),
             new THREE.Vector3(1, 1, 1),
           );
           arrow.mesh.setMatrixAt(arrow.index, matrix);

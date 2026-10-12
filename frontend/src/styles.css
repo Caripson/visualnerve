@@ -614,6 +614,8 @@ kbd {
   padding: 13px 8px 2px;
 }
 .main-workspace {
+  container-type: inline-size;
+  container-name: workspace;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -695,6 +697,11 @@ kbd {
   padding: 7px 14px;
   border-bottom: 1px solid var(--border);
   overflow-x: auto;
+}
+@container workspace (max-width: 1000px) {
+  .editor-toolbar .toolbar-menu-label {
+    display: none;
+  }
 }
 .spatial-view-bar {
   display: flex;

@@ -136,7 +136,9 @@ export function NodeQuickAdd({ id, above = false }: { id: string; above?: boolea
               )
             : copy
               ? t(copy.label)
-              : nodeKindLabel(t, choice.type);
+              : choice.type.startsWith('notation:')
+                ? choice.label
+                : nodeKindLabel(t, choice.type);
           const description = copy ? t(copy.description) : choice.description;
           return (
             <button

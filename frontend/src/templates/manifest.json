@@ -82,5 +82,131 @@
     "name": "Time Series & Signal Analysis",
     "type": "freeform",
     "nodes": 0
+  },
+  {
+    "key": "hipo",
+    "name": "HIPO",
+    "type": "freeform",
+    "nodes": 6
+  },
+  {
+    "key": "dfd-yourdon-demarco",
+    "name": "DFD · Yourdon–DeMarco",
+    "type": "freeform",
+    "nodes": 6
+  },
+  {
+    "key": "dfd-gane-sarson",
+    "name": "DFD · Gane–Sarson",
+    "type": "freeform",
+    "nodes": 6
+  },
+  {
+    "key": "uml-class",
+    "name": "UML · Class",
+    "type": "freeform",
+    "nodes": 5
+  },
+  {
+    "key": "uml-object",
+    "name": "UML · Object",
+    "type": "freeform",
+    "nodes": 3
+  },
+  {
+    "key": "uml-package",
+    "name": "UML · Package",
+    "type": "freeform",
+    "nodes": 5
+  },
+  {
+    "key": "uml-component",
+    "name": "UML · Component",
+    "type": "freeform",
+    "nodes": 5
+  },
+  {
+    "key": "uml-composite-structure",
+    "name": "UML · Composite Structure",
+    "type": "freeform",
+    "nodes": 5
+  },
+  {
+    "key": "uml-deployment",
+    "name": "UML · Deployment",
+    "type": "freeform",
+    "nodes": 5
+  },
+  {
+    "key": "uml-profile",
+    "name": "UML · Profile",
+    "type": "freeform",
+    "nodes": 3
+  },
+  {
+    "key": "uml-use-case",
+    "name": "UML · Use Case",
+    "type": "freeform",
+    "nodes": 5
+  },
+  {
+    "key": "uml-activity",
+    "name": "UML · Activity",
+    "type": "freeform",
+    "nodes": 7
+  },
+  {
+    "key": "uml-state-machine",
+    "name": "UML · State Machine",
+    "type": "freeform",
+    "nodes": 5
+  },
+  {
+    "key": "uml-sequence",
+    "name": "UML · Sequence",
+    "type": "freeform",
+    "nodes": 5
+  },
+  {
+    "key": "uml-communication",
+    "name": "UML · Communication",
+    "type": "freeform",
+    "nodes": 3
+  },
+  {
+    "key": "uml-interaction-overview",
+    "name": "UML · Interaction Overview",
+    "type": "freeform",
+    "nodes": 6
+  },
+  {
+    "key": "uml-timing",
+    "name": "UML · Timing",
+    "type": "freeform",
+    "nodes": 3
+  },
+  {
+    "key": "bpmn-process",
+    "name": "BPMN · Process",
+    "type": "freeform",
+    "nodes": 13
+  },
+  {
+    "key": "bpmn-collaboration",
+    "name": "BPMN · Collaboration",
+    "type": "freeform",
+    "nodes": 8
+  },
+  {
+    "key": "bpmn-conversation",
+    "name": "BPMN · Conversation",
+    "type": "freeform",
+    "nodes": 4
+  },
+  {
+    "key": "bpmn-choreography",
+    "name": "BPMN · Choreography",
+    "type": "freeform",
+    "nodes": 4
   }
 ]

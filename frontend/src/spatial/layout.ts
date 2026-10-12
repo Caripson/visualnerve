@@ -96,7 +96,11 @@ export function spatialPlanarGeometry(graph: Graph) {
 }
 
 /** The relief uses the same absolute node faces as the 2D canvas, without a new layout. */
-function planarProjection(graph: Graph): { positions: Map<string, SpatialPoint>; scale: number } {
+function planarProjection(graph: Graph): {
+  positions: Map<string, SpatialPoint>;
+  scale: number;
+  sheetOrigin: { centerX: number; centerY: number };
+} {
   const positions = new Map<string, SpatialPoint>();
   const { faces, centerX, centerY, scale } = spatialPlanarGeometry(graph);
   for (const { node, x, y, width, height } of faces) {
@@ -112,7 +116,7 @@ function planarProjection(graph: Graph): { positions: Map<string, SpatialPoint>;
           },
     );
   }
-  return { positions, scale };
+  return { positions, scale, sheetOrigin: { centerX, centerY } };
 }
 
 export function spatialPositions(graph: Graph): Map<string, SpatialPoint> {
@@ -160,13 +164,15 @@ export function projectSpatialGraph(graph: Graph): {
   camera: SpatialCamera;
   /** Uniform dimension factor relative to the ordinary 100-pixel world unit. */
   scale: number;
+  sheetOrigin: { centerX: number; centerY: number };
 } {
-  const { positions, scale } = planarProjection(graph);
+  const { positions, scale, sheetOrigin } = planarProjection(graph);
   const bounds = spatialBounds(positions.values());
   return {
     positions,
     bounds,
     scale,
+    sheetOrigin,
     camera: getSpatialView(graph).camera ?? defaultSpatialCamera(bounds),
   };
 }

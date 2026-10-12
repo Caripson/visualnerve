@@ -6,6 +6,8 @@ import { createSimulationGraph } from '../simulation/document';
 import { remapSimulationModel } from '../simulation/copy';
 import { createEmptySimulationModel } from '../simulation/starter';
 import { DeliveryNetworkExample } from '../simulation/delivery-example';
+import { createNotationGraph } from '../notation/templates';
+import { remapNotationGraph } from '../notation/remap';
 import { createIbmFlowchartGraph } from '../flowchart/template';
 import { remapGraphCollaboration } from '../collaboration/model/remap';
 const files = import.meta.glob<Graph>('./*.json', { eager: true, import: 'default' });
@@ -22,6 +24,10 @@ export function instantiate(key: string, name: string, source?: Graph): Graph {
   if (key === 'delivery-network-simulator' && !source)
     return new DeliveryNetworkExample().graph(name);
   if (key === 'ibm-flowcharting' && !source) return createIbmFlowchartGraph(name);
+  if (!source) {
+    const notation = createNotationGraph(key, name);
+    if (notation) return notation;
+  }
   const graph = structuredClone(source ?? files[`./${key}.json`]);
   if (!graph) throw new Error('Unknown template.');
   graph.diagram = { ...graph.diagram, ...base(), name };
@@ -46,6 +52,7 @@ export function instantiate(key: string, name: string, source?: Graph): Graph {
     sourceNodeId: ids.get(e.sourceNodeId)!,
     targetNodeId: ids.get(e.targetNodeId)!,
   }));
+  Object.assign(graph, remapNotationGraph(graph, ids));
   if (graph.simulation) graph.simulation = remapSimulationModel(graph.simulation, ids, ids);
   if (graph.diagram.analytics)
     graph.diagram.analytics = remapAnalytics(graph.diagram.analytics, ids);

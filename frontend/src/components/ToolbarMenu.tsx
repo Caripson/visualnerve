@@ -89,12 +89,13 @@ export function ToolbarMenu({
       <button
         ref={trigger}
         aria-label={label}
+        title={label}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
         {icon}
-        {text && <span>{label}</span>}
+        {text && <span className="toolbar-menu-label">{label}</span>}
       </button>
       {open &&
         createPortal(

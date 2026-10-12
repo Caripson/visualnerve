@@ -1,3 +1,4 @@
+import { notationOwnedIds } from '../notation/attachments';
 import { base, type Graph, type GraphNode, type GraphEdge } from '../model/types';
 import { getCsvNode } from '../data/csv';
 import { graphDatasets } from '../data/model';
@@ -8,6 +9,7 @@ import {
   pasteSimulationSelection,
   type SimulationClipboard,
 } from '../simulation/clipboard';
+import { remapNotationGraph } from '../notation/remap';
 import { validateClipboardTopology } from './clipboard-validation';
 export interface Clip {
   format: 'visual-nerve-clipboard';
@@ -16,27 +18,7 @@ export interface Clip {
   simulation?: SimulationClipboard;
 }
 export function copySelection(graph: Graph, ids: string[]): Clip {
-  const set = new Set(ids);
-  const children = new Map<string, string[]>();
-  for (const node of graph.nodes)
-    if (node.parentId) {
-      const members = children.get(node.parentId) ?? [];
-      members.push(node.id);
-      children.set(node.parentId, members);
-    }
-  const pending = graph.nodes
-    .filter((node) => set.has(node.id) && node.nodeType === 'group')
-    .map((node) => node.id);
-  const expanded = new Set<string>();
-  for (let index = 0; index < pending.length; index++) {
-    const id = pending[index];
-    if (expanded.has(id)) continue;
-    expanded.add(id);
-    for (const child of children.get(id) ?? []) {
-      set.add(child);
-      pending.push(child);
-    }
-  }
+  const set = notationOwnedIds(graph.nodes, ids, true);
   return structuredClone({
     format: 'visual-nerve-clipboard' as const,
     nodes: graph.nodes
@@ -109,5 +91,6 @@ export function pasteSelection(
           new Map(clip.edges.map((edge, index) => [edge.id, result.edges[index].id])),
         )
       : undefined;
-  return { ...result, ...(simulation ? { simulation } : {}) };
+  const remapped = remapNotationGraph({ ...result, diagram: { id: diagramId } } as Graph, remap);
+  return { nodes: remapped.nodes, edges: remapped.edges, ...(simulation ? { simulation } : {}) };
 }

@@ -46,6 +46,10 @@ const fail = (code: string, message: string, status = 422): never => {
   throw new CollaborationDocumentError(code, message, status);
 };
 const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+const hasNotation = (graph: Graph) =>
+  graph.diagram.notation !== undefined ||
+  graph.nodes.some((node) => node.notation !== undefined) ||
+  graph.edges.some((edge) => edge.notation !== undefined);
 
 /** UI, API and transport all bind to one per-field CRDT; it never owns renderer state. */
 export class CollaborativeDocument {
@@ -55,6 +59,7 @@ export class CollaborativeDocument {
   private generation = 0;
   private localClientId?: number;
   private disposed = false;
+  private readonly contractVersion: 1 | 2 | 3;
   readonly scope: Readonly<CollaborationShareScope>;
   readonly diagramId: string;
 
@@ -85,10 +90,19 @@ export class CollaborativeDocument {
       } catch {
         fail('COLLABORATION_INVALID_UPDATE', 'The saved shared document is invalid.');
       }
+      const version = this.doc.getMap('contract').get('version');
+      if (version === 1 || version === 2 || version === 3) this.contractVersion = version;
+      else
+        throw new CollaborationDocumentError(
+          'COLLABORATION_DOCUMENT_VERSION',
+          'This shared document version is unsupported. Refresh all participants and start a new room.',
+          409,
+        );
     } else {
+      this.contractVersion = hasNotation(graph) ? 3 : this.protectedWorkflow ? 2 : 1;
       this.doc.transact(() => {
         const contract = this.doc.getMap('contract');
-        contract.set('version', this.protectedWorkflow ? 2 : 1);
+        contract.set('version', this.contractVersion);
         if (this.protectedWorkflow) contract.set('workflowAuthority', 'owner');
         contract.set('diagramId', this.diagramId);
         contract.set('scope', this.scope);
@@ -114,6 +128,14 @@ export class CollaborativeDocument {
   private checkBytes(bytes: Uint8Array, maximum: number) {
     if (!isCollaborationBytes(bytes) || bytes.byteLength > maximum)
       fail('COLLABORATION_LIMIT', 'The shared document/update exceeds its size limit.');
+  }
+  private requireNotationContract(graph: Graph) {
+    if (this.contractVersion !== 3 && hasNotation(graph))
+      fail(
+        'COLLABORATION_NOTATION_REQUIRED',
+        'This room uses an older document contract without notation support. Refresh all participants and start a new room before adding notation.',
+        409,
+      );
   }
   private project(doc: Y.Doc, local: Graph): Graph {
     // Yjs retains unresolved actor prefixes and delete sets outside the live
@@ -144,9 +166,15 @@ export class CollaborativeDocument {
     // one visible field survives. Never accept a state that cannot produce the
     // bounded causal vector required by the next local edit or synchronization.
     validateCollaborationStateVector(Y.encodeStateVector(doc));
+    if (contract.get('version') !== this.contractVersion)
+      fail(
+        'COLLABORATION_DOCUMENT_VERSION',
+        'The shared document contract changed. Refresh all participants and start a new room.',
+        409,
+      );
     if (
       contract.size !== (this.protectedWorkflow ? 4 : 3) ||
-      contract.get('version') !== (this.protectedWorkflow ? 2 : 1) ||
+      (this.contractVersion !== 3 && this.contractVersion !== (this.protectedWorkflow ? 2 : 1)) ||
       (this.protectedWorkflow && contract.get('workflowAuthority') !== 'owner') ||
       contract.get('diagramId') !== this.diagramId ||
       !equal(contract.get('scope'), this.scope) ||
@@ -156,6 +184,7 @@ export class CollaborativeDocument {
         'COLLABORATION_DOCUMENT_MISMATCH',
         'This update belongs to another document or sharing scope.',
       );
+    this.requireNotationContract(local);
     assertCollaborationFieldScope(fields, this.scope, !this.protectedWorkflow);
     const value = expandShared(fields);
     const graph = localGraph(value, local, this.scope);
@@ -168,6 +197,7 @@ export class CollaborativeDocument {
       graph.owners.length > collaborationDocumentLimits.owners
     )
       fail('COLLABORATION_LIMIT', 'The shared document exceeds its object limits.');
+    this.requireNotationContract(graph);
     validateGraph(graph);
     const allowed = flattenShared(this.shared(graph));
     const received = flattenShared(value);
@@ -296,6 +326,7 @@ export class CollaborativeDocument {
     if (before.diagram.id !== this.diagramId || after.diagram.id !== this.diagramId)
       fail('COLLABORATION_DOCUMENT_MISMATCH', 'The edit belongs to another document.');
     validateGraph(after);
+    this.requireNotationContract(after);
     const previous = flattenShared(this.shared(before));
     const next = flattenShared(this.shared(after));
     const staged = this.clone(true);

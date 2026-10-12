@@ -41,6 +41,8 @@ Editable Draw.io documents use a **light drawing surface**, even if the app uses
 
 Draw.io files are useful editable drawings; JSON or encrypted workspace backup preserves the complete Visual Nerve model.
 
+HIPO, DFD, UML and BPMN exports to Draw.io use generic editable shapes and report a simplification warning. Their structured sections, named ports and specialized relationship ends are not preserved. Use JSON to retain the complete notation model, or native SVG to preserve its vector appearance. These files do not provide UML XMI or BPMN XML interchange.
+
 ![Editable export on desktop, with format and scope notes.](/help/images/export-editable-desktop.webp "Choose an editable drawing format and review its sharing scope.")
 
 ![The same editable export dialog on a phone, with both actions visible.](/help/images/export-editable-mobile.webp "On mobile, open Diagram actions → Export. Light and dark captures follow Appearance.")

@@ -31,6 +31,11 @@ const guideNames = [
   "time-series-analysis",
   "ibm-flowcharting",
   "flowchart-symbols",
+  "notation-collections",
+  "hipo",
+  "dfd",
+  "uml",
+  "bpmn",
 ];
 export const policyNames = ["privacy", "security", "license"];
 const generatedFiles = [

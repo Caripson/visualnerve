@@ -1,3 +1,6 @@
+import { NotationSvgRenderer } from '../notation/svg';
+import { notationGeometry } from '../notation/geometry';
+import type { EdgeNotation } from '../notation/types';
 import {
   getBezierPath,
   getSmoothStepPath,
@@ -30,6 +33,7 @@ import type { MessageFormatter } from '../i18n/message-formatter';
 import { getIbmSymbol, type IBMSymbol } from '../flowchart/ibm-symbols';
 import { iconKey } from '../ui/icons';
 import { nodeBackgroundColor } from '../nodes/appearance';
+import { notationSourceIsGateway } from '../notation/edge-geometry';
 import { ibmPortPoint } from '../flowchart/ibm-ports';
 
 const mix = (accent: string, base: string, ratio: number) => {
@@ -202,6 +206,13 @@ export class SvgModelRenderer {
       node = view.data.node,
       topic = view.data.mindmap,
       theme = request.theme;
+    if (node.notation)
+      return new NotationSvgRenderer((value) => this.writer.add(value), this.text).node(
+        node,
+        card,
+        index,
+        theme,
+      );
     const ibm = getIbmSymbol(node.flowchartSymbol);
     if (ibm) return this.ibmNode(card, index, request, ibm);
     const accent = svgPaint(topic?.color ?? node.color ?? view.data.owners[0]?.color, '#31766c');
@@ -460,6 +471,25 @@ export class SvgModelRenderer {
             : handle?.includes('right')
               ? 'right'
               : fallback;
+      const notation = card.view.data.node.notation;
+      if (notation) {
+        const shape = notationGeometry(notation);
+        const named = handle?.match(/^(?:in|out)-port-(.+)$/)?.[1];
+        const anchor = shape.anchors.find((item) =>
+          named ? item.id === named : item.side === direction,
+        );
+        if (anchor)
+          return {
+            x: card.x + anchor.x * card.width,
+            y: card.y + anchor.y * card.height,
+            position: {
+              top: Position.Top,
+              bottom: Position.Bottom,
+              left: Position.Left,
+              right: Position.Right,
+            }[anchor.side],
+          };
+      }
       const symbol = getIbmSymbol(card.view.data.node.flowchartSymbol);
       if (symbol) {
         const [x, y] = ibmPortPoint(symbol.id, direction);
@@ -493,7 +523,15 @@ export class SvgModelRenderer {
       sourcePosition: a.position,
       targetPosition: b.position,
     };
-    if (edge.type === 'simulation-process-connection' && typeof edge.data?.path === 'string') {
+    const notation = edge.data?.notation as EdgeNotation | undefined;
+    if (notation?.waypoints?.length) {
+      path = `M ${a.x} ${a.y} ${notation.waypoints.map(([x, y]) => `L ${x} ${y}`).join(' ')} L ${b.x} ${b.y}`;
+      labelX = (a.x + b.x) / 2;
+      labelY = (a.y + b.y) / 2;
+    } else if (
+      edge.type === 'simulation-process-connection' &&
+      typeof edge.data?.path === 'string'
+    ) {
       path = edge.data.path;
       labelX = Number(edge.data.labelX ?? (a.x + b.x) / 2);
       labelY = Number(edge.data.labelY ?? (a.y + b.y) / 2);
@@ -526,9 +564,17 @@ export class SvgModelRenderer {
       );
     const stroke = svgPaint(edge.style?.stroke, '#8a9694'),
       width = Number(edge.style?.strokeWidth ?? 1.6);
-    this.writer.add(
-      `<g ${attrs({ 'data-edge-id': edge.id })}><path ${attrs({ d: path, fill: 'none', stroke, 'stroke-width': width, 'stroke-linecap': 'round', 'stroke-dasharray': edge.style?.strokeDasharray, 'marker-end': edge.markerEnd ? 'url(#vn-svg-arrow)' : undefined, 'marker-start': edge.markerStart ? 'url(#vn-svg-arrow)' : undefined })}/>`,
-    );
+    const notationRenderer = new NotationSvgRenderer((value) => this.writer.add(value), this.text);
+    this.writer.add(`<g ${attrs({ 'data-edge-id': edge.id })}>`);
+    if (notation) {
+      notationRenderer.edge(notation, path, index, stroke, surface, width, {
+        sourceIsGateway: notationSourceIsGateway(source.view.data.node.notation),
+      });
+      notationRenderer.ends(notation, a, b, ink);
+    } else
+      this.writer.add(
+        `<path ${attrs({ d: path, fill: 'none', stroke, 'stroke-width': width, 'stroke-linecap': 'round', 'stroke-dasharray': edge.style?.strokeDasharray, 'marker-end': edge.markerEnd ? 'url(#vn-svg-arrow)' : undefined, 'marker-start': edge.markerStart ? 'url(#vn-svg-arrow)' : undefined })}/>`,
+      );
     if (edge.label) {
       const label = String(edge.label),
         size = edge.type === 'overview-relation' ? 12 : 11;

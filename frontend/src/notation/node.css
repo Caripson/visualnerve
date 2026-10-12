@@ -1,0 +1,203 @@
+.vn-node.notation-node {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  isolation: isolate;
+}
+.notation-node-shape {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: -1;
+}
+.notation-outline {
+  fill: var(--node-bg, var(--surface));
+  stroke: var(--node-accent, currentColor);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+.notation-outline.fill-none {
+  fill: none;
+}
+.notation-outline.fill-foreground,
+.notation-fill {
+  fill: var(--node-accent, currentColor);
+  stroke: var(--node-accent, currentColor);
+}
+.notation-detail {
+  fill: none;
+  stroke: var(--node-accent, currentColor);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.notation-node-content {
+  position: absolute;
+  left: var(--notation-x);
+  top: var(--notation-y);
+  width: var(--notation-width);
+  height: var(--notation-height);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  text-align: center;
+  overflow: hidden;
+  padding: 2px;
+}
+.notation-node .node-title {
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.notation-node-content[data-title-style='italic'] .node-title {
+  font-style: italic;
+}
+.notation-node-content[data-title-style='underlined'] .node-title {
+  text-decoration: underline;
+}
+.notation-node .node-status {
+  align-self: center;
+  flex-shrink: 0;
+}
+.notation-node-content > svg {
+  align-self: center;
+  flex-shrink: 0;
+}
+.notation-prefix {
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.notation-node-heading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+}
+.notation-node-heading > svg {
+  flex-shrink: 0;
+}
+.notation-node-heading .node-title {
+  flex-shrink: 1;
+  min-width: 0;
+}
+.notation-sections {
+  overflow: auto;
+  scrollbar-width: thin;
+  text-align: left;
+  min-height: 0;
+}
+.notation-section {
+  border-top: 1px solid var(--node-accent);
+  padding: 6px 4px;
+}
+.notation-section > strong {
+  display: block;
+  text-align: center;
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+.notation-entry {
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.notation-node.is-selected {
+  outline: none;
+}
+.notation-node.is-selected .notation-outline {
+  stroke-width: 2.5;
+}
+.notation-node-content:has(.is-title-editing) {
+  overflow: visible;
+  z-index: 4;
+}
+.spatial-face-back .notation-node-shape {
+  transform: scaleX(-1);
+}
+.spatial-face-back .notation-node-content {
+  left: calc(100% - var(--notation-x) - var(--notation-width));
+}
+.notation-container {
+  opacity: 1;
+}
+
+.notation-fixed-section {
+  position: absolute;
+  padding: 4px;
+  overflow: auto;
+  scrollbar-width: thin;
+  font-size: 12px;
+  text-align: left;
+}
+.notation-fixed-section > strong {
+  display: block;
+  text-align: center;
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+.spatial-face-back .notation-fixed-section {
+  left: calc(100% - var(--section-x) - var(--section-width)) !important;
+}
+.notation-container .notation-outline {
+  fill-opacity: 0.035;
+}
+
+.notation-content-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  min-height: 0;
+  height: 100%;
+}
+.notation-rotated-content {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  gap: 4px;
+}
+.notation-node-content[data-title-rotation] {
+  padding: 0;
+}
+.notation-fixed-prefix {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: 11px;
+  padding: 2px;
+}
+.spatial-face-back .notation-fixed-prefix {
+  left: calc(100% - var(--prefix-x) - var(--prefix-width)) !important;
+}
+.notation-node-content[data-title-style='hidden']:not(:has(.is-title-editing)) {
+  visibility: hidden;
+}
+.notation-node-content[data-title-style='hidden']:has(.is-title-editing) {
+  min-width: 200px;
+  min-height: 80px;
+}
+.notation-contrast {
+  fill: none;
+  stroke: var(--node-bg, var(--surface));
+  stroke-width: 1.5;
+}
+.notation-shade {
+  fill: var(--node-accent, currentColor);
+  fill-opacity: 0.12;
+  stroke: none;
+}

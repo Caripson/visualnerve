@@ -9,6 +9,7 @@ import { SpatialNavigationTools } from './SpatialNavigationTools';
 import { useCompactLayout } from '../hooks/useCompactLayout';
 import type { Graph } from '../model/types';
 import type { CanvasNode } from '../canvas/projection';
+import type { EdgeNotation } from '../notation/types';
 import { useEditor } from '../state/editor';
 import { getSpatialView, spatialLimits, type SpatialCamera, type SpatialPoint } from './types';
 import {
@@ -313,6 +314,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
         node.data.node.status,
         node.data.node.nodeType,
         node.data.node.flowchartSymbol,
+        node.data.node.notation,
         node.width,
         node.height,
         node.data.node.metadata.spatial,
@@ -332,11 +334,26 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
         edge.markerStart,
         edge.markerEnd,
         edge.style,
+        edge.data?.notation,
       ])
       .sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
   ]);
-  const modelRef = useRef({ projected, positions, bounds, showLabels, scale: relief.scale });
-  modelRef.current = { projected, positions, bounds, showLabels, scale: relief.scale };
+  const modelRef = useRef({
+    projected,
+    positions,
+    bounds,
+    showLabels,
+    scale: relief.scale,
+    sheetOrigin: relief.sheetOrigin,
+  });
+  modelRef.current = {
+    projected,
+    positions,
+    bounds,
+    showLabels,
+    scale: relief.scale,
+    sheetOrigin: relief.sheetOrigin,
+  };
   useEffect(() => {
     const current = runtime.current;
     if (current?.presentationActive)
@@ -1088,6 +1105,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       model.projected.edges,
       model.positions,
       current.glyphScale,
+      model.sheetOrigin,
     );
     const counts = { nodes: current.batches.nodes.size, edges: current.batches.edges.size };
     setRenderedCounts((previous) =>
@@ -1140,6 +1158,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
         position: THREE.Vector3;
         nodeId?: string;
         edgeId?: string;
+        edgeEndpoint?: 'source' | 'target';
         selected: boolean;
         options: NonNullable<Parameters<typeof spatialTextPlane>[1]>;
         opacity: number;
@@ -1184,33 +1203,73 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
             status: node.status,
             kind: node.nodeType,
             flowchartSymbol: node.flowchartSymbol,
+            notation: node.notation,
           },
           opacity: Number(view.style?.opacity ?? 1),
         });
       }
       const edgeOrder = [
         ...model.projected.edges.filter((edge) => selectedLinks.has(edge.id)),
-        ...model.projected.edges.filter((edge) => !selectedLinks.has(edge.id) && edge.label),
+        ...model.projected.edges.filter((edge) => {
+          const notation = edge.data?.notation as EdgeNotation | undefined;
+          return (
+            !selectedLinks.has(edge.id) &&
+            (edge.label ||
+              notation?.sourceLabel ||
+              notation?.targetLabel ||
+              notation?.sourceMultiplicity ||
+              notation?.targetMultiplicity)
+          );
+        }),
       ];
+      let edgeLabelCount = 0;
       for (const edge of edgeOrder.slice(0, 40)) {
         const points = current.batches.edgePoints.get(edge.id);
         if (!points) continue;
-        wanted.set(`edge:${edge.id}`, {
-          text: String(edge.label || t('workspace.connection')),
-          position: points[Math.floor(points.length / 2)]
-            .clone()
-            .add(new THREE.Vector3(0, 0.13 * current.glyphScale, 0.003)),
-          edgeId: edge.id,
-          selected: selectedLinks.has(edge.id),
-          options: {
-            width: 1.3 * current.glyphScale,
-            height: 0.22 * current.glyphScale,
-            color: '#4e6058',
-            background: '#edf2ee',
-            fontSize: 48,
-          },
-          opacity: Number(edge.style?.opacity ?? 1),
-        });
+        if (edgeLabelCount < 40 && (edge.label || selectedLinks.has(edge.id))) {
+          edgeLabelCount++;
+          wanted.set(`edge:${edge.id}`, {
+            text: String(edge.label || t('workspace.connection')),
+            position: points[Math.floor(points.length / 2)]
+              .clone()
+              .add(new THREE.Vector3(0, 0.13 * current.glyphScale, 0.003)),
+            edgeId: edge.id,
+            selected: selectedLinks.has(edge.id),
+            options: {
+              width: 1.3 * current.glyphScale,
+              height: 0.22 * current.glyphScale,
+              color: '#4e6058',
+              background: '#edf2ee',
+              fontSize: 48,
+            },
+            opacity: Number(edge.style?.opacity ?? 1),
+          });
+        }
+        const notation = edge.data?.notation as EdgeNotation | undefined;
+        for (const endpoint of ['source', 'target'] as const) {
+          const text = [notation?.[`${endpoint}Label`], notation?.[`${endpoint}Multiplicity`]]
+            .filter(Boolean)
+            .join(' ');
+          if (!text || edgeLabelCount >= 40) continue;
+          edgeLabelCount++;
+          wanted.set(`edge:${edge.id}:${endpoint}`, {
+            text,
+            position: points[endpoint === 'source' ? 0 : points.length - 1]
+              .clone()
+              .add(new THREE.Vector3(0, 0.13 * current.glyphScale, 0.003)),
+            edgeId: edge.id,
+            edgeEndpoint: endpoint,
+            selected: selectedLinks.has(edge.id),
+            options: {
+              width: 1.3 * current.glyphScale,
+              height: 0.22 * current.glyphScale,
+              color: '#4e6058',
+              background: '#edf2ee',
+              fontSize: 48,
+            },
+            opacity: Number(edge.style?.opacity ?? 1),
+          });
+        }
       }
     }
     const signature = (label: { text: string; options: object }) =>
@@ -1249,6 +1308,8 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       }
       face.position.copy(label.position);
       setSpatialFaceIdentity(face, { nodeId: label.nodeId, edgeId: label.edgeId });
+      for (const surface of spatialFaceSurfaces(face))
+        surface.userData.edgeEndpoint = label.edgeEndpoint;
       face.userData.selected = label.selected;
       face.material.color.set('#ffffff');
       setSpatialFaceOpacity(face, label.opacity);
@@ -1283,7 +1344,9 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       );
       const back = await captureSpatialNodeFaces(
         propsRef.current.graph,
-        pendingViews.filter((view) => !!view.data.node.flowchartSymbol),
+        pendingViews.filter(
+          (view) => !!view.data.node.flowchartSymbol || !!view.data.node.notation,
+        ),
         abort.signal,
         { side: 'back' },
       );

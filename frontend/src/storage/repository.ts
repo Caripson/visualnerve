@@ -79,6 +79,9 @@ import { BulkIdentities } from './bulk-identities';
 import { collaborationPermissions, type SharedProjectionAuthority } from '../collaboration/access';
 import { collaborationDocumentHooks } from '../collaboration/document-hooks';
 import type { CollaborationActionContext } from '../collaboration/model/types';
+import { remapNotationGraph } from '../notation/remap';
+import { NotationLifecycle } from '../notation/lifecycle';
+import { notationAttachmentMoves } from '../notation/attachments';
 import { documentProfilePreference } from '../collaboration/profile-preference';
 
 export type CommandOptions = AnalysisCommandOptions & {
@@ -141,7 +144,7 @@ function patch<T extends Base>(value: T, data: Patch): T {
   } = data;
   const result = { ...value, ...fields } as T;
   // Null clears only these optional appearance fields on partial updates.
-  for (const field of ['flowchartSymbol', 'backgroundColor'] as const)
+  for (const field of ['flowchartSymbol', 'backgroundColor', 'notation'] as const)
     if (fields[field] === null) delete (result as T & Record<string, unknown>)[field];
   if ('metadata' in data) {
     if (!data.metadata || typeof data.metadata !== 'object' || Array.isArray(data.metadata))
@@ -617,6 +620,7 @@ export class Repository {
               }
             : {}),
         }));
+        Object.assign(graph, remapNotationGraph(graph, nodeIds));
         Object.assign(graph, remapAnalysisReferences(graph, nodeIds));
         Object.assign(graph, remapPresentation(graph, nodeIds));
         Object.assign(graph, remapStoryboard(graph, nodeIds, edgeIds));
@@ -975,6 +979,7 @@ export class Repository {
   ): Promise<T> {
     const endpoint = path.replace(/^\/api\/v1/, '');
     if (
+      /^\/notation\/collections(?:\/[^/?#]+){0,2}$/.test(endpoint) ||
       [
         '/health',
         '/simulation/capabilities',
@@ -1066,6 +1071,11 @@ export class Repository {
         throw new StorageError(404, 'Unknown simulation discovery endpoint.');
       if (!read) throw new StorageError(405, 'Simulation capabilities require GET.');
       return structuredClone(simulationCapabilities) as T;
+    }
+    if (collection === 'notation') {
+      const { notationDiscovery } = await import('../notation/api');
+      await this.commandReady(options);
+      return notationDiscovery(path.replace(/^\/api\/v1/, ''), method) as T;
     }
     if (collection === 'flowchart') {
       if (parts.length !== 2 || !['symbols', 'stencils'].includes(id) || url.search || url.hash)
@@ -1287,6 +1297,27 @@ export class Repository {
       return (await exportCommand(graph, data, exportGuard)) as T;
     }
     if (collection === 'diagrams') {
+      if (id && action === 'notation' && parts[3] === 'validate') {
+        if (parts.length !== 4 || url.search || url.hash)
+          throw new StorageError(404, 'Unknown notation validation endpoint.');
+        if (method !== 'POST') throw new StorageError(405, 'Notation validation accepts POST.');
+        if (
+          payload !== undefined &&
+          (typeof payload !== 'object' ||
+            payload === null ||
+            Array.isArray(payload) ||
+            Object.keys(payload).length)
+        )
+          throw new StorageError(422, 'Notation validation accepts an empty object.');
+        const { notationIssues } = await import('../notation/validation');
+        await this.commandReady(options);
+        const graph = await this.getGraph(id);
+        return {
+          diagramId: id,
+          baseVersion: graph.diagram.version,
+          issues: notationIssues(graph),
+        } as T;
+      }
       if (id && action === 'analytics') {
         const { analyticsCommand } = await loadOptionalCommand('analytics');
         await this.commandReady(options);
@@ -1405,6 +1436,39 @@ export class Repository {
           return (await this.saveGraph(graph, 0, options.beforeWrite)).diagram as T;
         }
         if (data.template !== undefined) {
+          const { notationTemplates } = await import('../notation/templates');
+          if (notationTemplates.some((template) => template.key === data.template)) {
+            if (data.mode !== undefined || (data.type !== undefined && data.type !== 'freeform'))
+              throw new StorageError(
+                422,
+                'Notation templates use type freeform and have no mode option.',
+              );
+            const { instantiate } = await import('../templates/templates');
+            await this.commandReady(options);
+            const graph = instantiate(String(data.template), data.name as string);
+            if (data.notation !== undefined) {
+              const { validateNotationProfile, NotationValidationError } =
+                await import('../notation/validation');
+              const validateProfile: typeof validateNotationProfile = validateNotationProfile;
+              validateProfile(data.notation);
+              if (
+                data.notation.collection !== graph.diagram.notation!.collection ||
+                data.notation.diagramKind !== graph.diagram.notation!.diagramKind
+              )
+                throw new NotationValidationError(
+                  'notation',
+                  'The notation profile must match the selected template.',
+                );
+            }
+            const { template: _template, ...fields } = data;
+            graph.diagram = {
+              ...graph.diagram,
+              ...fields,
+              type: 'freeform',
+              notation: graph.diagram.notation,
+            } as Diagram;
+            return (await this.saveGraph(graph, 0, options.beforeWrite)).diagram as T;
+          }
           if (
             data.template !== 'time-series-analysis' ||
             !['example', 'import'].includes(String(data.mode ?? 'example'))
@@ -1605,15 +1669,13 @@ export class Repository {
           if (collection === 'nodes') {
             const node = graph.nodes.find((node) => node.id === id)!;
             if (remove) {
-              const removed =
+              const removed = NotationLifecycle.deletionIds(
+                graph.nodes,
                 node.nodeType === 'group' || url.searchParams.get('branch') === 'true'
                   ? new Set([id, ...descendantIds(graph.nodes, id)])
-                  : new Set([id]);
-              graph.nodes = graph.nodes
-                .filter((node) => !removed.has(node.id))
-                .map((node) =>
-                  removed.has(node.parentId ?? '') ? { ...node, parentId: undefined } : node,
-                );
+                  : new Set([id]),
+              );
+              graph.nodes = NotationLifecycle.remainingNodes(graph.nodes, removed);
               graph.edges = graph.edges.filter(
                 (edge) => !removed.has(edge.sourceNodeId) && !removed.has(edge.targetNodeId),
               );
@@ -1622,13 +1684,12 @@ export class Repository {
               const next = patch(node, data);
               if (data.ownerId !== undefined && data.ownerIds === undefined)
                 next.ownerIds = data.ownerId ? [data.ownerId as string] : [];
-              const descendants =
-                node.nodeType === 'group' ? descendantIds(graph.nodes, id) : new Set<string>();
+              const moves = notationAttachmentMoves(graph.nodes, new Map([[id, next]]));
               graph.nodes = graph.nodes.map((value) =>
                 value.id === id
                   ? next
-                  : descendants.has(value.id)
-                    ? { ...value, x: value.x + next.x - node.x, y: value.y + next.y - node.y }
+                  : moves.has(value.id)
+                    ? { ...value, ...moves.get(value.id) }
                     : value,
               );
             }
@@ -1706,6 +1767,8 @@ export class Repository {
         const nodeExternal = new Map(
           graph.nodes.filter((node) => node.externalId).map((node) => [node.externalId!, node]),
         );
+        const originalNodes = [...graph.nodes];
+        const coordinatePatches = new Map<string, Partial<GraphNode>>();
         const pendingParents = new Map<string, string>();
         for (const values of nodeInputs.entries) {
           const previous = values.externalId
@@ -1734,24 +1797,24 @@ export class Repository {
           }
           if (values.parentExternalId)
             pendingParents.set(node.id, values.parentExternalId as string);
-          const descendants =
-            previous?.nodeType === 'group'
-              ? descendantIds(graph.nodes, previous.id)
-              : new Set<string>();
-          if (previous)
-            graph.nodes = graph.nodes.map((value) =>
-              value.id === previous.id
-                ? node
-                : descendants.has(value.id)
-                  ? { ...value, x: value.x + node.x - previous.x, y: value.y + node.y - previous.y }
-                  : value,
-            );
-          else graph.nodes.push(node);
-          if (descendants.size)
-            for (const value of graph.nodes)
-              if (value.externalId) nodeExternal.set(value.externalId, value);
+          if (previous) {
+            if (fields.x !== undefined || fields.y !== undefined)
+              coordinatePatches.set(previous.id, {
+                ...(fields.x !== undefined ? { x: node.x } : {}),
+                ...(fields.y !== undefined ? { y: node.y } : {}),
+              });
+            graph.nodes = graph.nodes.map((value) => (value.id === previous.id ? node : value));
+          } else graph.nodes.push(node);
           if (node.externalId) nodeExternal.set(node.externalId, node);
         }
+        // Resolve every authored move against the same pre-edit positions.
+        // Explicit child/attachment coordinates override inherited translation.
+        const moves = notationAttachmentMoves(originalNodes, coordinatePatches);
+        graph.nodes = graph.nodes.map((node) =>
+          moves.has(node.id) ? { ...node, ...moves.get(node.id) } : node,
+        );
+        for (const node of graph.nodes)
+          if (node.externalId) nodeExternal.set(node.externalId, node);
         graph.nodes = graph.nodes.map((node) => {
           const parent = pendingParents.get(node.id);
           if (!parent) return node;

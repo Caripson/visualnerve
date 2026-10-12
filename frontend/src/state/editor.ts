@@ -1,3 +1,8 @@
+import { notationAttachmentMoves } from '../notation/attachments';
+import { defaultNotationConnection } from '../notation/connections';
+import { notationConnectionPorts } from '../notation/ports';
+import { NotationLifecycle } from '../notation/lifecycle';
+import { validateNotationGraph } from '../notation/validation';
 import { workspace } from '../storage/workspace';
 import { collaborationPermissions } from '../collaboration/access';
 import { reanalyzeDataModelAsync } from '../data/modelClient';
@@ -98,7 +103,12 @@ interface Editor {
   finishEditing(save?: boolean): void;
   updateNode(id: string, patch: Partial<GraphNode>, coalesce?: boolean): void;
   updateEdge(id: string, patch: Partial<GraphEdge>): void;
-  connect(source: string, target: string): void;
+  connect(
+    source: string,
+    target: string,
+    sourceHandle?: string | null,
+    targetHandle?: string | null,
+  ): void;
   remove(branch?: boolean): void;
   undo(): void;
   redo(): void;
@@ -189,6 +199,12 @@ export const useEditor = create<Editor>((set, get) => ({
     try {
       collaborationPermissions.assertWrite(s.graph.diagram.id, s.graph, changed);
       reconciled = reconcileSimulationGraph(s.graph, changed);
+      if (
+        reconciled.diagram.notation ||
+        reconciled.nodes.some((node) => node.notation) ||
+        reconciled.edges.some((edge) => edge.notation)
+      )
+        validateNotationGraph(reconciled);
     } catch (error) {
       set({
         status: 'error',
@@ -470,21 +486,17 @@ export const useEditor = create<Editor>((set, get) => ({
     get().command(
       'Edit node',
       (g) => {
-        const original = g.nodes.find((n) => n.id === id);
-        const descendants =
-          original?.nodeType === 'group' && (patch.x !== undefined || patch.y !== undefined)
-            ? descendantIds(g.nodes, id)
-            : new Set<string>();
-        const dx = original ? (patch.x ?? original.x) - original.x : 0;
-        const dy = original ? (patch.y ?? original.y) - original.y : 0;
+        const moves = notationAttachmentMoves(g.nodes, new Map([[id, patch]]));
         return {
           ...g,
           nodes: g.nodes.map((n) =>
-            n.id === id
-              ? { ...n, ...patch, ...(patch.ownerIds ? { ownerId: patch.ownerIds[0] } : {}) }
-              : descendants.has(n.id)
-                ? { ...n, x: n.x + dx, y: n.y + dy }
-                : n,
+            moves.has(n.id)
+              ? {
+                  ...n,
+                  ...moves.get(n.id),
+                  ...(n.id === id && patch.ownerIds ? { ownerId: patch.ownerIds[0] } : {}),
+                }
+              : n,
           ),
         };
       },
@@ -533,10 +545,22 @@ export const useEditor = create<Editor>((set, get) => ({
       },
       true,
     ),
-  connect: (source, target) =>
+  connect: (source, target, sourceHandle, targetHandle) =>
     get().command('Connect nodes', (g) => ({
       ...g,
-      edges: [...g.edges, newEdge(g.diagram.id, source, target)],
+      edges: [
+        ...g.edges,
+        newEdge(
+          g.diagram.id,
+          source,
+          target,
+          notationConnectionPorts(
+            { ...defaultNotationConnection(g, source, target), metadata: {} },
+            sourceHandle,
+            targetHandle,
+          ),
+        ),
+      ],
     })),
   remove: (branch = false) => {
     const s = get();
@@ -545,6 +569,7 @@ export const useEditor = create<Editor>((set, get) => ({
     for (const n of s.graph.nodes)
       if (ids.has(n.id) && (n.nodeType === 'group' || branch))
         for (const id of descendantIds(s.graph.nodes, n.id)) ids.add(id);
+    for (const id of NotationLifecycle.deletionIds(s.graph.nodes, ids)) ids.add(id);
     const edges = new Set(s.selectedEdges);
     const disconnectedCsvTargets = new Set(
       s.graph.edges
@@ -559,9 +584,7 @@ export const useEditor = create<Editor>((set, get) => ({
         )
         .reduce((model, edge) => suppressDataModelEdge(model, edge), g),
       nodes: suppressCsvParentConnections(
-        g.nodes
-          .filter((n) => !ids.has(n.id))
-          .map((n) => (n.parentId && ids.has(n.parentId) ? { ...n, parentId: undefined } : n)),
+        NotationLifecycle.remainingNodes(g.nodes, ids),
         disconnectedCsvTargets,
       ),
       edges: g.edges.filter(

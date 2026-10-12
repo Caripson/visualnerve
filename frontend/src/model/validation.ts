@@ -24,6 +24,13 @@ import { validateBuildSpecification } from '../export/build-specification';
 import { validateSimulationGraph } from '../simulation/document';
 import { getIbmSymbol } from '../flowchart/ibm-symbols';
 import { validateNodeBackgroundColor } from './node-appearance';
+import {
+  validateNodeNotation,
+  validateEdgeNotation,
+  validateNotationProfile,
+  validateNotationGraph,
+  NotationValidationError,
+} from '../notation/validation';
 
 export { StorageError } from './errors';
 const uuid = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
@@ -138,6 +145,7 @@ export function validateGraphFields(graph: Graph) {
   requireValue(object(graph.diagram.settings), 'Invalid diagram settings.');
   if (graph.diagram.collaboration !== undefined) validateCollaboration(graph.diagram.collaboration);
   if (graph.diagram.analytics !== undefined) validateAnalytics(graph.diagram.analytics);
+  if (graph.diagram.notation !== undefined) validateNotationProfile(graph.diagram.notation);
   // Validate native JSON fields before specialized projections inspect metadata
   // or the UI assumes tags/text are safe to render.
   for (const [index, node] of graph.nodes.entries()) {
@@ -158,10 +166,16 @@ export function validateGraphFields(graph: Graph) {
       true,
     );
     requireValue(typeof node.collapsed === 'boolean', 'Invalid node collapsed flag.');
+    if (node.flowchartSymbol !== undefined && node.notation !== undefined)
+      throw new NotationValidationError(
+        `nodes.${index}.notation`,
+        'Notation and an IBM flowchart symbol cannot be set on the same node.',
+      );
     requireValue(
       node.flowchartSymbol === undefined || !!getIbmSymbol(node.flowchartSymbol),
       'Unsupported IBM flowchart symbol.',
     );
+    if (node.notation !== undefined) validateNodeNotation(node.notation);
     validateNodeBackgroundColor(node.backgroundColor, `nodes.${index}.backgroundColor`);
     // API null aliases clear ownership or detach a parent before normalization.
     for (const field of ['ownerId', 'parentId'] as const)
@@ -174,8 +188,10 @@ export function validateGraphFields(graph: Graph) {
       'Invalid owner references.',
     );
   }
-  for (const edge of graph.edges)
+  for (const edge of graph.edges) {
     validateFields(edge, 'Connection', ['externalId', 'label', 'description']);
+    if (edge.notation !== undefined) validateEdgeNotation(edge.notation);
+  }
   for (const owner of graph.owners) validateOwner(owner);
 }
 export function validateGraph(graph: Graph, trustedDataset?: CsvDataset | CsvDataset[]) {
@@ -222,6 +238,7 @@ export function validateGraph(graph: Graph, trustedDataset?: CsvDataset | CsvDat
     Array.isArray(trustedDataset) ? trustedDataset : trustedDataset ? [trustedDataset] : [],
   );
   try {
+    validateNotationGraph(graph);
     validateSpatialGraph(graph);
     validateSimulationGraph(graph);
     validateSqlQueryGraph(graph);
