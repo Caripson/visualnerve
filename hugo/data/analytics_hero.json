@@ -1,0 +1,151 @@
+{
+  "illustrative": true,
+  "source": "growthChurnInput: daily customer-base snapshots",
+  "engineVersion": "1.0.0",
+  "seriesId": "daily-customers",
+  "resolution": "month",
+  "timezone": "UTC",
+  "unit": "customers",
+  "from": "2023-01-01T00:00:00.000Z",
+  "to": "2024-04-30T23:59:59.999Z",
+  "axis": {
+    "min": 1440,
+    "max": 1640
+  },
+  "candles": [
+    {
+      "time": "2023-01-01T00:00:00.000Z",
+      "open": 1533,
+      "close": 1544,
+      "high": 1545,
+      "low": 1532
+    },
+    {
+      "time": "2023-02-01T00:00:00.000Z",
+      "open": 1544,
+      "close": 1558,
+      "high": 1558,
+      "low": 1544
+    },
+    {
+      "time": "2023-03-01T00:00:00.000Z",
+      "open": 1558,
+      "close": 1572,
+      "high": 1572,
+      "low": 1558
+    },
+    {
+      "time": "2023-04-01T00:00:00.000Z",
+      "open": 1572,
+      "close": 1587,
+      "high": 1587,
+      "low": 1572
+    },
+    {
+      "time": "2023-05-01T00:00:00.000Z",
+      "open": 1587,
+      "close": 1601,
+      "high": 1601,
+      "low": 1587
+    },
+    {
+      "time": "2023-06-01T00:00:00.000Z",
+      "open": 1601,
+      "close": 1614,
+      "high": 1614,
+      "low": 1601
+    },
+    {
+      "time": "2023-07-01T00:00:00.000Z",
+      "open": 1614,
+      "close": 1597,
+      "high": 1617,
+      "low": 1594
+    },
+    {
+      "time": "2023-08-01T00:00:00.000Z",
+      "open": 1597,
+      "close": 1579,
+      "high": 1600,
+      "low": 1576
+    },
+    {
+      "time": "2023-09-01T00:00:00.000Z",
+      "open": 1579,
+      "close": 1560,
+      "high": 1582,
+      "low": 1557
+    },
+    {
+      "time": "2023-10-01T00:00:00.000Z",
+      "open": 1560,
+      "close": 1541,
+      "high": 1563,
+      "low": 1538
+    },
+    {
+      "time": "2023-11-01T00:00:00.000Z",
+      "open": 1541,
+      "close": 1523,
+      "high": 1544,
+      "low": 1520
+    },
+    {
+      "time": "2023-12-01T00:00:00.000Z",
+      "open": 1523,
+      "close": 1506,
+      "high": 1526,
+      "low": 1503
+    },
+    {
+      "time": "2024-01-01T00:00:00.000Z",
+      "open": 1506,
+      "close": 1492,
+      "high": 1509,
+      "low": 1489
+    },
+    {
+      "time": "2024-02-01T00:00:00.000Z",
+      "open": 1492,
+      "close": 1481,
+      "high": 1496,
+      "low": 1477
+    },
+    {
+      "time": "2024-03-01T00:00:00.000Z",
+      "open": 1481,
+      "close": 1471,
+      "high": 1485,
+      "low": 1467
+    },
+    {
+      "time": "2024-04-01T00:00:00.000Z",
+      "open": 1471,
+      "close": 1462,
+      "high": 1475,
+      "low": 1458
+    }
+  ],
+  "threshold": 1500,
+  "rule": {
+    "id": "illustrative-customer-floor",
+    "name": "Illustrative customer balance threshold",
+    "version": 1,
+    "enabled": true,
+    "family": "threshold",
+    "seriesId": "closing-customers",
+    "severity": "warning",
+    "parameters": {
+      "comparator": "<",
+      "threshold": 1500,
+      "consecutive": 1,
+      "cooldown": 0,
+      "hysteresis": 0
+    }
+  },
+  "signal": {
+    "observationTime": "2024-01-01T00:00:00.000Z",
+    "detectedAt": "2024-02-01T00:00:00.000Z",
+    "close": 1492
+  }
+}

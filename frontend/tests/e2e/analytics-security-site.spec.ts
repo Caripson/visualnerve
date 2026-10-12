@@ -4,6 +4,69 @@ import { acknowledge } from './fixtures';
 const app = 'https://public-app.test:4341';
 const password = 'Synthetic time series browser protection phrase';
 
+async function verifyCandlestickIllustration(page: Page) {
+  const illustration = page.locator('#time-series').getByRole('img', { name: /Candlesticks/i });
+  await expect(illustration).toBeVisible();
+  await expect(illustration.locator('.analytics-candle')).toHaveCount(16);
+  await expect(illustration.locator('rect:not(.analytics-candle-body)')).toHaveCount(0);
+  await expect(illustration.locator('.analytics-signal')).toHaveAttribute(
+    'data-observation-time',
+    '2024-01-01T00:00:00.000Z',
+  );
+  await expect(illustration.locator('.analytics-signal')).toHaveAttribute(
+    'data-detected-at',
+    '2024-02-01T00:00:00.000Z',
+  );
+  const geometry = await illustration.locator('.analytics-candle').evaluateAll((candles) =>
+    candles.map((candle) => {
+      const body = candle.querySelector<SVGGraphicsElement>('.analytics-candle-body')!;
+      const wick = candle.querySelector<SVGGraphicsElement>('.analytics-candle-wick')!;
+      const bounds = body.getBBox();
+      const wickBounds = wick.getBBox();
+      return {
+        time: candle.getAttribute('data-time'),
+        open: Number(candle.getAttribute('data-open')),
+        high: Number(candle.getAttribute('data-high')),
+        low: Number(candle.getAttribute('data-low')),
+        close: Number(candle.getAttribute('data-close')),
+        fill: getComputedStyle(body).fill,
+        stroke: getComputedStyle(body).stroke,
+        body: { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height },
+        wick: {
+          x: wickBounds.x,
+          y: wickBounds.y,
+          width: wickBounds.width,
+          height: wickBounds.height,
+        },
+      };
+    }),
+  );
+  for (const candle of geometry) {
+    expect(candle.time).toMatch(/^20\d{2}-\d{2}-01T00:00:00\.000Z$/);
+    expect([candle.open, candle.high, candle.low, candle.close].every(Number.isFinite)).toBe(true);
+    expect(candle.low).toBeLessThanOrEqual(Math.min(candle.open, candle.close));
+    expect(candle.high).toBeGreaterThanOrEqual(Math.max(candle.open, candle.close));
+    expect(candle.body.width).toBeGreaterThan(0);
+    if (candle.close === candle.open) expect(candle.body.height).toBe(0);
+    else expect(candle.body.height).toBeGreaterThan(0);
+    expect(candle.body.x).toBeGreaterThanOrEqual(0);
+    expect(candle.body.x + candle.body.width).toBeLessThanOrEqual(640);
+    expect(candle.body.y).toBeGreaterThanOrEqual(0);
+    expect(candle.body.y + candle.body.height).toBeLessThanOrEqual(400);
+    expect(candle.wick.width).toBe(0);
+    expect(candle.wick.x).toBe(candle.body.x + candle.body.width / 2);
+    expect(candle.wick.y).toBeLessThanOrEqual(candle.body.y);
+    expect(candle.wick.y + candle.wick.height).toBeGreaterThanOrEqual(
+      candle.body.y + candle.body.height,
+    );
+    expect(candle.wick.y).toBeGreaterThanOrEqual(0);
+    expect(candle.wick.y + candle.wick.height).toBeLessThanOrEqual(400);
+    expect(candle.stroke).not.toBe('none');
+    if (candle.close > candle.open) expect(candle.fill).not.toBe('none');
+    if (candle.close < candle.open) expect(candle.fill).toBe('none');
+  }
+}
+
 async function setup(page: Page) {
   await page.getByLabel('New workspace password', { exact: true }).fill(password);
   await page.getByLabel('Confirm new password', { exact: true }).fill(password);
@@ -29,6 +92,8 @@ test('public section is lightweight, transparent and links to the real consent-p
     'href',
     '/help/time-series-analysis/',
   );
+  await section.locator('svg').scrollIntoViewIfNeeded();
+  await verifyCandlestickIllustration(page);
   expect(await section.locator('svg text').count()).toBe(0);
   expect(
     await section.locator('svg').evaluate((svg) => getComputedStyle(svg).backgroundColor),
@@ -64,6 +129,7 @@ for (const width of [320, 390, 768, 1440]) {
       const box = await section.boundingBox();
       expect(box?.x).toBeGreaterThanOrEqual(0);
       expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(width);
+      await verifyCandlestickIllustration(page);
       await section.screenshot({ path: `../tmp/analytics-home-${width}-${colorScheme}.png` });
     });
   }

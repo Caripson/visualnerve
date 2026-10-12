@@ -1440,12 +1440,17 @@ input:focus-visible {
 .analytics-product-copy h2 { margin-top: .4rem; }
 .analytics-product-copy p { max-width: 42rem; }
 .analytics-product-intro { font-size: 1.3rem; font-weight: 600; }
+.analytics-product-figure { margin: 0; min-width: 0; }
+.analytics-product-figure figcaption { margin-top: .8rem; font-size: .85rem; text-align: center; opacity: .7; }
 .analytics-illustration { display: block; width: 100%; height: auto; overflow: visible; }
 .analytics-grid { stroke: currentColor; opacity: .1; }
 .analytics-axis { stroke: currentColor; opacity: .35; }
-.analytics-series { stroke: var(--accent, #286a57); }
+.analytics-candle-up { color: var(--accent, #286a57); }
+.analytics-candle-down { color: #bc843e; }
+.analytics-candle-wick { stroke: currentColor; }
+.analytics-candle-body { stroke: currentColor; fill: currentColor; }
+.analytics-candle-down .analytics-candle-body { fill: none; }
 .analytics-threshold { stroke: #bc843e; }
 .analytics-measure { stroke: currentColor; opacity: .6; }
 .analytics-signal { fill: #bc843e; stroke: #bc843e; }
-.analytics-scenario { stroke: var(--accent, #286a57); opacity: .5; }
 @media (max-width: 760px) { .analytics-section { grid-template-columns: minmax(0, 1fr); } .analytics-illustration { max-width: 40rem; margin-inline: auto; } }

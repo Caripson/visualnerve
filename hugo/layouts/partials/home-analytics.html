@@ -9,14 +9,49 @@
     <p><a class="site-text-link" href="/developers/#time-series-analysis">API &amp; MCP documentation →</a></p>
     <p class="demo-note">The template opens after local storage consent and workspace unlock. The example is illustrative; scenarios describe assumptions, not guaranteed forecasts.</p>
   </div>
-  <svg class="analytics-illustration" width="640" height="400" viewBox="0 0 640 400" role="img" aria-labelledby="analytics-illustration-title" focusable="false">
-    <title id="analytics-illustration-title">A time series with a data-anchored measurement, threshold and signal marker</title>
-    <g class="analytics-grid" fill="none" stroke-width="1"><path d="M44 72H610M44 142H610M44 212H610M44 282H610M44 352H610M100 52V352M220 52V352M340 52V352M460 52V352M580 52V352"/></g>
-    <path class="analytics-axis" d="M44 52V352H610" fill="none" stroke-width="2"/>
-    <path class="analytics-threshold" d="M44 164H610" fill="none" stroke-width="2" stroke-dasharray="8 7"/>
-    <path class="analytics-series" d="M52 292L80 277L108 284L136 254L164 267L192 241L220 252L248 223L276 233L304 206L332 212L360 184L388 190L416 173L444 140L472 150L500 113L528 126L556 93L584 105L610 77" fill="none" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
-    <g class="analytics-measure" fill="none" stroke-width="2"><path d="M136 254V320H416V173M131 320H141M411 320H421"/><circle cx="136" cy="254" r="6"/><circle cx="416" cy="173" r="6"/></g>
-    <g class="analytics-signal"><path d="M444 119L457 140L444 161L431 140Z"/><circle cx="444" cy="140" r="29" fill="none" stroke-width="2"/></g>
-    <path class="analytics-scenario" d="M444 140Q524 138 610 145M444 140Q524 80 610 37" fill="none" stroke-width="3" stroke-dasharray="5 7"/>
-  </svg>
+  {{ $data := site.Data.analytics_hero }}
+  {{ $scale := div 300.0 (sub (float $data.axis.max) (float $data.axis.min)) }}
+  {{ $thresholdY := add 52.0 (mul (sub (float $data.axis.max) (float $data.threshold)) $scale) }}
+  {{ $signalX := 0.0 }}
+  {{ $signalY := add 52.0 (mul (sub (float $data.axis.max) (float $data.signal.close)) $scale) }}
+  <figure class="analytics-product-figure">
+    <svg class="analytics-illustration" width="640" height="400" viewBox="0 0 640 400" role="img" aria-labelledby="analytics-illustration-title analytics-illustration-description" focusable="false">
+      <title id="analytics-illustration-title">Monthly candlesticks from illustrative daily customer-base observations</title>
+      <desc id="analytics-illustration-description">Bodies show the first and last observed values; wicks show the observed minimum and maximum. Rising candles are filled and falling candles are hollow. The measurement joins observed closes; the threshold marker identifies a rule onset, known only after the complete month was published.</desc>
+      <g class="analytics-grid" fill="none" stroke-width="1"><path d="M44 72H610M44 142H610M44 212H610M44 282H610M44 352H610M100 52V352M220 52V352M340 52V352M460 52V352M580 52V352"/></g>
+      <path class="analytics-axis" d="M44 52V352H610" fill="none" stroke-width="2"/>
+      <path class="analytics-threshold" d="M44 {{ $thresholdY }}H610" fill="none" stroke-width="2" stroke-dasharray="8 7"/>
+      {{ range $index, $candle := $data.candles }}
+        {{ $x := add 72.0 (mul 34.0 (float $index)) }}
+        {{ $highY := add 52.0 (mul (sub (float $data.axis.max) (float $candle.high)) $scale) }}
+        {{ $lowY := add 52.0 (mul (sub (float $data.axis.max) (float $candle.low)) $scale) }}
+        {{ $bodyY := add 52.0 (mul (sub (float $data.axis.max) (math.Max (float $candle.open) (float $candle.close))) $scale) }}
+        {{ $bodyHeight := mul (math.Abs (sub (float $candle.open) (float $candle.close))) $scale }}
+        {{ if eq $candle.time $data.signal.observationTime }}{{ $signalX = $x }}{{ end }}
+        <g class="analytics-candle {{ if ge $candle.close $candle.open }}analytics-candle-up{{ else }}analytics-candle-down{{ end }}" data-time="{{ $candle.time }}" data-open="{{ $candle.open }}" data-high="{{ $candle.high }}" data-low="{{ $candle.low }}" data-close="{{ $candle.close }}">
+          <path class="analytics-candle-wick" d="M{{ $x }} {{ $highY }}V{{ $bodyY }}M{{ $x }} {{ add $bodyY $bodyHeight }}V{{ $lowY }}" fill="none" stroke-width="2"/>
+          {{ if eq $candle.open $candle.close }}
+            <line class="analytics-candle-body" x1="{{ sub $x 7.0 }}" x2="{{ add $x 7.0 }}" y1="{{ $bodyY }}" y2="{{ $bodyY }}" stroke-width="2"/>
+          {{ else }}
+            <rect class="analytics-candle-body" x="{{ sub $x 7.0 }}" y="{{ $bodyY }}" width="14" height="{{ $bodyHeight }}" stroke-width="2" rx="1"/>
+          {{ end }}
+        </g>
+      {{ end }}
+      {{ $first := index $data.candles 0 }}
+      {{ $last := index $data.candles (sub (len $data.candles) 1) }}
+      {{ $firstY := add 52.0 (mul (sub (float $data.axis.max) (float $first.close)) $scale) }}
+      {{ $lastY := add 52.0 (mul (sub (float $data.axis.max) (float $last.close)) $scale) }}
+      <g class="analytics-measure" fill="none" stroke-width="2">
+        <path d="M72 {{ $firstY }}V374H582V{{ $lastY }}M67 374H77M577 374H587"/>
+        <circle cx="72" cy="{{ $firstY }}" r="5"/><circle cx="582" cy="{{ $lastY }}" r="5"/>
+      </g>
+      <g class="analytics-signal" data-observation-time="{{ $data.signal.observationTime }}" data-detected-at="{{ $data.signal.detectedAt }}">
+        <path d="M{{ $signalX }} {{ $signalY }}l22 -30" fill="none" stroke-width="1.5"/>
+        <circle cx="{{ $signalX }}" cy="{{ $signalY }}" r="4"/>
+        <path d="M{{ add $signalX 22.0 }} {{ sub $signalY 44.0 }}l10 14l-10 14l-10 -14Z"/>
+        <circle cx="{{ add $signalX 22.0 }}" cy="{{ sub $signalY 30.0 }}" r="22" fill="none" stroke-width="1.5"/>
+      </g>
+    </svg>
+    <figcaption>Illustrative example data · Monthly OHLC from daily customer-base snapshots.</figcaption>
+  </figure>
 </section>
