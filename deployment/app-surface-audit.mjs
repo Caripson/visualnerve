@@ -7,7 +7,7 @@ import {
   appResponseHeaders,
 } from "./app-policy.mjs";
 
-const guideNames = [
+const previousGuideNames = [
   "getting-started",
   "editing",
   "layouts",
@@ -25,6 +25,12 @@ const guideNames = [
   "api-mcp",
   "collaboration",
   "troubleshooting",
+];
+const guideNames = [
+  ...previousGuideNames,
+  "time-series-analysis",
+  "ibm-flowcharting",
+  "flowchart-symbols",
 ];
 export const policyNames = ["privacy", "security", "license"];
 const generatedFiles = [
@@ -65,7 +71,10 @@ export function filesIn(directory, prefix = "") {
 }
 export const text = (directory, path) =>
   readFileSync(resolve(directory, path), "utf8");
-export function auditAppSurface(directory, { allowLegacyAlias = false } = {}) {
+export function auditAppSurface(
+  directory,
+  { allowLegacyAlias = false, allowPreviousGuideInventory = false } = {},
+) {
   if (lstatSync(directory).isSymbolicLink())
     throw new Error("The app output must not be a symlink.");
   const files = filesIn(directory);
@@ -172,6 +181,10 @@ export function auditAppSurface(directory, { allowLegacyAlias = false } = {}) {
     "help/index.html",
     "help/help.js",
     "help/help.css",
+    "help/index.json",
+    ...(allowPreviousGuideInventory ? previousGuideNames : guideNames).map(
+      (name) => `help/${name}/index.html`,
+    ),
     "api/docs/index.html",
     "api/docs/docs.js",
     "api/docs/docs.css",
@@ -179,6 +192,31 @@ export function auditAppSurface(directory, { allowLegacyAlias = false } = {}) {
   ])
     if (!files.includes(required))
       throw new Error(`App surface is missing ${required}`);
+  // Only the builder's previous-output check may accept the retired inventory.
+  // Newly generated packages and all publication audits require complete Help.
+  if (!allowPreviousGuideInventory) {
+    const urls = guideNames.map((name) => `/help/${name}/`).sort();
+    const index = JSON.parse(text(directory, "help/index.json"));
+    const indexedUrls = Array.isArray(index.guides)
+      ? index.guides.map((guide) => guide.url).sort()
+      : [];
+    if (JSON.stringify(indexedUrls) !== JSON.stringify(urls))
+      throw new Error(
+        "App Help search index does not match the guide inventory.",
+      );
+    const navigation = text(directory, "help/index.html");
+    const linkedUrls = [
+      ...navigation.matchAll(/<a\b[^>]*\bhref=["'](\/help\/[^"']+)["']/g),
+    ].map((match) => match[1]);
+    for (const url of urls)
+      if (!linkedUrls.includes(url))
+        throw new Error(`App Help navigation is missing ${url}`);
+    for (const url of linkedUrls)
+      if (!urls.includes(url.split("#")[0]))
+        throw new Error(
+          `App Help navigation refers to an unavailable guide: ${url}`,
+        );
+  }
   if (
     JSON.stringify(manifest.responseHeaders) !==
     JSON.stringify(

@@ -522,7 +522,14 @@ test('live app Help/API render under CSP, retired app aliases are 404, and the o
   const request = await playwright.request.newContext({ ignoreHTTPSErrors: false });
   try {
     const clean = await diagnostics(page);
-    for (const path of ['/help/', '/help/settings/', '/api/docs/']) {
+    for (const path of [
+      '/help/',
+      '/help/settings/',
+      '/help/time-series-analysis/',
+      '/help/ibm-flowcharting/',
+      '/help/flowchart-symbols/',
+      '/api/docs/',
+    ]) {
       const response = await page.goto(`${app}${path}`);
       expect(response?.status()).toBe(200);
       expect(new URL(page.url()).origin).toBe(app);

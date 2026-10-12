@@ -67,7 +67,10 @@ export async function buildAppSurface(
   if (within(source, destination) || within(destination, source))
     throw new Error("App output and source must not overlap.");
   if (existsSync(destination))
-    auditAppSurface(destination, { allowLegacyAlias: true });
+    auditAppSurface(destination, {
+      allowLegacyAlias: true,
+      allowPreviousGuideInventory: true,
+    });
   const output = mkdtempSync(
     resolve(dirname(destination), ".visualnerve-app-surface-"),
   );

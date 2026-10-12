@@ -1,6 +1,14 @@
 // @vitest-environment node
 import { afterEach, expect, it } from 'vitest';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { buildAppSurface, auditAppSurface } from '../../scripts/build-app-surface.mjs';
@@ -15,6 +23,10 @@ import { spawnSync } from 'node:child_process';
 import { requireAppApproval } from '../../deployment/require-app-approval.mjs';
 
 const temporary: string[] = [];
+const helpGuideNames = readdirSync(new URL('../../hugo/content/help/', import.meta.url))
+  .filter((name) => name.endsWith('.md') && name !== '_index.md')
+  .map((name) => name.slice(0, -3))
+  .sort();
 afterEach(() =>
   temporary.splice(0).forEach((directory) => rmSync(directory, { recursive: true, force: true })),
 );
@@ -50,17 +62,19 @@ function fixture() {
   put(
     'help/index.html',
     shell(
-      '<main class="help-main"><a href="/mcp/">Bridge setup</a><a href="/help/editing/">Editing</a></main>',
+      `<main class="help-main"><a href="/mcp/">Bridge setup</a>${helpGuideNames
+        .map((name) => `<a href="/help/${name}/">${name}</a>`)
+        .join('')}</main>`,
     ),
   );
-  put('help/editing/index.html', shell('<main class="help-main"><h1>Editing</h1></main>'));
-  put(
-    'help/collaboration/index.html',
-    shell('<main class="help-main"><h1>Collaboration</h1></main>'),
-  );
+  for (const name of helpGuideNames)
+    put(`help/${name}/index.html`, shell(`<main class="help-main"><h1>${name}</h1></main>`));
   put('help/help.js', 'window.localHelp = true;');
   put('help/help.css', '.help-main{}');
-  put('help/index.json', '{"guides":[]}');
+  put(
+    'help/index.json',
+    JSON.stringify({ guides: helpGuideNames.map((name) => ({ url: `/help/${name}/` })) }),
+  );
   put('help/images/editor.webp', 'approved screenshot');
   put('site/mark.svg', '<svg xmlns="http://www.w3.org/2000/svg"/>');
   put('site/syntax.css', '.highlight{}');
@@ -144,6 +158,97 @@ it('prepares a single app root and local documentation without legacy alias, mar
   expect(worker).toContain('/editor/speech/piper_phonemize.wasm');
   expect(worker).not.toMatch(/site\/consent|vendor\/klaro|\/features\//);
   expect(readFileSync(join(output, 'robots.txt'), 'utf8')).toBe('User-agent: *\nDisallow: /\n');
+});
+
+it('copies every current Help guide with matching search, navigation and offline routes', async () => {
+  const { source, output } = fixture();
+  expect(helpGuideNames).toHaveLength(20);
+  const prepared = await buildAppSurface(source, output);
+  expect(prepared.files.filter((path) => /^help\/[^/]+\/index\.html$/.test(path))).toEqual(
+    helpGuideNames.map((name) => `help/${name}/index.html`),
+  );
+  const index = JSON.parse(readFileSync(join(output, 'help/index.json'), 'utf8'));
+  const navigation = readFileSync(join(output, 'help/index.html'), 'utf8');
+  const worker = readFileSync(join(output, 'sw.js'), 'utf8');
+  const offlineRoutes = JSON.parse(worker.match(/^const assets = (.*);$/m)![1]);
+  expect(index.guides.map((guide: { url: string }) => guide.url).sort()).toEqual(
+    helpGuideNames.map((name) => `/help/${name}/`),
+  );
+  for (const name of helpGuideNames) {
+    expect(navigation).toContain(`href="/help/${name}/"`);
+    expect(offlineRoutes).toContain(`/help/${name}/`);
+  }
+});
+
+it('rejects any missing guide and refuses to promote an incomplete new package', async () => {
+  const { source, output } = fixture();
+  await buildAppSurface(source, output);
+  for (const name of helpGuideNames) {
+    const path = join(output, `help/${name}/index.html`);
+    const html = readFileSync(path, 'utf8');
+    rmSync(path);
+    expect(() => auditAppSurface(output)).toThrow(`App surface is missing help/${name}/index.html`);
+    writeFileSync(path, html);
+  }
+  const original = readFileSync(join(output, 'app-surface.json'), 'utf8');
+  rmSync(join(source, 'help/flowchart-symbols/index.html'));
+  await expect(buildAppSurface(source, output)).rejects.toThrow(
+    'App surface is missing help/flowchart-symbols/index.html',
+  );
+  expect(readFileSync(join(output, 'app-surface.json'), 'utf8')).toBe(original);
+  expect(auditAppSurface(output)).toContain('help/flowchart-symbols/index.html');
+});
+
+it('rejects Help search and navigation inventories that disagree with the packaged guides', async () => {
+  const { source, output } = fixture();
+  await buildAppSurface(source, output);
+  const indexPath = join(output, 'help/index.json');
+  const originalIndex = readFileSync(indexPath, 'utf8');
+  const index = JSON.parse(originalIndex);
+  index.guides.pop();
+  writeFileSync(indexPath, JSON.stringify(index));
+  expect(() => auditAppSurface(output)).toThrow('App Help search index does not match');
+  index.guides.push({ url: '/help/unreviewed-guide/' });
+  writeFileSync(indexPath, JSON.stringify(index));
+  expect(() => auditAppSurface(output)).toThrow('App Help search index does not match');
+  writeFileSync(indexPath, originalIndex);
+  const navigationPath = join(output, 'help/index.html');
+  const navigation = readFileSync(navigationPath, 'utf8');
+  writeFileSync(navigationPath, navigation.replace('href="/help/ibm-flowcharting/"', 'href="/"'));
+  expect(() => auditAppSurface(output)).toThrow(
+    'App Help navigation is missing /help/ibm-flowcharting/',
+  );
+  writeFileSync(
+    navigationPath,
+    navigation.replace('</main>', '<a href="/help/unreviewed-guide/">Unreviewed</a></main>'),
+  );
+  expect(() => auditAppSurface(output)).toThrow(
+    'App Help navigation refers to an unavailable guide',
+  );
+});
+
+it('safely upgrades a previous 17-guide package without relaxing publication or destination safety', async () => {
+  const { source, output } = fixture();
+  await buildAppSurface(source, output);
+  for (const name of ['time-series-analysis', 'ibm-flowcharting', 'flowchart-symbols'])
+    rmSync(join(output, `help/${name}`), { recursive: true });
+  expect(() => auditAppSurface(output)).toThrow(
+    'App surface is missing help/time-series-analysis/index.html',
+  );
+  const editingPath = join(output, 'help/editing/index.html');
+  const editing = readFileSync(editingPath, 'utf8');
+  rmSync(editingPath);
+  await expect(buildAppSurface(source, output)).rejects.toThrow(
+    'App surface is missing help/editing/index.html',
+  );
+  writeFileSync(editingPath, editing);
+  writeFileSync(join(output, 'personal.txt'), 'keep this');
+  await expect(buildAppSurface(source, output)).rejects.toThrow('Unexpected file');
+  expect(readFileSync(join(output, 'personal.txt'), 'utf8')).toBe('keep this');
+  rmSync(join(output, 'personal.txt'));
+  const next = await buildAppSurface(source, output);
+  expect(next.files.filter((path) => /^help\/[^/]+\/index\.html$/.test(path))).toHaveLength(20);
+  expect(auditAppSurface(output)).toEqual(next.files);
 });
 
 it('builds from a retired production website and safely replaces a previously audited app alias without publishing it again', async () => {

@@ -6,6 +6,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   realpathSync,
   rmSync,
   symlinkSync,
@@ -326,10 +327,23 @@ async function shellFixture() {
   put('public/sw.js', '// public worker');
   put('public/site/mark.svg', '<svg/>');
   put('public/site/syntax.css', '.syntax{}');
-  put('public/help/index.html', shell('<main class="help-main">Help</main>'));
+  const guideNames = readdirSync(new URL('../../hugo/content/help/', import.meta.url))
+    .filter((name) => name.endsWith('.md') && name !== '_index.md')
+    .map((name) => name.slice(0, -3));
+  put(
+    'public/help/index.html',
+    shell(
+      `<main class="help-main">${guideNames.map((name) => `<a href="/help/${name}/">${name}</a>`).join('')}</main>`,
+    ),
+  );
+  for (const name of guideNames)
+    put(`public/help/${name}/index.html`, shell(`<main class="help-main">${name}</main>`));
   put('public/help/help.js', 'window.help = 1;');
   put('public/help/help.css', '.help{}');
-  put('public/help/index.json', '[]');
+  put(
+    'public/help/index.json',
+    JSON.stringify({ guides: guideNames.map((name) => ({ url: `/help/${name}/` })) }),
+  );
   put('public/openapi.yaml', '{"paths":{}}');
   put('public/api/docs/index.html', shell('<main id="swagger-ui"></main>'));
   put('public/api/docs/docs.js', 'window.docs = 1;');

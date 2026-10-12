@@ -33,6 +33,12 @@ The builder first audits the source. It leaves `public/` untouched and produces
 generated output. It refuses overlapping paths, symlinks, personal exports and
 unrecognized destination folders; it never uploads anything.
 
+The final audit requires all 20 allowlisted Help guide pages, with matching search
+and Help-index navigation. This includes `/help/time-series-analysis/`,
+`/help/ibm-flowcharting/` and `/help/flowchart-symbols/`; production smoke checks
+visit those routes. A previous audited 17-guide generated package can be replaced,
+but incomplete packages cannot pass the publication audit.
+
 The app package includes:
 
 - The workspace at `/` only, existing relative editor modules, layout/import/
