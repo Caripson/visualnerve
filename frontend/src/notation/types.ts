@@ -264,6 +264,8 @@ export interface NotationGeometry {
   detailPaths: readonly string[];
   dashedPaths?: readonly string[];
   filledPaths: readonly string[];
+  /** Opaque label surfaces that overlap the main outline, painted before detail strokes. */
+  backgroundPaths?: readonly string[];
   /** Lightly shaded participant bands, distinct from solid semantic markers. */
   shadedPaths?: readonly string[];
   /** Negative strokes inside a filled marker, painted with the node surface. */

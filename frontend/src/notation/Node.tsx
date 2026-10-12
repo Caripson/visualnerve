@@ -7,7 +7,8 @@ import { NodeTitle } from '../nodes/NodeTitle';
 import { NodeQuickAdd } from '../nodes/NodeQuickAdd';
 import { NodeStatus } from '../ui/NodeStatus';
 import { AreaIcon, iconKey } from '../ui/icons';
-import { nodeBackgroundColor, nodeBackgroundStyle } from '../nodes/appearance';
+import { nodeBackgroundColor } from '../nodes/appearance';
+import { notationBackgroundStyle, notationTitleHasFill } from './appearance';
 import { getNotationSymbol } from './registry';
 import { notationGeometry } from './geometry';
 import { NotationGlyph } from './Glyph';
@@ -26,6 +27,7 @@ export const NotationNode = memo(function NotationNode({
   const notation = node.notation!;
   const definition = getNotationSymbol(notation.collection, notation.symbol)!;
   const geometry = notationGeometry(notation);
+  const titleHasFill = notationTitleHasFill(geometry, definition.container);
   const readonly = isReadonlyCanvasNode(node);
   const resize = useCallback(
     (_: unknown, size: ResizeParams) => data.resize?.(id, size),
@@ -39,7 +41,7 @@ export const NotationNode = memo(function NotationNode({
       style={
         {
           '--node-accent': node.color || data.mindmap?.color || '#31766c',
-          ...nodeBackgroundStyle(node.backgroundColor),
+          ...notationBackgroundStyle(node.backgroundColor, titleHasFill),
           '--notation-x': `${geometry.contentBox.x * 100}%`,
           '--notation-y': `${geometry.contentBox.y * 100}%`,
           '--notation-width': `${geometry.contentBox.width * 100}%`,
@@ -50,6 +52,7 @@ export const NotationNode = memo(function NotationNode({
       data-node-id={id}
       data-notation-collection={notation.collection}
       data-notation-symbol={notation.symbol}
+      data-notation-title-fill={titleHasFill ? 'node' : 'canvas'}
       data-node-background={nodeBackgroundColor(node.backgroundColor)}
       data-node-status={node.status || undefined}
     >

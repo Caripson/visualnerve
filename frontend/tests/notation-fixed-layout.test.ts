@@ -149,6 +149,7 @@ describe('fixed notation text regions', () => {
     const parameter = shape.compartmentBoxes!.find((box) => box.id === 'parameters')!;
     expect(parameter).toEqual({ id: 'parameters', x: 0.565, y: 0.015, width: 0.42, height: 0.25 });
     expect(shape.dashedPaths).toEqual(['M 55 0 L 100 0 L 100 28 L 55 28 Z']);
+    expect(shape.backgroundPaths).toEqual(shape.dashedPaths);
     for (const box of shape.compartmentBoxes!) expect(overlaps(box, shape.contentBox)).toBe(false);
     for (const id of ['attributes', 'operations'])
       expect(shape.compartmentBoxes!.find((box) => box.id === id)!.y).toBeGreaterThan(0.34);

@@ -24,6 +24,10 @@
 .notation-outline.fill-none {
   fill: none;
 }
+.notation-background {
+  fill: var(--node-bg, var(--surface));
+  stroke: none;
+}
 .notation-outline.fill-foreground,
 .notation-fill {
   fill: var(--node-accent, currentColor);
@@ -55,6 +59,9 @@
   font-size: 14px;
   line-height: 1.35;
   overflow-wrap: anywhere;
+}
+.notation-node[data-notation-title-fill='canvas'] .node-title-input {
+  background: var(--surface);
 }
 .notation-node-content[data-title-style='italic'] .node-title {
   font-style: italic;

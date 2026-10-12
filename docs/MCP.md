@@ -18,6 +18,8 @@ Ordinary CRUD saves optional `diagram.notation={schemaVersion:1,collection,diagr
 
 A node can have either `notation` or `flowchartSymbol`. Clear the alternate field with null in the same versioned PATCH or existing bulk upsert when switching; setting both returns 422 `INVALID_NOTATION`. Titles, native types, accents and backgrounds remain independent.
 
+New notation examples inherit the active Appearance instead of saving a pale custom fill. Explicit `backgroundColor` stays the authored hex color in both 2D and 3D; a versioned partial update with `backgroundColor:null` returns to the theme fill without changing the symbol or accent. Open regions and rounded corners remain transparent.
+
 Fixed HIPO `ipo-chart` layouts permit three compartments, or four when `properties.detail:"detail"` or node `diagramKind:"detail-ipo"` selects detail mode. BPMN `choreography-task`, `sub-choreography` and `call-choreography` permit three. Extra sections return 422 `INVALID_NOTATION`; valid custom section IDs and content are preserved.
 
 Host moves through PATCH or bulk translate attached ports, boundary events and executions once, including native group contents. Explicit child/attachment coordinates in the same bulk request take precedence independently of entry order; related-node links do not imply movement. Read the updated graph and entity versions before subsequent edits.

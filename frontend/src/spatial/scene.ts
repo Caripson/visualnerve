@@ -16,6 +16,8 @@ import {
   paintNotationFace,
 } from '../notation/spatial';
 import { notationGeometry } from '../notation/geometry';
+import { notationTitleHasFill } from '../notation/appearance';
+import { getNotationSymbol } from '../notation/registry';
 import * as THREE from 'three';
 import type { Edge } from '@xyflow/react';
 import type { CanvasNode } from '../canvas/projection';
@@ -26,6 +28,7 @@ import { getIbmSymbol, type IBMSymbolId } from '../flowchart/ibm-symbols';
 import { ibmConnectionFraction, ibmReliefGeometry } from './ibm-relief';
 import { paintIbmFace } from './ibm-face';
 import { nodeBackgroundColor } from '../nodes/appearance';
+import { readSpatialNodeTheme, type SpatialNodeTheme } from './appearance';
 
 export const SPATIAL_NODE_LIMIT = 8000;
 export const SPATIAL_EDGE_LIMIT = 16000;
@@ -45,10 +48,22 @@ export function spatialNodeDimensions(view: CanvasNode, scale = 1) {
 }
 
 /** Match the inherited branch colors and foreground contrast of the 2D cards. */
-export function spatialNodeAppearance(view: CanvasNode) {
-  const accent = view.data.mindmap?.color || view.data.node.color || '#538971';
+export function spatialNodeAppearance(view: CanvasNode, theme = readSpatialNodeTheme()) {
+  const accent = view.data.node.notation
+    ? view.data.node.color || view.data.mindmap?.color || '#31766c'
+    : view.data.mindmap?.color || view.data.node.color || '#538971';
   const custom = nodeBackgroundColor(view.data.node.backgroundColor);
-  if (custom) return { background: custom, color: topicInk(custom), accent };
+  if (custom) {
+    const notation = view.data.node.notation,
+      titleHasFill =
+        !notation ||
+        notationTitleHasFill(
+          notationGeometry(notation),
+          getNotationSymbol(notation.collection, notation.symbol)?.container,
+        );
+    return { background: custom, color: titleHasFill ? topicInk(custom) : theme.color, accent };
+  }
+  if (view.data.node.notation) return { background: theme.background, color: theme.color, accent };
   const depth =
     view.data.node.notation || getIbmSymbol(view.data.node.flowchartSymbol)
       ? undefined
@@ -57,6 +72,46 @@ export function spatialNodeAppearance(view: CanvasNode) {
   const background = new THREE.Color('#ffffff');
   if (depth !== undefined) background.lerp(new THREE.Color(accent), depth === 0 ? 0.07 : 0.14);
   return { background: `#${background.getHexString()}`, color: '#182c25', accent };
+}
+
+function spatialReliefColor(view: CanvasNode, theme: SpatialNodeTheme) {
+  const appearance = spatialNodeAppearance(view, theme),
+    notation = view.data.node.notation;
+  const fill = notation && notationGeometry(notation).outlineFill;
+  const frame = notation && getNotationSymbol(notation.collection, notation.symbol)?.container;
+  return batchColor(
+    fill === 'none' || fill === 'foreground' || frame ? appearance.accent : appearance.background,
+    '#ffffff',
+  );
+}
+
+/** Theme changes must also reach shaped relief without a resident face texture. */
+export function refreshSpatialNotationAppearance(batches: SpatialBatches, views: CanvasNode[]) {
+  const theme = readSpatialNodeTheme();
+  for (const view of views) {
+    if (!view.data.node.notation) continue;
+    const entry = batches.nodes.get(view.id);
+    if (!entry) continue;
+    entry.color.copy(spatialReliefColor(view, theme));
+    entry.mesh.setColorAt(entry.index, entry.color);
+    entry.mesh.instanceColor?.addUpdateRange(entry.index * 3, 3);
+    if (entry.mesh.instanceColor) entry.mesh.instanceColor.needsUpdate = true;
+  }
+}
+
+/** Raster ink cannot determine the body color of a hollow or sparsely drawn symbol. */
+export function applySpatialCapturedColor(
+  batches: SpatialBatches,
+  id: string,
+  color: THREE.Color | undefined,
+  selected: boolean,
+) {
+  const entry = batches.nodes.get(id);
+  if (!entry || !color || entry.mesh.geometry.userData.notation) return;
+  entry.color.copy(color);
+  if (!selected) entry.mesh.setColorAt(entry.index, color);
+  entry.mesh.instanceColor?.addUpdateRange(entry.index * 3, 3);
+  if (entry.mesh.instanceColor) entry.mesh.instanceColor.needsUpdate = true;
 }
 
 /** Keep selection visible without letting a large imported graph overwhelm WebGL. */
@@ -183,6 +238,7 @@ export function spatialTextPlane(
   text: string,
   options: {
     color?: string;
+    accent?: string;
     background?: string;
     width?: number;
     height?: number;
@@ -262,6 +318,12 @@ export function spatialTextPlane(
       side: THREE.FrontSide,
       transparent: !!ibm || !!options.notation,
       alphaTest: ibm || options.notation ? 0.01 : 0,
+      // Translucent container interiors share the sheet plane with nested containers.
+      // Their textures must not mask child text; the opaque relief still writes depth.
+      depthWrite: !(
+        options.notation &&
+        getNotationSymbol(options.notation.collection, options.notation.symbol)?.container
+      ),
     }),
   );
   face.userData.flowchartSymbol = options.flowchartSymbol;
@@ -396,7 +458,8 @@ function reliefProfile(view: CanvasNode): ReliefProfile {
   return {
     symbol: getIbmSymbol(view.data.node.flowchartSymbol)?.id,
     notation: view.data.node.notation,
-    opacity: Number(view.style?.opacity ?? 1) * (kind === 'group' ? 0.03 : 1),
+    opacity:
+      Number(view.style?.opacity ?? 1) * (kind === 'group' && !view.data.node.notation ? 0.03 : 1),
     radiusX: quantize(radius / (dimensions.width * 100)),
     radiusY: quantize((kind === 'database' ? 8 : radius) / (dimensions.height * 100)),
     // CSS skew(-4deg) uses downward Y; world Y points up. Normalize the
@@ -516,6 +579,7 @@ export function createSpatialBatches(
   scale = 1,
   sheetOrigin: SpatialSheetOrigin = { centerX: 0, centerY: 0 },
 ): SpatialBatches {
+  const theme = readSpatialNodeTheme();
   const result: SpatialBatches = {
     sheetOrigin,
     group: new THREE.Group(),
@@ -608,8 +672,7 @@ export function createSpatialBatches(
         point.y,
         point.z - (view.data.node.nodeType === 'group' ? 0.16 * scale : 0),
       );
-      const appearance = spatialNodeAppearance(view);
-      const color = batchColor(appearance.background, '#ffffff');
+      const color = spatialReliefColor(view, theme);
       const { width, height, depth } = spatialNodeDimensions(view, scale);
       const dimensions = new THREE.Vector3(width, height, depth);
       matrix.makeScale(width, height, depth).setPosition(position);
@@ -636,7 +699,7 @@ export function createSpatialBatches(
       const completed = isCompletedStatus(view.data.node.status);
       const thickness = Math.min(width / 8, height / 8, (completed ? 0.025 : 0.012) * scale);
       const color = batchColor(
-        completed ? '#168251' : spatialNodeAppearance(view).accent,
+        completed ? '#168251' : spatialNodeAppearance(view, theme).accent,
         '#538971',
       );
       const strips = [
@@ -1007,7 +1070,10 @@ export function selectSpatialBatches(
       .makeScale(entry.dimensions.x, entry.dimensions.y, entry.dimensions.z)
       .setPosition(entry.position);
     entry.mesh.setMatrixAt(entry.index, matrix);
-    entry.mesh.setColorAt(entry.index, selectedNodes.has(id) ? color : entry.color);
+    entry.mesh.setColorAt(
+      entry.index,
+      selectedNodes.has(id) && !entry.mesh.geometry.userData.notation ? color : entry.color,
+    );
     entry.mesh.instanceMatrix.addUpdateRange(entry.index * 16, 16);
     entry.mesh.instanceMatrix.needsUpdate = true;
     entry.mesh.instanceColor?.addUpdateRange(entry.index * 3, 3);

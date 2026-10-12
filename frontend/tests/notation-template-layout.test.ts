@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { createNotationGraph } from '../src/notation/templates';
+import { createNotationGraph, notationTemplates } from '../src/notation/templates';
 import { notationGeometry } from '../src/notation/geometry';
+
+it('lets every new notation starting set follow Appearance instead of saving a pale custom fill', () => {
+  for (const template of notationTemplates) {
+    const graph = createNotationGraph(template.key, 'Theme-aware example')!;
+    expect(graph.nodes.length).toBeGreaterThan(0);
+    for (const node of graph.nodes)
+      expect(node.backgroundColor, `${template.key}: ${node.title}`).toBeUndefined();
+  }
+});
 
 describe('readable BPMN example containment', () => {
   it.each(['bpmn-process', 'bpmn-collaboration'])(

@@ -29,12 +29,15 @@ import {
   SPATIAL_LABEL_LIMIT,
   spatialNodeDimensions,
   spatialNodeAppearance,
+  refreshSpatialNotationAppearance,
+  applySpatialCapturedColor,
   spatialTextPlane,
   setSpatialFaceOpacity,
   setSpatialNodeFaceCaptured,
   spatialFaceSurfaces,
   setSpatialFaceIdentity,
 } from './scene';
+import { readSpatialTheme } from './appearance';
 import { boundedSpatialMovement, moveSpatialObjects, spatialMovementIds } from './movement';
 import { spatialDragPoint } from './drag';
 import { spatialMovementPreview } from './movementScene';
@@ -662,6 +665,8 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     theme();
     const themeObserver = new MutationObserver(() => {
       theme();
+      if (current.batches)
+        refreshSpatialNotationAppearance(current.batches, modelRef.current.projected.nodes);
       current.refreshFaces();
     });
     themeObserver.observe(document.documentElement, {
@@ -1166,6 +1171,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     >();
     const selected = new Set(renderSelection.nodes),
       selectedLinks = new Set(renderSelection.edges);
+    const theme = readSpatialTheme();
     if (showLabels) {
       // Keep physical text faces near the visible camera region resident. Camera movement
       // changes which textures are useful, never their world orientation or dimensions.
@@ -1186,7 +1192,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       );
       for (const { view, instance } of candidates.slice(0, SPATIAL_LABEL_LIMIT)) {
         const node = view.data.node;
-        const appearance = spatialNodeAppearance(view);
+        const appearance = spatialNodeAppearance(view, theme);
         wanted.set(`node:${node.id}`, {
           text: `${view.data.presentationNumber ? `${view.data.presentationNumber}. ` : ''}${view.className === 'analysis-outside-data-view' ? '↗ ' : ''}${node.title}`,
           position: instance.position
@@ -1200,6 +1206,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
             depth: instance.dimensions.z,
             background: appearance.background,
             color: appearance.color,
+            accent: appearance.accent,
             status: node.status,
             kind: node.nodeType,
             flowchartSymbol: node.flowchartSymbol,
@@ -1238,8 +1245,8 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
             options: {
               width: 1.3 * current.glyphScale,
               height: 0.22 * current.glyphScale,
-              color: '#4e6058',
-              background: '#edf2ee',
+              color: theme.color,
+              background: theme.surface,
               fontSize: 48,
             },
             opacity: Number(edge.style?.opacity ?? 1),
@@ -1263,8 +1270,8 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
             options: {
               width: 1.3 * current.glyphScale,
               height: 0.22 * current.glyphScale,
-              color: '#4e6058',
-              background: '#edf2ee',
+              color: theme.color,
+              background: theme.surface,
               fontSize: 48,
             },
             opacity: Number(edge.style?.opacity ?? 1),
@@ -1394,15 +1401,14 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
               true,
               current.selectedNodeIds.has(face.userData.nodeId),
             );
-          const instance = current.batches?.nodes.get(face.userData.nodeId);
           const color = capturedCardColor(canvas);
-          if (instance && color) {
-            instance.color.copy(color);
-            if (!current.selectedNodeIds.has(face.userData.nodeId))
-              instance.mesh.setColorAt(instance.index, color);
-            instance.mesh.instanceColor?.addUpdateRange(instance.index * 3, 3);
-            if (instance.mesh.instanceColor) instance.mesh.instanceColor.needsUpdate = true;
-          }
+          if (current.batches)
+            applySpatialCapturedColor(
+              current.batches,
+              face.userData.nodeId,
+              color,
+              current.selectedNodeIds.has(face.userData.nodeId),
+            );
         }
         current.draw();
         if (current.captureAbort === abort) current.captureAbort = undefined;

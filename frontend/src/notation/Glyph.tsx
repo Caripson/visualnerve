@@ -29,6 +29,9 @@ export function NotationGlyph({
         strokeWidth={shape.strokeWidth ?? 1.5}
         vectorEffect="non-scaling-stroke"
       />
+      {shape.backgroundPaths?.map((path, index) => (
+        <path key={`background-${index}`} d={path} className="notation-background" />
+      ))}
       {shape.shadedPaths?.map((path, index) => (
         <path key={`shade-${index}`} d={path} className="notation-shade" />
       ))}

@@ -71,12 +71,13 @@ export function paintNotationFace(
   context: CanvasRenderingContext2D,
   value: NodeNotation,
   title: string,
-  options: { background?: string; color?: string },
+  options: { background?: string; color?: string; accent?: string },
   back = false,
 ) {
   const geometry = notationGeometry(value),
     descriptor = getNotationSymbol(value.collection, value.symbol)!;
   const { width, height } = context.canvas;
+  const accent = options.accent ?? options.color ?? '#31766c';
   context.save();
   context.scale(width / 100, height / 100);
   if (back) {
@@ -84,23 +85,23 @@ export function paintNotationFace(
     context.scale(-1, 1);
   }
   context.lineWidth = geometry.strokeWidth ?? 1.5;
-  context.strokeStyle = options.color ?? '#31766c';
+  context.strokeStyle = accent;
   context.fillStyle =
-    geometry.outlineFill === 'foreground'
-      ? (options.color ?? '#31766c')
-      : (options.background ?? '#ffffff');
+    geometry.outlineFill === 'foreground' ? accent : (options.background ?? '#ffffff');
   if (geometry.stroke === 'dashed') context.setLineDash([5, 3]);
   const outline = new Path2D(geometry.outlinePath);
   if (geometry.outlineFill !== 'none' && !descriptor.container) context.fill(outline);
-  context.save();
-  context.globalAlpha *= 0.12;
-  context.fillStyle = options.color ?? '#31766c';
-  for (const path of geometry.shadedPaths ?? []) context.fill(new Path2D(path));
-  context.restore();
   context.stroke(outline);
   context.setLineDash([]);
+  context.fillStyle = options.background ?? '#ffffff';
+  for (const path of geometry.backgroundPaths ?? []) context.fill(new Path2D(path));
+  context.save();
+  context.globalAlpha *= 0.12;
+  context.fillStyle = accent;
+  for (const path of geometry.shadedPaths ?? []) context.fill(new Path2D(path));
+  context.restore();
   for (const path of geometry.detailPaths) context.stroke(new Path2D(path));
-  context.fillStyle = options.color ?? '#31766c';
+  context.fillStyle = accent;
   context.setLineDash([2, 1]);
   for (const path of geometry.dashedPaths ?? []) context.stroke(new Path2D(path));
   context.setLineDash([]);

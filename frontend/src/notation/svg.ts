@@ -2,6 +2,7 @@ import type { GraphNode } from '../model/types';
 import { topicInk } from '../ui/colors';
 import { attrs, xml, svgPaint, svgIcon, SvgTextLayout } from '../export/svg-native';
 import { notationGeometry } from './geometry';
+import { notationTitleHasFill } from './appearance';
 import { getNotationSymbol } from './registry';
 import { nodeBackgroundColor } from '../nodes/appearance';
 import { iconKey } from '../ui/icons';
@@ -31,7 +32,10 @@ export class NotationSvgRenderer {
       symbol = getNotationSymbol(value.collection, value.symbol)!;
     const custom = nodeBackgroundColor(node.backgroundColor),
       background = custom ?? svgPaint(theme.node, '#ffffff'),
-      ink = custom ? topicInk(custom) : svgPaint(theme.text, '#1f2d28'),
+      ink =
+        custom && notationTitleHasFill(geometry, symbol.container)
+          ? topicInk(custom)
+          : svgPaint(theme.text, '#1f2d28'),
       accent = svgPaint(node.color, '#31766c');
     const { width, height } = position;
     const absolute = (box: { x: number; y: number; width: number; height: number }) => ({
@@ -54,6 +58,8 @@ export class NotationSvgRenderer {
     this.write(
       `<g ${attrs({ 'data-node-id': node.id, 'data-notation-collection': value.collection, 'data-notation-symbol': value.symbol, transform: `translate(${position.x} ${position.y})` })}><title>${xml(node.title)}</title><desc>${xml([node.description, ...(value.compartments?.flatMap((section) => [section.title, ...section.lines]) ?? [])].filter(Boolean).join('\n'))}</desc><g transform="scale(${width / 100} ${height / 100})"><path ${attrs({ 'data-notation-outline': `${value.collection}:${value.symbol}`, d: geometry.outlinePath, fill: geometry.outlineFill === 'none' ? 'none' : geometry.outlineFill === 'foreground' ? accent : background, 'fill-opacity': symbol.container ? 0.035 : undefined, stroke: accent, 'stroke-width': geometry.strokeWidth ?? 1.5, 'stroke-dasharray': geometry.stroke === 'dashed' ? '5 3' : undefined, 'vector-effect': 'non-scaling-stroke' })}/>`,
     );
+    for (const d of geometry.backgroundPaths ?? [])
+      this.write(`<path ${attrs({ d, fill: background, stroke: 'none' })}/>`);
     for (const d of geometry.shadedPaths ?? [])
       this.write(`<path ${attrs({ d, fill: accent, 'fill-opacity': 0.12, stroke: 'none' })}/>`);
     for (const [paths, dashed] of [

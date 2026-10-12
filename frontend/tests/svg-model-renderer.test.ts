@@ -55,6 +55,83 @@ function fixture(): SvgWorkerRequest {
 }
 const parse = (svg: string) => new DOMParser().parseFromString(svg, 'image/svg+xml');
 describe('background native SVG model renderer', () => {
+  it.each([
+    ['#E4EEE9', '#171c19', '#e1e7e1'],
+    ['#172d55', '#fafaf7', '#1f2d28'],
+  ])(
+    'paints overlapping UML parameters with the authored %s fill and matching ink',
+    (backgroundColor, background, text) => {
+      const input = fixture();
+      input.theme.background = background;
+      input.theme.text = text;
+      input.graph.edges = [];
+      const node = newNode(input.graph.diagram.id, {
+        title: 'Order<T>',
+        backgroundColor,
+        notation: {
+          collection: 'uml',
+          symbol: 'template-classifier',
+          compartments: [{ id: 'parameters', lines: ['T: Item'] }],
+        },
+      });
+      input.graph.nodes = [node];
+      const render = () =>
+        parse(new SvgModelRenderer(measure).render(input, formatter).svg).querySelector(
+          `[data-node-id="${node.id}"]`,
+        )!;
+      const card = render();
+      const overlay = card.querySelector(
+        'path[d="M 55 0 L 100 0 L 100 28 L 55 28 Z"][stroke="none"]',
+      );
+      expect(overlay?.getAttribute('fill')).toBe(backgroundColor);
+      expect(
+        [...card.querySelectorAll('text')]
+          .find((entry) => entry.textContent === 'T: Item')
+          ?.getAttribute('fill'),
+      ).toBe(topicInk(backgroundColor));
+      expect(card.innerHTML.indexOf('stroke="none"')).toBeLessThan(
+        card.innerHTML.indexOf('stroke-dasharray="5 3"'),
+      );
+      delete node.backgroundColor;
+      expect(
+        render()
+          .querySelector('path[d="M 55 0 L 100 0 L 100 28 L 55 28 Z"][stroke="none"]')
+          ?.getAttribute('fill'),
+      ).toBe(input.theme.node);
+    },
+  );
+  it('keeps open-frame and external-label text readable on dark canvas despite a saved pale fill', () => {
+    const input = fixture();
+    input.theme.text = '#e1e7e1';
+    input.theme.node = '#242d27';
+    input.theme.background = '#171c19';
+    input.graph.edges = [];
+    const cases = [
+      ['dfd-gane-sarson', 'process', '#000000'],
+      ['dfd-gane-sarson', 'data-store', '#e1e7e1'],
+      ['bpmn', 'start-event', '#e1e7e1'],
+      ['uml', 'package', '#e1e7e1'],
+      ['uml', 'actor', '#e1e7e1'],
+    ] as const;
+    input.graph.nodes = cases.map(([collection, symbol], index) =>
+      newNode(input.graph.diagram.id, {
+        title: `Readable title ${index}`,
+        backgroundColor: '#E4EEE9',
+        x: index * 400,
+        notation: { collection, symbol },
+      }),
+    );
+    const document = parse(new SvgModelRenderer(measure).render(input, formatter).svg);
+    for (const [index, node] of input.graph.nodes.entries()) {
+      const texts = [
+        ...document.querySelector(`[data-node-id="${node.id}"]`)!.querySelectorAll('text'),
+      ];
+      expect(texts.length).toBeGreaterThan(0);
+      expect(
+        texts.find((text) => text.textContent?.includes('Readable title'))?.getAttribute('fill'),
+      ).toBe(cases[index][2]);
+    }
+  });
   it.each(['#172d55', '#fff2c7'])(
     'exports exact %s node fill and contrasting titles across every ordinary kind and IBM, then restores the theme',
     (backgroundColor) => {

@@ -178,6 +178,7 @@ export function notationGeometry(value: NodeNotation): NotationGeometry {
   let titleRotation: -90 | undefined;
   const detailPaths: string[] = [],
     filledPaths: string[] = [],
+    backgroundPaths: string[] = [],
     shadedPaths: string[] = [],
     contrastPaths: string[] = [],
     dashedPaths: string[] = [],
@@ -420,6 +421,7 @@ export function notationGeometry(value: NodeNotation): NotationGeometry {
         [0, 1],
       ]);
       outlinePath = rectangle(0, 0.14, 1, 0.86);
+      backgroundPaths.push(rectangle(0.55, 0, 0.45, 0.28));
       dashedPaths.push(rectangle(0.55, 0, 0.45, 0.28));
       contentBox = box(0.04, 0.17, 0.46, 0.14);
       const sections = value.compartments ?? [];
@@ -1055,6 +1057,7 @@ export function notationGeometry(value: NodeNotation): NotationGeometry {
     outlinePath,
     detailPaths,
     filledPaths,
+    backgroundPaths: backgroundPaths.length ? backgroundPaths : undefined,
     shadedPaths,
     contrastPaths,
     dashedPaths,

@@ -50,6 +50,8 @@ Before removing a port or changing its direction, select its relationships and c
 
 Titles still support F2, double-click or double-tap editing. **Node background color** controls the fill, while **Color** controls the accent. See [ordinary editing](/help/editing/#rename-an-object-on-the-canvas) for keyboard and touch behavior.
 
+New starting sets use the current **Appearance** for their backgrounds in both 2D and 3D. A custom background remains the exact saved color when Appearance changes. Select **Use theme background** in Properties to clear that custom fill; this also works for examples created with the earlier pale background. The fill follows the symbol's outline, so rounded corners and open shapes do not acquire a rectangular background. Text over an open region or outside a filled symbol follows the canvas's theme for readability. UML boundaries and frames keep their visible relief in 3D while their centers remain open.
+
 ## Read and edit relationship ends
 
 Select a connection to choose **Notation collection** and **Relationship notation** in its Properties. The notation supplies its line and end decoration: for example a UML composition diamond, generalization triangle, BPMN message-flow circle and open arrow, or a DFD data-flow arrow.

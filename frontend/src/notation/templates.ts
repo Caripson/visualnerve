@@ -64,7 +64,6 @@ class Example {
       ...descriptor.defaultSize,
       nodeType: descriptor.container ? 'group' : 'generic',
       color: '#47766B',
-      backgroundColor: '#E4EEE9',
       description: `${descriptor.label}. ${descriptor.source.title}; ${descriptor.source.locator}.`,
       tags: [this.profile.collection, diagramKind, 'notation-example'],
       notation,
