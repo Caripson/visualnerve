@@ -188,6 +188,17 @@ export const analyticsCapabilities = {
     signalReviewRequired: true,
     expectedCounts: true,
     forecasts: false,
+    history: {
+      configuration: 'diagram.analytics.scenarioView',
+      references: ['customerHistorySeriesId', 'mrcHistorySeriesId'],
+      source: 'explicit observed snapshot with first/last aggregation',
+      resolutions: ['observation', 'day', 'week', 'month'],
+      timezone: 'UTC',
+      cutoff: 'strictly before scenario start',
+      units: 'separate count and matching-currency MRC panels',
+      boundary: 'labeled projection start; no history-to-projection interpolation',
+      svg: 'shared historical preparation and boundary',
+    },
   },
   validation: {
     splits: ['train', 'validation', 'holdout'],
@@ -195,6 +206,8 @@ export const analyticsCapabilities = {
     outcomeRequiredForAccuracy: true,
     matching: 'first-unmatched',
     retrospectiveWhenRevisionHistoryUnavailable: true,
+    outcomeContinuity:
+      'Knowledge-time order; missing, incomplete, unpublished or noncontiguous preceding evidence breaks an episode; late older releases cannot replace the latest known endpoint',
   },
   signalHistory: {
     maximumEvents: 10000,

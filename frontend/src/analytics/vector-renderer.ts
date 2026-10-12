@@ -9,6 +9,7 @@ export interface AnalyticsSvgPoint {
   low?: number;
   close?: number;
   breakBefore?: boolean;
+  quality?: string;
 }
 export interface AnalyticsSvgSeries {
   id: string;
@@ -34,6 +35,7 @@ export interface AnalyticsSvgOptions {
   measurements?: AnalyticsMeasurement[];
   threshold?: number;
   categoryLabels?: string[];
+  projectionStart?: number;
 }
 export interface AnalyticsSvgExport {
   mimeType: 'image/svg+xml';
@@ -179,6 +181,15 @@ export function serializePreparedChartSvg(
       'INVALID_ANALYTICS',
       'SVG time range must contain finite ordered timestamps.',
     );
+  if (
+    options.projectionStart !== undefined &&
+    (!Number.isFinite(options.projectionStart) ||
+      Math.abs(options.projectionStart) > 8640000000000000)
+  )
+    throw new AnalyticsError(
+      'INVALID_ANALYTICS',
+      'SVG projection start must be a valid timestamp.',
+    );
   const visible = display.map((series) => ({
     ...series,
     points: series.points.filter((point) => point.time >= from && point.time <= to),
@@ -241,6 +252,10 @@ export function serializePreparedChartSvg(
     warnings.push('Normalized index display; source data and measurement values remain unchanged.');
   if (display.some((series) => series.provenance === 'scenario'))
     warnings.push('Assumption-based scenario projection; not a confidence or prediction interval.');
+  if (options.projectionStart !== undefined)
+    warnings.push(
+      `Observed history and separate scenario projections; projection starts ${new Date(options.projectionStart).toISOString()}.`,
+    );
   if (chart.kind === 'waterfall')
     warnings.push(
       'Waterfall bars must be prepared from reconciled change components by the analysis engine.',
@@ -309,13 +324,24 @@ export function serializePreparedChartSvg(
     output.push(
       `<defs><clipPath id="panel-${panel}"><rect x="${left}" y="${num(top)}" width="${right - left}" height="${num(bottom - top)}"/></clipPath></defs><g clip-path="url(#panel-${panel})">`,
     );
+    if (
+      options.projectionStart !== undefined &&
+      options.projectionStart >= from &&
+      options.projectionStart <= to
+    ) {
+      const boundary = x(options.projectionStart);
+      const atRight = boundary > right - 150;
+      output.push(
+        `<g data-projection-boundary="${escape(new Date(options.projectionStart).toISOString())}"><path d="M${num(boundary)} ${num(top)}V${num(bottom)}" stroke="${ink}" stroke-dasharray="2 4" stroke-width="1.5"/><text x="${num(Math.max(left + 8, Math.min(right - 8, boundary + 8)))}" y="${num(top + 14)}" text-anchor="${atRight ? 'end' : 'start'}" font-size="11" font-weight="600">Projection starts</text></g>`,
+      );
+    }
     for (const entry of entries) {
       const index = visible.findIndex((series) => series.id === entry.id),
         points = rendered[index].points,
         paint = color(entry.color, index);
       const kind = entry.renderAs ?? chart.kind;
       output.push(
-        `<g data-series-id="${escape(entry.id)}"><title>${escape(entry.name)} (${escape(unit.label)})</title>`,
+        `<g data-series-id="${escape(entry.id)}"${entry.provenance === 'scenario' ? ' data-provenance="scenario" stroke-dasharray="7 5"' : ''}><title>${escape(entry.name)} (${escape(unit.label)})</title>`,
       );
       if (kind === 'candlestick') {
         const barWidth = Math.max(

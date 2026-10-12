@@ -6,14 +6,12 @@ import type {
   GrowthAssumptions,
   ScenarioResult,
 } from '../types';
-import { ChartView, type DisplaySeries } from './ChartView';
 import {
   dateLabel,
   downloadText,
   errorMessage,
   isCancelled,
   inputDate,
-  seriesColors,
   valueLabel,
 } from './display';
 import type { PanelProps } from './types';
@@ -21,6 +19,7 @@ import { reconcileAnalytics } from '../reconcile';
 import { usePreview } from './use-preview';
 import { UtcTimestamp } from './UtcTimestamp';
 import { ProcessLinkFields } from './ProcessLinkFields';
+import { ScenarioComparison } from './ScenarioComparison';
 
 export function ScenariosPanel(props: PanelProps & { sourceSignal?: AnalyticsSignal }) {
   const latest = (pattern: RegExp, fallback: number) => {
@@ -180,20 +179,6 @@ export function ScenariosPanel(props: PanelProps & { sourceSignal?: AnalyticsSig
       />
     </label>
   );
-  const display: DisplaySeries[] = comparison.map((result, index) => ({
-    id: result.scenarioId,
-    name:
-      props.model.scenarios.find((scenario) => scenario.id === result.scenarioId)?.name ??
-      result.scenarioId,
-    unit: { kind: 'count', label: 'customers' },
-    color: seriesColors[index % seriesColors.length],
-    provenance: 'scenario',
-    points: result.points.map((point) => ({
-      time: new Date(point.time).getTime(),
-      value: point.closingCustomers,
-      quality: 'Expected count',
-    })),
-  }));
   return (
     <section className="analytics-panel">
       <div className="analytics-panel-header">
@@ -499,21 +484,9 @@ export function ScenariosPanel(props: PanelProps & { sourceSignal?: AnalyticsSig
           </button>
         </div>
       )}
+      <ScenarioComparison {...props} results={comparison} />
       {comparison.length > 0 && (
-        <div style={{ marginTop: 24 }}>
-          <h3>Same-horizon scenario comparison</h3>
-          <ChartView
-            chart={{
-              id: 'scenario-comparison',
-              name: 'Projected closing customer base',
-              kind: 'line',
-              seriesIds: display.map((entry) => entry.id),
-              resolution: 'month',
-              normalized: false,
-            }}
-            series={display}
-            note="Dashed series are assumptions-based scenarios. The spread between scenarios is not a statistical confidence interval."
-          />
+        <div>
           <ScenarioTable
             results={comparison}
             names={new Map(props.model.scenarios.map((scenario) => [scenario.id, scenario.name]))}

@@ -8,21 +8,21 @@
     "productionDeployed": false
   },
   "node": {
-    "date": "2026-10-11T22:31:59.039Z",
+    "date": "2026-10-11T23:53:45.314Z",
     "runtime": "v22.17.0",
     "platform": "darwin",
     "architecture": "x64",
     "observations": 100000,
     "series": 10,
     "rules": 100,
-    "validationMs": 450.82409800000005,
-    "analysisMs": 687.0730600000002,
-    "archivePreparationMs": 1698.095594,
-    "archiveReconciliationMs": 2008.9980700000006,
-    "heapUsedBefore": 57887088,
-    "heapUsedAfter": 245466520,
-    "rssBefore": 132128768,
-    "rssAfter": 465100800,
+    "validationMs": 466.58480299999997,
+    "analysisMs": 833.9965840000002,
+    "archivePreparationMs": 2156.4980109999997,
+    "archiveReconciliationMs": 3138.736777,
+    "heapUsedBefore": 51416856,
+    "heapUsedAfter": 209053336,
+    "rssBefore": 133550080,
+    "rssAfter": 499105792,
     "evaluated": 1000000,
     "unknown": 0,
     "scope": "Node engine benchmark; browser interaction/cancellation requires separate browser evidence; memory is sampled process usage, not peak."
@@ -32,11 +32,11 @@
     "series": 10,
     "rules": 100,
     "renderedPoints": 1152,
-    "completeMs": 11463,
-    "cancellationMs": 222,
-    "frames": 550,
-    "maxFrameGapMs": 349.8999999999978,
-    "jsHeapBytes": 477259105,
+    "completeMs": 11653,
+    "cancellationMs": 257,
+    "frames": 558,
+    "maxFrameGapMs": 366.7000000000007,
+    "jsHeapBytes": 472838884,
     "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36"
   },
   "notes": [
@@ -44,6 +44,7 @@
     "Browser completeMs covers the real worker-driven UI workflow; all observations participate in analysis while rendered points are bounded.",
     "Memory values are samples, not peaks. Renderer JavaScript heap excludes total browser and worker memory.",
     "The fixed desktop workload verifies 100000 observations, 10 series and 100 simple rules, not unlimited scale or physical mobile hardware.",
-    "Cancellation, chart pan/zoom and maximum animation-frame gap are asserted by the browser acceptance fixture."
+    "Cancellation, chart pan/zoom and maximum animation-frame gap are asserted by the browser acceptance fixture.",
+    "The final local Node benchmark ran during the isolated browser acceptance batch; timings are observed samples under that test load, not idle-machine guarantees."
   ]
 }

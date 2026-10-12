@@ -4,11 +4,45 @@ import type {
   BacktestResult,
   BacktestRuleResult,
   AnalysisContext,
+  AnalyticsSeries,
+  Observation,
 } from './types';
 import { evaluateSignals, compare } from './signals';
 import { querySeries, checkAnalysis, DAY_MS, contiguous, lexical } from './series';
 import { metric, mean } from './math';
 import { requireAnalysis, validateAnalytics } from './validation';
+
+/** Outcome episodes use complete, published evidence, never an unavailable predecessor. */
+function outcomeOnsetsAt(
+  rows: Observation[],
+  releases: { index: number; time: string }[],
+  series: AnalyticsSeries,
+  outcome: NonNullable<BacktestConfig['outcome']>,
+  cutoff: string,
+  context?: AnalysisContext,
+): number[] {
+  const onsets: number[] = [];
+  let latest = -1,
+    active = false;
+  for (const release of releases) {
+    checkAnalysis(context);
+    if (release.time > cutoff) break;
+    // Late evidence for an older period cannot replace the latest known outcome.
+    if (release.index <= latest) continue;
+    const observation = rows[release.index];
+    const continues =
+      active && release.index === latest + 1 && contiguous(rows[latest], observation, series);
+    const qualifies =
+      observation.value !== null &&
+      observation.quality === 'valid' &&
+      compare(observation.value, outcome.threshold, outcome.comparator);
+    if (qualifies && !continues) onsets.push(release.index);
+    active = qualifies;
+    latest = release.index;
+  }
+  return onsets;
+}
+
 export function backtest(
   model: AnalyticsExtension,
   config: BacktestConfig,
@@ -32,24 +66,42 @@ export function backtest(
   const outcomeRows = config.outcome
     ? querySeries(model, config.outcome.seriesId, { to: config.to }, context)
     : [];
-  const outcomeOnsets = config.outcome
-    ? outcomeRows.flatMap((o, i) =>
-        o.value !== null &&
-        o.quality === 'valid' &&
-        compare(o.value, config.outcome!.threshold, config.outcome!.comparator) &&
-        (i === 0 ||
-          outcomeRows[i - 1].value === null ||
-          !compare(
-            outcomeRows[i - 1].value!,
-            config.outcome!.threshold,
-            config.outcome!.comparator,
-          ))
-          ? [i]
-          : [],
-      )
-    : [];
+  if (config.outcome)
+    requireAnalysis(
+      new Set(
+        outcomeRows.map((observation) =>
+          JSON.stringify(Object.entries(observation.dimensions).sort(([a], [b]) => lexical(a, b))),
+        ),
+      ).size <= 1 &&
+        new Set(outcomeRows.map((observation) => observation.time)).size === outcomeRows.length,
+      'Choose one semantic outcome segment with unique observation times. Signal Lab never mixes segments or chooses between duplicate outcome timestamps implicitly.',
+      'config.outcome.seriesId',
+      'INCOMPATIBLE_UNITS',
+    );
+  const outcomeSeries = config.outcome
+    ? model.series.find((series) => series.id === config.outcome!.seriesId)!
+    : undefined;
+  const outcomeReleases = outcomeRows
+    .map((observation, index) => ({
+      index,
+      time:
+        observation.knownAt && observation.knownAt > observation.time
+          ? observation.knownAt
+          : observation.time,
+    }))
+    .sort((a, b) => lexical(a.time, b.time) || a.index - b.index);
   let selectedRuleId: string | undefined;
   for (const split of splits) {
+    const outcomeOnsets = config.outcome
+      ? outcomeOnsetsAt(
+          outcomeRows,
+          outcomeReleases,
+          outcomeSeries!,
+          config.outcome,
+          split.to,
+          context,
+        )
+      : [];
     const chosen =
       split.name === 'holdout'
         ? [
@@ -157,11 +209,14 @@ export function backtest(
             )
           )
             continue;
-          const outcomeSeries = model.series.find((s) => s.id === config.outcome!.seriesId)!;
           if (
             future.some(
               (o, index) =>
-                !contiguous(index === 0 ? outcomeRows[start] : future[index - 1], o, outcomeSeries),
+                !contiguous(
+                  index === 0 ? outcomeRows[start] : future[index - 1],
+                  o,
+                  outcomeSeries!,
+                ),
             )
           )
             continue;
@@ -217,6 +272,10 @@ export function backtest(
   notes.push(
     `${config.trials} parameter/rule ${config.trials === 1 ? 'trial is' : 'trials are'} recorded; search performance is not an untouched holdout claim. Outcome onsets and signal episodes use one-to-one matching; incomplete future windows are excluded.`,
   );
+  if (config.outcome)
+    notes.push(
+      'Outcome episodes follow complete observations in publication order. Missing, incomplete, unavailable or noncontiguous preceding periods break continuity; the next known qualifying observation starts a new onset. Late older publications cannot replace the latest known outcome.',
+    );
   checkAnalysis(context);
   return {
     kind: 'backtest',

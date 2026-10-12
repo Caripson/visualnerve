@@ -388,6 +388,14 @@ node scripts/examples/analytics.mjs --mcp
 
 It initializes MCP, discovers the existing tools, reads the guide and exact endpoint schema, reserves an operation ID before each write and creates one new synthetic document per invocation. It imports explicit ratio-form CSV, produces a +1 percentage-point / +50% relative measurement, evaluates a three-period churn rule, validates chronological history without invented accuracy metrics and compares three reviewed Growth & Churn scenarios. It also starts/archives a job and pages its original input. No credentials are embedded or printed; protected bridge token/workspace environment variables use the existing conventions.
 
+Scenario comparison stores optional `analytics.scenarioView` references to explicit observed customer/MRC
+snapshots. Read them in the same compact model, or update them through the versioned model command.
+Scenario SVG uses these canonical sources before the projection start, with separate units, solid
+observations, dashed futures and a labeled boundary. It does not infer missing history or change
+assumptions. UTC first/last snapshots at observation/day/week/month resolution are supported;
+MRC currency must match. Scenario export source overrides and their nullable omission behavior
+are specified in the endpoint contract; a separate export dimension filter is rejected.
+
 For manual use, follow this sequence under `/diagrams/UUID/analytics`:
 
 1. `/import/inspect` inspects source columns/sheets, with optional `seriesColumn` to discover long-format names. `/import/preview` accepts `{datasetId,source,mapping}`. CSV/JSON uses text; XLSX uses strict padded base64. Review localized issues, percent/date/timezone conventions, dimensions, missing values and duplicate policy.

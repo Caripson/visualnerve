@@ -573,6 +573,28 @@ export function blankAnalytics(): AnalyticsExtension {
     retention: { results: 12, dataVersions: 3 },
   };
 }
+/** Observed balances must support the scenario model's UTC monthly calendar without disaggregation. */
+export function validateScenarioHistorySource(
+  source: AnalyticsSeries | undefined,
+  kind: 'count' | 'currency',
+  path = 'scenarioView',
+  currency?: string,
+) {
+  requireAnalysis(source, 'Unknown observed scenario-history series.', path);
+  requireAnalysis(
+    source.provenance === 'observed' &&
+      source.semantics === 'snapshot' &&
+      source.unit.kind === kind &&
+      source.timezone === 'UTC' &&
+      ['observation', 'day', 'week', 'month'].includes(source.resolution) &&
+      ['first', 'last'].includes(source.aggregation) &&
+      (kind !== 'currency' || currency === undefined || source.unit.currency === currency),
+    'Scenario history requires an observed count/customer or matching-currency/MRC snapshot with UTC calendar, first/last monthly aggregation and no coarser-than-monthly observations.',
+    path,
+    'INCOMPATIBLE_UNITS',
+  );
+  return source;
+}
 export function validateAnalytics(model: AnalyticsExtension) {
   strictKeys(
     model,
@@ -590,6 +612,7 @@ export function validateAnalytics(model: AnalyticsExtension) {
       'scenarios',
       'results',
       'retention',
+      'scenarioView',
     ],
     'analytics',
   );
@@ -1116,6 +1139,23 @@ export function validateAnalytics(model: AnalyticsExtension) {
     }
   }
   for (const signal of model.signals) validateSignal(signal, model);
+  if (model.scenarioView !== undefined) {
+    strictKeys(
+      model.scenarioView,
+      ['customerHistorySeriesId', 'mrcHistorySeriesId'],
+      'scenarioView',
+    );
+    for (const [key, kind] of [
+      ['customerHistorySeriesId', 'count'],
+      ['mrcHistorySeriesId', 'currency'],
+    ] as const) {
+      const id = model.scenarioView[key];
+      if (id !== undefined) {
+        analyticsId(id, `scenarioView.${key}`);
+        validateScenarioHistorySource(series.get(id), kind, `scenarioView.${key}`);
+      }
+    }
+  }
   strictKeys(model.retention, ['results', 'dataVersions'], 'retention');
   integer(model.retention.results, 'retention.results', 1, analyticsLimits.results);
   integer(model.retention.dataVersions, 'retention.dataVersions', 1, analyticsLimits.versions);

@@ -258,3 +258,33 @@ func TestAnalyticalSvgExportIsDiscoverableAndBounded(t *testing.T) {
 		t.Fatal("persisted visual segment filter missing")
 	}
 }
+
+func TestScenarioObservedHistoryIsOptionalTypedAndDiscoverable(t *testing.T) {
+	doc := analyticsContract(t)
+	schemas := doc["components"].(map[string]any)["schemas"].(map[string]any)
+	view := schemas["AnalyticsScenarioView"].(map[string]any)
+	if view["additionalProperties"] != false || !strings.Contains(view["description"].(string), "UTC calendar") {
+		t.Fatal("scenario history must preserve explicit calendar and bounded fields")
+	}
+	for _, name := range []string{"AnalyticsExtension", "AnalyticsSummary"} {
+		extension := schemas[name].(map[string]any)
+		if extension["properties"].(map[string]any)["scenarioView"].(map[string]any)["$ref"] != "#/components/schemas/AnalyticsScenarioView" {
+			t.Fatal("saved comparison view missing", name)
+		}
+		for _, required := range extension["required"].([]any) {
+			if required == "scenarioView" {
+				t.Fatal("older analytics documents must remain valid", name)
+			}
+		}
+	}
+	options := schemas["AnalyticsSvgOptions"].(map[string]any)["properties"].(map[string]any)
+	if !strings.Contains(options["dimensions"].(map[string]any)["description"].(string), "Scenario SVG rejects") {
+		t.Fatal("scenario segment overrides must be explicitly unsupported")
+	}
+	for _, key := range []string{"customerHistorySeriesId", "mrcHistorySeriesId"} {
+		field := options[key].(map[string]any)
+		if field["nullable"] != true || field["format"] != nil || !strings.Contains(field["description"].(string), "null omits") {
+			t.Fatal("semantic SVG source overrides must support explicit omission", key)
+		}
+	}
+}

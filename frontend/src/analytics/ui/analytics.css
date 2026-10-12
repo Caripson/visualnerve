@@ -495,3 +495,9 @@
   align-items: center;
   gap: 6px;
 }
+.analytics-scenario-panels {
+  display: grid;
+  gap: 28px;
+  margin-top: 20px;
+  min-width: 0;
+}

@@ -264,6 +264,12 @@ detection delay. Precision, recall and false alarms are intentionally absent. To
 series, condition, future horizon and first-unmatched matching policy. Complete valid future windows are required;
 signals/outcomes are matched one-to-one. An outcome occurring before a signal could be known is not a predicted hit.
 
+Outcome episodes use complete published periods in knowledge-time order. Missing, incomplete,
+unpublished or noncontiguous preceding evidence breaks continuity; the next known qualifying
+period can begin a new episode. A late release of older evidence cannot create or resolve a
+stale episode after a newer endpoint is already known. Outcome series must select one explicit
+segment rather than mixing several populations in the same time key.
+
 Revised data without retained historical publication versions is labeled retrospective. A later analysis may explain
 an earlier change; it cannot pretend the signal was known then. Saved runs retain their actual input snapshot and
 configuration. Removing a run/retained version removes that reproducibility evidence; export a backup first if needed.
@@ -294,6 +300,17 @@ At 2% churn, +20% **relative** adjustment gives 2.4%. +0.2 **percentage points**
 Invalid rates, incompatible currencies and negative populations/balances are rejected with an explanation.
 Scenario spread is not a statistical confidence/prediction interval.
 
+Choose **Historical customer balance** and **Historical MRC balance** to place actual observed
+balances before the projections. Only compatible observed snapshot series are available; MRC
+must use the scenario currency. This comparison uses UTC months and a selected first/last
+aggregation from observation-, daily-, weekly- or monthly-resolution history. Other calendars or
+coarser snapshots are not silently converted or interpolated. These are explicit display sources,
+not inferred historical values.
+Use **Save comparison view** to keep the source choices in the encrypted document. A solid line
+shows observations, dashed lines show scenarios, and **Projection starts** marks the boundary.
+Customer counts and MRC use separate panels and original units. Missing history is left absent,
+and a different scenario opening balance is not silently substituted for the last observation.
+
 **Create scenario from signal** opens editable proposed assumptions and the signal evidence. Review them before
 saving/calculating. The original signal, history and process document are unchanged. Generic node links refer to
 existing nodes in the current document; the empty example template has no such nodes. The Process Simulator
@@ -301,7 +318,7 @@ selector can link to another local process document. A process parameter link re
 resolution and review; it does not automatically modify
 another document or bypass Process Simulator's existing capacity/queue model.
 
-![Customer-base projections for Baseline, Current trend and Stress scenario](/help/images/time-series-scenarios.webp "Compare the three assumption-based projections over the same horizon. The spread is not a confidence interval.")
+![Observed balances and separate future projections for Baseline, Current trend and Stress scenario](/help/images/time-series-scenarios.webp "Solid lines show selected observed history; dashed lines show assumption-based projections after Projection starts. Customer counts and MRC have separate unit panels. The spread is not a confidence interval.")
 
 ## Save, export and share deliberately
 

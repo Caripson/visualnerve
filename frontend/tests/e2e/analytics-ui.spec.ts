@@ -40,6 +40,8 @@ async function capture(
     | 'time-series-mobile',
 ) {
   if (process.env.VN_CAPTURE_ANALYTICS !== '1') return;
+  if (process.env.VN_CAPTURE_ANALYTICS_SCENARIOS_ONLY === '1' && name !== 'time-series-scenarios')
+    return;
   const dialog = page.getByRole('dialog', { name: 'Import time-series data' });
   const panel = page.locator('[role=tabpanel] > .analytics-panel').first();
   const target =
@@ -49,11 +51,11 @@ async function capture(
         ? page.locator('.analytics-panel[aria-labelledby="analytics-measure-heading"]')
         : name === 'time-series-signals'
           ? page.locator('.analytics-signal-layout')
-          : name === 'time-series-explore' ||
-              name === 'time-series-scenarios' ||
-              name === 'time-series-mobile'
-            ? page.locator('.analytics-chart-shell').first()
-            : panel;
+          : name === 'time-series-scenarios'
+            ? page.locator('.analytics-scenario-comparison')
+            : name === 'time-series-explore' || name === 'time-series-mobile'
+              ? page.locator('.analytics-chart-shell').first()
+              : panel;
   const originalViewport = page.viewportSize();
   try {
     if (name !== 'time-series-mobile' && originalViewport) {
@@ -180,8 +182,70 @@ test('real template supports measure, detect, validate and reviewed scenario com
   await page.getByRole('tab', { name: /6 · Simulate/ }).click();
   await page.getByRole('button', { name: 'Compare saved scenarios' }).click();
   await expect(page.getByText('Same-horizon scenario comparison')).toBeVisible();
-  await expect(page.locator('.analytics-chart')).toBeVisible();
-  await expect(page.getByText(/not a statistical confidence interval/)).toBeVisible();
+  const customerHistoryId = afterMeasurement.diagram.analytics!.series.find(
+    (series) => series.name === 'Closing customers',
+  )!.id;
+  const mrcHistoryId = afterMeasurement.diagram.analytics!.series.find(
+    (series) => series.name === 'Closing MRC',
+  )!.id;
+  await page
+    .getByLabel('Historical customer balance', { exact: true })
+    .selectOption(customerHistoryId);
+  await page.getByLabel('Historical MRC balance', { exact: true }).selectOption(mrcHistoryId);
+  await page.getByRole('button', { name: 'Save comparison view', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: 'Save comparison view', exact: true }),
+  ).toBeEnabled();
+  const customerProjection = page.getByRole('img', {
+    name: /^Customer balance: history and scenarios\./,
+  });
+  const mrcProjection = page.getByRole('img', { name: /^MRC balance: history and scenarios\./ });
+  await expect(customerProjection).toBeVisible();
+  await expect(mrcProjection).toBeVisible();
+  await expect(customerProjection.locator('[data-projection-boundary]')).toHaveAttribute(
+    'data-projection-boundary',
+    '2025-01-01T00:00:00.000Z',
+  );
+  await expect(mrcProjection.locator('[data-projection-boundary]')).toHaveAttribute(
+    'data-projection-boundary',
+    '2025-01-01T00:00:00.000Z',
+  );
+  await expect(page.getByText(/not a (?:statistical )?confidence interval/).first()).toBeVisible();
+  const savedView = await savedGraph(request, name);
+  expect(savedView.diagram.analytics!.scenarioView).toEqual({
+    customerHistorySeriesId: customerHistoryId,
+    mrcHistorySeriesId: mrcHistoryId,
+  });
+  expect(savedView.diagram.analytics!.datasets).toEqual(
+    afterMeasurement.diagram.analytics!.datasets,
+  );
+  expect(savedView.diagram.analytics!.scenarios).toEqual(
+    afterMeasurement.diagram.analytics!.scenarios,
+  );
+  const scenarioDownload = page.waitForEvent('download');
+  await page
+    .locator('.analytics-chart-shell')
+    .filter({ has: customerProjection })
+    .getByRole('button', { name: 'Export chart SVG', exact: true })
+    .click();
+  const scenarioSvgPath = await (await scenarioDownload).path();
+  const scenarioSvg = await readFile(scenarioSvgPath!, 'utf8');
+  expect(scenarioSvg).toContain('Closing customers (observed)');
+  expect(scenarioSvg).toContain('data-projection-boundary="2025-01-01T00:00:00.000Z"');
+  const baselineId = savedView.diagram.analytics!.scenarios.find(
+    (scenario) => scenario.name === 'Baseline',
+  )!.id;
+  const apiSvgResponse = await request.post(
+    `/api/v1/diagrams/${savedView.diagram.id}/analytics/export`,
+    {
+      data: { scope: 'scenario', id: baselineId, format: 'svg' },
+    },
+  );
+  expect(apiSvgResponse.ok()).toBe(true);
+  const apiSvg = await apiSvgResponse.json();
+  expect(apiSvg.data).toContain('Closing customers (observed)');
+  expect(apiSvg.data).toContain('Closing MRC (observed)');
+  expect(apiSvg.data).toContain('data-projection-boundary="2025-01-01T00:00:00.000Z"');
   await capture(page, 'time-series-scenarios');
   await page.getByLabel('Saved scenario', { exact: true }).selectOption({ label: 'Current trend' });
   await page.getByLabel('Customer churn (fraction of opening base)', { exact: true }).fill('0.04');
@@ -203,6 +267,13 @@ test('real template supports measure, detect, validate and reviewed scenario com
   await expect(page.getByRole('main', { name: 'Time Series & Signal Analysis' })).toBeVisible();
   const reloaded = await savedGraph(request, name);
   expect(reloaded.diagram.analytics).toEqual(saved.diagram.analytics);
+  await page.getByRole('tab', { name: /6 · Simulate/ }).click();
+  await expect(page.getByLabel('Historical customer balance', { exact: true })).toHaveValue(
+    customerHistoryId,
+  );
+  await expect(page.getByLabel('Historical MRC balance', { exact: true })).toHaveValue(
+    mrcHistoryId,
+  );
 });
 
 test('import preview has real mapping and no observations are committed before confirmation', async ({
@@ -366,6 +437,33 @@ for (const width of [390, 768, 1440])
         await expect(page.getByRole('button', { name: 'Zoom in', exact: true })).toBeVisible();
         await capture(page, 'time-series-mobile');
       }
+      await page.getByRole('tab', { name: /6 · Simulate/ }).click();
+      await page.getByRole('button', { name: 'Compare saved scenarios' }).click();
+      const comparison = page.getByRole('region', { name: 'Historical and scenario comparison' });
+      const customerComparison = comparison.getByRole('img', {
+        name: /^Customer balance: history and scenarios\./,
+      });
+      const mrcComparison = comparison.getByRole('img', {
+        name: /^MRC balance: history and scenarios\./,
+      });
+      await expect(customerComparison).toBeVisible();
+      await expect(mrcComparison).toBeVisible();
+      await expect(comparison.locator('[data-projection-boundary]')).toHaveCount(2);
+      const saved = await savedGraph(request, `Responsive analytics ${width} ${theme}`);
+      await expect(
+        comparison.getByLabel('Historical customer balance', { exact: true }),
+      ).toHaveValue(saved.diagram.analytics!.scenarioView!.customerHistorySeriesId!);
+      await expect(comparison.getByLabel('Historical MRC balance', { exact: true })).toHaveValue(
+        saved.diagram.analytics!.scenarioView!.mrcHistorySeriesId!,
+      );
+      await customerComparison.scrollIntoViewIfNeeded();
+      await customerComparison.press('ArrowRight');
+      await expect(comparison.locator('.analytics-chart-readout').first()).toContainText(
+        'Closing customers (observed)',
+      );
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        width,
+      );
     });
   }
 

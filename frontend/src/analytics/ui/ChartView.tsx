@@ -41,9 +41,12 @@ export interface ChartViewProps extends ChartInteractions {
   onChartChange?: (chart: AnalyticsChart) => void;
   onSignalFocus?: (signal: AnalyticsSignal) => void;
   note?: string;
+  projectionStart?: string;
 }
 
 const stamp = (time: string) => new Date(time).getTime();
+const displayUnit = (unit: AnalyticsUnit) =>
+  unit.kind === 'currency' ? `${unit.label} (${unit.currency})` : unit.label;
 
 export function ChartView(props: ChartViewProps) {
   const { series, threshold, setThreshold } = props;
@@ -141,6 +144,15 @@ export function ChartView(props: ChartViewProps) {
     [filtered],
   );
   const primary = filtered[0];
+  const crosshairPoints = useMemo(() => {
+    if (!props.projectionStart) return primary?.points ?? [];
+    const timeline = new Map<number, ChartPoint>();
+    for (const entry of filtered)
+      for (const point of entry.points)
+        if (!timeline.has(point.time)) timeline.set(point.time, point);
+    return [...timeline.values()].sort((first, second) => first.time - second.time);
+  }, [filtered, props.projectionStart]);
+  const projectionStart = props.projectionStart ? stamp(props.projectionStart) : undefined;
   const sameScope = (
     id: string,
     dimensions: Record<string, string> | undefined,
@@ -155,7 +167,12 @@ export function ChartView(props: ChartViewProps) {
       Object.entries(expected).every(([key, value]) => effective[key] === value)
     );
   };
-  const unit = primary?.unit.kind === 'ratio' ? 'ratio' : primary?.unit.label;
+  const unit =
+    primary?.unit.kind === 'ratio'
+      ? 'ratio'
+      : primary?.unit.kind === 'currency'
+        ? primary.unit.currency
+        : primary?.unit.label;
   const candlesValid =
     !chart.normalized &&
     primary?.points.length &&
@@ -292,6 +309,7 @@ export function ChartView(props: ChartViewProps) {
                 signals: props.signals,
                 measurements: props.measurements,
                 threshold,
+                projectionStart,
               });
               downloadText(
                 exported.data,
@@ -317,13 +335,20 @@ export function ChartView(props: ChartViewProps) {
         </p>
       )}
       {props.note && <p className="analytics-note">{props.note}</p>}
+      {props.projectionStart && (
+        <p className="analytics-note">
+          Solid series are historical observations. Dashed series are reviewed assumptions, starting{' '}
+          <UtcTimestamp value={props.projectionStart} />. Historical values are not replaced or
+          joined to projected values.
+        </p>
+      )}
       {series.length > 1 && (
         <ul className="analytics-chart-legend" aria-label="Chart series">
           {series.map((entry) => (
             <li key={entry.id}>
               <i className="analytics-color-dot" style={{ background: entry.color }} />
               <span>{entry.name}</span>
-              <span className="muted">· {entry.unit.label}</span>
+              <span className="muted">· {displayUnit(entry.unit)}</span>
             </li>
           ))}
         </ul>
@@ -333,7 +358,7 @@ export function ChartView(props: ChartViewProps) {
         className="analytics-chart"
         viewBox={`0 0 ${view.width} ${view.height}`}
         role="img"
-        aria-label={`${chart.name}. ${primary?.unit.label ?? ''}. Use arrow keys for the crosshair, Shift and arrows to move time, and plus or minus to zoom.`}
+        aria-label={`${chart.name}. ${primary ? displayUnit(primary.unit) : ''}. Use arrow keys for the crosshair, Shift and arrows to move time, and plus or minus to zoom.`}
         tabIndex={0}
         onKeyDown={(event) => {
           if (event.key === '+' || event.key === '=') {
@@ -348,10 +373,12 @@ export function ChartView(props: ChartViewProps) {
             event.preventDefault();
             const direction = event.key === 'ArrowRight' ? 1 : -1;
             if (event.shiftKey) shift(direction);
-            else if (primary?.points.length) {
-              const index = hover ? primary.points.indexOf(hover) : 0;
+            else if (crosshairPoints.length) {
+              const index = hover ? crosshairPoints.indexOf(hover) : 0;
               setHover(
-                primary.points[Math.max(0, Math.min(primary.points.length - 1, index + direction))],
+                crosshairPoints[
+                  Math.max(0, Math.min(crosshairPoints.length - 1, index + direction))
+                ],
               );
             }
           }
@@ -362,7 +389,7 @@ export function ChartView(props: ChartViewProps) {
           const time = view.timeAt(point.x);
           if (mode === 'threshold' && setThreshold) setThreshold(view.valueAt(point.y));
           setDrag({ x: point.x, time, end: time, kind: mode });
-          if (primary) setHover(view.nearest(primary.points, time));
+          if (primary) setHover(view.nearest(crosshairPoints, time));
         }}
         onPointerMove={(event) => {
           const point = coordinate(event);
@@ -379,7 +406,7 @@ export function ChartView(props: ChartViewProps) {
               props.onMeasurementPoints?.(points);
             }
           }
-          if (primary) setHover(view.nearest(primary.points, time));
+          if (primary) setHover(view.nearest(crosshairPoints, time));
         }}
         onPointerUp={() => {
           if (drag?.kind === 'range' && primary) {
@@ -409,7 +436,7 @@ export function ChartView(props: ChartViewProps) {
         onPointerCancel={() => setDrag(undefined)}
       >
         <title>
-          {chart.name} · {primary?.unit.label}
+          {chart.name} · {primary && displayUnit(primary.unit)}
         </title>
         <desc>
           Full-resolution analysis is available in the measurement tools. The visual rendering
@@ -453,9 +480,35 @@ export function ChartView(props: ChartViewProps) {
           );
         })}
         <text x={view.left} y={17}>
-          {primary?.unit.label}
+          {primary && displayUnit(primary.unit)}
         </text>
         <g clipPath={`url(#${id}-plot)`}>
+          {projectionStart !== undefined && projectionStart >= from && projectionStart <= to && (
+            <g data-projection-boundary={props.projectionStart}>
+              <line
+                x1={view.x(projectionStart)}
+                x2={view.x(projectionStart)}
+                y1={view.top}
+                y2={view.height - view.bottom}
+                stroke="var(--text)"
+                strokeDasharray="2 4"
+                strokeWidth={1.5}
+              />
+              <text
+                x={Math.max(
+                  view.left + 8,
+                  Math.min(view.width - view.right - 8, view.x(projectionStart) + 8),
+                )}
+                y={view.top + 14}
+                textAnchor={
+                  view.x(projectionStart) > view.width - view.right - 150 ? 'end' : 'start'
+                }
+                style={{ fill: 'var(--text)', fontWeight: 600 }}
+              >
+                Projection starts
+              </text>
+            </g>
+          )}
           {selected && (
             <rect
               x={view.x(stamp(selected.from))}
@@ -730,7 +783,12 @@ export function ChartView(props: ChartViewProps) {
                   cx={view.x(hover.time)}
                   cy={view.y(hover.value)}
                   r={4}
-                  fill={primary?.color}
+                  fill={
+                    props.projectionStart
+                      ? (filtered.find((entry) => entry.points.includes(hover))?.color ??
+                        primary?.color)
+                      : primary?.color
+                  }
                   stroke="var(--surface)"
                   strokeWidth={2}
                 />
@@ -752,7 +810,11 @@ export function ChartView(props: ChartViewProps) {
                 <strong>
                   {valueLabel(
                     point?.value,
-                    entry.unit.kind === 'ratio' ? 'ratio' : entry.unit.label,
+                    entry.unit.kind === 'ratio'
+                      ? 'ratio'
+                      : entry.unit.kind === 'currency'
+                        ? entry.unit.currency
+                        : entry.unit.label,
                   )}
                 </strong>{' '}
                 · {point ? (point.quality ?? 'valid') : 'outside observed range'}
@@ -796,7 +858,7 @@ export function ChartView(props: ChartViewProps) {
                         ? 'Missing'
                         : String(point?.sourceValue ?? point?.value ?? 'Not available')}
                     </td>
-                    <td>{(entry.sourceUnit ?? entry.unit).label}</td>
+                    <td>{displayUnit(entry.sourceUnit ?? entry.unit)}</td>
                     <td>{point ? (point.quality ?? 'valid') : 'Not available'}</td>
                   </tr>
                 ))}

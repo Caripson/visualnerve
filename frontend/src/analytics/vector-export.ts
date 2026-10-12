@@ -8,9 +8,10 @@ import type {
   WaterfallResult,
 } from './types';
 import { analyticsService, type AnalysisRunOptions } from './service';
-import { AnalyticsError, strictKeys, validateAnalytics } from './validation';
+import { AnalyticsError, analyticsId, strictKeys, validateAnalytics } from './validation';
 import { contiguous, normalizeSeries } from './series';
 import { isCurrentSignal } from './identity';
+import { prepareScenarioHistory } from './scenario-history';
 import {
   serializePreparedChartSvg,
   analyticsSvgColors,
@@ -34,13 +35,30 @@ export interface AnalyticsChartExportOptions {
   maxPoints?: number;
   time?: string;
   threshold?: number;
+  customerHistorySeriesId?: string | null;
+  mrcHistorySeriesId?: string | null;
 }
 function validateOptions(options: AnalyticsChartExportOptions) {
   strictKeys(
     options as unknown,
-    ['width', 'height', 'appearance', 'from', 'to', 'dimensions', 'maxPoints', 'time', 'threshold'],
+    [
+      'width',
+      'height',
+      'appearance',
+      'from',
+      'to',
+      'dimensions',
+      'maxPoints',
+      'time',
+      'threshold',
+      'customerHistorySeriesId',
+      'mrcHistorySeriesId',
+    ],
     'export.options',
   );
+  for (const key of ['customerHistorySeriesId', 'mrcHistorySeriesId'] as const)
+    if (options[key] !== undefined && options[key] !== null)
+      analyticsId(options[key], `export.options.${key}`);
   for (const key of ['from', 'to', 'time'] as const)
     if (
       options[key] !== undefined &&
@@ -96,6 +114,11 @@ export async function exportAnalyticsChartSvg(
 ): Promise<AnalyticsSvgExport> {
   validateAnalytics(model);
   validateOptions(options);
+  if (options.customerHistorySeriesId !== undefined || options.mrcHistorySeriesId !== undefined)
+    throw new AnalyticsError(
+      'INVALID_ANALYTICS',
+      'Observed scenario-history sources apply only to scenario SVG export.',
+    );
   await controls.guard?.();
   controls.signal?.throwIfAborted();
   const chart =
@@ -228,7 +251,22 @@ export async function exportAnalyticsResultSvg(
 ): Promise<AnalyticsSvgExport> {
   validateAnalytics(model);
   validateOptions(options);
+  if (scope === 'scenario' && options.dimensions !== undefined)
+    throw new AnalyticsError(
+      'INCOMPATIBLE_UNITS',
+      'Scenario history retains the selected canonical series dimensions. Select a filtered historical series instead of supplying an export-only segment override.',
+      'export.options.dimensions',
+    );
+  if (
+    scope !== 'scenario' &&
+    (options.customerHistorySeriesId !== undefined || options.mrcHistorySeriesId !== undefined)
+  )
+    throw new AnalyticsError(
+      'INVALID_ANALYTICS',
+      'Observed scenario-history sources apply only to scenario SVG export.',
+    );
   let display: AnalyticsSvgSeries[], name: string;
+  let projectionStart: number | undefined;
   if (scope === 'measurement') {
     const measurement = model.measurements.find((item) => item.id === id);
     if (!measurement) throw new AnalyticsError('INVALID_ANALYTICS', 'Measurement not found.');
@@ -339,12 +377,26 @@ export async function exportAnalyticsResultSvg(
       { kind: 'scenario', scenario },
       controls,
     )) as ScenarioResult;
+    const view = { ...model.scenarioView };
+    for (const key of ['customerHistorySeriesId', 'mrcHistorySeriesId'] as const)
+      if (options[key] !== undefined) {
+        if (options[key] === null) delete view[key];
+        else view[key] = options[key];
+      }
+    const { history, customerUnit, mrcUnit } = await prepareScenarioHistory(
+      model,
+      [scenario],
+      view,
+      controls,
+    );
+    projectionStart = Date.parse(scenario.start);
     name = scenario.name;
     display = [
+      ...history,
       {
         id: `${id}:customers`,
         name: `${name}: customer balance`,
-        unit: { kind: 'count', label: 'customers' },
+        unit: customerUnit,
         provenance: 'scenario',
         points: result.points.map((point) => ({
           time: Date.parse(point.time),
@@ -354,7 +406,7 @@ export async function exportAnalyticsResultSvg(
       {
         id: `${id}:mrc`,
         name: `${name}: MRC balance`,
-        unit: { kind: 'currency', label: 'MRC', currency: scenario.assumptions.currency },
+        unit: mrcUnit,
         provenance: 'scenario',
         points: result.points.map((point) => ({
           time: Date.parse(point.time),
@@ -376,6 +428,7 @@ export async function exportAnalyticsResultSvg(
     display,
     {
       ...options,
+      projectionStart,
       from: options.from ? Date.parse(options.from) : undefined,
       to: options.to ? Date.parse(options.to) : undefined,
     },

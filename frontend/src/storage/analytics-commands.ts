@@ -547,6 +547,12 @@ async function dispatchAnalyticsCommand(
       405,
       'Use GET, collection POST, entity PATCH or entity DELETE.',
     );
-  return save({ ...model, [collection]: next }, version);
+  const candidate = { ...model, [collection]: next };
+  if (collection === 'series' && method === 'DELETE' && model.scenarioView) {
+    candidate.scenarioView = { ...model.scenarioView };
+    for (const key of ['customerHistorySeriesId', 'mrcHistorySeriesId'] as const)
+      if (candidate.scenarioView[key] === id) delete candidate.scenarioView[key];
+  }
+  return save(candidate, version);
 }
 export { analyticsCapabilities, AnalyticsCommandError };

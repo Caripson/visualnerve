@@ -279,6 +279,10 @@ export function growthChurnInput(): AnalyticsExtension {
 /** The example uses the same worker service as imported data; no result markers are hard-coded. */
 export async function createAnalyticsExample(signal?: AbortSignal): Promise<AnalyticsExtension> {
   let model = growthChurnInput();
+  model.scenarioView = {
+    customerHistorySeriesId: 'closing-customers',
+    mrcHistorySeriesId: 'closing-mrc',
+  };
   const { analyticsService } = await import('./service');
   const signals = await analyticsService.run({ kind: 'signals', model }, { signal });
   if (!Array.isArray(signals) && 'kind' in signals && signals.kind === 'signals')

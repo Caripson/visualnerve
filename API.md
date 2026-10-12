@@ -651,6 +651,19 @@ MCP mode first initializes, discovers the two existing tools, reads `visual_nerv
 
 ### Budgets, job lifetime and errors
 
+Optional `analytics.scenarioView: {customerHistorySeriesId, mrcHistorySeriesId}` is saved display
+configuration exposed by the same versioned analytics model command. Historical sources are
+explicit observed snapshot balances; counts and same-currency MRC remain separate unit panels.
+Scenario SVG export includes those compatible sources before the scenario start, with solid
+observations, dashed projections and a labeled boundary. Missing history is not fabricated, and
+changing this configuration does not change the scenario assumptions or observed data.
+History supports UTC first/last snapshots with observation/day/week/month resolution. For SVG
+`scope:"scenario"`, `options.customerHistorySeriesId` and `options.mrcHistorySeriesId` override
+the saved references; explicit `null` omits that historical source for this export. Other SVG
+scopes reject these options. Scenario history uses the selected series' canonical dimension filter;
+scenario SVG rejects a separate `options.dimensions` rather than silently ignoring it.
+History outside the future start is not fabricated or interpolated.
+
 Analytics response envelopes are independently limited to **8 MiB**, observation/result pages to **1–1,000 items**, and HTTP/WebSocket requests to the existing **32 MiB** budget. A browser file-import preference does not increase transport budgets. Large preview/query/indicator outputs should use a worker job and semantic result pages instead of requesting the complete extension.
 
 At most two API analytics jobs run concurrently. At most four terminal jobs and **32 MiB total retained original input/results** remain transiently available, for up to 15 minutes; each calculation has a 120-second deadline. A job exceeding its retained budget fails explicitly with `ANALYTICS_RESULT_LIMIT`. Saved encrypted archives have a separate budget. Reload, workspace lock or original-grant/session revocation removes transient jobs; a new grant cannot revive them. Polling never unlocks or extends an idle session. Human unlock and a fresh grant are required after lock. Import data is not sent to a remote analysis service or AI; explicitly permitted MCP responses, export and collaboration can share readable content.

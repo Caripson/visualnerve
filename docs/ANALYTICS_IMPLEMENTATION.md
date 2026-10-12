@@ -44,8 +44,8 @@ Paths in the table are relative to `frontend/tests/` unless otherwise specified.
 | AT13 Two-sided CUSUM | `analytics-engine.test.ts`: explicit k=1/h=3, strict crossing at observation 6 |
 | AT14 Seasonal requirements | `analytics-engine.test.ts`: exact season fixture, injected deviation and insufficient cycles |
 | AT15 Prefix invariance | `analytics-engine.test.ts`, `analytics-publication.test.ts`: each causal signal family, delayed required publications and indicator/preprocessing prefix invariance |
-| AT16 Knowledge versus observation time | `analytics-engine.test.ts`, `analytics-publication.test.ts`: knowledge-time replay, late dependency completion, stale endpoint suppression, split-boundary replay and retrospective labeling |
-| AT17 Explicit outcome matching | `analytics-engine.test.ts`: no invented accuracy, incomplete windows and one-to-one outcomes |
+| AT16 Knowledge versus observation time | `analytics-engine.test.ts`, `analytics-publication.test.ts`, `analytics-backtest-outcomes.test.ts`: knowledge-time replay, late dependency completion, stale endpoint suppression, split-boundary replay and retrospective labeling |
+| AT17 Explicit outcome matching | `analytics-engine.test.ts`, `analytics-backtest-outcomes.test.ts`: no invented accuracy, incomplete windows, publication eligibility, segment isolation and one-to-one outcomes |
 | AT18 Chronological holdout | `analytics-engine.test.ts`: untouched holdout cannot alter validation selection; recorded trials |
 | AT19 Safe declarative rules | `analytics-engine.test.ts`, `analytics-validation.test.ts`: AND/OR/NOT/unknown, window/sustained AST, hysteresis/cooldown, complexity and injection rejection |
 | AT20 Customer reconciliation | `analytics-engine.test.ts`, `analytics-document.test.ts`: 1010/990, subsequent opening balances and unrounded expectations |
@@ -74,8 +74,10 @@ The local verification environment uses macOS/Darwin x64, Intel Core i5-6500 at 
 Node 22.17.0 and isolated Google Chrome 155.0.8059.39 profiles. Playwright's synthetic DNS/TLS
 fixtures use loopback only. No real user workspace, AWS resource or production deployment is used.
 
-The final focused numerical/publication/import/validation run passed 193 tests across nine files.
-The UI and shared SVG run passed 59 tests, including full-export versus bounded-table checks. Explicit
+The initial focused numerical/publication/import/validation run passed 193 tests across nine files.
+The final requirement-audit follow-up passed 202 tests across ten files, including nine outcome
+publication/segment regressions. The initial UI and shared SVG run passed 59 tests; the scenario
+history follow-up passed 65 tests across three files. Explicit
 archive retention and document tests passed 14 tests, and encrypted repository/worker ownership,
 lock and optimistic-save tests passed seven tests. Full TypeScript checking passed after the
 precision, retention and delayed-publication fixes. Complete-suite results on the frozen final sources are recorded below.
@@ -102,6 +104,13 @@ hide controls or restyle the application.
 | Actual encrypted collaboration rollback regression | Three Chrome runs PASS: 15 checks without CSV, 16 checks with CSV twice |
 | MCP operation reservation, timeout recovery and grant isolation follow-up | 3/3 PASS, including a genuinely lost browser acknowledgement |
 | Browser/bridge version alignment and analytics MCP parity | 47 focused unit tests, Go discovery/generator race tests, vet, build and formatting PASS; 6/6 real MCP browser workflows PASS |
+| Final Signal Lab outcome publication and explicit segment policy | 202/202 PASS across ten files; global TypeScript PASS |
+| Observed history and scenario comparison UI/shared SVG | 65/65 PASS across three files |
+| Scenario history model/API/export/worker/retained-reference contracts | 122/122 PASS across five files; TypeScript, Go generator race tests and vet PASS |
+| Merged example/template/document/history/outcome/SVG checks | 55/55 PASS across seven files; formatting PASS |
+| Final analytics, scenario history and real MCP recovery browser follow-up | 28/28 PASS, 3.8 minutes; scenario screenshot pair regenerated and visually reviewed |
+| Final packaged Help and API reference after scenario screenshot regeneration | 10/10 PASS, 1.0 minute; all guides, local images, search and offline use |
+| Final packaged production build after the requirement-audit corrections | PASS: TypeScript, OpenAPI generation, Vite, Hugo, 343 offline assets and 1,033-file static audit |
 
 The analytics browser run exercises actual UI/REST/MCP numerical parity, both executable client
 examples, operation recovery, effect-based grants, source conflicts, encrypted reload/offline
@@ -132,27 +141,51 @@ bridge correctly advertised 0.8.2. Its exact version and analytics capability as
 aligned; the operation reservation, recovery and content-preservation assertions remain intact.
 The final CI execution is reported separately from that failed run.
 
+The subsequent complete CI run on `a78b30e` passed 3,813 frontend tests and all build checks,
+then completed the browser suite with 320 passes and the same 15 optional skips (21.5 minutes).
+All four collaboration cryptography jobs also passed on that commit. These green executions
+precede the final scenario-history and outcome-publication corrections described below;
+the final delivery report identifies the complete CI execution on the final pushed commit.
+
+The final requirement audit identified two additional omissions before completion. The scenario
+comparison lacked observed history and an explicit projection boundary. It now stores reviewed
+visualization source references, queries complete compatible snapshots through the original screen
+session, and shows solid observations beside dashed futures in separate customer/MRC panels. UI
+and API SVG use the same source preparation and boundary serializer. Copy/import remaps these
+optional references; deleting a source detaches its view reference. The example authors its known
+closing-customer/MRC sources explicitly; imported documents do not infer them from labels.
+
+Signal Lab previously identified outcome onsets before per-split publication eligibility, allowing
+an unavailable or incomplete earlier high to suppress a later known outcome. Outcomes now follow
+knowledge-time releases and native continuity; late older publications cannot create stale episodes.
+Ambiguous outcome segments or duplicate timestamps are rejected. Independent golden fixtures cover
+these cases, normal continuing episodes, cutoff/fold invariance and direct/worker parity. These
+corrections do not alter historical observations or scenario assumptions. The full final CI run is
+required after these changes; earlier complete-suite results describe the earlier frozen sources.
+
 ### Bounded performance evidence
 
 The final Chrome workload uses 100,000 observations across 10 series and 100 simple signal rules.
 Only 1,152 representative points are rendered; all observations participate in analysis. The
-complete browser workflow took **11,463 ms**, cancellation acknowledged in **222 ms**, and the
-instrumented interval recorded 550 animation frames with a maximum frame gap of **349.9 ms**.
+complete browser workflow took **11,653 ms**, cancellation acknowledged in **257 ms**, and the
+instrumented interval recorded 558 animation frames with a maximum frame gap of **366.7 ms**.
 Pan and zoom remained usable during the real worker job. Sampled renderer JavaScript heap was
-477,259,105 bytes (about 455 MiB); it is neither a peak measurement nor combined browser/worker
+472,838,884 bytes (about 451 MiB); it is neither a peak measurement nor combined browser/worker
 memory. This fixed desktop environment does not establish unlimited scale or mobile hardware capacity.
 
 The final full-suite Node benchmark evaluated 1,000,000 rule/observation combinations with no
-unknown assessments. Validation took **450.8 ms**, numerical analysis **687.1 ms**, immutable
-archive preparation **1,698.1 ms**, and reconciliation **2,009.0 ms**. Sampled heap was
-57.9→245.5 MB and RSS 132.1→465.1 MB, both decimal process measurements rather than peaks.
+unknown assessments. Validation took **466.6 ms**, numerical analysis **834.0 ms**, immutable
+archive preparation **2,156.5 ms**, and reconciliation **3,138.7 ms**. Sampled heap was
+51.4→209.1 MB and RSS 133.6→499.1 MB, both decimal process measurements rather than peaks.
+This final Node measurement ran during the isolated browser acceptance batch; these are observed
+samples under that load, not promises for an idle machine or other hardware.
 Keeping full replayable inputs has a material memory/copy cost; numerical execution time alone
 is not end-to-end latency. The original measurements and environment are retained in
 [`acceptance/analytics-benchmark.json`](acceptance/analytics-benchmark.json).
 
-The final bundle audit reports entry/largest main-thread chunk **395,698 bytes**, initial static
-imports **897,804 bytes**, lazy analytics workspace **154.69 kB** (42.81 kB gzip), and analytics
-worker **214.55 kB**. No chunk exceeds 500 kB, no new dependency is introduced, and the homepage
+The final build reports an entry/largest main-thread chunk of **396,625 bytes** and a lazy
+analytics workspace of **159.33 kB** (44.18 kB gzip). No chunk
+exceeds 500 kB, no new dependency is introduced, and the homepage
 illustration does not load this workspace or numerical engine. The offline shell includes 343
 local assets; the static audit checked 1,033 application files with no user data files.
 
@@ -179,9 +212,9 @@ local assets; the static audit checked 1,033 application files with no user data
 | Area | Added or changed modules |
 | --- | --- |
 | Canonical extension | `frontend/src/analytics/types.ts`, `validation.ts`, `result-validation.ts`, `document.ts`, `reconcile.ts`, `remap.ts`, `identity.ts`, `signal-history.ts`, `retention.ts`; optional field in `frontend/src/model/types.ts` |
-| Numerical implementation | `engine.ts`, `math.ts`, `series.ts`, `measurements.ts`, `signals.ts`, `backtest.ts`, `scenarios.ts` under `frontend/src/analytics/` |
+| Numerical implementation | `engine.ts`, `math.ts`, `series.ts`, `measurements.ts`, `signals.ts`, `backtest.ts`, `scenarios.ts`, `scenario-history.ts` under `frontend/src/analytics/` |
 | Local import and workers | `import.ts` (including bounded XLSX parsing), `client.ts`, `worker.ts`, `service.ts`, `lifecycle.ts`; encrypted workspace payload fields and lock/transfer cleanup |
-| Template and user interface | Template manifest/create/starter flow; `AnalyticsFeature.tsx`, `AnalyticsToolbar.tsx` and the focused components under `frontend/src/analytics/ui/`; UTC date/time fields and historical-unit display helpers; existing App, dialogs and export integration |
+| Template and user interface | Template manifest/create/starter flow; `AnalyticsFeature.tsx`, `AnalyticsToolbar.tsx`, `ScenarioComparison.tsx` and focused components under `frontend/src/analytics/ui/`; UTC date/time fields, historical-unit display and explicit saved source selectors; existing App, dialogs and export integration |
 | Shared vector output | `frontend/src/analytics/vector-export.ts` and `vector-renderer.ts`, used by the UI and API |
 | Existing commands and permissions | `frontend/src/storage/analytics-commands.ts`, `analytics-api-input.ts`, `analytics-api-format.ts`, `analytics-api-jobs.ts`, `analytics-api-jobs-command.ts`; existing Repository, Workspace and MCP access boundary |
 | Bridge and contract | `backend/cmd/openapi/analytics.go`, canonical OpenAPI generator and `docs/openapi.yaml`; existing server routing, MCP discovery/descriptions and version metadata |
@@ -192,6 +225,8 @@ The schema envelope remains an ordinary diagram with `analytics: { schemaVersion
 engineVersion: "1.0.0", datasets, series, charts, indicators, measurements, rules, signals,
 backtests, scenarios, results, retention }`. Semantic inputs, visualization settings and
 immutable captured result inputs are separate fields; scenario output does not replace observations.
+Optional `scenarioView: {customerHistorySeriesId?, mrcHistorySeriesId?}` is visualization configuration
+with remapped observed-series references; it is not another projection model or persisted store.
 
 ## Migration and release
 

@@ -424,6 +424,11 @@ export interface AnalyticsResult {
   stale: boolean;
   content: AnalyticsResultContent;
 }
+/** Explicit observed sources for the scenario comparison; this does not change projection inputs. */
+export interface AnalyticsScenarioView {
+  customerHistorySeriesId?: string;
+  mrcHistorySeriesId?: string;
+}
 export interface AnalyticsExtension {
   schemaVersion: 1;
   engineVersion: string;
@@ -438,6 +443,7 @@ export interface AnalyticsExtension {
   scenarios: AnalyticsScenario[];
   results: AnalyticsResult[];
   retention: { results: number; dataVersions: number };
+  scenarioView?: AnalyticsScenarioView;
 }
 export interface WaterfallResult {
   opening: number;

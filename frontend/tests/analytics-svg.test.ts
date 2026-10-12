@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { blankAnalytics } from '../src/analytics/validation';
 import { executeAnalysis, evaluateSignals } from '../src/analytics/engine';
+import { growthChurnInput } from '../src/analytics/example';
+import { prepareScenarioHistory } from '../src/analytics/scenario-history';
 import {
   serializePreparedChartSvg,
   exportAnalyticsChartSvg,
@@ -181,6 +183,74 @@ describe('shared analytical vector exporter', () => {
       'named, reconciled',
     );
   });
+});
+
+it('scenario SVG shares observed-history preparation, separate units and the actual projection-start boundary with UI', async () => {
+  const input = growthChurnInput();
+  input.scenarioView = {
+    customerHistorySeriesId: 'closing-customers',
+    mrcHistorySeriesId: 'closing-mrc',
+  };
+  const scenario = input.scenarios[0];
+  const content = executeAnalysis({ kind: 'scenario', scenario });
+  if (!('kind' in content) || content.kind !== 'scenario') throw new Error('Invalid fixture.');
+  const history = await prepareScenarioHistory(input, [scenario]);
+  const projected = [
+    {
+      id: `${scenario.id}:customers`,
+      name: `${scenario.name}: customer balance`,
+      unit: history.customerUnit,
+      provenance: 'scenario' as const,
+      points: content.points.map((point) => ({
+        time: Date.parse(point.time),
+        value: point.closingCustomers,
+      })),
+    },
+    {
+      id: `${scenario.id}:mrc`,
+      name: `${scenario.name}: MRC balance`,
+      unit: history.mrcUnit,
+      provenance: 'scenario' as const,
+      points: content.points.map((point) => ({
+        time: Date.parse(point.time),
+        value: point.closingMrc,
+      })),
+    },
+  ];
+  const displayed = [...history.history, ...projected];
+  const prepared = serializePreparedChartSvg(
+    {
+      id: scenario.id,
+      name: scenario.name,
+      kind: 'line',
+      seriesIds: displayed.map((series) => series.id),
+      resolution: 'month',
+      normalized: false,
+    },
+    displayed,
+    { projectionStart: Date.parse(scenario.start) },
+  );
+  const result = await exportAnalyticsResultSvg(input, 'scenario', scenario.id);
+  expect(result).toEqual(prepared);
+  const svg = new DOMParser().parseFromString(result.data, 'image/svg+xml');
+  expect(svg.querySelectorAll('[data-projection-boundary]')).toHaveLength(2);
+  expect(svg.querySelectorAll('[data-provenance="scenario"][stroke-dasharray="7 5"]')).toHaveLength(
+    2,
+  );
+  expect(svg.querySelectorAll('[id^="panel-"]')).toHaveLength(2);
+  expect(result.sourcePoints).toBe(120 + content.points.length * 2);
+  expect(result.data).toContain('Closing customers (observed)');
+  expect(result.data).toContain('Closing MRC (observed)');
+  expect(result.data).toContain('Projection starts');
+  const withoutHistory = await exportAnalyticsResultSvg(input, 'scenario', scenario.id, {
+    customerHistorySeriesId: null,
+    mrcHistorySeriesId: null,
+  });
+  expect(withoutHistory.sourcePoints).toBe(content.points.length * 2);
+  expect(input.scenarioView.customerHistorySeriesId).toBe('closing-customers');
+  await expect(
+    exportAnalyticsResultSvg(input, 'scenario', scenario.id, { dimensions: { region: 'North' } }),
+  ).rejects.toMatchObject({ code: 'INCOMPATIBLE_UNITS', path: 'export.options.dimensions' });
 });
 
 it('SVG dimension filters exclude other-segment signals and saved measurement overlays', () => {

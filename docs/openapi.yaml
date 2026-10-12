@@ -1577,6 +1577,9 @@
             "maxItems": 100,
             "type": "array"
           },
+          "scenarioView": {
+            "$ref": "#/components/schemas/AnalyticsScenarioView"
+          },
           "scenarios": {
             "items": {
               "$ref": "#/components/schemas/AnalyticsScenario"
@@ -5137,6 +5140,27 @@
         ],
         "type": "object"
       },
+      "AnalyticsScenarioView": {
+        "additionalProperties": false,
+        "description": "Optional visualization-only observed history sources for scenario comparison and SVG export. Select observed count/customer and matching-currency/MRC snapshots with UTC calendar, first/last monthly aggregation and observation/day/week/month resolution. No source is inferred. Queries preserve gaps and explicit source dimensions and stop before the projection-start boundary. This does not change scenario assumptions or historical observations.",
+        "properties": {
+          "customerHistorySeriesId": {
+            "description": "Stable semantic analysis identity; never a canvas position. A saved definition ID is immutable.",
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "type": "string"
+          },
+          "mrcHistorySeriesId": {
+            "description": "Stable semantic analysis identity; never a canvas position. A saved definition ID is immutable.",
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "AnalyticsSeries": {
         "additionalProperties": false,
         "description": "Observed and derived values remain distinct. Derived provenance requires an explicit validated expression referencing existing compatible series; a derived expression requires derived provenance. Aggregation must respect snapshot, flow or rate semantics. Optional columnId is a nonempty 1–300-character source column reference.",
@@ -6311,6 +6335,9 @@
             "maxItems": 100,
             "type": "array"
           },
+          "scenarioView": {
+            "$ref": "#/components/schemas/AnalyticsScenarioView"
+          },
           "scenarios": {
             "items": {
               "$ref": "#/components/schemas/AnalyticsScenario"
@@ -6409,10 +6436,19 @@
             ],
             "type": "string"
           },
+          "customerHistorySeriesId": {
+            "description": "Scenario SVG only: override this explicitly saved observed history source; null omits it for this export. Omission uses analytics.scenarioView. Selected MRC currency must match the scenario.",
+            "maxLength": 128,
+            "minLength": 1,
+            "nullable": true,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "type": "string"
+          },
           "dimensions": {
             "additionalProperties": {
               "type": "string"
             },
+            "description": "Chart segment filter; regression must retain its measurement filter. Scenario SVG rejects this override and uses the selected canonical history series dimensions.",
             "type": "object"
           },
           "from": {
@@ -6430,6 +6466,14 @@
             "maximum": 10000,
             "minimum": 100,
             "type": "integer"
+          },
+          "mrcHistorySeriesId": {
+            "description": "Scenario SVG only: override this explicitly saved observed history source; null omits it for this export. Omission uses analytics.scenarioView. Selected MRC currency must match the scenario.",
+            "maxLength": 128,
+            "minLength": 1,
+            "nullable": true,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "type": "string"
           },
           "threshold": {
             "maximum": 1000000000000000,

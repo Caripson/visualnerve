@@ -80,6 +80,8 @@ export function remapAnalytics(
     'openingSeriesId',
     'closingSeriesId',
     'secondSeriesId',
+    'customerHistorySeriesId',
+    'mrcHistorySeriesId',
   ]);
   const walk = (value: unknown, parentKey?: string): unknown => {
     if (Array.isArray(value))

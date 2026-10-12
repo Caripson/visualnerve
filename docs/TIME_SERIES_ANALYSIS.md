@@ -145,6 +145,16 @@ have been verified. Actual benchmark and browser evidence belongs in the accepta
 
 Chart SVG is a bounded vector representation of the selected chart/range/layers, not the complete
 raw data archive. UI and API use the same DOM-free serializer and numeric worker preparation.
+Optional `analytics.scenarioView` stores explicitly selected `customerHistorySeriesId` and
+`mrcHistorySeriesId` as visualization configuration. Selected sources must be observed snapshot
+balances with compatible count/currency units; scenario comparisons retain separate customer/MRC
+panels, solid historical observations, dashed future projections and an explicit projection-start
+boundary. Source queries use the complete canonical observations before that boundary, never
+rendering samples or invented historical values. Saving this view does not change assumptions
+or historical observations. Scenario SVG export uses the same saved source references and boundary.
+Historical comparison currently supports UTC first/last snapshots at observation/day/week/month
+resolution. Other calendar boundaries and coarser snapshots are rejected instead of silently shifted
+or interpolated.
 Dataset CSV/JSON export is the explicit route for complete observations. Process links record
 reviewed semantic mappings and never silently change another process document. Analytics live
 room synchronization is explicitly unavailable; the room boundary rejects such documents.
