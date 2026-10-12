@@ -203,7 +203,7 @@ export class SvgModelRenderer {
       topic = view.data.mindmap,
       theme = request.theme;
     const ibm = getIbmSymbol(node.flowchartSymbol);
-    if (ibm && !topic) return this.ibmNode(card, index, request, ibm);
+    if (ibm) return this.ibmNode(card, index, request, ibm);
     const accent = svgPaint(topic?.color ?? node.color ?? view.data.owners[0]?.color, '#31766c');
     const shape = shapeNames[node.nodeType] ?? 'box',
       mindmap = !!topic,
@@ -318,7 +318,10 @@ export class SvgModelRenderer {
     const { view, width, height, content } = card,
       node = view.data.node,
       theme = request.theme,
-      accent = svgPaint(node.color ?? view.data.owners[0]?.color, '#31766c'),
+      accent = svgPaint(
+        view.data.mindmap?.color ?? node.color ?? view.data.owners[0]?.color,
+        '#31766c',
+      ),
       border = node.status === 'done' ? svgPaint(theme.doneBorder, '#16803d') : accent,
       customBackground = nodeBackgroundColor(node.backgroundColor),
       background = customBackground ?? svgPaint(theme.node, '#ffffff'),
@@ -457,7 +460,7 @@ export class SvgModelRenderer {
             : handle?.includes('right')
               ? 'right'
               : fallback;
-      const symbol = !card.view.data.mindmap && getIbmSymbol(card.view.data.node.flowchartSymbol);
+      const symbol = getIbmSymbol(card.view.data.node.flowchartSymbol);
       if (symbol) {
         const [x, y] = ibmPortPoint(symbol.id, direction);
         return {

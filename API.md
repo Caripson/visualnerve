@@ -1,6 +1,6 @@
 # Optional local REST and MCP integration
 
-API **0.8.3** adds IBM Flowcharting discovery and templates, plus independent node background fills. Ordinary title/icon editing, Time Series & Signal Analysis and portable collaboration document work remain supported. The bridge advertises `collaboration-v1`, `collaboration-document-v1`, `analytics-v1` and `ibm-flowcharting-v1`; a browser's `GET /collaboration/capabilities` separately reports whether the relay is configured. Room admission remains a human UI action.
+API **0.8.3** adds IBM symbol discovery and the Classic Flowcharting template, plus independent node background fills. Ordinary title/icon editing, Time Series & Signal Analysis and portable collaboration document work remain supported. The bridge advertises `collaboration-v1`, `collaboration-document-v1`, `analytics-v1` and `ibm-flowcharting-v1`; a browser's `GET /collaboration/capabilities` separately reports whether the relay is configured. Room admission remains a human UI action.
 
 The public product website is `https://www.visualnerve.com/`. The encrypted editor has one production entry: `https://app.visualnerve.com/`. The former public `/app` paths redirect there without forwarding query data; `/app` on the app origin returns HTTP 404. IndexedDB is origin-bound: existing records on older origins are not deleted, moved or synchronized by routing changes. Local source-development builds retain a development-only `/app/` editor for test fixtures. API/MCP command paths remain the same; allow the exact `https://app.visualnerve.com` origin when starting the local bridge.
 
@@ -89,17 +89,19 @@ Authorized content requests and ordinary diagram exports return readable semanti
 
 For practical meanings, examples and historical distinctions, see the [complete flowchart symbol reference](hugo/content/help/flowchart-symbols.md).
 
-IBM Flowcharting uses ordinary `type:"flowchart"` diagrams and the existing `nodeType` values. `GraphNode.flowchartSymbol` is an optional stable `ibm-*` catalog ID that selects the rendered appearance. Semantic node type, UUID, owners, metadata and relationships remain independent.
+`GraphNode.flowchartSymbol` is an optional stable `ibm-*` catalog ID that selects the rendered appearance while retaining the existing `nodeType`. It is independent of diagram type and does not require a template. Blank diagrams and ordinary templates, including Mind Map, Timeline, Process Map, architecture and responsibility diagrams, can mix IBM symbols with ordinary objects. Semantic node type, UUID, owners, metadata and relationships remain independent.
+
+The browser exposes **IBM symbols** in the editing toolbar and **IBM flowchart symbol** in selected-object Properties for ordinary diagrams. Process Simulator and Time Series & Signal Analysis retain their own tools, with a Properties selector available for already saved symbols. This UI distinction adds no API restriction on the optional field and no new endpoint.
 
 `GET /flowchart/symbols` permits Read only and returns the full catalog as an array. Every entry has `id`, `label`, suggested `nodeType`, `physicalCutout`, `category` (`symbol`, `outline`, `arrowhead` or `legacy`), `revisions`, `construction` (`cutout`, `composite` or `drawn`), `outline`, `outlinePath`, `details`, `detailPaths` and `contentBox`. Point arrays and the content box use normalized 0..1 coordinates; SVG paths use a `0 0 100 100` viewBox. The catalog has 43 entries: 32 completed symbols from the revised IBM sleeve, two raw apertures, four arrowheads and five original forms. `revisions` lists `GX20-8020`, `GX20-8020-1` and/or `GX20-8020-2` outline membership; historical names/functions can differ for a shared outline. Exactly 26 entries set `physicalCutout:true`, specifically for the revised stencils. `GET /flowchart/stencils` returns `{revision,label,physicalCutoutSymbolIds,symbolLabels?}` records with the exact original 25 and revised 26 cutout sets. Optional `symbolLabels` maps catalog IDs to source-backed historical names when their meaning differs from the shared catalog label. Original Input/Output, Predefined Process, Program Modification, Clerical Operation and Perforated Tape have separate stable IDs (`ibm-legacy-input-output`, `ibm-legacy-predefined-process`, `ibm-program-modification`, `ibm-clerical-operation`, `ibm-perforated-tape`); see [sources and notation](docs/IBM_FLOWCHARTING.md).
 
-`GET /templates/ibm-flowcharting` reads the complete built-in example graph. Create an editable copy with Read + write:
+`GET /templates/ibm-flowcharting` reads the complete **Classic Flowcharting** example graph, based on the IBM GX20-8020 stencil. Its ID remains `ibm-flowcharting`, and its diagram type is `flowchart`. Create an editable copy with Read + write:
 
 ```json
 {"name":"Order processing","template":"ibm-flowcharting","type":"flowchart"}
 ```
 
-Send this body to `POST /diagrams`; `type` may be omitted, and `mode` is rejected. The response is the created Diagram. Read `GET /diagrams/{diagramId}` for actual UUIDs and versions before editing. A plain `POST /diagrams` with `type:"flowchart"` still creates an ordinary flowchart.
+Send this body to `POST /diagrams`; `type` may be omitted, and `mode` is rejected. The response is the created Diagram. Read `GET /diagrams/{diagramId}` for actual UUIDs and versions before editing. A plain `POST /diagrams` can create an ordinary diagram without the template; node commands below can set its symbols directly.
 
 Create nodes, children or bulk entries with a catalog ID, for example `{"title":"Validate order","nodeType":"process","flowchartSymbol":"ibm-predefined-process"}`. Update an existing node with `PATCH /nodes/{nodeId}` and `{"version":CURRENT_VERSION,"flowchartSymbol":"ibm-sort"}`. An omitted partial-update field preserves its saved appearance. `flowchartSymbol:null` clears it on PATCH or an existing external-ID bulk upsert and restores ordinary node rendering. Complete/new node records accept omission or a valid catalog ID; null, empty strings and unsupported values return 422 without partial writes. Stale versions retain the existing 409 behavior.
 

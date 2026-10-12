@@ -16,6 +16,7 @@ import { importedConnectionStyle } from '../imports/diagram/presentation';
 import { isReadonlyCanvasNode } from './logical-geometry';
 import { SimulationCardSizing } from '../simulation/card-sizing';
 import { ibmSavedHandle } from '../flowchart/ibm-ports';
+import { getIbmSymbol } from '../flowchart/ibm-symbols';
 export type NodeData = {
   node: GraphNode;
   owners: Owner[];
@@ -193,7 +194,7 @@ export function projectGraph(
             ? 'simulation-resource-pool'
             : typeof n.metadata.simulationProcessId === 'string'
               ? 'simulation-process'
-              : mindmap && n.nodeType !== 'group'
+              : mindmap && n.nodeType !== 'group' && !getIbmSymbol(n.flowchartSymbol)
                 ? 'mindmap-topic'
                 : n.nodeType,
         position: { x: geom.x - (grouped ? parent!.x : 0), y: geom.y - (grouped ? parent!.y : 0) },

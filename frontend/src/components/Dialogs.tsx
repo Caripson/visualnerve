@@ -145,7 +145,7 @@ export function NewDiagram({ close }: { close: () => void }) {
               <b>{templateLabel(translate, t.key, t.name)}</b>
               <small>
                 {t.key === 'ibm-flowcharting'
-                  ? '26 stencil cutouts + completed symbols'
+                  ? 'Based on the IBM GX20-8020 stencil'
                   : t.key === 'time-series-analysis'
                     ? 'Import → Explore → Measure → Detect → Validate → Simulate'
                     : t.key === 'process-simulator-blank'

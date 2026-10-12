@@ -1183,7 +1183,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
             color: appearance.color,
             status: node.status,
             kind: node.nodeType,
-            flowchartSymbol: view.data.mindmap ? undefined : node.flowchartSymbol,
+            flowchartSymbol: node.flowchartSymbol,
           },
           opacity: Number(view.style?.opacity ?? 1),
         });

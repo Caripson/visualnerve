@@ -413,7 +413,7 @@ These ordinary node fields work with IBM symbols and other cards in 2D and 3D. `
 
 ## Create and edit an IBM flowchart
 
-The [IBM Flowcharting Template](/help/ibm-flowcharting/) uses the same editable objects in 2D and 3D. Discover its catalog through the existing request tool:
+The [Classic Flowcharting template](/help/ibm-flowcharting/) provides an editable starting set based on the IBM GX20-8020 stencil. Its symbols can also be applied to objects in blank diagrams and ordinary templates, including Mind Map, Timeline, Process Map, architecture and responsibility diagrams. The template is optional, and the same saved objects appear in 2D and 3D. Discover the catalog through the existing request tool:
 
 ```json
 { "path": "/flowchart/symbols", "method": "GET" }
@@ -431,7 +431,7 @@ Create an editable diagram with Read + write:
 }
 ```
 
-The response is the saved Diagram with HTTP 201. Read its graph through `GET /diagrams/{diagramId}`. The template uses the ordinary `flowchart` type; it does not start a simulation.
+The response is the saved Diagram with HTTP 201. Read its graph through `GET /diagrams/{diagramId}`. Classic Flowcharting retains the `ibm-flowcharting` template ID and uses the ordinary `flowchart` type; it does not start a simulation.
 
 To change an existing object's symbol, read it first and send its current version:
 
@@ -444,6 +444,8 @@ To change an existing object's symbol, read it first and send its current versio
 ```
 
 Replace the example ID and version with saved values. The optional `flowchartSymbol` chooses appearance while retaining the existing `nodeType`. Omission in a partial update preserves it; explicit `null` in PATCH or existing-node bulk upsert removes it. New or complete objects accept a catalog ID or omission. Unknown IDs and invalid values fail validation. Use completed **Sort** or **Magnetic Tape** for their meaning; their aperture choices reproduce the bare stencil outlines.
+
+In the ordinary editor, **IBM symbols** adds a new glyph and **IBM flowchart symbol** in Properties changes a selected object; **Default node appearance** clears it. Process Simulator and Time Series & Signal Analysis retain their own tools, while existing saved symbols can still be changed or cleared in Properties. This browser tool distinction does not restrict the optional API field by diagram type.
 
 Native JSON and backups retain the ID; the shared catalog supplies 2D, 3D and SVG geometry. Existing permissions, version checks and [operation recovery](#recover-an-uncertain-write-without-creating-it-twice) apply. Direct REST uses the same paths prefixed by `/api/v1`; discover the complete schema in the [API reference](/api/docs/).
 

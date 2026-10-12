@@ -117,6 +117,9 @@ it('restores the template bottom/top routes and ignores invalid, wrong-role and 
   graph.diagram.type = 'mindmap';
   expect(project().sourceHandle).toMatch(/^source-/);
   expect(project().targetHandle).toMatch(/^target-/);
+  expect(projectGraph(graph, []).nodes.find((node) => node.id === document.id)?.type).toBe(
+    document.nodeType,
+  );
 });
 
 it('exports endpoints on independent contour fixtures using the same routed sides as 2D', () => {

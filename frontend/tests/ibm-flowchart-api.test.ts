@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { blankGraph, type Diagram, type Graph, type GraphNode } from '../src/model/types';
+import {
+  blankGraph,
+  diagramTypes,
+  type Diagram,
+  type Graph,
+  type GraphNode,
+} from '../src/model/types';
 import { ibmSymbols, ibmStencilForms, type IBMSymbol } from '../src/flowchart/ibm-symbols';
 import { Repository } from '../src/storage/repository';
 import { WorkspaceDatabase } from '../src/storage/database';
@@ -16,6 +22,46 @@ afterEach(async () => {
 });
 
 describe('IBM Flowcharting browser command contract', () => {
+  it.each(diagramTypes.filter((type) => type !== 'process-simulator'))(
+    'creates, changes and clears symbol appearance in an ordinary %s diagram without changing semantics',
+    async (type) => {
+      const graph = await repo.saveGraph(blankGraph(`Reusable symbols: ${type}`, type), 0);
+      const created = await repo.request<GraphNode>(`/diagrams/${graph.diagram.id}/nodes`, 'POST', {
+        title: 'Existing team semantics',
+        nodeType: 'team',
+        flowchartSymbol: 'ibm-predefined-process',
+        backgroundColor: '#c0ffee',
+        metadata: { purpose: 'unchanged' },
+      });
+      const changed = await repo.request<GraphNode>(`/nodes/${created.id}`, 'PATCH', {
+        version: created.version,
+        flowchartSymbol: 'ibm-decision',
+      });
+      expect(changed).toMatchObject({
+        ...created,
+        version: created.version + 1,
+        updatedAt: expect.any(String),
+        flowchartSymbol: 'ibm-decision',
+      });
+      const cleared = await repo.request<GraphNode>(`/nodes/${created.id}`, 'PATCH', {
+        version: changed.version,
+        flowchartSymbol: null,
+      });
+      const { flowchartSymbol: _symbol, ...ordinary } = changed;
+      expect(cleared).toMatchObject({
+        ...ordinary,
+        version: changed.version + 1,
+        updatedAt: expect.any(String),
+      });
+      expect(cleared).not.toHaveProperty('flowchartSymbol');
+      const saved = await repo.getGraph(graph.diagram.id);
+      expect(saved.diagram.type).toBe(type);
+      expect(saved.diagram).not.toHaveProperty('analytics');
+      expect(saved).not.toHaveProperty('simulation');
+      expect(saved.nodes).toEqual([cleared]);
+    },
+  );
+
   it('discovers detached complete catalog metadata through an exact GET route', async () => {
     const first = await repo.request<IBMSymbol[]>('/flowchart/symbols');
     expect(first).toEqual(ibmSymbols);

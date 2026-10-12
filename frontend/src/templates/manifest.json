@@ -19,7 +19,7 @@
   },
   {
     "key": "ibm-flowcharting",
-    "name": "IBM Flowcharting Template",
+    "name": "Classic Flowcharting",
     "type": "flowchart",
     "nodes": 51
   },

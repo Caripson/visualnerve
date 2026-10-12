@@ -8,6 +8,35 @@ afterEach(async () => {
 });
 
 describe('built-in template metadata upgrades', () => {
+  it.each([true, false])(
+    'renames only packaged Classic Flowcharting metadata (builtin=%s), preserving saved content and IDs',
+    async (builtin) => {
+      const database = new WorkspaceDatabase(`classic-template-upgrade-${crypto.randomUUID()}`);
+      databases.push(database);
+      await database.open();
+      const graph = instantiate('ibm-flowcharting', 'My saved IBM workflow');
+      graph.nodes[0].title = 'Keep my wording';
+      graph.nodes[0].backgroundColor = '#d9edf5';
+      await database.diagrams.put(graph.diagram);
+      const previous = {
+        id: 'ibm-flowcharting',
+        name: 'IBM Flowcharting Template',
+        builtin,
+        graph,
+      };
+      await database.templates.put(previous);
+      await database.initialize();
+      expect(await database.templates.get(previous.id)).toEqual({
+        ...previous,
+        name: builtin ? 'Classic Flowcharting' : previous.name,
+      });
+      expect(await database.diagrams.get(graph.diagram.id)).toEqual(graph.diagram);
+      const after = await database.templates.toArray();
+      await database.initialize();
+      expect(await database.templates.toArray()).toEqual(after);
+    },
+  );
+
   it('updates old example labels and adds guided setup while preserving graphs and custom templates', async () => {
     const database = new WorkspaceDatabase(`template-upgrade-${crypto.randomUUID()}`);
     databases.push(database);

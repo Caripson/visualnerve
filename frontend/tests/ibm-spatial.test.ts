@@ -140,7 +140,7 @@ describe('IBM spatial relief', () => {
     expect(positions[1]).toBeCloseTo(512 - positions[0]);
   });
 
-  it('keeps the existing mind-map renderer when a flowchart is converted', () => {
+  it('preserves explicit stencil silhouettes when a flowchart is converted to a mind map', () => {
     const graph = createIbmFlowchartGraph('Converted IBM');
     graph.diagram.type = 'mindmap';
     const projected = projectGraph(graph, []);
@@ -149,7 +149,9 @@ describe('IBM spatial relief', () => {
     );
     const batches = createSpatialBatches(projected.nodes, projected.edges, positions);
     for (const node of graph.nodes)
-      expect(batches.nodes.get(node.id)!.mesh.geometry.userData.flowchartSymbol).toBeUndefined();
+      expect(batches.nodes.get(node.id)!.mesh.geometry.userData.flowchartSymbol).toBe(
+        node.flowchartSymbol,
+      );
     expect(graph.nodes.every((node) => !!node.flowchartSymbol)).toBe(true);
     disposeSpatialScene(batches.group);
   });

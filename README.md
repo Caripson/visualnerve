@@ -11,10 +11,10 @@ The [source repository](https://github.com/Caripson/visualnerve) and [issue form
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="hugo/static/site/images/desktop-dark.webp">
   <source media="(prefers-color-scheme: light)" srcset="hugo/static/site/images/desktop.webp">
-  <img alt="Visual Nerve's Process Simulator showing a kiosk and package pickup diagram, shared resource cards and completed-run metrics." src="hugo/static/site/images/desktop.webp">
+  <img alt="Visual Nerve's customer delivery flowchart with colored symbols, labelled decision paths and editable object properties." src="hugo/static/site/images/desktop.webp">
 </picture>
 
-The screenshot shows the actual desktop workspace with illustrative data. Light and dark versions follow your viewing preference.
+The screenshot shows an editable customer delivery flowchart in the actual desktop workspace, with illustrative data and saved object backgrounds. Light and dark versions follow your viewing preference.
 
 ## What you can do
 
@@ -77,7 +77,7 @@ Keep the intended browser workspace open and select **Settings → MCP / API int
 
 For MCP, call `visual_nerve_api_docs` before `visual_nerve_request`; the guide and OpenAPI contract are bundled. A separately hosted app may need an exact allowed origin, trusted local TLS and browser local-network permission. Read [connection setup](docs/MCP.md) and the [API contract](API.md) before configuring that connection.
 
-IBM Flowcharting offers the revised IBM stencil notation as native editable flowcharts. Its 43-form catalog contains 38 revised symbols/outlines/arrowheads and five original meanings. Revision memberships and exact original 25 versus revised 26 cutout sets are explicitly discoverable. API/MCP can discover the complete catalog through `GET /flowchart/symbols` and create the `ibm-flowcharting` template using ordinary graph records. All nodes support an optional background fill separately from the accent, with the same saved value available through API/MCP. See [notation, source revisions and API usage](docs/IBM_FLOWCHARTING.md).
+**Classic Flowcharting** provides an editable starting set based on the IBM GX20-8020 stencil. The same symbols can be added to blank diagrams or ordinary templates, including Mind Map and Timeline. Process Simulator and Time Series & Signal Analysis retain their own tools. The 43-form catalog contains 38 revised symbols/outlines/arrowheads and five original meanings. Revision memberships and exact original 25 versus revised 26 cutout sets are explicitly discoverable. API/MCP can discover the complete catalog through `GET /flowchart/symbols` and create the template with the stable `ibm-flowcharting` ID using ordinary graph records. All nodes support an optional background fill separately from the accent, with the same saved value available through API/MCP. See [notation, source revisions and API usage](docs/IBM_FLOWCHARTING.md). IBM is a trademark of International Business Machines Corporation; the historical attribution does not imply endorsement.
 
 Check bridge health and the client's discovered tools before workspace commands. Version 0.8.3 advertises `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1`, `collaboration-document-v1`, `analytics-v1` and `ibm-flowcharting-v1`; updating the website does not replace a running local binary. The documentation tool accepts `document: "endpoint"`, an exact OpenAPI template `path` and HTTP `method` for a compact complete contract. For retry-safe writes, reserve an opaque ID with `POST /operations`, use it on the write and inspect `GET /operations/{operationId}` after an uncertain response. A timeout may occur after a commit; never repeat a creation under a new ID without reconciling saved state. See [operation recovery](hugo/content/help/api-mcp.md#recover-an-uncertain-write-without-creating-it-twice).
 

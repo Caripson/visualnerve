@@ -167,7 +167,7 @@ func main() {
 		"id":   object{"type": "string", "minLength": 1, "description": "Stable template key, such as ibm-flowcharting, process-simulator-blank (guided empty setup) or process-simulator (kiosk example); template keys are not graph UUIDs."},
 		"name": object{"type": "string"}, "builtin": object{"type": "boolean"}, "graph": ref("Graph"),
 	})
-	schemas["TemplateRecord"].(object)["description"] = "Browser-local built-in or user template with its complete reusable native graph. IBM Flowcharting retains type flowchart and nodes[].flowchartSymbol; a Process Simulator template includes graph.simulation. Discovery requires an accepted, connected browser and at least Read only access; records are not stored by the server."
+	schemas["TemplateRecord"].(object)["description"] = "Browser-local built-in or user template with its complete reusable native graph. Classic Flowcharting (ibm-flowcharting; Based on the IBM GX20-8020 stencil) retains type flowchart and nodes[].flowchartSymbol; a Process Simulator template includes graph.simulation. Discovery requires an accepted, connected browser and at least Read only access; records are not stored by the server."
 	// CSV source records are validated in the browser and forwarded losslessly by the bridge.
 	schemas["CsvDataset"] = object{
 		"type":                 "object",
@@ -277,7 +277,7 @@ func main() {
 	lockOperation := paths["/workspace/lock"].(object)["post"].(object)
 	lockOperation["description"] = workspaceSecurityPolicyDescription + workspaceSecurityReauthorizationDescription
 	lockOperation["requestBody"].(object)["required"] = false
-	add("GET", "/templates", "Discover browser-local templates and complete graphs, including IBM Flowcharting, guided Process Simulator and kiosk example", "", "TemplateRecord[]", "200")
+	add("GET", "/templates", "Discover browser-local templates and complete graphs, including Classic Flowcharting, guided Process Simulator and kiosk example", "", "TemplateRecord[]", "200")
 	add("GET", "/flowchart/symbols", "Discover the complete IBM Flowcharting symbol catalog; read-only access allowed", "", "FlowchartSymbolRecord[]", "200")
 	paths["/flowchart/symbols"].(object)["get"].(object)["description"] = flowchartPolicy
 	add("GET", "/flowchart/stencils", "Discover the exact original and revised IBM stencil cutout memberships; read-only access allowed", "", "FlowchartStencilRecord[]", "200")

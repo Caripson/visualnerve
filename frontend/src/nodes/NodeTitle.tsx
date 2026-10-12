@@ -9,11 +9,13 @@ export function NodeTitle({
   title,
   exporting = false,
   readonly = false,
+  mindmap = false,
 }: {
   id: string;
   title: string;
   exporting?: boolean;
   readonly?: boolean;
+  mindmap?: boolean;
 }) {
   const { t } = useI18n();
   const editing = useEditor((state) => state.editingNode === id);
@@ -153,6 +155,13 @@ export function NodeTitle({
             if (event.key === 'Escape') {
               event.preventDefault();
               finish(false);
+            }
+            if (event.key === 'Tab' && mindmap) {
+              event.preventDefault();
+              finish(true);
+              useEditor.getState().select([id]);
+              const child = useEditor.getState().child();
+              if (child) useEditor.getState().beginEditing(child);
             }
           }}
         />

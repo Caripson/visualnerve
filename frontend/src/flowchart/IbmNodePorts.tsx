@@ -1,4 +1,4 @@
-import { useEffect, type CSSProperties } from 'react';
+import { Fragment, useEffect, type CSSProperties } from 'react';
 import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
 import { ibmPortPoint, type IBMPortSide } from './ibm-ports';
 import type { IBMSymbolId } from './ibm-symbols';
@@ -18,6 +18,7 @@ export function IbmNodePorts({
   connectable,
   exporting,
   layoutProjected,
+  mindmap = false,
 }: {
   id: string;
   symbol: IBMSymbolId;
@@ -26,6 +27,7 @@ export function IbmNodePorts({
   connectable: boolean;
   exporting: boolean;
   layoutProjected: boolean;
+  mindmap?: boolean;
 }) {
   const updateInternals = useUpdateNodeInternals();
   useEffect(() => {
@@ -33,7 +35,7 @@ export function IbmNodePorts({
     updateInternals(id);
     // Clearing the symbol restores ordinary ports at the same node dimensions.
     return () => updateInternals(id);
-  }, [id, symbol, width, height, exporting, layoutProjected, updateInternals]);
+  }, [id, symbol, width, height, exporting, layoutProjected, mindmap, updateInternals]);
   const style = (side: IBMPortSide): CSSProperties => {
     const [x, y] = ibmPortPoint(symbol, side);
     return {
@@ -93,6 +95,25 @@ export function IbmNodePorts({
           />
         </>
       )}
+      {mindmap &&
+        (['left', 'right'] as const).map((side) => (
+          <Fragment key={side}>
+            <Handle
+              type="target"
+              position={side === 'left' ? Position.Left : Position.Right}
+              id={`target-${side}`}
+              style={style(side)}
+              isConnectable={connectable}
+            />
+            <Handle
+              type="source"
+              position={side === 'left' ? Position.Left : Position.Right}
+              id={`source-${side}`}
+              style={style(side)}
+              isConnectable={connectable}
+            />
+          </Fragment>
+        ))}
     </>
   );
 }

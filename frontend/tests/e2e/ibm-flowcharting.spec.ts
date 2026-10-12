@@ -312,7 +312,7 @@ test('IBM template, glyph selector and palette persist native editable symbols',
   const dialog = page.getByRole('dialog', { name: 'New diagram', exact: true });
   await expect(dialog.locator('.template-option')).toHaveCount(14);
   await expect(dialog.getByText('SD-WAN', { exact: false })).toHaveCount(0);
-  await dialog.getByRole('button', { name: /IBM Flowcharting Template/ }).click();
+  await dialog.getByRole('button', { name: /Classic Flowcharting/ }).click();
   await dialog.getByLabel('New diagram name').fill('Editable IBM template');
   await dialog.getByRole('button', { name: 'Create diagram', exact: true }).click();
   await saved(page);

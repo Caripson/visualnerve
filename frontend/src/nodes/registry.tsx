@@ -95,7 +95,7 @@ function renderer(kind: NodeKind) {
     const smallZoom = useStore((state) => state.transform[2] < 0.2);
     const overview = smallZoom && !exporting && !selected;
     const updateNode = useEditor((s) => s.updateNode);
-    const color = node.color || owners[0]?.color || '#31766c';
+    const color = data.mindmap?.color || node.color || owners[0]?.color || '#31766c';
     const ibm = getIbmSymbol(node.flowchartSymbol);
     const content = (
       <>
@@ -121,6 +121,7 @@ function renderer(kind: NodeKind) {
           title={node.title}
           exporting={exporting}
           readonly={isReadonlyNodeTitle(node)}
+          mindmap={!!ibm && !!data.mindmap}
         />
         {ibm && !overview && <NodeStatus status={node.status} />}
         {!overview && <SimulationNodeSummary id={id} node={node} />}
@@ -240,6 +241,7 @@ function renderer(kind: NodeKind) {
             connectable={!readonly}
             exporting={exporting}
             layoutProjected={node.metadata.simulationLayoutProjected === true}
+            mindmap={!!data.mindmap}
           />
         ) : (
           <>

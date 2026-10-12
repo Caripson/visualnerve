@@ -47,6 +47,7 @@ import { UnderstandingActions, UnderstandingTools } from './UnderstandingTools';
 import { useCompactLayout } from '../hooks/useCompactLayout';
 import { CompactToolbar } from './mobile/CompactToolbar';
 import { LazyIbmSymbolPalette } from '../flowchart/LazyControls';
+import { canUseFlowchartSymbols } from '../flowchart/availability';
 export function Toolbar({
   open,
   showFilters,
@@ -154,29 +155,28 @@ export function Toolbar({
         : undefined;
     useEditor.getState().addNode({ nodeType: kind, ...point });
   };
-  const symbolTools =
-    graph.diagram.type === 'flowchart' ? (
-      <LazyIbmSymbolPalette
-        compact={compact}
-        add={(node: Partial<GraphNode>) => {
-          const rect = document.querySelector('.canvas-shell')?.getBoundingClientRect();
-          const size = { width: node.width ?? 200, height: node.height ?? 100 };
-          const point =
-            rect && !spatial
-              ? flow.screenToFlowPosition({
-                  x: rect.left + rect.width / 2,
-                  y: rect.top + rect.height / 2,
-                })
-              : { x: 0, y: 0 };
-          useEditor.getState().addNode({
-            ...node,
-            ...size,
-            x: point.x - size.width / 2,
-            y: point.y - size.height / 2,
-          });
-        }}
-      />
-    ) : undefined;
+  const symbolTools = canUseFlowchartSymbols(graph.diagram) ? (
+    <LazyIbmSymbolPalette
+      compact={compact}
+      add={(node: Partial<GraphNode>) => {
+        const rect = document.querySelector('.canvas-shell')?.getBoundingClientRect();
+        const size = { width: node.width ?? 200, height: node.height ?? 100 };
+        const point =
+          rect && !spatial
+            ? flow.screenToFlowPosition({
+                x: rect.left + rect.width / 2,
+                y: rect.top + rect.height / 2,
+              })
+            : { x: 0, y: 0 };
+        useEditor.getState().addNode({
+          ...node,
+          ...size,
+          x: point.x - size.width / 2,
+          y: point.y - size.height / 2,
+        });
+      }}
+    />
+  ) : undefined;
   if (compact)
     return (
       <CompactToolbar
@@ -342,9 +342,9 @@ export function Toolbar({
                 <Plus size={15} />
                 {t('toolbar.addNode')}
               </button>
-              {symbolTools}
             </>
           )}
+          {symbolTools}
           <button
             className="desktop-tools"
             title={t('toolbar.connectNodes')}

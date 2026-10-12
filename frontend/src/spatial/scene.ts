@@ -30,7 +30,7 @@ export function spatialNodeAppearance(view: CanvasNode) {
   const accent = view.data.mindmap?.color || view.data.node.color || '#538971';
   const custom = nodeBackgroundColor(view.data.node.backgroundColor);
   if (custom) return { background: custom, color: topicInk(custom), accent };
-  const depth = view.data.mindmap?.depth;
+  const depth = getIbmSymbol(view.data.node.flowchartSymbol) ? undefined : view.data.mindmap?.depth;
   if (depth === 1) return { background: accent, color: topicInk(accent), accent };
   const background = new THREE.Color('#ffffff');
   if (depth !== undefined) background.lerp(new THREE.Color(accent), depth === 0 ? 0.07 : 0.14);
@@ -361,7 +361,7 @@ function reliefProfile(view: CanvasNode): ReliefProfile {
   // Quantize outwards so the relief cannot fill a transparent rounded face corner.
   const quantize = (value: number) => Math.min(0.5, Math.ceil(value * 512) / 512);
   return {
-    symbol: view.data.mindmap ? undefined : getIbmSymbol(view.data.node.flowchartSymbol)?.id,
+    symbol: getIbmSymbol(view.data.node.flowchartSymbol)?.id,
     opacity: Number(view.style?.opacity ?? 1) * (kind === 'group' ? 0.03 : 1),
     radiusX: quantize(radius / (dimensions.width * 100)),
     radiusY: quantize((kind === 'database' ? 8 : radius) / (dimensions.height * 100)),

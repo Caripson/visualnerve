@@ -1,6 +1,6 @@
-# IBM flowcharting
+# Classic Flowcharting
 
-Visual Nerve provides the IBM Flowcharting Template symbol family as editable native objects in 2D and 3D. The sources are the original X20-8020 stencil and the revised GX20-8020-1 / GX20-8020-2 stencil and explanatory sleeve. The [browser guide](https://www.visualnerve.com/help/ibm-flowcharting/) covers ordinary editing; API and MCP use the same saved graph.
+Visual Nerve's **Classic Flowcharting** template is based on the IBM GX20-8020 stencil. Its symbols are editable native objects in 2D and 3D and can also be used in blank diagrams or other ordinary templates. The sources are the original X20-8020 stencil and the revised GX20-8020-1 / GX20-8020-2 stencil and explanatory sleeve. The [browser guide](https://www.visualnerve.com/help/ibm-flowcharting/) covers ordinary editing; API and MCP use the same saved graph.
 
 ## What the catalog counts
 
@@ -87,11 +87,13 @@ The revised convention changes I/O to a parallelogram, manual operation to a tra
 
 The [GX20-8020-2 record](https://www.si.edu/object/ibm-gx20-8020-2-flowcharting-template:nmah_694225) documents 26 cutouts and revised ruler divisions. Its [original photograph](https://ids.si.edu/ids/deliveryService?id=NMAH-AHB2012q05391&max=600) shows the same symbol family and arrangement. Individual aperture dimensions across revisions have not been measured. The digital geometry preserves recognizable outlines and construction details; it is resizable and is not a metrological copy of the plastic stencil. The ruler and grid are not graph objects.
 
-IBM identifies offpage connector, transmittal tape and keying as its additional conventions beyond the referenced international symbol set. Names identify this historical source; Visual Nerve does not claim IBM endorsement or standards certification.
+IBM identifies offpage connector, transmittal tape and keying as its additional conventions beyond the referenced international symbol set. IBM is a trademark of International Business Machines Corporation. Names identify this historical source; Visual Nerve does not claim IBM endorsement or standards certification.
 
 ## Browser use and rendering
 
-Choose **IBM Flowcharting Template** when creating a diagram. Select an object and use **IBM flowchart symbol** in Properties to change its glyph. Edit its ordinary title, description, status, color and relationships as for other objects. The selected glyph is stored in `GraphNode.flowchartSymbol`; the existing `nodeType` remains the object's semantic kind.
+Open a blank diagram or any ordinary template, including Mind Map, Timeline, Process Map, architecture and responsibility diagrams. **IBM symbols** in the editing toolbar adds a new glyph; select an existing object and use **IBM flowchart symbol** in Properties to change its appearance. **Classic Flowcharting** is an optional template containing the complete catalog and an example workflow. Edit ordinary titles, descriptions, status, colors and relationships as for other objects. The selected glyph is stored in `GraphNode.flowchartSymbol`; the existing `nodeType` remains the object's semantic kind. Mind map branches and timeline dates remain part of their ordinary model.
+
+Process Simulator and Time Series & Signal Analysis retain their own tools and do not expose the symbol palette. Properties still offers the selector for an already saved symbol in those specialized documents, so it can be changed or cleared. This is browser tool availability; API validation continues to accept the optional saved field independently of diagram type.
 
 Titles and icons are centred within each symbol's content box. Double-click or double-tap the title in 2D, the object's face in 3D, or select one object and press F2 to rename it in place. Enter or blur commits, Escape cancels, and a committed rename supports Undo. **Node background color** changes `GraphNode.backgroundColor` independently of the `color` accent; **Use theme background** clears the saved fill. This editing behavior also applies to ordinary node cards.
 
@@ -123,7 +125,7 @@ Create the editable example with the existing diagram endpoint:
 }
 ```
 
-Creation requires Read + write and returns the saved Diagram with HTTP 201. The template uses the ordinary `flowchart` diagram type. Read its graph through `GET /diagrams/{diagramId}` before choosing objects to edit.
+Creation requires Read + write and returns the saved Diagram with HTTP 201. The Classic Flowcharting template retains the stable `ibm-flowcharting` ID and uses the ordinary `flowchart` diagram type. The template is optional: ordinary node creation or updates can set `flowchartSymbol` in a diagram created without it, including Mind Map and Timeline diagrams. Read the graph through `GET /diagrams/{diagramId}` before choosing objects to edit.
 
 Apply a glyph to an existing node with its current version:
 

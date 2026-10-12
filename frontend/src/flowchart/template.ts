@@ -22,7 +22,7 @@ export function ibmSymbolSize(id: IBMSymbolId) {
 export function createIbmFlowchartGraph(name: string): Graph {
   const graph = blankGraph(name, 'flowchart');
   graph.diagram.description =
-    'IBM GX20-8020, GX20-8020-1 and GX20-8020-2: 25 original apertures, 26 revised apertures, the revised sleeve’s 32 completed symbols, five original variants, and an editable batch-processing example. Select a node to change its IBM symbol.';
+    'Classic Flowcharting. Based on the IBM GX20-8020 stencil and GX20-8020-1 / GX20-8020-2 revisions: 25 original apertures, 26 revised apertures, the revised sleeve’s 32 completed symbols, five original variants, and an editable batch-processing example. Select a node to change its IBM symbol. IBM is a trademark of International Business Machines Corporation. Visual Nerve is not affiliated with or endorsed by IBM.';
   graph.diagram.tags = ['IBM', 'flowchart', 'stencil'];
   const physical = ibmSymbols.filter((symbol) => symbol.physicalCutout);
   const completed = ibmSymbols.filter((symbol) => !symbol.physicalCutout);

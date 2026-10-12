@@ -216,3 +216,29 @@ it('keeps mind-map input compositions as drafts before committing a normal Enter
   fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter' });
   expect(useEditor.getState().graph!.nodes[0].title).toBe('Approved name');
 });
+
+it('commits a stencil topic on Tab and starts an ordinary child without inheriting its glyph', () => {
+  const graph = blankGraph('Mixed mind-map title', 'mindmap');
+  const node = newNode(graph.diagram.id, {
+    title: 'Review input',
+    flowchartSymbol: 'ibm-input-output',
+  });
+  graph.nodes = [node];
+  useEditor.getState().setGraph(graph);
+  render(<NodeTitle id={node.id} title={node.title} mindmap />);
+  act(() => useEditor.getState().beginEditing(node.id));
+  fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Approved input' } });
+  fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Tab', isComposing: true });
+  expect(useEditor.getState().graph!.nodes).toHaveLength(1);
+  fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Tab' });
+  const state = useEditor.getState();
+  expect(state.graph!.nodes[0]).toMatchObject({
+    title: 'Approved input',
+    flowchartSymbol: 'ibm-input-output',
+  });
+  const child = state.graph!.nodes.find((item) => item.parentId === node.id)!;
+  expect(child.flowchartSymbol).toBeUndefined();
+  expect(child.title).toBe('New child');
+  expect(state.editingNode).toBe(child.id);
+  expect(state.selectedNodes).toEqual([child.id]);
+});

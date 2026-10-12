@@ -47,8 +47,8 @@ These entry points keep earlier links and bookmarks useful.
 ### Edit your graph
 [Edit objects and relationships](/help/editing/) or [explore the same diagram in 3D](/help/3d/).
 
-### IBM flowcharting
-[Choose and edit the IBM stencil's completed symbols](/help/ibm-flowcharting/) in 2D and 3D, or [learn what every symbol means and when to use it](/help/flowchart-symbols/).
+### Classic Flowcharting {#ibm-flowcharting}
+[Choose and edit IBM stencil symbols](/help/ibm-flowcharting/) in blank diagrams or ordinary templates, including the Classic Flowcharting starting set, in 2D and 3D. [Learn what every symbol means and when to use it](/help/flowchart-symbols/).
 
 ### Present a numbered walkthrough
 [Number objects, play, minimize, add narration and export video](/help/presentations/).

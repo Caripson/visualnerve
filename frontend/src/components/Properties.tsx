@@ -36,6 +36,7 @@ import {
 } from './CodeProperties';
 import { SpatialProperties } from './SpatialProperties';
 import { LazyIbmSymbolProperties } from '../flowchart/LazyControls';
+import { canUseFlowchartSymbols } from '../flowchart/availability';
 import { NodeBackgroundField } from './NodeBackgroundField';
 export interface PropertiesProps {
   editCsv?: (datasetId?: string) => void;
@@ -176,7 +177,7 @@ function PropertyPanel({
               placeholder={t('editor.properties.addContext')}
             />
           </Field>
-          {(graph.diagram.type === 'flowchart' || !!node.flowchartSymbol) && (
+          {(canUseFlowchartSymbols(graph.diagram) || !!node.flowchartSymbol) && (
             <LazyIbmSymbolProperties node={node} update={update} />
           )}
           <NodeBackgroundField node={node} update={update} />

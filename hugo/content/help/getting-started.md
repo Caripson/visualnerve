@@ -49,7 +49,7 @@ When **An update is ready** appears, choose **Later** to continue or **Update no
 | Blank                      | Arrange your own objects without a starting structure         | Sketch an unfamiliar system                                    |
 | Mind Map                   | Expand a central idea into connected topics                   | Explore a product launch                                       |
 | Basic Flowchart            | Explain steps and decisions                                   | Describe an approval workflow                                  |
-| IBM Flowcharting Template  | Use the classic IBM process, storage and communication symbols | Draw a workflow with predefined routines and magnetic storage |
+| Classic Flowcharting       | Use classic flowchart symbols based on the IBM GX20-8020 stencil | Draw a workflow with predefined routines and magnetic storage |
 | Project Timeline           | Show work against dates                                       | Plan a delivery in phases                                      |
 | Customer Journey           | Show the stages someone experiences                           | Explain onboarding                                             |
 | Decision Tree              | Compare branches from successive choices                      | Classify support cases                                         |

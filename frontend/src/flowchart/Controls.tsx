@@ -102,7 +102,8 @@ export function IbmSymbolPalette({
 }) {
   return (
     <ToolbarMenu label="IBM symbols" icon={<Shapes size={18} />} text={!compact}>
-      <h3>IBM Flowcharting Template</h3>
+      <h3>Classic Flowcharting</h3>
+      <p>Based on the IBM GX20-8020 stencil.</p>
       <p>26 stencil cutouts, plus completed symbols from the original sleeve.</p>
       <div className="ibm-symbol-palette">
         {ibmSymbols.map((symbol) => (
@@ -132,6 +133,10 @@ export function IbmSymbolPalette({
           </button>
         ))}
       </div>
+      <p className="muted">
+        IBM is a trademark of International Business Machines Corporation. Visual Nerve is not
+        affiliated with or endorsed by IBM.
+      </p>
     </ToolbarMenu>
   );
 }

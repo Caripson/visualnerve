@@ -66,7 +66,9 @@ The floating selection toolbar offers **Edit**, **Status**, **Done / Reopen**, c
 
 Type controls the native card's representation. Imported semantic details and simulator assumptions add their own meaning; changing a card's shape alone does not run code, query a database or create processing behavior.
 
-In a flowchart, use **IBM flowchart symbol** in Properties to choose a classic process, card, tape, storage or communication glyph. The selector changes appearance while retaining the object's ordinary type and information. The **IBM Flowcharting Template** provides an editable starting set; see [IBM flowcharting](/help/ibm-flowcharting/) for symbol choices and completed composites.
+In a blank diagram or any ordinary template, use **IBM symbols** in the editing toolbar to add a classic process, card, tape, storage or communication glyph. To change an existing object, use **IBM flowchart symbol** in Properties. This works in Mind Map, Timeline, Process Map, architecture and responsibility diagrams as well as flowcharts. The selector changes appearance while retaining the object's ordinary type and information; **Default node appearance** clears the glyph.
+
+The **Classic Flowcharting** template provides an editable starting set based on the IBM GX20-8020 stencil. You can use the same symbols without starting from that template. **Process Simulator** and **Time Series & Signal Analysis** retain their own tools; existing saved symbols can still be changed or cleared in Properties. See [IBM flowchart symbols](/help/ibm-flowcharting/) for choices and completed composites.
 
 ### Read long code and schema cards
 

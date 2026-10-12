@@ -8,7 +8,7 @@ Choose a symbol for what a step **does**, then give the object a short, specific
 
 This reference explains all **43 choices** in Visual Nerve: **32 completed revised symbols**, **two raw apertures**, **four arrowheads** and **five original forms**. The miniatures use the same outlines and internal lines as the editor. They follow your Appearance setting; they show shapes, not a separate executable model.
 
-For adding, resizing, renaming, colouring and connecting these objects, use the [IBM flowchart editing guide](/help/ibm-flowcharting/). You can start with just Terminal, Process, Decision, Input / Output and Document, then use the more specific symbols where their distinction helps the reader.
+For adding, resizing, renaming, colouring and connecting these objects, use the [IBM flowchart editing guide](/help/ibm-flowcharting/). Symbols work in blank diagrams and ordinary templates; **Classic Flowcharting** provides an optional starting set based on the IBM GX20-8020 stencil. You can start with just Terminal, Process, Decision, Input / Output and Document, then use the more specific symbols where their distinction helps the reader.
 
 ![The connected IBM example workflow in the actual Visual Nerve editor.](/help/images/ibm-flowcharting-2d.webp "This example shows completed symbols in a readable workflow. The template also supplies every catalog choice.")
 
@@ -304,5 +304,7 @@ Native JSON preserves the exact editable symbol, title, connections and saved fi
 ## Sources and a final reading check
 
 The completed meanings above follow the [December 1970 IBM stencil sleeve](https://www.lola.org.uk/docs/IBM%20Flowchart%20Template,%20GX20-8020-1%20UM-010,%20IBM,%201970-12%20Scan.pdf) and [IBM Flowcharting Techniques](https://fulmanski.pl/zajecia/wdi/zajecia_20142015/materialy/IBM-FlowchartingTechniques-GC20-8152-1.pdf), printed pages 2-7: revision changes, sleeve definitions, composite forms, checklist and stencil. The workflow labels here are new illustrative examples. These are historical IBM conventions; they do not establish a required modern notation or standards certification. See the [full source/revision guide](/help/ibm-flowcharting/).
+
+IBM is a trademark of International Business Machines Corporation. The source attribution does not imply IBM endorsement of Visual Nerve.
 
 Before sharing a chart, check that each title names a specific action, question or record; every decision path is labelled; connectors identify their destination; historical media are explained; and the shapes do not imply execution rules that you have not actually configured.
