@@ -71,6 +71,21 @@ describe('content-addressed image delivery', () => {
     );
   });
 
+  it('accepts the compact simulator Help pair and verified hashes without expanding the screenshot allowlist', () => {
+    const { directory, put } = fixture();
+    for (const suffix of ['', '-dark'])
+      put(`help/images/simulation-compact${suffix}.webp`, `compact ${suffix} synthetic fixture`);
+    const mapping = fingerprintAssets(directory);
+    for (const suffix of ['', '-dark']) {
+      const path = `/help/images/simulation-compact${suffix}.webp`;
+      expect(auditStatic(directory)).toContain(path.slice(1));
+      expect(auditStatic(directory)).toContain(mapping.get(path)!.slice(1));
+    }
+    put('help/images/simulation-compact-private-export.webp', 'unapproved');
+    fingerprintAssets(directory);
+    expect(() => auditStatic(directory)).toThrow('Unexpected file');
+  });
+
   it('rejects corrupted hashes and unapproved source names before deployment', () => {
     const { directory, put } = fixture();
     fingerprintAssets(directory);
@@ -79,6 +94,29 @@ describe('content-addressed image delivery', () => {
     put(`site/images/desktop-${hash('light image')}.webp`, 'light image');
     put('site/images/private-export.webp', 'private');
     put(`site/images/private-export-${hash('private')}.webp`, 'private');
+    expect(() => auditStatic(directory)).toThrow('Unexpected file');
+  });
+
+  it('accepts only the four curated capacity captures and native frames, including verified fingerprints', () => {
+    const { directory, put } = fixture();
+    put('site/infrastructure.css', '.home-infrastructure{}');
+    for (const name of ['api', 'network', 'energy', 'datacenter'])
+      for (const suffix of ['', '-dark'])
+        for (const width of ['', '-480', '-960'])
+          put(
+            `site/images/infrastructure-${name}${width}${suffix}.webp`,
+            `${name}${width}${suffix} synthetic fixture`,
+          );
+    for (const name of ['monitor', 'peripherals'])
+      put(`site/devices/infrastructure-${name}.svg`, '<svg/>');
+    const mapping = fingerprintAssets(directory);
+    expect(auditStatic(directory)).toContain('site/infrastructure.css');
+    for (const name of ['api', 'network', 'energy', 'datacenter'])
+      expect(auditStatic(directory)).toContain(
+        mapping.get(`/site/images/infrastructure-${name}.webp`)!.slice(1),
+      );
+    put('site/images/infrastructure-private-export.webp', 'unapproved');
+    fingerprintAssets(directory);
     expect(() => auditStatic(directory)).toThrow('Unexpected file');
   });
 });

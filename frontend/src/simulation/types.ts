@@ -478,7 +478,12 @@ export interface Bottleneck {
   averageWaitSeconds: number;
   reason: string;
   /** Opt-in infrastructure ranking declares which observed pressure produced the score. */
-  methodology?: 'queue-history' | 'blocked-admission' | 'bandwidth-sharing' | 'energy-shortfall';
+  methodology?:
+    | 'queue-history'
+    | 'blocked-admission'
+    | 'bandwidth-sharing'
+    | 'bandwidth-unavailable'
+    | 'energy-shortfall';
 }
 export interface CashPoint {
   timeSeconds: number;

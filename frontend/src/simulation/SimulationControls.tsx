@@ -21,8 +21,9 @@ interface ActionProps {
 
 export function SimulationActions({
   compact = false,
+  condensed = false,
   ...props
-}: ActionProps & { compact?: boolean }) {
+}: ActionProps & { compact?: boolean; condensed?: boolean }) {
   const { t } = useI18n();
   return (
     <>
@@ -46,38 +47,46 @@ export function SimulationActions({
             : t('simulator.run.play')}
       </button>
       <button
-        className={compact ? 'simulation-icon-action' : undefined}
+        className={compact || condensed ? 'simulation-icon-action' : undefined}
         aria-label={t('simulator.run.pauseAccessible')}
+        title={t('simulator.run.pauseAccessible')}
         disabled={props.busy || !props.active || props.paused}
         onClick={props.pause}
       >
         <Pause size={compact ? 19 : 15} />
-        {!compact && t('simulator.run.pause')}
+        {!compact && !condensed && t('simulator.run.pause')}
       </button>
-      {!compact && <SimulationStopActions {...props} />}
+      {!compact && <SimulationStopActions {...props} iconOnly={condensed} />}
     </>
   );
 }
 
-export function SimulationStopActions(props: ActionProps) {
+export function SimulationStopActions({
+  iconOnly = false,
+  ...props
+}: ActionProps & { iconOnly?: boolean }) {
   const { t } = useI18n();
   return (
     <>
       <button
+        className={iconOnly ? 'simulation-icon-action' : undefined}
         aria-label={t('simulator.run.stopAccessible')}
+        title={t('simulator.run.stopAccessible')}
         disabled={props.busy || !props.active}
         onClick={props.stop}
       >
         <Square size={15} />
-        {t('simulator.run.stop')}{' '}
+        {!iconOnly && t('simulator.run.stop')}
       </button>
       <button
+        className={iconOnly ? 'simulation-icon-action' : undefined}
         aria-label={t('simulator.run.resetAccessible')}
+        title={t('simulator.run.resetAccessible')}
         disabled={props.busy || !props.hasRun}
         onClick={props.reset}
       >
         <RotateCcw size={15} />
-        {t('simulator.run.reset')}{' '}
+        {!iconOnly && t('simulator.run.reset')}
       </button>
     </>
   );

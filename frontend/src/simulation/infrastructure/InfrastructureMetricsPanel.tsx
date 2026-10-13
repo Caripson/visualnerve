@@ -18,7 +18,7 @@ export function InfrastructureMetricsPanel({
       <h4>Infrastructure capacity</h4>
       <p>
         Current allocation and integrated totals from this run. Red identifies queued capacity,
-        shared serialization or unmet power; the reason is shown with each pool.
+        shared or unavailable bandwidth, or unmet power; the reason is shown with each pool.
       </p>
       <div className="infrastructure-grid">
         {ids.map((id) => {

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 230" fill="none">
+  <defs>
+    <linearGradient id="metal" x1="62" y1="18" x2="879" y2="192" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#e7e8e8"/>
+      <stop offset=".5" stop-color="#a7acae"/>
+      <stop offset="1" stop-color="#d7dadb"/>
+    </linearGradient>
+    <linearGradient id="mouse" x1="944" y1="29" x2="1013" y2="166" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#e7e8e8"/>
+      <stop offset=".65" stop-color="#c6cacc"/>
+      <stop offset="1" stop-color="#a7acae"/>
+    </linearGradient>
+    <pattern id="keys" width="45" height="37" patternUnits="userSpaceOnUse">
+      <rect x="3" y="3" width="36" height="28" rx="4" fill="#252a2e"/>
+      <path d="M8 4H34" stroke="#657078" stroke-opacity=".45"/>
+    </pattern>
+  </defs>
+  <ellipse cx="473" cy="191" rx="425" ry="17" fill="#000" fill-opacity=".08"/>
+  <ellipse cx="977" cy="184" rx="67" ry="14" fill="#000" fill-opacity=".08"/>
+  <g transform="translate(89 17) skewX(-9)">
+    <path d="M16 0H774Q790 0 790 16V158Q790 174 774 174H16Q0 174 0 158V16Q0 0 16 0Z" fill="#8e969b"/>
+    <rect x="1" y="1" width="788" height="166" rx="15" fill="url(#metal)"/>
+    <rect x="16" y="14" width="720" height="111" rx="5" fill="url(#keys)"/>
+    <rect x="738" y="17" width="33" height="103" rx="4" fill="#252a2e"/>
+    <rect x="19" y="132" width="51" height="26" rx="4" fill="#252a2e"/>
+    <rect x="78" y="132" width="51" height="26" rx="4" fill="#252a2e"/>
+    <rect x="137" y="132" width="51" height="26" rx="4" fill="#252a2e"/>
+    <rect x="196" y="132" width="312" height="26" rx="4" fill="#252a2e"/>
+    <rect x="516" y="132" width="51" height="26" rx="4" fill="#252a2e"/>
+    <rect x="575" y="132" width="51" height="26" rx="4" fill="#252a2e"/>
+    <rect x="634" y="132" width="51" height="26" rx="4" fill="#252a2e"/>
+    <rect x="693" y="132" width="78" height="26" rx="4" fill="#252a2e"/>
+  </g>
+  <path d="M974 22C1003 22 1026 46 1032 76L1038 130C1041 161 1019 181 987 181C955 181 932 162 934 132L938 77C941 45 953 22 974 22Z" fill="#91999d"/>
+  <path d="M974 21C1002 21 1024 44 1030 74L1036 127C1039 155 1018 174 987 174C957 174 934 157 936 129L940 75C943 44 954 21 974 21Z" fill="url(#mouse)"/>
+  <path d="M981 27L985 95" stroke="#858f94" stroke-width="2"/>
+  <rect x="977" y="46" width="10" height="25" rx="5" transform="rotate(-3 977 46)" fill="#657078"/>
+</svg>

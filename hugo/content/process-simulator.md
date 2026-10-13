@@ -41,11 +41,26 @@ The **Delivery network + returns** example connects order acceptance, planning, 
 
 Groups add no processing or charge. A parent's values include its subprocesses, so parent and child totals overlap. Full-system results remain the reference for economic comparisons. **Show all steps**, 3D and export retain the complete underlying flow.
 
+## Choose an infrastructure capacity example
+
+The same engine also supports four editable starting points:
+
+| Template                                                                | Explicit assumptions                                                                               |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| [API & Compute Capacity](/app/?demo=api-compute-capacity)               | Dedicated CPU cores and core-seconds, retained/stage RAM and an atomic database connection pool    |
+| [Network & Multi-Site Capacity](/app/?demo=network-multi-site-capacity) | Payload bytes, shared Mbps and separately entered propagation delay across sites                   |
+| [Energy & Power Capacity](/app/?demo=energy-power-capacity)             | Generation windows, bounded grid import, battery rates/efficiencies and actual delivered energy    |
+| [Datacenter Capacity](/app/?demo=datacenter-capacity)                   | WAN, retained RAM, concurrent CPU and explicit energy-budget branches, joined before database work |
+
+Opening a template goes through normal browser storage acceptance and, on the isolated app, local unlock. It creates an editable local diagram; visiting this public page creates no workspace data. The examples use synthetic inputs rather than measured server/network/power performance. [Follow the infrastructure guide](/help/infrastructure-capacity/) before changing quantities or comparing scenarios.
+
+Model 2 Work and all resource pools show one aggregate logical card. Work capacity limits in-flight jobs rather than physical server replicas. Legacy model 1 capacity-card banks retain their existing meaning. The models describe allocation, fluid payload sharing and energy balance; they do not implement an operating-system scheduler, TCP or AC electrical solver.
+
 ## Observe the constraint on the canvas
 
 In 2D, particles follow valid model connections and remain queued until processing can begin. Node indicators and metrics reveal busy capacity, waiting and saturation. A bottleneck is identified from observed state and can move when you remove an earlier constraint.
 
-Configured scaling can show additional capacity cards, such as Counter 1, Counter 2 and Counter 3. They represent units of one logical node or resource, with a shared queue. They are temporary capacity visuals, not separately saved employee identities.
+In legacy model 1, configured scaling can show additional capacity cards, such as Counter 1, Counter 2 and Counter 3. They represent units of one logical node or resource, with a shared queue. They are temporary capacity visuals, not separately saved employee identities. Infrastructure model 2 keeps aggregate logical cards instead.
 
 Rendering is bounded: large populations use samples or aggregation while metrics describe all simulated work. The full live particle and capacity-bank view is in 2D; 3D retains the logical diagram and numeric metrics.
 

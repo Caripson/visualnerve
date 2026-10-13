@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 1040" fill="none">
+  <defs>
+    <linearGradient id="metal" x1="0" y1="0" x2="1440" y2="1040" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#e7e8e8"/>
+      <stop offset=".5" stop-color="#a7acae"/>
+      <stop offset="1" stop-color="#d7dadb"/>
+    </linearGradient>
+    <linearGradient id="stand" x1="586" y1="970" x2="854" y2="970" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9da3a5"/>
+      <stop offset=".5" stop-color="#e0e3e4"/>
+      <stop offset="1" stop-color="#a0a6a8"/>
+    </linearGradient>
+  </defs>
+  <path fill="#252a2e" fill-rule="evenodd" d="M28 0H1412Q1440 0 1440 28V906Q1440 934 1412 934H28Q0 934 0 906V28Q0 0 28 0ZM28 24Q24 24 24 28V890Q24 894 28 894H1412Q1416 894 1416 890V28Q1416 24 1412 24Z"/>
+  <path d="M1 894H1439V906Q1439 933 1412 933H28Q1 933 1 906Z" fill="url(#metal)"/>
+  <circle cx="720" cy="12" r="3.5" fill="#6e7983"/>
+  <path d="M628 934H812L850 1020H590Z" fill="url(#stand)"/>
+  <path d="M555 1020H885Q904 1020 916 1032Q921 1038 912 1039H528Q519 1038 524 1032Q536 1020 555 1020Z" fill="url(#metal)"/>
+  <path d="M28 .5H1412Q1439.5 .5 1439.5 28V906" stroke="#657078" stroke-opacity=".45"/>
+</svg>

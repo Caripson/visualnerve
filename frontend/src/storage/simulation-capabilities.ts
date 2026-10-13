@@ -64,6 +64,7 @@ export const simulationCapabilities = {
       'queue-history',
       'blocked-admission',
       'bandwidth-sharing',
+      'bandwidth-unavailable',
       'energy-shortfall',
     ],
     continuousTotals: {

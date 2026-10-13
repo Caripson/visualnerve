@@ -22,6 +22,7 @@ it('discovers the model execution boundary, canonical units and aggregate typed 
         'queue-history',
         'blocked-admission',
         'bandwidth-sharing',
+        'bandwidth-unavailable',
         'energy-shortfall',
       ],
       continuousTotals: {

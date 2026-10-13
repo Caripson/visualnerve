@@ -22,6 +22,7 @@ import { template } from '../../deployment/template.mjs';
 import { spawnSync } from 'node:child_process';
 import { requireAppApproval } from '../../deployment/require-app-approval.mjs';
 import { SITE_ICON_FILES } from '../../scripts/site-icons.mjs';
+import { fingerprintAssets } from '../../scripts/fingerprinted-assets.mjs';
 
 const temporary: string[] = [];
 const helpGuideNames = readdirSync(new URL('../../hugo/content/help/', import.meta.url))
@@ -183,6 +184,32 @@ it('copies every current Help guide with matching search, navigation and offline
   }
 });
 
+it('keeps homepage infrastructure CSS, frames and screenshots outside the private app package', async () => {
+  const { source, output } = fixture();
+  const assets = [
+    'site/infrastructure.css',
+    'site/devices/infrastructure-monitor.svg',
+    'site/devices/infrastructure-peripherals.svg',
+    ...['api', 'network', 'energy', 'datacenter'].flatMap((name) => [
+      `site/images/infrastructure-${name}.webp`,
+      `site/images/infrastructure-${name}-dark.webp`,
+    ]),
+  ];
+  for (const path of assets) {
+    mkdirSync(dirname(join(source, path)), { recursive: true });
+    writeFileSync(join(source, path), 'Synthetic public marketing fixture');
+  }
+  const prepared = await buildAppSurface(source, output);
+  expect(prepared.files).not.toEqual(expect.arrayContaining(assets));
+  for (const path of assets) {
+    expect(prepared.files).not.toContain(path);
+    mkdirSync(dirname(join(output, path)), { recursive: true });
+    writeFileSync(join(output, path), 'Unexpected marketing asset');
+    expect(() => auditAppSurface(output)).toThrow('Unexpected file in isolated app surface');
+    rmSync(join(output, path));
+  }
+});
+
 it('publishes the source-derived icons on every isolated app route and caches their real bytes', async () => {
   const { source, output } = fixture();
   const prepared = await buildAppSurface(source, output);
@@ -202,6 +229,35 @@ it('publishes the source-derived icons on every isolated app route and caches th
   }
   rmSync(join(output, 'favicon.ico'));
   expect(() => auditAppSurface(output)).toThrow('App surface is missing favicon.ico');
+});
+
+it('copies and caches both compact simulator Help captures and their verified fingerprints', async () => {
+  const { source, output, put } = fixture();
+  for (const suffix of ['', '-dark'])
+    put(`help/images/simulation-compact${suffix}.webp`, `compact ${suffix} synthetic fixture`);
+  put(
+    'help/simulation/index.html',
+    readFileSync(join(source, 'help/simulation/index.html'), 'utf8').replace(
+      '</main>',
+      '<picture data-appearance-image><source srcset="/help/images/simulation-compact-dark.webp" media="(prefers-color-scheme: dark)"><img src="/help/images/simulation-compact.webp" alt="Collapsed simulator controls"></picture></main>',
+    ),
+  );
+  const mapping = fingerprintAssets(source);
+  const prepared = await buildAppSurface(source, output);
+  expect(auditAppSurface(output)).toEqual(prepared.files);
+  const worker = readFileSync(join(output, 'sw.js'), 'utf8');
+  const cached = JSON.parse(worker.match(/^const assets = (.*);$/m)![1]);
+  const guide = readFileSync(join(output, 'help/simulation/index.html'), 'utf8');
+  for (const suffix of ['', '-dark']) {
+    const stable = `/help/images/simulation-compact${suffix}.webp`,
+      fingerprint = mapping.get(stable)!;
+    for (const path of [stable, fingerprint]) {
+      expect(prepared.files).toContain(path.slice(1));
+      expect(readFileSync(join(output, path))).toEqual(readFileSync(join(source, path)));
+    }
+    expect(cached).toContain(fingerprint);
+    expect(guide).toContain(fingerprint);
+  }
 });
 
 it('upgrades an icon-free prior output while requiring icons in the replacement package', async () => {

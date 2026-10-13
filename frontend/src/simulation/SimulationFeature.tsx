@@ -1,4 +1,3 @@
-import { runStatusLabel } from './display';
 import { useI18n } from '../i18n';
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useCompactLayout } from '../hooks/useCompactLayout';
@@ -9,6 +8,7 @@ import { setSimulationModel } from './document';
 import { simulationService } from './service';
 import { useSimulationCanvasLifecycle } from './useSimulationCanvasLifecycle';
 import { SimulationModelDialogs } from './SimulationModelDialogs';
+import { SimulationDesktopPanel } from './SimulationDesktopPanel';
 import { ScenarioControls } from './ScenarioControls';
 import { cloneScenario } from './scenario-patch';
 import type { SimulationSpeed } from './protocol';
@@ -17,7 +17,6 @@ import {
   SimulationDock,
   SimulationRunSettings,
   SimulationStopActions,
-  simulationTime,
 } from './SimulationControls';
 import { simulationSetupEvent, simulationAssumptionsEvent } from './setup-event';
 import { SimulationUIActions, type SimulationUIAction } from './ui-action';
@@ -38,6 +37,7 @@ export { simulationTime } from './SimulationControls';
 export function SimulationFeature() {
   const { t } = useI18n();
   const graph = useEditor((state) => state.graph);
+  const panelCollapsed = useEditor((state) => state.simulationPanelCollapsed);
   const {
     view,
     resultsView,
@@ -339,7 +339,7 @@ export function SimulationFeature() {
   );
   return (
     <section
-      className={`simulation-feature${compact ? ' simulation-feature-compact' : ''}`}
+      className={`simulation-feature${compact ? ' simulation-feature-compact' : panelCollapsed ? ' simulation-feature-collapsed' : ''}`}
       aria-label={t('simulator.feature.processSimulator')}
     >
       {compact ? (
@@ -391,47 +391,41 @@ export function SimulationFeature() {
           )}
         </>
       ) : (
-        <>
-          <div className="simulation-controls">
-            <div className="simulation-transport">
-              <strong>{t('simulator.feature.processSimulator')}</strong>
-              {view?.state && (
-                <button
-                  aria-label={t(
-                    metricsOpen ? 'simulator.run.metrics.hide' : 'simulator.run.metrics.show',
-                  )}
-                  aria-pressed={metricsOpen}
-                  title={t(
-                    'simulator.feature.showOrHideLiveMetricsToGiveTheProcessCanvasMoreSpace',
-                  )}
-                  onClick={() => setMetricsOpen((open) => !open)}
-                >
-                  {t('simulator.feature.metrics')}
-                </button>
-              )}
-              <div className="simulation-playback">
-                <SimulationActions {...actions} />
-              </div>
-              <div className="simulation-time">
-                <output aria-label={t('simulator.run.simulatedTime')}>
-                  {simulationTime(view?.state?.timeSeconds ?? 0)}
-                </output>
-                <span className="simulation-run-status" role="status">
-                  {runStatusLabel(t, view?.run.status ?? 'ready')}
-                </span>
-              </div>
-            </div>
-            <div className="simulation-desktop-settings">{runSettings}</div>
-          </div>
+        <SimulationDesktopPanel
+          collapsed={panelCollapsed}
+          toggle={() =>
+            useEditor.setState((state) => ({
+              simulationPanelCollapsed: !state.simulationPanelCollapsed,
+            }))
+          }
+          playback={<SimulationActions {...actions} condensed={panelCollapsed} />}
+          seconds={view?.state?.timeSeconds ?? 0}
+          status={view?.run.status ?? 'ready'}
+          runSettings={runSettings}
+          notices={notices}
+          metricsToggle={
+            view?.state && (
+              <button
+                aria-label={t(
+                  metricsOpen ? 'simulator.run.metrics.hide' : 'simulator.run.metrics.show',
+                )}
+                aria-pressed={metricsOpen}
+                title={t('simulator.feature.showOrHideLiveMetricsToGiveTheProcessCanvasMoreSpace')}
+                onClick={() => setMetricsOpen((open) => !open)}
+              >
+                {t('simulator.feature.metrics')}
+              </button>
+            )
+          }
+        >
           <ScenarioControls
             graph={graph}
             id={scenarioId}
             select={(next) => changeControls(() => setScenarioId(next))}
           />
-          {notices}
           {metricsOpen && metrics}
           {results}
-        </>
+        </SimulationDesktopPanel>
       )}
       {settings && (
         <SimulationModelDialogs

@@ -120,14 +120,15 @@ Do not round stored totals to force equality or use elapsed browser time as simu
 
 Model 2 adds optional `bottlenecks[].methodology` to disclose a heuristic ranking method. Legacy model 1 retains its existing payload and omits the field. A pressure score helps locate an observed constraint; it is not a throughput forecast or a numerical estimate of the benefit of extra capacity. `averageQueue` and `averageWaitSeconds` remain their actual observations even when the score uses another measure.
 
-| Method              | Observation and score                                                                                         |
-| ------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `queue-history`     | Work's observed average queue × (1 + historical utilization)                                                  |
-| `blocked-admission` | Number of Work nodes currently blocked by this resource × (1 + current utilization)                           |
-| `bandwidth-sharing` | For more than one active transfer on a positive-rate link: (active transfers − 1) × used Mbps / capacity Mbps |
-| `energy-shortfall`  | Unmet kW / (supplied kW + unmet kW), when unmet demand is positive                                            |
+| Method                  | Observation and score                                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `queue-history`         | Work's observed average queue × (1 + historical utilization)                                                  |
+| `blocked-admission`     | Number of Work nodes currently blocked by this resource × (1 + current utilization)                           |
+| `bandwidth-sharing`     | For more than one active transfer on a positive-rate link: (active transfers − 1) × used Mbps / capacity Mbps |
+| `bandwidth-unavailable` | Active transfers when `activeTransfers>0` and `usedMbps===0`; score is `activeTransfers`                      |
+| `energy-shortfall`      | Unmet kW / (supplied kW + unmet kW), when unmet demand is positive                                            |
 
-Resource candidates in model 2 prefer actual blocked admission, then active bandwidth sharing, then energy shortfall. They do not turn every referenced Work queue into a resource bottleneck. Historical Work candidates remain separate. Candidates sort by descending score, with ID as the tie break; the top ID becomes `metrics.currentBottleneck`. A shared saturated link can therefore appear even when serialization creates no Work queue. Low use with a queue blocked by a different pool does not fabricate a RAM constraint.
+Resource candidates in model 2 prefer actual blocked admission, then bandwidth pressure, then energy shortfall. A configured zero-capacity or scheduled-off link with active serialization reports `bandwidth-unavailable`, with reason “Active transfers have no currently available bandwidth.” Idle links and particles only in propagation do not create this candidate. They do not turn every referenced Work queue into a resource bottleneck. Historical Work candidates remain separate. Candidates sort by descending score, with ID as the tie break; the top ID becomes `metrics.currentBottleneck`. A shared saturated or currently unavailable link can therefore appear even when serialization creates no Work queue. Low use with a queue blocked by a different pool does not fabricate a RAM constraint.
 
 Scores are dimensionless. Process views include a shared-pool candidate only for actually impacted consumers: blocked Work nodes, active serializing transfer sources or power-limited active energy jobs in that scope. Blocked-admission counts are scoped; bandwidth/energy pressure remains the shared pool's global context and must not be summed across process views.
 

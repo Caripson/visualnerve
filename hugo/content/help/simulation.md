@@ -97,6 +97,16 @@ Create groups through `POST /diagrams/{id}/simulation/processes`, set `parentId`
 
 The desktop dashboard groups key numbers into cards and identifies the current bottleneck. **More metrics** expands queue statistics, lost work and further timing measures. Use **Metrics** beside the playback controls to hide or show the dashboard without changing the run; hiding it gives the process canvas more space. Replay and comparison remain below the metrics.
 
+### Give the diagram more room
+
+On desktop and larger tablets, choose **Collapse** in the simulator header to fold the full control panel. Play/Resume, Pause, Stop, Reset, simulated time and run status remain available in a compact strip. Duration, seed, scenarios, metrics and replay/comparison move out of the way, giving the diagram more space.
+
+Folding is a view change: it does not pause or restart a run, change its assumptions or save a new model. Choose **Expand** to return to your settings and replay/comparison choices. Errors and notices remain visible while folded. The choice stays with the currently open diagram, including switching between 2D and 3D, and resets when you open a different diagram, reload or lock the workspace.
+
+![An API capacity simulation with its control panel folded, playback and time visible, and more space for CPU, RAM and database queues.](/help/images/simulation-compact.webp "The real API capacity example is paused with the controls folded. Expand restores settings and results without resetting the run.")
+
+On a phone or short landscape screen, use the existing **Simulation details** sheet for settings, metrics and saved runs. Closing that sheet returns to the canvas; the compact playback strip remains available.
+
 ### Read the process like a traffic map
 
 Flow connections show the pressure at the next step: **green** means clear, **yellow** means busy or a queue is forming, and **red** means work is queued behind saturated or blocked capacity. Nodes also show words, symbols, actual queue counts and utilization, so color is not the only signal. A shared resource can make a Work step red even when that step has free slots.

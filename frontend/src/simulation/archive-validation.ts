@@ -13,6 +13,7 @@ const bottleneckMethods = [
   'queue-history',
   'blocked-admission',
   'bandwidth-sharing',
+  'bandwidth-unavailable',
   'energy-shortfall',
 ];
 const eventTypes = new Set([

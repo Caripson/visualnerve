@@ -1,5 +1,6 @@
 import { formatInfrastructureQuantity } from './format';
 import type { SimulationState } from '../types';
+import { bandwidthHasNoAvailability } from './pressure';
 export interface InfrastructureReading {
   kind: string;
   usage: number;
@@ -78,9 +79,12 @@ export function infrastructureReading(
       unit: 'Mbps',
       pressure: pressure(
         bandwidth.usedMbps,
-        bandwidth.activeTransfers > 1 && bandwidth.usedMbps >= capacity,
+        bandwidthHasNoAvailability(bandwidth) ||
+          (bandwidth.activeTransfers > 1 && bandwidth.usedMbps >= capacity),
       ),
-      reason: `${bandwidth.activeTransfers} active transfers · fair sharing`,
+      reason: bandwidthHasNoAvailability(bandwidth)
+        ? `${bandwidth.activeTransfers} active transfers · no currently available bandwidth`
+        : `${bandwidth.activeTransfers} active transfers · fair sharing`,
       facts: [
         ['Used now', bandwidth.usedMbps, 'Mbps'],
         ['Active transfers', bandwidth.activeTransfers, 'transfers'],

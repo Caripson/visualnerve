@@ -1,0 +1,48 @@
+{{- $templates := slice
+  (dict "id" "api" "key" "api-compute-capacity" "name" "API & Compute Capacity" "description" "Allocate CPU cores, case or stage RAM and database connection slots. See how request demand competes for shared capacity." "alt" "The API and Compute Capacity simulator with requests, CPU and RAM demand, database connections and measured queue pressure")
+  (dict "id" "network" "key" "network-multi-site-capacity" "name" "Network & Multi-Site Capacity" "description" "Set link bandwidth, payload sizes and fixed propagation delays. Follow transfers from separate sites through a shared link." "alt" "The Network and Multi-Site Capacity simulator with two site flows, shared bandwidth and measured transfer progress")
+  (dict "id" "energy" "key" "energy-power-capacity" "name" "Energy & Power Capacity" "description" "Change generation windows, grid import limits and battery capacity. Track delivered energy, shortfalls and state of charge." "alt" "The Energy and Power Capacity simulator with generation, grid supply, battery state of charge and measured energy demand")
+  (dict "id" "datacenter" "key" "datacenter-capacity" "name" "Datacenter Capacity" "description" "Combine WAN, CPU, RAM, database connections and an explicit energy budget per request. Compare changes across one connected workflow." "alt" "The combined Datacenter Capacity simulator with WAN transfers, CPU, RAM, database connections and an explicit energy budget per request")
+-}}
+<section id="infrastructure" class="home-section home-infrastructure section-width" aria-labelledby="infrastructure-heading">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">FOUR INFRASTRUCTURE CAPACITY TEMPLATES</p>
+      <h2 id="infrastructure-heading">Where does<br>capacity run out?</h2>
+    </div>
+    <p>Change demand and capacity. Run a baseline, then compare what happens when work competes for the same shared resources.</p>
+  </div>
+  <figure class="infrastructure-showcase">
+    <div class="infrastructure-stage">
+      {{- range $templates }}
+      {{- $sizes := "(max-width: 650px) calc(30.94vw - 13.61px), (max-width: 1000px) calc(30.94vw - 18.56px), (max-width: 1280px) calc(30.94vw - 34.65px), 362px" -}}
+      {{- if eq .id "network" -}}
+        {{- $sizes = "(max-width: 650px) calc(32.87vw - 14.46px), (max-width: 1000px) calc(32.87vw - 19.72px), (max-width: 1280px) calc(32.87vw - 36.81px), 384px" -}}
+      {{- else if eq .id "datacenter" -}}
+        {{- $sizes = "(max-width: 650px) calc(38.67vw - 17.01px), (max-width: 1000px) calc(38.67vw - 23.20px), (max-width: 1280px) calc(38.67vw - 43.31px), 452px" -}}
+      {{- end }}
+      <div class="infrastructure-monitor infrastructure-monitor--{{ .id }}">
+        <div class="infrastructure-monitor__screen">
+          {{ partial "appearance-image.html" (dict "src" (printf "/site/images/infrastructure-%s.webp" .id) "width" 1440 "height" 900 "previewWidths" (slice 480 960) "sizes" $sizes "alt" .alt) }}
+        </div>
+        <img class="infrastructure-monitor__hardware" src="/site/devices/infrastructure-monitor.svg" alt="" aria-hidden="true" width="1440" height="1040" loading="lazy" decoding="async">
+      </div>
+      {{- end }}
+      <img class="infrastructure-peripherals" src="/site/devices/infrastructure-peripherals.svg" alt="" aria-hidden="true" width="1080" height="230" loading="lazy" decoding="async">
+    </div>
+    <figcaption>Captured simulation states from the real app, with matching light and dark views.</figcaption>
+  </figure>
+  <ul class="infrastructure-template-list">
+    {{- range $templates }}
+    <li class="infrastructure-template">
+      <h3>{{ .name }}</h3>
+      <p>{{ .description }}</p>
+      <a class="site-text-link infrastructure-template__open" href="{{ partial "workspace-url.html" $ }}?demo={{ .key }}">Open this template <span aria-hidden="true">↗</span><span class="infrastructure-visually-hidden">: {{ .name }}</span></a>
+    </li>
+    {{- end }}
+  </ul>
+  <div class="infrastructure-method">
+    <p>Each template creates an editable local example after storage consent and workspace unlock. Compare assumptions visually, or automate the same analysis through the local API and MCP.</p>
+    <a class="site-text-link" href="/help/infrastructure-capacity/">Explore the models and their limits <span aria-hidden="true">→</span></a>
+  </div>
+</section>

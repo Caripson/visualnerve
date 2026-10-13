@@ -27155,7 +27155,7 @@
       },
       "SimulationBottleneck": {
         "additionalProperties": false,
-        "description": "Observed heuristic pressure ranking. Infrastructure model 2 identifies the score methodology; legacy model 1 omits it. Current blocked admission, active bandwidth sharing and unmet power are distinct from historical Work queues; averageQueue/averageWaitSeconds remain actual recorded values, not fabricated resource-pressure counts. Scores do not predict throughput or quantify the benefit of adding capacity.",
+        "description": "Observed heuristic pressure ranking. Infrastructure model 2 identifies the score methodology; legacy model 1 omits it. Current blocked admission, active bandwidth sharing, unavailable bandwidth and unmet power are distinct from historical Work queues; averageQueue/averageWaitSeconds remain actual recorded values, not fabricated resource-pressure counts. bandwidth-unavailable applies when activeTransfers\u003e0 and usedMbps===0, including configured zero capacity or a scheduled-off link; its dimensionless score is activeTransfers and its reason is Active transfers have no currently available bandwidth. No-demand and propagation-only states do not create this candidate. Scores do not predict throughput or quantify the benefit of adding capacity.",
         "properties": {
           "averageQueue": {
             "minimum": 0,
@@ -27183,6 +27183,7 @@
               "queue-history",
               "blocked-admission",
               "bandwidth-sharing",
+              "bandwidth-unavailable",
               "energy-shortfall"
             ],
             "type": "string"
@@ -29340,6 +29341,7 @@
                 "queue-history",
                 "blocked-admission",
                 "bandwidth-sharing",
+                "bandwidth-unavailable",
                 "energy-shortfall"
               ],
               "type": "string"

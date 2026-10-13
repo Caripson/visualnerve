@@ -23,6 +23,8 @@ Use these Process Simulator examples to ask where a system runs out of capacity,
 
 Moving a card changes the diagram layout, not its demand or capacity. See [general simulator controls](/help/simulation/) for pause, hierarchy, replay and comparison.
 
+When the controls leave too little room for the process, choose **Collapse** in the desktop simulator header. Playback, simulated time and status remain visible; **Expand** restores settings and results without changing the run. On a phone, use **Simulation details** and return to the canvas when finished. See [the compact-panel guide](/help/simulation/#give-the-diagram-more-room).
+
 ![API requests share CPU cores, retained request RAM and database connections in the infrastructure template.](/help/images/infrastructure-api.webp "The synthetic API baseline at 20 simulated seconds. The observation ends with requests still waiting; completion of the run does not mean every request has finished.")
 
 ## Build through guided setup
@@ -79,6 +81,8 @@ Put every flow using the same physical or assumed bottleneck on the same typed l
 One Mbps is 125,000 bytes/second. With one active 1,000,000-byte transfer on a 10 Mbps link, serialization takes 0.8 seconds. Two equally active transfers each get half the rate until one finishes. The connection's fixed **travel time** is added once after serialization; it is separate from payload size.
 
 Try reducing payload size, increasing shared Mbps, or changing propagation independently. Inspect active transfers, transferred bytes, used Mbps, downstream queues and completed cases. Bandwidth schedules can change availability; automatic link scaling is not supported in this version.
+
+An active transfer on a zero-capacity or currently closed link is **Constrained**, with the explanation **Active transfers have no currently available bandwidth**. Its zero measured use means that serialization cannot progress, rather than that the link has no demand. The bottleneck is the link; a pending transfer does not create an invented Work queue. The constraint clears when bandwidth becomes available or the transfer ends. Idle links and particles whose payload has finished and is only propagating do not receive this marker.
 
 The model does not infer distance, TCP behavior, packet loss, retransmission or congestion control. Enter measured or deliberately chosen assumptions for payload and latency.
 

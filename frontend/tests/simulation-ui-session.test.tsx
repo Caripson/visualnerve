@@ -165,6 +165,80 @@ afterEach(async () => {
 afterAll(() => cipher.destroyKeys(created.keys));
 
 describe('simulation UI originating-session continuations', () => {
+  it('folds without cancelling a pending Play or changing its canonical run configuration', async () => {
+    await mount();
+    fireEvent.change(screen.getByLabelText('Simulation duration hours'), {
+      target: { value: '2' },
+    });
+    fireEvent.change(screen.getByLabelText('Simulation random seed'), {
+      target: { value: '12345' },
+    });
+    const before = JSON.stringify(useEditor.getState().graph);
+    const revision = useEditor.getState().editRevision;
+    const settled = pendingPlay();
+    await waitFor(() => expect(fixture.workspace.settled).toHaveBeenCalledOnce());
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse simulation panel' }));
+    expect(useEditor.getState().simulationPanelCollapsed).toBe(true);
+    expect(screen.getByLabelText('Simulation duration hours')).not.toBeVisible();
+    expect(screen.getByRole('button', { name: 'Play simulation' })).toBeDisabled();
+    expect(JSON.stringify(useEditor.getState().graph)).toBe(before);
+    expect(useEditor.getState().editRevision).toBe(revision);
+    await act(async () => settled.resolve());
+    await waitFor(() => expect(fixture.start).toHaveBeenCalledOnce());
+    expect(fixture.start).toHaveBeenCalledWith(graph.diagram.id, graph.simulation, {
+      durationSeconds: 7200,
+      seed: 12345,
+      speed: 10,
+      animated: true,
+      untilComplete: false,
+      scenarioId: undefined,
+      origin: 'ui',
+      beforeWrite: expect.any(Function),
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Expand simulation panel' }));
+    expect(screen.getByLabelText('Simulation duration hours')).toHaveValue(2);
+    expect(screen.getByLabelText('Simulation random seed')).toHaveValue(12345);
+  });
+
+  it('pauses the same run when folded and preserves the explicit choice through a view remount', async () => {
+    const runId = currentRun();
+    const mounted = await mount();
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse simulation panel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Pause simulation' }));
+    await waitFor(() =>
+      expect(fixture.control).toHaveBeenCalledWith(runId, 'pause', {
+        beforeWrite: expect.any(Function),
+      }),
+    );
+    expect(fixture.start).not.toHaveBeenCalled();
+    mounted.unmount();
+    await mount();
+    expect(screen.getByRole('button', { name: 'Expand simulation panel' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    expect(fixture.view?.run.id).toBe(runId);
+    await lockAndUnlock();
+    expect(useEditor.getState().simulationPanelCollapsed).toBe(false);
+    expect(screen.getByRole('button', { name: 'Collapse simulation panel' })).toBeVisible();
+  });
+
+  it('retains the mobile details sheet and a single playback surface while desktop is folded', async () => {
+    await mount();
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse simulation panel' }));
+    fixture.compact = true;
+    act(() => useEditor.setState({ graph: { ...useEditor.getState().graph! } }));
+    expect(screen.queryByRole('button', { name: 'Expand simulation panel' })).toBeNull();
+    expect(screen.getAllByRole('button', { name: 'Play simulation' })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Open simulation details' }));
+    expect(await screen.findByRole('dialog', { name: 'Simulation details' })).toBeVisible();
+    expect(screen.getByLabelText('Simulation duration hours')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to diagram' }));
+    fixture.compact = false;
+    act(() => useEditor.setState({ graph: { ...useEditor.getState().graph! } }));
+    expect(screen.getByRole('button', { name: 'Expand simulation panel' })).toBeVisible();
+  });
+
   it('never captures a fresh session or starts a run when settled resolves after same-vault unlock', async () => {
     await mount();
     const settled = pendingPlay();

@@ -68,6 +68,7 @@ const helpScreenshots = [
   "player-compact",
   "storyboard",
   "simulation",
+  "simulation-compact",
   "process-setup",
   "process-subprocess-setup",
   "process-hierarchy",
@@ -152,6 +153,7 @@ function allowedStaticPath(path) {
       "site/site.css",
       "site/syntax.css",
       "site/captures.css",
+      "site/infrastructure.css",
       "site/site.js",
       "site/mark.svg",
       "site/consent.css",
@@ -166,7 +168,19 @@ function allowedStaticPath(path) {
     [
       "site/images/collaboration.webp",
       "site/images/collaboration-dark.webp",
+      "site/devices/infrastructure-monitor.svg",
+      "site/devices/infrastructure-peripherals.svg",
     ].includes(path) ||
+    ["api", "network", "energy", "datacenter"].some(
+      (name) =>
+        path === `site/images/infrastructure-${name}.webp` ||
+        path === `site/images/infrastructure-${name}-dark.webp` ||
+        [480, 960].some(
+          (width) =>
+            path === `site/images/infrastructure-${name}-${width}.webp` ||
+            path === `site/images/infrastructure-${name}-${width}-dark.webp`,
+        ),
+    ) ||
     ["phone", "tablet", "desktop", "laptop", "social"].some(
       (name) => path === `site/images/${name}.webp`,
     ) ||

@@ -19,6 +19,44 @@
   font-size: 13px;
   margin-right: auto;
 }
+.simulation-panel-toggle {
+  margin-left: auto;
+  min-height: 36px;
+  white-space: nowrap;
+}
+.simulation-panel-body {
+  margin-top: 12px;
+}
+.simulation-panel-body[hidden] {
+  display: none;
+}
+.simulation-panel-notices:empty {
+  display: none;
+}
+.simulation-feature.simulation-feature-collapsed {
+  padding: 8px 14px;
+  max-height: none;
+  overflow: visible;
+}
+.simulation-feature-collapsed .simulation-transport {
+  gap: 8px 16px;
+}
+.simulation-feature-collapsed .simulation-time {
+  padding: 6px 10px;
+}
+.simulation-feature-collapsed .simulation-playback button {
+  min-height: 36px;
+}
+.simulation-feature-collapsed .simulation-playback .simulation-icon-action {
+  width: 36px;
+  padding: 0;
+  justify-content: center;
+}
+.simulation-feature-collapsed .simulation-panel-notices p {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+}
 .simulation-playback,
 .simulation-time {
   display: flex;
@@ -150,4 +188,9 @@
 .simulation-traffic-legend small {
   color: var(--muted);
   font-size: 11px;
+}
+@media (max-width: 1200px) {
+  .simulation-feature-collapsed .simulation-transport > strong {
+    display: none;
+  }
 }

@@ -80,8 +80,15 @@ func TestInfrastructurePatchMetricsAndComparisonRemainScoped(t *testing.T) {
 		t.Fatal("same-run comparison must expose domain counters without a new route")
 	}
 	methodology := infrastructureProperties(schemas, "SimulationBottleneck")["methodology"].(object)
-	if !reflect.DeepEqual(methodology["enum"], []string{"queue-history", "blocked-admission", "bandwidth-sharing", "energy-shortfall"}) {
+	if !reflect.DeepEqual(methodology["enum"], []string{"queue-history", "blocked-admission", "bandwidth-sharing", "bandwidth-unavailable", "energy-shortfall"}) {
 		t.Fatal("actual bottleneck ranking must disclose its method without changing legacy payloads")
+	}
+	if !strings.Contains(schemas["SimulationBottleneck"].(object)["description"].(string), "activeTransfers>0 and usedMbps===0") {
+		t.Fatal("unavailable-link pressure must disclose its observed condition")
+	}
+	methods := infrastructureProperties(schemas, "SimulationInfrastructureCapabilities")["bottleneckMethodologies"].(object)["items"].(object)["enum"]
+	if !reflect.DeepEqual(methods, methodology["enum"]) {
+		t.Fatal("discovered bottleneck methods must match the result contract")
 	}
 	for _, name := range []string{"SimulationNodeMetrics", "SimulationResourceMetrics"} {
 		if infrastructureProperties(schemas, name)["capacity"].(object)["type"] != "number" {

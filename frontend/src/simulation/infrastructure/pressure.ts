@@ -1,4 +1,12 @@
 import type { Bottleneck, InfrastructureMetrics, ResourceMetrics } from '../types';
+import type { BandwidthInfrastructureMetrics } from './types';
+
+/** Only active serialization consumes link availability; propagation has no active job. */
+export function bandwidthHasNoAvailability(
+  bandwidth: Pick<BandwidthInfrastructureMetrics, 'activeTransfers' | 'usedMbps'>,
+) {
+  return bandwidth.activeTransfers > 0 && bandwidth.usedMbps === 0;
+}
 
 /** Current resource pressure, distinct from historical queues at all referencing Work nodes. */
 export function infrastructureResourcePressure(
@@ -13,6 +21,12 @@ export function infrastructureResourcePressure(
       reason: 'Current Work admission is blocked by this resource pool.',
     };
   const link = infrastructure.bandwidth[resource.id];
+  if (link && bandwidthHasNoAvailability(link))
+    return {
+      score: link.activeTransfers,
+      methodology: 'bandwidth-unavailable',
+      reason: 'Active transfers have no currently available bandwidth.',
+    };
   if (link && link.activeTransfers > 1 && link.usedMbps > 0 && resource.capacity > 0)
     return {
       score: (link.activeTransfers - 1) * (link.usedMbps / resource.capacity),

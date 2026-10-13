@@ -94,6 +94,8 @@ Process Simulator is a separate template for arrivals, queues, processing, share
 
 The UI, local API and MCP use the same seeded simulation engine. An animated run and a MAX run with the same inputs produce the same business result.
 
+Four dedicated capacity templates extend that engine: **API & Compute Capacity** for CPU, retained or stage RAM and database connections; **Network & Multi-Site Capacity** for shared payload transfers; **Energy & Power Capacity** for generation, grid and battery delivery; and **Datacenter Capacity** for a connected example with concurrent compute and an explicit energy budget. They use editable synthetic assumptions and observed metrics, with model version 2 separating their semantics from legacy models. [Choose a model on the homepage](/#infrastructure) or [learn the units, controls and limits](/help/infrastructure-capacity/). These are allocation, fluid-transfer and energy-balance models, not hardware benchmarks, TCP or AC electrical solvers.
+
 Organize larger models into main processes and nested subprocesses. Open a congested group to find the actual constrained step, with separate step assumptions and shared resources across process boundaries. Guided setup and the delivery-and-returns example provide editable starting points.
 
 [Explore Process Simulator](/process-simulator/)

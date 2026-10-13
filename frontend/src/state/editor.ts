@@ -90,6 +90,7 @@ interface Editor {
   editingTitle: string;
   focusMap: boolean;
   mobilePanel: 'projects' | 'details' | null;
+  simulationPanelCollapsed: boolean;
   clipboard: Clip | null;
   drawingTool: DrawingTool;
   drawingColor: string;
@@ -169,6 +170,7 @@ export const useEditor = create<Editor>((set, get) => ({
   editingTitle: '',
   focusMap: false,
   mobilePanel: null,
+  simulationPanelCollapsed: false,
   clipboard: null,
   drawingTool: 'none',
   drawingColor: '#e85d3f',
@@ -188,6 +190,10 @@ export const useEditor = create<Editor>((set, get) => ({
       editingNode: null,
       editingTitle: '',
       mobilePanel: null,
+      simulationPanelCollapsed:
+        !!graph && graph.diagram.id === get().graph?.diagram.id
+          ? get().simulationPanelCollapsed
+          : false,
       drawingTool: 'none',
       commandError: '',
     }),

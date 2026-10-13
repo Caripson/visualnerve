@@ -49,7 +49,7 @@ Search results sit immediately below the field on desktop and mobile. Typing col
 
 The symbol-use reference embeds small inline SVGs from trusted Hugo data, with `currentColor` outlines that follow Help's saved/system appearance. `scripts/help-flowchart-symbols.mjs` generates `hugo/data/flowchart_symbols.json` from the same TypeScript catalog and recommended proportions as the editor. The normal build runs this before Hugo; run `node scripts/help-flowchart-symbols.mjs --check` to detect drift. `flowchart-help.test.ts` checks all 43 labels, categories, paths, details and proportions plus reference coverage. No application module is loaded by the guide. Its inline vectors are cached with the guide HTML.
 
-Build first. Capture tests use isolated browser storage, synthetic diagrams/profiles and local fixture servers, never a user's browser profile, content or integration token. They do not send a Lovable prompt or download voice assets. The published inventory has **79 Help light/dark pairs (158 WebPs)**, plus **four website device pairs** and one social preview. Counts below are unique contributions after duplicate captures.
+Build first. Capture tests use isolated browser storage, synthetic diagrams/profiles and local fixture servers, never a user's browser profile, content or integration token. They do not send a Lovable prompt or download voice assets. The complete inventory has **80 Help light/dark pairs (160 WebPs)**, plus **eight website device pairs** and one social preview. Counts below are unique contributions after duplicate captures; diagnostic PNGs require explicit promotion before publication.
 
 ```sh
 ./build.sh
@@ -65,6 +65,7 @@ Run the required families from `frontend`:
 | Source projects      | `VN_CAPTURE_PROJECT=1 npm run test:e2e -- code-project.spec.ts project-file-limit.spec.ts`                           |                 2 | Help WebPs                                                                                  |
 | Time series          | `VN_CAPTURE_ANALYTICS=1 npm run test:e2e -- analytics-ui.spec.ts`                                                    |                 7 | Help WebPs                                                                                  |
 | Infrastructure       | `npm run test:e2e -- infrastructure-capacity.spec.ts`                                                                |                 6 | PNGs in `tmp/verification`; promote using the mapping below                                 |
+| Compact simulator    | `npm run test:e2e -- simulation-panel-collapse.spec.ts`                                                              |                 1 | PNGs in `tmp/verification`; promote the 1440 px pair below                                  |
 | Language/settings    | `VN_CAPTURE_LANGUAGE_HELP=1 npm run test:e2e -- language-help-screenshots.spec.ts`                                   |                 1 | Help WebPs; also refreshes Settings                                                         |
 | Encrypted workspace  | `VN_CAPTURE_VAULT_HELP=1 npm run test:e2e -- vault-help-screenshots.spec.ts`                                         |                 5 | Help WebPs; also refreshes MCP Settings                                                     |
 | Presentation voice   | `VN_CAPTURE_VOICE_HELP=1 npm run test:e2e -- voice-help-screenshots.spec.ts`                                         |                 1 | Help WebPs                                                                                  |
@@ -77,6 +78,8 @@ Run the required families from `frontend`:
 
 Infrastructure captures remain diagnostic PNGs during normal tests; promotion is explicit. Use `cwebp -lossless -m 6 -quiet INPUT.png -o OUTPUT.webp` from the repository root. Each input basename below has `-light.png` and `-dark.png` variants under `tmp/verification`; output goes to `hugo/static/help/images` as `NAME.webp` and `NAME-dark.webp`.
 
+The public homepage has a separate opt-in capture family: `VN_CAPTURE_INFRASTRUCTURE_SITE=1 npm run test:e2e -- infrastructure-site-screenshots.spec.ts` from `frontend`. It captures paused states from four real capacity simulation runs at 1440×900 into `hugo/static/site/images`, with light/dark pairs and 480/960 px responsive derivatives. These four website pairs are separate from the six Help infrastructure pairs above and do not replace them. See [website maintenance](WEBSITE.md#infrastructure-template-entry-and-monitor-illustration) for the native monitor/peripheral frames and review checks. Rebuild after every asset promotion.
+
 | Capture basename                               | Help basename               |
 | ---------------------------------------------- | --------------------------- |
 | `infrastructure-api-compute-capacity`          | `infrastructure-api`        |
@@ -85,6 +88,17 @@ Infrastructure captures remain diagnostic PNGs during normal tests; promotion is
 | `infrastructure-datacenter-capacity`           | `infrastructure-datacenter` |
 | `infrastructure-setup-1440`                    | `infrastructure-setup`      |
 | `infrastructure-390`                           | `infrastructure-mobile`     |
+
+The compact-panel suite also exercises 1024 px desktop controls and the existing 390 px mobile disclosure. Normal runs emit diagnostic PNGs only. After the real 1440 px light/dark captures pass and are reviewed, promote that single Help pair from the repository root:
+
+```sh
+cwebp -lossless -m 6 -quiet tmp/verification/simulation-compact-1440-light.png \
+  -o hugo/static/help/images/simulation-compact.webp
+cwebp -lossless -m 6 -quiet tmp/verification/simulation-compact-1440-dark.png \
+  -o hugo/static/help/images/simulation-compact-dark.webp
+```
+
+Rebuild after promotion, then check both appearances, full-size image links and offline packaging. The capture and promotion commands do not update production.
 
 Run the whole Main Help file: its final case deliberately replaces the initial layouts, backup and COBOL views with readable examples. Run language and vault captures afterwards so their dedicated Settings/MCP views remain. Leave `VN_CAPTURE_ANALYTICS_SCENARIOS_ONLY` unset for all seven time-series pairs. The collaboration workflow uses disposable local owner/editor/viewer profiles, closes its room and writes a review manifest under `tmp/collaboration-workflow-review`; without its opt-in flag it keeps review PNGs and does not replace Help assets.
 
