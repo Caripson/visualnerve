@@ -1,6 +1,6 @@
 import { StorageError } from '../model/errors';
 import { historyJsonBytes } from '../history/codec';
-import type { SimulationResult, SimulationState } from './types';
+import type { SimulationModel, SimulationResult, SimulationState } from './types';
 
 type RecordValue = Record<string, unknown>;
 const object = (value: unknown): value is RecordValue =>
@@ -9,6 +9,12 @@ const finite = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
 const text = (value: unknown) => typeof value === 'string' && value.length > 0;
 const statuses = ['ready', 'running', 'paused', 'stopped', 'completed', 'failed'];
+const bottleneckMethods = [
+  'queue-history',
+  'blocked-admission',
+  'bandwidth-sharing',
+  'energy-shortfall',
+];
 const eventTypes = new Set([
   'PARTICLE_CREATED',
   'QUEUE_ENTERED',
@@ -78,6 +84,95 @@ function list(value: unknown, visit: (entry: RecordValue) => void) {
   }
 }
 
+function nonnegativeFields(value: unknown, names: string[]) {
+  fields(value, names);
+  requireValue(names.every((name) => (value[name] as number) >= 0));
+}
+
+function infrastructure(value: unknown) {
+  requireValue(object(value) && value.schemaVersion === 1);
+  values(value.cpu, (entry) =>
+    nonnegativeFields(entry, [
+      'reservedCores',
+      'peakReservedCores',
+      'coreSeconds',
+      'completedWorkCoreSeconds',
+    ]),
+  );
+  values(value.memory, (entry) => {
+    nonnegativeFields(entry, [
+      'usedMiB',
+      'peakUsedMiB',
+      'caseLeases',
+      'stageLeases',
+      'allocatedMiBSeconds',
+    ]);
+    requireValue(Number.isSafeInteger(entry.caseLeases) && Number.isSafeInteger(entry.stageLeases));
+  });
+  values(value.bandwidth, (entry) => {
+    nonnegativeFields(entry, [
+      'activeTransfers',
+      'peakActiveTransfers',
+      'transferredBytes',
+      'usedMbps',
+      'busySeconds',
+    ]);
+    requireValue(
+      Number.isSafeInteger(entry.activeTransfers) &&
+        Number.isSafeInteger(entry.peakActiveTransfers),
+    );
+  });
+  values(value.energy, (entry) => {
+    nonnegativeFields(entry, [
+      'generatedKWh',
+      'gridImportedKWh',
+      'deliveredKWh',
+      'storedKWh',
+      'stateOfCharge',
+      'chargeInputKWh',
+      'dischargeOutputKWh',
+      'conversionLossKWh',
+      'curtailedKWh',
+      'unservedKWh',
+      'activeLoads',
+      'suppliedKW',
+      'unmetKW',
+      'gridCost',
+    ]);
+    requireValue((entry.stateOfCharge as number) <= 1 && Number.isSafeInteger(entry.activeLoads));
+  });
+}
+
+/** Retained metrics must belong to the immutable model captured with the run. */
+export function assertArchivedInfrastructureModel(state: SimulationState, model: SimulationModel) {
+  if (!model.infrastructure) {
+    requireValue(state.infrastructure === undefined && state.failureCode === undefined);
+    return;
+  }
+  requireValue(state.infrastructure);
+  const resourceIds = new Set(model.resources.map((resource) => resource.id));
+  const nodeIds = new Set(model.nodes.map((node) => node.id));
+  requireValue(
+    Object.values(state.nodes).every(
+      (node) => node.blockedResourceIds?.every((id) => resourceIds.has(id)) ?? true,
+    ),
+  );
+  requireValue(
+    Object.values(state.resources).every(
+      (resource) => resource.blockedNodeIds?.every((id) => nodeIds.has(id)) ?? true,
+    ),
+  );
+  for (const kind of ['cpu', 'memory', 'bandwidth', 'energy'] as const) {
+    const expected = new Set(
+      model.resources
+        .filter((resource) => resource.infrastructure?.kind === kind)
+        .map((resource) => resource.id),
+    );
+    const actual = Object.keys(state.infrastructure[kind]);
+    requireValue(actual.length === expected.size && actual.every((id) => expected.has(id)));
+  }
+}
+
 /** Check archived data before remapping or exposing it to replay and metrics UI. */
 export function assertArchivedState(value: unknown): asserts value is SimulationState {
   requireValue(
@@ -87,6 +182,13 @@ export function assertArchivedState(value: unknown): asserts value is Simulation
       statuses.includes(value.status as string),
   );
   const state = value;
+  if (state.infrastructure !== undefined) infrastructure(state.infrastructure);
+  requireValue(
+    state.failureCode === undefined ||
+      (state.failureCode === 'SIMULATION_INFRASTRUCTURE_STALLED' &&
+        state.status === 'failed' &&
+        state.infrastructure !== undefined),
+  );
   economic(state.metrics);
   fields(state.metrics, [
     'created',
@@ -125,6 +227,8 @@ export function assertArchivedState(value: unknown): asserts value is Simulation
         Object.values(node.resourceUsage).every(finite),
     );
     queue(node.queue);
+    if (node.blockedResourceIds !== undefined)
+      requireValue(Array.isArray(node.blockedResourceIds) && node.blockedResourceIds.every(text));
     if (node.join !== undefined) {
       fields(node.join, [
         'waitingGroups',
@@ -153,6 +257,8 @@ export function assertArchivedState(value: unknown): asserts value is Simulation
         resource.waitingNodeIds.every(text),
     );
     queue(resource.queue);
+    if (resource.blockedNodeIds !== undefined)
+      requireValue(Array.isArray(resource.blockedNodeIds) && resource.blockedNodeIds.every(text));
   });
   if (state.processes !== undefined)
     values(state.processes, (process, key) => {
@@ -186,6 +292,10 @@ export function assertArchivedState(value: unknown): asserts value is Simulation
       queue(process.queue);
       for (const field of ['cycleTime', 'ttr', 'processing']) distribution(process[field]);
       list(process.bottlenecks, (bottleneck) => {
+        requireValue(
+          bottleneck.methodology === undefined ||
+            bottleneckMethods.includes(bottleneck.methodology as string),
+        );
         fields(bottleneck, ['score', 'utilization', 'averageQueue', 'averageWaitSeconds']);
         requireValue(
           text(bottleneck.id) &&
@@ -238,6 +348,12 @@ export function assertArchivedState(value: unknown): asserts value is Simulation
       'arrivesAtSeconds',
     ])
       requireValue(particle[field] === undefined || finite(particle[field]));
+    requireValue(
+      particle.transferProgress === undefined ||
+        (finite(particle.transferProgress) &&
+          particle.transferProgress >= 0 &&
+          particle.transferProgress <= 1),
+    );
     requireValue(particle.edgeId === undefined || text(particle.edgeId));
     for (const field of ['rootParticleId', 'parentParticleId', 'forkGroupId'])
       requireValue(
@@ -280,6 +396,10 @@ export function assertArchivedState(value: unknown): asserts value is Simulation
       requireValue(event[key] === undefined || finite(event[key]));
   });
   list(state.bottlenecks, (bottleneck) => {
+    requireValue(
+      bottleneck.methodology === undefined ||
+        bottleneckMethods.includes(bottleneck.methodology as string),
+    );
     fields(bottleneck, ['score', 'utilization', 'averageQueue', 'averageWaitSeconds']);
     requireValue(
       text(bottleneck.id) &&

@@ -2233,7 +2233,7 @@ const catalog = {
     'Redigerar baslinjen. Befintliga körresultat behåller sina ursprungliga antaganden.',
   'simulator.editor.model.fixInvalidJsonIn': 'Rätta ogiltig JSON i:',
   'simulator.editor.model.fixTheJsonErrorBeforeApplying': 'Rätta JSON-felet innan du tillämpar.',
-  'simulator.editor.model.invalidJsonFields': 'Rätta ogiltig JSON i: {fields}.',
+  'simulator.editor.model.invalidJsonFields': 'Rätta ogiltiga fält: {fields}.',
   'simulator.editor.model.settingsSection': 'Inställningsavsnitt',
   'simulator.editor.model.simulationSettingsSections': 'Avsnitt för simuleringsinställningar',
   'simulator.editor.model.theModelChangedWhileSettingsWereOpenReopenSettingsToEditThe':

@@ -218,9 +218,9 @@ export function ParticleOverlay({
         mark(particle.typeId, x, y, 6);
         transitCount++;
       }
-      for (const { particle, node } of scene.processing) {
+      for (const { particle, node, index } of scene.processing) {
         if ((particle.processingStartedAtSeconds ?? 0) > time) continue;
-        mark(particle.typeId, node.x + node.width - 14, node.y + 14);
+        mark(particle.typeId, node.x + node.width - 14 - index * 14, node.y + 14);
         processingCount++;
       }
       for (const { particle, node, index } of scene.queues) {

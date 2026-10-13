@@ -7,6 +7,10 @@ import type { CanvasNode } from '../canvas/projection';
 import { useSimulationSummary } from './summary-context';
 import { logicalNodeId } from './render-model';
 import { simulationNodeTraffic } from './traffic';
+import { infrastructureReading } from './infrastructure/metrics';
+import { formatInfrastructureQuantity } from './infrastructure/format';
+
+import { simulationAssumptionsEvent } from './setup-event';
 import './process-hierarchy.css';
 import { nodeBackgroundColor, nodeBackgroundStyle } from '../nodes/appearance';
 import '../nodes/node-appearance.css';
@@ -25,6 +29,20 @@ export const ResourcePoolCard = memo(({ id, data }: NodeProps<CanvasNode>) => {
     metric?.capacity ??
     Number(data.node.metadata.simulationResourceCapacity ?? resource?.capacity ?? 0);
   const busy = metric?.busy ?? 0;
+  const typed = resource?.infrastructure;
+  const aggregate = !!typed || !!model.infrastructure;
+  const reading = infrastructureReading(view?.state, config.resourceId);
+  const units = resource?.unit ?? 'units';
+  const detail = reading?.facts.filter(([label]) =>
+    [
+      'Peak reserved',
+      'Peak used',
+      'Transferred payload',
+      'State of charge',
+      'Stored energy',
+      'Unmet power now',
+    ].includes(label),
+  );
   const traffic = simulationNodeTraffic(config, view?.state, model);
   return (
     <div
@@ -44,7 +62,11 @@ export const ResourcePoolCard = memo(({ id, data }: NodeProps<CanvasNode>) => {
       <Handle type="source" position={Position.Top} id="out-top" isConnectable={false} />
       <div className="node-topline">
         <Users size={12} />
-        <span className="node-kind">{t('simulator.canvas.resource.sharedPool')}</span>
+        <span className="node-kind">
+          {typed
+            ? `${typed.kind === 'cpu' ? 'CPU' : typed.kind === 'memory' ? 'RAM' : typed.kind === 'bandwidth' ? 'Bandwidth' : 'Energy & power'} pool`
+            : t('simulator.canvas.resource.sharedPool')}
+        </span>
       </div>
       <div className="node-title" title={resource?.name}>
         {resource?.name ?? data.node.title}
@@ -54,7 +76,7 @@ export const ResourcePoolCard = memo(({ id, data }: NodeProps<CanvasNode>) => {
         data-simulation-node={id}
         data-simulation-logical-node={logicalId}
         data-traffic={traffic.level}
-        data-queue={metric?.queue.current ?? 0}
+        data-queue={traffic.queue}
       >
         <span className="simulation-traffic-badge" title={nodeTrafficReason(t, traffic)}>
           {traffic.level === 'congested' ? '! ' : traffic.level === 'busy' ? '◷ ' : ''}
@@ -63,29 +85,58 @@ export const ResourcePoolCard = memo(({ id, data }: NodeProps<CanvasNode>) => {
         <div className="simulation-pool-values">
           <span>
             <small>{t('simulator.common.capacity')}</small>
-            <strong>{capacity}</strong>
+            <strong>
+              {aggregate ? formatInfrastructureQuantity(capacity) : capacity}
+              {aggregate ? ` ${units}` : ''}
+            </strong>
           </span>
           <span>
-            <small>{t('simulator.canvas.resource.busy')}</small>
-            <strong>{busy}</strong>
+            <small>{aggregate ? 'Used now' : t('simulator.canvas.resource.busy')}</small>
+            <strong>
+              {aggregate
+                ? `${reading ? formatInfrastructureQuantity(reading.usage) : metric ? formatInfrastructureQuantity(busy) : '—'} ${units}`
+                : busy}
+            </strong>
           </span>
           <span>
             <small>{t('simulator.canvas.resource.queued')}</small>
-            <strong>{metric?.queue.current ?? 0}</strong>
+            <strong>{traffic.queue}</strong>
           </span>
         </div>
-        <div
-          className="simulation-pool-units"
-          aria-label={t('simulator.canvas.resource.busyOfCapacityUnits', {
-            busy: String(busy),
-            capacity: String(capacity),
-          })}
-        >
-          {Array.from({ length: Math.min(capacity, 8) }, (_, index) => (
-            <i key={index} data-occupied={index < busy} />
-          ))}
-          {capacity > 8 && <span>+{capacity - 8}</span>}
-        </div>
+        {aggregate ? (
+          <div className="simulation-pool-domain">
+            <span>
+              {reading?.reason ?? (metric ? traffic.reason : 'Run to observe allocation')}
+            </span>
+            {detail?.map(([label, value, unit]) => (
+              <span key={label}>
+                {label}: {formatInfrastructureQuantity(value)} {unit}
+              </span>
+            ))}
+            {!data.exporting && (
+              <button
+                type="button"
+                className="nodrag nopan"
+                onClick={() => window.dispatchEvent(new Event(simulationAssumptionsEvent))}
+              >
+                Edit requirements in Assumptions
+              </button>
+            )}
+          </div>
+        ) : (
+          <div
+            className="simulation-pool-units"
+            aria-label={t('simulator.canvas.resource.busyOfCapacityUnits', {
+              busy: String(busy),
+              capacity: String(capacity),
+            })}
+          >
+            {Array.from({ length: Math.min(capacity, 8) }, (_, index) => (
+              <i key={index} data-occupied={index < busy} />
+            ))}
+            {capacity > 8 && <span>+{capacity - 8}</span>}
+          </div>
+        )}
       </div>
     </div>
   );

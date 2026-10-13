@@ -46,6 +46,6 @@ describe('static flowchart symbol-use reference', () => {
     ])
       expect(searchable).toContain(term);
     expect(file('hugo/content/help/_index.md')).toContain('/help/flowchart-symbols/');
-    expect(file('scripts/audit-static.mjs')).toContain("'flowchart-symbols'");
+    expect(file('scripts/audit-static.mjs')).toMatch(/['"]flowchart-symbols['"]/);
   });
 });

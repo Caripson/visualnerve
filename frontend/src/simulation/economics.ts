@@ -1,4 +1,5 @@
 import type { EconomicMetrics, SimulationResult, SimulationComparison, CashPoint } from './types';
+import { compareInfrastructure } from './infrastructure/comparison';
 export const zeroEconomics = (): EconomicMetrics => ({
   expectedRevenue: 0,
   realizedRevenue: 0,
@@ -54,6 +55,7 @@ export function compareSimulationResults(
   scenario: SimulationResult,
 ): SimulationComparison {
   const warnings: string[] = [];
+  const infrastructure = compareInfrastructure(baseline.infrastructure, scenario.infrastructure);
   if (baseline.seed !== scenario.seed) warnings.push('Different seeds.');
   if (baseline.durationSeconds !== scenario.durationSeconds)
     warnings.push('Different simulation durations.');
@@ -94,6 +96,7 @@ export function compareSimulationResults(
     prior = current;
   }
   return {
+    ...(infrastructure ? { infrastructure } : {}),
     baselineRunId: baseline.runId,
     scenarioRunId: scenario.runId,
     baseline: baseline.metrics,

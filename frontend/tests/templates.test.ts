@@ -5,7 +5,7 @@ import { nodeKinds } from '../src/model/types';
 import { validateGraph } from '../src/model/validation';
 import { notationTemplates } from '../src/notation/templates';
 it('provides all canonical templates, a guided empty simulator and fresh identities', () => {
-  expect(templates).toHaveLength(14 + notationTemplates.length);
+  expect(templates).toHaveLength(18 + notationTemplates.length);
   for (const template of templates) {
     const first = instantiate(template.key, 'A'),
       second = instantiate(template.key, 'B');

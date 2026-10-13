@@ -8,6 +8,7 @@ import type { EditorSectionProps } from './types';
 import { ConnectionForm } from './ConnectionForm';
 import { removeSimulationEntity } from '../deletion';
 import { ParallelFlowDraft } from './parallel-flow-draft';
+import { TransferDomainFields } from '../infrastructure/TransferDomainFields';
 export function ConnectionsEditor({ draft, setDraft, scenarioId }: EditorSectionProps) {
   const { t } = useI18n();
   const [error, setError] = useState('');
@@ -43,14 +44,31 @@ export function ConnectionsEditor({ draft, setDraft, scenarioId }: EditorSection
               {draft.nodes.find((node) => node.id === edge.sourceNodeId)?.name} →{' '}
               {draft.nodes.find((node) => node.id === edge.targetNodeId)?.name}
             </legend>
-            <NumberField
-              label={t('simulator.editor.connections.travelTimeSeconds', { id: String(edge.id) })}
-              value={edge.travelSeconds ?? 0}
-              change={(value) =>
+            {!edge.infrastructure && (
+              <NumberField
+                label={t('simulator.editor.connections.travelTimeSeconds', { id: String(edge.id) })}
+                value={edge.travelSeconds ?? 0}
+                change={(value) =>
+                  setDraft((model) => ({
+                    ...model,
+                    edges: model.edges.map((entry) =>
+                      entry.id === edge.id ? { ...entry, travelSeconds: value } : entry,
+                    ),
+                  }))
+                }
+              />
+            )}
+            <TransferDomainFields
+              model={draft}
+              edge={edge}
+              change={(partial) =>
                 setDraft((model) => ({
                   ...model,
+                  ...(partial.infrastructure
+                    ? { schemaVersion: 2 as const, infrastructure: { schemaVersion: 1 as const } }
+                    : {}),
                   edges: model.edges.map((entry) =>
-                    entry.id === edge.id ? { ...entry, travelSeconds: value } : entry,
+                    entry.id === edge.id ? { ...entry, ...partial } : entry,
                   ),
                 }))
               }

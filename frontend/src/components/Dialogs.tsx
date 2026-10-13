@@ -1,3 +1,7 @@
+import {
+  InfrastructureTemplatePreview,
+  infrastructureTemplateHints,
+} from '../simulation/infrastructure/InfrastructureTemplatePreview';
 import { presentationMessage } from '../presentation/display-messages';
 import { diagramModeLabel, templateLabel } from '../ui/editor-labels';
 import { ownerKindKeys } from './ui-labels';
@@ -17,7 +21,7 @@ import { Modal } from './Modal';
 import { Field } from './Field';
 import { useEditor } from '../state/editor';
 import { workspace } from '../storage/workspace';
-import { templates } from '../templates/templates';
+import { templates } from '../templates/catalog';
 import { createTemplateDiagram } from '../templates/create';
 import { type Owner, type Graph } from '../model/types';
 import { DataPrivacy, StorageNotice } from './DataPrivacy';
@@ -145,14 +149,18 @@ export function NewDiagram({ close }: { close: () => void }) {
                       style={
                         notationTemplate(t.key)
                           ? { height: 84, color: 'var(--accent)', padding: 4 }
-                          : t.key === 'ibm-flowcharting'
+                          : infrastructureTemplateHints[t.key]
                             ? { display: 'grid', placeItems: 'center', color: 'var(--accent)' }
-                            : undefined
+                            : t.key === 'ibm-flowcharting'
+                              ? { display: 'grid', placeItems: 'center', color: 'var(--accent)' }
+                              : undefined
                       }
                       aria-hidden="true"
                     >
                       {notationTemplate(t.key) ? (
                         <TemplatePreview templateKey={t.key} />
+                      ) : infrastructureTemplateHints[t.key] ? (
+                        <InfrastructureTemplatePreview templateKey={t.key} />
                       ) : t.key === 'ibm-flowcharting' ? (
                         <svg viewBox="0 0 140 64" style={{ width: '90%', height: '90%' }}>
                           <path
@@ -223,22 +231,24 @@ export function NewDiagram({ close }: { close: () => void }) {
                     <small>
                       {notationTemplate(t.key)
                         ? `${t.nodes} editable example objects · ${notationTemplate(t.key)!.diagramKind.replaceAll('-', ' ')}`
-                        : t.key === 'ibm-flowcharting'
-                          ? 'Based on the IBM GX20-8020 stencil'
-                          : t.key === 'time-series-analysis'
-                            ? 'Import → Explore → Measure → Detect → Validate → Simulate'
-                            : t.key === 'process-simulator-blank'
-                              ? translate('dialogs.templateGuidedProcessHint')
-                              : t.key === 'process-simulator'
-                                ? translate('dialogs.templateKioskHint')
-                                : t.key === 'delivery-network-simulator'
-                                  ? translate('dialogs.templateNestedProcessHint')
-                                  : t.nodes
-                                    ? translate('dialogs.templateCounts', {
-                                        count: t.nodes,
-                                        type: diagramModeLabel(translate, t.type),
-                                      })
-                                    : translate('dialogs.blankTemplateHint')}
+                        : infrastructureTemplateHints[t.key]
+                          ? infrastructureTemplateHints[t.key]
+                          : t.key === 'ibm-flowcharting'
+                            ? 'Based on the IBM GX20-8020 stencil'
+                            : t.key === 'time-series-analysis'
+                              ? 'Import → Explore → Measure → Detect → Validate → Simulate'
+                              : t.key === 'process-simulator-blank'
+                                ? translate('dialogs.templateGuidedProcessHint')
+                                : t.key === 'process-simulator'
+                                  ? translate('dialogs.templateKioskHint')
+                                  : t.key === 'delivery-network-simulator'
+                                    ? translate('dialogs.templateNestedProcessHint')
+                                    : t.nodes
+                                      ? translate('dialogs.templateCounts', {
+                                          count: t.nodes,
+                                          type: diagramModeLabel(translate, t.type),
+                                        })
+                                      : translate('dialogs.blankTemplateHint')}
                     </small>
                   </button>
                 ))}

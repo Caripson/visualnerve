@@ -16,7 +16,11 @@ Guided construction is split between `starter.ts`, `ProcessWizard.tsx`, `Starter
 
 ## One model and one engine
 
-The document identifies itself with `diagram.type: "process-simulator"` and an explicit `graph.simulation` payload containing `type: "process-simulator"` and `schemaVersion: 1`. Native graph nodes/edges supply positions, styling and ordinary diagram exports. The typed simulation model supplies business semantics. Canvas coordinates never determine processing, capacity or routing.
+The document identifies itself with `diagram.type: "process-simulator"` and an explicit `graph.simulation` payload containing `type: "process-simulator"`. Legacy models retain `schemaVersion:1`; typed infrastructure models require `schemaVersion:2` and `infrastructure:{schemaVersion:1}` together. Native graph nodes/edges supply positions, styling and ordinary diagram exports. The typed simulation model supplies business semantics. Canvas coordinates never determine processing, capacity or routing.
+
+### Infrastructure capacity
+
+**API & Compute Capacity**, **Network & Multi-Site Capacity**, **Energy & Power Capacity** and **Datacenter Capacity** use the same engine, CRUD and run routes. Dedicated CPU reservations, case/stage RAM leases, concurrently shared byte transfers and generation/grid/battery delivery are explicit assumptions on resources, Work and edges. The API example also includes a generic database connection pool; Datacenter Capacity runs compute and an explicit energy budget in parallel, joining both before database work. Model2 Work and all resources use aggregate logical cards; concurrency slots are not physical replicas, and legacy1 capacity banks are unchanged. `GET /simulation/capabilities` retains compatibility `schemaVersion:1` and advertises `supportedModelSchemaVersions:[1,2]`, `infrastructure.requiredModelSchemaVersion:2` and `infrastructure-resources-v1` in API 0.10.0. Older engines reject version 2 rather than reinterpret it. Domain counters are in `state/result.infrastructure`; comparison adds signed matching-pool deltas. Model2 bottlenecks identify optional scoring methodology and actual typed-resource pressure without invented queues. Continuous totals use the documented absolute/relative tolerance across pacing modes; counts, order, event milliseconds and capacities remain exact. Live rooms reject these models until their document contract supports them. See [the complete contract and equations](INFRASTRUCTURE_CAPACITY.md) and [practical Help](../hugo/content/help/infrastructure-capacity.md).
 
 The deterministic discrete-event engine is independent of React, rendering and frame rate. Arrivals, queues, processing, resource acquisition/release, routing, abandonment, scaling and completion use a simulated clock. Seeded random streams determine stochastic arrivals and complexity. UI controls, REST and MCP call the same worker service and engine. Speed changes playback, not business results.
 
@@ -35,23 +39,30 @@ The additive schema stays at version 1:
 ```json
 {
   "processes": [
-    {"id": "order-delivery", "name": "Order delivery"},
-    {"id": "validation", "name": "Validation", "parentId": "order-delivery"},
-    {"id": "warehouse", "name": "Warehouse", "parentId": "order-delivery"},
-    {"id": "picking", "name": "Picking", "parentId": "warehouse"}
+    { "id": "order-delivery", "name": "Order delivery" },
+    { "id": "validation", "name": "Validation", "parentId": "order-delivery" },
+    { "id": "warehouse", "name": "Warehouse", "parentId": "order-delivery" },
+    { "id": "picking", "name": "Picking", "parentId": "warehouse" }
   ],
   "nodes": [
     {
-      "id": "validate-order", "name": "Validate order", "type": "work",
+      "id": "validate-order",
+      "name": "Validate order",
+      "type": "work",
       "processId": "validation",
-      "work": {"processingSeconds": 120, "capacity": 2, "costPerHour": 50}
+      "work": { "processingSeconds": 120, "capacity": 2, "costPerHour": 50 }
     },
     {
-      "id": "pick-items", "name": "Pick items", "type": "work",
+      "id": "pick-items",
+      "name": "Pick items",
+      "type": "work",
       "processId": "picking",
       "work": {
-        "processingSeconds": 300, "capacity": 3,
-        "resourceRequirements": [{"resourceId": "warehouse-staff", "units": 1}]
+        "processingSeconds": 300,
+        "capacity": 3,
+        "resourceRequirements": [
+          { "resourceId": "warehouse-staff", "units": 1 }
+        ]
       }
     }
   ]
@@ -68,21 +79,21 @@ Deleting a group in the UI preserves its Work nodes and lifts direct members and
 
 Every current engine snapshot and result exposes `processes`, keyed by process ID. Each entry rolls up direct members and all descendant subprocesses. It includes topology (`nodeIds`, `childProcessIds`, `resourceIds`), actual shared-unit usage, queue distributions, scope WIP, throughput, utilization, cycle time, economic values and observed bottlenecks. Parent and child entries overlap; **do not add a parent to its children**, and do not add child percentiles or maxima to create a parent statistic.
 
-| Metric | Meaning in a process scope |
-| --- | --- |
-| `entered` | Number of scope visits. Leaving and later re-entering creates another visit. |
-| `completed` | Scope visits that finished through a boundary exit or a successful terminal Outcome. This is distinct from whole-system completed particles. |
-| `exited` | The subset of completed visits that continued into a node outside this scope. |
-| `terminalCompleted` | The subset completed by a final successful Outcome inside this scope. |
-| `inSystem` | Current work in this scope. Outbound transit belongs to the departing scope until the particle arrives at its next actual node. |
-| `abandoned`, `failed` | Visits terminated by abandonment or failure while in the scope. |
-| `throughputPerHour` | Completed scope visits divided by elapsed simulated hours. |
-| `cycleTime` | Entry-to-boundary-arrival or entry-to-successful-terminal time for each completed scope visit, including its actual waiting and travel. |
-| `ttr` | Scope entry to a revenue-producing terminal Outcome inside this scope. Global TTR remains particle creation to revenue realization. |
-| `queue` | The combined concurrent queue at descendant Work nodes, integrated over simulated time. Its maximum is the actual simultaneous peak. |
-| `queue.wait` | Observed individual Work queue waits across those nodes, including immediate starts with zero wait. Percentiles are computed from these samples. |
-| `processing` | Completed Work operation durations in the scope, rather than a sum of step averages. |
-| `utilization` | Total occupied Work slot-time divided by available Work slot-time, including schedules and actual scaling. |
+| Metric                | Meaning in a process scope                                                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `entered`             | Number of scope visits. Leaving and later re-entering creates another visit.                                                                     |
+| `completed`           | Scope visits that finished through a boundary exit or a successful terminal Outcome. This is distinct from whole-system completed particles.     |
+| `exited`              | The subset of completed visits that continued into a node outside this scope.                                                                    |
+| `terminalCompleted`   | The subset completed by a final successful Outcome inside this scope.                                                                            |
+| `inSystem`            | Current work in this scope. Outbound transit belongs to the departing scope until the particle arrives at its next actual node.                  |
+| `abandoned`, `failed` | Visits terminated by abandonment or failure while in the scope.                                                                                  |
+| `throughputPerHour`   | Completed scope visits divided by elapsed simulated hours.                                                                                       |
+| `cycleTime`           | Entry-to-boundary-arrival or entry-to-successful-terminal time for each completed scope visit, including its actual waiting and travel.          |
+| `ttr`                 | Scope entry to a revenue-producing terminal Outcome inside this scope. Global TTR remains particle creation to revenue realization.              |
+| `queue`               | The combined concurrent queue at descendant Work nodes, integrated over simulated time. Its maximum is the actual simultaneous peak.             |
+| `queue.wait`          | Observed individual Work queue waits across those nodes, including immediate starts with zero wait. Percentiles are computed from these samples. |
+| `processing`          | Completed Work operation durations in the scope, rather than a sum of step averages.                                                             |
+| `utilization`         | Total occupied Work slot-time divided by available Work slot-time, including schedules and actual scaling.                                       |
 
 A parent keeps one visit while a particle moves between its children. Its cycle-time distribution comes from that parent visit, rather than summed child means. For each scope, `entered = completed + abandoned + failed + inSystem`; `completed = exited + terminalCompleted`. These equalities count visits and remain valid when a route loops. Global `metrics.created` and `metrics.completed` retain their original particle-level meanings.
 
@@ -158,27 +169,27 @@ Scenarios use typed overrides keyed by semantic IDs and never mutate Baseline. `
 
 Use the existing local `/api/v1` API or `visual_nerve_request` with paths **without** `/api/v1`. Start with `visual_nerve_api_docs`; `{"document":"openapi"}` returns every exact schema. Documentation works without a browser. Workspace/model/run commands require its storage acceptance and MCP grant.
 
-| Operation | Route/input |
-| --- | --- |
-| Capabilities | `GET /simulation/capabilities` |
-| Discover documents | `GET /diagrams?type=process-simulator` |
-| Create | `POST /diagrams {name,type:"process-simulator"}` |
-| Full model | `GET /diagrams/{id}/simulation` |
-| Hierarchy discovery | `GET .../simulation/hierarchy` (root groups and direct/recursive membership; read the complete model for ungrouped steps) |
-| Replace model | `PUT .../simulation {baseVersion,model}` |
-| Entity collections | `.../simulation/processes`, `nodes`, `edges`, `particle-types`, `resources`, `improvements`, `scenarios` |
-| Read/create collection | `GET`; `POST {baseVersion,value}` |
-| Read/patch/delete entity | `GET .../{entityId}`; `PATCH {baseVersion,value}`; `DELETE .../{entityId}?baseVersion=N` |
-| Economics/defaults/retention | `GET/PUT .../simulation/{field}`; PUT takes `{baseVersion,value}` |
-| Start run | `POST .../simulation/runs {durationSeconds?,seed?,scenarioId?,demandMultiplier?,speed?,animated?,untilComplete?}` |
-| Run list/info | `GET .../simulation/runs[/{runId}]` |
-| Inspect | `GET .../runs/{runId}/state`, `result`, `metrics`, `queues`, `bottlenecks` |
-| Entity metrics | `GET .../runs/{runId}/processes[/{id}]`, `nodes[/{id}]`, `resources[/{id}]`, `particle-types[/{id}]` |
-| Events | `GET .../runs/{runId}/events?offset=0&limit=100` (limit 1–1,000) |
-| Controls | `POST .../runs/{runId}/pause`, `resume`, `stop`, `reset` with exact `{}` |
-| Live speed | `POST .../runs/{runId}/speed {speed:1\|10\|100\|"max"}` |
-| Replay | `POST .../runs/{runId}/seek {timeSeconds}` after pausing/completing |
-| Compare | Exact `POST .../simulation/compare {runIds:[baselineRunId,scenarioRunId,...]}` |
+| Operation                    | Route/input                                                                                                               |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Capabilities                 | `GET /simulation/capabilities`                                                                                            |
+| Discover documents           | `GET /diagrams?type=process-simulator`                                                                                    |
+| Create                       | `POST /diagrams {name,type:"process-simulator"}`                                                                          |
+| Full model                   | `GET /diagrams/{id}/simulation`                                                                                           |
+| Hierarchy discovery          | `GET .../simulation/hierarchy` (root groups and direct/recursive membership; read the complete model for ungrouped steps) |
+| Replace model                | `PUT .../simulation {baseVersion,model}`                                                                                  |
+| Entity collections           | `.../simulation/processes`, `nodes`, `edges`, `particle-types`, `resources`, `improvements`, `scenarios`                  |
+| Read/create collection       | `GET`; `POST {baseVersion,value}`                                                                                         |
+| Read/patch/delete entity     | `GET .../{entityId}`; `PATCH {baseVersion,value}`; `DELETE .../{entityId}?baseVersion=N`                                  |
+| Economics/defaults/retention | `GET/PUT .../simulation/{field}`; PUT takes `{baseVersion,value}`                                                         |
+| Start run                    | `POST .../simulation/runs {durationSeconds?,seed?,scenarioId?,demandMultiplier?,speed?,animated?,untilComplete?}`         |
+| Run list/info                | `GET .../simulation/runs[/{runId}]`                                                                                       |
+| Inspect                      | `GET .../runs/{runId}/state`, `result`, `metrics`, `queues`, `bottlenecks`                                                |
+| Entity metrics               | `GET .../runs/{runId}/processes[/{id}]`, `nodes[/{id}]`, `resources[/{id}]`, `particle-types[/{id}]`                      |
+| Events                       | `GET .../runs/{runId}/events?offset=0&limit=100` (limit 1–1,000)                                                          |
+| Controls                     | `POST .../runs/{runId}/pause`, `resume`, `stop`, `reset` with exact `{}`                                                  |
+| Live speed                   | `POST .../runs/{runId}/speed {speed:1\|10\|100\|"max"}`                                                                   |
+| Replay                       | `POST .../runs/{runId}/seek {timeSeconds}` after pausing/completing                                                       |
+| Compare                      | Exact `POST .../simulation/compare {runIds:[baselineRunId,scenarioRunId,...]}`                                            |
 
 Model/entity mutation returns the updated Graph. Use its latest `diagram.version` as the next `baseVersion`. Missing versions return 428, stale versions 409 and invalid models 422 without partial writes. Native node/edge IDs are UUIDs; readable IDs supplied during creation are retained as external aliases and remapped consistently. Read back the canonical model before subsequent entity edits. Process/resource/type/scenario IDs may remain readable strings and must be URL-encoded when used in path segments.
 
@@ -196,19 +207,61 @@ Replace a new model at its current `baseVersion` with:
 
 ```json
 {
-  "type": "process-simulator", "schemaVersion": 1, "currency": "SEK",
-  "particleTypes": [{"id":"customer","name":"Customer","color":"#2563eb","revenue":100,"complexity":{"min":1,"max":1},"priority":1}],
+  "type": "process-simulator",
+  "schemaVersion": 1,
+  "currency": "SEK",
+  "particleTypes": [
+    {
+      "id": "customer",
+      "name": "Customer",
+      "color": "#2563eb",
+      "revenue": 100,
+      "complexity": { "min": 1, "max": 1 },
+      "priority": 1
+    }
+  ],
   "nodes": [
-    {"id":"source","name":"Arrivals","type":"source","source":{"particleTypeId":"customer","burst":10,"maxCount":10}},
-    {"id":"work","name":"Service","type":"work","work":{"processingSeconds":60,"capacity":1,"queueDiscipline":"fifo"}},
-    {"id":"revenue","name":"Revenue","type":"outcome","outcome":{"status":"completed","revenue":true}}
+    {
+      "id": "source",
+      "name": "Arrivals",
+      "type": "source",
+      "source": { "particleTypeId": "customer", "burst": 10, "maxCount": 10 }
+    },
+    {
+      "id": "work",
+      "name": "Service",
+      "type": "work",
+      "work": {
+        "processingSeconds": 60,
+        "capacity": 1,
+        "queueDiscipline": "fifo"
+      }
+    },
+    {
+      "id": "revenue",
+      "name": "Revenue",
+      "type": "outcome",
+      "outcome": { "status": "completed", "revenue": true }
+    }
   ],
   "edges": [
-    {"id":"arrival","sourceNodeId":"source","targetNodeId":"work","travelSeconds":0},
-    {"id":"complete","sourceNodeId":"work","targetNodeId":"revenue","travelSeconds":0}
+    {
+      "id": "arrival",
+      "sourceNodeId": "source",
+      "targetNodeId": "work",
+      "travelSeconds": 0
+    },
+    {
+      "id": "complete",
+      "sourceNodeId": "work",
+      "targetNodeId": "revenue",
+      "travelSeconds": 0
+    }
   ],
-  "resources": [], "improvements": [], "scenarios": [],
-  "defaults": {"durationSeconds":3600,"seed":42}
+  "resources": [],
+  "improvements": [],
+  "scenarios": [],
+  "defaults": { "durationSeconds": 3600, "seed": 42 }
 }
 ```
 
@@ -248,16 +301,43 @@ Execution safety limits are discoverable at `/simulation/capabilities` under `ex
 ```json
 {
   "nodes": [
-    {"id":"fork-id","name":"Start prerequisites","type":"fork",
-     "fork":{"joinNodeId":"join-id","branchEdgeIds":["access-edge","equipment-edge"]}},
-    {"id":"join-id","name":"All prerequisites ready","type":"join",
-     "join":{"forkNodeId":"fork-id"}}
+    {
+      "id": "fork-id",
+      "name": "Start prerequisites",
+      "type": "fork",
+      "fork": {
+        "joinNodeId": "join-id",
+        "branchEdgeIds": ["access-edge", "equipment-edge"]
+      }
+    },
+    {
+      "id": "join-id",
+      "name": "All prerequisites ready",
+      "type": "join",
+      "join": { "forkNodeId": "fork-id" }
+    }
   ],
   "edges": [
-    {"id":"access-edge","sourceNodeId":"fork-id","targetNodeId":"access-work-id"},
-    {"id":"equipment-edge","sourceNodeId":"fork-id","targetNodeId":"equipment-work-id"},
-    {"id":"access-ready-edge","sourceNodeId":"access-work-id","targetNodeId":"join-id"},
-    {"id":"equipment-ready-edge","sourceNodeId":"equipment-work-id","targetNodeId":"join-id"}
+    {
+      "id": "access-edge",
+      "sourceNodeId": "fork-id",
+      "targetNodeId": "access-work-id"
+    },
+    {
+      "id": "equipment-edge",
+      "sourceNodeId": "fork-id",
+      "targetNodeId": "equipment-work-id"
+    },
+    {
+      "id": "access-ready-edge",
+      "sourceNodeId": "access-work-id",
+      "targetNodeId": "join-id"
+    },
+    {
+      "id": "equipment-ready-edge",
+      "sourceNodeId": "equipment-work-id",
+      "targetNodeId": "join-id"
+    }
   ]
 }
 ```

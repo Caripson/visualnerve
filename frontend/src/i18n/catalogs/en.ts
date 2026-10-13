@@ -2209,7 +2209,7 @@ const catalog = {
     'Editing the baseline. Existing run results keep their original assumptions.',
   'simulator.editor.model.fixInvalidJsonIn': 'Fix invalid JSON in:',
   'simulator.editor.model.fixTheJsonErrorBeforeApplying': 'Fix the JSON error before applying.',
-  'simulator.editor.model.invalidJsonFields': 'Fix invalid JSON in: {fields}.',
+  'simulator.editor.model.invalidJsonFields': 'Fix invalid fields: {fields}.',
   'simulator.editor.model.settingsSection': 'Settings section',
   'simulator.editor.model.simulationSettingsSections': 'Simulation settings sections',
   'simulator.editor.model.theModelChangedWhileSettingsWereOpenReopenSettingsToEditThe':

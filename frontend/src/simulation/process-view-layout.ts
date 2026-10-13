@@ -82,17 +82,22 @@ export class ProcessViewLayout {
     const placed = new Map<string, GraphNode>();
     const poolColumns = Math.min(5, Math.max(1, pools.length));
     const poolRows = Math.ceil(pools.length / poolColumns);
+    const typedPools = pools.some(
+      (node) => typeof node.metadata.simulationPoolDimension === 'string',
+    );
+    const poolColumnWidth = typedPools ? 300 : 200;
+    const poolRowHeight = typedPools ? 282 : 172;
     for (let order = 0; order < pools.length; order++) {
       const node = pools[order];
       placed.set(node.id, {
         ...node,
-        x: (order % poolColumns) * 200,
-        y: Math.floor(order / poolColumns) * 172,
-        width: 180,
-        height: 150,
+        x: (order % poolColumns) * poolColumnWidth,
+        y: Math.floor(order / poolColumns) * poolRowHeight,
+        width: node.metadata.simulationPoolDimension ? 280 : 180,
+        height: node.metadata.simulationPoolDimension ? 260 : 150,
       });
     }
-    let y = pools.length ? poolRows * 172 + 38 : 0;
+    let y = pools.length ? poolRows * poolRowHeight + 38 : 0;
     for (let start = 0; start < ordered.length; start += PROCESS_VIEW_COLUMNS) {
       const row = ordered.slice(start, start + PROCESS_VIEW_COLUMNS);
       const height = Math.max(...row.map((node) => node.height));

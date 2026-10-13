@@ -8,6 +8,10 @@ import { getSimulationCapacityCard, logicalNodeId } from './render-model';
 import { getSimulationPresentationSlots } from './presentation-slots';
 import { simulationNodeTraffic } from './traffic';
 import './traffic.css';
+import { infrastructureWorkResources } from './infrastructure/references';
+import { infrastructureReading } from './infrastructure/metrics';
+import { formatInfrastructureQuantity } from './infrastructure/format';
+import { simulationAssumptionsEvent } from './setup-event';
 
 const indices = new WeakMap<
   SimulationModel,
@@ -37,6 +41,13 @@ export function SimulationNodeSummary({ id, node }: { id: string; node?: GraphNo
   const metric = view?.state?.nodes[logicalId];
   const resource =
     config.type === 'resource' ? view?.state?.resources[config.resourceId] : undefined;
+  const domainResource =
+    config.type === 'resource' ? lookup.resources.get(config.resourceId) : undefined;
+  const typedPool = !!domainResource?.infrastructure;
+  const aggregateWork = config.type === 'work' && !!model.infrastructure;
+  const aggregatePool = config.type === 'resource' && !!model.infrastructure;
+  const reading =
+    config.type === 'resource' ? infrastructureReading(view?.state, config.resourceId) : undefined;
   const traffic = simulationNodeTraffic(config, view?.state, model);
   const trafficLabel = trafficStatusLabel(t, traffic.label);
   const trafficReason = nodeTrafficReason(t, traffic);
@@ -51,10 +62,14 @@ export function SimulationNodeSummary({ id, node }: { id: string; node?: GraphNo
         : undefined);
   const resourceNames =
     config.type === 'work'
-      ? (config.work.resourceRequirements ?? []).map(
-          (requirement) =>
-            lookup.resources.get(requirement.resourceId)?.name ?? requirement.resourceId,
-        )
+      ? [
+          ...new Set([
+            ...(config.work.resourceRequirements ?? []).map(
+              (requirement) => requirement.resourceId,
+            ),
+            ...infrastructureWorkResources(config.work.infrastructure),
+          ]),
+        ].map((resourceId) => lookup.resources.get(resourceId)?.name ?? resourceId)
       : config.type === 'resource'
         ? [lookup.resources.get(config.resourceId)?.name ?? config.resourceId]
         : [];
@@ -79,9 +94,7 @@ export function SimulationNodeSummary({ id, node }: { id: string; node?: GraphNo
       data-simulation-node={id}
       data-simulation-logical-node={logicalId}
       data-traffic={traffic.level}
-      data-queue={
-        card && card.unit > 1 ? undefined : (resource?.queue.current ?? metric?.queue.current ?? 0)
-      }
+      data-queue={card && card.unit > 1 ? undefined : traffic.queue}
     >
       <span className="simulation-node-state">
         <span className="simulation-node-kind">{simulationNodeTypeLabel(t, config.type)}</span>
@@ -140,6 +153,14 @@ export function SimulationNodeSummary({ id, node }: { id: string; node?: GraphNo
             {t('simulator.node.resources.summary', { resourceNames: fullResourceNames })}
           </span>
         )}
+        {typedPool && (
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event(simulationAssumptionsEvent))}
+          >
+            Edit requirements in Assumptions
+          </button>
+        )}
         {config.type === 'source' && (
           <span>
             {metric
@@ -174,13 +195,22 @@ export function SimulationNodeSummary({ id, node }: { id: string; node?: GraphNo
         {(config.type === 'work' || config.type === 'resource') && capacity !== undefined && (
           <>
             <span className="simulation-node-capacity">
-              {t('simulator.node.capacity.summary', {
-                capacity,
-                utilizationPercent: (
-                  (resource?.currentUtilization ?? metric?.currentUtilization ?? 0) * 100
-                ).toFixed(0),
-              })}
+              {typedPool
+                ? `${reading ? formatInfrastructureQuantity(reading.usage) : '—'} / ${formatInfrastructureQuantity(capacity)} ${domainResource!.unit}`
+                : t('simulator.node.capacity.summary', {
+                    capacity,
+                    utilizationPercent: (
+                      (resource?.currentUtilization ?? metric?.currentUtilization ?? 0) * 100
+                    ).toFixed(0),
+                  })}
             </span>
+            {typedPool && (
+              <span>
+                {reading
+                  ? `${reading.pressure === 'congested' ? 'Constrained' : reading.pressure === 'busy' ? 'Busy' : 'Clear'} · ${reading.reason}`
+                  : 'Run to observe allocation'}
+              </span>
+            )}
             <span
               className="simulation-utilization-track"
               aria-hidden="true"
@@ -192,7 +222,17 @@ export function SimulationNodeSummary({ id, node }: { id: string; node?: GraphNo
             >
               <span />
             </span>
-            {card ? (
+            {aggregateWork ? (
+              <span className="simulation-infrastructure-work-capacity">
+                {formatInfrastructureQuantity(metric?.busy ?? 0)} active /{' '}
+                {formatInfrastructureQuantity(capacity)} in-flight slots
+              </span>
+            ) : typedPool ? null : aggregatePool ? (
+              <span>
+                {formatInfrastructureQuantity(resource?.busy ?? 0)} /{' '}
+                {formatInfrastructureQuantity(capacity)} {domainResource?.unit ?? 'units'} allocated
+              </span>
+            ) : card ? (
               <>
                 <span
                   className="simulation-capacity-card-unit"
@@ -252,7 +292,7 @@ export function SimulationNodeSummary({ id, node }: { id: string; node?: GraphNo
                   completedCount: metric.completed,
                 })
               : t('simulator.node.resourceQueue', {
-                  queueCount: resource?.queue.current ?? metric?.queue.current ?? 0,
+                  queueCount: traffic.queue,
                 })}
           </span>
         )}

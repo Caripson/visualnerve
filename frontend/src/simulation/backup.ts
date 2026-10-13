@@ -8,7 +8,11 @@ import { remapSimulationModel } from './copy';
 import { validateSimulationModel, resolveScenario } from './schema';
 import { simulationModelHash } from './engine';
 import type { SimulationResult, SimulationState } from './types';
-import { assertArchivedResult, assertArchivedState } from './archive-validation';
+import {
+  assertArchivedResult,
+  assertArchivedState,
+  assertArchivedInfrastructureModel,
+} from './archive-validation';
 
 export interface SimulationImportMapping {
   sourceGraph: Graph;
@@ -62,7 +66,11 @@ function remapState<T extends SimulationState>(
     resources: Object.fromEntries(
       Object.entries(state.resources).map(([id, metric]) => [
         id,
-        { ...metric, waitingNodeIds: metric.waitingNodeIds.map(nodeId) },
+        {
+          ...metric,
+          waitingNodeIds: metric.waitingNodeIds.map(nodeId),
+          ...(metric.blockedNodeIds ? { blockedNodeIds: metric.blockedNodeIds.map(nodeId) } : {}),
+        },
       ]),
     ),
     particles: state.particles.map((particle) => ({
@@ -137,7 +145,13 @@ export function prepareSimulationBackup(backup: WorkspaceBackup, graphs: Graph[]
     )
       throw new StorageError(422, 'Invalid archived simulation options.');
     historyJsonBytes(run, 48 * 1024 * 1024);
-    if (run.result) assertArchivedResult(run.result);
+    if (run.result) {
+      assertArchivedResult(run.result);
+      assertArchivedInfrastructureModel(
+        run.result,
+        resolveScenario(run.model, scenarioId, demandMultiplier),
+      );
+    }
     byRun.set(run.id, run);
   }
   const ids = new Set<string>();
@@ -157,6 +171,14 @@ export function prepareSimulationBackup(backup: WorkspaceBackup, graphs: Graph[]
       throw new StorageError(422, 'Invalid workspace simulation checkpoint.');
     ids.add(checkpoint.id);
     assertArchivedState(checkpoint.state);
+    const scenarioId =
+      typeof run.options.scenarioId === 'string' ? run.options.scenarioId : undefined;
+    const demandMultiplier =
+      typeof run.options.demandMultiplier === 'number' ? run.options.demandMultiplier : undefined;
+    assertArchivedInfrastructureModel(
+      checkpoint.state,
+      resolveScenario(run.model, scenarioId, demandMultiplier),
+    );
   }
   return { runs, checkpoints };
 }

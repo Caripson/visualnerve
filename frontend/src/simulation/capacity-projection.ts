@@ -11,6 +11,7 @@ export interface SimulationCapacityGroup {
   cardIds: string[];
   actualCapacity: number;
   hidden: number;
+  aggregate?: boolean;
 }
 export interface SimulationCapacityCard {
   logicalId: string;
@@ -87,14 +88,21 @@ export function projectSimulationCapacityNodes(
   const capacityGroups = new Map<string, SimulationCapacityGroup>();
   let remaining = MAX_ADDITIONAL_CAPACITY_CARDS;
   for (const [id, actualCapacity] of capacities) {
-    const count = Math.min(Math.max(1, actualCapacity), MAX_CAPACITY_CARDS_PER_BANK, remaining + 1);
+    const node = semantic.get(id);
+    const aggregate =
+      (!!model.infrastructure && (node?.type === 'work' || node?.type === 'resource')) ||
+      (node?.type === 'resource' && !!resources.get(node.resourceId)?.infrastructure);
+    const count = aggregate
+      ? 1
+      : Math.min(Math.max(1, actualCapacity), MAX_CAPACITY_CARDS_PER_BANK, remaining + 1);
     remaining -= count - 1;
     capacityGroups.set(id, {
       cardIds: Array.from({ length: count }, (_, index) =>
         index === 0 ? id : `simulation-capacity:${id}:${index + 1}`,
       ),
       actualCapacity,
-      hidden: Math.max(0, actualCapacity - count),
+      hidden: aggregate ? 0 : Math.max(0, actualCapacity - count),
+      ...(aggregate ? { aggregate: true } : {}),
     });
   }
   const sizing = new SimulationCardSizing();
@@ -127,11 +135,16 @@ export function projectSimulationCapacityNodes(
       ...position,
       id,
       y: position.y + index * (node.height + CAPACITY_CARD_GAP),
-      title: group.actualCapacity > 1 ? `${config.name} ${index + 1}` : config.name,
+      title: group.aggregate
+        ? config.name
+        : group.actualCapacity > 1
+          ? `${config.name} ${index + 1}`
+          : config.name,
       metadata: {
         ...node.metadata,
         simulationProjected: true,
         simulationLogicalNodeId: node.id,
+        simulationAggregateCapacity: group.aggregate ?? false,
         simulationCapacityUnit: index + 1,
         simulationCapacityTotal: group.actualCapacity,
         simulationCapacityHidden: index === group.cardIds.length - 1 ? group.hidden : 0,

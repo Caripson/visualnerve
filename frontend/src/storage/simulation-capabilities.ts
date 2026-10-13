@@ -5,10 +5,15 @@ import {
 import { browserApiVersion } from './api-version';
 import { parallelLimits } from '../simulation/parallel-topology';
 import { ParticleRoute } from '../simulation/particle-route';
+import {
+  infrastructureLimits,
+  infrastructureDisplayConversions,
+} from '../simulation/infrastructure/types';
 
 export const simulationCapabilities = {
   type: 'process-simulator',
   schemaVersion: 1,
+  supportedModelSchemaVersions: [1, 2],
   apiVersion: browserApiVersion,
   engine: 'deterministic-discrete-event',
   timeUnit: 'second',
@@ -41,7 +46,61 @@ export const simulationCapabilities = {
     'bounded-particle-rendering',
     'native-capacity-card-projection',
     'local-persistence',
+    'infrastructure-resources-v1',
   ],
+  infrastructure: {
+    schemaVersion: 1,
+    requiredModelSchemaVersion: 2,
+    capability: 'infrastructure-resources-v1',
+    resourceKinds: ['cpu', 'memory', 'bandwidth', 'energy'],
+    units: { cpu: 'cores', memory: 'MiB', bandwidth: 'Mbps', energy: 'kW' },
+    displayConversions: infrastructureDisplayConversions,
+    modelField: 'infrastructure',
+    resourceField: 'resources[].infrastructure',
+    workField: 'nodes[].work.infrastructure',
+    edgeField: 'edges[].infrastructure.transfer',
+    metricsField: 'state/result.infrastructure',
+    bottleneckMethodologies: [
+      'queue-history',
+      'blocked-admission',
+      'bandwidth-sharing',
+      'energy-shortfall',
+    ],
+    continuousTotals: {
+      absoluteTolerance: 1e-9,
+      relativeTolerance: 1e-9,
+      rawUnrounded: true,
+      discreteCountsOrderEventMillisecondsAndCapacities: 'exact',
+    },
+    cpu: {
+      allocation: 'atomic-dedicated-cores-no-timeslicing',
+      duration: 'fixed-processing-plus-core-seconds-over-allocated-cores-with-work-multipliers',
+      scaling: true,
+    },
+    memory: {
+      stage: 'per-particle-until-stage-completion',
+      case: 'maximum-top-up-per-root-and-pool-shared-across-forks',
+      release: 'explicit-outside-fork-regions-or-terminal-failure-cancellation',
+      retainedDuringWaitAndTransit: true,
+      scaling: true,
+    },
+    bandwidth: {
+      sharing: 'equal-among-active-positive-remaining-transfers',
+      bytesPerSecondPerMbps: 125000,
+      propagation: 'edge-travelSeconds-once-after-serialization',
+      schedules: true,
+      scaling: false,
+    },
+    energy: {
+      capacity: 'maximum-delivered-load-kW',
+      supplyPriority: ['generation', 'battery-discharge', 'bounded-grid-import'],
+      charging: 'generation-surplus-only',
+      schedules: false,
+      scaling: false,
+    },
+    compatibility: { legacyModelSchemaVersion: 1, liveCollaboration: false },
+    limits: { ...infrastructureLimits },
+  },
   parallel: {
     mode: 'all-mandatory',
     fork: {
@@ -108,6 +167,10 @@ export const simulationCapabilities = {
     },
     overflow: 'explicit-aggregate-label',
     spatialView: 'logical-model',
+    typedPools: 'aggregate-domain-summaries',
+    typedPoolsIndividualUnits: false,
+    infrastructureWork: 'aggregate-in-flight-concurrency',
+    infrastructureResources: 'aggregate-pools',
   },
   execution: {
     browserRequired: true,

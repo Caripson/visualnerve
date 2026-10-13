@@ -13,12 +13,14 @@ import type {
   ProcessMetrics,
   JoinMetrics,
   ParallelState,
+  InfrastructureMetrics,
 } from './types';
 import { Distribution } from './statistics';
 import type { EventQueue } from './event-queue';
 import type { BoundedRing } from './ring';
 import { zeroEconomics, finishEconomics } from './economics';
 import type { ParticleRoute } from './particle-route';
+import { infrastructureResourcePressure } from './infrastructure/pressure';
 const sec = (t: number) => t / 1000;
 export interface Meter {
   capacity: number;
@@ -84,6 +86,7 @@ export interface TypeState {
 }
 
 interface ProjectionInput {
+  infrastructure?: InfrastructureMetrics;
   activity: Map<
     string,
     {
@@ -173,6 +176,14 @@ export function projectSimulationState(input: ProjectionInput): SimulationState 
           resourceUsage: {},
         };
   }
+  const blockedNodesByResource = new Map<string, string[]>();
+  if (input.model.infrastructure)
+    for (const id of input.work.keys())
+      for (const resourceId of new Set(nodes[id].blockedResourceIds)) {
+        const ids = blockedNodesByResource.get(resourceId) ?? [];
+        ids.push(id);
+        blockedNodesByResource.set(resourceId, ids);
+      }
   for (const [id, r] of input.resources)
     resources[id] = {
       id,
@@ -183,9 +194,17 @@ export function projectSimulationState(input: ProjectionInput): SimulationState 
       utilization: input.utilization(r),
       currentUtilization: r.capacity ? r.busy / r.capacity : 0,
       queue: input.queueMetrics(r),
-      cost: r.cost + (input.rate(r) * (input.clock - r.last)) / 3600000,
+      cost:
+        r.cost +
+        (input.rate(r) * (input.clock - r.last)) / 3600000 +
+        (input.infrastructure?.energy[id]?.gridCost ?? 0),
       scalingCost: r.scaleCost,
       waitingNodeIds: [...r.waiters].filter((n) => input.work.get(n)!.queue > 0),
+      ...(input.model.infrastructure
+        ? {
+            blockedNodeIds: blockedNodesByResource.get(r.resource.id) ?? [],
+          }
+        : {}),
     };
   for (const node of input.model.nodes) {
     if (node.type === 'resource') {
@@ -206,7 +225,11 @@ export function projectSimulationState(input: ProjectionInput): SimulationState 
         queue: r.queue,
         status: meter.scaling
           ? 'scaling'
-          : r.queue.current > 0
+          : (
+                input.infrastructure
+                  ? infrastructureResourcePressure(r, input.infrastructure) !== undefined
+                  : r.queue.current > 0
+              )
             ? 'blocked'
             : r.currentUtilization > 0.85
               ? 'busy'
@@ -251,9 +274,24 @@ export function projectSimulationState(input: ProjectionInput): SimulationState 
             n.status === 'blocked'
               ? 'Waiting for shared resource capacity.'
               : 'Queue pressure and utilized processing capacity.',
+          ...(input.infrastructure ? { methodology: 'queue-history' as const } : {}),
         });
     }
   for (const r of Object.values(resources)) {
+    if (input.infrastructure) {
+      const pressure = infrastructureResourcePressure(r, input.infrastructure);
+      if (pressure)
+        bottlenecks.push({
+          id: r.id,
+          kind: 'resource',
+          name: r.name,
+          utilization: r.currentUtilization,
+          averageQueue: r.queue.average,
+          averageWaitSeconds: r.queue.wait.average,
+          ...pressure,
+        });
+      continue;
+    }
     const score = r.queue.average * r.utilization;
     if (score > 0)
       bottlenecks.push({

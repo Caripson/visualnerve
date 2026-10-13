@@ -318,6 +318,7 @@ func addSimulationRuntimeSchemas(schemas object) {
 	schemas["SimulationQueues"] = strictObject(nil, object{"nodes": simMap("SimulationQueueMetrics"), "resources": simMap("SimulationQueueMetrics"), "processes": simMap("SimulationQueueMetrics")})
 	schemas["SimulationModelRecord"] = strictObject([]string{"diagramId", "diagramVersion", "model"}, object{"diagramId": object{"type": "string", "format": "uuid"}, "diagramVersion": simInteger(1), "model": ref("SimulationModel")})
 	schemas["SimulationCheckpointRecord"] = strictObject([]string{"id", "runId", "diagramId", "timeSeconds", "state"}, object{"id": object{"type": "string"}, "runId": object{"type": "string", "format": "uuid"}, "diagramId": object{"type": "string", "format": "uuid"}, "timeSeconds": simNumber(0), "state": ref("SimulationState")})
+	addInfrastructureSchemas(schemas)
 }
 
 func addSimulationPaths(add func(string, string, string, string, string, string), paths object) {

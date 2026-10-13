@@ -103,6 +103,10 @@ Then use **visual_nerve_request** for a command:
 
 Paths omit `/api/v1`. When distinct workspaces are connected, pass `workspaceId` explicitly. Stable semantic IDs and version checks let the client work with actual diagram content instead of guessing from rendered coordinates.
 
+## Plan infrastructure with the same simulation engine
+
+Bridge/browser 0.10.0 advertises `infrastructure-resources-v1`. CPU/RAM demand, shared network payloads and generation/grid/battery supply use the existing simulator routes and tools. Model version 2 explicitly opts in; legacy models stay version 1. Read [the practical guide](/help/infrastructure-capacity/) and `/simulation/capabilities` before editing. Live collaboration rooms currently reject infrastructure models.
+
 ## Analyze time series through the same engine
 
 After reading the bundled guide, discover `GET /analytics/capabilities` with **visual_nerve_request**. List analysis documents using `/diagrams?analytics=true`; inspect their datasets, units, saved measurements, rules, signal history and reviewed scenarios semantically.

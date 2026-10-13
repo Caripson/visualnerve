@@ -1,4 +1,22 @@
 /** Public simulation values use seconds, one document currency and semantic IDs. */
+import type {
+  InfrastructureProfile,
+  InfrastructureResource,
+  InfrastructureWork,
+  InfrastructureEdge,
+  InfrastructureMetrics,
+  InfrastructureComparison,
+} from './infrastructure/types';
+export type {
+  InfrastructureProfile,
+  InfrastructureResource,
+  InfrastructureWork,
+  InfrastructureEdge,
+  InfrastructureMetrics,
+  InfrastructureBattery,
+  InfrastructureComparison,
+  GenerationWindow,
+} from './infrastructure/types';
 export interface ScheduleWindow {
   startSeconds: number;
   endSeconds: number;
@@ -45,6 +63,7 @@ export interface ResourceRequirement {
   units: number;
 }
 export interface WorkConfiguration {
+  infrastructure?: InfrastructureWork;
   processingSeconds: number;
   capacity: number;
   costPerHour?: number;
@@ -124,6 +143,7 @@ export type SimulationNode = {
   | { type: 'outcome'; outcome: OutcomeConfiguration }
 );
 export interface SimulationEdge {
+  infrastructure?: InfrastructureEdge;
   id: string;
   sourceNodeId: string;
   targetNodeId: string;
@@ -132,6 +152,7 @@ export interface SimulationEdge {
   weight?: number;
 }
 export interface Resource {
+  infrastructure?: InfrastructureResource;
   id: string;
   name: string;
   capacity: number;
@@ -183,8 +204,9 @@ export interface Scenario {
   overrides: ScenarioOverrides;
 }
 export interface SimulationModel {
+  infrastructure?: InfrastructureProfile;
   type: 'process-simulator';
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   currency: string;
   particleTypes: ParticleType[];
   /** Optional for compatibility with existing schemaVersion 1 documents. */
@@ -251,6 +273,8 @@ export interface SimulationMetrics extends EconomicMetrics {
   currentBottleneck: string | null;
 }
 export interface NodeMetrics extends EconomicMetrics {
+  /** Opt-in head-of-queue admission evidence, excluding queues already blocked by local Work slots. */
+  blockedResourceIds?: string[];
   id: string;
   type: SimulationNode['type'];
   name: string;
@@ -333,6 +357,7 @@ export interface ProcessMetrics extends EconomicMetrics {
   resourceCostAllocation: 'occupied-units';
 }
 export interface ResourceMetrics {
+  blockedNodeIds?: string[];
   id: string;
   name: string;
   capacity: number;
@@ -396,6 +421,8 @@ export interface ParticleSnapshot {
   edgeId?: string;
   departedAtSeconds?: number;
   arrivesAtSeconds?: number;
+  /** Observed visual route fraction: bytes occupy 0..0.9 when fixed propagation follows, then elapsed propagation occupies 0.9..1; otherwise bytes occupy 0..1. */
+  transferProgress?: number;
   history: { nodeId: string; enteredAtSeconds: number; leftAtSeconds?: number }[];
 }
 export type SimulationEventType =
@@ -450,6 +477,8 @@ export interface Bottleneck {
   averageQueue: number;
   averageWaitSeconds: number;
   reason: string;
+  /** Opt-in infrastructure ranking declares which observed pressure produced the score. */
+  methodology?: 'queue-history' | 'blocked-admission' | 'bandwidth-sharing' | 'energy-shortfall';
 }
 export interface CashPoint {
   timeSeconds: number;
@@ -462,6 +491,8 @@ export interface CashPoint {
   investmentCost: number;
 }
 export interface SimulationState {
+  infrastructure?: InfrastructureMetrics;
+  failureCode?: 'SIMULATION_INFRASTRUCTURE_STALLED';
   timeSeconds: number;
   status: 'ready' | 'running' | 'paused' | 'stopped' | 'completed' | 'failed';
   metrics: SimulationMetrics;
@@ -500,6 +531,7 @@ export interface SimulationResult extends SimulationState {
   retention: { particleLimit: number; eventLimit: number; cashPointResolutionSeconds: number };
 }
 export interface SimulationComparison {
+  infrastructure?: InfrastructureComparison;
   baselineRunId: string;
   scenarioRunId: string;
   baseline: SimulationMetrics;

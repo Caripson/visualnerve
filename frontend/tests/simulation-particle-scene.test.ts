@@ -213,3 +213,15 @@ it('transit fractions are bounded by actual timestamps and valid status', () => 
   expect(particleTransitFraction({ ...particle, status: 'completed' }, 7.5)).toBeUndefined();
   expect(particleTransitFraction({ ...particle, arrivesAtSeconds: NaN }, 7.5)).toBeUndefined();
 });
+
+it('uses actual shared-link progress without forecasting an arrival timestamp', () => {
+  const particle = {
+    status: 'transit',
+    transferProgress: 0.45,
+    departedAtSeconds: 0,
+  } as import('../src/simulation/types').ParticleSnapshot;
+  expect(particleTransitFraction(particle, 1)).toBe(0.45);
+  expect(particleTransitFraction({ ...particle, arrivesAtSeconds: 100 }, 50)).toBe(0.45);
+  expect(particleTransitFraction({ ...particle, status: 'completed' }, 1)).toBeUndefined();
+  expect(particleTransitFraction({ ...particle, transferProgress: NaN }, 1)).toBeUndefined();
+});

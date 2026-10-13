@@ -1,0 +1,59 @@
+.infrastructure-quantity-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+.infrastructure-quantity-controls input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+}
+.infrastructure-quantity-controls select {
+  flex: 0 1 170px;
+  min-width: 90px;
+}
+.infrastructure-quantity-controls > span {
+  white-space: nowrap;
+}
+.infrastructure-domain-fields {
+  min-width: 0;
+}
+.infrastructure-domain-fields fieldset {
+  min-width: 0;
+}
+.infrastructure-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 12px;
+}
+.infrastructure-pool-metrics {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--surface);
+}
+.infrastructure-pool-metrics h5 {
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+}
+.infrastructure-pressure {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.infrastructure-pressure i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--pressure-color);
+}
+.infrastructure-domain-fields .simulation-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+}
+@media (max-width: 650px) {
+  .infrastructure-quantity-controls select {
+    flex-basis: 130px;
+  }
+}

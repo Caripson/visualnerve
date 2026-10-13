@@ -6,6 +6,7 @@ import type { SimulationView } from './service';
 import { simulationService } from './service';
 import { simulationTime } from './SimulationControls';
 import type { SimulationUIAction } from './ui-action';
+import { InfrastructureComparisonPanel } from './infrastructure/InfrastructureComparisonPanel';
 
 type SavedRuns = Awaited<ReturnType<typeof simulationService.list>>;
 export function SimulationResults({
@@ -232,24 +233,32 @@ export function SimulationResults({
         </div>
       )}
       {comparisons.map((comparison) => (
-        <p key={comparison.scenarioRunId}>
-          {t(
-            comparison.paybackReached
-              ? 'simulator.results.comparison.payback'
-              : 'simulator.results.comparison.noPayback',
-            {
-              runLabel: comparison.scenarioRunId.slice(0, 8),
-              contributionDelta: comparison.delta.contribution.toFixed(2),
-              currency: comparison.currency,
-              cashDelta: comparison.incrementalCashImpact.toFixed(2),
-              paybackTime:
-                comparison.paybackTimeSeconds === null
-                  ? ''
-                  : simulationTime(comparison.paybackTimeSeconds!),
-            },
-          )}{' '}
-          {comparison.warnings.map((warning) => simulationDiagnosticLabel(t, warning)).join(' ')}
-        </p>
+        <section key={comparison.scenarioRunId}>
+          <p>
+            {t(
+              comparison.paybackReached
+                ? 'simulator.results.comparison.payback'
+                : 'simulator.results.comparison.noPayback',
+              {
+                runLabel: comparison.scenarioRunId.slice(0, 8),
+                contributionDelta: comparison.delta.contribution.toFixed(2),
+                currency: comparison.currency,
+                cashDelta: comparison.incrementalCashImpact.toFixed(2),
+                paybackTime:
+                  comparison.paybackTimeSeconds === null
+                    ? ''
+                    : simulationTime(comparison.paybackTimeSeconds!),
+              },
+            )}{' '}
+            {comparison.warnings.map((warning) => simulationDiagnosticLabel(t, warning)).join(' ')}
+          </p>
+          {comparison.infrastructure && (
+            <InfrastructureComparisonPanel
+              comparison={comparison.infrastructure}
+              currency={comparison.currency}
+            />
+          )}
+        </section>
       ))}
     </>
   );

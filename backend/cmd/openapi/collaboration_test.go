@@ -68,7 +68,7 @@ func TestCollaborationSchemasKeepAdmissionPrivateAndDiscoverActualBudgets(t *tes
 
 func TestGeneratedCollaborationPathsAreAdditiveAndNeverAddAdmissionCommands(t *testing.T) {
 	document := generatedCollaborationDocument(t)
-	if document["info"].(object)["version"] != "0.9.0" {
+	if document["info"].(object)["version"] != "0.10.0" {
 		t.Fatal("collaboration requires current additive version")
 	}
 	paths := document["paths"].(object)

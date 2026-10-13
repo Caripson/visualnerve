@@ -206,6 +206,7 @@ export function simulationDiagnosticLabel(t: Translate, value: string): string {
 
 /** Traffic remains canonical engine evidence; translation is only a display adapter. */
 export function nodeTrafficReason(t: Translate, traffic: SimulationTraffic): string {
+  if (traffic.domain) return traffic.reason;
   if (traffic.reason === 'Run to observe traffic')
     return t('simulator.traffic.runToObserveTraffic');
   if (traffic.reason === 'Processing failed') return t('simulator.traffic.processingFailed');

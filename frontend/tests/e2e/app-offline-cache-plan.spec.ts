@@ -53,6 +53,7 @@ test('isolated offline setup caches the editor and guides before individual noti
     '/help/dfd/',
     '/help/uml/',
     '/help/bpmn/',
+    '/help/infrastructure-capacity/',
     '/help/help.js',
     '/help/index.json',
     '/api/docs/',

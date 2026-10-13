@@ -4,6 +4,7 @@ import { NumberField } from '../fields';
 import { removeSimulationEntity } from '../deletion';
 import type { Improvement } from '../types';
 import type { EditorSectionProps } from './types';
+import { infrastructureImprovementPolicy } from '../infrastructure/improvement-policy';
 export function ImprovementEditor({ draft, setDraft, scenarioId }: EditorSectionProps) {
   const { t } = useI18n();
   const patchImprovement = (id: string, partial: Partial<Improvement>) =>
@@ -20,6 +21,7 @@ export function ImprovementEditor({ draft, setDraft, scenarioId }: EditorSection
         label={t('simulator.editor.improvement.improvementToEdit')}
       >
         {(feature) => {
+          const policy = infrastructureImprovementPolicy(draft, feature.nodeId, feature.resourceId);
           const outcome =
             draft.nodes.find((node) => node.id === feature.nodeId)?.type === 'outcome';
           const hosts = draft.nodes.filter(
@@ -74,6 +76,7 @@ export function ImprovementEditor({ draft, setDraft, scenarioId }: EditorSection
                     patchImprovement(feature.id, {
                       nodeId: event.target.value || undefined,
                       resourceId: undefined,
+                      ...infrastructureImprovementPolicy(draft, event.target.value).clear,
                       ...(draft.nodes.find((node) => node.id === event.target.value)?.type ===
                       'outcome'
                         ? {
@@ -109,6 +112,8 @@ export function ImprovementEditor({ draft, setDraft, scenarioId }: EditorSection
                     patchImprovement(feature.id, {
                       resourceId: event.target.value || undefined,
                       nodeId: undefined,
+                      ...infrastructureImprovementPolicy(draft, undefined, event.target.value)
+                        .clear,
                       failureNodeId: undefined,
                     })
                   }
@@ -121,6 +126,13 @@ export function ImprovementEditor({ draft, setDraft, scenarioId }: EditorSection
                   ))}
                 </select>
               </label>
+              {policy.explicitActivity && (
+                <p>
+                  {policy.bandwidth
+                    ? 'Link improvements support capacity and economic effects. Edit payload and propagation in Connections.'
+                    : 'Edit energy and load power directly in the Work requirements. Time and reservation multipliers do not model energy delivery.'}
+                </p>
+              )}
               <div className="simulation-grid">
                 <NumberField
                   label={t('simulator.editor.improvement.investment', {
@@ -136,7 +148,7 @@ export function ImprovementEditor({ draft, setDraft, scenarioId }: EditorSection
                   value={feature.operatingCostPerHour ?? 0}
                   change={(value) => patchImprovement(feature.id, { operatingCostPerHour: value })}
                 />
-                {!outcome && (
+                {!outcome && !policy.explicitActivity && (
                   <NumberField
                     label={t('simulator.editor.improvement.processingMultiplier', {
                       name: String(feature.name),
@@ -147,7 +159,7 @@ export function ImprovementEditor({ draft, setDraft, scenarioId }: EditorSection
                     }
                   />
                 )}
-                {!outcome && (
+                {!outcome && !policy.explicitActivity && (
                   <NumberField
                     label={t('simulator.editor.improvement.requiredResourceMultiplier', {
                       name: String(feature.name),
@@ -177,14 +189,16 @@ export function ImprovementEditor({ draft, setDraft, scenarioId }: EditorSection
                     change={(value) => patchImprovement(feature.id, { costMultiplier: value })}
                   />
                 )}
-                <NumberField
-                  label={t('simulator.editor.improvement.revenueMultiplier', {
-                    name: String(feature.name),
-                  })}
-                  value={feature.revenueMultiplier ?? 1}
-                  change={(value) => patchImprovement(feature.id, { revenueMultiplier: value })}
-                />
-                {!outcome && (
+                {!policy.bandwidth && (
+                  <NumberField
+                    label={t('simulator.editor.improvement.revenueMultiplier', {
+                      name: String(feature.name),
+                    })}
+                    value={feature.revenueMultiplier ?? 1}
+                    change={(value) => patchImprovement(feature.id, { revenueMultiplier: value })}
+                  />
+                )}
+                {!outcome && !policy.bandwidth && (
                   <NumberField
                     label={t('simulator.editor.improvement.failureProbability', {
                       name: String(feature.name),
@@ -194,7 +208,7 @@ export function ImprovementEditor({ draft, setDraft, scenarioId }: EditorSection
                   />
                 )}
               </div>
-              {!outcome && (
+              {!outcome && !policy.bandwidth && (
                 <label>
                   {t('simulator.editor.improvement.failureRoute')}{' '}
                   <select
@@ -244,6 +258,10 @@ export function ImprovementEditor({ draft, setDraft, scenarioId }: EditorSection
                   nodeId: model.nodes.find((node) => node.type === 'work')?.id,
                   investmentCost: 100000,
                   processingTimeMultiplier: 0.65,
+                  ...infrastructureImprovementPolicy(
+                    model,
+                    model.nodes.find((node) => node.type === 'work')?.id,
+                  ).clear,
                 },
               ],
             }))

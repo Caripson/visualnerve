@@ -50,6 +50,7 @@ export function buildSimulationParticleScene(
   const queues: ParticleMark[] = [];
   const losses: ParticleMark[] = [];
   const queueCounts = new Map<string, number>();
+  const processingCounts = new Map<string, number>();
   const inBounds = (node: GraphNode) =>
     !bounds ||
     (node.x + node.width + 32 >= bounds.left &&
@@ -82,8 +83,14 @@ export function buildSimulationParticleScene(
       const unit = slots.selectProcessingUnit(particle.nodeId, particle);
       const node =
         unit === undefined ? undefined : particleCapacityCard(view, particle.nodeId, unit);
-      if (node && !getSimulationProcessId(node) && inBounds(node))
-        processing.push({ particle, node, index: 0 });
+      if (node && !getSimulationProcessId(node) && inBounds(node)) {
+        const index =
+          node.metadata.simulationAggregateCapacity === true
+            ? (processingCounts.get(node.id) ?? 0)
+            : 0;
+        processing.push({ particle, node, index });
+        processingCounts.set(node.id, index + 1);
+      }
     } else if (
       (particle.status === 'queued' ||
         (particle.status === 'waiting' &&
@@ -154,6 +161,12 @@ export function buildSimulationParticleScene(
 
 /** Zero-time transfers are instant. No particle can leave before its observed departure. */
 export function particleTransitFraction(particle: ParticleSnapshot, timeSeconds: number) {
+  if (
+    particle.status === 'transit' &&
+    particle.transferProgress !== undefined &&
+    Number.isFinite(particle.transferProgress)
+  )
+    return Math.min(1, Math.max(0, particle.transferProgress));
   const departed = particle.departedAtSeconds;
   const arrives = particle.arrivesAtSeconds;
   if (

@@ -23,7 +23,7 @@ export default defineConfig(({ command }) => ({
           if (id.endsWith('/src/flowchart/ibm-symbols.ts')) return 'flowchart-symbols';
           if (/\/src\/model\/(?:types|errors)\.ts$/.test(id)) return 'notation-model';
           if (
-            /\/src\/notation\/(?:types|registry|validation|templates|remap|ports|lifecycle|connections)\.ts$/.test(
+            /\/src\/notation\/(?:types|registry|validation|templates|remap|ports|lifecycle|connections|compartments)\.ts$/.test(
               id,
             )
           )

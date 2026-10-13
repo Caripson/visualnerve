@@ -1,6 +1,6 @@
 import { workspaceStorage } from '../storage/runtime';
 import { workspace } from '../storage/workspace';
-import { instantiate } from './templates';
+import { prepareTemplateFactory } from './factory';
 
 /** Template creation is shared by the normal dialog and public example links. */
 export async function createTemplateDiagram(
@@ -11,6 +11,8 @@ export async function createTemplateDiagram(
   const operation = await workspaceStorage.captureOperation();
   try {
     const stored = await operation.storage.templates.get(template);
+    await operation.check();
+    const instantiate = await prepareTemplateFactory();
     await operation.check();
     const graph = instantiate(template, name.trim(), stored?.graph);
     if (template === 'time-series-analysis' && mode === 'example' && stored?.builtin !== false) {

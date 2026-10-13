@@ -40,6 +40,7 @@ import { ParticleRoute } from './particle-route';
 import { Distribution } from './statistics';
 import { BoundedRing } from './ring';
 import { StorageError } from '../model/errors';
+import { InfrastructureRuntime, infrastructureResourceIds } from './infrastructure/runtime';
 const ms = (s: number) => Math.round(s * 1000),
   sec = (t: number) => t / 1000;
 export const simulationExecutionLimits = { activeParticles: 200000, semanticEvents: 50000000 };
@@ -151,6 +152,10 @@ export class SimulationEngine {
   private eventLimit: number;
   private hash: string;
   private runId: string;
+  private infrastructure?: InfrastructureRuntime;
+  private infrastructureToken = 0;
+  private accountedGridCost = 0;
+  private failureCode?: 'SIMULATION_INFRASTRUCTURE_STALLED';
   constructor(model: SimulationModel, options: RunOptions = {}) {
     validateSimulationModel(model);
     this.model = resolveScenario(model, options.scenarioId, options.demandMultiplier);
@@ -185,9 +190,7 @@ export class SimulationEngine {
     for (const node of this.model.nodes)
       if (node.type === 'work' || node.type === 'outcome') {
         const resourceIds =
-          node.type === 'work'
-            ? new Set((node.work.resourceRequirements ?? []).map((r) => r.resourceId))
-            : new Set<string>();
+          node.type === 'work' ? new Set(infrastructureResourceIds(node.work)) : new Set<string>();
         this.nodeFeatures.set(
           node.id,
           this.model.improvements.filter(
@@ -264,6 +267,12 @@ export class SimulationEngine {
       this.resources.set(r.id, state);
       this.resourceRate += this.rate(state);
     }
+    if (this.model.infrastructure)
+      this.infrastructure = new InfrastructureRuntime(
+        this.model,
+        (id) => this.resources.get(id)!,
+        (id, nodeId, delta) => this.infrastructureResourceChange(id, nodeId, delta),
+      );
     for (const feature of this.model.improvements)
       if (feature.enabled) {
         this.totals.investment += feature.investmentCost;
@@ -271,8 +280,8 @@ export class SimulationEngine {
       }
     for (const node of this.model.nodes)
       if (node.type === 'work')
-        for (const requirement of node.work.resourceRequirements ?? [])
-          this.resources.get(requirement.resourceId)!.waiters.add(node.id);
+        for (const id of infrastructureResourceIds(node.work))
+          this.resources.get(id)!.waiters.add(node.id);
     for (const edge of this.model.edges) {
       this.edges.set(edge.id, edge);
       const list = this.outgoing.get(edge.sourceNodeId) ?? [];
@@ -290,7 +299,63 @@ export class SimulationEngine {
       }
     for (const [id, w] of this.work) this.scheduleWindows(id, w.node.work.schedule, false);
     for (const [id, r] of this.resources) this.scheduleWindows(id, r.resource.schedule, true);
+    this.scheduleInfrastructure();
     this.captureCash();
+  }
+  private infrastructureResourceChange(id: string, nodeId: string, delta: number) {
+    const r = this.resources.get(id)!;
+    this.touch(r);
+    const before = this.rate(r);
+    r.busy = Math.max(0, r.busy + delta);
+    this.resourceRate += this.rate(r) - before;
+    if (nodeId) this.processes.resourceAcquired(id, nodeId, delta);
+    if (nodeId)
+      this.emit(delta > 0 ? 'RESOURCE_ACQUIRED' : 'RESOURCE_RELEASED', {
+        nodeId,
+        resourceId: id,
+        amount: Math.abs(delta),
+        reason: 'Infrastructure memory lease.',
+      });
+    for (const waiting of r.waiters) this.mark(waiting);
+    this.checkScale(r, id, true);
+  }
+  private scheduleInfrastructure() {
+    if (!this.infrastructure) return;
+    const token = ++this.infrastructureToken,
+      next = this.infrastructure.nextTime();
+    if (next !== undefined) {
+      const completed =
+        this.infrastructure.completedTransfers().length > 0 ||
+        this.infrastructure.completedEnergy().length > 0;
+      const at = Math.ceil(next * 1000);
+      // A positive sub-millisecond interval may round back to this exact tick.
+      // Only already completed jobs may schedule a zero-time completion.
+      this.schedule(
+        'infrastructure',
+        '',
+        at <= this.clock && !completed ? this.clock + 1 : at,
+        0,
+        undefined,
+        token,
+      );
+    }
+  }
+  private infrastructureWork(w: WorkState) {
+    const d = w.node.work.infrastructure;
+    if (!d?.memory?.length) return w.node.work;
+    return {
+      ...w.node.work,
+      infrastructure: {
+        ...d,
+        memory: d.memory.map((m) => {
+          let multiplier = 1;
+          for (const f of this.features(w.node.id))
+            if (f.nodeId === w.node.id || f.resourceId === m.resourceId)
+              multiplier *= f.resourceUnitsMultiplier ?? 1;
+          return { ...m, amountMiB: m.amountMiB * multiplier };
+        }),
+      },
+    };
   }
   private features(nodeId: string) {
     return this.nodeFeatures.get(nodeId) ?? [];
@@ -407,6 +472,12 @@ export class SimulationEngine {
       this.accountedClock = t;
     }
     this.clock = t;
+    if (this.infrastructure) {
+      this.infrastructure.advance(sec(t));
+      const cost = this.infrastructure.gridCost();
+      this.totals.resource += cost - this.accountedGridCost;
+      this.accountedGridCost = cost;
+    }
   }
   private captureCash() {
     const point = {
@@ -440,7 +511,7 @@ export class SimulationEngine {
       this.totals.scaling -
       this.totals.investment -
       ((this.workRate + this.resourceRate) * (this.clock - this.accountedClock)) / 3600000;
-    const rate = this.workRate + this.resourceRate;
+    const rate = this.workRate + this.resourceRate + (this.infrastructure?.gridCostPerHour() ?? 0);
     const token = ++this.budgetToken;
     if (remaining <= 0) this.schedule('budget', '', this.clock, 0, undefined, token);
     else if (rate > 0)
@@ -687,6 +758,17 @@ export class SimulationEngine {
       nodeId: node.id,
       edgeId: edge.id,
     });
+    if (edge.infrastructure && this.infrastructure) {
+      p.arrivesAtSeconds = undefined;
+      this.infrastructure.transfer(
+        p.id,
+        edge.infrastructure.transfer.resourceId,
+        edge.infrastructure.transfer.bytes,
+        sec(this.clock),
+      );
+      this.scheduleInfrastructure();
+      return;
+    }
     this.schedule('arrival', edge.targetNodeId, this.clock + ms(edge.travelSeconds ?? 0), 2, p.id);
   }
   private enter(p: Particle, nodeId: string) {
@@ -912,7 +994,11 @@ export class SimulationEngine {
     this.checkScale(r, id, true);
   }
   private requirements(w: WorkState) {
-    return (w.node.work.resourceRequirements ?? []).map((r) => {
+    const cpu = w.node.work.infrastructure?.cpu;
+    return [
+      ...(w.node.work.resourceRequirements ?? []),
+      ...(cpu ? [{ resourceId: cpu.resourceId, units: cpu.cores }] : []),
+    ].map((r) => {
       let multiplier = 1;
       for (const f of this.features(w.node.id))
         if (f.nodeId === w.node.id || f.resourceId === r.resourceId)
@@ -922,6 +1008,11 @@ export class SimulationEngine {
   }
   private canStart(w: WorkState, p: Particle) {
     if (!w.scheduled || w.busy >= w.capacity) return false;
+    if (
+      this.infrastructure &&
+      !this.infrastructure.canAcquire(this.infrastructureWork(w), p.rootParticleId ?? p.id, p.id)
+    )
+      return false;
     return this.requirements(w).every((req) => {
       const r = this.resources.get(req.resourceId)!;
       return r.scheduled && r.busy + req.units <= r.capacity + 1e-9;
@@ -997,7 +1088,7 @@ export class SimulationEngine {
         if (patience !== undefined)
           this.schedule('abandon', w.node.id, this.clock + ms(patience) + 1, 3, p.id, p.entered);
       }
-      for (const req of w.node.work.resourceRequirements ?? []) this.resourceQueue(req.resourceId);
+      for (const id of infrastructureResourceIds(w.node.work)) this.resourceQueue(id);
       this.checkScale(w, w.node.id, false);
     }
   }
@@ -1020,13 +1111,20 @@ export class SimulationEngine {
     p.queueEnteredAtSeconds = undefined;
     if (queued)
       this.emit('QUEUE_LEFT', { particleId: p.id, particleTypeId: p.typeId, nodeId: w.node.id });
-    for (const req of w.node.work.resourceRequirements ?? []) {
-      this.resourceQueue(req.resourceId);
-      this.resources.get(req.resourceId)!.wait.add(wait);
+    for (const id of infrastructureResourceIds(w.node.work)) {
+      this.resourceQueue(id);
+      this.resources.get(id)!.wait.add(wait);
     }
   }
   private start(w: WorkState, p: Particle) {
     this.leaveQueue(w, p);
+    this.infrastructure?.startMemory(
+      this.infrastructureWork(w),
+      p.rootParticleId ?? p.id,
+      p.id,
+      w.node.id,
+      sec(this.clock),
+    );
     this.touch(w);
     const beforeWorkRate = this.rate(w);
     w.busy++;
@@ -1042,6 +1140,14 @@ export class SimulationEngine {
     for (const f of this.features(w.node.id)) {
       duration *= f.processingTimeMultiplier ?? 1;
       if (f.nodeId === w.node.id) cost *= f.costMultiplier ?? 1;
+    }
+    const cpu = w.node.work.infrastructure?.cpu;
+    if (cpu && this.infrastructure) {
+      let work = cpu.coreSeconds * p.complexity * (w.node.work.complexityMultiplier ?? 1);
+      for (const f of this.features(w.node.id)) work *= f.processingTimeMultiplier ?? 1;
+      const cores = this.requirements(w).find((r) => r.resourceId === cpu.resourceId)!.units;
+      duration += work / cores;
+      this.infrastructure.startCpu(p.id, cpu.resourceId, cores, work, sec(this.clock));
     }
     p.processingEndsAtSeconds = sec(this.clock + Math.max(1, ms(duration)));
     p.accumulatedCost += cost;
@@ -1071,13 +1177,29 @@ export class SimulationEngine {
       this.checkScale(r, req.resourceId, true);
     }
     this.emit('PROCESS_STARTED', { particleId: p.id, particleTypeId: p.typeId, nodeId: w.node.id });
-    this.schedule('finish', w.node.id, ms(p.processingEndsAtSeconds), 0, p.id);
+    const energy = w.node.work.infrastructure?.energy;
+    if (energy && this.infrastructure) {
+      p.processingEndsAtSeconds = undefined;
+      this.infrastructure.energyWork(
+        p.id,
+        energy.resourceId,
+        energy.energyKWh * p.complexity * (w.node.work.complexityMultiplier ?? 1),
+        energy.powerKW,
+        sec(this.clock),
+      );
+      this.scheduleInfrastructure();
+    } else this.schedule('finish', w.node.id, ms(p.processingEndsAtSeconds!), 0, p.id);
     this.checkScale(w, w.node.id, false);
     this.captureCash();
   }
   private processFinished(p: Particle, id: string) {
     this.releaseProcessing(p, id, false);
     const w = this.work.get(id)!;
+    this.infrastructure?.memory.releaseCase(
+      p.rootParticleId ?? p.id,
+      sec(this.clock),
+      w.node.work.infrastructure?.releaseMemoryResourceIds ?? [],
+    );
     let expected = p.expectedRevenue;
     for (const feature of this.features(id)) expected *= feature.revenueMultiplier ?? 1;
     const revenueChange = expected - p.expectedRevenue;
@@ -1107,6 +1229,9 @@ export class SimulationEngine {
   }
   private releaseProcessing(p: Particle, id: string, cancelled: boolean) {
     const w = this.work.get(id)!;
+    this.infrastructure?.finishCpu(p.id, sec(this.clock), cancelled);
+    this.infrastructure?.removeEnergy(p.id, sec(this.clock));
+    this.infrastructure?.memory.releaseStage(p.id, sec(this.clock));
     this.touch(w);
     const previousRate = this.rate(w);
     w.busy--;
@@ -1149,6 +1274,7 @@ export class SimulationEngine {
     this.checkScale(w, id, false);
     this.mark(id);
     p.status = 'transit';
+    this.scheduleInfrastructure();
   }
   private abandon(p: Particle, id: string, reason: string) {
     if (p.parentParticleId !== undefined || this.parallel.forRoot(p.id).length) {
@@ -1322,6 +1448,13 @@ export class SimulationEngine {
     this.captureCash();
   }
   private retire(p: Particle, branchFailure?: 'abandoned' | 'failed') {
+    this.infrastructure?.cancel(
+      p.id,
+      p.rootParticleId ?? p.id,
+      sec(this.clock),
+      p.parentParticleId === undefined,
+    );
+    this.scheduleInfrastructure();
     p.completedAtSeconds = sec(this.clock);
     p.pendingAdmission = undefined;
     this.processes.retire(p, this.clock, branchFailure);
@@ -1338,7 +1471,28 @@ export class SimulationEngine {
       visits: _visits,
       ...result
     } = p;
-    return { ...result, history: result.history.map((h) => ({ ...h })) };
+    const serialized = this.infrastructure?.transferProgress(p.id);
+    const edge = p.edgeId ? this.edges.get(p.edgeId) : undefined;
+    let transferProgress = serialized;
+    if (serialized !== undefined && (edge?.travelSeconds ?? 0) > 0)
+      transferProgress = serialized * 0.9;
+    else if (
+      p.status === 'transit' &&
+      edge?.infrastructure &&
+      p.arrivesAtSeconds !== undefined &&
+      p.departedAtSeconds !== undefined
+    ) {
+      const duration = p.arrivesAtSeconds - p.departedAtSeconds;
+      transferProgress =
+        duration > 0
+          ? 0.9 + 0.1 * Math.max(0, Math.min(1, (sec(this.clock) - p.departedAtSeconds) / duration))
+          : 1;
+    }
+    return {
+      ...result,
+      ...(transferProgress !== undefined ? { transferProgress } : {}),
+      history: result.history.map((h) => ({ ...h })),
+    };
   }
   private scalingRule(s: WorkState | ResourceState, resource: boolean) {
     return resource ? (s as ResourceState).resource.scaling : (s as WorkState).node.work.scaling;
@@ -1449,7 +1603,29 @@ export class SimulationEngine {
   }
   private handle(event: EngineEvent) {
     const p = event.particle === undefined ? undefined : this.active.get(event.particle);
-    if (event.kind === 'budget' && event.token === this.budgetToken) {
+    if (
+      event.kind === 'infrastructure' &&
+      event.token === this.infrastructureToken &&
+      this.infrastructure
+    ) {
+      for (const id of this.infrastructure.completedTransfers()) {
+        const particle = this.active.get(id),
+          edge = particle?.edgeId ? this.edges.get(particle.edgeId) : undefined;
+        this.infrastructure.removeTransfer(id, sec(this.clock));
+        if (particle && edge) {
+          particle.departedAtSeconds = sec(this.clock);
+          particle.arrivesAtSeconds = sec(this.clock + ms(edge.travelSeconds ?? 0));
+          this.schedule('arrival', edge.targetNodeId, ms(particle.arrivesAtSeconds), 2, id);
+        }
+      }
+      for (const id of this.infrastructure.completedEnergy()) {
+        const particle = this.active.get(id);
+        if (particle?.status === 'processing') this.processFinished(particle, particle.nodeId);
+        else this.infrastructure.removeEnergy(id, sec(this.clock));
+      }
+      this.scheduleInfrastructure();
+      this.captureCash();
+    } else if (event.kind === 'budget' && event.token === this.budgetToken) {
       this.status = 'failed';
       this.message = 'Maximum simulation budget reached.';
     } else if (event.kind === 'source') this.source(event);
@@ -1522,6 +1698,10 @@ export class SimulationEngine {
         else this.mark(id);
       }
       this.captureCash();
+      if (this.infrastructure) {
+        this.infrastructure.refreshRates();
+        this.scheduleInfrastructure();
+      }
       if (
         event.value !== undefined &&
         (this.options.untilComplete ||
@@ -1579,6 +1759,7 @@ export class SimulationEngine {
       }
       budget++;
       if (this.getStatus() === 'failed') {
+        this.disposeInfrastructure();
         this.captureCash();
         return true;
       }
@@ -1592,6 +1773,7 @@ export class SimulationEngine {
       ) {
         this.status = 'failed';
         this.message = 'Maximum simulation budget exceeded.';
+        this.disposeInfrastructure();
         this.captureCash();
         return true;
       }
@@ -1620,6 +1802,8 @@ export class SimulationEngine {
         this.status = 'failed';
         this.message =
           'Remaining work cannot progress: unavailable capacity or no future resource availability.';
+        if (this.infrastructure) this.failureCode = 'SIMULATION_INFRASTRUCTURE_STALLED';
+        this.disposeInfrastructure();
         this.captureCash();
       } else this.complete();
       return true;
@@ -1638,6 +1822,20 @@ export class SimulationEngine {
     this.status = 'completed';
     this.emit('SIMULATION_COMPLETED');
     this.captureCash();
+  }
+  /** Worker stop/lock teardown releases opt-in leases and invalidates pending domain events. */
+  stop() {
+    if (this.status === 'completed' || this.status === 'failed' || this.status === 'stopped')
+      return;
+    this.disposeInfrastructure();
+    this.status = 'stopped';
+  }
+  private disposeInfrastructure() {
+    if (!this.infrastructure) return;
+    for (const p of this.active.values())
+      if (p.status === 'processing') this.releaseProcessing(p, p.nodeId, true);
+    this.infrastructure.clear(sec(this.clock));
+    this.infrastructureToken++;
   }
   private queueMetrics(s: Meter): QueueMetrics {
     return {
@@ -1663,7 +1861,24 @@ export class SimulationEngine {
       lostRevenue: w.lost,
     });
     const blocked = w.queue > 0 && w.busy < w.capacity && !this.canStart(w, this.head(w)!);
+    const blockedResourceIds: string[] = [];
+    const head = this.head(w);
+    if (this.infrastructure && head && w.scheduled && w.busy < w.capacity) {
+      for (const req of this.requirements(w)) {
+        const r = this.resources.get(req.resourceId)!;
+        if (!r.scheduled || r.busy + req.units > r.capacity + 1e-9)
+          blockedResourceIds.push(req.resourceId);
+      }
+      blockedResourceIds.push(
+        ...this.infrastructure.blockedMemoryPools(
+          this.infrastructureWork(w),
+          head.rootParticleId ?? head.id,
+          head.id,
+        ),
+      );
+    }
     return {
+      ...(this.infrastructure ? { blockedResourceIds } : {}),
       ...economic,
       id: w.node.id,
       name: w.node.name,
@@ -1689,13 +1904,16 @@ export class SimulationEngine {
               : w.busy
                 ? 'normal'
                 : 'idle',
-      resourceUsage: Object.fromEntries(
-        this.requirements(w).map((r) => [r.resourceId, r.units * w.busy]),
-      ),
+      resourceUsage: {
+        ...Object.fromEntries(this.requirements(w).map((r) => [r.resourceId, r.units * w.busy])),
+        ...(this.infrastructure?.memory.nodeUsage(w.node.id) ?? {}),
+      },
     };
   }
   state(): SimulationState {
-    return projectSimulationState({
+    const infrastructure = this.infrastructure?.snapshot();
+    const state = projectSimulationState({
+      infrastructure,
       activity: this.activity,
       model: this.model,
       clock: this.clock,
@@ -1736,8 +1954,18 @@ export class SimulationEngine {
           work: this.work,
           resources: this.resources,
           unitCostRate: (resource) => this.unitCostRate(resource),
+          ...(this.infrastructure
+            ? {
+                infrastructureConsumers: this.infrastructure.constraintConsumers(
+                  (id) => this.active.get(id)?.nodeId,
+                ),
+              }
+            : {}),
         }),
     });
+    if (infrastructure) state.infrastructure = infrastructure;
+    if (this.failureCode) state.failureCode = this.failureCode;
+    return state;
   }
   result(): SimulationResult {
     this.captureCash();

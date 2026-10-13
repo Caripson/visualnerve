@@ -1,52 +1,236 @@
-import { readdirSync, lstatSync, readFileSync, realpathSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import { SITE_ICON_FILES, validateSiteIcons } from './site-icons.mjs';
-import { fingerprintSource } from './fingerprinted-assets.mjs';
-const helpGuides = ['getting-started', 'editing', 'layouts', '3d', 'csv', 'connected-data', 'sql', 'code', 'diagram-import', 'understanding', 'presentations', 'simulation', 'sharing', 'settings', 'api-mcp', 'collaboration', 'troubleshooting', 'time-series-analysis', 'ibm-flowcharting', 'flowchart-symbols', 'notation-collections', 'hipo', 'dfd', 'uml', 'bpmn'];
-const helpScreenshots = ['time-series-explore', 'time-series-import', 'time-series-measure', 'time-series-signals', 'time-series-lab', 'time-series-scenarios', 'time-series-mobile', 'new-diagram', 'editor', 'mobile-editor', 'layouts', 'spatial', 'csv-import', 'csv-evidence', 'connected-data', 'data-quality', 'source-refresh', 'sql-query', 'sql-schema', 'code-cobol', 'code-project', 'code-project-zip', 'project-file-limit', 'diagram-import', 'overview', 'history', 'player', 'player-compact', 'storyboard', 'simulation', 'process-setup', 'process-subprocess-setup', 'process-hierarchy', 'process-drilldown', 'node-quick-add', 'simulation-traffic', 'parallel-delivery-desktop', 'parallel-delivery-mobile', 'simulation-assumptions', 'simulation-compare', 'export', 'export-svg', 'export-editable-desktop', 'export-editable-mobile', 'lovable', 'settings', 'app-language', 'backup', 'mcp-settings', 'vault-setup', 'vault-unlock', 'vault-password-change', 'vault-session-settings', 'vault-content-key-rotation', 'presentation-voice', 'app-update', 'app-update-mobile', 'collaboration-create-room', 'collaboration-approval-mobile', 'collaboration-members-desktop', 'collaboration-document-profiles', 'collaboration-document-comments', 'collaboration-document-tasks', 'collaboration-document-activity', 'collaboration-document-mobile-canvas', 'collaboration-document-mobile-comments', 'collaboration-document-mobile-tasks'];
-const productPages = ['app', 'features', 'use-cases', 'process-simulator', 'mcp', 'developers', 'security'];
-helpScreenshots.push('ibm-flowcharting-2d', 'ibm-flowcharting-3d');
-helpScreenshots.push('notation-hipo', 'notation-dfd', 'notation-uml', 'notation-bpmn');
+import { readdirSync, lstatSync, readFileSync, realpathSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { SITE_ICON_FILES, validateSiteIcons } from "./site-icons.mjs";
+import { fingerprintSource } from "./fingerprinted-assets.mjs";
+const helpGuides = [
+  "getting-started",
+  "editing",
+  "layouts",
+  "3d",
+  "csv",
+  "connected-data",
+  "sql",
+  "code",
+  "diagram-import",
+  "understanding",
+  "presentations",
+  "simulation",
+  "sharing",
+  "settings",
+  "api-mcp",
+  "collaboration",
+  "troubleshooting",
+  "time-series-analysis",
+  "ibm-flowcharting",
+  "flowchart-symbols",
+  "notation-collections",
+  "hipo",
+  "dfd",
+  "uml",
+  "bpmn",
+  "infrastructure-capacity",
+];
+const helpScreenshots = [
+  "time-series-explore",
+  "time-series-import",
+  "time-series-measure",
+  "time-series-signals",
+  "time-series-lab",
+  "time-series-scenarios",
+  "time-series-mobile",
+  "infrastructure-api",
+  "infrastructure-network",
+  "infrastructure-energy",
+  "infrastructure-datacenter",
+  "infrastructure-setup",
+  "infrastructure-mobile",
+  "new-diagram",
+  "editor",
+  "mobile-editor",
+  "layouts",
+  "spatial",
+  "csv-import",
+  "csv-evidence",
+  "connected-data",
+  "data-quality",
+  "source-refresh",
+  "sql-query",
+  "sql-schema",
+  "code-cobol",
+  "code-project",
+  "code-project-zip",
+  "project-file-limit",
+  "diagram-import",
+  "overview",
+  "history",
+  "player",
+  "player-compact",
+  "storyboard",
+  "simulation",
+  "process-setup",
+  "process-subprocess-setup",
+  "process-hierarchy",
+  "process-drilldown",
+  "node-quick-add",
+  "simulation-traffic",
+  "parallel-delivery-desktop",
+  "parallel-delivery-mobile",
+  "simulation-assumptions",
+  "simulation-compare",
+  "export",
+  "export-svg",
+  "export-editable-desktop",
+  "export-editable-mobile",
+  "lovable",
+  "settings",
+  "app-language",
+  "backup",
+  "mcp-settings",
+  "vault-setup",
+  "vault-unlock",
+  "vault-password-change",
+  "vault-session-settings",
+  "vault-content-key-rotation",
+  "presentation-voice",
+  "app-update",
+  "app-update-mobile",
+  "collaboration-create-room",
+  "collaboration-approval-mobile",
+  "collaboration-members-desktop",
+  "collaboration-document-profiles",
+  "collaboration-document-comments",
+  "collaboration-document-tasks",
+  "collaboration-document-activity",
+  "collaboration-document-mobile-canvas",
+  "collaboration-document-mobile-comments",
+  "collaboration-document-mobile-tasks",
+];
+const productPages = [
+  "app",
+  "features",
+  "use-cases",
+  "process-simulator",
+  "mcp",
+  "developers",
+  "security",
+];
+helpScreenshots.push("ibm-flowcharting-2d", "ibm-flowcharting-3d");
+helpScreenshots.push(
+  "notation-hipo",
+  "notation-dfd",
+  "notation-uml",
+  "notation-bpmn",
+);
 function allowedStaticPath(path) {
-  return SITE_ICON_FILES.includes(path) || ['index.html', 'error.html', 'sw.js', 'appearance.js', 'sitemap.xml', 'openapi.yaml', 'help/index.html', 'privacy/index.html', 'license/index.html', 'api/docs/index.html', 'api/docs/docs.css', 'api/docs/docs.js'].includes(path)
-    || ['help/help.css', 'help/help.js', 'help/index.json'].includes(path)
-    || helpGuides.some(guide => path === `help/${guide}/index.html`)
-    || helpScreenshots.some(name => path === `help/images/${name}.webp` || path === `help/images/${name}-dark.webp`)
-    || path === 'robots.txt'
-    || productPages.some(name => path === `${name}/index.html`)
-    || ['site/site.css', 'site/syntax.css', 'site/captures.css', 'site/site.js', 'site/mark.svg', 'site/consent.css', 'site/consent.js', 'site/vendor/klaro.js', 'site/vendor/klaro.css', 'site/vendor/klaro-LICENSE', 'site/vendor/preact-LICENSE', 'site/vendor/core-js-LICENSE', 'site/vendor/classnames-LICENSE'].includes(path)
-    || ['site/images/collaboration.webp', 'site/images/collaboration-dark.webp'].includes(path)
-    || ['phone', 'tablet', 'desktop', 'laptop', 'social'].some(name => path === `site/images/${name}.webp`)
-    || ['phone', 'tablet', 'desktop', 'laptop'].some(name => path === `site/images/${name}-dark.webp` || path === `site/devices/${name}.svg`)
-    || /^(?:site\/images\/(?:desktop-(?:480|960)|tablet-(?:256|512)|laptop-(?:400|800)|phone-(?:128|256))(?:-dark)?\.webp)$/.test(path)
-    || /^editor\/(?:app\.(?:js|css)|assets\/[\w.-]+\.(?:js|css|svg|png|woff2?))$/.test(path)
-    || /^editor\/speech\/(?:ort-wasm(?:-simd)?\.wasm|piper_phonemize\.(?:wasm|data))$/.test(path)
-    || /^editor\/assets\/mls_bg-[\w-]{8,}\.wasm$/.test(path)
-    || /^swagger\/swagger-ui(?:-bundle\.js|\.css)$/.test(path)
-    || /^licenses\/[\w.-]+$/.test(path);
+  return (
+    SITE_ICON_FILES.includes(path) ||
+    [
+      "index.html",
+      "error.html",
+      "sw.js",
+      "appearance.js",
+      "sitemap.xml",
+      "openapi.yaml",
+      "help/index.html",
+      "privacy/index.html",
+      "license/index.html",
+      "api/docs/index.html",
+      "api/docs/docs.css",
+      "api/docs/docs.js",
+    ].includes(path) ||
+    ["help/help.css", "help/help.js", "help/index.json"].includes(path) ||
+    helpGuides.some((guide) => path === `help/${guide}/index.html`) ||
+    helpScreenshots.some(
+      (name) =>
+        path === `help/images/${name}.webp` ||
+        path === `help/images/${name}-dark.webp`,
+    ) ||
+    path === "robots.txt" ||
+    productPages.some((name) => path === `${name}/index.html`) ||
+    [
+      "site/site.css",
+      "site/syntax.css",
+      "site/captures.css",
+      "site/site.js",
+      "site/mark.svg",
+      "site/consent.css",
+      "site/consent.js",
+      "site/vendor/klaro.js",
+      "site/vendor/klaro.css",
+      "site/vendor/klaro-LICENSE",
+      "site/vendor/preact-LICENSE",
+      "site/vendor/core-js-LICENSE",
+      "site/vendor/classnames-LICENSE",
+    ].includes(path) ||
+    [
+      "site/images/collaboration.webp",
+      "site/images/collaboration-dark.webp",
+    ].includes(path) ||
+    ["phone", "tablet", "desktop", "laptop", "social"].some(
+      (name) => path === `site/images/${name}.webp`,
+    ) ||
+    ["phone", "tablet", "desktop", "laptop"].some(
+      (name) =>
+        path === `site/images/${name}-dark.webp` ||
+        path === `site/devices/${name}.svg`,
+    ) ||
+    /^(?:site\/images\/(?:desktop-(?:480|960)|tablet-(?:256|512)|laptop-(?:400|800)|phone-(?:128|256))(?:-dark)?\.webp)$/.test(
+      path,
+    ) ||
+    /^editor\/(?:app\.(?:js|css)|assets\/[\w.-]+\.(?:js|css|svg|png|woff2?))$/.test(
+      path,
+    ) ||
+    /^editor\/speech\/(?:ort-wasm(?:-simd)?\.wasm|piper_phonemize\.(?:wasm|data))$/.test(
+      path,
+    ) ||
+    /^editor\/assets\/mls_bg-[\w-]{8,}\.wasm$/.test(path) ||
+    /^swagger\/swagger-ui(?:-bundle\.js|\.css)$/.test(path) ||
+    /^licenses\/[\w.-]+$/.test(path)
+  );
 }
 export function auditStatic(directory) {
   const files = [];
-  function visit(prefix = '') {
+  function visit(prefix = "") {
     for (const name of readdirSync(resolve(directory, prefix))) {
       const path = prefix ? `${prefix}/${name}` : name;
       const stat = lstatSync(resolve(directory, path));
-      if (stat.isSymbolicLink()) throw new Error(`Static bundle must not contain symlinks: ${path}`);
-      if (stat.isDirectory()) { visit(path); continue; }
+      if (stat.isSymbolicLink())
+        throw new Error(`Static bundle must not contain symlinks: ${path}`);
+      if (stat.isDirectory()) {
+        visit(path);
+        continue;
+      }
       const sourcePath = fingerprintSource(directory, path);
       const allowed = allowedStaticPath(sourcePath);
-      if (!allowed || /\.(?:sqlite3?|db|backup)$/i.test(path)) throw new Error(`Unexpected file in static bundle: ${path}`);
-      if (path.endsWith('.json')) {
-        const content = JSON.parse(readFileSync(resolve(directory, path), 'utf8'));
-        if (content.format === 'visual-nerve' || content.format === 'visual-nerve-workspace') throw new Error(`User export found in static bundle: ${path}`);
+      if (!allowed || /\.(?:sqlite3?|db|backup)$/i.test(path))
+        throw new Error(`Unexpected file in static bundle: ${path}`);
+      if (path.endsWith(".json")) {
+        const content = JSON.parse(
+          readFileSync(resolve(directory, path), "utf8"),
+        );
+        if (
+          content.format === "visual-nerve" ||
+          content.format === "visual-nerve-workspace"
+        )
+          throw new Error(`User export found in static bundle: ${path}`);
       }
       files.push(path);
     }
   }
   visit();
-  if (SITE_ICON_FILES.some(path => files.includes(path))) validateSiteIcons(directory);
-  for (const required of ['index.html', 'error.html', 'editor/app.js', 'appearance.js', 'privacy/index.html', 'sw.js']) if (!files.includes(required)) throw new Error(`Static bundle is missing ${required}`);
+  if (SITE_ICON_FILES.some((path) => files.includes(path)))
+    validateSiteIcons(directory);
+  for (const required of [
+    "index.html",
+    "error.html",
+    "editor/app.js",
+    "appearance.js",
+    "privacy/index.html",
+    "sw.js",
+  ])
+    if (!files.includes(required))
+      throw new Error(`Static bundle is missing ${required}`);
   return files;
 }
 function isMainModule() {
@@ -62,5 +246,7 @@ function isMainModule() {
   }
 }
 if (isMainModule()) {
-  console.log(`Static bundle audit: ${auditStatic(resolve(process.argv[2] || 'public')).length} application files, no user data files.`);
+  console.log(
+    `Static bundle audit: ${auditStatic(resolve(process.argv[2] || "public")).length} application files, no user data files.`,
+  );
 }

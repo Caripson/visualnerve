@@ -9,6 +9,12 @@ import { createStarterGraph, starterDefaults, starterValues } from './starter';
 import { EconomicsStep, ProcessingStep, WorkloadStep } from './StarterFields';
 import { StarterReview } from './StarterReview';
 import './wizard.css';
+import { InfrastructureWizard } from './infrastructure/InfrastructureWizard';
+import {
+  infrastructureTemplateKeys,
+  infrastructureTemplateNames,
+  type InfrastructureTemplateKey,
+} from './infrastructure/examples';
 
 export { simulationSetupEvent } from './setup-event';
 export { ProcessStartPanel } from './ProcessStartPanel';
@@ -26,6 +32,7 @@ export function ProcessWizard({
   const { t } = useI18n();
   const [draft, setDraft] = useState(() => starterDefaults(graph.simulation?.currency));
   const [step, setStep] = useState(0);
+  const [domain, setDomain] = useState<InfrastructureTemplateKey>();
   const [error, setError] = useState('');
   const stepContent = useRef<HTMLDivElement>(null);
   const previousStep = useRef(step);
@@ -76,6 +83,16 @@ export function ProcessWizard({
       setError((failure as Error).message);
     }
   }
+  if (domain)
+    return (
+      <InfrastructureWizard
+        graph={graph}
+        domain={domain}
+        close={close}
+        created={created}
+        back={() => setDomain(undefined)}
+      />
+    );
   return (
     <Modal title={t('simulator.wizard.title')} close={close} wide className="process-wizard-dialog">
       <form
@@ -98,7 +115,26 @@ export function ProcessWizard({
           ))}
         </ol>
         <div className="process-wizard-step" ref={stepContent} key={step}>
-          {step === 0 && <WorkloadStep draft={draft} change={change} />}
+          {step === 0 && (
+            <>
+              <label>
+                Capacity model domain{' '}
+                <select
+                  aria-label="Capacity model domain"
+                  value="general"
+                  onChange={(event) => setDomain(event.target.value as InfrastructureTemplateKey)}
+                >
+                  <option value="general">General process</option>
+                  {infrastructureTemplateKeys.map((key) => (
+                    <option key={key} value={key}>
+                      {infrastructureTemplateNames[key]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <WorkloadStep draft={draft} change={change} />
+            </>
+          )}
           {step === 1 && <ProcessingStep draft={draft} change={change} />}
           {step === 2 && <EconomicsStep draft={draft} change={change} />}
           {step === 3 && <StarterReview draft={draft} seed={graph.simulation?.defaults.seed} />}

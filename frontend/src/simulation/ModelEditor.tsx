@@ -77,7 +77,7 @@ export function ModelEditor({
   }
   function apply() {
     try {
-      if (jsonError || invalidFields.size) throw new Error('Fix the JSON error before applying.');
+      if (jsonError || invalidFields.size) throw new Error('Fix invalid fields before applying.');
       const model = scenarioId ? applyScenarioDraft(base, draft, scenarioId) : draft;
       assertSimulationModel(model);
       const current = useEditor.getState().graph;
@@ -117,6 +117,30 @@ export function ModelEditor({
                   'simulator.editor.model.editingTheBaselineExistingRunResultsKeepTheirOriginalAssumptions',
                 )}
           </p>
+          <details className="simulation-model-assumptions">
+            <summary>Model assumptions</summary>
+            <label className="simulation-field">
+              <span>Model assumptions text</span>
+              <textarea
+                aria-label="Model assumptions text"
+                rows={5}
+                value={draft.description ?? ''}
+                disabled={!!scenarioId}
+                onChange={(event) =>
+                  setDraft((model) => ({ ...model, description: event.target.value }))
+                }
+              />
+            </label>
+            {scenarioId ? (
+              <small>Edit the assumptions text in the baseline.</small>
+            ) : (
+              <small>
+                Describe synthetic demand, capacity units, users-to-request-rate assumptions and
+                model limits. This text is saved in the canonical model. Update it after changing
+                values; the structured fields control the simulation.
+              </small>
+            )}
+          </details>
           {compact ? (
             <label className="simulation-panel-choice">
               {t('simulator.editor.model.settingsSection')}{' '}

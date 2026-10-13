@@ -1,8 +1,40 @@
 # MCP processes, understanding and diagram presentations
 
+## Infrastructure capacity through MCP
+
+Bridge/browser **0.10.0** advertises `infrastructure-resources-v1` using the existing tools and Process Simulator routes. Start with `visual_nerve_api_docs({document:"guide"})`, then request the complete model operation:
+
+```json
+{
+  "document": "endpoint",
+  "path": "/diagrams/{diagramId}/simulation",
+  "method": "PUT"
+}
+```
+
+These documentation calls require no workspace access. Read software support through direct bridge health, then use `visual_nerve_request` with the intended `workspaceId` for browser commands:
+
+```json
+{
+  "path": "/simulation/capabilities",
+  "method": "GET",
+  "workspaceId": "WORKSPACE"
+}
+```
+
+Capability `schemaVersion:1` is retained compatibility metadata. `supportedModelSchemaVersions:[1,2]` and `infrastructure.requiredModelSchemaVersion:2` distinguish unchanged legacy models from model 2 with mandatory `infrastructure:{schemaVersion:1}`. Older engines must reject version 2.
+
+Read `GET /templates` for the full graphs of **API & Compute Capacity**, **Network & Multi-Site Capacity**, **Energy & Power Capacity** and **Datacenter Capacity**. Direct `POST /diagrams` accepts exactly these four template keys: `api-compute-capacity`, `network-multi-site-capacity`, `energy-power-capacity`, `datacenter-capacity`. They use `process-simulator` and reject `mode` or a different supplied type. Existing `process-simulator` creation and versioned atomic model PUT remain an alternative; other arbitrary template keys are not implied shortcuts. Resource, Work, edge and scenario CRUD exposes the same typed fields as the UI. The API example includes three shared pools: CPU, retained RAM and eight generic database connections, with one connection required during CPU execution.
+
+Resource descriptors select canonical CPU cores, RAM MiB, bandwidth Mbps or energy kW; Work saves core-seconds/core reservations, case/stage RAM leases or kWh/kW demand, and edges save integer-byte transfers. CPU and newly acquired memory are reserved atomically. Case RAM tops up per original case/pool, persists through waits/transit and is shared across forks. Links share bandwidth equally among concurrent transfers before their fixed propagation delay. Energy delivers actual kWh using generation, battery discharge and bounded grid import; generation surplus alone charges the battery. Inspect the complete schema before changing assumptions: CPU/energy exclusivity, typed references, schedule/scaling restrictions and bounds are enforced.
+
+Versioned entity PATCH recursively merges, preserves omissions, removes optional fields with `null` and replaces arrays. Complete/new records reject null; nested scenario overrides validate the complete resolved model. Invalid edits return structured 422 `SIMULATION_INFRASTRUCTURE_INVALID` with issue paths and save nothing. Existing grants, unlock, `baseVersion`, operation receipts and worker limits remain in force.
+
+Use ordinary asynchronous runs and `state/result.infrastructure` for detailed counters; resource GET remains the generic capacity/busy/queue/utilization/cost view. Optional model2 bottleneck `methodology` distinguishes queue history, blocked admission, active bandwidth sharing and energy shortfall; pressure scores do not fabricate queue counts. Continuous totals remain raw and use the technical reference's absolute/relative tolerance; counts, order, event milliseconds and capacities remain exact. Existing Read-only compare returns captured domain sides and signed matching-pool deltas. Until-complete can fail with `SIMULATION_INFRASTRUCTURE_STALLED`; finite-horizon completion can retain outstanding work. Live rooms currently reject infrastructure models, so share an explicit native JSON export or encrypted backup. See [the exact math, counters and limits](INFRASTRUCTURE_CAPACITY.md). No TCP, operating-system scheduler or AC electrical solver is implied.
+
 ## Standard notation collections through MCP
 
-Bridge/browser **0.9.0** advertises `standard-notations-v1` with the same two MCP tools and local access grants. Read the five collections before choosing symbols:
+Bridge/browser **0.10.0** advertises `standard-notations-v1` with the same two MCP tools and local access grants. Read the five collections before choosing symbols:
 
 ```json
 { "path": "/notation/collections", "method": "GET" }
@@ -63,7 +95,7 @@ New collaboration rooms with notation require pinned CRDT document contract vers
 
 ## IBM Flowcharting through MCP
 
-Bridge **0.9.0** advertises `ibm-flowcharting-v1`. The same two tools and connected-browser permission rules apply. Read the catalog with Read only:
+Bridge **0.10.0** advertises `ibm-flowcharting-v1`. The same two tools and connected-browser permission rules apply. Read the catalog with Read only:
 
 ```json
 { "path": "/flowchart/symbols", "method": "GET" }
@@ -117,7 +149,7 @@ Omission during partial updates preserves the fill. `backgroundColor:null` remov
 
 Read `limits` before assuming an existing diagram can be shared: object, JSON, CRDT-state and update budgets are independent. Incremental causal updates are limited to 8 MiB; full-state refreshes use the canonical empty base vector `[0]` and the 32 MiB CRDT-state limit, with the same role, sharing-scope and semantic validation. Compressed application payloads are limited to 3 MiB and decompressed payloads to 64 MiB; content can exceed those limits even when its node count fits. Exceeded limits reject the operation without silently omitting content.
 
-Bridge **0.9.0** advertises `collaboration-document-v1` alongside `collaboration-v1` and `analytics-v1`, without changing the two MCP tools. Discover the semantic controls first:
+Bridge **0.10.0** advertises `collaboration-document-v1` alongside `collaboration-v1` and `analytics-v1`, without changing the two MCP tools. Discover the semantic controls first:
 
 ```json
 { "path": "/collaboration/capabilities", "method": "GET" }
@@ -229,7 +261,7 @@ On the isolated encrypted app, the deployed Content Security Policy also restric
 
 ## Recover a write without creating duplicates
 
-Use a current bridge and refreshed app tab. Bridge version 0.9.0 reports `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1`, `collaboration-document-v1`, `analytics-v1`, `ibm-flowcharting-v1` and `standard-notations-v1` in health and its browser handshake, together with supported tool names. This reports software support; it does not reveal workspace data or grant access. Older browser tabs remain one-shot and cannot reserve or recover operation receipts.
+Use a current bridge and refreshed app tab. Bridge version 0.10.0 reports `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1`, `collaboration-document-v1`, `analytics-v1`, `ibm-flowcharting-v1`, `standard-notations-v1` and `infrastructure-resources-v1` in health and its browser handshake, together with supported tool names. This reports software support; it does not reveal workspace data or grant access. Older browser tabs remain one-shot and cannot reserve or recover operation receipts.
 
 Read bridge software health through direct HTTP `GET /api/v1/health` (`/health` relative to the REST base). MCP `visual_nerve_request` with `path:"/health"` instead reads the connected browser's semantic IndexedDB health, without bridge-only tool/capability fields. Their absence in that browser response is not evidence of an outdated bridge.
 
@@ -280,7 +312,7 @@ The synchronous `/export` route accepts source graphs with at most 100 nodes and
 
 ## Export an editable Draw.io diagram
 
-Bridge 0.9.0 advertises `exchange-export-v1`. `GET /exports/capabilities` keeps all SVG fields and adds `diagrams`: the drawio format, scopes, independent budgets, byte chunk units and validation metadata. Use the existing request tool:
+Bridge 0.10.0 advertises `exchange-export-v1`. `GET /exports/capabilities` keeps all SVG fields and adds `diagrams`: the drawio format, scopes, independent budgets, byte chunk units and validation metadata. Use the existing request tool:
 
 ```json
 {
@@ -443,7 +475,7 @@ Explicit authorized AI/API requests and ordinary exports expose readable content
 
 ## Parallel cases and background exports
 
-Bridge 0.9.0 bundles discoverable fork/join and asynchronous SVG contracts. The live browser must also be current. Inspect `GET /simulation/capabilities` and `GET /exports/capabilities`; transport health lists software, not grants. All supported MCP clients use the same `visual_nerve_request` tool and semantic endpoints.
+Bridge 0.10.0 bundles discoverable fork/join and asynchronous SVG contracts. The live browser must also be current. Inspect `GET /simulation/capabilities` and `GET /exports/capabilities`; transport health lists software, not grants. All supported MCP clients use the same `visual_nerve_request` tool and semantic endpoints.
 
 Create complete paired `fork`/`join` regions atomically through a versioned full-model PUT. All fork outgoing edges are mandatory tasks for one original case; a join waits for that case’s tasks, with one revenue outcome and actual shared resource allocations. UI, animated/MAX runs, API/MCP and replay share `SimulationEngine`. See [parallel fields and state](../API.md#parallel-processes-through-the-api).
 
@@ -531,4 +563,4 @@ Existing `operationId` receipts and version checks apply. After a 504/unknown ou
 
 See [complete API table](../API.md#time-series--signal-analysis), [user guide](https://www.visualnerve.com/help/time-series-analysis/), [methods](ANALYTICS_METHODS.md) and [implementation specification](ANALYTICS_IMPLEMENTATION.md).
 
-Bridge **0.9.0** advertises `analytics-v1`. Check this capability in direct `/api/v1/health`; a browser refresh does not replace an old installed bridge. Analytical vector export uses the existing request tool: `{"path":"/diagrams/DIAGRAM/analytics/export","method":"POST","data":{"scope":"chart","id":"CHART","format":"svg","options":{"appearance":"dark","width":1200}}}`. `indicator`, `scenario` and `measurement` scopes use the same exporter; measurement SVG supports saved regression definitions only, using actual fitted engine values (other tools keep JSON/CSV export); SVG returns a bounded whole graphic with explicit visual-sampling counts, whereas JSON/CSV data exports use paging. Read only permits these pure exports. Separate units, real OHLC, escaped labels and named reconciled waterfall components preserve semantic meaning.
+Bridge **0.10.0** advertises `analytics-v1`. Check this capability in direct `/api/v1/health`; a browser refresh does not replace an old installed bridge. Analytical vector export uses the existing request tool: `{"path":"/diagrams/DIAGRAM/analytics/export","method":"POST","data":{"scope":"chart","id":"CHART","format":"svg","options":{"appearance":"dark","width":1200}}}`. `indicator`, `scenario` and `measurement` scopes use the same exporter; measurement SVG supports saved regression definitions only, using actual fitted engine values (other tools keep JSON/CSV export); SVG returns a bounded whole graphic with explicit visual-sampling counts, whereas JSON/CSV data exports use paging. Read only permits these pure exports. Separate units, real OHLC, escaped labels and named reconciled waterfall components preserve semantic meaning.

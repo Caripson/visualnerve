@@ -1,4 +1,5 @@
 import type { Resource, SimulationModel, SimulationNode, SimulationState } from './types';
+import { infrastructureReading, infrastructurePoolQueue } from './infrastructure/metrics';
 
 export type SimulationTrafficLevel = 'clear' | 'busy' | 'congested' | 'inactive';
 export const simulationTrafficColors: Record<SimulationTrafficLevel, string> = {
@@ -14,6 +15,7 @@ export interface SimulationTraffic {
   queue: number;
   utilization: number;
   waitingResources: string[];
+  domain?: boolean;
 }
 const modelIndices = new WeakMap<
   SimulationModel,
@@ -75,9 +77,47 @@ export function simulationNodeTraffic(
 ): SimulationTraffic {
   const metric = state?.nodes[node.id];
   const resource = node.type === 'resource' ? state?.resources[node.resourceId] : undefined;
-  const queue = resource?.queue.current ?? metric?.queue.current ?? 0;
+  const queue =
+    node.type === 'resource' && model?.infrastructure
+      ? infrastructurePoolQueue(state, node.resourceId)
+      : (resource?.queue.current ?? metric?.queue.current ?? 0);
   const utilization = resource?.currentUtilization ?? metric?.currentUtilization ?? 0;
   const lookup = index(model);
+  if (node.type === 'resource') {
+    const reading = infrastructureReading(state, node.resourceId);
+    if (reading)
+      return {
+        domain: true,
+        level: reading.pressure,
+        label:
+          reading.pressure === 'congested'
+            ? 'Constrained'
+            : reading.pressure === 'busy'
+              ? 'Busy'
+              : 'Clear',
+        reason: reading.reason,
+        queue,
+        utilization: resource?.capacity ? reading.usage / resource.capacity : 0,
+        waitingResources: [],
+      };
+  }
+  if (node.type === 'resource' && model?.infrastructure && resource) {
+    const blocked =
+      resource.blockedNodeIds?.length ??
+      Object.values(state?.nodes ?? {}).filter((node) =>
+        node.blockedResourceIds?.includes(resource.id),
+      ).length;
+    const level = blocked > 0 ? 'congested' : utilization >= 0.85 ? 'busy' : 'clear';
+    return {
+      domain: true,
+      queue,
+      utilization,
+      waitingResources: [],
+      level,
+      label: blocked > 0 ? 'Constrained' : utilization >= 0.85 ? 'Busy' : 'Clear',
+      reason: `${blocked} blocked work nodes · ${queue} queued · ${Math.round(utilization * 100)}% occupied`,
+    };
+  }
   const resourceBlocked =
     node.type === 'resource' &&
     resource &&
@@ -103,6 +143,12 @@ export function simulationNodeTraffic(
             : [];
         })
       : [];
+  if (node.type === 'work' && metric?.blockedResourceIds)
+    for (const resourceId of metric.blockedResourceIds) {
+      const name =
+        lookup?.resources.get(resourceId)?.name ?? state?.resources[resourceId]?.name ?? resourceId;
+      if (!waitingResources.includes(name)) waitingResources.push(name);
+    }
   const value = { queue, utilization, waitingResources };
   if (!metric && !resource)
     return { ...value, level: 'inactive', label: 'Ready', reason: 'Run to observe traffic' };

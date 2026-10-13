@@ -1,6 +1,9 @@
 import { ProcessHierarchy } from './process-hierarchy';
 import { ParallelTopology } from './parallel-topology';
 import { StorageError } from '../model/errors';
+import { validateInfrastructureModel } from './infrastructure/validation';
+import { infrastructureResourceIds } from './infrastructure/runtime';
+import { infrastructureLimits } from './infrastructure/types';
 import type { SimulationModel, ScalingRule, ScheduleWindow, SimulationNode } from './types';
 function requireValue(value: unknown, message: string): asserts value {
   if (!value) throw new StorageError(422, `Simulation: ${message}`);
@@ -38,7 +41,7 @@ function schedule(v: ScheduleWindow[] | undefined) {
     optional(w.repeatSeconds, 'schedule repeat', w.endSeconds);
   }
 }
-function scaling(v: ScalingRule | undefined, capacity: number) {
+function scaling(v: ScalingRule | undefined, capacity: number, integer = true) {
   if (v === undefined) return;
   requireValue(object(v), 'invalid scaling rule.');
   keys(
@@ -59,13 +62,13 @@ function scaling(v: ScalingRule | undefined, capacity: number) {
     ],
     'scaling rule',
   );
-  number(v.maxCapacity, 'maximum capacity', capacity, true);
-  optional(v.minCapacity, 'minimum capacity', 0, true);
+  number(v.maxCapacity, 'maximum capacity', capacity, integer);
+  optional(v.minCapacity, 'minimum capacity', 0, integer);
   requireValue(
     (v.minCapacity ?? capacity) <= v.maxCapacity && (v.minCapacity ?? capacity) <= capacity,
     'minimum capacity exceeds current or maximum capacity.',
   );
-  optional(v.increment, 'scale increment', 1, true);
+  optional(v.increment, 'scale increment', integer ? 1 : 0.000001, integer);
   optional(v.queueAbove, 'queue threshold');
   for (const key of ['utilizationAbove', 'utilizationBelow'] as const)
     if (v[key] !== undefined) {
@@ -84,7 +87,9 @@ function scaling(v: ScalingRule | undefined, capacity: number) {
 }
 function validate(value: unknown, includeScenarios: boolean): asserts value is SimulationModel {
   requireValue(
-    object(value) && value.type === 'process-simulator' && value.schemaVersion === 1,
+    object(value) &&
+      value.type === 'process-simulator' &&
+      (value.schemaVersion === 1 || value.schemaVersion === 2),
     'unsupported document type or schema version.',
   );
   const model = value as unknown as SimulationModel;
@@ -92,6 +97,7 @@ function validate(value: unknown, includeScenarios: boolean): asserts value is S
     model,
     [
       'type',
+      'infrastructure',
       'schemaVersion',
       'currency',
       'particleTypes',
@@ -107,6 +113,10 @@ function validate(value: unknown, includeScenarios: boolean): asserts value is S
       'description',
     ],
     'model',
+  );
+  requireValue(
+    model.description === undefined || typeof model.description === 'string',
+    'model description must be a string.',
   );
   requireValue(
     typeof model.currency === 'string' && /^[A-Z]{3}$/.test(model.currency),
@@ -215,6 +225,7 @@ function validate(value: unknown, includeScenarios: boolean): asserts value is S
         'schedule',
         'scaling',
         'metadata',
+        'infrastructure',
       ],
       'resource',
     );
@@ -224,16 +235,16 @@ function validate(value: unknown, includeScenarios: boolean): asserts value is S
         typeof resource.unit === 'string',
       'resource name and unit are required.',
     );
-    number(resource.capacity, 'resource capacity', 0, true);
-    optional(resource.minCapacity, 'minimum capacity', 0, true);
-    optional(resource.maxCapacity, 'maximum capacity', resource.capacity, true);
+    number(resource.capacity, 'resource capacity', 0, !resource.infrastructure);
+    optional(resource.minCapacity, 'minimum capacity', 0, !resource.infrastructure);
+    optional(resource.maxCapacity, 'maximum capacity', resource.capacity, !resource.infrastructure);
     requireValue(
       (resource.minCapacity ?? 0) <= resource.capacity,
       'resource minimum exceeds capacity.',
     );
     optional(resource.costPerHour, 'resource cost');
     schedule(resource.schedule);
-    scaling(resource.scaling, resource.capacity);
+    scaling(resource.scaling, resource.capacity, !resource.infrastructure);
     if (resource.scaling) {
       const minimum = resource.scaling.minCapacity ?? resource.minCapacity ?? resource.capacity;
       requireValue(
@@ -309,12 +320,17 @@ function validate(value: unknown, includeScenarios: boolean): asserts value is S
     } else if (node.type === 'work') {
       const w = node.work;
       requireValue(object(w), 'work configuration is required.');
-      number(w.processingSeconds, 'processing time', 0.001);
+      number(
+        w.processingSeconds,
+        'processing time',
+        w.infrastructure?.cpu || w.infrastructure?.energy ? 0 : 0.001,
+      );
       number(w.capacity, 'work capacity', 0, true);
       keys(
         w,
         [
           'processingSeconds',
+          'infrastructure',
           'capacity',
           'costPerHour',
           'costPerParticle',
@@ -488,7 +504,15 @@ function validate(value: unknown, includeScenarios: boolean): asserts value is S
   for (const edge of model.edges) {
     keys(
       edge,
-      ['id', 'sourceNodeId', 'targetNodeId', 'travelSeconds', 'particleTypeIds', 'weight'],
+      [
+        'id',
+        'sourceNodeId',
+        'targetNodeId',
+        'travelSeconds',
+        'particleTypeIds',
+        'weight',
+        'infrastructure',
+      ],
       'edge',
     );
     requireValue(
@@ -504,6 +528,7 @@ function validate(value: unknown, includeScenarios: boolean): asserts value is S
     );
   }
   new ParallelTopology(model);
+  validateInfrastructureModel(model);
   for (const feature of model.improvements) {
     keys(
       feature,
@@ -579,9 +604,7 @@ function validate(value: unknown, includeScenarios: boolean): asserts value is S
           node.type !== 'work' ||
           !(
             node.id === feature.nodeId ||
-            node.work.resourceRequirements?.some(
-              (requirement) => requirement.resourceId === feature.resourceId,
-            )
+            infrastructureResourceIds(node.work).includes(feature.resourceId ?? '')
           )
         )
           continue;
@@ -620,7 +643,9 @@ function validate(value: unknown, includeScenarios: boolean): asserts value is S
         0,
       );
     requireValue(
-      Number.isSafeInteger(capacity) &&
+      (resource.infrastructure
+        ? Number.isFinite(capacity) && capacity <= infrastructureLimits.capacity
+        : Number.isSafeInteger(capacity)) &&
         capacity <=
           Math.min(resource.maxCapacity ?? Infinity, resource.scaling?.maxCapacity ?? Infinity),
       'enabled resource improvements exceed the maximum capacity.',
@@ -649,7 +674,32 @@ function validate(value: unknown, includeScenarios: boolean): asserts value is S
     }
 }
 export function validateSimulationModel(value: unknown): asserts value is SimulationModel {
-  validate(value, true);
+  try {
+    validate(value, true);
+  } catch (error) {
+    const infrastructure =
+      object(value) &&
+      (Object.hasOwn(value, 'infrastructure') ||
+        (Array.isArray(value.resources) &&
+          value.resources.some((r) => object(r) && Object.hasOwn(r, 'infrastructure'))) ||
+        (Array.isArray(value.nodes) &&
+          value.nodes.some(
+            (n) => object(n) && object(n.work) && Object.hasOwn(n.work, 'infrastructure'),
+          )) ||
+        (Array.isArray(value.edges) &&
+          value.edges.some((e) => object(e) && Object.hasOwn(e, 'infrastructure'))));
+    if (
+      infrastructure &&
+      error instanceof StorageError &&
+      error.status === 422 &&
+      !Object.hasOwn(error, 'code')
+    )
+      Object.assign(error, {
+        code: 'SIMULATION_INFRASTRUCTURE_INVALID',
+        issues: [{ path: 'simulation', message: error.message }],
+      });
+    throw error;
+  }
 }
 export const assertSimulationModel: typeof validateSimulationModel = validateSimulationModel;
 function merge<T>(base: T, patch: unknown): T {

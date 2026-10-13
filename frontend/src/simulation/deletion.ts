@@ -2,6 +2,7 @@ import { resolveScenario } from './schema';
 import { toScenarioPatch } from './scenario-patch';
 import { StorageError } from '../model/errors';
 import type { SimulationModel, SimulationNode, Improvement, ScenarioOverrides } from './types';
+import { infrastructureWorkResources } from './infrastructure/references';
 
 export type SimulationCollection =
   | 'processes'
@@ -25,6 +26,18 @@ export function removeSimulationEntity(
   collection: SimulationCollection,
   id: string,
 ) {
+  if (
+    collection === 'resources' &&
+    (model.nodes.some(
+      (node) =>
+        node.type === 'work' && infrastructureWorkResources(node.work.infrastructure).includes(id),
+    ) ||
+      model.edges.some((edge) => edge.infrastructure?.transfer.resourceId === id))
+  )
+    throw new StorageError(
+      422,
+      'Remove or reroute the infrastructure requirements and transfers before deleting this resource.',
+    );
   if (collection === 'nodes') {
     const node = model.nodes.find((candidate) => candidate.id === id);
     if (node?.type === 'fork' || node?.type === 'join')
@@ -89,6 +102,21 @@ function pruneTopology(input: SimulationModel, fallback?: SimulationModel): Simu
         ? { particleTypeIds: edge.particleTypeIds.filter((id) => particleIds.has(id)) }
         : {}),
     }));
+  for (const node of nodes)
+    if (
+      node.type === 'work' &&
+      infrastructureWorkResources(node.work.infrastructure).some((id) => !resourceIds.has(id))
+    )
+      throw new StorageError(422, 'An infrastructure requirement references a missing resource.');
+  if (
+    edges.some(
+      (edge) => edge.infrastructure && !resourceIds.has(edge.infrastructure.transfer.resourceId),
+    )
+  )
+    throw new StorageError(
+      422,
+      'An infrastructure transfer references a missing bandwidth resource.',
+    );
   const edgeIds = new Set(edges.map((edge) => edge.id));
   const linked = (from: string, to: string) =>
     edges.some((edge) => edge.sourceNodeId === from && edge.targetNodeId === to);

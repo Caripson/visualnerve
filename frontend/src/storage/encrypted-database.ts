@@ -1,3 +1,4 @@
+import { prepareTemplateFactory, preparedTemplateFactory } from '../templates/factory';
 import { bindCollaborationJournal } from '../security/collaboration-journal';
 import type { CsvDataset } from '../data/types';
 import type { Diagram, Graph } from '../model/types';
@@ -249,7 +250,10 @@ export class EncryptedWorkspaceDatabase implements WorkspaceScope {
     else remember();
   }
   async initialize() {
-    await this.atomic('rw', ['settings', 'templates'], initializeWorkspace);
+    const instantiate = this.scope ? preparedTemplateFactory() : await prepareTemplateFactory();
+    await this.atomic('rw', ['settings', 'templates'], (scope) =>
+      initializeWorkspace(scope, instantiate),
+    );
   }
   graph(id: string): Promise<Graph | undefined> {
     return this.atomic('r', graphStoreNames, async (scope) => {

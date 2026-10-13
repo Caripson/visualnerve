@@ -52,7 +52,16 @@ export function templateGroup(key: string) {
   if (notation?.collection.startsWith('dfd')) return 'dfd';
   if (notation) return notation.collection;
   if (key === 'time-series-analysis') return 'analytics';
-  if (key.includes('simulator')) return 'simulation';
+  if (
+    key.includes('simulator') ||
+    [
+      'api-compute-capacity',
+      'network-multi-site-capacity',
+      'energy-power-capacity',
+      'datacenter-capacity',
+    ].includes(key)
+  )
+    return 'simulation';
   return 'ordinary';
 }
 export function templateMatches(

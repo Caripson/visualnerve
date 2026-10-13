@@ -50,6 +50,7 @@ scope.onmessage = (event: MessageEvent<WorkerCommand>) => {
     const command = event.data;
     if (command.kind === 'start') {
       if (timer) clearTimeout(timer);
+      engine?.stop();
       model = command.model;
       options = command.options;
       speed = options.animated === false ? 'max' : (options.speed ?? 1);
@@ -64,7 +65,7 @@ scope.onmessage = (event: MessageEvent<WorkerCommand>) => {
       if (timer) clearTimeout(timer);
       publish();
     } else if (command.kind === 'resume') {
-      if (stopped || !engine || engine.state().status === 'completed') return;
+      if (stopped || !engine || ['completed', 'failed'].includes(engine.getStatus())) return;
       paused = false;
       publish();
       if (timer) clearTimeout(timer);
@@ -72,11 +73,13 @@ scope.onmessage = (event: MessageEvent<WorkerCommand>) => {
     } else if (command.kind === 'stop') {
       stopped = true;
       if (timer) clearTimeout(timer);
+      engine?.stop();
       publish(true);
     } else if (command.kind === 'speed') {
       speed = command.speed;
     } else if (command.kind === 'seek') {
       if (timer) clearTimeout(timer);
+      engine?.stop();
       const horizon = Math.max(0, command.timeSeconds);
       engine = new SimulationEngine(model, options);
       paused = true;

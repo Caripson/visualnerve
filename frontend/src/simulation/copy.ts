@@ -6,6 +6,7 @@ import type {
   ScenarioPatch,
   SimulationProcess,
 } from './types';
+import { remapInfrastructureEdge, remapInfrastructureWork } from './infrastructure/references';
 
 /** Remap semantic references with the same identity map as the document shapes. */
 export function remapSimulationModel(
@@ -13,9 +14,11 @@ export function remapSimulationModel(
   nodeIds: ReadonlyMap<string, string>,
   edgeIds: ReadonlyMap<string, string>,
   processIds: ReadonlyMap<string, string> = new Map(),
+  resourceIds: ReadonlyMap<string, string> = new Map(),
 ): SimulationModel {
   const nodeId = (id: string) => nodeIds.get(id) ?? id;
   const processId = (id: string) => processIds.get(id) ?? id;
+  const resourceId = (id: string) => resourceIds.get(id) ?? id;
   const process = <T extends SimulationProcess | ScenarioPatch<SimulationProcess>>(
     input: T,
   ): T => ({
@@ -28,6 +31,8 @@ export function remapSimulationModel(
     const result = structuredClone(input);
     if (result.id) result.id = nodeId(result.id);
     if (result.processId) result.processId = processId(result.processId);
+    if ('resourceId' in result && result.resourceId)
+      result.resourceId = resourceId(result.resourceId);
     if ('fork' in result && result.fork) {
       if (result.fork.joinNodeId) result.fork.joinNodeId = nodeId(result.fork.joinNodeId);
       if (result.fork.branchEdgeIds)
@@ -37,6 +42,18 @@ export function remapSimulationModel(
       result.join.forkNodeId = nodeId(result.join.forkNodeId);
     if ('work' in result && result.work?.overflowNodeId)
       result.work.overflowNodeId = nodeId(result.work.overflowNodeId);
+    if ('work' in result && result.work) {
+      if (result.work.resourceRequirements)
+        result.work.resourceRequirements = result.work.resourceRequirements.map((requirement) => ({
+          ...requirement,
+          resourceId: resourceId(requirement.resourceId),
+        }));
+      if (result.work.infrastructure)
+        result.work.infrastructure = remapInfrastructureWork(
+          result.work.infrastructure,
+          resourceId,
+        );
+    }
     if ('router' in result && result.router) {
       if (result.router.fallbackEdgeId)
         result.router.fallbackEdgeId = edgeId(result.router.fallbackEdgeId);
@@ -44,6 +61,8 @@ export function remapSimulationModel(
         rule.edgeId = edgeId(rule.edgeId);
         if (rule.condition && 'nodeId' in rule.condition && rule.condition.nodeId)
           rule.condition.nodeId = nodeId(rule.condition.nodeId);
+        if (rule.condition && 'resourceId' in rule.condition && rule.condition.resourceId)
+          rule.condition.resourceId = resourceId(rule.condition.resourceId);
       }
     }
     return result;
@@ -53,12 +72,15 @@ export function remapSimulationModel(
     if (result.id) result.id = edgeId(result.id);
     if (result.sourceNodeId) result.sourceNodeId = nodeId(result.sourceNodeId);
     if (result.targetNodeId) result.targetNodeId = nodeId(result.targetNodeId);
+    if (result.infrastructure)
+      result.infrastructure = remapInfrastructureEdge(result.infrastructure, resourceId);
     return result;
   };
   const improvement = <T extends Improvement | ScenarioPatch<Improvement>>(input: T): T => ({
     ...input,
     ...(input.nodeId ? { nodeId: nodeId(input.nodeId) } : {}),
     ...(input.failureNodeId ? { failureNodeId: nodeId(input.failureNodeId) } : {}),
+    ...(input.resourceId ? { resourceId: resourceId(input.resourceId) } : {}),
   });
   const record = <T>(
     values: Record<string, T> | undefined,
@@ -72,6 +94,10 @@ export function remapSimulationModel(
     ...(model.processes ? { processes: model.processes.map(process) } : {}),
     nodes: model.nodes.map(node),
     edges: model.edges.map(edge),
+    resources: model.resources.map((resource) => ({
+      ...structuredClone(resource),
+      id: resourceId(resource.id),
+    })),
     improvements: model.improvements.map(improvement),
     scenarios: model.scenarios.map((scenario) => ({
       ...structuredClone(scenario),
@@ -85,6 +111,14 @@ export function remapSimulationModel(
           : {}),
         ...(scenario.overrides.edges
           ? { edges: record(scenario.overrides.edges, edgeId, edge) }
+          : {}),
+        ...(scenario.overrides.resources
+          ? {
+              resources: record(scenario.overrides.resources, resourceId, (resource) => ({
+                ...resource,
+                ...(resource.id ? { id: resourceId(resource.id) } : {}),
+              })),
+            }
           : {}),
         ...(scenario.overrides.improvements
           ? { improvements: record(scenario.overrides.improvements, (id) => id, improvement) }

@@ -5,6 +5,7 @@ import { remapSimulationModel } from './copy';
 import { validateSimulationModel } from './schema';
 import { pruneSimulationReferences } from './deletion';
 import type { SimulationModel, SimulationNode } from './types';
+import { infrastructureWorkResources } from './infrastructure/references';
 
 const uuid = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 const annotations = new Set(['note', 'group']);
@@ -119,7 +120,7 @@ export function setSimulationModel(graph: Graph, input: SimulationModel): Graph 
   );
   for (const node of model.nodes)
     if (node.type === 'work')
-      for (const requirement of node.work.resourceRequirements ?? []) {
+      for (const requirement of workResourceLabels(node, model)) {
         const source = resourceNodes.get(requirement.resourceId);
         if (!source) continue;
         const alias = `sim-resource:${source}:${node.id}`;
@@ -129,7 +130,7 @@ export function setSimulationModel(graph: Graph, input: SimulationModel): Graph 
             edge.sourceNodeId === source &&
             edge.targetNodeId === node.id,
         );
-        const label = `${requirement.units} ${model.resources.find((resource) => resource.id === requirement.resourceId)?.unit ?? 'units'}`;
+        const label = requirement.label;
         edges.push(
           previous
             ? previous.label === label
@@ -150,6 +151,33 @@ export function setSimulationModel(graph: Graph, input: SimulationModel): Graph 
     nodes,
     edges,
   };
+}
+
+/** Dependency lines disclose reservations; their geometry never defines typed demand. */
+export function workResourceLabels(
+  node: Extract<SimulationNode, { type: 'work' }>,
+  model: SimulationModel,
+) {
+  const labels = new Map<string, string[]>();
+  const add = (resourceId: string, label: string) => {
+    const values = labels.get(resourceId) ?? [];
+    values.push(label);
+    labels.set(resourceId, values);
+  };
+  for (const requirement of node.work.resourceRequirements ?? [])
+    add(
+      requirement.resourceId,
+      `${requirement.units} ${model.resources.find((resource) => resource.id === requirement.resourceId)?.unit ?? 'units'}`,
+    );
+  const typed = node.work.infrastructure;
+  if (typed?.cpu)
+    add(typed.cpu.resourceId, `${typed.cpu.cores} cores · ${typed.cpu.coreSeconds} core-s`);
+  for (const lease of typed?.memory ?? [])
+    add(lease.resourceId, `${lease.amountMiB} MiB · ${lease.scope}`);
+  if (typed?.energy)
+    add(typed.energy.resourceId, `${typed.energy.powerKW} kW · ${typed.energy.energyKWh} kWh`);
+  for (const id of typed?.releaseMemoryResourceIds ?? []) add(id, 'Release case RAM');
+  return Array.from(labels, ([resourceId, values]) => ({ resourceId, label: values.join(' / ') }));
 }
 
 export function createSimulationGraph(
@@ -217,11 +245,25 @@ export function reconcileSimulationGraph(previous: Graph | undefined, next: Grap
             node.work.resourceRequirements?.some(
               (requirement) => requirement.resourceId === removed.resourceId,
             ),
+        ) ||
+        nodes.some(
+          (node) =>
+            node.type === 'work' &&
+            infrastructureWorkResources(node.work.infrastructure).includes(removed.resourceId),
+        ) ||
+        next.simulation.edges.some(
+          (edge) =>
+            shapeIds.has(edge.sourceNodeId) &&
+            shapeIds.has(edge.targetNodeId) &&
+            next.edges.some((shape) => shape.id === edge.id) &&
+            edge.infrastructure?.transfer.resourceId === removed.resourceId,
         )
       )
         throw new StorageError(
           422,
-          'Disconnect this shared resource from its Work nodes before deleting it.',
+          resources.find((resource) => resource.id === removed.resourceId)?.infrastructure
+            ? 'Remove its Work requirements and link transfers in Assumptions before deleting this shared resource.'
+            : 'Disconnect this shared resource from its Work nodes before deleting it.',
         );
       const index = resources.findIndex((resource) => resource.id === removed.resourceId);
       if (index >= 0) resources.splice(index, 1);
@@ -280,16 +322,37 @@ export function reconcileSimulationGraph(previous: Graph | undefined, next: Grap
   };
   readBindings(previous, oldBindings);
   readBindings(next, bindings);
+  const typedResources = new Set(
+    resources.filter((resource) => resource.infrastructure).map((resource) => resource.id),
+  );
+  for (const node of nodes) {
+    if (node.type !== 'work') continue;
+    for (const id of typedResources)
+      if (!!oldBindings.get(node.id)?.has(id) !== !!bindings.get(node.id)?.has(id))
+        throw new StorageError(
+          422,
+          'Configure CPU, RAM and energy requirements in Assumptions. Their dependency lines cannot be connected or removed independently.',
+        );
+  }
   nodes = nodes.map((node) => {
     if (node.type !== 'work') return node;
     if (!oldBindings.has(node.id) && !bindings.has(node.id)) return node;
+    if (
+      ![...(oldBindings.get(node.id) ?? []), ...(bindings.get(node.id) ?? [])].some(
+        (id) => !typedResources.has(id),
+      )
+    )
+      return node;
     const requirements = (node.work.resourceRequirements ?? []).filter(
       (requirement) =>
         !oldBindings.get(node.id)?.has(requirement.resourceId) ||
         bindings.get(node.id)?.has(requirement.resourceId),
     );
     for (const id of bindings.get(node.id) ?? [])
-      if (!requirements.some((requirement) => requirement.resourceId === id))
+      if (
+        !typedResources.has(id) &&
+        !requirements.some((requirement) => requirement.resourceId === id)
+      )
         requirements.push({ resourceId: id, units: 1 });
     return { ...node, work: { ...node.work, resourceRequirements: requirements } };
   });

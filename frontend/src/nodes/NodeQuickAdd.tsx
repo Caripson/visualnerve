@@ -9,6 +9,7 @@ import { useEditor } from '../state/editor';
 import { connectedNodeChoices, type ConnectedNodeType } from './connected-node';
 import { useQuickAddPlacement } from './quick-add-placement';
 import './quick-add.css';
+import { simulationAssumptionsEvent } from '../simulation/setup-event';
 
 const choiceMessages: Partial<
   Record<ConnectedNodeType, { label: MessageId; description: MessageId }>
@@ -136,7 +137,7 @@ export function NodeQuickAdd({ id, above = false }: { id: string; above?: boolea
               )
             : copy
               ? t(copy.label)
-              : choice.type.startsWith('notation:')
+              : choice.type.startsWith('notation:') || choice.type === 'infrastructure:requirements'
                 ? choice.label
                 : nodeKindLabel(t, choice.type);
           const description = copy ? t(copy.description) : choice.description;
@@ -146,7 +147,11 @@ export function NodeQuickAdd({ id, above = false }: { id: string; above?: boolea
               className="node-quick-add-choice"
               aria-label={choiceLabel}
               aria-description={description}
-              onClick={() => useEditor.getState().addConnectedNode(id, choice.type)}
+              onClick={() =>
+                choice.type === 'infrastructure:requirements'
+                  ? window.dispatchEvent(new Event(simulationAssumptionsEvent))
+                  : useEditor.getState().addConnectedNode(id, choice.type)
+              }
             >
               <Icon size={17} aria-hidden="true" />
               <span>

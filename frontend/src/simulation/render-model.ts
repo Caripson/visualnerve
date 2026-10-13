@@ -1,6 +1,8 @@
 import type { Graph, GraphEdge } from '../model/types';
 import type { Improvement, RunOptions, SimulationModel } from './types';
 import { resolveScenario } from './schema';
+import { workResourceLabels } from './document';
+import { infrastructureWorkResources } from './infrastructure/references';
 export {
   projectSimulationCapacityNodes,
   logicalNodeId,
@@ -122,6 +124,39 @@ export function projectSimulationRenderModel(
             },
           });
         }
+  // Typed requirements are generated dependencies, also in replay/frozen scenario views.
+  for (const node of model.nodes)
+    if (node.type === 'work' && visibleIds.has(node.id)) {
+      const typedIds = new Set(infrastructureWorkResources(node.work.infrastructure));
+      for (const requirement of workResourceLabels(node, model).filter((binding) =>
+        typedIds.has(binding.resourceId),
+      ))
+        for (const sourceNodeId of resourceNodes.get(requirement.resourceId) ?? []) {
+          const native = previous.get(`${sourceNodeId}:${node.id}`);
+          resourceEdges.push({
+            ...(native ?? {
+              id: `simulation-resource-view:${sourceNodeId}:${node.id}`,
+              version: graph.diagram.version,
+              createdAt: graph.diagram.createdAt,
+              updatedAt: graph.diagram.updatedAt,
+              diagramId: graph.diagram.id,
+              sourceNodeId,
+              targetNodeId: node.id,
+              edgeType: 'simulation-resource',
+              direction: 'forward',
+              style: 'dashed',
+              metadata: {},
+            }),
+            label: requirement.label,
+            metadata: {
+              ...native?.metadata,
+              simulationProjected: true,
+              simulationResourceId: requirement.resourceId,
+              simulationInfrastructure: true,
+            },
+          });
+        }
+    }
   const projection = {
     model,
     edges: [

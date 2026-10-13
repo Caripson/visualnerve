@@ -4,6 +4,7 @@ import { useI18n } from '../i18n';
 import type { SimulationState } from './types';
 import { simulationTrafficColors } from './traffic';
 import './simulation-shell.css';
+import { InfrastructureMetricsPanel } from './infrastructure/InfrastructureMetricsPanel';
 
 // Canonical identities never depend on the selected interface language.
 const metricMessages: Record<string, MessageId> = {
@@ -202,6 +203,7 @@ export function MetricsDashboard({
           </details>
         </>
       )}
+      <InfrastructureMetricsPanel state={state} currency={currency} />
       <details>
         <summary>{t('simulator.metrics.bottlenecksSharedResourcesAndParticleTypes')}</summary>
         <p>

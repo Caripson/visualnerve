@@ -28,6 +28,9 @@ export function NodeEditor({
   const patchNode = (partial: Partial<SimulationNode>) =>
     setDraft((model) => ({
       ...model,
+      ...('work' in partial && partial.work?.infrastructure
+        ? { schemaVersion: 2 as const, infrastructure: { schemaVersion: 1 as const } }
+        : {}),
       nodes: model.nodes.map((entry) =>
         entry.id === selected ? ({ ...entry, ...partial } as SimulationNode) : entry,
       ),

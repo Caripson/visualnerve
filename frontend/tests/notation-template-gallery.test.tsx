@@ -11,9 +11,9 @@ import { createTemplateDiagram } from '../src/templates/create';
 vi.mock('../src/templates/create', () => ({ createTemplateDiagram: vi.fn(async () => {}) }));
 
 describe('notation template gallery', () => {
-  it('keeps all 35 templates discoverable and separates the fourteen UML families', () => {
+  it('keeps all canonical templates discoverable and separates the fourteen UML families', () => {
     const { container } = render(<NewDiagram close={vi.fn()} />);
-    expect(container.querySelectorAll('.template-option')).toHaveLength(35);
+    expect(container.querySelectorAll('.template-option')).toHaveLength(templates.length);
     expect(container.querySelectorAll('[data-notation-preview]')).toHaveLength(21);
     expect(screen.getByRole('heading', { name: 'UML · Structure' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'UML · Behavior and interactions' })).toBeVisible();
@@ -29,7 +29,7 @@ describe('notation template gallery', () => {
     fireEvent.change(screen.getByRole('combobox', { name: 'Template collection' }), {
       target: { value: 'all' },
     });
-    expect(container.querySelectorAll('.template-option')).toHaveLength(35);
+    expect(container.querySelectorAll('.template-option')).toHaveLength(templates.length);
     expect(createTemplateDiagram).not.toHaveBeenCalled();
   });
 
@@ -80,8 +80,18 @@ describe('notation template gallery', () => {
   it('matches both DFD dialects and independently filters specialized tools', () => {
     expect(templates.filter((template) => templateMatches(template, 'DFD', 'all'))).toHaveLength(2);
     expect(
-      templates.filter((template) => templateMatches(template, '', 'simulation')),
-    ).toHaveLength(3);
+      templates
+        .filter((template) => templateMatches(template, '', 'simulation'))
+        .map((template) => template.key),
+    ).toEqual([
+      'process-simulator-blank',
+      'process-simulator',
+      'delivery-network-simulator',
+      'api-compute-capacity',
+      'network-multi-site-capacity',
+      'energy-power-capacity',
+      'datacenter-capacity',
+    ]);
     expect(templates.filter((template) => templateMatches(template, '', 'analytics'))).toHaveLength(
       1,
     );

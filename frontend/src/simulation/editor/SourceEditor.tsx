@@ -4,6 +4,8 @@ import { JsonField } from './JsonField';
 import { ScheduleFields, openingHours } from './ScheduleFields';
 import type { SimulationNode } from '../types';
 import type { NodeSectionProps } from './types';
+import { QuantityField } from '../infrastructure/QuantityField';
+import { quantityUnits } from '../infrastructure/quantity';
 export function SourceEditor({
   draft,
   node,
@@ -29,11 +31,21 @@ export function SourceEditor({
         </select>
       </label>
       <div className="simulation-grid">
-        <NumberField
-          label={t('simulator.editor.source.arrivalsPerHour')}
-          value={node.source.ratePerHour}
-          change={(value) => patchNode({ source: { ...node.source, ratePerHour: value } })}
-        />
+        {draft.infrastructure ? (
+          <QuantityField
+            label="Request arrivals"
+            value={node.source.ratePerHour ?? 0}
+            units={quantityUnits.arrival}
+            change={(ratePerHour) => patchNode({ source: { ...node.source, ratePerHour } })}
+            help="Requests per time, not concurrent users. Convert users to requests only with an explicit rate assumption."
+          />
+        ) : (
+          <NumberField
+            label={t('simulator.editor.source.arrivalsPerHour')}
+            value={node.source.ratePerHour}
+            change={(value) => patchNode({ source: { ...node.source, ratePerHour: value } })}
+          />
+        )}
         <NumberField
           label={t('simulator.editor.source.arrivalsPerDay')}
           value={(node.source.ratePerHour ?? 0) * openingHours(node.source.schedule)}

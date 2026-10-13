@@ -19,7 +19,11 @@ import type { SimulationNode } from '../simulation/types';
 import { parallelLimits } from '../simulation/parallel-topology';
 import { ParallelConnectedNodes } from './parallel-connected-node';
 
-export type ConnectedNodeType = NodeKind | SimulationNode['type'] | `notation:${string}`;
+export type ConnectedNodeType =
+  | NodeKind
+  | SimulationNode['type']
+  | `notation:${string}`
+  | 'infrastructure:requirements';
 export interface ConnectedNodeChoice {
   type: ConnectedNodeType;
   label: string;
@@ -274,7 +278,18 @@ export function connectedNodeChoices(graph: Graph, sourceId: string): ConnectedN
     if (!semantic) return [];
     if (semantic.type === 'fork')
       return semantic.fork.branchEdgeIds.length < parallelLimits.branches ? [work] : [];
-    if (semantic.type === 'resource') return [work];
+    if (semantic.type === 'resource')
+      return graph.simulation.resources.find((pool) => pool.id === semantic.resourceId)
+        ?.infrastructure
+        ? [
+            {
+              type: 'infrastructure:requirements',
+              label: 'Edit infrastructure requirements',
+              description:
+                'Configure CPU, RAM or energy requirements in Assumptions. Link transfers are configured on Connections.',
+            },
+          ]
+        : [work];
     if (semantic.type === 'outcome') {
       const incoming = graph.simulation.edges.some((edge) => edge.targetNodeId === sourceId);
       return [work, source, router].map((choice) =>
@@ -402,6 +417,10 @@ export function addConnectedNode(
   const choices = connectedNodeChoices(graph, sourceId);
   const choice = requested ? choices.find((item) => item.type === requested) : choices[0];
   if (!choice) return;
+  if (choice.type === 'infrastructure:requirements')
+    throw new Error(
+      'Edit typed requirements in Assumptions; drawing a link does not configure computational work.',
+    );
   const anchor = graph.nodes.find((node) => node.id === sourceId)!;
   const semantic = graph.simulation?.nodes.find((node) => node.id === sourceId);
   if (graph.simulation && choice.type === 'fork')

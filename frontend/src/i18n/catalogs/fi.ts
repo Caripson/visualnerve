@@ -2230,7 +2230,7 @@ const catalog = {
     'Muokataan perustasoa. Aiemmat ajotulokset säilyttävät alkuperäiset oletuksensa.',
   'simulator.editor.model.fixInvalidJsonIn': 'Korjaa virheellinen JSON kohdassa:',
   'simulator.editor.model.fixTheJsonErrorBeforeApplying': 'Korjaa JSON-virhe ennen käyttöönottoa.',
-  'simulator.editor.model.invalidJsonFields': 'Korjaa virheellinen JSON kentissä: {fields}.',
+  'simulator.editor.model.invalidJsonFields': 'Korjaa virheelliset kentät: {fields}.',
   'simulator.editor.model.settingsSection': 'Asetusosio',
   'simulator.editor.model.simulationSettingsSections': 'Simulointiasetusten osiot',
   'simulator.editor.model.theModelChangedWhileSettingsWereOpenReopenSettingsToEditThe':

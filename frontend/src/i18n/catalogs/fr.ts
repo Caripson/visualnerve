@@ -2278,7 +2278,7 @@ const catalog = {
   'simulator.editor.model.fixInvalidJsonIn': 'Corrigez le JSON invalide dans :',
   'simulator.editor.model.fixTheJsonErrorBeforeApplying':
     "Corrigez l'erreur JSON avant d'appliquer.",
-  'simulator.editor.model.invalidJsonFields': 'Corrigez le JSON non valide dans : {fields}.',
+  'simulator.editor.model.invalidJsonFields': 'Corrigez les champs non valides : {fields}.',
   'simulator.editor.model.settingsSection': 'Section des paramètres',
   'simulator.editor.model.simulationSettingsSections': 'Sections des paramètres de simulation',
   'simulator.editor.model.theModelChangedWhileSettingsWereOpenReopenSettingsToEditThe':

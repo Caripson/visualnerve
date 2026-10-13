@@ -303,6 +303,11 @@ export function assertCollaborationFieldScope(
 
 /** The CRDT contains this projection only, never the local workspace/setting tables. */
 export function sharedGraph(graph: Graph, scope: CollaborationShareScope): SharedGraph {
+  if (graph.simulation?.infrastructure)
+    throw new StorageError(
+      422,
+      'Live rooms do not yet support infrastructure capacity models. Use an explicit encrypted backup or native JSON export to share this model.',
+    );
   if (graph.diagram.analytics)
     throw new StorageError(
       422,

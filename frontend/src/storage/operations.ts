@@ -1,6 +1,7 @@
 import type { CsvDataset } from '../data/types';
 import { base, type Diagram, type Graph, type Owner } from '../model/types';
-import { instantiate, templates } from '../templates/templates';
+import { templates } from '../templates/catalog';
+import type { TemplateFactory } from '../templates/factory';
 import { exportHistoryBackup } from '../history/backup';
 import { IMPORT_LIMIT_SETTING } from '../imports/limits';
 import { PROJECT_SOURCE_FILE_LIMIT_SETTING } from '../code/project/limits';
@@ -28,7 +29,7 @@ const privateBackupSettings = new Set([
   PROJECT_SOURCE_FILE_LIMIT_SETTING,
 ]);
 /** Helpers receive only an explicit scope; never open a separate ambient transaction. */
-export async function initializeWorkspace(scope: WorkspaceStorage) {
+export async function initializeWorkspace(scope: WorkspaceStorage, instantiate: TemplateFactory) {
   if (!(await scope.settings.get('workspace-id')))
     await scope.settings.put({ key: 'workspace-id', value: base().id });
   // The encrypted backend authenticates this index projection without loading

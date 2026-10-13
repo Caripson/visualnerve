@@ -165,7 +165,7 @@ it('prepares a single app root and local documentation without legacy alias, mar
 
 it('copies every current Help guide with matching search, navigation and offline routes', async () => {
   const { source, output } = fixture();
-  expect(helpGuideNames).toHaveLength(25);
+  expect(helpGuideNames).toHaveLength(26);
   const prepared = await buildAppSurface(source, output);
   expect(prepared.files.filter((path) => /^help\/[^/]+\/index\.html$/.test(path))).toEqual(
     helpGuideNames.map((name) => `help/${name}/index.html`),
@@ -273,6 +273,7 @@ it('safely upgrades a previous 17-guide package without relaxing publication or 
     'dfd',
     'uml',
     'bpmn',
+    'infrastructure-capacity',
   ])
     rmSync(join(output, `help/${name}`), { recursive: true });
   expect(() => auditAppSurface(output)).toThrow(
@@ -290,7 +291,7 @@ it('safely upgrades a previous 17-guide package without relaxing publication or 
   expect(readFileSync(join(output, 'personal.txt'), 'utf8')).toBe('keep this');
   rmSync(join(output, 'personal.txt'));
   const next = await buildAppSurface(source, output);
-  expect(next.files.filter((path) => /^help\/[^/]+\/index\.html$/.test(path))).toHaveLength(25);
+  expect(next.files.filter((path) => /^help\/[^/]+\/index\.html$/.test(path))).toHaveLength(26);
   expect(auditAppSurface(output)).toEqual(next.files);
 });
 

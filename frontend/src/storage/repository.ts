@@ -1,3 +1,4 @@
+import { prepareTemplateFactory } from '../templates/factory';
 import {
   base,
   blankGraph,
@@ -678,6 +679,8 @@ export class Repository {
       )
     )
       throw new StorageError(422, 'Invalid workspace backup.');
+    // Optional example code must load before opening the native restore transaction.
+    await prepareTemplateFactory();
     const restored = await this.db.atomic('rw', workspaceStoreNames, async (scope) => {
       const scoped = new Repository(scope);
       const acknowledgement = await scope.settings.get('storage-consent');
@@ -825,6 +828,8 @@ export class Repository {
     return restored;
   }
   async clearAll() {
+    collaborationPermissions.assertDetached();
+    await prepareTemplateFactory();
     collaborationPermissions.assertDetached();
     await this.db.atomic('rw', workspaceStoreNames, async (scope) => {
       scope.forgetDatasets();
@@ -1436,6 +1441,29 @@ export class Repository {
           return (await this.saveGraph(graph, 0, options.beforeWrite)).diagram as T;
         }
         if (data.template !== undefined) {
+          if (
+            [
+              'api-compute-capacity',
+              'network-multi-site-capacity',
+              'energy-power-capacity',
+              'datacenter-capacity',
+            ].includes(String(data.template))
+          ) {
+            if (
+              data.mode !== undefined ||
+              (data.type !== undefined && data.type !== 'process-simulator')
+            )
+              throw new StorageError(
+                422,
+                'Capacity templates use type process-simulator and have no mode option.',
+              );
+            const { instantiate } = await import('../templates/templates');
+            await this.commandReady(options);
+            const graph = instantiate(String(data.template), data.name as string);
+            const { template: _template, ...fields } = data;
+            graph.diagram = { ...graph.diagram, ...fields, type: 'process-simulator' } as Diagram;
+            return (await this.saveGraph(graph, 0, options.beforeWrite)).diagram as T;
+          }
           const { notationTemplates } = await import('../notation/templates');
           if (notationTemplates.some((template) => template.key === data.template)) {
             if (data.mode !== undefined || (data.type !== undefined && data.type !== 'freeform'))

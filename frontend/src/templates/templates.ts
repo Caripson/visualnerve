@@ -1,4 +1,4 @@
-import manifest from './manifest.json';
+export { templates } from './catalog';
 import { base, blankGraph, type Graph } from '../model/types';
 import { blankAnalytics } from '../analytics/validation';
 import { remapAnalytics } from '../analytics/remap';
@@ -6,13 +6,19 @@ import { createSimulationGraph } from '../simulation/document';
 import { remapSimulationModel } from '../simulation/copy';
 import { createEmptySimulationModel } from '../simulation/starter';
 import { DeliveryNetworkExample } from '../simulation/delivery-example';
+import { infrastructureExample } from '../simulation/infrastructure/examples';
+import { DatacenterCapacityExample } from '../simulation/datacenter-example';
 import { createNotationGraph } from '../notation/templates';
 import { remapNotationGraph } from '../notation/remap';
 import { createIbmFlowchartGraph } from '../flowchart/template';
 import { remapGraphCollaboration } from '../collaboration/model/remap';
 const files = import.meta.glob<Graph>('./*.json', { eager: true, import: 'default' });
-export const templates = manifest;
 export function instantiate(key: string, name: string, source?: Graph): Graph {
+  if (!source && key === 'datacenter-capacity') return new DatacenterCapacityExample().graph(name);
+  if (!source) {
+    const example = infrastructureExample(key);
+    if (example) return example.graph(name);
+  }
   if (key === 'time-series-analysis' && !source) {
     const graph = blankGraph(name, 'freeform');
     graph.diagram.analytics = blankAnalytics();

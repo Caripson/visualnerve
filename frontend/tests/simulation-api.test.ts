@@ -90,7 +90,7 @@ describe('authoritative Process Simulator API', () => {
     expect(simulationCapabilities).toMatchObject({
       type: 'process-simulator',
       schemaVersion: 1,
-      apiVersion: '0.9.0',
+      apiVersion: '0.10.0',
       timeUnit: 'second',
     });
     expect(simulationCapabilities.execution).toMatchObject({
@@ -124,6 +124,10 @@ describe('authoritative Process Simulator API', () => {
       },
       overflow: 'explicit-aggregate-label',
       spatialView: 'logical-model',
+      typedPools: 'aggregate-domain-summaries',
+      typedPoolsIndividualUnits: false,
+      infrastructureWork: 'aggregate-in-flight-concurrency',
+      infrastructureResources: 'aggregate-pools',
     });
     expect(simulationCapabilities.features).toContain('native-capacity-card-projection');
   });
@@ -160,6 +164,29 @@ describe('authoritative Process Simulator API', () => {
       color: '#abcdef',
     });
     expect(f.beforeWrite).toHaveBeenCalledOnce();
+  });
+  it('rejects malformed complete model descriptions atomically and clears optional text by omission in PUT', async () => {
+    const f = fixture();
+    const original = structuredClone(f.graph());
+    for (const description of [null, {}, 7])
+      await expect(
+        f.request('', 'PUT', {
+          baseVersion: 1,
+          model: { ...original.simulation, description },
+        }),
+      ).rejects.toMatchObject({ status: 422 });
+    expect(f.repo.saveGraph).not.toHaveBeenCalled();
+    expect(f.beforeWrite).not.toHaveBeenCalled();
+    expect(f.graph()).toEqual(original);
+    const described: SimulationModel = {
+      ...original.simulation!,
+      description: 'Explicit simulation assumptions.',
+    };
+    await f.request('', 'PUT', { baseVersion: 1, model: described });
+    expect(((await f.request('')) as SimulationModel).description).toBe(described.description);
+    delete described.description;
+    await f.request('', 'PUT', { baseVersion: 2, model: described });
+    expect(await f.request('')).not.toHaveProperty('description');
   });
   it('rejects invalid assumptions with semantic structured errors and no partial writes', async () => {
     const f = fixture();

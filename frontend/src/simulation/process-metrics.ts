@@ -1,6 +1,7 @@
 import { finishEconomics, zeroEconomics } from './economics';
 import { ProcessHierarchy } from './process-hierarchy';
 import { Distribution } from './statistics';
+import { infrastructureResourceIds } from './infrastructure/runtime';
 import type { ResourceState, WorkState } from './engine-state';
 import type {
   Bottleneck,
@@ -38,6 +39,7 @@ interface Projection {
   resources: ReadonlyMap<string, ResourceState>;
   bottlenecks: Bottleneck[];
   unitCostRate: (resource: ResourceState) => number;
+  infrastructureConsumers?: ReadonlyMap<string, ReadonlySet<string>>;
 }
 interface CaseVisit {
   tokens: Set<number>;
@@ -59,9 +61,18 @@ export class ProcessMetricsAccumulator {
   private readonly rootScopes = new Map<number, Set<string>>();
   private readonly resourceUsage = new Map<string, Map<string, number>>();
   private readonly featureCosts = new Map<string, { investment: number; perHour: number }>();
+  private readonly transferResources = new Map<string, Set<string>>();
 
-  constructor(model: SimulationModel) {
+  constructor(private readonly model: SimulationModel) {
     this.hierarchy = new ProcessHierarchy(model);
+    if (model.infrastructure)
+      for (const edge of model.edges)
+        if (edge.infrastructure)
+          for (const processId of this.hierarchy.forNode(edge.sourceNodeId)) {
+            const resources = this.transferResources.get(processId) ?? new Set<string>();
+            resources.add(edge.infrastructure.transfer.resourceId);
+            this.transferResources.set(processId, resources);
+          }
     for (const id of this.hierarchy.processes.keys())
       this.counters.set(id, {
         entered: 0,
@@ -273,19 +284,40 @@ export class ProcessMetricsAccumulator {
       });
       const resourceConsumers = new Map<string, WorkState[]>();
       for (const work of workNodes)
-        for (const requirement of work.node.work.resourceRequirements ?? []) {
-          const consumers = resourceConsumers.get(requirement.resourceId) ?? [];
+        for (const resourceId of this.model.infrastructure
+          ? infrastructureResourceIds(work.node.work)
+          : (work.node.work.resourceRequirements ?? []).map((r) => r.resourceId)) {
+          const consumers = resourceConsumers.get(resourceId) ?? [];
           consumers.push(work);
-          resourceConsumers.set(requirement.resourceId, consumers);
+          resourceConsumers.set(resourceId, consumers);
         }
       const resourceIds = new Set(resourceConsumers.keys());
+      for (const resourceId of this.transferResources.get(id) ?? []) resourceIds.add(resourceId);
       const bottlenecks = nodeIds.flatMap((nodeId): Bottleneck[] => {
         const bottleneck = nodeBottlenecks.get(nodeId);
         return bottleneck ? [bottleneck] : [];
       });
-      for (const [resourceId, consumers] of resourceConsumers) {
+      for (const resourceId of resourceIds) {
         const bottleneck = resourceBottlenecks.get(resourceId);
         if (!bottleneck) continue;
+        const consumers = resourceConsumers.get(resourceId) ?? [];
+        if (this.model.infrastructure) {
+          const affected =
+            bottleneck.methodology === 'blocked-admission'
+              ? consumers.filter((work) =>
+                  input.nodes[work.node.id].blockedResourceIds?.includes(resourceId),
+                ).length
+              : nodeIds.filter((id) => input.infrastructureConsumers?.get(resourceId)?.has(id))
+                  .length;
+          if (!affected) continue;
+          bottlenecks.push({
+            ...bottleneck,
+            ...(bottleneck.methodology === 'blocked-admission'
+              ? { score: affected * (1 + bottleneck.utilization) }
+              : {}),
+          });
+          continue;
+        }
         const averageQueue = consumers.reduce(
           (sum, work) => sum + input.nodes[work.node.id].queue.average,
           0,

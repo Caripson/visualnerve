@@ -4,6 +4,7 @@ import { JsonField } from './JsonField';
 import { ScheduleFields } from './ScheduleFields';
 import type { SimulationNode } from '../types';
 import type { NodeSectionProps } from './types';
+import { WorkDomainFields } from '../infrastructure/WorkDomainFields';
 export function WorkEditor({
   draft,
   node,
@@ -19,13 +20,15 @@ export function WorkEditor({
           step={1}
           change={(value) => patchNode({ work: { ...node.work, capacity: value ?? 0 } })}
         />
-        <NumberField
-          label={t('simulator.editor.work.processingTimeMinutes')}
-          value={node.work.processingSeconds / 60}
-          change={(value) =>
-            patchNode({ work: { ...node.work, processingSeconds: (value ?? 0) * 60 } })
-          }
-        />
+        {!node.work.infrastructure?.cpu && !node.work.infrastructure?.energy && (
+          <NumberField
+            label={t('simulator.editor.work.processingTimeMinutes')}
+            value={node.work.processingSeconds / 60}
+            change={(value) =>
+              patchNode({ work: { ...node.work, processingSeconds: (value ?? 0) * 60 } })
+            }
+          />
+        )}
         <NumberField
           label={t('simulator.editor.work.workCostHour')}
           help={t('simulator.editor.work.perAvailableCapacityUnitIncludingIdleTime')}
@@ -87,58 +90,63 @@ export function WorkEditor({
           </select>
         </label>
       </div>
+      <WorkDomainFields model={draft} work={node.work} change={(work) => patchNode({ work })} />
       <fieldset>
         <legend>{t('simulator.editor.work.sharedResourcesRequiredTogether')}</legend>
-        {draft.resources.map((resource) => {
-          const requirement = node.work.resourceRequirements?.find(
-            (entry) => entry.resourceId === resource.id,
-          );
-          return (
-            <div className="simulation-resource-binding" key={resource.id}>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={!!requirement}
-                  onChange={(event) =>
-                    patchNode({
-                      work: {
-                        ...node.work,
-                        resourceRequirements: event.target.checked
-                          ? [
-                              ...(node.work.resourceRequirements ?? []),
-                              { resourceId: resource.id, units: 1 },
-                            ]
-                          : node.work.resourceRequirements?.filter(
-                              (entry) => entry.resourceId !== resource.id,
-                            ),
-                      },
-                    })
-                  }
-                />
-                {resource.name}
-              </label>
-              {requirement && (
-                <NumberField
-                  label={t('simulator.editor.work.unitsRequired', { name: String(resource.name) })}
-                  value={requirement.units}
-                  min={0.001}
-                  change={(value) =>
-                    patchNode({
-                      work: {
-                        ...node.work,
-                        resourceRequirements: node.work.resourceRequirements?.map((entry) =>
-                          entry.resourceId === resource.id
-                            ? { ...entry, units: value ?? 1 }
-                            : entry,
-                        ),
-                      },
-                    })
-                  }
-                />
-              )}
-            </div>
-          );
-        })}
+        {draft.resources
+          .filter((resource) => !resource.infrastructure)
+          .map((resource) => {
+            const requirement = node.work.resourceRequirements?.find(
+              (entry) => entry.resourceId === resource.id,
+            );
+            return (
+              <div className="simulation-resource-binding" key={resource.id}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={!!requirement}
+                    onChange={(event) =>
+                      patchNode({
+                        work: {
+                          ...node.work,
+                          resourceRequirements: event.target.checked
+                            ? [
+                                ...(node.work.resourceRequirements ?? []),
+                                { resourceId: resource.id, units: 1 },
+                              ]
+                            : node.work.resourceRequirements?.filter(
+                                (entry) => entry.resourceId !== resource.id,
+                              ),
+                        },
+                      })
+                    }
+                  />
+                  {resource.name}
+                </label>
+                {requirement && (
+                  <NumberField
+                    label={t('simulator.editor.work.unitsRequired', {
+                      name: String(resource.name),
+                    })}
+                    value={requirement.units}
+                    min={0.001}
+                    change={(value) =>
+                      patchNode({
+                        work: {
+                          ...node.work,
+                          resourceRequirements: node.work.resourceRequirements?.map((entry) =>
+                            entry.resourceId === resource.id
+                              ? { ...entry, units: value ?? 1 }
+                              : entry,
+                          ),
+                        },
+                      })
+                    }
+                  />
+                )}
+              </div>
+            );
+          })}
       </fieldset>
       <fieldset>
         <legend>{t('simulator.editor.work.acceptedParticleTypesAllWhenEmpty')}</legend>

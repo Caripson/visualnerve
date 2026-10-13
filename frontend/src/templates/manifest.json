@@ -78,6 +78,30 @@
     "nodes": 4
   },
   {
+    "key": "api-compute-capacity",
+    "name": "API & Compute Capacity",
+    "type": "process-simulator",
+    "nodes": 7
+  },
+  {
+    "key": "network-multi-site-capacity",
+    "name": "Network & Multi-Site Capacity",
+    "type": "process-simulator",
+    "nodes": 8
+  },
+  {
+    "key": "energy-power-capacity",
+    "name": "Energy & Power Capacity",
+    "type": "process-simulator",
+    "nodes": 4
+  },
+  {
+    "key": "datacenter-capacity",
+    "name": "Datacenter Capacity",
+    "type": "process-simulator",
+    "nodes": 14
+  },
+  {
     "key": "time-series-analysis",
     "name": "Time Series & Signal Analysis",
     "type": "freeform",
@@ -91,121 +115,121 @@
   },
   {
     "key": "dfd-yourdon-demarco",
-    "name": "DFD · Yourdon–DeMarco",
+    "name": "DFD \u00b7 Yourdon\u2013DeMarco",
     "type": "freeform",
     "nodes": 6
   },
   {
     "key": "dfd-gane-sarson",
-    "name": "DFD · Gane–Sarson",
+    "name": "DFD \u00b7 Gane\u2013Sarson",
     "type": "freeform",
     "nodes": 6
   },
   {
     "key": "uml-class",
-    "name": "UML · Class",
+    "name": "UML \u00b7 Class",
     "type": "freeform",
     "nodes": 5
   },
   {
     "key": "uml-object",
-    "name": "UML · Object",
+    "name": "UML \u00b7 Object",
     "type": "freeform",
     "nodes": 3
   },
   {
     "key": "uml-package",
-    "name": "UML · Package",
+    "name": "UML \u00b7 Package",
     "type": "freeform",
     "nodes": 5
   },
   {
     "key": "uml-component",
-    "name": "UML · Component",
+    "name": "UML \u00b7 Component",
     "type": "freeform",
     "nodes": 5
   },
   {
     "key": "uml-composite-structure",
-    "name": "UML · Composite Structure",
+    "name": "UML \u00b7 Composite Structure",
     "type": "freeform",
     "nodes": 5
   },
   {
     "key": "uml-deployment",
-    "name": "UML · Deployment",
+    "name": "UML \u00b7 Deployment",
     "type": "freeform",
     "nodes": 5
   },
   {
     "key": "uml-profile",
-    "name": "UML · Profile",
+    "name": "UML \u00b7 Profile",
     "type": "freeform",
     "nodes": 3
   },
   {
     "key": "uml-use-case",
-    "name": "UML · Use Case",
+    "name": "UML \u00b7 Use Case",
     "type": "freeform",
     "nodes": 5
   },
   {
     "key": "uml-activity",
-    "name": "UML · Activity",
+    "name": "UML \u00b7 Activity",
     "type": "freeform",
     "nodes": 7
   },
   {
     "key": "uml-state-machine",
-    "name": "UML · State Machine",
+    "name": "UML \u00b7 State Machine",
     "type": "freeform",
     "nodes": 5
   },
   {
     "key": "uml-sequence",
-    "name": "UML · Sequence",
+    "name": "UML \u00b7 Sequence",
     "type": "freeform",
     "nodes": 5
   },
   {
     "key": "uml-communication",
-    "name": "UML · Communication",
+    "name": "UML \u00b7 Communication",
     "type": "freeform",
     "nodes": 3
   },
   {
     "key": "uml-interaction-overview",
-    "name": "UML · Interaction Overview",
+    "name": "UML \u00b7 Interaction Overview",
     "type": "freeform",
     "nodes": 6
   },
   {
     "key": "uml-timing",
-    "name": "UML · Timing",
+    "name": "UML \u00b7 Timing",
     "type": "freeform",
     "nodes": 3
   },
   {
     "key": "bpmn-process",
-    "name": "BPMN · Process",
+    "name": "BPMN \u00b7 Process",
     "type": "freeform",
     "nodes": 13
   },
   {
     "key": "bpmn-collaboration",
-    "name": "BPMN · Collaboration",
+    "name": "BPMN \u00b7 Collaboration",
     "type": "freeform",
     "nodes": 8
   },
   {
     "key": "bpmn-conversation",
-    "name": "BPMN · Conversation",
+    "name": "BPMN \u00b7 Conversation",
     "type": "freeform",
     "nodes": 4
   },
   {
     "key": "bpmn-choreography",
-    "name": "BPMN · Choreography",
+    "name": "BPMN \u00b7 Choreography",
     "type": "freeform",
     "nodes": 4
   }

@@ -64,6 +64,7 @@ export function particleCapacityCard(view: SimulationParticleView, logicalId: st
   return (
     cards.find(
       (node) =>
+        node.metadata.simulationAggregateCapacity === true ||
         typeof node.metadata.simulationProcessId === 'string' ||
         (getSimulationCapacityCard(node)?.unit ?? 1) === unit,
     ) ??

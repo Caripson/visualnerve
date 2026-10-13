@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 const ValidationContext = createContext<(field: string, invalid: boolean, label: string) => void>(
   () => undefined,
 );
+export const useEditorFieldValidation = () => useContext(ValidationContext);
 export function EditorValidationProvider({
   children,
   change,

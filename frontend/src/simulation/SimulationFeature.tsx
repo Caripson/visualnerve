@@ -19,7 +19,7 @@ import {
   SimulationStopActions,
   simulationTime,
 } from './SimulationControls';
-import { simulationSetupEvent } from './setup-event';
+import { simulationSetupEvent, simulationAssumptionsEvent } from './setup-event';
 import { SimulationUIActions, type SimulationUIAction } from './ui-action';
 import './simulation.css';
 
@@ -112,8 +112,13 @@ export function SimulationFeature() {
     const openSetup = () => {
       if (!useEditor.getState().graph?.simulation?.nodes.length) setSetup(true);
     };
+    const openAssumptions = () => setSettings(true);
     window.addEventListener(simulationSetupEvent, openSetup);
-    return () => window.removeEventListener(simulationSetupEvent, openSetup);
+    window.addEventListener(simulationAssumptionsEvent, openAssumptions);
+    return () => {
+      window.removeEventListener(simulationSetupEvent, openSetup);
+      window.removeEventListener(simulationAssumptionsEvent, openAssumptions);
+    };
   }, [graph?.diagram.id, graph?.simulation?.nodes.length]);
   useEffect(() => {
     if (!graph?.simulation || !uiActions.isCurrent(graph.diagram.id)) return;

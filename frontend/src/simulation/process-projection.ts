@@ -107,6 +107,9 @@ export class ProcessProjection {
               ...node.metadata,
               simulationProjected: true,
               simulationPoolSummary: true,
+              simulationPoolDimension:
+                this.model.resources.find((resource) => resource.id === config.resourceId)
+                  ?.infrastructure?.kind ?? (this.model.infrastructure ? 'allocation' : undefined),
               simulationLogicalNodeId: config.id,
               simulationResourceId: config.resourceId,
               simulationResourceCapacity: node.metadata.simulationCapacityTotal,

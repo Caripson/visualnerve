@@ -8,6 +8,8 @@ Process Simulator helps you ask a whole-system question: “If demand, staffing 
 
 It is a separate **Process Simulator** template and document type. Ordinary diagram placement controls presentation; moving a card does not change arrival rates, processing times, resource requirements or routing.
 
+For API/CPU/RAM, shared multi-site links, generation/grid/battery supply and a combined datacenter flow, use the [infrastructure capacity guide](/help/infrastructure-capacity/). Those examples keep these controls and add explicit typed resource assumptions.
+
 ## Build a process from scratch
 
 1. Choose **New diagram → Process Simulator → Create diagram**. An empty process opens **Set up your process**.

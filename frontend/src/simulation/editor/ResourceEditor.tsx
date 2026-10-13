@@ -6,6 +6,8 @@ import { ScheduleFields } from './ScheduleFields';
 import type { ParticleType, Resource, Improvement, SimulationNode } from '../types';
 import type { EditorSectionProps } from './types';
 import { removeSimulationEntity } from '../deletion';
+import { ResourceDomainFields } from '../infrastructure/ResourceDomainFields';
+import { infrastructureWorkResources } from '../infrastructure/references';
 export function ResourceEditor({
   draft,
   setDraft,
@@ -20,10 +22,21 @@ export function ResourceEditor({
   const patchResource = (id: string, partial: Partial<Resource>) =>
     setDraft((model) => ({
       ...model,
+      ...(partial.infrastructure
+        ? { schemaVersion: 2 as const, infrastructure: { schemaVersion: 1 as const } }
+        : {}),
       resources: model.resources.map((entry) =>
         entry.id === id ? { ...entry, ...partial } : entry,
       ),
     }));
+  const typedInUse = (resource: Resource) =>
+    !!resource.infrastructure &&
+    (draft.nodes.some(
+      (node) =>
+        node.type === 'work' &&
+        infrastructureWorkResources(node.work.infrastructure).includes(resource.id),
+    ) ||
+      draft.edges.some((edge) => edge.infrastructure?.transfer.resourceId === resource.id));
   return (
     <>
       <EntityCollection
@@ -43,41 +56,53 @@ export function ResourceEditor({
                 onChange={(event) => patchResource(resource.id, { name: event.target.value })}
               />
             </label>
-            <label>
-              {t('simulator.editor.resource.unit')}{' '}
-              <input
-                aria-label={t('simulator.editor.resource.resourceUnit', {
-                  id: String(resource.id),
-                })}
-                value={resource.unit}
-                onChange={(event) => patchResource(resource.id, { unit: event.target.value })}
-              />
-            </label>
+            <ResourceDomainFields
+              resource={resource}
+              model={draft}
+              allowDimensionChange={!scenarioId || !!draft.infrastructure}
+              change={(partial) => patchResource(resource.id, partial)}
+            />
+            {!resource.infrastructure && (
+              <>
+                <label>
+                  {t('simulator.editor.resource.unit')}{' '}
+                  <input
+                    aria-label={t('simulator.editor.resource.resourceUnit', {
+                      id: String(resource.id),
+                    })}
+                    value={resource.unit}
+                    onChange={(event) => patchResource(resource.id, { unit: event.target.value })}
+                  />
+                </label>
+                <div className="simulation-grid">
+                  <NumberField
+                    label={t('simulator.editor.resource.resourceCapacity', {
+                      name: String(resource.name),
+                    })}
+                    value={resource.capacity}
+                    step={1}
+                    change={(value) => patchResource(resource.id, { capacity: value ?? 0 })}
+                  />
+                  <NumberField
+                    label={t('simulator.editor.resource.resourceMinimum', {
+                      name: String(resource.name),
+                    })}
+                    value={resource.minCapacity}
+                    step={1}
+                    change={(value) => patchResource(resource.id, { minCapacity: value })}
+                  />
+                  <NumberField
+                    label={t('simulator.editor.resource.resourceMaximum', {
+                      name: String(resource.name),
+                    })}
+                    value={resource.maxCapacity}
+                    step={1}
+                    change={(value) => patchResource(resource.id, { maxCapacity: value })}
+                  />
+                </div>
+              </>
+            )}
             <div className="simulation-grid">
-              <NumberField
-                label={t('simulator.editor.resource.resourceCapacity', {
-                  name: String(resource.name),
-                })}
-                value={resource.capacity}
-                step={1}
-                change={(value) => patchResource(resource.id, { capacity: value ?? 0 })}
-              />
-              <NumberField
-                label={t('simulator.editor.resource.resourceMinimum', {
-                  name: String(resource.name),
-                })}
-                value={resource.minCapacity}
-                step={1}
-                change={(value) => patchResource(resource.id, { minCapacity: value })}
-              />
-              <NumberField
-                label={t('simulator.editor.resource.resourceMaximum', {
-                  name: String(resource.name),
-                })}
-                value={resource.maxCapacity}
-                step={1}
-                change={(value) => patchResource(resource.id, { maxCapacity: value })}
-              />
               <NumberField
                 label={t('simulator.editor.resource.resourceCostHour', {
                   name: String(resource.name),
@@ -87,34 +112,48 @@ export function ResourceEditor({
                 change={(value) => patchResource(resource.id, { costPerHour: value })}
               />
             </div>
-            <ScalingFields
-              capacity={resource.capacity}
-              value={resource.scaling}
-              change={(value) => patchResource(resource.id, { scaling: value })}
-            />
-            <ScheduleFields
-              label={t('simulator.editor.resource.availability', { name: String(resource.name) })}
-              value={resource.schedule}
-              change={(schedule) => patchResource(resource.id, { schedule })}
-            />
-            <JsonField
-              fieldId={`resource-schedule:${resource.id}`}
-              label={t('simulator.editor.resource.availability.name', {
-                name: String(resource.name),
-              })}
-              value={resource.schedule}
-              change={(value) =>
-                patchResource(resource.id, { schedule: value as typeof resource.schedule })
-              }
-            />
+            {(!resource.infrastructure ||
+              resource.infrastructure.kind === 'cpu' ||
+              resource.infrastructure.kind === 'memory') && (
+              <ScalingFields
+                capacity={resource.capacity}
+                value={resource.scaling}
+                change={(value) => patchResource(resource.id, { scaling: value })}
+              />
+            )}
+
+            {resource.infrastructure?.kind !== 'energy' && (
+              <>
+                <ScheduleFields
+                  label={t('simulator.editor.resource.availability', {
+                    name: String(resource.name),
+                  })}
+                  value={resource.schedule}
+                  change={(schedule) => patchResource(resource.id, { schedule })}
+                />
+                <JsonField
+                  fieldId={`resource-schedule:${resource.id}`}
+                  label={t('simulator.editor.resource.availability.name', {
+                    name: String(resource.name),
+                  })}
+                  value={resource.schedule}
+                  change={(value) =>
+                    patchResource(resource.id, { schedule: value as typeof resource.schedule })
+                  }
+                />
+              </>
+            )}
             {!scenarioId && (
               <>
                 <p>
-                  {t(
-                    'simulator.editor.resource.deletingAlsoDisconnectsWorkNodesAndRemovesThisResourceSDisplaysAnd',
-                  )}
+                  {typedInUse(resource)
+                    ? 'Remove typed work requirements and network transfers before deleting this pool.'
+                    : t(
+                        'simulator.editor.resource.deletingAlsoDisconnectsWorkNodesAndRemovesThisResourceSDisplaysAnd',
+                      )}
                 </p>
                 <button
+                  disabled={typedInUse(resource)}
                   onClick={() =>
                     setDraft((model) => removeSimulationEntity(model, 'resources', resource.id))
                   }

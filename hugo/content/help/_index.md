@@ -22,6 +22,7 @@ Visual Nerve turns ideas, data and code into diagrams you can explore, annotate,
 | Understand a large CSV without losing its relationships | [Explore a CSV](/help/csv/), then [connect and refresh sources](/help/connected-data/) |
 | See what a query or codebase depends on | [SQL queries and schemas](/help/sql/) or [source code](/help/code/) |
 | Find where capacity or queues hurt a business | [Process Simulator](/help/simulation/) |
+| Plan compute, network or generation and battery capacity | [Infrastructure capacity](/help/infrastructure-capacity/) |
 | Walk someone through a diagram like a film | [Presentations, narration and video](/help/presentations/) |
 | Turn a workflow into an app brief | [Export and Lovable](/help/sharing/) |
 | Work on one diagram with approved people | [Realtime collaboration](/help/collaboration/) |
@@ -44,6 +45,8 @@ These entry points keep earlier links and bookmarks useful.
 ### Process Simulator
 
 [Build, run and compare processes](/help/simulation/), including shared resources, real queues, scaling, costs and replay.
+
+[Plan CPU/RAM, multi-site networks and energy supply](/help/infrastructure-capacity/) with dedicated resource units and the same engine, or combine them in the Datacenter Capacity example.
 
 ### Move around
 

@@ -3,6 +3,11 @@ import type { SimulationModel } from './types';
 import { ProcessHierarchy } from './process-hierarchy';
 import { remapSimulationModel } from './copy';
 import { StorageError } from '../model/errors';
+import {
+  remapInfrastructureEdge,
+  remapInfrastructureWork,
+  simulationResourceReferences,
+} from './infrastructure/references';
 
 export interface SimulationClipboard {
   diagramId: string;
@@ -17,17 +22,10 @@ export function copySimulationSelection(
   const nodes = graph.simulation.nodes.filter((node) => ids.has(node.id));
   const hierarchy = new ProcessHierarchy(graph.simulation);
   const processes = new Set(nodes.flatMap((node) => [...hierarchy.forNode(node.id)]));
-  const resources = new Set<string>();
-  for (const node of nodes) {
-    if (node.type === 'resource') resources.add(node.resourceId);
-    if (node.type === 'work')
-      for (const requirement of node.work.resourceRequirements ?? [])
-        resources.add(requirement.resourceId);
-    if (node.type === 'router')
-      for (const rule of node.router.rules ?? [])
-        if (rule.condition && 'resourceId' in rule.condition && rule.condition.resourceId)
-          resources.add(rule.condition.resourceId);
-  }
+  const edges = graph.simulation.edges.filter(
+    (edge) => ids.has(edge.sourceNodeId) && ids.has(edge.targetNodeId),
+  );
+  const resources = simulationResourceReferences(nodes, edges);
   return {
     diagramId: graph.diagram.id,
     model: {
@@ -36,9 +34,7 @@ export function copySimulationSelection(
       ...(graph.simulation.processes
         ? { processes: graph.simulation.processes.filter((process) => processes.has(process.id)) }
         : {}),
-      edges: graph.simulation.edges.filter(
-        (edge) => ids.has(edge.sourceNodeId) && ids.has(edge.targetNodeId),
-      ),
+      edges,
       resources: graph.simulation.resources.filter((resource) => resources.has(resource.id)),
       improvements: graph.simulation.improvements.filter(
         (feature) =>
@@ -97,6 +93,14 @@ export function pasteSimulationSelection(
         ...node,
         work: {
           ...node.work,
+          ...(node.work.infrastructure
+            ? {
+                infrastructure: remapInfrastructureWork(
+                  node.work.infrastructure,
+                  (id) => resourceIds.get(id) ?? id,
+                ),
+              }
+            : {}),
           ...(node.work.resourceRequirements
             ? {
                 resourceRequirements: node.work.resourceRequirements.map((requirement) => ({
@@ -152,6 +156,12 @@ export function pasteSimulationSelection(
   });
   return {
     ...target.simulation,
+    ...(clip.model.infrastructure
+      ? {
+          schemaVersion: 2 as const,
+          infrastructure: { ...clip.model.infrastructure },
+        }
+      : {}),
     ...(target.simulation.processes || copied.processes
       ? {
           processes: [
@@ -168,6 +178,14 @@ export function pasteSimulationSelection(
       ...target.simulation.edges,
       ...copied.edges.map((edge) => ({
         ...edge,
+        ...(edge.infrastructure
+          ? {
+              infrastructure: remapInfrastructureEdge(
+                edge.infrastructure,
+                (id) => resourceIds.get(id) ?? id,
+              ),
+            }
+          : {}),
         ...(edge.particleTypeIds
           ? { particleTypeIds: edge.particleTypeIds.map((id) => particleIds.get(id)!) }
           : {}),

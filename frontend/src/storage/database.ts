@@ -1,3 +1,4 @@
+import { prepareTemplateFactory, preparedTemplateFactory } from '../templates/factory';
 import Dexie, {
   type Collection,
   type EntityTable,
@@ -589,7 +590,11 @@ export class LegacyWorkspaceStorage implements WorkspaceScope {
   async initialize() {
     this.domain(['settings', 'templates'], true);
     if (!this.context) await this.open();
-    await this.atomic('rw', ['settings', 'templates'], initializeWorkspace);
+    const instantiate = this.context ? preparedTemplateFactory() : await prepareTemplateFactory();
+    this.domain(['settings', 'templates'], true);
+    await this.atomic('rw', ['settings', 'templates'], (scope) =>
+      initializeWorkspace(scope, instantiate),
+    );
   }
   graph(id: string) {
     this.domain(graphStoreNames);

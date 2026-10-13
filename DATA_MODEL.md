@@ -21,10 +21,10 @@ Icons use metadata.visualNerve.icon and preserve other custom keys. Diagram sett
 
 `frontend/src/notation/types.ts` defines the authoritative notation discriminants and bounds. Collection IDs are `hipo`, `dfd-yourdon`, `dfd-gane-sarson`, `uml` and `bpmn`; symbols and connectors use stable IDs within their collection.
 
-| Canonical field | Saved value |
-| --- | --- |
-| `Diagram.notation` | `NotationProfile`: `schemaVersion: 1`, `collection` and its supported `diagramKind` |
-| `GraphNode.notation` | `NodeNotation`: `collection`, `symbol`, optional `diagramKind`, typed `properties`, `compartments`, `ports`, `attachmentId` and `relatedNodeId` |
+| Canonical field      | Saved value                                                                                                                                                       |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Diagram.notation`   | `NotationProfile`: `schemaVersion: 1`, `collection` and its supported `diagramKind`                                                                               |
+| `GraphNode.notation` | `NodeNotation`: `collection`, `symbol`, optional `diagramKind`, typed `properties`, `compartments`, `ports`, `attachmentId` and `relatedNodeId`                   |
 | `GraphEdge.notation` | `EdgeNotation`: `collection`, `symbol`, optional typed `properties`, `sourcePort`, `targetPort`, endpoint labels/multiplicities and absolute `[x, y]` `waypoints` |
 
 Compartments are ordered `{id, title?, lines: string[]}` records. Named ports are `{id, side, offset?, direction?, label?}`; side is left/right/top/bottom, offset is a fraction from 0 through 1, and direction is `in`/`out`/`both`. An endpoint port names a saved port or a built-in cardinal anchor. Node positions and edge waypoints use absolute diagram coordinates; `parentId` remains ordinary containment. `attachmentId` separately names a same-diagram host permitted by the symbol, such as a component port, lifeline execution specification or BPMN boundary event. `relatedNodeId` is a same-diagram reference rather than ownership.
@@ -101,3 +101,7 @@ Code analysis also supports `mode:"folders"`. Directory nodes use `metadata.proj
 ## Analytics extension
 
 `Diagram.analytics?: AnalyticsExtension` has `schemaVersion:1` and its own `engineVersion`. It contains semantic datasets/series, chart configurations, indicators, data-anchored measurements, declarative rules/signals, chronological backtest configurations, explicit scenarios and bounded immutable result archives with real retained input snapshots. Optional `scenarioView` stores explicit observed customer/MRC source references for historical comparison as visualization configuration; copy/import remaps them without changing observations or assumptions. It is encrypted/chunked as part of the existing Diagram record; workspace schema remains 8 and old diagram types are unchanged. Source refresh advances data versions and marks archives stale. Portable copy remaps semantic and graph links. See [schema and invariants](docs/TIME_SERIES_ANALYSIS.md).
+
+### Typed infrastructure simulation
+
+Process Simulator stores its authoritative semantic payload in `graph.simulation`. Legacy model `schemaVersion:1` remains unchanged. Infrastructure model `schemaVersion:2` requires `infrastructure:{schemaVersion:1}` and adds optional typed descriptors to resources, demands/leases to Work and payload transfers to edges. Units are canonical cores, MiB, Mbps and kW; values are not inferred from native node types or coordinates. Existing encrypted diagram storage, native JSON, backups and captured run models retain these fields without a new table or workspace migration. Root case RAM, attachment-independent simulation IDs and typed resource references follow the existing semantic copy/remap boundaries. Detailed runtime counters and captured comparison values are result data, never replacement model assumptions. Live rooms reject infrastructure profiles until a compatible document contract exists. See [fields, math and bounds](docs/INFRASTRUCTURE_CAPACITY.md).

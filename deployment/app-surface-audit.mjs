@@ -37,6 +37,7 @@ const guideNames = [
   "dfd",
   "uml",
   "bpmn",
+  "infrastructure-capacity",
 ];
 export const policyNames = ["privacy", "security", "license"];
 const generatedFiles = [

@@ -2235,7 +2235,7 @@ const catalog = {
     'Redigerer baseline. Eksisterende kørselsresultater beholder deres oprindelige antagelser.',
   'simulator.editor.model.fixInvalidJsonIn': 'Ret ugyldig JSON i:',
   'simulator.editor.model.fixTheJsonErrorBeforeApplying': 'Ret JSON-fejlen før anvendelse.',
-  'simulator.editor.model.invalidJsonFields': 'Ret ugyldig JSON i: {fields}.',
+  'simulator.editor.model.invalidJsonFields': 'Ret ugyldige felter: {fields}.',
   'simulator.editor.model.settingsSection': 'Indstillingssektion',
   'simulator.editor.model.simulationSettingsSections': 'Sektioner for simulationsindstillinger',
   'simulator.editor.model.theModelChangedWhileSettingsWereOpenReopenSettingsToEditThe':

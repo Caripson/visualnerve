@@ -135,7 +135,7 @@ The app, the local bridge executable and your MCP client are three separate prog
 
 Before giving an agent workspace commands:
 
-1. Inspect the local `GET /api/v1/health` address shown in the copied instructions. The current bridge reports version **0.9.0**, both MCP tool names, and the capabilities `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1`, `collaboration-document-v1`, `analytics-v1`, `ibm-flowcharting-v1` and `standard-notations-v1`. Health contains public transport metadata; it does not read diagrams or unlock the workspace.
+1. Inspect the local `GET /api/v1/health` address shown in the copied instructions. The current bridge reports version **0.10.0**, both MCP tool names, and the capabilities `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1`, `collaboration-document-v1`, `analytics-v1`, `ibm-flowcharting-v1`, `standard-notations-v1` and `infrastructure-resources-v1`. Health contains public transport metadata; it does not read diagrams or unlock the workspace.
 2. Reconnect or initialize the MCP client, then inspect its discovered tools. It should show both **visual_nerve_request** and **visual_nerve_api_docs**. A client can retain an old tool list until you reconnect it.
 3. Ask the agent to read the compact guide before making commands. For a particular endpoint, it can request a smaller contract containing that operation and every referenced schema:
 
@@ -413,7 +413,7 @@ These ordinary node fields work with IBM symbols and other cards in 2D and 3D. `
 
 ## Create and review a standard notation diagram
 
-Bridge/browser **0.9.0** adds `standard-notations-v1` through the same **visual_nerve_request** and **visual_nerve_api_docs** tools. [Update the local bridge and rediscover its tools](#check-the-bridge-and-discovered-tools) if this capability is missing; updating the website alone does not update the executable. The [collection guide](/help/notation-collections/) compares [HIPO](/help/hipo/), [Yourdon–DeMarco and Gane–Sarson DFD](/help/dfd/), [UML](/help/uml/) and [BPMN](/help/bpmn/).
+Bridge/browser **0.10.0** adds `standard-notations-v1` through the same **visual_nerve_request** and **visual_nerve_api_docs** tools. [Update the local bridge and rediscover its tools](#check-the-bridge-and-discovered-tools) if this capability is missing; updating the website alone does not update the executable. The [collection guide](/help/notation-collections/) compares [HIPO](/help/hipo/), [Yourdon–DeMarco and Gane–Sarson DFD](/help/dfd/), [UML](/help/uml/) and [BPMN](/help/bpmn/).
 
 With a connected browser and Read only access, discover collections and inspect the chosen catalog:
 
@@ -585,6 +585,20 @@ Use `7` only if the latest graph read returned that version. The nested patch pr
 
 Entity collections also support particle types, resources, edges, improvements and scenarios. API model time units are **seconds**, with arrivals and operating costs **per hour** in the model currency. UI fields may show minutes where labelled. [Process Simulator](/help/simulation/) explains shared resources, queues, scaling, economics and scenario isolation.
 
+## Plan infrastructure through the existing simulator
+
+Bridge/browser **0.10.0** advertises `infrastructure-resources-v1`. Read `GET /simulation/capabilities`: its compatibility `schemaVersion:1` remains, while `supportedModelSchemaVersions:[1,2]` and `infrastructure.requiredModelSchemaVersion:2` identify the execution boundary. Typed models need `schemaVersion:2` and `infrastructure:{schemaVersion:1}` together; older engines reject version 2.
+
+The [infrastructure guide](/help/infrastructure-capacity/) explains **API & Compute Capacity**, **Network & Multi-Site Capacity**, **Energy & Power Capacity** and **Datacenter Capacity**, including CPU/RAM leases, shared link serialization and actual energy delivery. Discover exact fields through **visual_nerve_api_docs** before requests:
+
+```json
+{"document":"endpoint","path":"/diagrams/{diagramId}/simulation","method":"PUT"}
+```
+
+Use the same **visual_nerve_request** tool, pinned `workspaceId`, simulation model/entity CRUD, asynchronous runs and comparison routes. Direct `POST /diagrams` accepts `template:"api-compute-capacity"`, `"network-multi-site-capacity"`, `"energy-power-capacity"` or `"datacenter-capacity"`; these use `process-simulator` and reject `mode` or a different supplied type. `state/result.infrastructure` contains resource-keyed CPU, RAM, link and energy counters; individual resource GET keeps generic capacity/busy/queue/utilization/cost metrics. Versioned PATCH preserves omission, recursively merges objects, removes optional fields with `null` and replaces arrays. Complete/new values reject null; invalid assumptions reject atomically with structured 422 `SIMULATION_INFRASTRUCTURE_INVALID`.
+
+Finite-horizon runs can retain unfinished work. Until-complete fails with `SIMULATION_INFRASTRUCTURE_STALLED` when no future event can make progress. Read only permits inspection/comparison; model/run mutation requires Read + write. Live rooms currently reject infrastructure models until a compatible collaboration contract exists. Share an explicit native JSON export or encrypted backup instead.
+
 ## Run without animation and collect a result
 
 For an existing configured simulator:
@@ -732,7 +746,7 @@ Use editable exports when you want to continue working on the drawing in another
 
 Editable Draw.io drawings use a **light drawing surface**, regardless of app Appearance. Ordinary nodes default to white fills; an explicit `backgroundColor` is preserved with readable text contrast, alongside saved node, connection and mind-map color accents. IBM glyphs use the ordinary semantic node type's shape and report `IBM_SYMBOL_GEOMETRY_SIMPLIFIED`. Native JSON preserves exact glyph IDs and styling, and workspace backups also retain portable appearance settings. This needs no extra API argument; SVG keeps its existing appearance behavior.
 
-1. Read `GET /exports/capabilities` first. Its existing SVG fields remain unchanged; `diagrams` describes the drawio format, scopes, validation metadata and separate limits. Bridge 0.9.0 advertises `exchange-export-v1`.
+1. Read `GET /exports/capabilities` first. Its existing SVG fields remain unchanged; `diagrams` describes the drawio format, scopes, validation metadata and separate limits. Bridge 0.10.0 advertises `exchange-export-v1`.
 2. Start an export with the existing **visual_nerve_request** tool:
 
 ```json
@@ -825,7 +839,7 @@ The example never automatically repeats a POST after a transport error. If a wri
 
 Realtime collaboration is optional and requires a configured relay. The human creates a room, chooses what to disclose and approves participant devices in the [Collaboration panel](/help/collaboration/). MCP does not provide invitations, approval, role changes, private keys or an unlock operation.
 
-Bridge **0.9.0** advertises `collaboration-v1` and `collaboration-document-v1`. Ask the browser whether the optional feature is configured:
+Bridge **0.10.0** advertises `collaboration-v1` and `collaboration-document-v1`. Ask the browser whether the optional feature is configured:
 
 ```json
 { "path": "/collaboration/capabilities", "method": "GET" }
