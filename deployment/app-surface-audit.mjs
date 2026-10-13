@@ -1,6 +1,7 @@
 import { lstatSync, readFileSync, readdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
+import { SITE_ICON_FILES, validateSiteIcons } from "../scripts/site-icons.mjs";
 import {
   appContentSecurityPolicy,
   appSurfaceOptions,
@@ -48,6 +49,7 @@ const generatedFiles = [
   ...policyNames.map((name) => `${name}/index.html`),
 ];
 export const copiedAsset = (path) =>
+  SITE_ICON_FILES.includes(path) ||
   [
     "appearance.js",
     "openapi.yaml",
@@ -78,11 +80,18 @@ export const text = (directory, path) =>
   readFileSync(resolve(directory, path), "utf8");
 export function auditAppSurface(
   directory,
-  { allowLegacyAlias = false, allowPreviousGuideInventory = false } = {},
+  {
+    allowLegacyAlias = false,
+    allowPreviousGuideInventory = false,
+    allowPreviousIconInventory = false,
+  } = {},
 ) {
   if (lstatSync(directory).isSymbolicLink())
     throw new Error("The app output must not be a symlink.");
   const files = filesIn(directory);
+  const previousIcons =
+    allowPreviousIconInventory &&
+    SITE_ICON_FILES.every((path) => !files.includes(path));
   const manifest = JSON.parse(text(directory, "app-surface.json"));
   if (
     manifest.format !== "visual-nerve-app-surface" ||
@@ -183,6 +192,7 @@ export function auditAppSurface(
     "editor/app.css",
     "appearance.js",
     "site/mark.svg",
+    ...(previousIcons ? [] : SITE_ICON_FILES),
     "help/index.html",
     "help/help.js",
     "help/help.css",
@@ -197,6 +207,7 @@ export function auditAppSurface(
   ])
     if (!files.includes(required))
       throw new Error(`App surface is missing ${required}`);
+  if (!previousIcons) validateSiteIcons(directory);
   // Only the builder's previous-output check may accept the retired inventory.
   // Newly generated packages and all publication audits require complete Help.
   if (!allowPreviousGuideInventory) {

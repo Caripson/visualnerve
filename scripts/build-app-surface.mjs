@@ -70,6 +70,7 @@ export async function buildAppSurface(
     auditAppSurface(destination, {
       allowLegacyAlias: true,
       allowPreviousGuideInventory: true,
+      allowPreviousIconInventory: true,
     });
   const output = mkdtempSync(
     resolve(dirname(destination), ".visualnerve-app-surface-"),

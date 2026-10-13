@@ -3,8 +3,10 @@ import { afterEach, expect, it } from 'vitest';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { createHash } from 'node:crypto';
 import { APP_PRECACHE_LICENSE_PATHS, OfflineAssetPlan } from '../../scripts/offline-asset-plan.mjs';
 import { buildServiceWorker } from '../../scripts/service-worker.mjs';
+import { SITE_ICON_PATHS } from '../../scripts/site-icons.mjs';
 
 const speech = [
   '/editor/speech/ort-wasm-simd.wasm',
@@ -22,6 +24,7 @@ const core = [
   '/api/docs/',
   '/swagger/swagger-ui-bundle.js',
   '/license/',
+  ...SITE_ICON_PATHS,
   ...APP_PRECACHE_LICENSE_PATHS,
 ];
 const notices = ['/licenses/dependency-LICENSE', '/licenses/dependency-NOTICE'];
@@ -129,6 +132,38 @@ it('generates a complete worker plan while preserving every bundled notice on di
   for (const path of notices)
     expect(readFileSync(join(directory, path), 'utf8')).toBe(`Public file: ${path}`);
 });
+
+it.each(['site', 'app'] as const)(
+  'precaches each verified image once on %s, preserving published aliases and the complete inventory',
+  (surface) => {
+    const { directory, assets, put } = fixture(),
+      bytes = 'Approved Help image',
+      digest = createHash('sha256').update(bytes).digest('hex').slice(0, 16),
+      alias = '/help/images/editor.webp',
+      immutable = `/help/images/editor-${digest}.webp`,
+      standalone = '/help/images/standalone.webp';
+    put(alias, bytes);
+    put(immutable, bytes);
+    put(standalone, 'Unfingerprinted image');
+    const inventory = [...assets, alias, immutable, standalone];
+    const plan = buildServiceWorker(directory, { surface, assets: inventory });
+    expect(plan.assets).toContain(immutable);
+    expect(plan.assets).toContain(standalone);
+    expect(plan.assets).not.toContain(alias);
+    expect(plan.lazyAssets).toContain(alias);
+    expect(plan.assetAliases).toEqual({ [alias]: immutable });
+    expect(new Set([...plan.assets, ...plan.lazyAssets])).toEqual(new Set(inventory));
+    expect(readFileSync(join(directory, alias), 'utf8')).toBe(bytes);
+    const source = readFileSync(join(directory, 'sw.js'), 'utf8');
+    expect(JSON.parse(source.match(/^const assetAliases = (.*);$/m)![1])).toEqual(
+      plan.assetAliases,
+    );
+    put(immutable, 'Corrupted purported hash');
+    expect(() => buildServiceWorker(directory, { surface, assets: inventory })).toThrow(
+      'Invalid content fingerprint',
+    );
+  },
+);
 
 it('changes the cache revision when an unopened dependency notice or lazy speech asset changes', () => {
   const { directory, assets, put } = fixture();

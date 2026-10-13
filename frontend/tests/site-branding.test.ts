@@ -80,6 +80,34 @@ describe('shared workspace branding', () => {
     expect(geometry.size).toBe(4);
   });
 
+  it('links stable raster and multi-resolution icons on public, Help, API and error pages', () => {
+    for (const route of [
+      'index.html',
+      'app/index.html',
+      'help/index.html',
+      'api/docs/index.html',
+      'error.html',
+    ]) {
+      const document = page(route);
+      expect(
+        document
+          .querySelector('link[rel="icon"][href="/favicon-96x96.png"]')
+          ?.getAttribute('sizes'),
+        route,
+      ).toBe('96x96');
+      expect(
+        document.querySelector('link[rel="icon"][href="/favicon.ico"]')?.getAttribute('sizes'),
+        route,
+      ).toBe('16x16 32x32 48x48 256x256');
+      expect(
+        document.querySelector('link[rel="apple-touch-icon"]')?.getAttribute('href'),
+        route,
+      ).toBe('/apple-touch-icon.png');
+    }
+    for (const name of ['favicon.ico', 'favicon-96x96.png', 'apple-touch-icon.png'])
+      expect(readFileSync(join(directory, name)).length).toBeGreaterThan(100);
+  });
+
   it('offers direct email contact while keeping public bugs and security reports separate', () => {
     for (const route of [
       'index.html',
@@ -165,9 +193,36 @@ describe('shared workspace branding', () => {
     );
     for (const device of ['desktop', 'laptop', 'tablet', 'phone']) {
       const frame = home.querySelector(`.device-frame--${device}`)!;
-      expect(frame.querySelector('picture source')?.getAttribute('srcset')).toBe(
-        `/site/images/${device}-dark.webp`,
-      );
+      const source = frame.querySelector('picture source')!;
+      const image = frame.querySelector('picture img')!;
+      const widths = {
+        desktop: [480, 960, 1920],
+        laptop: [400, 800, 1440],
+        tablet: [256, 512, 1024],
+        phone: [128, 256, 390],
+      }[device]!;
+      for (const [element, suffix] of [
+        [source, '-dark'],
+        [image, ''],
+      ] as const) {
+        const candidates = element
+          .getAttribute('srcset')!
+          .split(',')
+          .map((value) => value.trim());
+        expect(candidates).toEqual(
+          widths.map((width, index) =>
+            index === widths.length - 1
+              ? `/site/images/${device}${suffix}.webp ${width}w`
+              : `/site/images/${device}-${width}${suffix}.webp ${width}w`,
+          ),
+        );
+        expect(element.getAttribute('sizes')).toContain('max-width: 650px');
+        for (const candidate of candidates) {
+          const bytes = readFileSync(join(directory, candidate.split(' ')[0]));
+          expect(bytes.subarray(0, 4).toString()).toBe('RIFF');
+          expect(bytes.subarray(8, 12).toString()).toBe('WEBP');
+        }
+      }
       expect(frame.querySelector('picture img')?.getAttribute('src')).toBe(
         `/site/images/${device}.webp`,
       );

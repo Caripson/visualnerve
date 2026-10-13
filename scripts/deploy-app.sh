@@ -48,9 +48,13 @@ VN_APP_ARGS=()
 if [[ "${1:-}" == '--dry-run' ]]; then VN_APP_ARGS+=(--dryrun); fi
 # Keep older hashed assets for open tabs. Never use sync/delete or publish public/.
 aws s3 cp "$VN_APP_PACKAGE/editor/assets/" "s3://$APP_S3_BUCKET/editor/assets/" --recursive --cache-control 'public,max-age=31536000,immutable' "${VN_APP_ARGS[@]}"
-aws s3 cp "$VN_APP_PACKAGE/" "s3://$APP_S3_BUCKET/" --recursive --exclude 'editor/assets/*' --exclude 'licenses/*' --exclude '*.html' --exclude 'sw.js' --cache-control 'no-cache' "${VN_APP_ARGS[@]}"
+VN_IMAGE_HASH_GLOB='*-'
+for ((VN_IMAGE_HASH_INDEX=0; VN_IMAGE_HASH_INDEX<16; VN_IMAGE_HASH_INDEX++)); do VN_IMAGE_HASH_GLOB+='[a-f0-9]'; done
+aws s3 cp "$VN_APP_PACKAGE/" "s3://$APP_S3_BUCKET/" --recursive --exclude '*' --include "site/images/$VN_IMAGE_HASH_GLOB.webp" --include "help/images/$VN_IMAGE_HASH_GLOB.webp" --include "site/devices/$VN_IMAGE_HASH_GLOB.svg" --cache-control 'public,max-age=31536000,immutable' "${VN_APP_ARGS[@]}"
+aws s3 cp "$VN_APP_PACKAGE/" "s3://$APP_S3_BUCKET/" --recursive --exclude 'editor/assets/*' --exclude 'licenses/*' --exclude '*.html' --exclude 'sw.js' --exclude 'openapi.yaml' --exclude "site/images/$VN_IMAGE_HASH_GLOB.webp" --exclude "help/images/$VN_IMAGE_HASH_GLOB.webp" --exclude "site/devices/$VN_IMAGE_HASH_GLOB.svg" --cache-control 'no-cache' "${VN_APP_ARGS[@]}"
 aws s3 cp "$VN_APP_PACKAGE/licenses/" "s3://$APP_S3_BUCKET/licenses/" --recursive --exclude 'inventory.json' --content-type 'text/plain' --cache-control 'no-cache' "${VN_APP_ARGS[@]}"
 aws s3 cp "$VN_APP_PACKAGE/licenses/inventory.json" "s3://$APP_S3_BUCKET/licenses/inventory.json" --content-type 'application/json' --cache-control 'no-cache' "${VN_APP_ARGS[@]}"
+aws s3 cp "$VN_APP_PACKAGE/openapi.yaml" "s3://$APP_S3_BUCKET/openapi.yaml" --content-type 'application/json' --cache-control 'no-cache' "${VN_APP_ARGS[@]}"
 aws s3 cp "$VN_APP_PACKAGE/" "s3://$APP_S3_BUCKET/" --recursive --exclude '*' --include '*.html' --cache-control 'no-cache' "${VN_APP_ARGS[@]}"
 aws s3 cp "$VN_APP_PACKAGE/sw.js" "s3://$APP_S3_BUCKET/sw.js" --cache-control 'no-cache' "${VN_APP_ARGS[@]}"
 # The app has a single root entry. Retire its former duplicate object explicitly.

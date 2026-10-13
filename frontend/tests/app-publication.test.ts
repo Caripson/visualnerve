@@ -22,6 +22,7 @@ import {
 import { prepareExistingAppResources } from '../../deployment/app-existing-resources.mjs';
 import { appResponseHeaders } from '../../deployment/app-policy.mjs';
 import { buildAppSurface } from '../../scripts/build-app-surface.mjs';
+import { SITE_ICON_FILES } from '../../scripts/site-icons.mjs';
 
 const temporary: string[] = [];
 afterEach(() =>
@@ -298,13 +299,15 @@ async function shellFixture() {
   temporary.push(directory);
   const alias = join(directory, 'checkout alias #%');
   symlinkSync(directory, alias, 'dir');
-  const put = (path: string, data: string, mode?: number) => {
+  const put = (path: string, data: string | Buffer, mode?: number) => {
     mkdirSync(dirname(join(alias, path)), { recursive: true });
     writeFileSync(join(alias, path), data, mode ? { mode } : undefined);
   };
   for (const path of [
     'scripts/deploy-app.sh',
     'scripts/require-ci.mjs',
+    'scripts/site-icons.mjs',
+    'scripts/fingerprinted-assets.mjs',
     'deployment/verify-app-hosting.mjs',
     'deployment/app-surface-audit.mjs',
     'deployment/app-policy.mjs',
@@ -325,7 +328,12 @@ async function shellFixture() {
   put('public/editor/assets/example-hashed.js', 'export const worker = 1;');
   put('public/appearance.js', 'window.appearance = 1;');
   put('public/sw.js', '// public worker');
-  put('public/site/mark.svg', '<svg/>');
+  put(
+    'public/site/mark.svg',
+    readFileSync(new URL('../../hugo/static/site/mark.svg', import.meta.url)),
+  );
+  for (const name of SITE_ICON_FILES)
+    put(`public/${name}`, readFileSync(new URL(`../../hugo/static/${name}`, import.meta.url)));
   put('public/site/syntax.css', '.syntax{}');
   const guideNames = readdirSync(new URL('../../hugo/content/help/', import.meta.url))
     .filter((name) => name.endsWith('.md') && name !== '_index.md')
@@ -421,7 +429,7 @@ describe('manual app publication shell boundary', () => {
         .every((args) => args[1].startsWith('get-') || args[1] === 'describe-function'),
     ).toBe(true);
     const uploads = commands.filter((args) => args[0] === 's3' && args[1] === 'cp');
-    expect(uploads).toHaveLength(6);
+    expect(uploads).toHaveLength(8);
     expect(
       uploads.every(
         (args) =>
@@ -432,10 +440,12 @@ describe('manual app publication shell boundary', () => {
       ),
     ).toBe(true);
     expect(uploads[0].join(' ')).toContain('public,max-age=31536000,immutable');
-    expect(uploads[2].join(' ')).toContain('--content-type text/plain');
-    expect(uploads[3].join(' ')).toContain('--content-type application/json');
-    expect(uploads[4].join(' ')).toContain('--include *.html');
-    expect(uploads[5][2]).toBe(join(alias, 'public-app/sw.js'));
+    expect(uploads[3].join(' ')).toContain('--content-type text/plain');
+    expect(uploads[4].join(' ')).toContain('--content-type application/json');
+    expect(uploads[5].join(' ')).toContain('--content-type application/json');
+    expect(uploads[5][2]).toBe(join(alias, 'public-app/openapi.yaml'));
+    expect(uploads[6].join(' ')).toContain('--include *.html');
+    expect(uploads[7][2]).toBe(join(alias, 'public-app/sw.js'));
     expect(commands.filter((args) => args[0] === 's3' && args[1] === 'rm')).toEqual([
       ['s3', 'rm', 's3://app.visualnerve.com/app/index.html', '--dryrun'],
     ]);

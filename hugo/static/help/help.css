@@ -122,6 +122,10 @@
   color: var(--muted);
   margin: 0 0 14px;
 }
+.help-eyebrow a {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
 .help-article-header h1 {
   font-size: clamp(28px, 3.3vw, 42px);
   font-weight: 650;

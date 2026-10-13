@@ -1,5 +1,7 @@
 import { test, expect, type APIRequestContext, type Page } from './fixtures';
 import { execFileSync } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import type { Graph, GraphNode } from '../../src/model/types';
 import { captureAppearancePair } from './capture-appearance';
@@ -9,6 +11,40 @@ test.skip(process.env.VN_CAPTURE_SITE !== '1', 'Opt in to regenerate real device
 test.use({ colorScheme: 'light' });
 
 const siteImages = resolve('../hugo/static/site/images');
+const previewWidths = {
+  desktop: [480, 960],
+  tablet: [256, 512],
+  laptop: [400, 800],
+  phone: [128, 256],
+} as const;
+
+function resizePreviews(name: string) {
+  const widths = previewWidths[name as keyof typeof previewWidths];
+  if (!widths) return;
+  const temporary = mkdtempSync(resolve(tmpdir(), 'visual-nerve-site-previews-'));
+  try {
+    for (const suffix of ['', '-dark']) {
+      const png = resolve(temporary, `${name}${suffix}.png`);
+      execFileSync('dwebp', [resolve(siteImages, `${name}${suffix}.webp`), '-o', png]);
+      for (const width of widths)
+        execFileSync('cwebp', [
+          '-resize',
+          String(width),
+          '0',
+          '-q',
+          '85',
+          '-m',
+          '6',
+          '-quiet',
+          png,
+          '-o',
+          resolve(siteImages, `${name}-${width}${suffix}.webp`),
+        ]);
+    }
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+}
 const colors = {
   sage: { backgroundColor: '#DDEBE2', color: '#426E58' },
   sand: { backgroundColor: '#F4E7CB', color: '#8B692D' },
@@ -118,6 +154,7 @@ async function save(page: Page, graph: Graph, name: string) {
   }
   expect(new Set(graph.nodes.map((node) => node.backgroundColor)).size).toBeGreaterThanOrEqual(3);
   await captureAppearancePair(page, siteImages, name);
+  resizePreviews(name);
 }
 
 test('capture four distinct colored flowcharts at device viewport sizes', async ({

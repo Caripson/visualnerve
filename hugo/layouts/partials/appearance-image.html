@@ -1,5 +1,15 @@
 {{- $paired := and (or (hasPrefix .src "/help/images/") (hasPrefix .src "/site/images/")) (ne .src "/site/images/social.webp") -}}
 {{- $dark := replaceRE "\\.webp$" "-dark.webp" .src -}}
-{{- if $paired -}}<picture data-appearance-image><source srcset="{{ $dark | safeURL }}" media="(prefers-color-scheme: dark)">{{- end -}}
-<img src="{{ .src | safeURL }}" alt="{{ .alt }}" loading="{{ .loading | default "lazy" }}" decoding="async"{{ with .priority }} fetchpriority="{{ . }}"{{ end }}{{ if and .width .height }} width="{{ .width }}" height="{{ .height }}"{{ end }}>
+{{- $lightSet := slice -}}
+{{- $darkSet := slice -}}
+{{- range .previewWidths -}}
+  {{- $lightSet = $lightSet | append (printf "%s %dw" (replaceRE "\\.webp$" (printf "-%d.webp" .) $.src) .) -}}
+  {{- $darkSet = $darkSet | append (printf "%s %dw" (replaceRE "\\.webp$" (printf "-%d-dark.webp" .) $.src) .) -}}
+{{- end -}}
+{{- if .previewWidths -}}
+  {{- $lightSet = $lightSet | append (printf "%s %dw" .src .width) -}}
+  {{- $darkSet = $darkSet | append (printf "%s %dw" $dark .width) -}}
+{{- end -}}
+{{- if $paired -}}<picture data-appearance-image><source srcset="{{ if .previewWidths }}{{ delimit $darkSet ", " }}{{ else }}{{ $dark | safeURL }}{{ end }}"{{ with .sizes }} sizes="{{ . }}"{{ end }} media="(prefers-color-scheme: dark)">{{- end -}}
+<img src="{{ .src | safeURL }}"{{ if .previewWidths }} srcset="{{ delimit $lightSet ", " }}"{{ end }}{{ with .sizes }} sizes="{{ . }}"{{ end }} alt="{{ .alt }}" loading="{{ .loading | default "lazy" }}" decoding="async"{{ with .priority }} fetchpriority="{{ . }}"{{ end }}{{ if and .width .height }} width="{{ .width }}" height="{{ .height }}"{{ end }}>
 {{- if $paired -}}</picture>{{- end -}}

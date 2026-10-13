@@ -1,7 +1,11 @@
 import type { AppSurfaceOptions } from "../deployment/app-policy.mjs";
 export function auditAppSurface(
   directory: string,
-  options?: { allowLegacyAlias?: boolean },
+  options?: {
+    allowLegacyAlias?: boolean;
+    allowPreviousGuideInventory?: boolean;
+    allowPreviousIconInventory?: boolean;
+  },
 ): string[];
 export function buildAppSurface(
   sourceDirectory: string,

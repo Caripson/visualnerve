@@ -52,6 +52,8 @@ describe('static delivery and canonical storage origin', () => {
         new URL('../../scripts/audit-static.mjs', import.meta.url),
         join(scripts, 'audit-static.mjs'),
       );
+      for (const file of ['site-icons.mjs', 'fingerprinted-assets.mjs'])
+        copyFileSync(new URL(`../../scripts/${file}`, import.meta.url), join(scripts, file));
       for (const path of [
         'index.html',
         'app/index.html',
@@ -95,7 +97,7 @@ describe('static delivery and canonical storage origin', () => {
         .trim()
         .split('\n')
         .map((line) => JSON.parse(line) as string[]);
-      expect(calls).toHaveLength(6);
+      expect(calls).toHaveLength(8);
       expect(
         calls.every((args) => args[0] === 's3' && args[1] === 'cp' && args.includes('--dryrun')),
       ).toBe(true);
@@ -125,7 +127,7 @@ describe('static delivery and canonical storage origin', () => {
       const refused = deploy();
       expect(refused.status).not.toBe(0);
       expect(refused.stderr).toContain('User export found');
-      expect(readFileSync(log, 'utf8').trim().split('\n')).toHaveLength(6);
+      expect(readFileSync(log, 'utf8').trim().split('\n')).toHaveLength(8);
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }

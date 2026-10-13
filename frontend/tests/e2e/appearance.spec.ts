@@ -73,11 +73,9 @@ async function screenshotTheme(page: Page, theme: 'light' | 'dark') {
           return (
             image.complete &&
             image.naturalWidth > 0 &&
-            image.currentSrc.endsWith(
-              document.documentElement.dataset.theme === 'dark' ? '-dark.webp' : '.webp',
-            ) &&
-            (document.documentElement.dataset.theme === 'dark' ||
-              !image.currentSrc.endsWith('-dark.webp'))
+            image.currentSrc.endsWith('.webp') &&
+            /-dark-[a-f0-9]{16}\.webp$/.test(image.currentSrc) ===
+              (document.documentElement.dataset.theme === 'dark')
           );
         }),
       ),
@@ -109,7 +107,7 @@ test('fresh product images load only the System-selected variant and switch with
     await page.goto(publicURL + '/');
     await screenshotTheme(page, 'dark');
     expect(captures.length).toBeGreaterThan(0);
-    expect(captures.every((path) => path.endsWith('-dark.webp'))).toBe(true);
+    expect(captures.every((path) => /-dark-[a-f0-9]{16}\.webp$/.test(path))).toBe(true);
     await page.emulateMedia({ colorScheme: 'light' });
     await screenshotTheme(page, 'light');
     expect(await page.evaluate(async () => (await indexedDB.databases()).length)).toBe(0);

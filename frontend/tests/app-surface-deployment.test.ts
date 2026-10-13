@@ -21,6 +21,7 @@ import { appTemplate } from '../../deployment/app-template.mjs';
 import { template } from '../../deployment/template.mjs';
 import { spawnSync } from 'node:child_process';
 import { requireAppApproval } from '../../deployment/require-app-approval.mjs';
+import { SITE_ICON_FILES } from '../../scripts/site-icons.mjs';
 
 const temporary: string[] = [];
 const helpGuideNames = readdirSync(new URL('../../hugo/content/help/', import.meta.url))
@@ -36,14 +37,14 @@ function fixture() {
   temporary.push(directory);
   const source = join(directory, 'public'),
     output = join(directory, 'public-app');
-  const put = (path: string, value: string) => {
+  const put = (path: string, value: string | Buffer) => {
     mkdirSync(dirname(join(source, path)), { recursive: true });
     writeFileSync(join(source, path), value);
   };
   const header =
     '<header class="site-shell"><a class="site-brand" href="/"><span class="brand-symbol">⌘</span><b>Visual Nerve</b></a><nav><a href="/features/">Features</a></nav></header>';
   const shell = (body: string) =>
-    `<!doctype html><html><head><title>Source · Visual Nerve</title><meta name="visualnerve-google-analytics" content="G-TEST1234"><script src="/site/consent.js"></script></head><body>${header}${body}</body></html>`;
+    `<!doctype html><html><head><title>Source · Visual Nerve</title><meta name="visualnerve-google-analytics" content="G-TEST1234"><script src="/site/consent.js"></script><script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Public marketing"}</script></head><body>${header}${body}</body></html>`;
   put('index.html', shell('<main>Marketing homepage</main>'));
   put(
     'app/index.html',
@@ -76,7 +77,9 @@ function fixture() {
     JSON.stringify({ guides: helpGuideNames.map((name) => ({ url: `/help/${name}/` })) }),
   );
   put('help/images/editor.webp', 'approved screenshot');
-  put('site/mark.svg', '<svg xmlns="http://www.w3.org/2000/svg"/>');
+  put('site/mark.svg', readFileSync(new URL('../../hugo/static/site/mark.svg', import.meta.url)));
+  for (const name of SITE_ICON_FILES)
+    put(name, readFileSync(new URL(`../../hugo/static/${name}`, import.meta.url)));
   put('site/syntax.css', '.highlight{}');
   put('site/site.js', 'window.marketing = true;');
   put('site/consent.js', 'window.gtag = () => {};');
@@ -178,6 +181,37 @@ it('copies every current Help guide with matching search, navigation and offline
     expect(navigation).toContain(`href="/help/${name}/"`);
     expect(offlineRoutes).toContain(`/help/${name}/`);
   }
+});
+
+it('publishes the source-derived icons on every isolated app route and caches their real bytes', async () => {
+  const { source, output } = fixture();
+  const prepared = await buildAppSurface(source, output);
+  const worker = readFileSync(join(output, 'sw.js'), 'utf8');
+  const cached = JSON.parse(worker.match(/^const assets = (.*);$/m)![1]);
+  for (const name of SITE_ICON_FILES) {
+    expect(prepared.files).toContain(name);
+    expect(readFileSync(join(output, name))).toEqual(readFileSync(join(source, name)));
+    expect(cached).toContain(`/${name}`);
+  }
+  for (const route of ['index.html', 'help/index.html', 'api/docs/index.html', 'error.html']) {
+    const html = readFileSync(join(output, route), 'utf8');
+    expect(html).not.toContain('application/ld+json');
+    expect(html).toContain('href="/favicon.ico" type="image/x-icon"');
+    expect(html).toContain('href="/favicon-96x96.png" type="image/png" sizes="96x96"');
+    expect(html).toContain('rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180"');
+  }
+  rmSync(join(output, 'favicon.ico'));
+  expect(() => auditAppSurface(output)).toThrow('App surface is missing favicon.ico');
+});
+
+it('upgrades an icon-free prior output while requiring icons in the replacement package', async () => {
+  const { source, output } = fixture();
+  await buildAppSurface(source, output);
+  for (const name of SITE_ICON_FILES) rmSync(join(output, name));
+  expect(() => auditAppSurface(output)).toThrow('App surface is missing favicon.ico');
+  const prepared = await buildAppSurface(source, output);
+  expect(prepared.files).toEqual(auditAppSurface(output));
+  for (const name of SITE_ICON_FILES) expect(prepared.files).toContain(name);
 });
 
 it('rejects any missing guide and refuses to promote an incomplete new package', async () => {

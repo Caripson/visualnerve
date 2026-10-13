@@ -34,7 +34,13 @@ function deployment() {
   const log = join(root, 'aws-calls.jsonl');
   mkdirSync(scripts);
   mkdirSync(binaries);
-  for (const file of ['deploy-static.sh', 'audit-static.mjs', 'retire-public-workspace.mjs'])
+  for (const file of [
+    'deploy-static.sh',
+    'audit-static.mjs',
+    'retire-public-workspace.mjs',
+    'site-icons.mjs',
+    'fingerprinted-assets.mjs',
+  ])
     copyFileSync(new URL(`../../scripts/${file}`, import.meta.url), join(scripts, file));
   for (const file of [
     'index.html',
@@ -53,6 +59,7 @@ function deployment() {
     'licenses/esutils-LICENSE.BSD',
     'licenses/visualnerve-LICENSE',
     'sitemap.xml',
+    'openapi.yaml',
     'sw.js',
   ]) {
     const path = join(publicDirectory, file);
@@ -147,12 +154,12 @@ describe('static deployment publication sequence', () => {
   it('production narrowly retires the previous app HTML after publishing the updated shell without deleting retained dependencies', () => {
     const result = deployment().run({ production: true });
     expect(result.status, result.stderr).toBe(0);
-    expect(result.calls.slice(0, 6).map((call) => call.slice(0, 2))).toEqual(
-      Array.from({ length: 6 }, () => ['s3', 'cp']),
+    expect(result.calls.slice(0, 8).map((call) => call.slice(0, 2))).toEqual(
+      Array.from({ length: 8 }, () => ['s3', 'cp']),
     );
-    expect(result.calls[6]).toEqual(['s3', 'rm', `s3://${bucket}/app/index.html`]);
-    expect(result.calls[7].slice(0, 2)).toEqual(['cloudfront', 'create-invalidation']);
-    expect(result.calls[8].slice(0, 3)).toEqual(['cloudfront', 'wait', 'invalidation-completed']);
+    expect(result.calls[8]).toEqual(['s3', 'rm', `s3://${bucket}/app/index.html`]);
+    expect(result.calls[9].slice(0, 2)).toEqual(['cloudfront', 'create-invalidation']);
+    expect(result.calls[10].slice(0, 3)).toEqual(['cloudfront', 'wait', 'invalidation-completed']);
     expect(result.calls.flat()).not.toContain('--delete');
     expect(result.calls.filter((call) => call[1] === 'rm')).toHaveLength(1);
   });
@@ -160,7 +167,7 @@ describe('static deployment publication sequence', () => {
   it('production dry-run retires only the exact former app shell and does not invalidate', () => {
     const result = deployment().run({ production: true, dryRun: true });
     expect(result.status, result.stderr).toBe(0);
-    expect(result.calls).toHaveLength(7);
+    expect(result.calls).toHaveLength(9);
     expect(result.calls.at(-1)).toEqual(['s3', 'rm', `s3://${bucket}/app/index.html`, '--dryrun']);
     expect(result.calls.every((call) => call.includes('--dryrun'))).toBe(true);
   });
@@ -168,7 +175,7 @@ describe('static deployment publication sequence', () => {
   it('production retirement failure prevents invalidation of a partially published release', () => {
     const result = deployment().run({ production: true, failRetire: true });
     expect(result.status).toBe(34);
-    expect(result.calls).toHaveLength(7);
+    expect(result.calls).toHaveLength(9);
     expect(result.calls.at(-1)).toEqual(['s3', 'rm', `s3://${bucket}/app/index.html`]);
     expect(result.calls.some((call) => call[0] === 'cloudfront')).toBe(false);
   });
@@ -178,10 +185,21 @@ describe('static deployment publication sequence', () => {
     expect(result.error).toBeUndefined();
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain('Static bundle audit:');
-    expect(result.calls).toHaveLength(8);
-    const [chunks, assets, licenseTexts, inventory, html, worker, invalidate, wait] = result.calls;
-    expect(result.calls.slice(0, 6).map((call) => call.slice(0, 2))).toEqual(
-      Array.from({ length: 6 }, () => ['s3', 'cp']),
+    expect(result.calls).toHaveLength(10);
+    const [
+      chunks,
+      images,
+      assets,
+      licenseTexts,
+      inventory,
+      contract,
+      html,
+      worker,
+      invalidate,
+      wait,
+    ] = result.calls;
+    expect(result.calls.slice(0, 8).map((call) => call.slice(0, 2))).toEqual(
+      Array.from({ length: 8 }, () => ['s3', 'cp']),
     );
     expect(chunks.slice(2, 4)).toEqual([
       `${fixture.publicDirectory}/editor/assets/`,
@@ -198,8 +216,19 @@ describe('static deployment publication sequence', () => {
       'licenses/*',
       '*.html',
       'sw.js',
+      'openapi.yaml',
+      `site/images/${'*-' + '[a-f0-9]'.repeat(16)}.webp`,
+      `help/images/${'*-' + '[a-f0-9]'.repeat(16)}.webp`,
+      `site/devices/${'*-' + '[a-f0-9]'.repeat(16)}.svg`,
     ]);
     expect(values(assets, '--include')).toEqual([]);
+    expect(values(images, '--exclude')).toEqual(['*']);
+    expect(values(images, '--include')).toEqual([
+      `site/images/${'*-' + '[a-f0-9]'.repeat(16)}.webp`,
+      `help/images/${'*-' + '[a-f0-9]'.repeat(16)}.webp`,
+      `site/devices/${'*-' + '[a-f0-9]'.repeat(16)}.svg`,
+    ]);
+    expect(values(images, '--cache-control')).toEqual(['public,max-age=31536000,immutable']);
     expect(licenseTexts.slice(2, 4)).toEqual([
       `${fixture.publicDirectory}/licenses/`,
       `s3://${bucket}/licenses/`,
@@ -214,13 +243,18 @@ describe('static deployment publication sequence', () => {
     ]);
     expect(inventory).not.toContain('--recursive');
     expect(values(inventory, '--content-type')).toEqual(['application/json']);
+    expect(contract.slice(2, 4)).toEqual([
+      join(fixture.publicDirectory, 'openapi.yaml'),
+      `s3://${bucket}/openapi.yaml`,
+    ]);
+    expect(values(contract, '--content-type')).toEqual(['application/json']);
     expect(values(html, '--exclude')).toEqual(['*']);
     expect(values(html, '--include')).toEqual(['*.html']);
     expect(html.indexOf('--exclude')).toBeLessThan(html.indexOf('--include'));
     expect(worker[2]).toBe(join(fixture.publicDirectory, 'sw.js'));
     expect([`s3://${bucket}/`, `s3://${bucket}/sw.js`]).toContain(worker[3]);
     expect(worker).not.toContain('--recursive');
-    for (const call of [assets, licenseTexts, inventory, html, worker])
+    for (const call of [assets, licenseTexts, inventory, contract, html, worker])
       expect(values(call, '--cache-control')).toEqual(['no-cache']);
     expect(result.calls.flat()).not.toContain('--dryrun');
     expect(result.calls.flat()).not.toContain('--delete');
@@ -251,14 +285,14 @@ describe('static deployment publication sequence', () => {
     const result = deployment().run({ dryRun: true });
     expect(result.error).toBeUndefined();
     expect(result.status, result.stderr).toBe(0);
-    expect(result.calls).toHaveLength(6);
+    expect(result.calls).toHaveLength(8);
     for (const call of result.calls) {
       expect(call.slice(0, 2)).toEqual(['s3', 'cp']);
       expect(call.filter((arg) => arg === '--dryrun')).toHaveLength(1);
     }
   });
 
-  it.each([1, 2, 3, 4, 5, 6])(
+  it.each([1, 2, 3, 4, 5, 6, 7, 8])(
     'stops after upload phase %i fails without invalidating partial content',
     (phase) => {
       const result = deployment().run({ failUpload: phase });

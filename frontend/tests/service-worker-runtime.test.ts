@@ -32,6 +32,7 @@ function worker(
   assets: readonly string[] = [],
   lazyAssets: readonly string[] = [lazyPath],
   retiredAppPaths: false | 'app' | 'site' = 'app',
+  assetAliases: Readonly<Record<string, string>> = {},
 ) {
   const listeners = new Map<string, (event: WorkerEvent) => void>();
   const entries = new Map<string, Map<string, Response>>();
@@ -53,6 +54,7 @@ function worker(
     .replace('__CACHE_NAME__', JSON.stringify(shell))
     .replace('__ASSETS__', JSON.stringify(assets))
     .replace('__LAZY_ASSETS__', JSON.stringify(lazyAssets))
+    .replace('__ASSET_ALIASES__', JSON.stringify(assetAliases))
     .replace('__RETIRED_APP_PATHS__', JSON.stringify(retiredAppPaths));
   runInNewContext(source, {
     self: {
@@ -287,6 +289,78 @@ it('does not serve old hashed imports from another surface or a narration/privat
   const response = runtime.request(oldPath);
   expect(await (await response.response).text()).toBe('Online module');
   await response.settled;
+  expect(fetcher).toHaveBeenCalledOnce();
+  expect(runtime.put).not.toHaveBeenCalled();
+});
+
+it('serves a late-visited stable image alias offline from its precached verified copy without duplicate writes', async () => {
+  const alias = '/help/images/editor.webp',
+    image = '/help/images/editor-2222222222222222.webp';
+  const fetcher = vi.fn<typeof fetch>(
+    async () => new Response('Verified Help pixels', { headers: { 'Content-Type': 'image/webp' } }),
+  );
+  const runtime = worker(fetcher, [image], [alias], 'app', { [alias]: image });
+  await runtime.install();
+  expect(fetcher).toHaveBeenCalledOnce();
+  fetcher.mockClear();
+  fetcher.mockRejectedValue(new TypeError('Offline'));
+  const request = runtime.request(alias),
+    response = await request.response;
+  expect(await response.text()).toBe('Verified Help pixels');
+  expect(response.headers.get('Content-Type')).toBe('image/webp');
+  await request.settled;
+  expect(fetcher).not.toHaveBeenCalled();
+  expect(runtime.cached(alias)).toBeUndefined();
+  expect(runtime.put).toHaveBeenCalledOnce();
+});
+
+it('caches a published alias on demand if its verified copy is not yet resident', async () => {
+  const alias = '/help/images/editor.webp',
+    image = '/help/images/editor-2222222222222222.webp';
+  const fetcher = vi.fn<typeof fetch>(async () => new Response('Stable published image'));
+  const runtime = worker(fetcher, [image], [alias], 'app', { [alias]: image });
+  const request = runtime.request(alias);
+  expect(await (await request.response).text()).toBe('Stable published image');
+  await request.settled;
+  expect(fetcher).toHaveBeenCalledOnce();
+  expect(await runtime.cached(alias)?.text()).toBe('Stable published image');
+});
+
+it('keeps an old open Help tab’s known hashed theme image usable offline after another window updates', async () => {
+  const alias = '/help/images/editor-dark.webp',
+    current = '/help/images/editor-dark-2222222222222222.webp',
+    previous = '/help/images/editor-dark-1111111111111111.webp';
+  const fetcher = vi.fn<typeof fetch>(async () => {
+    throw new TypeError('Offline');
+  });
+  const runtime = worker(fetcher, [current], [alias], 'app', { [alias]: current });
+  runtime.retain('visual-nerve-app-shell-previous1234', previous, 'Previous dark screenshot');
+  const request = runtime.request(previous);
+  expect(await (await request.response).text()).toBe('Previous dark screenshot');
+  await request.settled;
+  expect(fetcher).not.toHaveBeenCalled();
+  expect(runtime.put).not.toHaveBeenCalled();
+  for (const path of [
+    '/api/v1/diagrams/encrypted-vault',
+    '/backup/encrypted.json',
+    '/help/images/private-export-1111111111111111.webp',
+    '/editor/app.js',
+    '/',
+  ])
+    expect(runtime.request(path).response).toBeUndefined();
+});
+
+it('does not retrieve known old images from another surface or an encrypted narration cache', async () => {
+  const alias = '/help/images/editor.webp',
+    current = '/help/images/editor-2222222222222222.webp',
+    previous = '/help/images/editor-1111111111111111.webp';
+  const fetcher = vi.fn<typeof fetch>(async () => new Response('Public online image'));
+  const runtime = worker(fetcher, [current], [alias], 'app', { [alias]: current });
+  runtime.retain('visual-nerve-shell-public123456', previous, 'Another surface');
+  runtime.retain('visual-nerve-narration-v1-private', previous, 'Encrypted private narration');
+  const request = runtime.request(previous);
+  expect(await (await request.response).text()).toBe('Public online image');
+  await request.settled;
   expect(fetcher).toHaveBeenCalledOnce();
   expect(runtime.put).not.toHaveBeenCalled();
 });

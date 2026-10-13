@@ -8,6 +8,22 @@ import {
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { OfflineAssetPlan } from "./offline-asset-plan.mjs";
+import { SITE_ICON_PATHS } from "./site-icons.mjs";
+import { fingerprintSource } from "./fingerprinted-assets.mjs";
+
+const curatedImage =
+  /^\/(?:site\/images\/[\w.-]+-[a-f0-9]{16}\.webp|help\/images\/[\w.-]+-[a-f0-9]{16}\.webp|site\/devices\/[\w.-]+-[a-f0-9]{16}\.svg)$/;
+
+function verifiedImageAliases(directory, inventory) {
+  const paths = new Set(inventory),
+    aliases = {};
+  for (const path of inventory) {
+    if (!curatedImage.test(path)) continue;
+    const source = `/${fingerprintSource(directory, path.slice(1))}`;
+    if (source !== path && paths.has(source)) aliases[source] = path;
+  }
+  return aliases;
+}
 
 function files(directory, prefix) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((file) =>
@@ -42,6 +58,7 @@ export function buildServiceWorker(
           "/error.html",
           "/privacy/",
           "/license/",
+          ...SITE_ICON_PATHS,
           ...files(publicDir, "")
             .filter(
               (path) =>
@@ -55,21 +72,30 @@ export function buildServiceWorker(
           ...editorAssets,
         ]),
       ];
+  const assetAliases = verifiedImageAliases(publicDir, managedAssets);
   const plan = new OfflineAssetPlan({
     surface,
     assets: retireAppPaths
       ? managedAssets.filter((path) => !/^\/app(?:\/|$)/.test(path))
       : managedAssets,
-    lazyAssets: speechAssets,
+    // Keep stable URLs published and managed, without downloading/storing the
+    // identical image twice. The runtime can serve either URL from one cache entry.
+    lazyAssets: [...speechAssets, ...Object.keys(assetAliases)],
   });
   const { assets, lazyAssets } = plan;
   const runtime = readFileSync(
     new URL("./service-worker-runtime.js", import.meta.url),
     "utf8",
   );
-  const hash = createHash("sha256")
-    .update(runtime)
-    .update(JSON.stringify({ assets, lazyAssets, retireAppPaths, surface }));
+  const hash = createHash("sha256").update(runtime).update(
+    JSON.stringify({
+      assets,
+      lazyAssets,
+      assetAliases,
+      retireAppPaths,
+      surface,
+    }),
+  );
   for (const path of plan.inventory)
     hash
       .update(path)
@@ -86,12 +112,13 @@ export function buildServiceWorker(
     .replace("__CACHE_NAME__", JSON.stringify(cacheName))
     .replace("__ASSETS__", JSON.stringify(assets))
     .replace("__LAZY_ASSETS__", JSON.stringify(lazyAssets))
+    .replace("__ASSET_ALIASES__", JSON.stringify(assetAliases))
     .replace(
       "__RETIRED_APP_PATHS__",
       JSON.stringify(retireAppPaths ? surface : false),
     );
   writeFileSync(resolve(publicDir, "sw.js"), source);
-  return { cacheName, assets, lazyAssets };
+  return { cacheName, assets, lazyAssets, assetAliases };
 }
 let main = false;
 try {

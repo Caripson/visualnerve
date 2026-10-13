@@ -11,6 +11,15 @@
   };
   const labelServers = () => {
     const root = document.getElementById("swagger-ui");
+    // Keep a main landmark while loading or without JavaScript. Once Swagger
+    // supplies its own native main, remove only our fallback wrapper's role.
+    if (root?.querySelector('main, [role="main"]'))
+      document.querySelector(".api-reference")?.removeAttribute("role");
+    const connection = root?.querySelector(".schemes-server-container");
+    if (connection) {
+      connection.setAttribute("role", "region");
+      connection.setAttribute("aria-label", "API connection");
+    }
     const selectors =
       root?.querySelectorAll('select[id="servers"], .servers select') ?? [];
     for (const select of selectors) {

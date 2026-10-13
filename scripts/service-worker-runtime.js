@@ -2,6 +2,7 @@
 const cacheName = __CACHE_NAME__;
 const assets = __ASSETS__;
 const lazyAssets = __LAZY_ASSETS__;
+const assetAliases = __ASSET_ALIASES__;
 const retiredAppPaths = __RETIRED_APP_PATHS__;
 const assetLock = "visual-nerve-app-assets-v1";
 const controlCache = "visual-nerve-cache-control-v1";
@@ -243,12 +244,21 @@ self.addEventListener("fetch", (event) => {
         : url.pathname;
   const managed = assets.includes(path) || lazyAssets.includes(path);
   // Other tabs may still run the previous code after one window opts in. Keep
-  // their already-cached immutable imports usable offline; never reuse an old
+  // their already-cached immutable imports and known Help images usable offline; never reuse an old
   // entry page, unhashed bundle, narration cache or private workspace record.
   const previousChunk =
     !managed &&
     /^\/editor\/assets\/[^/]+-[A-Za-z0-9_-]{8,}\.(?:js|css)$/.test(path);
-  if (!managed && !previousChunk) return;
+  const previousImage =
+    !managed &&
+    /^\/(?:site\/images\/[\w.-]+-[a-f0-9]{16}\.webp|help\/images\/[\w.-]+-[a-f0-9]{16}\.webp|site\/devices\/[\w.-]+-[a-f0-9]{16}\.svg)$/.test(
+      path,
+    ) &&
+    Object.prototype.hasOwnProperty.call(
+      assetAliases,
+      path.replace(/-[a-f0-9]{16}(?=\.(?:webp|svg)$)/, ""),
+    );
+  if (!managed && !previousChunk && !previousImage) return;
   let deliver;
   let reject;
   const response = new Promise((resolve, fail) => {
@@ -257,9 +267,13 @@ self.addEventListener("fetch", (event) => {
   });
   const task = download(async (signal, check) => {
     const cache = await caches.open(cacheName);
-    const stored = previousChunk
-      ? await previousStaticAsset(path)
-      : await cache.match(path);
+    const stored =
+      previousChunk || previousImage
+        ? await previousStaticAsset(path)
+        : ((await cache.match(path)) ??
+          (assetAliases[path]
+            ? await cache.match(assetAliases[path])
+            : undefined));
     await check();
     if (stored) {
       deliver(stored);

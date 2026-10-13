@@ -9,4 +9,5 @@ export function buildServiceWorker(
   cacheName: string;
   assets: readonly string[];
   lazyAssets: readonly string[];
+  assetAliases: Readonly<Record<string, string>>;
 };

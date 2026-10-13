@@ -77,9 +77,13 @@ describe('public help and API accessibility', () => {
   });
 
   it('names vendor-rendered API server selectors after Swagger finishes loading', async () => {
-    document.body.innerHTML =
-      '<p id="api-load-status"></p><span id="api-version" hidden></span>' +
-      '<div id="swagger-ui" class="swagger-ui"><div class="servers"><select id="servers"><option>Local bridge</option></select></div></div>';
+    document.body.innerHTML = new DOMParser().parseFromString(
+      read('static/api/docs/index.html'),
+      'text/html',
+    ).body.innerHTML;
+    expect(screen.getAllByRole('main')).toHaveLength(1);
+    document.getElementById('swagger-ui')!.innerHTML =
+      '<div class="schemes-server-container"><div class="servers"><select id="servers"><option>Local bridge</option></select></div></div><main id="operations"></main>';
     const SwaggerUIBundle = vi.fn((options: { onComplete(): void }) => options.onComplete());
     const fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -97,6 +101,17 @@ describe('public help and API accessibility', () => {
     });
     await waitFor(() => expect(screen.getByRole('combobox', { name: 'API server' })).toBeVisible());
     expect(SwaggerUIBundle).toHaveBeenCalledOnce();
+    expect(screen.getAllByRole('main')).toHaveLength(1);
+    expect(screen.getByRole('main')).toHaveAttribute('id', 'operations');
+    expect(screen.getByRole('region', { name: 'Visual Nerve local API' })).not.toContainElement(
+      screen.getByRole('main'),
+    );
+    expect(screen.getByRole('region', { name: 'Endpoints and schemas' })).not.toContainElement(
+      screen.getByRole('main'),
+    );
+    expect(screen.getByRole('region', { name: 'API connection' })).toContainElement(
+      screen.getByRole('combobox', { name: 'API server' }),
+    );
   });
 
   it('labels a server selector committed after onComplete and disconnects its scoped observer', async () => {

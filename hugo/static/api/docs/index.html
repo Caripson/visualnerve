@@ -13,7 +13,15 @@
     <title>API reference · Visual Nerve</title>
     <meta name="robots" content="noindex, nofollow" />
     <meta name="referrer" content="no-referrer" />
-    <link rel="icon" href="/site/mark.svg" type="image/svg+xml" />
+    <link rel="icon" href="/site/mark.svg" type="image/svg+xml" sizes="any" />
+    <link rel="icon" href="/favicon-96x96.png" type="image/png" sizes="96x96" />
+    <link
+      rel="icon"
+      href="/favicon.ico"
+      type="image/x-icon"
+      sizes="16x16 32x32 48x48 256x256"
+    />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
     <script src="/appearance.js"></script>
     <link rel="stylesheet" href="/editor/app.css" />
     <link rel="stylesheet" href="/swagger/swagger-ui.css" />
@@ -64,77 +72,76 @@
         ></a>
       </nav>
     </header>
-    <main class="api-reference">
-      <header class="api-introduction">
-        <div class="api-eyebrow">
-          <span>DEVELOPER REFERENCE</span
-          ><span class="api-mode" id="api-mode">Reference only</span>
-        </div>
-        <h1>Visual Nerve local API</h1>
-        <p class="api-lead">
-          Connect tools to the diagrams in your browser. The optional local
-          bridge gives API and MCP clients access to the same workspace you edit
-          on the canvas.
+    <div class="api-reference" role="main">
+      <section class="api-overview" aria-labelledby="api-page-title">
+        <header class="api-introduction">
+          <div class="api-eyebrow">
+            <span>DEVELOPER REFERENCE</span
+            ><span class="api-mode" id="api-mode">Reference only</span>
+          </div>
+          <h1 id="api-page-title">Visual Nerve local API</h1>
+          <p class="api-lead">
+            Connect tools to the diagrams in your browser. The optional local
+            bridge gives API and MCP clients access to the same workspace you
+            edit on the canvas.
+          </p>
+          <div class="api-links">
+            <a class="api-link-primary" href="/help/#codex-and-mcp"
+              >Set up API &amp; MCP <span aria-hidden="true">↗</span></a
+            >
+            <a href="/openapi.yaml" download="visual-nerve-openapi.yaml"
+              >Download OpenAPI</a
+            >
+            <span class="api-contract-version" id="api-version" hidden></span>
+          </div>
+        </header>
+        <section class="api-context" aria-label="How the connection works">
+          <div>
+            <h2>Your browser owns the data</h2>
+            <p>
+              Diagrams stay in local IndexedDB. The bridge forwards commands to
+              your connected browser and does not store application records.
+            </p>
+          </div>
+          <div>
+            <h2>You choose the access</h2>
+            <p>
+              In Settings, enable <strong>Read only</strong> or
+              <strong>Read + write</strong> for MCP access. Access is off by
+              default; changes require write permission.
+            </p>
+          </div>
+          <div>
+            <h2>The same model everywhere</h2>
+            <p>
+              Diagrams, code and SQL imports, 3D views, playback and process
+              simulations use the same model through the UI, API and MCP.
+            </p>
+          </div>
+        </section>
+        <p class="api-connection-note" id="api-connection-note">
+          This public reference cannot send commands. To use the endpoints,
+          start the bridge on your computer and connect it in Settings.
         </p>
-        <div class="api-links">
-          <a class="api-link-primary" href="/help/#codex-and-mcp"
-            >Set up API &amp; MCP <span aria-hidden="true">↗</span></a
-          >
-          <a href="/openapi.yaml" download="visual-nerve-openapi.yaml"
-            >Download OpenAPI</a
-          >
-          <span class="api-contract-version" id="api-version" hidden></span>
-        </div>
-      </header>
-      <section class="api-context" aria-label="How the connection works">
-        <div>
-          <h2>Your browser owns the data</h2>
-          <p>
-            Diagrams stay in local IndexedDB. The bridge forwards commands to
-            your connected browser and does not store application records.
-          </p>
-        </div>
-        <div>
-          <h2>You choose the access</h2>
-          <p>
-            In Settings, enable <strong>Read only</strong> or
-            <strong>Read + write</strong> for MCP access. Access is off by
-            default; changes require write permission.
-          </p>
-        </div>
-        <div>
-          <h2>The same model everywhere</h2>
-          <p>
-            Diagrams, code and SQL imports, 3D views, playback and process
-            simulations use the same model through the UI, API and MCP.
-          </p>
-        </div>
       </section>
-      <p class="api-connection-note" id="api-connection-note">
-        This public reference cannot send commands. To use the endpoints, start
-        the bridge on your computer and connect it in Settings.
-      </p>
-      <section
-        class="api-endpoints"
-        id="api-endpoints"
-        aria-labelledby="api-endpoints-title"
-        tabindex="-1"
-      >
-        <div class="api-section-heading">
-          <h2 id="api-endpoints-title">Endpoints and schemas</h2>
-          <p>Expand an endpoint for parameters, examples and responses.</p>
-        </div>
-        <p class="api-loading" id="api-load-status" role="status">
-          Loading the API reference…
-        </p>
-        <noscript
-          ><p class="api-loading">
-            Enable JavaScript to browse the interactive reference, or
-            <a href="/openapi.yaml">read the OpenAPI document</a>.
-          </p></noscript
-        >
+      <div class="api-endpoints" id="api-endpoints" tabindex="-1">
+        <section aria-labelledby="api-endpoints-title">
+          <div class="api-section-heading">
+            <h2 id="api-endpoints-title">Endpoints and schemas</h2>
+            <p>Expand an endpoint for parameters, examples and responses.</p>
+          </div>
+          <p class="api-loading" id="api-load-status" role="status">
+            Loading the API reference…
+          </p>
+          <noscript
+            ><p class="api-loading">
+              Enable JavaScript to browse the interactive reference, or
+              <a href="/openapi.yaml">read the OpenAPI document</a>.
+            </p></noscript
+          >
+        </section>
         <div id="swagger-ui"></div>
-      </section>
-    </main>
+      </div>
+    </div>
   </body>
 </html>

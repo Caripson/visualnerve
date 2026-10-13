@@ -23,6 +23,9 @@ function worker(editor = 'editor workspace') {
       'error.html': 'error page',
       'privacy/index.html': 'privacy',
       'license/index.html': 'license',
+      'favicon.ico': 'bundled multi-resolution favicon',
+      'favicon-96x96.png': 'bundled square search icon',
+      'apple-touch-icon.png': 'bundled Apple touch icon',
       'features/index.html': 'features',
       'mcp/index.html': 'public MCP setup page',
       'api/docs/index.html': 'API reference',
@@ -50,6 +53,14 @@ function worker(editor = 'editor workspace') {
     copyFileSync(
       new URL('../../scripts/offline-asset-plan.mjs', import.meta.url),
       join(dirname(script), 'offline-asset-plan.mjs'),
+    );
+    copyFileSync(
+      new URL('../../scripts/site-icons.mjs', import.meta.url),
+      join(dirname(script), 'site-icons.mjs'),
+    );
+    copyFileSync(
+      new URL('../../scripts/fingerprinted-assets.mjs', import.meta.url),
+      join(dirname(script), 'fingerprinted-assets.mjs'),
     );
     execFileSync(process.execPath, [script], { stdio: 'pipe' });
     const source = readFileSync(join(directory, 'public/sw.js'), 'utf8');
@@ -127,6 +138,9 @@ describe('public home and editor offline routing', () => {
         '/help/images/mcp-settings.webp',
         '/help/index.json',
         '/editor/app.js',
+        '/favicon.ico',
+        '/favicon-96x96.png',
+        '/apple-touch-icon.png',
       ]),
     );
     expect(runtime.manifest.assets).not.toContain('/api/docs/');

@@ -1,0 +1,24 @@
+{{- $page := .page -}}
+{{- $home := site.Home.Permalink -}}
+{{- $websiteID := printf "%s#website" $home -}}
+{{- $pageID := printf "%s#webpage" $page.Permalink -}}
+{{- $website := dict "@type" "WebSite" "@id" $websiteID "name" "Visual Nerve" "url" $home "inLanguage" "en" -}}
+{{- $webpage := dict "@type" "WebPage" "@id" $pageID "name" .title "url" $page.Permalink "description" .description "inLanguage" "en" "isPartOf" (dict "@id" $websiteID) -}}
+{{- $graph := slice $website -}}
+{{- if $page.IsHome -}}
+  {{- $applicationID := printf "%s#application" $home -}}
+  {{- $application := dict "@type" "SoftwareApplication" "@id" $applicationID "name" "Visual Nerve" "url" "https://app.visualnerve.com/" "applicationCategory" "BusinessApplication" "operatingSystem" "Web browser" "description" .description "image" .image "isAccessibleForFree" true "offers" (dict "@type" "Offer" "price" 0 "priceCurrency" "USD") "license" "https://www.mozilla.org/en-US/MPL/2.0/" "featureList" (slice "Diagrams and mind maps" "CSV, SQL and code analysis" "HIPO, DFD, UML and BPMN notation" "Process simulation" "Time Series and Signal Analysis" "Optional realtime diagram collaboration" "Local API and MCP integration") -}}
+  {{- $webpage = merge $webpage (dict "mainEntity" (dict "@id" $applicationID)) -}}
+  {{- $graph = $graph | append $application -}}
+{{- else -}}
+  {{- $items := slice (dict "@type" "ListItem" "position" 1 "name" "Visual Nerve" "item" $home) -}}
+  {{- if and (eq $page.Section "help") $page.IsPage -}}
+    {{- $items = $items | append (dict "@type" "ListItem" "position" 2 "name" "Help" "item" ("help/" | absURL)) -}}
+  {{- end -}}
+  {{- $items = $items | append (dict "@type" "ListItem" "position" (add (len $items) 1) "name" $page.Title "item" $page.Permalink) -}}
+  {{- $breadcrumbID := printf "%s#breadcrumb" $page.Permalink -}}
+  {{- $graph = $graph | append (dict "@type" "BreadcrumbList" "@id" $breadcrumbID "itemListElement" $items) -}}
+  {{- $webpage = merge $webpage (dict "breadcrumb" (dict "@id" $breadcrumbID)) -}}
+{{- end -}}
+{{- $graph = $graph | append $webpage -}}
+<script type="application/ld+json">{{ dict "@context" "https://schema.org" "@graph" $graph | jsonify | safeJS }}</script>

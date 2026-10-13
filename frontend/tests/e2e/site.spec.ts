@@ -85,11 +85,79 @@ test('the four device images are distinct real viewport captures', async ({ requ
       expect(response.status()).toBe(200);
       const bytes = await response.body();
       hashes.add(createHash('sha256').update(bytes).digest('hex'));
-      // Natural viewport sizes are decoded below; neither theme is a recolored image.
+      // Complete original captures remain available alongside responsive previews.
       expect(bytes.length).toBeGreaterThan(5000);
     }
   }
   expect(hashes.size).toBe(8);
+});
+test('icons are real image files and responsive public images use verified content addresses in both appearances', async ({
+  browser,
+  request,
+}) => {
+  for (const path of ['/favicon.ico', '/favicon-96x96.png', '/apple-touch-icon.png']) {
+    const response = await request.get(path);
+    expect(response.status(), path).toBe(200);
+    const bytes = await response.body();
+    expect([...bytes.subarray(0, path.endsWith('.ico') ? 4 : 8)]).toEqual(
+      path.endsWith('.ico') ? [0, 0, 1, 0] : [137, 80, 78, 71, 13, 10, 26, 10],
+    );
+  }
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 1,
+  });
+  const page = await context.newPage();
+  try {
+    await page.goto('http://127.0.0.1:4327/');
+    for (const theme of ['light', 'dark'] as const) {
+      await page.evaluate((value) => {
+        (
+          window as unknown as { visualNerveAppearance: { setPreference: (value: string) => void } }
+        ).visualNerveAppearance.setPreference(value);
+        for (const image of document.querySelectorAll<HTMLImageElement>(
+          '.device-showcase picture img',
+        ))
+          image.loading = 'eager';
+      }, theme);
+      const images = page.locator('.device-showcase picture img');
+      await expect(images).toHaveCount(4);
+      await expect
+        .poll(() =>
+          images.evaluateAll((elements) =>
+            elements.every(
+              (image) =>
+                (image as HTMLImageElement).complete &&
+                (image as HTMLImageElement).naturalWidth > 0,
+            ),
+          ),
+        )
+        .toBe(true);
+      const sources = await images.evaluateAll((elements) =>
+        elements.map((image) => ({
+          current: (image as HTMLImageElement).currentSrc,
+          set: (image as HTMLImageElement).srcset,
+        })),
+      );
+      for (const { current, set } of sources) {
+        const path = new URL(current).pathname;
+        expect(path).toMatch(
+          theme === 'dark' ? /-dark-[a-f0-9]{16}\.webp$/ : /-[a-f0-9]{16}\.webp$/,
+        );
+        expect(set).toMatch(/-[a-f0-9]{16}\.webp \d+w/);
+        const response = await request.get(path);
+        expect(response.status()).toBe(200);
+        expect(path).toContain(
+          createHash('sha256')
+            .update(await response.body())
+            .digest('hex')
+            .slice(0, 16),
+        );
+      }
+    }
+  } finally {
+    await context.close();
+  }
 });
 for (const width of [1440, 768, 390, 320]) {
   for (const colorScheme of ['light', 'dark'] as const) {
@@ -195,7 +263,7 @@ for (const width of [1440, 768, 390, 320]) {
                 )
                 .toBe(true);
               const phone = page.locator(
-                '.site-capture--phone:has(img[src="/site/images/phone.webp"])',
+                '.site-capture--phone:has(img[src^="/site/images/phone-"])',
               );
               await expect(phone).toHaveCount(1);
               expect(await page.locator('.site-capture--laptop').count()).toBeGreaterThan(0);
@@ -231,7 +299,7 @@ for (const width of [1440, 768, 390, 320]) {
                 expect(Math.abs(frame.ratio - frame.expectedRatio)).toBeLessThan(0.001);
                 expect(frame.fit).toBe(frame.detail ? 'fill' : 'contain');
                 expect(frame.link).toBe(frame.currentSrc);
-                expect(new URL(frame.currentSrc).pathname.endsWith('-dark.webp')).toBe(
+                expect(/-dark-[a-f0-9]{16}\.webp$/.test(new URL(frame.currentSrc).pathname)).toBe(
                   colorScheme === 'dark',
                 );
                 expect(frame.background).toBe('rgba(0, 0, 0, 0)');
@@ -258,7 +326,8 @@ for (const width of [1440, 768, 390, 320]) {
                 ),
               ),
           ).toBe(true);
-          // Eagerly load the hero captures before asserting their natural screen size.
+          // Responsive width descriptors density-correct naturalWidth. The full capture
+          // dimensions stay in HTML to reserve the same screen ratio before loading.
           await page
             .locator('.device-showcase .device-screen img')
             .evaluateAll((images) =>
@@ -282,8 +351,8 @@ for (const width of [1440, 768, 390, 320]) {
               .locator('.device-showcase .device-screen img')
               .evaluateAll((images) =>
                 images.map((image) => [
-                  (image as HTMLImageElement).naturalWidth,
-                  (image as HTMLImageElement).naturalHeight,
+                  Number(image.getAttribute('width')),
+                  Number(image.getAttribute('height')),
                 ]),
               ),
           ).toEqual([

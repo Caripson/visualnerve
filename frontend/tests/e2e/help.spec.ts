@@ -333,7 +333,9 @@ test('accepted local workspace caches every guide, screenshot and the help searc
         await page
           .locator('.help-article img')
           .evaluateAll((images) =>
-            images.every((image) => (image as HTMLImageElement).currentSrc.endsWith('-dark.webp')),
+            images.every((image) =>
+              /-dark-[a-f0-9]{16}\.webp$/.test((image as HTMLImageElement).currentSrc),
+            ),
           ),
       ).toBe(true);
     }

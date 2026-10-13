@@ -1,4 +1,7 @@
 import { expect, test } from '@playwright/test';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 for (const width of [1440, 390]) {
   for (const colorScheme of ['light', 'dark'] as const) {
@@ -37,6 +40,11 @@ for (const width of [1440, 390]) {
         const image = section.getByRole('img');
         await image.evaluate((element) => ((element as HTMLImageElement).loading = 'eager'));
         const assertImage = async (theme: 'light' | 'dark') => {
+          const name = `collaboration${theme === 'dark' ? '-dark' : ''}`;
+          const fingerprint = createHash('sha256')
+            .update(readFileSync(resolve(`../hugo/static/site/images/${name}.webp`)))
+            .digest('hex')
+            .slice(0, 16);
           await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
           await expect
             .poll(() =>
@@ -50,7 +58,7 @@ for (const width of [1440, 390]) {
             )
             .toEqual({
               loaded: true,
-              path: `/site/images/collaboration${theme === 'dark' ? '-dark' : ''}.webp`,
+              path: `/site/images/${name}-${fingerprint}.webp`,
             });
           const corners = await image.evaluate((element) => {
             const image = element as HTMLImageElement;
