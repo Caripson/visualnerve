@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 	"visualnerve/internal/model"
+	"visualnerve/internal/robloxcloud"
 
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
@@ -29,6 +30,8 @@ type Config struct {
 	StaticDir, Token         string
 	Dev, AllowRemote, Bridge bool
 	AllowedOrigins           []string
+	RobloxPublisher          RobloxPublisher
+	RobloxApproval           func(context.Context, robloxcloud.Approval) bool
 }
 type reply struct {
 	ID          string          `json:"id"`
@@ -48,25 +51,28 @@ type peer struct {
 	origin     string
 	instanceID string
 	grantID    string
+	mcpAccess  string
 	pending    map[string]*pendingCommand
 }
 type Server struct {
-	config         Config
-	handler        http.Handler
-	mu             sync.Mutex
-	peers          map[*peer]bool
-	operationEpoch string
-	operations     map[string]*bridgeOperation
+	config             Config
+	handler            http.Handler
+	mu                 sync.Mutex
+	peers              map[*peer]bool
+	operationEpoch     string
+	operations         map[string]*bridgeOperation
+	robloxPublications map[robloxOwner]*robloxPublication
+	robloxPendingBytes int
 }
 
 func New(config Config) *Server {
-	s := &Server{config: config, peers: make(map[*peer]bool), operationEpoch: randomIdentifier(), operations: make(map[string]*bridgeOperation)}
+	s := &Server{config: config, peers: make(map[*peer]bool), operationEpoch: randomIdentifier(), operations: make(map[string]*bridgeOperation), robloxPublications: make(map[robloxOwner]*robloxPublication)}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/v1/health", func(w http.ResponseWriter, r *http.Request) {
 		s.mu.Lock()
 		count := len(s.peers)
 		s.mu.Unlock()
-		send(w, 200, map[string]any{"status": "ok", "storage": "indexeddb", "version": bridgeVersion, "bridge": config.Bridge, "connected": count, "tools": bridgeToolNames, "capabilities": bridgeCapabilities})
+		send(w, 200, map[string]any{"status": "ok", "storage": "indexeddb", "version": bridgeVersion, "bridge": config.Bridge, "connected": count, "tools": bridgeToolNames, "capabilities": bridgeCapabilities, "robloxPublishing": s.robloxCapabilities()})
 	})
 	mux.HandleFunc("GET /bridge", s.connect)
 	mux.HandleFunc("/mcp", s.mcp)
@@ -147,6 +153,7 @@ func (s *Server) Close() {
 	s.mu.Lock()
 	peers := make([]*peer, 0, len(s.peers))
 	for p := range s.peers {
+		s.revokeRobloxLocked(p)
 		peers = append(peers, p)
 	}
 	s.mu.Unlock()
@@ -172,6 +179,7 @@ func (s *Server) connect(w http.ResponseWriter, r *http.Request) {
 		PeerMode          string `json:"peerMode"`
 		BrowserInstanceID string `json:"browserInstanceId"`
 		AccessGrantID     string `json:"accessGrantId"`
+		MCPAccess         string `json:"mcpAccess"`
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	err = wsjson.Read(ctx, conn, &hello)
@@ -179,16 +187,17 @@ func (s *Server) connect(w http.ResponseWriter, r *http.Request) {
 	if err != nil || len(hello.WorkspaceID) != 36 || !validPeerMode(hello.PeerMode) {
 		return
 	}
-	if (hello.BrowserInstanceID == "") != (hello.AccessGrantID == "") ||
+	if hello.MCPAccess != "" && !validMCPAccess(hello.MCPAccess) || (hello.BrowserInstanceID == "") != (hello.AccessGrantID == "") ||
 		(hello.BrowserInstanceID != "" && (!validAuthorityID(hello.BrowserInstanceID) || !validAuthorityID(hello.AccessGrantID))) {
 		return
 	}
-	p := &peer{conn: conn, workspace: hello.WorkspaceID, mode: hello.PeerMode, origin: r.Header.Get("Origin"), instanceID: hello.BrowserInstanceID, grantID: hello.AccessGrantID, pending: make(map[string]*pendingCommand)}
+	p := &peer{conn: conn, workspace: hello.WorkspaceID, mode: hello.PeerMode, origin: r.Header.Get("Origin"), instanceID: hello.BrowserInstanceID, grantID: hello.AccessGrantID, mcpAccess: hello.MCPAccess, pending: make(map[string]*pendingCommand)}
 	s.mu.Lock()
 	s.peers[p] = true
 	s.mu.Unlock()
 	defer func() {
 		s.mu.Lock()
+		s.revokeRobloxLocked(p)
 		delete(s.peers, p)
 		for id, pending := range p.pending {
 			if pending.response != nil {
@@ -215,12 +224,22 @@ func (s *Server) connect(w http.ResponseWriter, r *http.Request) {
 	for {
 		var response struct {
 			reply
-			PeerMode          string `json:"peerMode"`
-			BrowserInstanceID string `json:"browserInstanceId"`
-			AccessGrantID     string `json:"accessGrantId"`
+			Type              string  `json:"type"`
+			PeerMode          string  `json:"peerMode"`
+			BrowserInstanceID string  `json:"browserInstanceId"`
+			AccessGrantID     string  `json:"accessGrantId"`
+			MCPAccess         *string `json:"mcpAccess"`
 		}
-		if err = wsjson.Read(r.Context(), conn, &response); err != nil {
+		var raw json.RawMessage
+		if err = wsjson.Read(r.Context(), conn, &raw); err != nil {
 			return
+		}
+		if err = json.Unmarshal(raw, &response); err != nil {
+			return
+		}
+		if response.Type == "roblox-publish" {
+			s.handleRobloxPublish(p, raw)
+			continue
 		}
 		s.mu.Lock()
 		if response.ID == "" && response.PeerMode != "" {
@@ -233,7 +252,23 @@ func (s *Server) connect(w http.ResponseWriter, r *http.Request) {
 					s.mu.Unlock()
 					return
 				}
+				access := "off"
+				if response.MCPAccess != nil {
+					access = *response.MCPAccess
+					if !validMCPAccess(access) {
+						s.mu.Unlock()
+						return
+					}
+				}
+				if p.grantID != response.AccessGrantID || p.mcpAccess != access || p.mode != response.PeerMode {
+					s.revokeRobloxLocked(p)
+				}
 				p.grantID = response.AccessGrantID
+				p.mcpAccess = access
+			}
+			if response.PeerMode == "control" {
+				s.revokeRobloxLocked(p)
+				p.mcpAccess = "off"
 			}
 			p.mode = response.PeerMode
 			s.mu.Unlock()
@@ -283,6 +318,9 @@ func (s *Server) forwardOperation(ctx context.Context, workspace, path, method s
 		return reply{Status: 422}, err
 	}
 	if err := validateNotationCommand(path, method, data); err != nil {
+		return reply{Status: 422}, err
+	}
+	if err := validateRobloxCommand(path, method, data); err != nil {
 		return reply{Status: 422}, err
 	}
 	var key [16]byte
@@ -368,7 +406,7 @@ func (s *Server) forwardOperation(ctx context.Context, workspace, path, method s
 		command["operationAction"] = action
 		command["operationNew"] = operationNew
 	}
-	if (path == "/workspace/lock" && method == "POST" && len(data) == 0) || (notationReadCommand(path, method) && len(bytes.TrimSpace(data)) == 0) {
+	if (path == "/workspace/lock" && method == "POST" && len(data) == 0) || ((notationReadCommand(path, method) || robloxReadCommand(path, method)) && len(bytes.TrimSpace(data)) == 0) {
 		delete(command, "data")
 	}
 	if err := wsjson.Write(ctx, selected.conn, command); err != nil {
@@ -383,7 +421,7 @@ func (s *Server) forwardOperation(ctx context.Context, workspace, path, method s
 			if operation != nil {
 				return operationFailure(502, "OPERATION_OUTCOME_UNKNOWN", operation.id, "The browser returned an invalid acknowledgment. Reconcile this operation before sending another write."), nil
 			}
-			if method != "GET" {
+			if !pureReadCommand(path, method) {
 				return operationFailure(502, "OPERATION_OUTCOME_UNKNOWN", "", "The legacy browser returned an invalid acknowledgment. The write may have committed; inspect the model before repeating it."), nil
 			}
 			return reply{Status: 502}, errors.New("invalid browser response")
@@ -393,7 +431,7 @@ func (s *Server) forwardOperation(ctx context.Context, workspace, path, method s
 		if operation != nil {
 			return operationFailure(504, "OPERATION_OUTCOME_UNKNOWN", operation.id, "The browser did not acknowledge before the transport deadline. This operation may still commit; query its status or retry only with the same operation ID and exact payload."), nil
 		}
-		if method != "GET" {
+		if !pureReadCommand(path, method) {
 			return operationFailure(504, "OPERATION_OUTCOME_UNKNOWN", "", "The legacy browser did not acknowledge before the deadline. The write may still commit; inspect the model before repeating it."), nil
 		}
 		return reply{Status: 504}, ctx.Err()
@@ -433,6 +471,10 @@ func readLockJSON(w http.ResponseWriter, r *http.Request) (json.RawMessage, erro
 const MaxCommandTimeout = 165 * time.Second
 
 func commandTimeout(path string) time.Duration {
+	previewPath := strings.TrimPrefix(path, "/api/v1")
+	if robloxReadCommand(previewPath, "POST") && strings.HasSuffix(previewPath, "/preview") {
+		return 40 * time.Second // Outlive the captured rule-preview worker's 30s deadline.
+	}
 	// Browser analysis is cancellable after 30 seconds. Leave time for layout,
 	// validation and the final IndexedDB transaction before the transport expires.
 	path = strings.TrimPrefix(path, "/api/v1")

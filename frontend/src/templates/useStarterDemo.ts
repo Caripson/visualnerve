@@ -3,6 +3,7 @@ import { useEditor } from '../state/editor';
 import { createTemplateDiagram } from './create';
 
 const starterExamples: Record<string, { template: string; name: string }> = {
+  'roblox-game-builder': { template: 'roblox-game-builder', name: 'My first Roblox adventure' },
   kiosk: { template: 'process-simulator', name: 'Kiosk package pickup' },
   'time-series-analysis': { template: 'time-series-analysis', name: 'Growth & Churn' },
   'api-compute-capacity': { template: 'api-compute-capacity', name: 'API & Compute Capacity' },

@@ -1,2 +1,2 @@
 /** Semantic browser API version; the local bridge reports its transport separately. */
-export const browserApiVersion = '0.10.0';
+export const browserApiVersion = '0.11.0';

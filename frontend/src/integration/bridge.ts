@@ -7,6 +7,7 @@ import { workspace } from '../storage/workspace';
 import { VaultStorageError } from '../security/vault-storage';
 import type { WorkspaceOperation } from '../storage/contracts';
 import { SvgExportError } from '../export/svg-job-types';
+import type { RobloxPublishAction, RobloxPublishSession } from './roblox-publish-types';
 import {
   isWorkspaceLockCommand,
   isWorkspaceSecurityDiscovery,
@@ -26,6 +27,16 @@ interface Command {
 }
 export function bridgeResponseStatus(path: string, method: string): number {
   const endpoint = path.replace(/^\/api\/v1/, '');
+  if (/^\/diagrams\/[^/]+\/roblox\/builds$/.test(endpoint) && method === 'POST') return 202;
+  if (/^\/diagrams\/[^/]+\/roblox\/builds\/[^/]+$/.test(endpoint) && method === 'DELETE')
+    return 200;
+  if (
+    method === 'POST' &&
+    /^\/diagrams\/[^/]+\/roblox\/(entities|rules|variables|items|quests|timers|prefabs|instances)$/.test(
+      endpoint,
+    )
+  )
+    return 201;
   if (/^\/diagrams\/[^/]+\/analytics\/jobs\/[^/]+$/.test(endpoint) && method === 'DELETE')
     return 200;
   if (
@@ -74,6 +85,109 @@ export class Bridge {
   private generation = 0;
   private restricted = false;
   private connectedWorkspace?: string;
+  private publicationController = new AbortController();
+  private publicationRequests = new Map<
+    string,
+    { resolve(value: unknown): void; reject(error: unknown): void; cleanup(): void }
+  >();
+  /** Private browser UI transport; repository commands and MCP cannot invoke publication. */
+  captureRobloxPublisher(): RobloxPublishSession {
+    const socket = this.socket,
+      generation = this.generation,
+      grant = this.accessGrantId,
+      workspaceId = this.connectedWorkspace;
+    const signal = this.publicationController.signal;
+    const assertCurrent = () => {
+      signal.throwIfAborted();
+      if (
+        !socket ||
+        !this.canReply(socket, generation) ||
+        grant !== this.accessGrantId ||
+        workspaceId !== this.connectedWorkspace ||
+        this.restricted ||
+        useEditor.getState().mcpAccess !== 'write'
+      )
+        throw new StorageError(
+          403,
+          'Publishing requires a connected bridge and a current Read + write grant.',
+        );
+      if (bridgeDiagnostics.snapshot().state !== 'current')
+        throw new StorageError(
+          409,
+          'Update the local bridge to use Roblox publication. A website update does not update its binary.',
+        );
+    };
+    assertCurrent();
+    return {
+      signal,
+      assertCurrent,
+      request: <T>(
+        action: RobloxPublishAction,
+        data: Record<string, unknown>,
+        requestSignal?: AbortSignal,
+      ): Promise<T> => {
+        assertCurrent();
+        const requestId = crypto.randomUUID();
+        return new Promise<T>((resolve, reject) => {
+          const stop = () => {
+            cleanup();
+            reject(
+              new StorageError(
+                409,
+                action === 'finalize'
+                  ? 'Upload outcome is unknown. Check Roblox version history before trying again.'
+                  : 'The publishing session was cancelled.',
+              ),
+            );
+          };
+          const timeout = setTimeout(stop, action === 'finalize' ? 132000 : 75000);
+          const cleanup = () => {
+            clearTimeout(timeout);
+            signal.removeEventListener('abort', stop);
+            requestSignal?.removeEventListener('abort', stop);
+            this.publicationRequests.delete(requestId);
+          };
+          this.publicationRequests.set(requestId, {
+            resolve: (value) => {
+              cleanup();
+              try {
+                assertCurrent();
+                resolve(value as T);
+              } catch (error) {
+                reject(error);
+              }
+            },
+            reject: (error) => {
+              cleanup();
+              reject(error);
+            },
+            cleanup,
+          });
+          signal.addEventListener('abort', stop, { once: true });
+          requestSignal?.addEventListener('abort', stop, { once: true });
+          if (requestSignal?.aborted) {
+            stop();
+            return;
+          }
+          try {
+            socket!.send(
+              JSON.stringify({
+                type: 'roblox-publish',
+                requestId,
+                browserInstanceId: this.browserInstanceId,
+                accessGrantId: grant,
+                action,
+                data,
+              }),
+            );
+          } catch (error) {
+            cleanup();
+            reject(error);
+          }
+        });
+      },
+    };
+  }
   start() {
     this.unsubscribe?.();
     this.unsubscribe = useEditor.subscribe((state, previous) => {
@@ -124,6 +238,7 @@ export class Bridge {
       this.socket.send(
         JSON.stringify({
           peerMode: 'control',
+          mcpAccess: 'off',
           browserInstanceId: this.browserInstanceId,
           accessGrantId: this.accessGrantId,
         }),
@@ -147,6 +262,7 @@ export class Bridge {
         this.socket.send(
           JSON.stringify({
             peerMode: 'content',
+            mcpAccess: useEditor.getState().mcpAccess,
             browserInstanceId: this.browserInstanceId,
             accessGrantId: this.accessGrantId,
           }),
@@ -198,6 +314,7 @@ export class Bridge {
         JSON.stringify({
           workspaceId: this.connectedWorkspace,
           peerMode: 'content',
+          mcpAccess: useEditor.getState().mcpAccess,
           browserInstanceId: this.browserInstanceId,
           accessGrantId: this.accessGrantId,
         }),
@@ -214,6 +331,40 @@ export class Bridge {
           return;
         }
         if (bridgeDiagnostics.receive(command)) return;
+        if ((command as unknown as { type?: string }).type === 'roblox-publish-result') {
+          const reply = command as unknown as {
+            requestId?: string;
+            status?: number;
+            body?: unknown;
+          };
+          const pending = reply.requestId
+            ? this.publicationRequests.get(reply.requestId)
+            : undefined;
+          if (pending) {
+            if (typeof reply.status === 'number' && reply.status >= 200 && reply.status < 300)
+              pending.resolve(reply.body);
+            else {
+              const error = reply.body as {
+                error?: string | { message?: string; code?: string };
+                code?: string;
+              };
+              const message =
+                typeof error?.error === 'string' ? error.error : error?.error?.message;
+              const code =
+                error?.code ?? (typeof error?.error === 'object' ? error.error?.code : undefined);
+              pending.reject(
+                Object.assign(
+                  new StorageError(
+                    reply.status ?? 422,
+                    message ?? 'The publication request failed.',
+                  ),
+                  { code },
+                ),
+              );
+            }
+          }
+          return;
+        }
         if (!command.id || !command.path?.startsWith('/')) return;
         const grant = this.accessGrantId;
         const workspaceId = this.connectedWorkspace;
@@ -340,6 +491,7 @@ export class Bridge {
     };
     socket.onclose = () => {
       if (generation !== this.generation) return;
+      this.revokePublications();
       bridgeDiagnostics.disconnect();
       if (this.restricted) {
         this.disconnect();
@@ -357,7 +509,22 @@ export class Bridge {
       socket.readyState === WebSocket.OPEN
     );
   }
+  private revokePublications() {
+    this.publicationController.abort();
+    this.publicationController = new AbortController();
+    for (const request of this.publicationRequests.values()) {
+      request.reject(
+        new StorageError(
+          403,
+          'The publishing grant was revoked. Check Roblox version history if an upload had begun.',
+        ),
+      );
+      request.cleanup();
+    }
+    this.publicationRequests.clear();
+  }
   private revokeOperations() {
+    this.revokePublications();
     this.accessGrantId = crypto.randomUUID();
     this.operations.clear();
   }

@@ -11,13 +11,13 @@ import (
 )
 
 const (
-	bridgeVersion       = "0.10.0"
+	bridgeVersion       = "0.11.0"
 	operationRetention  = 15 * time.Minute
 	maxBridgeOperations = 1024
 	maxPendingCommands  = 256
 )
 
-var bridgeCapabilities = []string{"operations-v1", "endpoint-docs-v1", "fork-join-v1", "async-svg-export-v1", "exchange-export-v1", "collaboration-v1", "collaboration-document-v1", "analytics-v1", "ibm-flowcharting-v1", "standard-notations-v1", "infrastructure-resources-v1"}
+var bridgeCapabilities = []string{"operations-v1", "endpoint-docs-v1", "fork-join-v1", "async-svg-export-v1", "exchange-export-v1", "collaboration-v1", "collaboration-document-v1", "analytics-v1", "ibm-flowcharting-v1", "standard-notations-v1", "infrastructure-resources-v1", "roblox-game-builder-v1"}
 var bridgeToolNames = []string{"visual_nerve_request", "visual_nerve_api_docs"}
 
 // The bridge retains only opaque routing/correlation metadata. Request and result
@@ -169,7 +169,7 @@ func (s *Server) newOperationLocked(selected *peer) (*bridgeOperation, *reply) {
 func (s *Server) prepareOperationLocked(workspace, path, method string, data json.RawMessage, id string) (*bridgeOperation, string, *reply) {
 	s.pruneOperationsLocked(time.Now())
 	action := "execute"
-	if method == "GET" || notationReadCommand(path, method) {
+	if pureReadCommand(path, method) {
 		action = ""
 	}
 	if path == "/operations" {
@@ -186,7 +186,7 @@ func (s *Server) prepareOperationLocked(workspace, path, method string, data jso
 		}
 		id = strings.TrimPrefix(path, "/operations/")
 		action = "status"
-	} else if (method == "GET" || notationReadCommand(path, method)) && id != "" {
+	} else if (pureReadCommand(path, method)) && id != "" {
 		failure := operationFailure(422, "INVALID_OPERATION_READ", id, "Operation IDs belong to writes; use GET /operations/{operationId} to inspect one.")
 		return nil, "", &failure
 	}

@@ -26,7 +26,7 @@ func startNotationForward(handler *Server, ctx context.Context, path, method, pa
 func TestNotationMCPDiscoveryUsesCurrentCatalogContract(t *testing.T) {
 	handler, _ := bundledMCPServer(t)
 	initialized := resultMCP(t, callMCP(t, handler, "initialize", nil))
-	for _, phrase := range []string{"0.10.0", "standard-notations-v1", "/notation/collections", "dfd-yourdon", "notation:null", "/notation/validate", "whole"} {
+	for _, phrase := range []string{"0.11.0", "standard-notations-v1", "/notation/collections", "dfd-yourdon", "notation:null", "/notation/validate", "whole"} {
 		if !strings.Contains(initialized["instructions"].(string), phrase) || !strings.Contains(mcpAPIGuide, phrase) {
 			t.Fatal("notation guidance missing", phrase)
 		}

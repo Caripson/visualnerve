@@ -38,6 +38,7 @@ it('checks actual advertised tools and capabilities rather than trusting a versi
       'ibm-flowcharting-v1',
       'standard-notations-v1',
       'infrastructure-resources-v1',
+      'roblox-game-builder-v1',
     ],
   });
   expect(diagnostic.snapshot()).toEqual({ state: 'current', version: '0.6.0' });
@@ -66,16 +67,17 @@ it('warns when a pre-IBM 0.8.2 bridge advertises the other current capabilities'
   expect(diagnostic.snapshot()).toEqual({ state: 'update-required', version: '0.8.2' });
   diagnostic.receive({
     type: 'bridge-info',
-    version: '0.10.0',
+    version: '0.11.0',
     tools: ['visual_nerve_request', 'visual_nerve_api_docs'],
     capabilities: [
       ...capabilities,
       'ibm-flowcharting-v1',
       'standard-notations-v1',
       'infrastructure-resources-v1',
+      'roblox-game-builder-v1',
     ],
   });
-  expect(diagnostic.snapshot()).toEqual({ state: 'current', version: '0.10.0' });
+  expect(diagnostic.snapshot()).toEqual({ state: 'current', version: '0.11.0' });
   diagnostic.disconnect();
 });
 it('cancels stale detection when the connection ends', () => {

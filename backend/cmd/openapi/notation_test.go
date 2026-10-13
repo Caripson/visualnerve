@@ -23,7 +23,7 @@ func notationVariant(t *testing.T, schema object, collection, symbol string) obj
 func TestNotationOpenAPIUsesCanonicalCatalogAndNativeOptionalFields(t *testing.T) {
 	doc := analyticsContract(t)
 	schemas := doc["components"].(object)["schemas"].(object)
-	if doc["info"].(object)["version"] != "0.10.0" || !strings.Contains(doc["info"].(object)["description"].(string), "standard-notations-v1") {
+	if doc["info"].(object)["version"] != "0.11.0" || !strings.Contains(doc["info"].(object)["description"].(string), "standard-notations-v1") {
 		t.Fatal("notation version/capability missing")
 	}
 	if len(schemas["NotationProfile"].(object)["oneOf"].([]any)) != len(model.NotationCollections) || len(schemas["NodeNotation"].(object)["oneOf"].([]any)) != len(model.StandardNotationCatalog.Symbols) || len(schemas["EdgeNotation"].(object)["oneOf"].([]any)) != len(model.StandardNotationCatalog.Connectors) {
@@ -61,7 +61,7 @@ func TestNotationOpenAPIUsesCanonicalCatalogAndNativeOptionalFields(t *testing.T
 		}
 	}
 	input := schemas["DiagramInput"].(object)["properties"].(object)
-	if !reflect.DeepEqual(input["template"].(object)["enum"], stringsToAny(append(append([]string{"time-series-analysis", "ibm-flowcharting"}, model.NotationTemplateKeys...), infrastructureTemplateKeys...))) {
+	if !reflect.DeepEqual(input["template"].(object)["enum"], stringsToAny(supportedCreationTemplateKeys())) {
 		t.Fatal("POST must list only implemented examples")
 	}
 	if !strings.Contains(input["template"].(object)["description"].(string), "notation profile must exactly match") {

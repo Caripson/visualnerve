@@ -136,6 +136,14 @@ The browser keeps an optional integration token for its session, excluding it fr
 
 [Local MCP architecture and setup](/mcp/) · [Exact API contract](/api/docs/)
 
+## Optional Roblox game publishing
+
+Roblox world editing, rule tests and file generation run locally. Downloaded Roblox files contain readable game objects, names, rules and generated scripts. They are separate from an encrypted workspace backup.
+
+If you explicitly configure the optional local publisher, approve the destination in the browser and confirm the fresh phrase in the bridge's local terminal, the bridge sends the reviewed native place to Roblox's official publishing API. Roblox receives that game content and ordinary request metadata; it does not receive your entire Visual Nerve workspace or its password. The restricted Open Cloud key stays in the local bridge process and is excluded from diagrams, browser settings, generated files and backups.
+
+Using Studio to open or publish a downloaded file is a separate Roblox workflow governed by Roblox's own settings and policies. Neither export nor upload automatically makes an experience publicly accessible. [Roblox workflow and publishing choices](/help/roblox-game-builder/#optional-direct-upload).
+
 ## Optional Lovable handoff
 
 Build with Lovable creates a specification and complete prompt locally. Opening the dialog sends nothing. **Open in Lovable** opens a separate tab at `lovable.dev` with the reviewed text in a URL fragment; you then press Send there to start building.

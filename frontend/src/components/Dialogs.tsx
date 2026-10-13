@@ -23,6 +23,11 @@ import { useEditor } from '../state/editor';
 import { workspace } from '../storage/workspace';
 import { templates } from '../templates/catalog';
 import { createTemplateDiagram } from '../templates/create';
+import {
+  RobloxStartOptions,
+  RobloxTemplatePreview,
+  type RobloxStartMode,
+} from '../roblox/ui/RobloxTemplatePreview';
 import { type Owner, type Graph } from '../model/types';
 import { DataPrivacy, StorageNotice } from './DataPrivacy';
 import { McpSettings } from './McpSettings';
@@ -50,6 +55,7 @@ export function NewDiagram({ close }: { close: () => void }) {
   const [query, setQuery] = useState('');
   const [collection, setCollection] = useState<TemplateCollectionFilter>('all');
   const [analyticsMode, setAnalyticsMode] = useState<'example' | 'import'>('example');
+  const [robloxMode, setRobloxMode] = useState<RobloxStartMode>('example');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const visibleTemplates = templates.filter((value) =>
@@ -64,7 +70,11 @@ export function NewDiagram({ close }: { close: () => void }) {
           if (!name.trim()) return;
           setBusy(true);
           try {
-            await createTemplateDiagram(template, name, analyticsMode);
+            await createTemplateDiagram(
+              template,
+              name,
+              template === 'roblox-game-builder' ? robloxMode : analyticsMode,
+            );
             close();
           } catch (e) {
             setError((e as Error).message);
@@ -157,7 +167,9 @@ export function NewDiagram({ close }: { close: () => void }) {
                       }
                       aria-hidden="true"
                     >
-                      {notationTemplate(t.key) ? (
+                      {t.key === 'roblox-game-builder' ? (
+                        <RobloxTemplatePreview />
+                      ) : notationTemplate(t.key) ? (
                         <TemplatePreview templateKey={t.key} />
                       ) : infrastructureTemplateHints[t.key] ? (
                         <InfrastructureTemplatePreview templateKey={t.key} />
@@ -229,26 +241,28 @@ export function NewDiagram({ close }: { close: () => void }) {
                     </div>
                     <b>{templateLabel(translate, t.key, t.name)}</b>
                     <small>
-                      {notationTemplate(t.key)
-                        ? `${t.nodes} editable example objects · ${notationTemplate(t.key)!.diagramKind.replaceAll('-', ' ')}`
-                        : infrastructureTemplateHints[t.key]
-                          ? infrastructureTemplateHints[t.key]
-                          : t.key === 'ibm-flowcharting'
-                            ? 'Based on the IBM GX20-8020 stencil'
-                            : t.key === 'time-series-analysis'
-                              ? 'Import → Explore → Measure → Detect → Validate → Simulate'
-                              : t.key === 'process-simulator-blank'
-                                ? translate('dialogs.templateGuidedProcessHint')
-                                : t.key === 'process-simulator'
-                                  ? translate('dialogs.templateKioskHint')
-                                  : t.key === 'delivery-network-simulator'
-                                    ? translate('dialogs.templateNestedProcessHint')
-                                    : t.nodes
-                                      ? translate('dialogs.templateCounts', {
-                                          count: t.nodes,
-                                          type: diagramModeLabel(translate, t.type),
-                                        })
-                                      : translate('dialogs.blankTemplateHint')}
+                      {t.key === 'roblox-game-builder'
+                        ? 'Your world → rules → check & build → Roblox Studio'
+                        : notationTemplate(t.key)
+                          ? `${t.nodes} editable example objects · ${notationTemplate(t.key)!.diagramKind.replaceAll('-', ' ')}`
+                          : infrastructureTemplateHints[t.key]
+                            ? infrastructureTemplateHints[t.key]
+                            : t.key === 'ibm-flowcharting'
+                              ? 'Based on the IBM GX20-8020 stencil'
+                              : t.key === 'time-series-analysis'
+                                ? 'Import → Explore → Measure → Detect → Validate → Simulate'
+                                : t.key === 'process-simulator-blank'
+                                  ? translate('dialogs.templateGuidedProcessHint')
+                                  : t.key === 'process-simulator'
+                                    ? translate('dialogs.templateKioskHint')
+                                    : t.key === 'delivery-network-simulator'
+                                      ? translate('dialogs.templateNestedProcessHint')
+                                      : t.nodes
+                                        ? translate('dialogs.templateCounts', {
+                                            count: t.nodes,
+                                            type: diagramModeLabel(translate, t.type),
+                                          })
+                                        : translate('dialogs.blankTemplateHint')}
                     </small>
                   </button>
                 ))}
@@ -256,6 +270,9 @@ export function NewDiagram({ close }: { close: () => void }) {
             </section>
           );
         })}
+        {template === 'roblox-game-builder' && (
+          <RobloxStartOptions value={robloxMode} change={setRobloxMode} />
+        )}
         {template === 'time-series-analysis' && (
           <fieldset className="analytics-template-choice">
             <legend>Start your analysis</legend>

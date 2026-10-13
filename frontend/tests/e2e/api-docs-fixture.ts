@@ -18,7 +18,10 @@ export async function openAPIEndpoint(page: Page, method: string, path: string) 
           await endpoint.scrollIntoViewIfNeeded();
           return await endpoint.isVisible();
         }
-        await page.mouse.wheel(0, Math.floor((page.viewportSize()?.height ?? 800) / 2));
+        // Advance by one viewport so a growing contract remains traversable
+        // within the normal expectation deadline. Overscan keeps adjacent rows
+        // mounted; half-page steps spent that deadline before reaching the end.
+        await page.mouse.wheel(0, page.viewportSize()?.height ?? 800);
         // Wheel delivery precedes the virtual list's next layout. Do not accept
         // an overscan row that a pending scroll is about to unmount.
         await page.evaluate(

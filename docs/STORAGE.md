@@ -123,3 +123,7 @@ Temporary network reconnect preserves the same unlocked live MLS device. Reload 
 ## Time-series analytics
 
 The optional `Diagram.analytics` extension uses the existing encrypted Diagram record and a separate chunkable payload field. It introduces no new store or workspace-schema migration. Native JSON/full backups include bounded retained analysis inputs. Lock/transfer/app teardown clear loaded analysis jobs through a thin lifecycle hook; API jobs retain the original grant/vault lease. See [analytics storage/compatibility](TIME_SERIES_ANALYSIS.md#persistence-and-compatibility).
+
+## Roblox definitions and transient builds
+
+Optional `Diagram.game` is encrypted within the existing Diagram record; it adds no logical store or migration. Native JSON, history, custom templates, duplication and full backups retain its complete validated definition and remap explicit semantic/prefab-local references on collision. Build files and rule-preview snapshots use bounded transient workers/results, bound to the starting vault session and (for API jobs) integration grant. Lock, reload and revocation erase them. They are not persisted in plaintext or restored from a backup. Roblox Open Cloud credentials belong only in explicitly supplied local bridge process environment, never in IndexedDB or exported content.

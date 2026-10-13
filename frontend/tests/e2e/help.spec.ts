@@ -34,7 +34,7 @@ async function imagesLoaded(page: Page) {
     .toBe(true);
 }
 
-test('the help hub and all 26 guides have real screenshots, valid local links and working anchors', async ({
+test('the help hub and all 29 guides have real screenshots, valid local links and working anchors', async ({
   browser,
   request,
 }) => {
@@ -50,8 +50,8 @@ test('the help hub and all 26 guides have real screenshots, valid local links an
   try {
     await page.goto(`${publicURL}/help/`);
     const guides = await index(page);
-    expect(guides).toHaveLength(26);
-    expect(new Set(guides.map((guide) => guide.url)).size).toBe(26);
+    expect(guides).toHaveLength(29);
+    expect(new Set(guides.map((guide) => guide.url)).size).toBe(29);
     expect(guides.map((guide) => guide.url)).toContain('/help/collaboration/');
     expect(guides.map((guide) => guide.url)).toContain('/help/infrastructure-capacity/');
     expect(guides.map((guide) => guide.url)).toContain('/help/ibm-flowcharting/');
@@ -60,9 +60,9 @@ test('the help hub and all 26 guides have real screenshots, valid local links an
       expect(guides.map((guide) => guide.url)).toContain(`/help/${slug}/`);
     await expect(
       page.getByRole('region', { name: 'All guides', exact: true }).locator('a'),
-    ).toHaveCount(26);
+    ).toHaveCount(29);
     await expect(page.locator('.help-guide-number')).toHaveText(
-      Array.from({ length: 26 }, (_, position) => String(position + 1).padStart(2, '0')),
+      Array.from({ length: 29 }, (_, position) => String(position + 1).padStart(2, '0')),
     );
     const links = new Set<string>();
     const anchors = new Map<string, Set<string>>();

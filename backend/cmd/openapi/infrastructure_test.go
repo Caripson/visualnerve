@@ -118,10 +118,10 @@ func TestInfrastructureTemplateCreationUsesOnlyTheFourCanonicalShortcuts(t *test
 			t.Fatal("missing actual supported template shortcut", key)
 		}
 	}
-	if len(values) != 27 || input["allOf"] == nil {
+	if len(values) != 28 || input["allOf"] == nil {
 		t.Fatal("creation must retain the earlier 23 shortcuts and constrain infrastructure type/mode")
 	}
-	if document["info"].(object)["version"] != "0.10.0" {
+	if document["info"].(object)["version"] != "0.11.0" {
 		t.Fatal("new execution contract requires coordinated API version")
 	}
 }

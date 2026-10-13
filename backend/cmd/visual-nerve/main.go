@@ -55,6 +55,9 @@ func main() {
 	key := flag.String("tls-key", os.Getenv("VISUAL_NERVE_TLS_KEY"), "optional local TLS private key")
 	flag.Parse()
 	if *mcpStdio {
+		if os.Getenv("VISUAL_NERVE_ROBLOX_PUBLISH_ENABLED") == "true" {
+			log.Fatal("optional Roblox publication requires a separate interactive --bridge terminal, never MCP stdio")
+		}
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
 		if err := server.RunMCPStdio(ctx, os.Stdin, os.Stdout, *mcpURL, os.Getenv("VISUAL_NERVE_BRIDGE_TOKEN")); err != nil {
@@ -80,7 +83,14 @@ func main() {
 	if remote && *bridge {
 		log.Fatal("local MCP integration must bind to 127.0.0.1, localhost or ::1")
 	}
-	handler := server.New(server.Config{StaticDir: *static, Token: token, Dev: *dev, AllowRemote: remote, Bridge: *bridge, AllowedOrigins: allowed})
+	publisher, approval, cleanupPublisher, err := optionalRobloxPublisher(*bridge, os.Stdin, os.Getenv)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if cleanupPublisher != nil {
+		defer cleanupPublisher()
+	}
+	handler := server.New(server.Config{StaticDir: *static, Token: token, Dev: *dev, AllowRemote: remote, Bridge: *bridge, AllowedOrigins: allowed, RobloxPublisher: publisher, RobloxApproval: approval})
 	// Response delivery must outlive bounded request-body reading and project analysis.
 	requestReadTimeout := 30 * time.Second
 	httpServer := &http.Server{Addr: *addr, Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: requestReadTimeout, WriteTimeout: requestReadTimeout + server.MaxCommandTimeout + 15*time.Second, IdleTimeout: 90 * time.Second}

@@ -10,7 +10,7 @@ import (
 func TestMCPDiscoversInfrastructureWithoutWorkspaceAccess(t *testing.T) {
 	handler, _ := bundledMCPServer(t)
 	initialized := resultMCP(t, callMCP(t, handler, "initialize", nil))
-	if initialized["serverInfo"].(map[string]any)["version"] != "0.10.0" {
+	if initialized["serverInfo"].(map[string]any)["version"] != "0.11.0" {
 		t.Fatal("infrastructure discovery requires the current bridge announcement")
 	}
 	for _, phrase := range []string{"infrastructure-resources-v1", "schemaVersion:2", "infrastructure:{schemaVersion:1}", "same two MCP tools", "stage/case RAM", "SIMULATION_INFRASTRUCTURE_INVALID", "SIMULATION_INFRASTRUCTURE_STALLED", "null removes optional", "no second clock", "bandwidth-unavailable", "activeTransfers>0 and usedMbps===0"} {

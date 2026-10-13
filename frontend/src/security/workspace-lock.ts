@@ -10,6 +10,7 @@ import { speechService } from '../presentation/speech/service';
 import type { VaultSession } from './vault-session';
 import { clearSvgJobsIfLoaded } from '../export/svg-job-lifecycle';
 import { clearAnalyticsIfLoaded } from '../analytics/lifecycle';
+import { clearRobloxIfLoaded } from '../roblox/lifecycle';
 
 /** Register once at the application boundary, never in an API password endpoint. */
 export function bindWorkspaceLock(session: VaultSession) {
@@ -20,6 +21,7 @@ export function bindWorkspaceLock(session: VaultSession) {
     workspace.stop();
     clearSvgJobsIfLoaded();
     clearAnalyticsIfLoaded();
+    clearRobloxIfLoaded();
     useEditor.getState().setGraph(null);
     useEditor.setState({
       diagrams: [],

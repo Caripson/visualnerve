@@ -22,6 +22,7 @@ Visual Nerve turns ideas, data and code into diagrams you can explore, annotate,
 | Understand a large CSV without losing its relationships | [Explore a CSV](/help/csv/), then [connect and refresh sources](/help/connected-data/) |
 | See what a query or codebase depends on | [SQL queries and schemas](/help/sql/) or [source code](/help/code/) |
 | Find where capacity or queues hurt a business | [Process Simulator](/help/simulation/) |
+| Build a Roblox game from my own idea | [Roblox Game Builder](/help/roblox-game-builder/), then [your first game](/help/roblox-first-game/) or [a multiplayer adventure](/help/roblox-advanced-game/) |
 | Plan compute, network or generation and battery capacity | [Infrastructure capacity](/help/infrastructure-capacity/) |
 | Walk someone through a diagram like a film | [Presentations, narration and video](/help/presentations/) |
 | Turn a workflow into an app brief | [Export and Lovable](/help/sharing/) |
@@ -135,3 +136,7 @@ These entry points keep earlier links and bookmarks useful.
 ### Time Series & Signal Analysis
 
 [Import history, measure change, inspect signals and compare what-if scenarios](/help/time-series-analysis/).
+
+### Roblox Game Builder
+
+[Build a world, choose its rules, test them, and open it in Roblox Studio](/help/roblox-game-builder/). Start with [an editable first game](/help/roblox-first-game/) or grow into [quests, shared switches, rounds, and reusable obstacles](/help/roblox-advanced-game/).

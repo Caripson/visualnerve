@@ -84,6 +84,16 @@ The handoff starts only when you choose to open Lovable with the reviewed text. 
 
 [Prepare a reviewed app specification](/help/sharing/#prepare-an-app-brief-for-lovable)
 
+## Turn a game idea into a Roblox adventure
+
+Build a floating-island adventure, cooperative puzzle, timed escape, or exploration game from world objects and structured rules. Begin with an editable example, change one mechanic, and test what happens for two separate players. Add quests and inventory, a shared switch, nested conditions, or a reusable room with different settings for each copy.
+
+**Try this:** collect three crystals, let a friend turn on shared island power, then open a gate only when both conditions pass. Change the crystal prefab so one copy gives a bigger reward, and test that each player's inventory stays separate.
+
+Download a real Roblox Studio place. Studio runs the game and tests physics, input and multiplayer; the browser previews placement and declared rule logic. When you have tested the version, publish it to your separate Roblox test game. Session progress, stationary characters and the supported rule blocks are explicit; permanent saves and arbitrary scripts are outside this version.
+
+[Start the game template](https://app.visualnerve.com/?demo=roblox-game-builder) · [Follow the first-game tutorial](/help/roblox-first-game/) · [Build a multiplayer adventure](/help/roblox-advanced-game/)
+
 ## Choose the boundary for your work
 
 Everything above can be done through the UI. Optional local API and MCP access let connected tools work with the same browser model. There is no mandatory AI service, account or cloud database.

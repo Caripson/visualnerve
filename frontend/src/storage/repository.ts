@@ -70,6 +70,9 @@ import { remapOverview } from '../overview/copy';
 import { importHistoryBackup } from '../history/backup';
 import { remapSimulationModel } from '../simulation/copy';
 import { reconcileSimulationGraph } from '../simulation/document';
+import { reconcileGameGraph } from '../roblox/document';
+import { remapGameGraph } from '../roblox/remap';
+import { RobloxError } from '../roblox/errors';
 import { SimulationRunStore } from '../simulation/run-store';
 import { importSimulationRuns } from '../simulation/backup';
 import { simulationCapabilities } from './simulation-capabilities';
@@ -403,7 +406,7 @@ export class Repository {
         if (old) requireVersion(old.diagram.version, expectedVersion);
         else if (expectedVersion !== undefined && expectedVersion !== 0)
           throw new StorageError(409, 'This project was deleted by another tab.');
-        input = reconcileSimulationGraph(old, input);
+        input = reconcileGameGraph(old, reconcileSimulationGraph(old, input));
         // Apply API/graph-replacement 2D moves in the same transaction as their 3D placement.
         // Editor commands that already updated both positions are unchanged by this helper.
         if (old && !canonicalPositions) input = syncSpatialPositions(old, input);
@@ -637,6 +640,7 @@ export class Repository {
             nodeIds,
             new Map([[source.diagram.id, graph.diagram.id]]),
           );
+        if (graph.diagram.game && collision) Object.assign(graph, remapGameGraph(graph));
         if (graph.diagram.settings.csvSuppressedRelationshipEdges)
           graph.diagram.settings.csvSuppressedRelationshipEdges =
             graph.diagram.settings.csvSuppressedRelationshipEdges.map((id) =>
@@ -1096,6 +1100,19 @@ export class Repository {
       await this.commandReady(options);
       return structuredClone(analyticsCapabilities) as T;
     }
+    if (collection === 'roblox') {
+      if (parts.length !== 2 || id !== 'capabilities' || url.search || url.hash)
+        throw new RobloxError(
+          404,
+          'Unknown Roblox discovery endpoint.',
+          'ROBLOX_ENDPOINT_NOT_FOUND',
+        );
+      if (!read)
+        throw new RobloxError(405, 'Roblox capabilities require GET.', 'ROBLOX_METHOD_NOT_ALLOWED');
+      const { robloxCapabilities } = await import('../roblox/capabilities');
+      await this.commandReady(options);
+      return structuredClone(robloxCapabilities) as T;
+    }
     if (method === 'POST' && ['diagram-files', 'sql', 'code', 'import'].includes(collection)) {
       const limits = await this.db.atomic('r', ['settings'], async (scope) => {
         const setting = await scope.settings.get(IMPORT_LIMIT_SETTING);
@@ -1302,6 +1319,35 @@ export class Repository {
       return (await exportCommand(graph, data, exportGuard)) as T;
     }
     if (collection === 'diagrams') {
+      if (id && action === 'roblox') {
+        const { robloxCommand } = await loadOptionalCommand('roblox');
+        await this.commandReady(options);
+        return (await robloxCommand(
+          {
+            getGraph: (key) => this.getGraph(key),
+            saveGraph: (graph, version, beforeWrite) =>
+              this.saveGraph(
+                graph,
+                version,
+                writeGuards(options.beforeWrite, beforeWrite),
+                undefined,
+                undefined,
+                options.signal,
+              ),
+          },
+          id,
+          parts,
+          url,
+          method,
+          payload,
+          {
+            signal: options.signal,
+            authorize: options.beforeRequest,
+            beforeWrite: options.beforeWrite,
+            createAuthority: options.analyticsJobAuthority,
+          },
+        )) as T;
+      }
       if (id && action === 'notation' && parts[3] === 'validate') {
         if (parts.length !== 4 || url.search || url.hash)
           throw new StorageError(404, 'Unknown notation validation endpoint.');
@@ -1403,6 +1449,30 @@ export class Repository {
       if (!id) {
         if (read) {
           const diagrams = await this.db.diagrams.orderBy('updatedAt').reverse().toArray();
+          if (url.searchParams.has('roblox')) {
+            if (
+              url.searchParams.get('roblox') !== 'true' ||
+              url.searchParams.getAll('roblox').length !== 1
+            )
+              throw new RobloxError(
+                422,
+                'Roblox discovery uses roblox=true.',
+                'ROBLOX_INVALID_REQUEST',
+              );
+            return diagrams
+              .filter((diagram) => !!diagram.game)
+              .map(({ game, ...diagram }) => ({
+                ...diagram,
+                gameSummary: {
+                  schemaVersion: game!.schemaVersion,
+                  engineVersion: '1.0.0',
+                  entities: game!.entities.length,
+                  rules: game!.rules.length,
+                  prefabs: game!.prefabs.length,
+                  instances: game!.instances.length,
+                },
+              })) as T;
+          }
           if (url.searchParams.has('analytics')) {
             if (
               url.searchParams.get('analytics') !== 'true' ||
@@ -1427,6 +1497,30 @@ export class Repository {
           return (type ? diagrams.filter((diagram) => diagram.type === type) : diagrams) as T;
         }
         const data = object(payload);
+        if (data.template === 'roblox-game-builder') {
+          if (
+            Object.keys(data).some((key) => !['template', 'name', 'type'].includes(key)) ||
+            data.mode !== undefined ||
+            (data.type !== undefined && data.type !== 'flowchart') ||
+            typeof data.name !== 'string' ||
+            !data.name.trim() ||
+            data.name.length > 500
+          )
+            throw new RobloxError(
+              422,
+              'Provide name and template roblox-game-builder, with optional type flowchart.',
+              'ROBLOX_INVALID_REQUEST',
+            );
+          const { instantiate } = await import('../templates/templates');
+          await this.commandReady(options);
+          return (
+            await this.saveGraph(
+              instantiate('roblox-game-builder', data.name),
+              0,
+              options.beforeWrite,
+            )
+          ).diagram as T;
+        }
         if (data.template === 'ibm-flowcharting') {
           if (data.mode !== undefined || (data.type !== undefined && data.type !== 'flowchart'))
             throw new StorageError(
@@ -1586,6 +1680,7 @@ export class Repository {
             ...graph.diagram,
             collaboration: current.diagram.collaboration,
             analytics: current.diagram.analytics,
+            game: current.diagram.game,
           },
         };
         if (
@@ -1595,6 +1690,15 @@ export class Repository {
           throw new StorageError(
             422,
             'Use versioned analytics commands to update time-series content.',
+          );
+        if (
+          graph.diagram.game !== undefined &&
+          JSON.stringify(graph.diagram.game) !== JSON.stringify(current.diagram.game)
+        )
+          throw new RobloxError(
+            422,
+            'Use versioned Roblox game commands to change game semantics.',
+            'ROBLOX_VERSIONED_COMMAND_REQUIRED',
           );
         return (await this.saveGraph(
           preserved,
@@ -1639,6 +1743,12 @@ export class Repository {
             return saved.edges.find((value) => value.id === edge.id) as T;
           }
           requireVersion(version, data.version);
+          if (Object.hasOwn(data, 'game'))
+            throw new RobloxError(
+              422,
+              'Use versioned Roblox game commands to change game semantics.',
+              'ROBLOX_VERSIONED_COMMAND_REQUIRED',
+            );
           if (Object.hasOwn(data, 'analytics'))
             throw new StorageError(
               422,
