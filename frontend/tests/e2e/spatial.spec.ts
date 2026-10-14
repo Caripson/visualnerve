@@ -488,6 +488,21 @@ test('lifts the same 2D cards and their text into relief, rotates the complete d
   const canvas = page.getByTestId('spatial-canvas');
   await expect(canvas).toHaveAttribute('data-face-source', '2d-node', { timeout: 30000 });
   await expect(canvas).toHaveAttribute('data-face-captures', '3');
+  // A locator screenshot includes overlapping HTML, not only the WebGL buffer.
+  // Dismiss the help panel through the UI before comparing the printed icon.
+  await page.getByRole('button', { name: 'Hide 3D help', exact: true }).click();
+  await expect(page.locator('#spatial-help')).toBeHidden();
+  // The compact object-list header remains visible when Help closes. Pan the
+  // sheet below that HUD using the normal camera control, preserving front view.
+  const panBox = (await canvas.boundingBox())!;
+  const panStart = { x: panBox.x + panBox.width * 0.55, y: panBox.y + panBox.height * 0.55 };
+  const targetBeforePan = await canvas.getAttribute('data-camera-target');
+  await page.mouse.move(panStart.x, panStart.y);
+  await page.mouse.down({ button: 'right' });
+  await page.mouse.move(panStart.x, panStart.y + 100, { steps: 6 });
+  await page.mouse.up({ button: 'right' });
+  await expect.poll(() => canvas.getAttribute('data-camera-target')).not.toBe(targetBeforePan);
+  await saved(page);
   const front = await reliefFaces(page);
   expect(front).toHaveLength(3);
   const firstFace = front.find((face) => face.id === firstNode.id)!;
@@ -513,18 +528,37 @@ test('lifts the same 2D cards and their text into relief, rotates the complete d
   const faceWidth = firstFace.corners[1][0] - firstFace.corners[0][0];
   const faceHeight = firstFace.corners[3][1] - firstFace.corners[0][1];
   const frontBox = (await canvas.boundingBox())!;
-  const capturedIcon = await iconFidelity(
-    page,
-    iconPixels,
-    await canvas.screenshot(),
-    {
-      x: firstFace.corners[0][0] + iconBounds.x * faceWidth,
-      y: firstFace.corners[0][1] + iconBounds.y * faceHeight,
-      width: iconBounds.width * faceWidth,
-      height: iconBounds.height * faceHeight,
-    },
-    frontBox,
-  );
+  const iconCrop = {
+    x: firstFace.corners[0][0] + iconBounds.x * faceWidth,
+    y: firstFace.corners[0][1] + iconBounds.y * faceHeight,
+    width: iconBounds.width * faceWidth,
+    height: iconBounds.height * faceHeight,
+  };
+  expect(
+    await canvas.evaluate((element, crop) => {
+      const bounds = element.getBoundingClientRect();
+      return [
+        [0.1, 0.1],
+        [0.9, 0.1],
+        [0.5, 0.5],
+        [0.1, 0.9],
+        [0.9, 0.9],
+      ].every(
+        ([x, y]) =>
+          document.elementFromPoint(
+            bounds.x + crop.x + crop.width * x,
+            bounds.y + crop.y + crop.height * y,
+          ) === element,
+      );
+    }, iconCrop),
+    'The icon comparison must sample the exposed canvas, not an overlapping help panel or control',
+  ).toBe(true);
+  const frontPixels = await canvas.screenshot();
+  const capturedIcon = await iconFidelity(page, iconPixels, frontPixels, iconCrop, frontBox);
+  await testInfo.attach('relief-icon-fidelity.json', {
+    body: JSON.stringify({ ...capturedIcon, iconCrop, canvasSize: frontBox }),
+    contentType: 'application/json',
+  });
   expect(capturedIcon.inkRatio).toBeGreaterThan(0.3);
   expect(capturedIcon.inkRatio).toBeLessThan(3);
   expect(capturedIcon.similarity).toBeGreaterThan(0.65);
