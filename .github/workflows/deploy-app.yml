@@ -17,7 +17,7 @@ env:
   SITE_URL: https://www.visualnerve.com
   APP_SURFACE_ORIGIN: https://app.visualnerve.com
   APP_WEBSITE_ORIGIN: https://www.visualnerve.com
-  APP_BRIDGE_PORTS: "4317"
+  APP_BRIDGE_PORTS: "47417,4317"
   COLLABORATION_RELAY_ORIGIN: ${{ vars.COLLABORATION_RELAY_ORIGIN }}
   APP_S3_BUCKET: app.visualnerve.com
   APP_CLOUDFRONT_DISTRIBUTION_ID: E10TKGRYWGM422

@@ -1,6 +1,6 @@
 import { readFileSync, realpathSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { appResponseHeaders } from "./app-policy.mjs";
+import { appResponseHeaders, DEFAULT_APP_BRIDGE_PORTS } from "./app-policy.mjs";
 
 export const EXISTING_APP_TARGET = Object.freeze({
   domainName: "app.visualnerve.com",
@@ -53,7 +53,7 @@ export function existingAppTarget(input) {
     originAccessControlId: input.originAccessControlId,
     responseHeadersPolicyId: input.responseHeadersPolicyId,
     viewerRequestFunctionArn: functionArn,
-    bridgePorts: [...(input.bridgePorts ?? [4317])],
+    bridgePorts: [...(input.bridgePorts ?? DEFAULT_APP_BRIDGE_PORTS)],
     ...(input.collaborationRelayOrigin !== undefined
       ? { collaborationRelayOrigin: input.collaborationRelayOrigin }
       : {}),

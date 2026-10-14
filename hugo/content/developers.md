@@ -30,26 +30,28 @@ There are no password, recovery, unlock or timeout-policy write endpoints. Reser
 
 Authorized responses and ordinary diagram exports are readable content. `GET /workspace/export` returns a readable semantic workspace backup to the granted client; the UI's encrypted backup download is a different format and is restored through the browser. Existing downloaded encrypted copies keep their own password/recovery credentials after a live password change. Encryption does not constrain what a connected client does with received content. This architecture requires no mandatory backend or SSO and does not claim regulatory or security certification.
 
-An available source checkout builds with `./build.sh`, producing `public/` and `bin/visual-nerve`. The repository documents its toolchain requirements; repository access may require authorization. The original project code uses [MPL-2.0 with separate third-party terms](/license/).
+From a confirmed source checkout, `./scripts/build-bridge.sh` needs Go 1.26+ and produces a native `bin/visual-nerve` executable plus its matching `bin/bridge-docs/openapi.yaml`. Node, npm and Hugo are only needed if you also build the website. Do not guess an installed executable path. The original project code uses [MPL-2.0 with separate third-party terms](/license/).
 
 ```sh
-./bin/visual-nerve --static ./public --bridge --addr 127.0.0.1:4317
+./scripts/build-bridge.sh
+./bin/visual-nerve --static ./bin/bridge-docs --bridge \
+  --addr 127.0.0.1:47417 --allowed-origin https://app.visualnerve.com
 ```
 
 Open `https://app.visualnerve.com/`, unlock locally and grant access in Settings. Start the bridge with `--allowed-origin https://app.visualnerve.com` and any trusted local TLS required by the browser. `/app` is retired on production; it is not an app alias. Local development builds can retain a development-only `/app/` test editor. [Connection steps](/help/api-mcp/).
 
-One listener serves `/mcp`, `/bridge` and `/api/v1`. If 4317 conflicts with another plugin, select an available port explicitly with `--addr 127.0.0.1:4318` and update both the app's saved WebSocket address and all client URLs. For a stdio adapter, use `--mcp-url http://127.0.0.1:4318/mcp` to target that listener. No port is guaranteed free and there is no automatic random-port fallback. [Dedicated port example](/help/api-mcp/#choose-a-dedicated-local-port).
+One listener serves `/mcp`, `/bridge` and `/api/v1`. New setups default to 47417; existing saved 4317 connections stay unchanged. No port is guaranteed free, and no automatic random-port fallback occurs. Identify a conflict before changing anything; custom ports must be approved by the app build and HTTP policy before updating the listener, browser and client together. [Port and host diagnostics](/help/api-mcp/#verify-the-listener-before-connecting).
 
-On the isolated encrypted app, the deployed Content Security Policy also restricts browser bridge connections to explicitly approved ports. A custom port must be included in that app build and its response-header policy; changing Settings alone cannot override it. The reviewed default is 4317.
+The isolated app permits only explicitly approved loopback WebSocket ports. This release prepares **47417** for new setups and retains **4317** for existing connections. Both the app package and its HTTP response policy must allow a port; changing Settings alone cannot override CSP. An older live release may still allow only 4317 until the coordinated manual app/policy deployment. Existing saved addresses are preserved; switch the listener, browser connection and client together only after that rollout.
 
 ## Check and read with REST
 
 ```sh
-curl --fail-with-body http://127.0.0.1:4317/api/v1/health
-curl --fail-with-body http://127.0.0.1:4317/api/v1/diagrams
+curl --fail-with-body http://127.0.0.1:47417/api/v1/health
+curl --fail-with-body http://127.0.0.1:47417/api/v1/diagrams
 ```
 
-Health reports server/bridge status; a healthy process does not by itself imply a connected, granted browser. Diagram inspection needs that browser and read access.
+Require HTTP 200 JSON health with `status: "ok"`, `storage: "indexeddb"`, `bridge: true`, a version and both MCP tool names before proceeding. Empty, binary and HTTP/0.9 responses are not valid; port 4317 is also used by OpenTelemetry gRPC. Test from the actual client and browser hosts, particularly with WSL or containers. A healthy bridge does not imply a connected, granted browser. Diagram inspection needs that browser and read access.
 
 If a bridge token is configured, set the client's Authorization header from its protected local configuration. Keep actual tokens out of shared examples, prompts and issue reports. When several distinct workspaces are connected, add `X-Visual-Nerve-Workspace: WORKSPACE_UUID`; find the value in Settings → Data & Privacy → Storage details. MCP uses the equivalent `workspaceId` argument.
 
@@ -59,7 +61,7 @@ Enable Read + write, then create an empty flowchart:
 
 ```sh
 curl --fail-with-body \
-  -X POST http://127.0.0.1:4317/api/v1/diagrams \
+  -X POST http://127.0.0.1:47417/api/v1/diagrams \
   -H 'Content-Type: application/json' \
   --data-binary '{"name":"Customer onboarding","type":"flowchart"}'
 ```
@@ -70,7 +72,7 @@ The response is a Diagram object. Copy its `id` into the following placeholder b
 DIAGRAM_ID='REPLACE_WITH_RETURNED_UUID'
 
 curl --fail-with-body \
-  -X POST "http://127.0.0.1:4317/api/v1/diagrams/${DIAGRAM_ID}/nodes" \
+  -X POST "http://127.0.0.1:47417/api/v1/diagrams/${DIAGRAM_ID}/nodes" \
   -H 'Content-Type: application/json' \
   --data-binary '{"title":"Contract signed","nodeType":"process","description":"Confirm the owner and the delivery date.","x":100,"y":100}'
 ```
@@ -79,9 +81,9 @@ The UI reads the same saved object. For larger imports, use `POST /diagrams/{id}
 
 ## Use MCP without inventing a second API
 
-Point a local Streamable HTTP client at `http://127.0.0.1:4317/mcp`, or its matching trusted HTTPS address. Start the bridge separately and keep the granted browser open. [Codex](/help/api-mcp/#codex), [Claude Code](/help/api-mcp/#claude-code), [Cursor](/help/api-mcp/#cursor) and [Gemini CLI](/help/api-mcp/#gemini-cli) have different configuration formats; they receive the same tools and resources.
+Point a local Streamable HTTP client at `http://127.0.0.1:47417/mcp`, or its matching trusted HTTPS address. Start the bridge separately and keep the granted browser open. [Codex](/help/api-mcp/#codex), [Claude Code](/help/api-mcp/#claude-code), [Cursor](/help/api-mcp/#cursor) and [Gemini CLI](/help/api-mcp/#gemini-cli) have different configuration formats; they receive the same tools and resources.
 
-For a local stdio host such as [Claude Desktop](/help/api-mcp/#claude-desktop), Visual Nerve provides `visual-nerve --mcp-stdio`. This adapter forwards to the already-running bridge at `http://127.0.0.1:4317/mcp`; `--mcp-url` selects another exact loopback HTTP(S) endpoint with an explicit port. It has no independent workspace, permission grant or command engine. It sends only MCP messages on stdout, supports normal trusted TLS and can take the bridge token from `VISUAL_NERVE_BRIDGE_TOKEN` in its protected process environment. It does not expose an older SSE endpoint or turn the public website into a remote MCP service.
+For a local stdio host such as [Claude Desktop](/help/api-mcp/#claude-desktop), Visual Nerve provides `visual-nerve --mcp-stdio`. This adapter forwards to the already-running bridge at `http://127.0.0.1:47417/mcp`; `--mcp-url` selects another exact loopback HTTP(S) endpoint with an explicit port. It has no independent workspace, permission grant or command engine. It sends only MCP messages on stdout, supports normal trusted TLS and can take the bridge token from `VISUAL_NERVE_BRIDGE_TOKEN` in its protected process environment. It does not expose an older SSE endpoint or turn the public website into a remote MCP service.
 
 MCP uses JSON-RPC 2.0. Standard `initialize`, `tools/list`, `tools/call`, `resources/list` and `resources/read` operations discover and use the contract. For example, after initialization, a client can send this tool-discovery message to the local MCP endpoint:
 
@@ -202,7 +204,7 @@ Parent totals include descendants. Scope completion counts successful visits, wh
 
 **Import → Explore → Measure → Detect → Validate → Simulate.** The Time Series & Signal Analysis template adds strictly typed, versioned `diagram.analytics` to the same encrypted local document. It does not need AI, a cloud database or a Process Simulator model. UI, REST and MCP use the same deterministic worker calculations. [User guide](/help/time-series-analysis/) · [Exact API schemas](/api/docs/).
 
-First check direct `GET http://127.0.0.1:4317/api/v1/health` for `analytics-v1`. An old bridge binary needs an explicit update; refreshing the website does not update it. In an MCP client, begin with **visual_nerve_api_docs** and `{ "document": "guide" }`, then read exact schemas using `{ "document": "endpoint", "path": "/diagrams/{diagramId}/analytics/import/commit", "method": "POST" }`. The same **visual_nerve_request** tool handles every analysis command, with paths omitting `/api/v1`.
+First check direct `GET http://127.0.0.1:47417/api/v1/health` for `analytics-v1`. An old bridge binary needs an explicit update; refreshing the website does not update it. In an MCP client, begin with **visual_nerve_api_docs** and `{ "document": "guide" }`, then read exact schemas using `{ "document": "endpoint", "path": "/diagrams/{diagramId}/analytics/import/commit", "method": "POST" }`. The same **visual_nerve_request** tool handles every analysis command, with paths omitting `/api/v1`.
 
 Discover `/analytics/capabilities` for methods, defaults, warm-up, units, permissions and limits. List `/diagrams?analytics=true` for compact analysis-document metadata; it omits the observations and retained result inputs. Create the bundled synthetic example with write access:
 

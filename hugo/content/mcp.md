@@ -23,9 +23,9 @@ The bridge forwards commands to the browser. It has no independent workspace dat
 | Address                         | Role                                                                         |
 | ------------------------------- | ---------------------------------------------------------------------------- |
 | The Visual Nerve website origin | Where the app was loaded; the exact origin trusted by the bridge.            |
-| `ws://127.0.0.1:4317/bridge`    | Browser connection to a local service, with `wss` available for trusted TLS. |
-| `http://127.0.0.1:4317/mcp`     | Streamable HTTP MCP endpoint for a local client, or HTTPS with trusted TLS.  |
-| `http://127.0.0.1:4317/api/v1`  | REST commands to that same local service.                                    |
+| `ws://127.0.0.1:47417/bridge`    | Browser connection to a local service, with `wss` available for trusted TLS. |
+| `http://127.0.0.1:47417/mcp`     | Streamable HTTP MCP endpoint for a local client, or HTTPS with trusted TLS.  |
+| `http://127.0.0.1:47417/api/v1`  | REST commands to that same local service.                                    |
 
 `127.0.0.1` means the computer making the connection. It does not become a public server because the website is public. A phone's loopback address does not point to a laptop.
 
@@ -33,11 +33,12 @@ The bridge forwards commands to the browser. It has no independent workspace dat
 
 ## Start a bridge and grant access
 
-Open [the encrypted workspace](https://app.visualnerve.com/) and unlock it in your browser. With a built source checkout, run the optional local bridge:
+Open [the encrypted workspace](https://app.visualnerve.com/) and unlock it in your browser. On the computer that will run the bridge, locate a confirmed source checkout and install Go 1.26+. Build the bridge and matching API schema without the website toolchain:
 
 ```sh
-./bin/visual-nerve --static ./public-app --bridge \
-  --addr 127.0.0.1:4317 \
+./scripts/build-bridge.sh
+./bin/visual-nerve --static ./bin/bridge-docs --bridge \
+  --addr 127.0.0.1:47417 \
   --allowed-origin https://app.visualnerve.com
 ```
 
@@ -51,7 +52,7 @@ The app encrypts saved IndexedDB records with **AES-256-GCM**. Unlock in the bro
 
 Start the bridge first. Configure the client with its local **HTTP(S) `/mcp` address**, using the same hostname, port and TLS choice as the browser's saved connection. The browser's WebSocket `/bridge` address is not an MCP client endpoint.
 
-The default **4317** listener serves MCP, the browser connection and REST together. If another plugin already uses it, select an available port with `--addr 127.0.0.1:4318`, then update the app's saved `/bridge` URL and the client's `/mcp` URL to 4318. A stdio adapter targets that listener with `--mcp-url http://127.0.0.1:4318/mcp`. Ports are not guaranteed to be free, and the bridge does not switch ports automatically. [Choose a dedicated local port](/help/api-mcp/#choose-a-dedicated-local-port).
+New setups use **47417** for MCP, the browser connection and REST together; saved 4317 connections are retained. Port 4317 is also used by OpenTelemetry gRPC. Before sending commands or tokens, [verify real Visual Nerve JSON health and identify the listener](/help/api-mcp/#verify-the-listener-before-connecting). An empty response or HTTP/0.9 error is not bridge health. Ports are not guaranteed free, and the bridge does not switch them automatically. A custom port must be approved by the app build and response policy before changing all three connection addresses.
 
 | Client         | Local connection example                                                   |
 | -------------- | -------------------------------------------------------------------------- |
@@ -65,7 +66,7 @@ These examples follow each client's official configuration documentation. They a
 
 Visual Nerve also offers `visual-nerve --mcp-stdio` for a client that launches local stdio processes. It forwards to the same existing loopback HTTP bridge; it does not start another browser service or create a vendor-specific implementation. Stop that adapter without stopping the shared bridge. The browser's `/bridge` WebSocket and older SSE transports are not MCP alternatives exposed by this server.
 
-On the isolated encrypted app, the deployed Content Security Policy also restricts browser bridge connections to explicitly approved ports. A custom port must be included in that app build and its response-header policy; changing Settings alone cannot override it. The reviewed default is 4317.
+The isolated app permits only explicitly approved loopback WebSocket ports. This release prepares **47417** for new setups and retains **4317** for existing connections. Both the app package and its HTTP response policy must allow a port; changing Settings alone cannot override CSP. An older live release may still allow only 4317 until the coordinated manual app/policy deployment. Existing saved addresses are preserved; switch the listener, browser connection and client together only after that rollout.
 
 ## Choose what a connected tool may do
 

@@ -59,7 +59,9 @@ cd visualnerve
 ./dev.sh
 ```
 
-Open [http://localhost:4317/app/](http://localhost:4317/app/). The command installs missing frontend dependencies, builds React/Hugo, compiles the optional Go server and starts it. For frontend hot reload, use `./dev.sh --watch` and open [http://localhost:5173](http://localhost:5173). These addresses have separate browser workspaces.
+Open [http://localhost:47417/app/](http://localhost:47417/app/). The command installs missing frontend dependencies, builds React/Hugo, compiles the optional Go server and starts it. For frontend hot reload, use `./dev.sh --watch` and open [http://localhost:5173](http://localhost:5173). These addresses have separate browser workspaces.
+
+Changing the local development listener also changes its browser origin. Existing work at `http://localhost:4317` or `http://127.0.0.1:4317` stays at that exact origin. Keep using the old explicit `--addr 127.0.0.1:4317` if available, or export there and import at the new origin. Do not clear its storage. The hosted `https://app.visualnerve.com` origin does not change when its local bridge port changes, so those workspace records remain in place.
 
 For a static build:
 
@@ -72,11 +74,17 @@ For a static build:
 
 ## Connect REST or MCP
 
+To connect the hosted app, you only need **Go 1.26+** and a confirmed source checkout on the computer that will run the bridge. Build the native executable and its matching API contract without building the website:
+
 ```sh
-./dev.sh --bridge
+./scripts/build-bridge.sh
+./bin/visual-nerve --static ./bin/bridge-docs --bridge \
+  --addr 127.0.0.1:47417 --allowed-origin https://app.visualnerve.com
 ```
 
-Keep the intended browser workspace open and select **Settings → MCP / API integration → Read only** or **Read + write**; access defaults to Off. A local client uses `http://localhost:4317/mcp` or REST under `http://localhost:4317/api/v1`. The separate browser connection uses `/bridge` over WebSocket. The Go process forwards commands to the browser and stores no workspace data.
+The script produces `bin/visual-nerve` and `bin/bridge-docs/openapi.yaml`; Node, npm and Hugo are not needed for this bridge-only build. Initial Go dependency/toolchain download may need internet. Run commands from the actual checkout; do not assume a binary exists in a guessed home directory. To serve a local development editor as well, use `./dev.sh --bridge` instead.
+
+Keep the intended browser workspace open and select **Settings → MCP / API integration → Read only** or **Read + write**; access defaults to Off. A local client uses `http://localhost:47417/mcp` or REST under `http://localhost:47417/api/v1`. The separate browser connection uses `/bridge` over WebSocket. The Go process forwards commands to the browser and stores no workspace data.
 
 For MCP, call `visual_nerve_api_docs` before `visual_nerve_request`; the guide and OpenAPI contract are bundled. A separately hosted app may need an exact allowed origin, trusted local TLS and browser local-network permission. Read [connection setup](docs/MCP.md) and the [API contract](API.md) before configuring that connection.
 
@@ -88,7 +96,7 @@ Check bridge health and the client's discovered tools before workspace commands.
 
 The integration follows standard MCP rather than a Codex-specific protocol. Codex, Cursor, Claude Code and Gemini CLI can use the HTTP endpoint. A local stdio adapter supports clients such as Claude Desktop: configure an absolute path to `visual-nerve` with `args: ["--mcp-stdio"]` while the shared bridge is already running. Cloud connectors cannot reach a laptop's loopback address. See the [client configuration guide](hugo/content/help/api-mcp.md) for complete examples.
 
-Port **4317** is Visual Nerve's dedicated default for `/mcp`, `/bridge` and local REST. If another process uses it, the server reports the conflict; it does not choose another port silently. Start with `--addr 127.0.0.1:4318`, save `ws://127.0.0.1:4318/bridge` in the app, and use `http://127.0.0.1:4318/mcp` in the client. Stdio uses `--mcp-url http://127.0.0.1:4318/mcp` for that same bridge.
+Port **47417** is the new default for `/mcp`, `/bridge` and local REST; existing saved 4317 connections are retained. Neither port is guaranteed free. Port 4317 is also the OpenTelemetry gRPC default, so an open socket is not proof of Visual Nerve. Verify `/api/v1/health` returns HTTP 200 JSON with `status: "ok"`, `storage: "indexeddb"`, `bridge: true`, a version and both MCP tool names before sending commands or tokens. An empty response, HTTP/0.9 error or binary response fails this check. Identify a conflicting process instead of killing it or enabling HTTP/0.9. See [host, WSL and port diagnostics](hugo/content/help/api-mcp.md#verify-the-listener-before-connecting).
 
 ### Encrypted app release under review
 
@@ -96,7 +104,7 @@ The production workspace at `app.visualnerve.com` uses a browser-only password, 
 
 Changing a password cannot revoke old backups. Normal password changes preserve the content key; a separate human-only incident flow rotates that key for current records. Older copies keep their original credentials. [Backup and incident procedures](hugo/content/help/settings.md).
 
-On the isolated encrypted app, the deployed Content Security Policy also restricts browser bridge connections to explicitly approved ports. A custom port must be included in that app build and its response-header policy; changing Settings alone cannot override it. The reviewed default is 4317.
+The isolated app permits only explicitly approved loopback WebSocket ports. This release prepares **47417** for new setups and retains **4317** for existing connections. Both the app package and its HTTP response policy must allow a port; changing Settings alone cannot override CSP. An older live release may still allow only 4317 until the coordinated manual app/policy deployment. Existing saved addresses are preserved; switch the listener, browser connection and client together only after that rollout.
 
 ## Test and contribute
 

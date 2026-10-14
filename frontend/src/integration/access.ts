@@ -60,9 +60,16 @@ export function localBridgeUrl(value: string): URL {
   }
   return url;
 }
-export function defaultBridgeUrl() {
-  if (import.meta.env.DEV) return 'ws://127.0.0.1:4317/bridge';
+function bridgeDefault(port: number) {
+  if (import.meta.env.DEV) return `ws://127.0.0.1:${port}/bridge`;
   return ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)
     ? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/bridge`
-    : 'ws://127.0.0.1:4317/bridge';
+    : `ws://127.0.0.1:${port}/bridge`;
+}
+export function defaultBridgeUrl() {
+  return bridgeDefault(47417);
+}
+/** A saved grant predating the dedicated port retains its original destination. */
+export function workspaceBridgeUrl(address: unknown, hasSavedAccess: boolean) {
+  return String(address ?? (hasSavedAccess ? bridgeDefault(4317) : defaultBridgeUrl()));
 }

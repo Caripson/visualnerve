@@ -25,10 +25,13 @@ it('prepares only the explicit reviewed relay origins without changing website r
   });
   expect(initial).toEqual(untouched);
   expect(prepared.target.collaborationRelayOrigin).toBe(origin);
+  expect(prepared.target.bridgePorts).toEqual([47417, 4317]);
   const csp =
     prepared.createResponseHeadersPolicy.ResponseHeadersPolicyConfig.SecurityHeadersConfig
       .ContentSecurityPolicy.ContentSecurityPolicy;
   expect(csp).toContain(` ${origin} wss://relay.example.com`);
+  expect(csp).toContain('ws://127.0.0.1:47417/bridge');
+  expect(csp).toContain('ws://127.0.0.1:4317/bridge');
   expect(csp).not.toContain('https://*.');
   expect(() =>
     existingAppTarget({

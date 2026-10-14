@@ -40,6 +40,7 @@ import {
 import { readSpatialTheme } from './appearance';
 import { boundedSpatialMovement, moveSpatialObjects, spatialMovementIds } from './movement';
 import { spatialDragPoint } from './drag';
+import { SpatialPanShortcut } from './pan-shortcut';
 import { spatialMovementPreview } from './movementScene';
 import './spatial.css';
 import { captureSpatialNodeFaces } from './faces';
@@ -546,6 +547,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
           controls.addEventListener('change', change);
           controls.addEventListener('end', end);
           current.controls = controls;
+          panShortcut.syncControls();
         }
         const bounded = (coordinate: number) =>
           Math.max(
@@ -756,6 +758,12 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     const raycaster = new THREE.Raycaster();
     raycaster.params.Line = { threshold: 0.07 };
     const pointers = new Set<number>();
+    const panShortcut = new SpatialPanShortcut(
+      canvas,
+      () => controls,
+      () => !lost && !useEditor.getState().editingNode,
+      () => pointers.size > 0,
+    );
     let titleTap: { id: string; x: number; y: number; time: number } | undefined;
     let clickStart: { x: number; y: number; id: number } | undefined;
     let movement:
@@ -828,6 +836,11 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
       if (pointers.size > 1) {
         titleTap = undefined;
         current.abortMovement();
+      }
+      if (panShortcut.active) {
+        titleTap = undefined;
+        clickStart = undefined;
+        return;
       }
       if (event.button === 0 && pointers.size === 1)
         clickStart = { x: event.clientX, y: event.clientY, id: event.pointerId };
@@ -972,7 +985,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     canvas.addEventListener('pointerup', pointerUp, true);
     canvas.addEventListener('pointercancel', pointerCancel);
     const doubleClick = (event: MouseEvent) => {
-      if (lost || propsRef.current.overview?.active) return;
+      if (lost || panShortcut.active || propsRef.current.overview?.active) return;
       const { identity } = pick(event);
       const node = propsRef.current.graph.nodes.find((item) => item.id === identity.nodeId);
       if (!node || isReadonlyNodeTitle(node)) return;
@@ -994,6 +1007,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     const contextLost = (event: Event) => {
       event.preventDefault();
       lost = true;
+      panShortcut.reset();
       current.cancelPresentation('The 3D graphics context was lost.', true);
       current.abortMovement();
       controls.enabled = false;
@@ -1057,6 +1071,7 @@ export function SpatialCanvas(props: SpatialCanvasProps) {
     setRendererState('ready');
     return () => {
       detachPresentation();
+      panShortcut.destroy();
       current.abortMovement();
       current.flushCamera();
       current.captureAbort?.abort();

@@ -1431,7 +1431,7 @@ const catalog = {
     'Puedes permitir opcionalmente que un cliente MCP como Codex, Cursor, Claude o Gemini CLI lea o edite diagramas en tu sesión activa del navegador. Tu trabajo se queda en este navegador; las herramientas conectadas reciben el contenido que autorizas y pueden usar sus propios servicios alojados.',
   'integration.settings.bridgeAddress': 'Dirección del puente local',
   'integration.settings.bridgeUnavailable':
-    'No se puede acceder al puente local. Inícialo, permite el origen de este sitio web y comprueba la dirección local. Tu navegador puede requerir permiso de red local o una conexión local segura.',
+    'El navegador no pudo conectarse. Comprueba que la dirección local devuelve el estado de Visual Nerve en JSON y no pertenece a otro servicio. Después comprueba el origen web permitido, el puerto autorizado, el permiso de red local y TLS de confianza. WSL y el equipo del navegador pueden acceder a procesos locales diferentes.',
   'integration.settings.connectionSaved':
     'Conexión local actualizada. El token se conserva durante esta sesión del navegador.',
   'integration.settings.keepOpen':
@@ -2911,10 +2911,10 @@ const catalog = {
   'spatial.back': 'Atrás',
   'spatial.backView': 'Vista trasera',
   'spatial.cameraControlsHelp':
-    'Los controles Mover, Girar y Escalar controlan la cámara. Teclado: las flechas giran, +/− hace zoom, Home ajusta.',
+    'Los controles Mover, Girar y Escalar controlan la cámara. Mantén pulsada la barra espaciadora y arrastra con el botón izquierdo para desplazar la vista. Teclado: las flechas giran, +/− hace zoom, Home ajusta.',
   'spatial.cameraInterrupted': 'Movimiento de cámara interrumpido.',
   'spatial.canvasDescription':
-    'Diagrama 3D interactivo. Arrastra para girar y desplázate para ampliar. Activa Mover objetos para arrastrar tarjetas.',
+    'Diagrama 3D interactivo. Arrastra para girar y desplázate para ampliar. Mantén pulsada la barra espaciadora y arrastra para desplazar la vista, incluso sobre las tarjetas. Activa Mover objetos para arrastrar tarjetas.',
   'spatial.captureFrameFailed': 'No se pudo capturar el fotograma 3D.',
   'spatial.closeHandles': 'Cerrar',
   'spatial.connectionFallback': 'conexión',
@@ -2960,7 +2960,7 @@ const catalog = {
   'spatial.objectsList': 'Objetos 3D',
   'spatial.objectsRelationshipsSummary': 'Objetos y relaciones',
   'spatial.orbitHelp':
-    'El mismo diagrama con profundidad. Arrastra para inclinar · desplázate o pellizca para hacer zoom · arrastra con el botón derecho o dos dedos para desplazar. Activa Mover objetos para arrastrar tarjetas.',
+    'El mismo diagrama con profundidad. Arrastra para inclinar · desplázate o pellizca para hacer zoom · barra espaciadora + arrastrar, botón derecho o dos dedos para desplazar la vista. Activa Mover objetos para arrastrar tarjetas; barra espaciadora + arrastrar sigue desplazando la vista sobre ellas.',
   'spatial.originalAppearanceFailed':
     'No se pudo cargar el aspecto original de las tarjetas. Vuelve a 2D para continuar.',
   'spatial.originalAppearancePreparing': 'Preparando el aspecto original de los nodos…',

@@ -2,6 +2,8 @@
 
 Install Go ≥1.26, Node ≥22.12, npm and Hugo ≥0.140. `./dev.sh` builds and starts the static server. `./dev.sh --watch` serves the editor through Vite at localhost:5173. Add `--bridge` to either command to enable optional integration; browser Settings must enable it too. Restart Go after backend changes.
 
+For a hosted workspace connection, `./scripts/build-bridge.sh` builds only the native Go bridge and matching API schema under `bin/bridge-docs/`. It needs Go 1.26+ and no frontend/Hugo toolchain; the complete editor workflow below still uses `./build.sh`. New connections use port 47417, while existing saved 4317 configurations remain explicit. [Connection and WSL diagnostics](hugo/content/help/api-mcp.md#verify-the-listener-before-connecting).
+
 ```sh
 ./scripts/test.sh
 ./scripts/test.sh --e2e
@@ -10,6 +12,8 @@ Install Go ≥1.26, Node ≥22.12, npm and Hugo ≥0.140. `./dev.sh` builds and 
 ```
 
 Install browser test dependencies once: `cd frontend && npx playwright install --with-deps chromium`. PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH selects an existing Chromium binary. E2E uses its own server on 127.0.0.1:4327 and isolated browser contexts, never the user's workspace. The integration fixture opens a browser first; HTTP requests are forwarded to that browser and committed in its IndexedDB. Static/offline scenarios disable integration and verify no graph network requests.
+
+For a separate Linux MCP client and native bridge connected to host Google Chrome, run `./scripts/mcp-docker/run.sh` after building. This optional [Docker/Chrome journey](scripts/mcp-docker/README.md) uses a fresh encrypted workspace, actual copied Settings instructions, HTTP/stdio discovery, bidirectional edits, operation recovery, reconnect and permission/lock boundaries. It retains loopback restrictions and the generated isolated-app CSP. Its synthetic TLS and Docker forwarding are explicit test fixtures, not proof of Windows↔WSL networking or every client application's behavior.
 
 If a local headless browser stops delivering animation frames before a click/tap, `VISUAL_NERVE_E2E_DISABLE_GPU=1` selects software rendering for a diagnostic run. It changes the test browser launch only; it does not skip assertions, force input, disable tracing or change application code. Keep an installed browser version fixed throughout a long run. Ordinary 2D mobile tests use normal graphics options; software WebGL flags are scoped to the separate relief test. CI uses its installed Playwright browser with the default configuration.
 
@@ -25,7 +29,7 @@ Configuration: VISUAL_NERVE_ADDR, VISUAL_NERVE_STATIC_DIR and optional VISUAL_NE
 
 ## Origins and privacy tests
 
-`http://localhost:1313`, `http://localhost:5173`, `http://localhost:4317`, `http://127.0.0.1:4317` and `https://visualnerve.example.com` each have separate IndexedDB databases. Development data does not appear in production. Export/import deliberately when changing profile or origin. Do not use a real user browser profile in tests.
+`http://localhost:1313`, `http://localhost:5173`, `http://localhost:47417`, `http://127.0.0.1:47417` and `https://visualnerve.example.com` each have separate IndexedDB databases. Development data does not appear in production. Changing the local development listener also changes its browser origin. Existing work at `http://localhost:4317` or `http://127.0.0.1:4317` stays at that exact origin. Keep using the old explicit `--addr 127.0.0.1:4317` if available, or export there and import at the new origin. Do not clear its storage. The hosted `https://app.visualnerve.com` origin does not change when its local bridge port changes, so those workspace records remain in place. Export/import deliberately when changing profile or origin. Do not use a real user browser profile in tests.
 
 The browser suite also starts a read-only HTTPS static fixture on port 4340, the encrypted app fixture with its actual blocking headers on 4341, and a separate loopback TLS MCP bridge on 4329. `public-app.test` resolves to loopback only inside isolated Chromium test processes; no public DNS or AWS resources are created. Self-signed test certificates and relaxed certificate checks are test-only. Real TLS bridges require trusted certificates; ordinary browser local-network permissions also apply when using loopback HTTP. Persistent-profile acceptance tests create and delete temporary browser profiles outside the repository and actually close/reopen Chromium.
 

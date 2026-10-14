@@ -1,5 +1,15 @@
-import { describe, expect, it } from 'vitest';
-import { assertMcpAccess, localBridgeUrl, mcpAccess } from '../src/integration/access';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  assertMcpAccess,
+  defaultBridgeUrl,
+  localBridgeUrl,
+  mcpAccess,
+  workspaceBridgeUrl,
+} from '../src/integration/access';
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+});
 describe('local browser MCP capability', () => {
   it('defaults invalid and absent grants to Off', () => {
     for (const value of [undefined, null, true, 'readwrite', 'off'])
@@ -46,6 +56,7 @@ describe('local browser MCP capability', () => {
   });
   it('accepts only literal loopback bridge destinations', () => {
     for (const url of [
+      'ws://127.0.0.1:47417/bridge',
       'ws://127.0.0.1:4317/bridge',
       'wss://localhost:4317/bridge',
       'wss://[::1]:4317/bridge',
@@ -61,5 +72,30 @@ describe('local browser MCP capability', () => {
       'ws://user:pass@localhost/bridge',
     ])
       expect(() => localBridgeUrl(url)).toThrow();
+  });
+  it('uses the dedicated port for new hosted workspaces without changing saved destinations', () => {
+    vi.stubEnv('DEV', false);
+    vi.stubGlobal('location', new URL('https://app.visualnerve.com/'));
+    expect(defaultBridgeUrl()).toBe('ws://127.0.0.1:47417/bridge');
+    expect(workspaceBridgeUrl(undefined, false)).toBe('ws://127.0.0.1:47417/bridge');
+    expect(workspaceBridgeUrl(undefined, true)).toBe('ws://127.0.0.1:4317/bridge');
+    expect(workspaceBridgeUrl('wss://localhost:9443/bridge', true)).toBe(
+      'wss://localhost:9443/bridge',
+    );
+  });
+  it.each(['http://127.0.0.1:4327/', 'https://localhost:9443/', 'http://[::1]:4329/'])(
+    'retains the exact local server origin at %s',
+    (origin) => {
+      vi.stubEnv('DEV', false);
+      vi.stubGlobal('location', new URL(origin));
+      const expected = `${origin.replace(/^http/, 'ws')}bridge`;
+      expect(defaultBridgeUrl()).toBe(expected);
+      expect(workspaceBridgeUrl(undefined, true)).toBe(expected);
+    },
+  );
+  it('uses the dedicated local bridge for the Vite development server', () => {
+    vi.stubEnv('DEV', true);
+    vi.stubGlobal('location', new URL('http://127.0.0.1:5173/'));
+    expect(defaultBridgeUrl()).toBe('ws://127.0.0.1:47417/bridge');
   });
 });

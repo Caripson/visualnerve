@@ -72932,7 +72932,7 @@
   "servers": [
     {
       "description": "Optional local bridge on this computer",
-      "url": "http://127.0.0.1:4317/api/v1"
+      "url": "http://127.0.0.1:47417/api/v1"
     }
   ]
 }

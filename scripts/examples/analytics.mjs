@@ -271,7 +271,7 @@ export async function runAnalyticsWorkflow(
 }
 
 export function createBridgeClient({
-  origin = "http://127.0.0.1:4317",
+  origin = "http://127.0.0.1:47417",
   mcp = false,
   token,
   workspaceId,
@@ -288,7 +288,7 @@ export function createBridgeClient({
     address.password
   )
     throw new Error(
-      "Choose an exact loopback HTTP(S) bridge origin with an explicit port, such as http://127.0.0.1:4317.",
+      "Choose an exact loopback HTTP(S) bridge origin with an explicit port, such as http://127.0.0.1:47417.",
     );
   const headers = {
     "Content-Type": "application/json",

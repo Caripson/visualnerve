@@ -97,6 +97,12 @@
 .spatial-canvas[data-object-mode='move'] .spatial-stage canvas[data-object-dragging='true'] {
   cursor: grabbing;
 }
+.spatial-stage canvas[data-pan-held='true'] {
+  cursor: grab;
+}
+.spatial-canvas .spatial-stage canvas[data-pan-dragging='true'] {
+  cursor: grabbing;
+}
 .spatial-orientations {
   display: flex;
   gap: 2px;

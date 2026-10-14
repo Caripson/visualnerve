@@ -1420,7 +1420,7 @@ const catalog = {
     'Voit halutessasi antaa MCP-asiakkaan, kuten Codexin, Cursorin, Clauden tai Gemini CLI:n, lukea tai muokata kaavioita aktiivisessa selainistunnossasi. Työsi pysyy tässä selaimessa. Yhdistetyt työkalut saavat valtuuttamasi sisällön ja voivat käyttää omia palvelinpalvelujaan.',
   'integration.settings.bridgeAddress': 'Paikallisen sillan osoite',
   'integration.settings.bridgeUnavailable':
-    'Paikalliseen integraatiosiltaan ei saada yhteyttä. Käynnistä se, salli tämän sivuston alkuperä ja tarkista paikallinen osoite. Selaimesi voi vaatia lähiverkkoluvan tai suojatun paikallisen yhteyden.',
+    'Selain ei voinut muodostaa yhteyttä. Varmista, että paikallinen osoite palauttaa Visual Nerven JSON-terveystiedot eikä toista palvelua. Tarkista sitten sallittu sivuston alkuperä, hyväksytty portti, lähiverkkolupa ja luotettu TLS. WSL ja selaimen ympäristö voivat tavoittaa eri paikalliset prosessit.',
   'integration.settings.connectionSaved':
     'Paikallinen yhteys päivitetty. Tunniste säilyy tämän selainistunnon ajan.',
   'integration.settings.keepOpen': 'Visual Nerven on pysyttävä avoinna, jotta MCP-pääsy toimii.',
@@ -2883,10 +2883,10 @@ const catalog = {
   'spatial.back': 'Takaa',
   'spatial.backView': 'Näkymä takaa',
   'spatial.cameraControlsHelp':
-    'Siirrä-, Kierrä- ja Skaalaa-kahvat ohjaavat kameraa. Näppäimistö: nuolet kiertävät, +/− zoomaa, Home sovittaa.',
+    'Siirrä-, Kierrä- ja Skaalaa-kahvat ohjaavat kameraa. Panoroi pitämällä välilyöntinäppäintä painettuna ja vetämällä hiiren vasemmalla painikkeella. Näppäimistö: nuolet kiertävät, +/− zoomaa, Home sovittaa.',
   'spatial.cameraInterrupted': 'Kameran liike keskeytettiin.',
   'spatial.canvasDescription':
-    'Vuorovaikutteinen 3D-kaavio. Pyöritä vetämällä ja zoomaa vierittämällä. Ota Siirrä kohteita käyttöön, kun haluat vetää kortteja.',
+    'Vuorovaikutteinen 3D-kaavio. Pyöritä vetämällä ja zoomaa vierittämällä. Panoroi pitämällä välilyöntinäppäintä painettuna ja vetämällä, myös korttien päällä. Ota Siirrä kohteita käyttöön, kun haluat vetää kortteja.',
   'spatial.captureFrameFailed': '3D-ruutua ei voitu tallentaa.',
   'spatial.closeHandles': 'Sulje',
   'spatial.connectionFallback': 'yhteys',
@@ -2932,7 +2932,7 @@ const catalog = {
   'spatial.objectsList': '3D-objektit',
   'spatial.objectsRelationshipsSummary': 'Objektit ja suhteet',
   'spatial.orbitHelp':
-    'Sama kaavio syvyydellä. Kallista vetämällä · zoomaa vierittämällä tai nipistämällä · panoroi vetämällä oikealla hiiripainikkeella tai kahdella sormella. Ota Siirrä objekteja käyttöön korttien siirtämiseksi.',
+    'Sama kaavio syvyydellä. Kallista vetämällä · zoomaa vierittämällä tai nipistämällä · panoroi välilyöntinäppäin painettuna vetämällä, oikealla hiiripainikkeella tai kahdella sormella. Ota Siirrä objekteja käyttöön korttien siirtämiseksi; välilyöntinäppäin ja veto panoroivat edelleen korttien päällä.',
   'spatial.originalAppearanceFailed':
     'Korttien alkuperäistä ulkoasua ei voitu ladata. Palaa 2D-näkymään jatkaaksesi.',
   'spatial.originalAppearancePreparing': 'Valmistellaan solmujen alkuperäistä ulkoasua…',

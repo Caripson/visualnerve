@@ -29,7 +29,7 @@ afterEach(() =>
   temporary.splice(0).forEach((path) => rmSync(path, { recursive: true, force: true })),
 );
 const sha = 'a'.repeat(40);
-function reviewed(bridgePorts = [4317], collaborationRelayOrigin?: string) {
+function reviewed(bridgePorts = [47417, 4317], collaborationRelayOrigin?: string) {
   const plan = prepareExistingAppResources(
     {
       ETag: 'EREVIEW1234567',
@@ -121,6 +121,13 @@ function reviewed(bridgePorts = [4317], collaborationRelayOrigin?: string) {
 }
 
 describe('isolated app read-only hosting release check', () => {
+  it('refuses the new bridge port package until the deployed response policy permits both ports', () => {
+    const { input } = reviewed([4317]);
+    const { manifest } = reviewed();
+    expect(() => verifyAppHosting(input, manifest)).toThrow('response headers');
+    const upgraded = reviewed();
+    expect(verifyAppHosting(upgraded.input, upgraded.manifest).bridgePorts).toEqual([47417, 4317]);
+  });
   it('requires the actual response-header policy to match the explicit relay pin before publication', () => {
     const origin = 'https://relay.example.com';
     const { input, manifest } = reviewed([4317], origin);

@@ -194,11 +194,12 @@ Serve the production `public/` package as HTTPS files, preserving asset MIME typ
 
 ## Optional local MCP
 
-The public site has no MCP server. A user can start the optional bridge on their own computer:
+The public site has no MCP server. A user can build the bridge with Go 1.26+ alone from a confirmed checkout and start it on their own computer:
 
 ```sh
-./bin/visual-nerve --bridge --addr 127.0.0.1:4317 \
-  --allowed-origin https://www.visualnerve.com \
+./scripts/build-bridge.sh
+./bin/visual-nerve --static ./bin/bridge-docs --bridge --addr 127.0.0.1:47417 \
+  --allowed-origin https://app.visualnerve.com \
   --tls-cert /path/to/trusted-local-cert.pem \
   --tls-key /path/to/local-key.pem
 ```
@@ -208,3 +209,5 @@ Use the exact origin currently shown in Settings, such as staging's `https://vis
 Access starts Off; Read only or Read + write is an explicit browser grant. Plain loopback WebSockets may work in some browsers; local-network/TLS requirements vary. See [Chrome Local Network Access](https://developer.chrome.com/blog/local-network-access) and the [API/MCP guide](../hugo/content/help/api-mcp.md).
 
 The bridge stays loopback-only, checks exact trusted origins and forwards commands to the browser without storing graphs. Bundled MCP guide/OpenAPI discovery works without content access. Updating the public site is separate from updating/restarting the local executable and reconnecting its client.
+
+New setups use port 47417; saved 4317 connections are retained. The app release and CloudFront response policy must permit both ports during migration. Committing this change does not modify live headers or update local binaries. Follow the [coordinated bridge-port rollout](APP_ORIGIN_DEPLOYMENT.md#bridge-port-rollout) before directing production users to switch.

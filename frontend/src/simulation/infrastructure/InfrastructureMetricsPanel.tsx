@@ -36,14 +36,16 @@ export function InfrastructureMetricsPanel({
                 }
               >
                 <i aria-hidden="true" />
-                {value.pressure === 'clear'
-                  ? 'Clear'
-                  : value.pressure === 'busy'
-                    ? 'Busy'
-                    : 'Constrained'}{' '}
-                · {value.reason}
+                <span>
+                  {value.pressure === 'clear'
+                    ? 'Clear'
+                    : value.pressure === 'busy'
+                      ? 'Busy'
+                      : 'Constrained'}{' '}
+                  · {value.reason}
+                </span>
               </span>
-              <dl className="simulation-card-facts">
+              <dl className="simulation-card-facts infrastructure-pool-facts">
                 {value.facts.map(([label, amount, unit]) => (
                   <div key={label}>
                     <dt>{label}</dt>

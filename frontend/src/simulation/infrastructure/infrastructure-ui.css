@@ -22,6 +22,10 @@
 .infrastructure-domain-fields fieldset {
   min-width: 0;
 }
+.infrastructure-metrics > p {
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
 .infrastructure-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
@@ -38,14 +42,31 @@
   margin: 0 0 8px;
   overflow-wrap: anywhere;
 }
+.infrastructure-pool-metrics > dl.infrastructure-pool-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 16px 12px;
+  margin: 16px 0 0;
+}
+.infrastructure-pool-facts > div {
+  min-width: 0;
+}
+.infrastructure-pool-facts :is(dt, dd) {
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
 .infrastructure-pressure {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr);
   gap: 6px;
-  align-items: center;
+  align-items: start;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 .infrastructure-pressure i {
   width: 9px;
   height: 9px;
+  margin-top: calc(0.75em - 4.5px);
   border-radius: 50%;
   background: var(--pressure-color);
 }

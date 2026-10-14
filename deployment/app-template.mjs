@@ -30,11 +30,21 @@ appTemplate.Parameters.AlternateDomain.AllowedPattern =
   "^$|^(?!www\\.visualnerve\\.com$|visualnerve\\.caripson\\.com$)[a-z0-9][a-z0-9.-]+[a-z0-9]$";
 appTemplate.Parameters.BridgePort = {
   Type: "Number",
-  Default: 4317,
+  Default: 47417,
   MinValue: 1,
   MaxValue: 65535,
   Description:
-    "Approved loopback bridge port. Match the output APP_BRIDGE_PORTS policy; custom UI ports require an explicitly reviewed policy update.",
+    "Primary approved loopback bridge port; legacy 4317 remains allowed. Match the output APP_BRIDGE_PORTS policy; custom UI ports require an explicitly reviewed policy update.",
+};
+appTemplate.Conditions.LegacyBridgePort = {
+  "Fn::Equals": [{ Ref: "BridgePort" }, "4317"],
+};
+appTemplate.Outputs.AppBridgePorts = {
+  Description:
+    "Exact comma-separated APP_BRIDGE_PORTS for the app package matching this response policy.",
+  Value: {
+    "Fn::If": ["LegacyBridgePort", "4317", { "Fn::Sub": "${BridgePort},4317" }],
+  },
 };
 const headers = appResponseHeaders();
 appTemplate.Resources.AppHeaders = {
@@ -47,10 +57,16 @@ appTemplate.Resources.AppHeaders = {
       SecurityHeadersConfig: {
         ContentSecurityPolicy: {
           ContentSecurityPolicy: {
-            "Fn::Sub": appContentSecurityPolicy().replaceAll(
-              ":4317/bridge",
-              ":${BridgePort}/bridge",
-            ),
+            "Fn::If": [
+              "LegacyBridgePort",
+              appContentSecurityPolicy([4317]),
+              {
+                "Fn::Sub": appContentSecurityPolicy().replaceAll(
+                  ":47417/bridge",
+                  ":${BridgePort}/bridge",
+                ),
+              },
+            ],
           },
           Override: true,
         },

@@ -1422,7 +1422,7 @@ const catalog = {
     'Du kan vælge at lade en MCP-klient som Codex, Cursor, Claude eller Gemini CLI læse eller redigere diagrammer i din aktive browsersession. Dit arbejde bliver i denne browser; tilsluttede værktøjer modtager det indhold, du giver adgang til, og kan bruge deres egne hostede tjenester.',
   'integration.settings.bridgeAddress': 'Adresse til lokal bro',
   'integration.settings.bridgeUnavailable':
-    'Kan ikke nå den lokale integrationsbro. Start den, tillad dette websites origin, og kontrollér den lokale adresse. Din browser kan kræve tilladelse til det lokale netværk eller en sikker lokal forbindelse.',
+    'Browseren kunne ikke oprette forbindelse. Kontrollér, at den lokale adresse giver Visual Nerves sundhedssvar i JSON, ikke en anden tjeneste. Kontrollér derefter tilladt webstedsadresse, godkendt port, adgang til lokalt netværk og betroet TLS. WSL og browserens vært kan nå forskellige lokale processer.',
   'integration.settings.connectionSaved':
     'Lokal forbindelse opdateret. Tokenet gælder for denne browsersession.',
   'integration.settings.keepOpen': 'Visual Nerve skal forblive åben, for at MCP-adgang fungerer.',
@@ -2887,10 +2887,10 @@ const catalog = {
   'spatial.back': 'Bagfra',
   'spatial.backView': 'Visning bagfra',
   'spatial.cameraControlsHelp':
-    'Grebene Flyt, Rotér og Skalér styrer kameraet. Tastatur: pile roterer, +/− zoomer, Home tilpasser.',
+    'Grebene Flyt, Rotér og Skalér styrer kameraet. Hold mellemrum nede, og træk med venstre museknap for at panorere. Tastatur: pile roterer, +/− zoomer, Home tilpasser.',
   'spatial.cameraInterrupted': 'Kamerabevægelsen blev afbrudt.',
   'spatial.canvasDescription':
-    'Interaktivt 3D-diagram. Træk for at dreje, rul for at zoome. Aktivér Flyt objekter for at trække kort.',
+    'Interaktivt 3D-diagram. Træk for at dreje, rul for at zoome. Hold mellemrum nede, og træk for at panorere, også hen over kort. Aktivér Flyt objekter for at trække kort.',
   'spatial.captureFrameFailed': 'Kunne ikke optage 3D-billedet.',
   'spatial.closeHandles': 'Luk',
   'spatial.connectionFallback': 'forbindelse',
@@ -2937,7 +2937,7 @@ const catalog = {
   'spatial.objectsList': '3D-objekter',
   'spatial.objectsRelationshipsSummary': 'Objekter og relationer',
   'spatial.orbitHelp':
-    'Det samme diagram med dybde. Træk for at vippe · rul eller knib for at zoome · træk med højre museknap eller to fingre for at panorere. Aktivér Flyt objekter for at trække kort.',
+    'Det samme diagram med dybde. Træk for at vippe · rul eller knib for at zoome · mellemrum + træk, højre museknap eller to fingre for at panorere. Aktivér Flyt objekter for at trække kort; mellemrum + træk panorerer stadig hen over kort.',
   'spatial.originalAppearanceFailed':
     'Kortenes oprindelige udseende kunne ikke indlæses. Gå tilbage til 2D for at fortsætte.',
   'spatial.originalAppearancePreparing': 'Forbereder nodernes oprindelige udseende…',

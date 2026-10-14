@@ -20,19 +20,22 @@ const website = 'https://www.visualnerve.com';
 // This public origin must match the reviewed app package. Leaving it unset
 // verifies the ordinary local-only release, with collaboration disabled.
 const expectedAppHeaders = appResponseHeaders(
-  [4317],
+  undefined,
   process.env.VN_PRODUCTION_COLLABORATION_RELAY_ORIGIN || undefined,
 );
-const bridge = process.env.VN_PRODUCTION_BRIDGE_ORIGIN ?? 'http://127.0.0.1:4317';
+const bridge = process.env.VN_PRODUCTION_BRIDGE_ORIGIN ?? 'http://127.0.0.1:47417';
 if (
-  ![
-    'http://127.0.0.1:4317',
-    'http://localhost:4317',
-    'https://127.0.0.1:4317',
-    'https://localhost:4317',
-  ].includes(bridge)
+  ![47417, 4317]
+    .flatMap((port) =>
+      ['127.0.0.1', 'localhost'].flatMap((host) =>
+        ['http', 'https'].map((scheme) => `${scheme}://${host}:${port}`),
+      ),
+    )
+    .includes(bridge)
 )
-  throw new Error('Production smoke requires an exact HTTP(S) loopback bridge on port 4317.');
+  throw new Error(
+    'Production smoke requires an exact HTTP(S) loopback bridge on port 47417 or legacy 4317.',
+  );
 // Chrome's normal local-network permission applies to the default loopback
 // connection. No certificate, mixed-content or local-network bypass is enabled.
 const socket = bridge.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:') + '/bridge';
@@ -177,7 +180,7 @@ test('live encrypted app saves and reloads offline, then enforces the same human
     // command to an existing browser; every later private command pins our own ID.
     expect(
       (await body<{ connected: number }>(await control.get('/api/v1/health'))).connected,
-      'Start a separate empty 4317 bridge; existing browser work must not be inspected',
+      'Start a separate empty bridge on the configured port; existing browser work must not be inspected',
     ).toBe(0);
     const initialized = await rpc(control, 'initialize', {
       protocolVersion: '2025-11-25',

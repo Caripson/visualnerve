@@ -92,6 +92,30 @@ afterEach(async () => {
 afterAll(() => cipher.destroyKeys(created.keys));
 
 describe('workspace jobs cannot cross encrypted session or app lifecycles', () => {
+  it.each([false, true])(
+    'retains the chosen bridge address across encrypted unlock (new connection: %s)',
+    async (newConnection) => {
+      vi.stubEnv('DEV', false);
+      vi.stubGlobal('location', new URL('https://app.visualnerve.com/'));
+      try {
+        if (newConnection) await db.settings.delete('mcp-access');
+        await workspace.refresh();
+        const address = newConnection
+          ? 'ws://127.0.0.1:47417/bridge'
+          : 'ws://127.0.0.1:4317/bridge';
+        expect(useEditor.getState().bridgeUrl).toBe(address);
+        await workspace.setPreference('mcp-access', 'read');
+        expect((await db.settings.get('bridge-url'))?.value).toBe(address);
+        await reunlock();
+        expect(useEditor.getState()).toMatchObject({ bridgeUrl: address, mcpAccess: 'off' });
+        await workspace.setPreference('mcp-access', 'read');
+        expect(useEditor.getState()).toMatchObject({ bridgeUrl: address, mcpAccess: 'read' });
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    },
+  );
+
   it.each([
     ['mcp-access', 'write', 'write'],
     ['theme', 'dark', 'light'],

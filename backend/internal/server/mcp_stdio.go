@@ -19,10 +19,11 @@ import (
 )
 
 const (
-	DefaultMCPURL   = "http://127.0.0.1:4317/mcp"
-	mcpFrameBytes   = 32 << 20
-	mcpConcurrency  = 8
-	mcpProxyTimeout = MaxCommandTimeout + 45*time.Second
+	DefaultBridgeAddress = "127.0.0.1:47417"
+	DefaultMCPURL        = "http://" + DefaultBridgeAddress + "/mcp"
+	mcpFrameBytes        = 32 << 20
+	mcpConcurrency       = 8
+	mcpProxyTimeout      = MaxCommandTimeout + 45*time.Second
 )
 
 // MCPStdioURL accepts only an exact local integration endpoint. Neither an

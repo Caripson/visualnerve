@@ -1440,7 +1440,7 @@ const catalog = {
     'Vous pouvez autoriser un client MCP tel que Codex, Cursor, Claude ou Gemini CLI à lire ou modifier des diagrammes dans votre session de navigateur active. Votre travail reste dans ce navigateur ; les outils connectés reçoivent le contenu que vous autorisez et peuvent utiliser leurs propres services hébergés.',
   'integration.settings.bridgeAddress': 'Adresse du pont local',
   'integration.settings.bridgeUnavailable':
-    'Le pont local est inaccessible. Démarrez-le, autorisez l’origine de ce site et vérifiez l’adresse locale. Votre navigateur peut exiger une autorisation d’accès au réseau local ou une connexion locale sécurisée.',
+    'Le navigateur ne peut pas se connecter. Vérifiez que cette adresse locale renvoie l’état de Visual Nerve en JSON et ne correspond pas à un autre service. Vérifiez ensuite l’origine web autorisée, le port approuvé, l’autorisation réseau local et le certificat TLS. WSL et l’hôte du navigateur peuvent atteindre des processus locaux différents.',
   'integration.settings.connectionSaved':
     'Connexion locale mise à jour. Le jeton est conservé pendant cette session de navigateur.',
   'integration.settings.keepOpen':
@@ -2937,10 +2937,10 @@ const catalog = {
   'spatial.back': 'Arrière',
   'spatial.backView': 'Vue arrière',
   'spatial.cameraControlsHelp':
-    'Les poignées Déplacer, Pivoter et Redimensionner contrôlent la caméra. Clavier : les flèches font pivoter, +/− zoome, Home ajuste.',
+    'Les poignées Déplacer, Pivoter et Redimensionner contrôlent la caméra. Maintenez la barre espace et faites glisser avec le bouton gauche pour déplacer la vue. Clavier : les flèches font pivoter, +/− zoome, Home ajuste.',
   'spatial.cameraInterrupted': 'Mouvement de caméra interrompu.',
   'spatial.canvasDescription':
-    'Diagramme 3D interactif. Faites glisser pour tourner, faites défiler pour zoomer. Activez Déplacer les objets pour faire glisser les cartes.',
+    'Diagramme 3D interactif. Faites glisser pour tourner, faites défiler pour zoomer. Maintenez la barre espace et faites glisser pour déplacer la vue, même sur les cartes. Activez Déplacer les objets pour faire glisser les cartes.',
   'spatial.captureFrameFailed': 'Impossible de capturer l’image 3D.',
   'spatial.closeHandles': 'Fermer',
   'spatial.connectionFallback': 'lien',
@@ -2987,7 +2987,7 @@ const catalog = {
   'spatial.objectsList': 'Objets 3D',
   'spatial.objectsRelationshipsSummary': 'Objets et relations',
   'spatial.orbitHelp':
-    'Le même diagramme avec de la profondeur. Glissez pour incliner · défilez ou pincez pour zoomer · glissez avec le bouton droit ou deux doigts pour déplacer la vue. Activez Déplacer les objets pour faire glisser les cartes.',
+    'Le même diagramme avec de la profondeur. Glissez pour incliner · défilez ou pincez pour zoomer · espace + glisser, bouton droit ou deux doigts pour déplacer la vue. Activez Déplacer les objets pour faire glisser les cartes ; espace + glisser déplace toujours la vue sur les cartes.',
   'spatial.originalAppearanceFailed':
     'L’apparence originale des cartes n’a pas pu être chargée. Revenez en 2D pour continuer.',
   'spatial.originalAppearancePreparing': 'Préparation de l’apparence originale des nœuds…',

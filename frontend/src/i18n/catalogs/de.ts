@@ -1436,7 +1436,7 @@ const catalog = {
     'Optional können Sie einem MCP-Client wie Codex, Cursor, Claude oder Gemini CLI erlauben, Diagramme in Ihrer aktiven Browsersitzung zu lesen oder zu bearbeiten. Ihre Arbeit bleibt in diesem Browser; verbundene Werkzeuge erhalten die von Ihnen freigegebenen Inhalte und können eigene gehostete Dienste verwenden.',
   'integration.settings.bridgeAddress': 'Adresse der lokalen Brücke',
   'integration.settings.bridgeUnavailable':
-    'Die lokale Integrationsbrücke ist nicht erreichbar. Starten Sie sie, erlauben Sie den Ursprung dieser Website und prüfen Sie die lokale Adresse. Ihr Browser kann eine Berechtigung für das lokale Netzwerk oder eine sichere lokale Verbindung verlangen.',
+    'Der Browser konnte keine Verbindung herstellen. Prüfen Sie, ob die lokale Adresse den JSON-Status von Visual Nerve liefert und nicht zu einem anderen Dienst gehört. Prüfen Sie dann die erlaubte Website-Origin, den freigegebenen Port, die Berechtigung für das lokale Netzwerk und vertrauenswürdiges TLS. WSL und der Browser-Host können unterschiedliche lokale Prozesse erreichen.',
   'integration.settings.connectionSaved':
     'Lokale Verbindung aktualisiert. Das Token bleibt für diese Browsersitzung erhalten.',
   'integration.settings.keepOpen':
@@ -2926,10 +2926,10 @@ const catalog = {
   'spatial.back': 'Hinten',
   'spatial.backView': 'Rückansicht',
   'spatial.cameraControlsHelp':
-    'Die Griffe Verschieben, Drehen und Skalieren steuern die Kamera. Tastatur: Pfeile drehen, +/− zoomt, Home passt ein.',
+    'Die Griffe Verschieben, Drehen und Skalieren steuern die Kamera. Halten Sie die Leertaste gedrückt und ziehen Sie mit der linken Maustaste, um die Ansicht zu verschieben. Tastatur: Pfeile drehen, +/− zoomt, Home passt ein.',
   'spatial.cameraInterrupted': 'Kamerabewegung unterbrochen.',
   'spatial.canvasDescription':
-    'Interaktives 3D-Diagramm. Zum Drehen ziehen, zum Zoomen scrollen. Aktivieren Sie Objekte verschieben, um Karten zu ziehen.',
+    'Interaktives 3D-Diagramm. Zum Drehen ziehen, zum Zoomen scrollen. Leertaste gedrückt halten und ziehen, um die Ansicht zu verschieben, auch über Karten. Aktivieren Sie Objekte verschieben, um Karten zu ziehen.',
   'spatial.captureFrameFailed': 'Das 3D-Bild konnte nicht aufgenommen werden.',
   'spatial.closeHandles': 'Schließen',
   'spatial.connectionFallback': 'Verbindung',
@@ -2976,7 +2976,7 @@ const catalog = {
   'spatial.objectsList': '3D-Objekte',
   'spatial.objectsRelationshipsSummary': 'Objekte und Beziehungen',
   'spatial.orbitHelp':
-    'Dasselbe Diagramm mit Tiefe. Ziehen zum Neigen · scrollen oder pinchen zum Zoomen · mit rechter Maustaste oder zwei Fingern ziehen zum Verschieben. Objekte verschieben aktivieren, um Karten zu ziehen.',
+    'Dasselbe Diagramm mit Tiefe. Ziehen zum Neigen · scrollen oder pinchen zum Zoomen · Leertaste + Ziehen, rechte Maustaste oder zwei Finger zum Verschieben der Ansicht. Objekte verschieben aktivieren, um Karten zu ziehen; Leertaste + Ziehen verschiebt weiterhin die Ansicht über Karten.',
   'spatial.originalAppearanceFailed':
     'Die ursprüngliche Kartendarstellung konnte nicht geladen werden. Zum Fortfahren zu 2D zurückkehren.',
   'spatial.originalAppearancePreparing': 'Ursprüngliche Knotendarstellung wird vorbereitet…',

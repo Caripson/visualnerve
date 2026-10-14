@@ -11,7 +11,7 @@ import { Repository, repository, type CommandOptions } from './repository';
 import {
   mcpAccess,
   assertMcpAccess,
-  defaultBridgeUrl,
+  workspaceBridgeUrl,
   localBridgeUrl,
   type McpAccess,
 } from '../integration/access';
@@ -656,7 +656,7 @@ export class Workspace {
         preferences.get('storage-consent') === true
           ? this.mcpGrant(preferences.get('mcp-access'))
           : 'off',
-      bridgeUrl: String(preferences.get('bridge-url') ?? defaultBridgeUrl()),
+      bridgeUrl: workspaceBridgeUrl(preferences.get('bridge-url'), preferences.has('mcp-access')),
       workspaceId: String(preferences.get('workspace-id') ?? ''),
       privacyAcknowledged: preferences.get('storage-consent') === true,
       lastExport: String(preferences.get('last-export') ?? ''),
@@ -1000,6 +1000,7 @@ export class Workspace {
     this.settingsRevision++;
     this.preferenceWrites++;
     const retryingFailure = this.preferenceFailures.get(key);
+    const previousBridgeUrl = useEditor.getState().bridgeUrl;
     let accessChoice: number | undefined;
     // Revocation closes the live grant before a persisted write can wait on IDB.
     if (key === 'mcp-access') {
@@ -1020,10 +1021,22 @@ export class Workspace {
     if (key === 'storage-consent' && value !== true) this.cancelExternalSvgJobs();
     try {
       await this.withOperation(async (job) => {
+        let connectionAddress: string | undefined;
         const saved = await job.operation.storage.atomic('rw', ['settings'], async (scope) => {
           await this.requireStorageConsent(scope);
           await job.check();
           if (key === 'mcp-access' && accessChoice !== this.accessChoice) return false;
+          if (key === 'mcp-access') {
+            const address = await scope.settings.get('bridge-url');
+            if (address?.value == null) {
+              // Pin the address with the first grant so reloads cannot reinterpret it.
+              connectionAddress = workspaceBridgeUrl(
+                undefined,
+                (await scope.settings.get('mcp-access')) !== undefined,
+              );
+              await scope.settings.put({ key: 'bridge-url', value: connectionAddress });
+            }
+          }
           if (key === 'theme') useEditor.setState({ theme: String(value) });
           if (key === 'mcp-access') useEditor.setState({ mcpAccess: this.mcpGrant(value) });
           if (key === 'bridge-url') useEditor.setState({ bridgeUrl: String(value) });
@@ -1035,7 +1048,12 @@ export class Workspace {
         if (key === 'mcp-access' && accessChoice === this.accessChoice) {
           // Only a successfully persisted explicit choice can lift a local restriction.
           this.accessCeiling = mcpAccess(value);
-          useEditor.setState({ mcpAccess: this.accessCeiling });
+          useEditor.setState({
+            mcpAccess: this.accessCeiling,
+            ...(connectionAddress && useEditor.getState().bridgeUrl === previousBridgeUrl
+              ? { bridgeUrl: connectionAddress }
+              : {}),
+          });
           if (value !== 'off' && this.repo === repository) bridge.authorizeContent();
         }
         // The reminder disappears only after persistence, including immediate reloads.

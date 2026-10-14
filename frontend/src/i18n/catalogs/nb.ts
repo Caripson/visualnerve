@@ -1426,7 +1426,7 @@ const catalog = {
     'Du kan velge å la en MCP-klient som Codex, Cursor, Claude eller Gemini CLI lese eller redigere diagrammer i den aktive nettleserøkten. Arbeidet ditt forblir i denne nettleseren; tilkoblede verktøy mottar innholdet du gir tilgang til, og kan bruke sine egne driftede tjenester.',
   'integration.settings.bridgeAddress': 'Adresse til lokal bro',
   'integration.settings.bridgeUnavailable':
-    'Kan ikke nå den lokale integrasjonsbroen. Start den, tillat dette nettstedets opprinnelse, og kontroller den lokale adressen. Nettleseren kan kreve tillatelse til lokalt nettverk eller en sikker lokal tilkobling.',
+    'Nettleseren kunne ikke koble til. Kontroller at den lokale adressen gir Visual Nerves helsesvar i JSON, ikke en annen tjeneste. Kontroller deretter tillatt nettstedsadresse, godkjent port, tilgang til lokalt nettverk og betrodd TLS. WSL og nettleserens vert kan nå ulike lokale prosesser.',
   'integration.settings.connectionSaved':
     'Lokal tilkobling oppdatert. Tokenet gjelder for denne nettleserøkten.',
   'integration.settings.keepOpen': 'Visual Nerve må være åpen for at MCP-tilgang skal fungere.',
@@ -2891,10 +2891,10 @@ const catalog = {
   'spatial.back': 'Bakfra',
   'spatial.backView': 'Visning bakfra',
   'spatial.cameraControlsHelp':
-    'Håndtakene Flytt, Roter og Skaler styrer kameraet. Tastatur: piler roterer, +/− zoomer, Home tilpasser.',
+    'Håndtakene Flytt, Roter og Skaler styrer kameraet. Hold mellomrom og dra med venstre museknapp for å panorere. Tastatur: piler roterer, +/− zoomer, Home tilpasser.',
   'spatial.cameraInterrupted': 'Kamerabevegelsen ble avbrutt.',
   'spatial.canvasDescription':
-    'Interaktivt 3D-diagram. Dra for å rotere, rull for å zoome. Slå på Flytt objekter for å dra kort.',
+    'Interaktivt 3D-diagram. Dra for å rotere, rull for å zoome. Hold mellomrom og dra for å panorere, også over kort. Slå på Flytt objekter for å dra kort.',
   'spatial.captureFrameFailed': 'Kunne ikke fange 3D-bildet.',
   'spatial.closeHandles': 'Lukk',
   'spatial.connectionFallback': 'forbindelse',
@@ -2941,7 +2941,7 @@ const catalog = {
   'spatial.objectsList': '3D-objekter',
   'spatial.objectsRelationshipsSummary': 'Objekter og relasjoner',
   'spatial.orbitHelp':
-    'Det samme diagrammet med dybde. Dra for å vippe · rull eller knip for å zoome · dra med høyre museknapp eller to fingre for å panorere. Aktiver Flytt objekter for å dra kort.',
+    'Det samme diagrammet med dybde. Dra for å vippe · rull eller knip for å zoome · mellomrom + dra, høyre museknapp eller to fingre for å panorere. Aktiver Flytt objekter for å dra kort; mellomrom + dra panorerer fortsatt over kort.',
   'spatial.originalAppearanceFailed':
     'Det opprinnelige kortutseendet kunne ikke lastes. Gå tilbake til 2D for å fortsette.',
   'spatial.originalAppearancePreparing': 'Klargjør nodenes opprinnelige utseende…',

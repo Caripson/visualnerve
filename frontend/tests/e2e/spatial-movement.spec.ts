@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext, type Page } from './fixtures';
 import type { Graph } from '../../src/model/types';
-import { getSpatialNode } from '../../src/spatial/types';
+import { getSpatialNode, type SpatialPoint } from '../../src/spatial/types';
 import { projectSpatialGraph } from '../../src/spatial/layout';
 import { browserLaunchOptions } from '../../playwright.config';
 
@@ -85,6 +85,83 @@ async function startDrag(page: Page, id: string, dx = 80, dy = 35) {
   await page.mouse.move(point.x + dx, point.y + dy, { steps: 10 });
   return point;
 }
+
+test('Space-drag pans over cards in both 3D modes without moving objects, then restores normal dragging', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(180000);
+  const { graph, node } = await setup(page, request, 'Space to pan the 3D workspace');
+  const canvas = page.getByTestId('spatial-canvas');
+  const camera = async () => ({
+    position: JSON.parse((await canvas.getAttribute('data-camera-position'))!) as SpatialPoint,
+    target: JSON.parse((await canvas.getAttribute('data-camera-target'))!) as SpatialPoint,
+  });
+  for (const moveObjects of [false, true]) {
+    if (moveObjects) await page.getByRole('button', { name: 'Move objects', exact: true }).click();
+    await canvas.focus();
+    const before = await camera();
+    const point = await center(page, node.id);
+    await page.keyboard.down('Space');
+    if (moveObjects) await page.keyboard.down('Shift');
+    await page.mouse.move(point.x, point.y);
+    await page.mouse.down();
+    await expect(canvas).not.toHaveAttribute('data-object-dragging', 'true');
+    await page.mouse.move(point.x + 65, point.y + 25, { steps: 8 });
+    // Releasing Space during a drag must not select or move the underlying card.
+    await page.keyboard.up('Space');
+    await page.mouse.up();
+    if (moveObjects) await page.keyboard.up('Shift');
+    await expect.poll(async () => (await camera()).target).not.toEqual(before.target);
+    const after = await camera();
+    for (const axis of ['x', 'y', 'z'] as const)
+      expect(after.position[axis] - before.position[axis]).toBeCloseTo(
+        after.target[axis] - before.target[axis],
+        4,
+      );
+    await expect
+      .poll(async () => (await stored(request, graph.diagram.id)).diagram.settings.spatialView)
+      .toMatchObject({ camera: after });
+    const savedGraph = await stored(request, graph.diagram.id);
+    expect(savedGraph.nodes).toEqual(graph.nodes);
+    expect(savedGraph.edges).toEqual(graph.edges);
+    await expect(page.getByTestId('spatial-view')).toHaveAttribute(
+      'data-object-mode',
+      moveObjects ? 'move' : 'orbit',
+    );
+    if (!moveObjects) {
+      const point = await center(page, node.id);
+      await page.mouse.move(point.x, point.y);
+      await page.mouse.down();
+      await page.mouse.move(point.x + 35, point.y, { steps: 6 });
+      await page.mouse.up();
+      await expect.poll(async () => (await camera()).position).not.toEqual(after.position);
+      expect((await camera()).target).toEqual(after.target);
+      await page.getByRole('button', { name: 'Front view', exact: true }).click();
+    }
+  }
+  // A subsequent ordinary drag still moves the card instead of panning.
+  const beforeMove = await camera();
+  await startDrag(page, node.id, 40, 10);
+  await page.mouse.up();
+  await expect
+    .poll(async () => (await stored(request, graph.diagram.id)).nodes)
+    .not.toEqual(graph.nodes);
+  expect(await camera()).toEqual(beforeMove);
+  const titlePoint = await center(page, node.id);
+  await page.mouse.dblclick(titlePoint.x, titlePoint.y);
+  const title = page.locator('.spatial-title-editor textarea');
+  await expect(title).toBeVisible();
+  await title.fill('Two');
+  await title.press('End');
+  const editingCamera = await camera();
+  await title.press('Space');
+  await title.pressSequentially('words');
+  await expect(title).toHaveValue('Two words');
+  await expect(canvas).toHaveAttribute('data-pan-held', 'false');
+  expect(await camera()).toEqual(editingCamera);
+  await title.press('Enter');
+});
 
 test('moves a saved 3D card with unchanged depth and 2D geometry, commits once and cancels from either side', async ({
   page,

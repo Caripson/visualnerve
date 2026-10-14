@@ -14,7 +14,7 @@ env:
   SITE_URL: https://www.visualnerve.com
   APP_SURFACE_ORIGIN: https://app.visualnerve.com
   APP_WEBSITE_ORIGIN: https://www.visualnerve.com
-  APP_BRIDGE_PORTS: "4317"
+  APP_BRIDGE_PORTS: "47417,4317"
   HUGO_PARAMS_ENVIRONMENT: production
   HUGO_PARAMS_GOOGLEANALYTICSMEASUREMENTID: ""
   HUGO_VERSION: "0.148.2"

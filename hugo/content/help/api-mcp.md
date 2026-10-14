@@ -56,9 +56,9 @@ Encryption protects saved records while locked. An authorized API/MCP request, d
 | ------------------------------------------------------------- | ----------------------------------------------------------------- |
 | `https://app.visualnerve.com/`                                | Encrypted browser workspace where your diagrams and Settings live |
 | `https://app.visualnerve.com`                                 | Exact app origin allowed by your bridge; use it without a path    |
-| `ws://127.0.0.1:4317/bridge` or trusted `wss://…/bridge`      | Browser-to-local-service WebSocket connection                     |
-| `http://127.0.0.1:4317/mcp` or matching `https://…/mcp`       | Local MCP server address for any compatible client                |
-| `http://127.0.0.1:4317/api/v1` or matching `https://…/api/v1` | Local REST API base                                               |
+| `ws://127.0.0.1:47417/bridge` or trusted `wss://…/bridge`      | Browser-to-local-service WebSocket connection                     |
+| `http://127.0.0.1:47417/mcp` or matching `https://…/mcp`       | Local MCP server address for any compatible client                |
+| `http://127.0.0.1:47417/api/v1` or matching `https://…/api/v1` | Local REST API base                                               |
 
 `127.0.0.1` means the computer where the connecting software runs. It remains local even when the app was downloaded from a public domain. JavaScript opens a connection to the bridge; it does not install or create that native process. A client on another machine does not reach your computer by using its own `127.0.0.1`.
 
@@ -68,49 +68,90 @@ Settings displays the **Visual Nerve website**, API reference and local **MCP se
 
 ## Start the optional process
 
-The bridge is the project's optional Go executable. If you are building from source, the repository's build requires Go 1.26+, Node.js 22.12+, npm and Hugo 0.140+ on Linux, WSL or macOS. Run `./build.sh` to produce `public/` and `bin/visual-nerve`. Once built, the executable and static files do not need the toolchain at runtime.
+The bridge is a separate native executable. Opening the website or copying a Settings prompt does not install it. Run it on the host where the intended browser and local client can both reach its loopback listener.
 
-For the production encrypted workspace, open `https://app.visualnerve.com/` and start the local bridge with its exact allowed origin:
+If you already have `visual-nerve` installed, locate that executable and check its identity/version through health after startup. Otherwise, locate a real Visual Nerve source checkout or clone the repository into a directory you choose. Do not assume a path such as `/home/<name>/visualnerve/bin/visual-nerve` exists.
+
+For the hosted workspace, install **Go 1.26+** and run this from the confirmed repository root:
 
 ```sh
-./bin/visual-nerve --static ./public-app --bridge \
-  --addr 127.0.0.1:4317 \
+./scripts/build-bridge.sh
+./bin/visual-nerve --static ./bin/bridge-docs --bridge \
+  --addr 127.0.0.1:47417 \
   --allowed-origin https://app.visualnerve.com
 ```
 
-Unlock in the browser and configure integration access there. The public website's former `/app` path redirects to the app root; `/app` on the isolated app returns 404. The redirect never migrates older origin-bound browser records. Restore an existing backup or encrypted transfer explicitly.
+This bridge-only build supports Linux, WSL and macOS. It creates a native executable for that environment and the matching `bin/bridge-docs/openapi.yaml`; it does not need Node, npm, Hugo or a website build. Initial Go dependency/toolchain download may need internet. The schema file is required for complete OpenAPI and endpoint discovery; keep it with the executable when moving the bridge package. The bridge-only package does not serve a local editor or Help website: use the hosted app and API reference. Keep the process running while using MCP.
 
-The separate app package is built with `node scripts/build-app-surface.mjs public public-app` after `./build.sh`. A local source-development build may retain its development-only `http://127.0.0.1:4317/app/` test editor. For a separately reviewed preview workspace, copy the exact **Visual Nerve website** value from its Settings into `--allowed-origin`. Preview, local development and production have separate browser storage.
+Open `https://app.visualnerve.com/`, unlock in the browser and configure integration access there. The exact `--allowed-origin` is `https://app.visualnerve.com`, without a path. The public website's former `/app` path redirects to the app root; `/app` on the isolated app returns 404. Routing never migrates origin-bound records; restore an existing backup or encrypted transfer explicitly.
 
-Browser local-network and secure-connection rules vary. If your browser requires secure local WebSockets, start the process with `--tls-cert` and `--tls-key` pointing to a certificate/key trusted by that browser for the chosen loopback hostname, then use `wss://…/bridge` in Settings. The matching MCP/REST addresses use HTTPS. Grant local-network permission if the browser requests it.
+If you also want to build the website locally, follow [the repository build instructions](https://github.com/Caripson/visualnerve#run-locally). `./build.sh` requires Go, Node, npm and Hugo and produces `public/` plus the executable. A local source-development build retains its development-only `http://127.0.0.1:47417/app/` editor. Preview, local development and production have separate browser storage.
 
-The bridge only accepts loopback integration connections. Its allowed-origin must match the website's scheme, hostname and port exactly. A bridge does not become part of the public website when it starts.
+Browser local-network and secure-connection rules vary. Grant local-network permission when requested. If the browser requires secure local WebSockets, start the bridge with `--tls-cert` and `--tls-key` pointing to a certificate/key trusted by that browser for the chosen loopback hostname. Use matching `wss://…/bridge` and HTTPS client addresses. Do not disable certificate verification.
 
-On mobile, the normal UI remains usable locally. Integration still needs a compatible bridge/client on the device making that local connection; a phone's loopback address does not automatically refer to a laptop.
+Changing the local development listener also changes its browser origin. Existing work at `http://localhost:4317` or `http://127.0.0.1:4317` stays at that exact origin. Keep using the old explicit `--addr 127.0.0.1:4317` if available, or export there and import at the new origin. Do not clear its storage. The hosted `https://app.visualnerve.com` origin does not change when its local bridge port changes, so those workspace records remain in place.
 
 ### Choose a dedicated local port
 
-Visual Nerve uses **4317** by default. One bridge listener serves the MCP `/mcp` endpoint, the browser WebSocket `/bridge` and the REST `/api/v1` routes. MCP does not need a second listener or a vendor-specific port.
+New setups use **47417** by default. One listener serves MCP `/mcp`, the browser WebSocket `/bridge` and REST `/api/v1`; MCP does not need a vendor-specific second port. Existing connections using **4317** are retained. New defaults do not silently change saved client configuration or a running bridge.
 
-If another plugin or process already uses 4317, choose an available port explicitly. For example, to configure the isolated app connection through 4318, after including that port in its app build and response-header policy:
+Port **4317** is also the standard [OpenTelemetry gRPC port](https://opentelemetry.io/docs/specs/otlp/#otlpgrpc-default-port); 4318 is used by OpenTelemetry HTTP. Neither is a reserved Visual Nerve port. No port, including 47417, is guaranteed to be free. An occupied-port error stops startup instead of choosing a hidden fallback. Identify the other process before changing anything; stop it only if you know what it is and intend to stop it.
 
-```sh
-./bin/visual-nerve --static ./public-app --bridge \
-  --addr 127.0.0.1:4318 \
-  --allowed-origin https://app.visualnerve.com
-```
+The isolated app permits only explicitly approved loopback WebSocket ports. This release prepares **47417** for new setups and retains **4317** for existing connections. Both the app package and its HTTP response policy must allow a port; changing Settings alone cannot override CSP. An older live release may still allow only 4317 until the coordinated manual app/policy deployment. Existing saved addresses are preserved; switch the listener, browser connection and client together only after that rollout.
 
-Then save `ws://127.0.0.1:4318/bridge` under **Local connection details** in the app, and set your MCP client's URL to `http://127.0.0.1:4318/mcp`. REST requests use `http://127.0.0.1:4318/api/v1`. With trusted local TLS, use the matching `wss` and `https` schemes. Change the port in the client examples below to match your chosen listener.
-
-For the stdio adapter, select the existing listener with `--mcp-url`, rather than the bridge's `--addr` flag. Its client configuration would use these arguments:
+For an approved port, use the same hostname, port and TLS choice in all three places: the bridge's `--addr`, the browser's saved `/bridge` WebSocket URL and the client's HTTP(S) `/mcp` URL. For stdio, `--mcp-url` selects that existing listener. For example, an existing 4317 setup uses:
 
 ```json
-["--mcp-stdio", "--mcp-url", "http://127.0.0.1:4318/mcp"]
+["--mcp-stdio", "--mcp-url", "http://127.0.0.1:4317/mcp"]
 ```
 
-Neither 4317 nor 4318 is guaranteed to be free. If the chosen address is occupied, the bridge reports a bind error; it does not silently switch to a random port. Stop the conflicting process or choose another available port, then update the saved browser connection and client URLs together.
+Other ports require a reviewed app-build and HTTP response-policy update before use. A wildcard or an unrestricted network bind is not needed.
 
-On the isolated encrypted app, the deployed Content Security Policy also restricts browser bridge connections to explicitly approved ports. A custom port must be included in that app build and its response-header policy; changing Settings alone cannot override it. The reviewed default is 4317.
+### Verify the listener before connecting
+
+Before sending a token or workspace command, inspect the exact health URL in **Copy MCP instructions**. For the new default:
+
+```sh
+curl --fail-with-body --max-time 5 -i http://127.0.0.1:47417/api/v1/health
+```
+
+A valid Visual Nerve bridge returns **HTTP 200**, **application/json** and fields including:
+
+```json
+{
+  "status": "ok",
+  "storage": "indexeddb",
+  "bridge": true,
+  "version": "0.11.0",
+  "connected": 0,
+  "tools": ["visual_nerve_request", "visual_nerve_api_docs"],
+  "capabilities": ["operations-v1", "endpoint-docs-v1"]
+}
+```
+
+This is an abbreviated example; current health includes additional capabilities. `connected: 0` is valid before the browser connects. `bridge: false` means the Visual Nerve server was started without `--bridge`. The version and tool/capability list identify the software contract; they do not authenticate against malicious local software or grant access to diagrams.
+
+An empty response, HTTP/0.9 error, connection reset, protobuf/binary payload or unrelated service is **not** successful health. Do not retry with `--http0.9`, accept arbitrary bytes as HTTP, send tokens, or keep repeating MCP commands against that listener. These symptoms can mean the wrong service, protocol or address; they do not identify a process on their own.
+
+Inspect the listening process on the actual client host, using the configured port. Examples for the new default:
+
+| Environment | Read-only inspection |
+| --- | --- |
+| Linux / WSL | `ss -ltnp '( sport = :47417 )'` |
+| macOS | `lsof -nP -iTCP:47417 -sTCP:LISTEN` |
+| Windows PowerShell | `Get-NetTCPConnection -LocalPort 47417 -State Listen` |
+
+If another service owns the port, leave it running unless you explicitly intend to stop it. If the executable is missing, build or install Visual Nerve on that host; a binary on another computer does not solve the missing local process. Once valid health works, continue with tool discovery below.
+
+### Check the client and browser host separately
+
+`127.0.0.1` refers to the connecting network environment. A client in WSL, a Windows browser, a container and a remote Mac can reach different listeners at the same numeric address. Test health from the client shell and open the same health URL directly in a separate browser tab on the browser's host. Both must reach the intended Visual Nerve process.
+
+If Codex runs in WSL and Chrome runs on Windows on the same test computer, check the WSL shell and Chrome separately; the machine being the same does not prove the listener is the same. Do not substitute the health result from a separate Mac.
+
+Windows can normally access a WSL-hosted service through localhost forwarding; the reverse direction depends on WSL networking mode. Mirrored networking supports Windows/WSL loopback access, while NAT has different behavior. Follow [Microsoft's WSL networking guidance](https://learn.microsoft.com/en-us/windows/wsl/networking) for your environment. Visual Nerve's integration deliberately remains loopback-only: do not bind it to `0.0.0.0`, substitute a LAN address or disable origin checks to make a mismatched setup appear to work.
+
+A bridge on a remote Mac is not available through a Linux/WSL client's own loopback. Similarly, a phone's loopback is not its nearby laptop. The normal UI continues working without MCP; put the bridge and client in a compatible local environment before enabling the connection.
 
 ## Enable the browser connection
 
@@ -123,7 +164,7 @@ On the isolated encrypted app, the deployed Content Security Policy also restric
 
 Access is **Off** by default. Read only permits GET inspection and supported exact unsaved previews, exports and comparisons. It does not grant general permission to POST or edit. Read + write additionally permits mutations, saving models and controlling simulations/presentations. Turning access Off closes the browser connection.
 
-Access changes and **Save connection** take effect in the open workspace without a page reload. If the local process is unavailable or the browser temporarily blocks a connection, Visual Nerve retries every few seconds while access remains enabled. Start the bridge and grant any requested local-network permission, then watch for **Connected**. If it stays on **Error**, check the exact allowed origin, trusted local certificate and address; an invalid address must be corrected and saved. Turning access Off also cancels connection retries.
+Access changes and **Save connection** take effect in the open workspace without a page reload. If the local process is unavailable or the browser temporarily blocks a connection, Visual Nerve retries every few seconds while access remains enabled. Start the bridge and grant any requested local-network permission, then watch for **Connected**. If it stays on **Error**, [verify the listener](#verify-the-listener-before-connecting), then check the exact allowed origin, approved port, trusted local certificate and browser permission. A WebSocket error cannot identify the process or distinguish these causes by itself; an invalid address must be corrected and saved. Turning access Off also cancels connection retries.
 
 If the bridge uses `VISUAL_NERVE_BRIDGE_TOKEN`, the browser's **Integration token** must match it. That token lasts for the browser session and is excluded from backups and copied setup instructions. Configure the client's matching Authorization header through protected local settings or supported environment-variable references. Do not put real tokens in shared configuration files or prompts. Choose the tools you grant access to, since they receive the content you ask them to inspect.
 
@@ -135,7 +176,7 @@ The app, the local bridge executable and your MCP client are three separate prog
 
 Before giving an agent workspace commands:
 
-1. Inspect the local `GET /api/v1/health` address shown in the copied instructions. The current bridge reports version **0.11.0**, both MCP tool names, and the capabilities `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1`, `collaboration-document-v1`, `analytics-v1`, `ibm-flowcharting-v1`, `standard-notations-v1` and `infrastructure-resources-v1`. Health contains public transport metadata; it does not read diagrams or unlock the workspace.
+1. Verify the local `GET /api/v1/health` address shown in the copied instructions returns the Visual Nerve JSON described above. The current bridge reports version **0.11.0**, both MCP tool names, and the capabilities `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1`, `collaboration-document-v1`, `analytics-v1`, `ibm-flowcharting-v1`, `standard-notations-v1` and `infrastructure-resources-v1`. Health contains public transport metadata; it does not read diagrams or unlock the workspace.
 2. Reconnect or initialize the MCP client, then inspect its discovered tools. It should show both **visual_nerve_request** and **visual_nerve_api_docs**. A client can retain an old tool list until you reconnect it.
 3. Ask the agent to read the compact guide before making commands. For a particular endpoint, it can request a smaller contract containing that operation and every referenced schema:
 
@@ -208,7 +249,7 @@ These examples follow current official client documentation. They do not claim t
 Register the HTTP bridge and inspect the configured entry:
 
 ```sh
-codex mcp add visual-nerve --url http://127.0.0.1:4317/mcp
+codex mcp add visual-nerve --url http://127.0.0.1:47417/mcp
 codex mcp list
 ```
 
@@ -216,7 +257,7 @@ Alternatively, add or edit its entry in `~/.codex/config.toml`. A longer tool ti
 
 ```toml
 [mcp_servers.visual-nerve]
-url = "http://127.0.0.1:4317/mcp"
+url = "http://127.0.0.1:47417/mcp"
 tool_timeout_sec = 180
 ```
 
@@ -227,7 +268,7 @@ The URL selects Streamable HTTP; a command entry selects stdio. Use the configur
 Use the local Claude Code CLI, selecting HTTP explicitly:
 
 ```sh
-claude mcp add --transport http --scope user visual-nerve http://127.0.0.1:4317/mcp
+claude mcp add --transport http --scope user visual-nerve http://127.0.0.1:47417/mcp
 claude mcp get visual-nerve
 ```
 
@@ -241,7 +282,7 @@ For the local Cursor IDE, add this entry to `~/.cursor/mcp.json` or the project'
 {
   "mcpServers": {
     "visual-nerve": {
-      "url": "http://127.0.0.1:4317/mcp"
+      "url": "http://127.0.0.1:47417/mcp"
     }
   }
 }
@@ -254,7 +295,7 @@ Review the server and tools in Cursor's MCP settings. This URL entry selects the
 Use **Gemini CLI**, running locally, with HTTP selected explicitly:
 
 ```sh
-gemini mcp add --transport http --scope user visual-nerve http://127.0.0.1:4317/mcp
+gemini mcp add --transport http --scope user visual-nerve http://127.0.0.1:47417/mcp
 gemini mcp list
 ```
 
@@ -264,7 +305,7 @@ Alternatively, merge this entry into `~/.gemini/settings.json` or the project's 
 {
   "mcpServers": {
     "visual-nerve": {
-      "httpUrl": "http://127.0.0.1:4317/mcp",
+      "httpUrl": "http://127.0.0.1:47417/mcp",
       "timeout": 180000,
       "trust": false
     }
@@ -293,7 +334,7 @@ In Claude Desktop's local developer configuration, merge an entry like this into
 
 Replace the command with the absolute path to your newly built executable. The usual configuration locations are `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS and `%APPDATA%\Claude\claude_desktop_config.json` on Windows; use a binary for the OS running Desktop and escape Windows backslashes in JSON. Restart Desktop after updating the entry. [Official local MCP configuration guide](https://modelcontextprotocol.io/docs/develop/connect-local-servers), [Claude Desktop local setup](https://support.claude.com/en/articles/10949351-getting-started-with-local-mcp-servers-on-claude-desktop).
 
-The adapter defaults to `http://127.0.0.1:4317/mcp`. For another local port or trusted HTTPS, add `"--mcp-url"` and its exact URL as separate arguments. It accepts only loopback HTTP(S) URLs with an explicit port and `/mcp` path. TLS uses normal system trust; the adapter does not bypass certificate validation. If the bridge requires a token, supply its matching `VISUAL_NERVE_BRIDGE_TOKEN` through the adapter's protected local environment, not the URL or shared example. Closing Desktop ends its adapter, not the shared bridge. Frames are limited to 32 MiB, with eight active and eight pending requests. Saturation stops the adapter rather than buffering indefinitely. Interrupted mutations can have an unknown outcome and are not automatically retried; inspect saved state before repeating them. No vendor GUI compatibility test is claimed here.
+The adapter defaults to `http://127.0.0.1:47417/mcp`. For another local port or trusted HTTPS, add `"--mcp-url"` and its exact URL as separate arguments. It accepts only loopback HTTP(S) URLs with an explicit port and `/mcp` path. TLS uses normal system trust; the adapter does not bypass certificate validation. If the bridge requires a token, supply its matching `VISUAL_NERVE_BRIDGE_TOKEN` through the adapter's protected local environment, not the URL or shared example. Closing Desktop ends its adapter, not the shared bridge. Frames are limited to 32 MiB, with eight active and eight pending requests. Saturation stops the adapter rather than buffering indefinitely. Interrupted mutations can have an unknown outcome and are not automatically retried; inspect saved state before repeating them. No vendor GUI compatibility test is claimed here.
 
 Claude Desktop's local setup is separate from its **remote custom connectors**. A remote connector connects from Anthropic's infrastructure even when configured through Desktop, so it cannot reach this loopback-only bridge. Do not substitute a remote connector for the local command above. [Claude's remote-connector network requirements](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
 
@@ -343,7 +384,7 @@ Use **visual_nerve_request** with paths that omit `/api/v1`:
 { "path": "/diagrams", "method": "GET" }
 ```
 
-The tool's structured result contains **status** and **body**. Failed commands also report `isError`. REST uses the same command path with `/api/v1` in the URL, for example `GET http://127.0.0.1:4317/api/v1/diagrams`.
+The tool's structured result contains **status** and **body**. Failed commands also report `isError`. REST uses the same command path with `/api/v1` in the URL, for example `GET http://127.0.0.1:47417/api/v1/diagrams`.
 
 Do not send `/api/docs` or `/api/openapi.yaml` through visual_nerve_request; they are HTTP documentation routes, not browser graph commands. Use the documentation tool or normal HTTP links for those.
 
@@ -776,7 +817,7 @@ Icons, custom stencils, pen strokes, rich formatting and 3D relief can be simpli
 With the bridge running and the intended browser unlocked with **Read only** or **Read + write**, inspect capabilities:
 
 ```sh
-curl --fail-with-body http://127.0.0.1:4317/api/v1/exports/capabilities
+curl --fail-with-body http://127.0.0.1:47417/api/v1/exports/capabilities
 ```
 
 If your bridge requires a token, use your client's protected Authorization configuration. For the following Node.js 22 example, set `VISUAL_NERVE_BRIDGE_TOKEN` in your local environment if needed and set `VISUAL_NERVE_DIAGRAM_ID` to the canonical UUID returned by `GET /diagrams`. Do not put real tokens in the script. Save it as `export-diagram.mjs`, then run `node export-diagram.mjs`. Adjust the base address to your configured listener. When multiple workspaces are connected, also set `VISUAL_NERVE_WORKSPACE_ID` to the intended workspace ID.
@@ -785,7 +826,7 @@ If your bridge requires a token, use your client's protected Authorization confi
 import { writeFile } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 
-const base = "http://127.0.0.1:4317/api/v1";
+const base = "http://127.0.0.1:47417/api/v1";
 const diagramId = process.env.VISUAL_NERVE_DIAGRAM_ID;
 if (!diagramId) throw new Error("Set VISUAL_NERVE_DIAGRAM_ID first.");
 const headers = { "Content-Type": "application/json" };

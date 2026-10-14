@@ -8,7 +8,7 @@ IndexedDB in the browser is the only database. Start the static server with `--b
 
 Saved access and local connection changes apply to the open workspace without reloading the page. While access remains enabled, temporary connection failures retry every three seconds, including a browser's temporary rejection when opening the local WebSocket. Invalid addresses remain errors until corrected. Turning access Off closes the socket and cancels retries; origin, certificate, local-network permission and configured token requirements remain unchanged.
 
-Base: `http://127.0.0.1:4317/api/v1`. Request bodies and responses use JSON, including Markdown and SVG exports, which return their text as JSON strings. Swagger is bundled at `/api/docs`, the generated OpenAPI 3 contract at `/api/openapi.yaml`, and its source at `docs/openapi.yaml` (JSON syntax, valid YAML 1.2). Regenerate the trusted notation catalog with `node scripts/notation-contract.mjs`, then run `cd backend && go run ./cmd/openapi`. Verify parity with `node --test scripts/notation-contract.test.mjs`.
+Base: `http://127.0.0.1:47417/api/v1`. Request bodies and responses use JSON, including Markdown and SVG exports, which return their text as JSON strings. Swagger is bundled at `/api/docs`, the generated OpenAPI 3 contract at `/api/openapi.yaml`, and its source at `docs/openapi.yaml` (JSON syntax, valid YAML 1.2). Regenerate the trusted notation catalog with `node scripts/notation-contract.mjs`, then run `cd backend && go run ./cmd/openapi`. Verify parity with `node --test scripts/notation-contract.test.mjs`.
 
 ## MCP discovery and connection addresses
 
@@ -333,7 +333,7 @@ The app brief labels observed source facts and proposed behavior separately and 
 PATCH always includes the current entity `version`. `id`, `diagramId` and timestamps are immutable. Metadata PATCH merges keys; omitted keys are preserved, supplied keys replace values (including null). Full graph replacement uses `{ "baseVersion": 7, "graph": ... }`; the diagram's aggregate version changes on every graph mutation. Stale replacements return 409. Fetch again and choose how to reconcile; never blindly delete newer nodes. Tags and ownership arrays replace their previous values. `ownerIds` is canonical and permits multiple owners; `ownerId` alone assigns a single owner. If both are supplied, the array takes precedence and its first entry becomes the primary alias.
 
 ```sh
-curl -X PATCH http://localhost:4317/api/v1/nodes/NODE_UUID \
+curl -X PATCH http://localhost:47417/api/v1/nodes/NODE_UUID \
   -H 'Content-Type: application/json' \
   -d '{"version":1,"status":"done","metadata":{"crmStatus":"closed"}}'
 ```
@@ -449,11 +449,11 @@ Paths omit /api/v1. The tool's structuredContent contains status and body, plus 
 
 All standard clients use the same tools and grants. Codex, Cursor, Claude Code and Gemini CLI can use HTTP; local stdio clients such as Claude Desktop can launch `visual-nerve --mcp-stdio` to forward to an already-running bridge. This creates no separate command engine. `--mcp-url` selects its exact loopback HTTP(S) endpoint and preserves system TLS verification. Use `VISUAL_NERVE_BRIDGE_TOKEN` in the adapter environment if authentication is configured. Stdout is protocol-only; frames are bounded to 32 MiB, with eight active and eight pending requests. Saturation terminates the adapter, and EOF cancels pending transport work. Interrupted mutations have an unknown outcome and are never automatically retried. [Client configuration and transport details](docs/MCP.md#client-transports-and-port-selection).
 
-Visual Nerve defaults to dedicated port **4317**, shared by `/mcp`, browser `/bridge` and REST. If occupied, startup fails with instructions; no automatic fallback occurs. A custom `--addr 127.0.0.1:4318` needs matching saved browser WebSocket and HTTP client URLs; stdio takes `--mcp-url http://127.0.0.1:4318/mcp`.
+Visual Nerve defaults new setups to **47417**, shared by `/mcp`, browser `/bridge` and REST. Existing saved 4317 connections remain explicit and unchanged. If occupied, startup fails; no automatic fallback occurs. Identify the listener first: HTTP 200 JSON health must report `status: "ok"`, `storage: "indexeddb"`, `bridge: true`, a version string and both MCP tool names. An empty, binary or HTTP/0.9 response is not valid bridge health. Port 4317 is also used by OpenTelemetry gRPC. A custom port needs an approved app/CSP configuration and matching listener, browser WebSocket and client HTTP URLs; stdio selects the same listener with `--mcp-url`. See [listener verification](hugo/content/help/api-mcp.md#verify-the-listener-before-connecting).
 
 When several distinct workspaces are connected, pass `workspaceId` to MCP or `X-Visual-Nerve-Workspace` to REST. The workspace ID is available under Settings → Storage details; each browser profile/origin owns its own identity. Multiple tabs for the same workspace share its IndexedDB and use transactional version checks.
 
-On the isolated encrypted app, the deployed Content Security Policy also restricts browser bridge connections to explicitly approved ports. A custom port must be included in that app build and its response-header policy; changing Settings alone cannot override it. The reviewed default is 4317.
+The isolated app permits only explicitly approved loopback WebSocket ports. This release prepares **47417** for new setups and retains **4317** for existing connections. Both the app package and its HTTP response policy must allow a port; changing Settings alone cannot override CSP. An older live release may still allow only 4317 until the coordinated manual app/policy deployment. Existing saved addresses are preserved; switch the listener, browser connection and client together only after that rollout.
 
 ## Public app and permissions
 
@@ -750,7 +750,7 @@ node scripts/examples/analytics.mjs
 node scripts/examples/analytics.mjs --mcp
 ```
 
-Each invocation intentionally creates one new editable **Illustrative example data** document. The same script discovers capabilities, creates the template, inspects/previews/commits CSV, saves and calculates a measurement, saves/evaluates a rule, runs chronological Signal Lab validation, creates three reviewed scenarios, compares them, starts a worker job, archives signal history and retrieves the retained original observations. The default listener is `http://127.0.0.1:4317`. Optional `VISUAL_NERVE_BRIDGE_ORIGIN`, `VISUAL_NERVE_WORKSPACE_ID` and existing protected `VISUAL_NERVE_BRIDGE_TOKEN` environment settings select an exact listener/workspace; actual secrets are never printed.
+Each invocation intentionally creates one new editable **Illustrative example data** document. The same script discovers capabilities, creates the template, inspects/previews/commits CSV, saves and calculates a measurement, saves/evaluates a rule, runs chronological Signal Lab validation, creates three reviewed scenarios, compares them, starts a worker job, archives signal history and retrieves the retained original observations. The default listener is `http://127.0.0.1:47417`. Optional `VISUAL_NERVE_BRIDGE_ORIGIN`, `VISUAL_NERVE_WORKSPACE_ID` and existing protected `VISUAL_NERVE_BRIDGE_TOKEN` environment settings select an exact listener/workspace; actual secrets are never printed.
 
 MCP mode first initializes, discovers the two existing tools, reads `visual_nerve_api_docs` with `document:"guide"`, then reads the exact import-commit endpoint contract. All commands use **visual_nerve_request**, whose paths omit `/api/v1`. No new tool names or shadow model are required. The script reserves operation IDs before writes and inspects an unknown-outcome receipt; it never silently retries a write with a new ID.
 

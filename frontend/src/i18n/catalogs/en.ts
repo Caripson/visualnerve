@@ -1410,7 +1410,7 @@ const catalog = {
     'Optionally let an MCP client such as Codex, Cursor, Claude or Gemini CLI read or edit diagrams in your active browser session. Your work stays in this browser; connected tools receive the content you authorize and may use their own hosted services.',
   'integration.settings.bridgeAddress': 'Local bridge address',
   'integration.settings.bridgeUnavailable':
-    "Cannot reach the local bridge. Start it, allow this website's origin, and check the local address. Your browser may require local network permission or a secure local connection.",
+    'The browser could not connect. Verify that the configured local address serves Visual Nerve JSON health, not another service. Then check the allowed website origin, approved port, local-network permission and trusted TLS. WSL and the browser host may reach different loopback listeners.',
   'integration.settings.connectionSaved':
     'Local connection updated. The token lasts for this browser session.',
   'integration.settings.keepOpen': 'Visual Nerve must stay open for MCP access to work.',
@@ -2857,10 +2857,10 @@ const catalog = {
   'spatial.back': 'Back',
   'spatial.backView': 'Back view',
   'spatial.cameraControlsHelp':
-    'The Move, Rotate and Scale handles control the camera. Keyboard: arrows rotate, +/− zoom, Home fits.',
+    'The Move, Rotate and Scale handles control the camera. Hold Space and drag with the left mouse button to pan. Keyboard: arrows rotate, +/− zoom, Home fits.',
   'spatial.cameraInterrupted': 'Camera movement interrupted.',
   'spatial.canvasDescription':
-    'Interactive 3D diagram. Drag to rotate, scroll to zoom. Enable Move objects to drag cards.',
+    'Interactive 3D diagram. Drag to rotate, scroll to zoom. Hold Space and drag to pan, including over cards. Enable Move objects to drag cards.',
   'spatial.captureFrameFailed': 'Could not capture the 3D frame.',
   'spatial.closeHandles': 'Close',
   'spatial.connectionFallback': 'connection',
@@ -2906,7 +2906,7 @@ const catalog = {
   'spatial.objectsList': '3D objects',
   'spatial.objectsRelationshipsSummary': 'Objects and relationships',
   'spatial.orbitHelp':
-    'The same diagram with depth. Drag to tilt · scroll or pinch to zoom · right drag or two fingers to pan. Enable Move objects to drag cards.',
+    'The same diagram with depth. Drag to tilt · scroll or pinch to zoom · Space + drag, right drag or two fingers to pan. Enable Move objects to drag cards; Space + drag still pans over cards.',
   'spatial.originalAppearanceFailed':
     'The original card appearance could not be loaded. Return to 2D to continue.',
   'spatial.originalAppearancePreparing': 'Preparing the original node appearance…',

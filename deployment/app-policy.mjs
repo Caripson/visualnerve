@@ -1,5 +1,7 @@
 export const APP_ORIGIN = "https://app.visualnerve.com";
 export const WEBSITE_ORIGIN = "https://www.visualnerve.com";
+// The former default remains explicit for existing local bridge installations.
+export const DEFAULT_APP_BRIDGE_PORTS = Object.freeze([47417, 4317]);
 
 export function appSurfaceOptions(options = {}) {
   const origin = (value) => {
@@ -28,7 +30,7 @@ export function appSurfaceOptions(options = {}) {
     throw new Error(
       "The isolated app must use a separate origin from the existing website/workspace.",
     );
-  const bridgePorts = options.bridgePorts ?? [4317];
+  const bridgePorts = options.bridgePorts ?? DEFAULT_APP_BRIDGE_PORTS;
   if (
     !Array.isArray(bridgePorts) ||
     !bridgePorts.length ||
@@ -78,7 +80,7 @@ export function appSurfaceOptions(options = {}) {
 }
 
 export function appContentSecurityPolicy(
-  bridgePorts = [4317],
+  bridgePorts = DEFAULT_APP_BRIDGE_PORTS,
   collaborationRelayOrigin,
 ) {
   const { bridgePorts: ports } = appSurfaceOptions({
@@ -115,7 +117,7 @@ export function appContentSecurityPolicy(
 }
 
 export function appResponseHeaders(
-  bridgePorts = [4317],
+  bridgePorts = DEFAULT_APP_BRIDGE_PORTS,
   collaborationRelayOrigin,
 ) {
   return {

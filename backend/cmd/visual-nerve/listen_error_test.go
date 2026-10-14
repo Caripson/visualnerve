@@ -19,8 +19,25 @@ func TestMCPBridgePortCLIProcess(t *testing.T) {
 	}
 	flag.CommandLine = flag.NewFlagSet("visual-nerve", flag.ExitOnError)
 	os.Args = []string{"visual-nerve", "--bridge", "--addr", os.Getenv("VISUAL_NERVE_TEST_ADDR")}
+	if os.Getenv("VISUAL_NERVE_TEST_SHOW_DEFAULTS") == "1" {
+		os.Args = []string{"visual-nerve", "--help"}
+	}
 	main()
 	os.Exit(0)
+}
+
+func TestMCPBridgeAndStdioAdvertiseTheSameDedicatedDefault(t *testing.T) {
+	cmd := exec.Command(os.Args[0], "-test.run=^TestMCPBridgePortCLIProcess$")
+	cmd.Env = append(os.Environ(), "VISUAL_NERVE_TEST_PORT_PROCESS=1", "VISUAL_NERVE_TEST_SHOW_DEFAULTS=1", "VISUAL_NERVE_ADDR=", "VISUAL_NERVE_ALLOWED_ORIGINS=", "VISUAL_NERVE_TLS_CERT=", "VISUAL_NERVE_TLS_KEY=", "VISUAL_NERVE_BRIDGE_TOKEN=")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, value := range []string{`(default "127.0.0.1:47417")`, `(default "http://127.0.0.1:47417/mcp")`} {
+		if !strings.Contains(string(output), value) {
+			t.Fatal("CLI default address and stdio target must use the dedicated port", value)
+		}
+	}
 }
 
 func TestMCPOccupiedPortFailsWithExplicitMatchingConfigurationAdvice(t *testing.T) {

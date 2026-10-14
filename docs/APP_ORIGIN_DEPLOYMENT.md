@@ -83,7 +83,7 @@ For a reviewed preview/custom bridge configuration:
 ```sh
 APP_SURFACE_ORIGIN=https://app-preview.visualnerve.com \
 APP_WEBSITE_ORIGIN=https://www.visualnerve.com \
-APP_BRIDGE_PORTS=4317,9443 \
+APP_BRIDGE_PORTS=47417,4317,9443 \
 node scripts/build-app-surface.mjs public public-app
 ```
 
@@ -222,12 +222,56 @@ resolve from the Hugging Face model path to `us.aws.cdn.hf.co`; only those hosts
 permitted. The speech runtime additionally validates exact model URLs, byte limits
 and SHA-256. A future model-host redirect change should fail closed until reviewed.
 Voice synthesis and text stay local. The app template's `BridgePort` defaults to
-4317 and must match the output policy; additional approved ports require an
-explicit response-policy update matching `app-surface.json`.
+47417, with legacy 4317 retained. The app build and existing-resource policy default
+to `47417,4317`; additional approved ports require an explicit response-policy
+update matching `app-surface.json`.
 Use `127.0.0.1` or `localhost` for the isolated app's bridge address. Literal IPv6
 host sources are not part of the current CSP host-source grammar, so an `[::1]`
 destination is deliberately not promised by this policy. The existing legacy
 bridge settings remain unchanged. A scheme/host wildcard is not used as a workaround.
+
+## Bridge-port rollout
+
+The new default is **47417**. Existing saved or legacy integration settings using
+**4317** remain explicit; no workspace is deleted, unlocked or moved by this change.
+The hosted app's HTML CSP and CloudFront response-header CSP must both permit the
+chosen loopback WebSocket port. A local binary update or Settings edit cannot
+broaden a deployed policy.
+
+The repository prepares a bounded two-port allowlist, `47417,4317`, in the app
+builder, production workflow and response-policy generators. This is preparation,
+not evidence that live AWS configuration has changed. A previous production release
+may still permit only 4317.
+
+Existing CloudFormation stacks retain their saved parameter values when a template
+default changes. To opt an existing stack into the new port during a reviewed
+update, explicitly set `BridgePort=47417`. Use the stack output **AppBridgePorts**
+as the exact `APP_BRIDGE_PORTS` value for the matching frontend build: it returns
+`47417,4317` for that choice, or `4317` when the stack intentionally retains the
+legacy parameter. Do not assume a new template default updated an existing stack.
+
+Perform the following only during an authorized manual release:
+
+1. Review the generated existing-resource response policy and apply its exact
+   `47417,4317` bridge entries to the isolated app distribution. Preserve the other
+   headers, voice/collaboration destinations and origin restrictions; do not add
+   `*`, arbitrary HTTP destinations or a loopback-port wildcard.
+2. Wait for CloudFront deployment, inspect the actual response CSP, and manually
+   publish the matching app package/workflow revision. Its `app-surface.json` must
+   list the same approved bridge ports. A restrictive older HTTP header wins even
+   when the HTML policy includes the new port.
+3. Verify a fresh unlocked test profile connects through 47417 and an existing
+   saved 4317 setup still connects, including normal access revocation and lock.
+   Use isolated synthetic workspaces. Confirm both listeners are real Visual
+   Nerve processes with JSON health before sending content or tokens.
+4. Let existing users keep 4317, or explicitly switch the local listener, browser
+   WebSocket URL and client HTTP/stdio URL together. Restart/update the bridge
+   executable separately; a website update does not update that local program.
+
+The old port overlaps OpenTelemetry gRPC. A port conflict must be diagnosed by
+identifying its owner; do not stop unrelated telemetry services. If neither
+approved port is available, arrange another reviewed bounded app/policy port
+before using it. Production is not deployed automatically after commit or push.
 
 ## Manual release prerequisites
 
@@ -242,7 +286,7 @@ Before the first release:
 1. Finish the private REST/OAC cutover above for the existing app infrastructure,
    deploy the exact dedicated LIVE route function and install the app response
    policy. Match its explicit bridge ports to the app build; the production
-   workflow uses port **4317**.
+   workflow uses ports **47417 and 4317**, with 47417 as the new setup default.
 2. Create/review the GitHub **app-production** environment with a main-only branch
    policy. Add a native reviewer rule if desired and available; the workflow's
    explicit SHA gates do not depend on such a rule being configured automatically.

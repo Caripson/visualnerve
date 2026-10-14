@@ -36,7 +36,7 @@ func (o *origins) Set(value string) error {
 	return nil
 }
 func main() {
-	addr := flag.String("addr", env("VISUAL_NERVE_ADDR", "127.0.0.1:4317"), "listen address")
+	addr := flag.String("addr", env("VISUAL_NERVE_ADDR", server.DefaultBridgeAddress), "listen address")
 	static := flag.String("static", env("VISUAL_NERVE_STATIC_DIR", "public"), "built site directory")
 	dev := flag.Bool("dev", false, "allow loopback Vite origin")
 	bridge := flag.Bool("bridge", false, "enable optional browser communication bridge and MCP")

@@ -438,12 +438,17 @@ it('allows only reviewed loopback bridge ports, local executable assets and fixe
   const csp = appContentSecurityPolicy();
   expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval'");
   expect(csp).toContain("worker-src 'self' blob:");
+  expect(appSurfaceOptions().bridgePorts).toEqual([47417, 4317]);
+  expect(csp).toContain('wss://127.0.0.1:47417/bridge');
+  expect(csp).toContain('ws://localhost:47417/bridge');
   expect(csp).toContain('wss://127.0.0.1:4317/bridge');
   expect(csp).toContain('ws://localhost:4317/bridge');
   expect(csp).not.toContain('[::1]');
   expect(csp).toContain('https://us.aws.cdn.hf.co');
   expect(csp).not.toMatch(/'unsafe-eval'|google|klaro|https:\s|wss:\s|:\*|https:\/\/\*/);
   expect(appContentSecurityPolicy([9443])).toContain('wss://localhost:9443/bridge');
+  expect(appContentSecurityPolicy([9443])).not.toContain(':47417/bridge');
+  expect(appContentSecurityPolicy([4317])).not.toContain(':47417/bridge');
   expect(csp).not.toContain(':4318/bridge');
   expect(appContentSecurityPolicy([4317, 4318])).toContain('ws://127.0.0.1:4318/bridge');
   for (const ports of [[], [0], [-1], [65536], [1, 1]])
@@ -477,8 +482,9 @@ it('keeps collaboration disabled by default and pins one explicit HTTPS/WSS rela
   }
   const manifest = JSON.parse(readFileSync(join(output, 'app-surface.json'), 'utf8'));
   expect(manifest.collaborationRelayOrigin).toBe(origin);
-  expect(manifest.responseHeaders).toEqual(appResponseHeaders([4317], origin));
-  const directives = appContentSecurityPolicy([4317], origin).split('; ');
+  expect(manifest.bridgePorts).toEqual([47417, 4317]);
+  expect(manifest.responseHeaders).toEqual(appResponseHeaders(undefined, origin));
+  const directives = appContentSecurityPolicy(undefined, origin).split('; ');
   expect(directives.find((directive) => directive.startsWith('script-src '))).not.toContain(origin);
   expect(directives.find((directive) => directive.startsWith('connect-src '))).toContain(
     ` ${origin} `,
@@ -546,14 +552,18 @@ it('keeps the current website deployment unchanged while attaching app-only secu
   expect(template.Resources.AppHeaders).toBeUndefined();
   expect(appTemplate.Parameters.CanonicalDomain.Default).toBe('app.visualnerve.com');
   expect(appTemplate.Parameters.BucketName.Default).toBe('');
+  expect(appTemplate.Parameters.BridgePort.Default).toBe(47417);
   expect(
     appTemplate.Resources.Distribution.Properties.DistributionConfig.DefaultCacheBehavior
       .ResponseHeadersPolicyId,
   ).toEqual({ Ref: 'AppHeaders' });
   const headers = appTemplate.Resources.AppHeaders.Properties.ResponseHeadersPolicyConfig;
-  expect(
-    headers.SecurityHeadersConfig.ContentSecurityPolicy.ContentSecurityPolicy['Fn::Sub'],
-  ).toContain('localhost:${BridgePort}/bridge');
+  const alternatives =
+    headers.SecurityHeadersConfig.ContentSecurityPolicy.ContentSecurityPolicy['Fn::If'];
+  const csp = alternatives[2]['Fn::Sub'];
+  expect(csp).toContain('localhost:${BridgePort}/bridge');
+  expect(csp).toContain('localhost:4317/bridge');
+  expect(csp.replaceAll('${BridgePort}', '47417')).toBe(appContentSecurityPolicy());
   expect(headers.SecurityHeadersConfig.StrictTransportSecurity.Preload).toBe(false);
   expect(headers.SecurityHeadersConfig.FrameOptions.FrameOption).toBe('DENY');
   expect(headers.CorsConfig).toBeUndefined();
@@ -561,6 +571,33 @@ it('keeps the current website deployment unchanged while attaching app-only secu
     appTemplate.Resources.AppBucket.Properties.PublicAccessBlockConfiguration.BlockPublicPolicy,
   ).toBe(true);
 });
+
+it.each([47417, 4317, 9443])(
+  'CloudFormation exports matching bridge ports and deduplicated CSP for primary port %s',
+  (port) => {
+    expect(appTemplate.Conditions.LegacyBridgePort).toEqual({
+      'Fn::Equals': [{ Ref: 'BridgePort' }, '4317'],
+    });
+    const select = (value: { 'Fn::If': unknown[] }) => {
+      const [condition, legacy, current] = value['Fn::If'];
+      expect(condition).toBe('LegacyBridgePort');
+      const selected = port === 4317 ? legacy : current;
+      return typeof selected === 'string'
+        ? selected
+        : (selected as { 'Fn::Sub': string })['Fn::Sub'].replaceAll('${BridgePort}', String(port));
+    };
+    const ports = select(appTemplate.Outputs.AppBridgePorts.Value).split(',').map(Number);
+    expect(ports).toEqual(port === 4317 ? [4317] : [port, 4317]);
+    const headers = appTemplate.Resources.AppHeaders.Properties.ResponseHeadersPolicyConfig;
+    const policy = select(
+      headers.SecurityHeadersConfig.ContentSecurityPolicy.ContentSecurityPolicy,
+    );
+    expect(policy).toBe(appContentSecurityPolicy(ports));
+    const loopbacks = policy.match(/wss?:\/\/(?:127\.0\.0\.1|localhost):\d+\/bridge/g)!;
+    expect(loopbacks).toHaveLength(ports.length * 4);
+    expect(new Set(loopbacks).size).toBe(loopbacks.length);
+  },
+);
 
 it('requires separate exact-commit app approval and verification before a future opt-in publication', () => {
   const sha = 'a'.repeat(40);

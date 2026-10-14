@@ -2,6 +2,7 @@ import { expect, it } from 'vitest';
 import { mcpServerUrl, mcpSetupNote } from '../src/integration/setup';
 
 it.each([
+  ['ws://127.0.0.1:47417/bridge', 'http://127.0.0.1:47417/mcp'],
   ['ws://127.0.0.1:4317/bridge', 'http://127.0.0.1:4317/mcp'],
   ['wss://localhost:9443/bridge', 'https://localhost:9443/mcp'],
   ['wss://[::1]:4329/bridge', 'https://[::1]:4329/mcp'],
@@ -76,3 +77,42 @@ it('normalizes a workspace URL to its website origin without changing MCP author
   expect(note).toContain('--allowed-origin https://visualnerve.caripson.com\n');
   expect(note).not.toContain('--allowed-origin https://visualnerve.caripson.com/app');
 });
+
+it.each([47417, 4317])(
+  'keeps the selected port %i and gives a safe bridge bootstrap before workspace commands',
+  (port) => {
+    const note = mcpSetupNote('https://app.visualnerve.com', `ws://127.0.0.1:${port}/bridge`);
+    expect(note).toContain(
+      `Bridge health on this computer: http://127.0.0.1:${port}/api/v1/health`,
+    );
+    expect(note).toContain(`MCP server on this computer: http://127.0.0.1:${port}/mcp`);
+    for (const required of [
+      'HTTP 200',
+      'application/json',
+      'status:"ok"',
+      'storage:"indexeddb"',
+      'bridge:true',
+      'version string',
+      'tools including visual_nerve_request and visual_nerve_api_docs',
+    ])
+      expect(note).toContain(required);
+    expect(note).toContain('Do not retry with --http0.9');
+    expect(note).toContain('kill an unrelated process');
+    expect(note).toContain('Do not guess an absolute binary/repository path');
+    expect(note).toContain('continue authorized local diagnosis and setup');
+    expect(note).toContain('Do not end by merely asking the user to start');
+    expect(note).toContain('report that specific missing prerequisite');
+    expect(note).toContain('do not replace their port with a new default');
+    expect(note).toContain('scripts/build-bridge.sh');
+    expect(note).toContain('bin/bridge-docs/openapi.yaml');
+    expect(note).toContain('--static ./bin/bridge-docs --bridge');
+    expect(note).toContain('actual');
+    expect(note).toContain('WSL, Windows, containers and a remote Mac');
+    expect(note).toContain('both the client environment and the browser host');
+    expect(note).toContain('Settings cannot bypass CSP');
+    expect(note).toContain('Existing saved addresses, including 4317');
+    expect(note.indexOf('Require HTTP 200')).toBeLessThan(
+      note.indexOf('Use visual_nerve_request for diagram commands'),
+    );
+  },
+);
