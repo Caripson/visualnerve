@@ -305,7 +305,7 @@ func processIdentity(pid int, executable string) (string, error) {
 		if fields[0] == "Z" || fields[0] == "X" {
 			return "", errProcessGone
 		}
-		actual, err := os.Readlink(filepath.Join(root, "exe"))
+		actual, err := linuxProcessExecutable(root)
 		if err != nil {
 			return "", err
 		}
@@ -367,6 +367,17 @@ func processIdentity(pid int, executable string) (string, error) {
 	}
 	return "darwin:" + start, nil
 }
+
+func linuxProcessExecutable(processDirectory string) (string, error) {
+	executable, err := os.Readlink(filepath.Join(processDirectory, "exe"))
+	// The process can exit after its live stat record was read. Only a vanished
+	// procfs link means it is gone; permission and identity failures still fail.
+	if os.IsNotExist(err) {
+		return "", errProcessGone
+	}
+	return executable, err
+}
+
 func verifyManaged(s *managedState) error {
 	if err := ownedDirectory(s.ReleaseDirectory, false); err != nil {
 		return err
@@ -701,6 +712,27 @@ func runtimeEnvironment() []string {
 	}
 	return env
 }
+
+func waitForFreeAddress(address string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for {
+		err := requireFreeAddress(address)
+		if err == nil || !time.Now().Before(deadline) {
+			return err
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func startManagedAfterStop(dir string, s managedState) (*managedState, error) {
+	// Linux may remove /proc/PID/exe before releasing the stopped process's
+	// sockets. Retry binding briefly, without contacting or signalling a listener.
+	if err := waitForFreeAddress(s.Address, 2*time.Second); err != nil {
+		return nil, err
+	}
+	return startManaged(dir, s)
+}
+
 func startManaged(dir string, s managedState) (result *managedState, err error) {
 	if err = requireFreeAddress(s.Address); err != nil {
 		return nil, err
@@ -857,10 +889,15 @@ func run(o options) error {
 		}
 	}
 	next := managedState{Executable: filepath.Join(release, "visual-nerve"), ReleaseDirectory: release, SourceSHA: o.SourceSHA, Version: o.Version, Revision: provenance.Revision, Origin: o.Origin, Address: o.Address}
-	current, err := startManaged(o.InstallDir, next)
+	var current *managedState
+	if running {
+		current, err = startManagedAfterStop(o.InstallDir, next)
+	} else {
+		current, err = startManaged(o.InstallDir, next)
+	}
 	if err != nil {
 		if running {
-			if previous, restoreErr := startManaged(o.InstallDir, *state); restoreErr == nil {
+			if previous, restoreErr := startManagedAfterStop(o.InstallDir, *state); restoreErr == nil {
 				fmt.Println("The previous managed release was restarted after unsuccessful activation.")
 				printReady(previous, o.InstallDir)
 			} else {

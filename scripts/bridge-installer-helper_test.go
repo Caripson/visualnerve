@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -19,7 +20,9 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 type zipEntry struct {
@@ -319,6 +322,33 @@ func freeAddress(t *testing.T) string {
 	l.Close()
 	return address
 }
+
+func TestLinuxExecutableDisappearanceAfterLiveStatIsProcessGone(t *testing.T) {
+	processDirectory := t.TempDir()
+	executable := filepath.Join(processDirectory, "exe")
+	if err := os.WriteFile(filepath.Join(processDirectory, "stat"), []byte("live process record"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := linuxProcessExecutable(processDirectory); !errors.Is(err, errProcessGone) {
+		t.Fatal("a disappeared exe link must be treated as an exited process", err)
+	}
+	if err := os.WriteFile(executable, []byte("not a process symlink"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := linuxProcessExecutable(processDirectory); err == nil || errors.Is(err, errProcessGone) {
+		t.Fatal("a non-ENOENT link error must not be treated as process exit", err)
+	}
+	if err := os.Remove(executable); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("/different/executable", executable); err != nil {
+		t.Fatal(err)
+	}
+	if actual, err := linuxProcessExecutable(processDirectory); err != nil || actual != "/different/executable" {
+		t.Fatal("existing executable identity must remain available for exact matching", actual, err)
+	}
+}
+
 func TestManagedLifecycleReusesHealthyPIDAndStopsOnlyExactProcess(t *testing.T) {
 	o := installerOptions(t)
 	o.Address = freeAddress(t)
@@ -388,10 +418,40 @@ func TestManagedLifecycleReusesHealthyPIDAndStopsOnlyExactProcess(t *testing.T) 
 	if _, err = os.Stat(filepath.Join(o.InstallDir, "state.json")); !os.IsNotExist(err) {
 		t.Fatal("stopped process state remained", err)
 	}
-	if err = requireFreeAddress(o.Address); err != nil {
+	if err = waitForFreeAddress(o.Address, 2*time.Second); err != nil {
 		t.Fatal("stop did not release listener", err)
 	}
 }
+
+func TestWaitForAddressReleaseOnlyBindsWithoutContactingOrStoppingListener(t *testing.T) {
+	var requests atomic.Int32
+	foreign := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		w.WriteHeader(http.StatusAccepted)
+	}))
+	defer foreign.Close()
+	address := strings.TrimPrefix(foreign.URL, "http://")
+	if err := waitForFreeAddress(address, 25*time.Millisecond); err == nil {
+		t.Fatal("occupied listener was treated as released")
+	}
+	if requests.Load() != 0 {
+		t.Fatal("bind retry contacted an unidentified listener")
+	}
+	response, err := http.Get(foreign.URL)
+	if err != nil {
+		t.Fatal("bind retry interrupted the unrelated listener", err)
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusAccepted {
+		t.Fatal("unrelated listener changed")
+	}
+	timer := time.AfterFunc(25*time.Millisecond, foreign.Close)
+	defer timer.Stop()
+	if err = waitForFreeAddress(address, 2*time.Second); err != nil {
+		t.Fatal("did not observe released address", err)
+	}
+}
+
 func TestOccupiedUnmanagedPortIsUntouchedBeforeDownloadOrBuild(t *testing.T) {
 	o := installerOptions(t)
 	requests := 0
