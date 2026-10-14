@@ -1,6 +1,6 @@
 # Roblox Game Builder implementation plan
 
-Status: local implementation under final release verification. Real Roblox Studio and account-based verification are deferred by the owner. This document does not claim that the feature has been deployed or that the external checks have passed.
+Status: implementation committed and pushed to main; exact-source CI and collaboration cryptography checks passed for `8b5e36f1c1da49a7323634f822cb935f6431171f`. Real Roblox Studio and account-based verification are deferred by the owner. The goal remains open for those external checks. No production deployment or successful real-world Studio/publication check is claimed.
 
 ## Product outcome
 
@@ -89,7 +89,7 @@ The following evidence is repository-local unless explicitly stated otherwise. S
 | RB22–RB25 | Go broker and terminal-approval tests, plus `roblox-publisher.test.tsx`, cover fixed official targets, credential isolation, digest/target review, native UI actions, mandatory independent foreground-terminal confirmation, expiry, revocation and unknown outcomes. Mock HTTP tests perform no account publication. No credentials or real test-place upload have been used. |
 | RB26, RB28, RB29 | Actual browser workflows, accessibility assertions and real light/dark captures cover desktop, tablet and phone. Homepage tests cover 320, 390, 768 and 1440 pixels, consent-gated template creation, no document duplication and no eager editor/data traffic. Help captures use the implemented synthetic game. |
 | RB27 | English tutorials explain the workflow step by step and distinguish rule tests, Studio playtests, upload and public release. No usability session with an actual teenage participant has been recorded. |
-| RB30 | Full repository regression, build and exact-commit CI results must be recorded before release. Production deployment is a separate manual decision. |
+| RB30 | The complete main CI and four collaboration cryptography jobs passed for `8b5e36f1c1da49a7323634f822cb935f6431171f`; the exact-source results are recorded below. Production deployment is a separate manual decision. |
 
 The owner has deferred arranging Roblox Studio and the separate test game. **RB10 and the account-backed portion of RB25 remain unverified.** The goal stays open for those checks; local implementation and mock tests must not be reported as a completed real-world Studio/publication verification.
 
@@ -101,4 +101,31 @@ The owner has deferred arranging Roblox Studio and the separate test game. **RB1
 - Pinned Luau 0.742 compiled 30 generated scripts and passed nine gameplay plus two importer fixtures, including the large-source import case. This remains test-double verification, not real Studio acceptance.
 - `./build.sh` regenerated the API contract and built 44 public pages, 227 content-addressed images and 467 offline app assets. Its static audit passed. The builder is lazy-loaded; no new runtime dependency or database migration is required.
 
-Main CI must verify the committed source before a release claim. Production deployment remains manual and separate from these checks.
+### Exact-source CI and independent checks, 2026-10-14
+
+Source commit: `8b5e36f1c1da49a7323634f822cb935f6431171f`.
+
+- [Main CI, run 38482849710](https://github.com/Caripson/visualnerve/actions/runs/38482849710) completed successfully. It passed 402 frontend test files / **4,629 tests**, formatting, Go race tests and vet, generated-contract and production-build checks, and **376 browser tests**. The other 21 browser cases were explicitly skipped opt-in captures/external fixtures, not passing tests. This full committed-source run supersedes the earlier local partial/follow-up browser totals above.
+- [Collaboration browser cryptography, run 38482849831](https://github.com/Caripson/visualnerve/actions/runs/38482849831) completed successfully for the same SHA. All four jobs passed: Chromium, Firefox and WebKit worker checks, plus Rust source/reproducible WASM verification. Roblox game documents still intentionally reject unsupported live collaboration.
+- The main CI's pinned Luau lane compiled 30 generated scripts and ran nine native semantic fixtures plus two importer fixtures successfully. Roblox API stubs do not establish real Studio, physics, networked gameplay or permission behavior.
+- Go 1.26.5 cross-compilation succeeded for Windows/amd64, Darwin/arm64 and Linux/arm64. These binaries were inspected, not executed on all three platforms. Windows direct publishing remains intentionally unsupported; ordinary bridge/export compilation does not change that restriction.
+- A separate, one-off local format check used `rbx_xml` 3.0.1 and reflection database `3.0.1+roblox-741`. The first-game, Crystal Island and 1,000-entity/1,000-rule native places decoded without warnings under strict class/property/type checks. Decoded server/client Source bytes matched the generated Luau, including the 2,265,263-byte large server script. Eight corrupt controls were rejected: unknown class, property and value tag; malformed attributes; wrong ownership; changed Source bytes; invalid enum; and mismatched property type. This developer check is not part of the standard CI and is not proof of Studio acceptance.
+
+These results apply to the stated source commit. Later source changes need their own relevant checks. Production deployment remains manual and separate.
+
+### Deferred Studio and test-place acceptance
+
+All rows below remain **not run**. Record the Studio version, operating system, source commit and artifact digest with the outcome of each check. Use only synthetic games and a separate private test experience; do not use the owner's existing projects or record account credentials in evidence.
+
+| Check | Procedure and expected evidence |
+| --- | --- |
+| Native opening and first-game route (RB10) | Build the unchanged first-game example, open `game.rbxlx` in Studio and inspect Output for load/runtime errors. Play the start, jump, checkpoint, moving bridge, star and finish route. Verify checkpoint respawn after lava damage and that touching the same star repeatedly does not repeat its once-per-player reward. |
+| Real two-player state (RB10, RB11) | Use Studio's local multiplayer test with two players. Each player earns an independent star reward and retains an independent checkpoint. Rejoining starts a new player session; no cross-visit persistence is promised. Observe actual touch/prompt behavior and repeated interactions rather than substituting browser rule-test events. |
+| Advanced composition (RB10) | Open an unchanged Crystal Island build in a separate place. Verify three distinct crystals advance one player's inventory and quest, the power switch changes shared Island power, and the eligible player can pay crystals to open the shared gate. Check the guide's interaction prompt, round start, two-minute timer and round-end messages. A player without the required quest/inventory must not pay or unlock the gate. |
+| Physical movement and settings (RB10) | Check actual spawn/respawn, jumping, collision, moving-platform travel and NPC interaction. Verify the configured gravity, walking speed, jump power and respawn delay. An anchored guide is not a pathfinding NPC. Keep the Creator Dashboard server-size setting consistent with the game's join cap. |
+| Real importer permissions and merge (RB13) | Stop the play test and save a Studio backup. Install the generated importer through the documented local-plugin flow and grant only the permissions Studio requests for this test. Add unmanaged objects and custom children. Preview an update of the same game ID, review creates/updates/removals, apply it, and verify preserved unmanaged content. Generated script instances are replaced; existing generated world objects update in place when compatible. |
+| Real stale-edit and Undo behavior (RB13) | After Preview, change a managed property or an unsaved generated script buffer; Apply must reject the stale preview. With a fresh unchanged preview, apply a reviewed update, then Undo. Verify original script instances/content, world properties and custom-child parents are restored. ChangeHistory does not roll back ordinary Source edits; record actual ScriptEditorService and instance-swap behavior. |
+| Explicit target upload (account-backed RB25) | Only after the owner supplies an authorized private test target, upload a reviewed artifact using Studio or the optional local publisher. For the latter, use locally configured restricted credentials, native browser review and the independent exact foreground-terminal phrase. Record the intended universe/place, approved artifact digest, returned place version and Dashboard confirmation without recording credentials. Opening the resulting private place and joining it is separate evidence from HTTP success. |
+| Failure and unknown outcome (account-backed RB25) | Keep deliberately induced error cases in mocks unless a separate private-target experiment is explicitly arranged. A real interrupted upload with unknown outcome requires Dashboard reconciliation before another upload. Do not infer rollback, retry blindly or make the experience public as part of this test. |
+
+The owner has explicitly said the Studio environment will be arranged later. Do not repeatedly request it while these checks are deferred. No further local test or green CI can substitute for the missing real-engine and account-backed evidence.
