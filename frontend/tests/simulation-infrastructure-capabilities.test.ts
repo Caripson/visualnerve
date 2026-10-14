@@ -9,7 +9,7 @@ import { assertMcpAccess } from '../src/integration/access';
 it('discovers the model execution boundary, canonical units and aggregate typed pool policy', () => {
   expect(simulationCapabilities).toMatchObject({
     schemaVersion: 1,
-    apiVersion: '0.11.0',
+    apiVersion: '0.11.1',
     supportedModelSchemaVersions: [1, 2],
     infrastructure: {
       schemaVersion: 1,

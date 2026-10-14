@@ -1,6 +1,6 @@
 package main
 
-const infrastructurePolicy = "Bridge/browser 0.11.0 advertises infrastructure-resources-v1. Infrastructure is opt-in: SimulationModel.schemaVersion:2 requires infrastructure:{schemaVersion:1}; legacy model version 1 retains its existing interpretation and cannot contain typed infrastructure assumptions. CPU core reservations, stage/case RAM leases, bandwidth serialization and generation/grid/battery energy flows run in the same authoritative browser engine. Existing semantic CRUD, immutable seeded runs, metrics, scenarios and comparisons retain their endpoints, versions, grants and operation recovery. Old clients must reject model version 2 rather than execute it as legacy work. Units are canonical cores/core-seconds, MiB, bytes/Mbps and kW/kWh; no arbitrary unit conversion, TCP/OS scheduling or AC electrical solver is implied. Complete records reject null; existing entity JSON Merge Patch and nested scenario override null remove optional properties, then validate the complete resolved model atomically."
+const infrastructurePolicy = "Bridge/browser 0.11.1 advertises infrastructure-resources-v1. Infrastructure is opt-in: SimulationModel.schemaVersion:2 requires infrastructure:{schemaVersion:1}; legacy model version 1 retains its existing interpretation and cannot contain typed infrastructure assumptions. CPU core reservations, stage/case RAM leases, bandwidth serialization and generation/grid/battery energy flows run in the same authoritative browser engine. Existing semantic CRUD, immutable seeded runs, metrics, scenarios and comparisons retain their endpoints, versions, grants and operation recovery. Old clients must reject model version 2 rather than execute it as legacy work. Units are canonical cores/core-seconds, MiB, bytes/Mbps and kW/kWh; no arbitrary unit conversion, TCP/OS scheduling or AC electrical solver is implied. Complete records reject null; existing entity JSON Merge Patch and nested scenario override null remove optional properties, then validate the complete resolved model atomically."
 
 var infrastructureTemplateKeys = []string{"api-compute-capacity", "network-multi-site-capacity", "energy-power-capacity", "datacenter-capacity"}
 
@@ -198,7 +198,7 @@ func addInfrastructureSchemas(schemas object) {
 	infrastructureProperties(schemas, "SimulationComparison")["infrastructure"] = ref("SimulationInfrastructureComparison")
 	capabilities := infrastructureProperties(schemas, "SimulationCapabilities")
 	capabilities["schemaVersion"] = object{"type": "integer", "enum": []int{1}, "description": "Retained capability-document compatibility metadata; inspect supportedModelSchemaVersions for executable model versions."}
-	capabilities["apiVersion"] = object{"type": "string", "example": "0.11.0"}
+	capabilities["apiVersion"] = object{"type": "string", "example": "0.11.1"}
 	capabilities["supportedModelSchemaVersions"] = object{"type": "array", "items": object{"type": "integer", "enum": []int{1, 2}}, "example": []int{1, 2}}
 	capabilities["infrastructure"] = ref("SimulationInfrastructureCapabilities")
 	schemas["SimulationInfrastructureCapabilities"] = object{"type": "object", "additionalProperties": true,

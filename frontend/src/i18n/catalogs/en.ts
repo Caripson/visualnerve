@@ -1404,6 +1404,14 @@ const catalog = {
   'integration.instructions.selectedForCopy':
     'Instructions selected. Copy them with your keyboard or device copy menu.',
   'integration.instructions.title': 'Instructions for your MCP client',
+  'integration.upgrade.title': 'Upgrade an older MCP connection',
+  'integration.upgrade.explanation':
+    'This connection uses port 4317. New bridges use 47417 and can also accept older connections on 4317 when that port is free. An explicit --addr starts only the selected address.',
+  'integration.upgrade.consent':
+    'Switch only when your bridge is running on 47417. Switching turns MCP Off and clears the session token. Then enter the correct token if needed, grant access again and copy the updated instructions to your MCP client.',
+  'integration.upgrade.action': 'Use port 47417',
+  'integration.upgrade.saved':
+    'Connection saved with MCP Off. Check the bridge token if required, choose Read only or Read + write, and copy the updated MCP instructions.',
   'integration.settings.accessAccessible': 'MCP access',
   'integration.settings.accessLabel': 'Access',
   'integration.settings.authorizedSharing':

@@ -116,3 +116,15 @@ it.each([47417, 4317])(
     );
   },
 );
+
+it('explains the versioned compatibility listener without redirecting an explicit connection', () => {
+  const note = mcpSetupNote('https://app.visualnerve.com', 'ws://127.0.0.1:4317/bridge');
+  expect(note).toContain('bridge 0.11.1 or newer');
+  expect(note).toContain('without --addr or VISUAL_NERVE_ADDR');
+  expect(note).toContain('same browser, permissions and operation receipts');
+  expect(note).toContain('Explicit --addr or VISUAL_NERVE_ADDR starts only that address');
+  expect(note).toContain('pass an explicit --mcp-url matching Settings');
+  expect(note).toContain('fresh human grant');
+  expect(note).toContain('not a protocol-assigned MCP port');
+  expect(note).toContain('MCP server on this computer: http://127.0.0.1:4317/mcp');
+});

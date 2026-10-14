@@ -1416,6 +1416,14 @@ const catalog = {
   'integration.instructions.selectedForCopy':
     'Instruktioner markeret. Kopiér dem med tastaturet eller enhedens kopimenu.',
   'integration.instructions.title': 'Instruktioner til din MCP-klient',
+  'integration.upgrade.title': 'Opgrader en ældre MCP-forbindelse',
+  'integration.upgrade.explanation':
+    'Denne forbindelse bruger port 4317. Nye broer bruger 47417 og kan også modtage ældre forbindelser på 4317, hvis porten er ledig. En udtrykkelig --addr starter kun den valgte adresse.',
+  'integration.upgrade.consent':
+    'Skift kun, når broen kører på 47417. Skiftet slår MCP fra og fjerner sessionens token. Indtast derefter det korrekte token om nødvendigt, giv adgang igen og kopiér de opdaterede instruktioner til MCP-klienten.',
+  'integration.upgrade.action': 'Brug port 47417',
+  'integration.upgrade.saved':
+    'Forbindelsen er gemt med MCP slået fra. Kontrollér broens token om nødvendigt, vælg læseadgang eller læse- og skriveadgang, og kopiér de opdaterede MCP-instruktioner.',
   'integration.settings.accessAccessible': 'MCP-adgang',
   'integration.settings.accessLabel': 'Adgang',
   'integration.settings.authorizedSharing':

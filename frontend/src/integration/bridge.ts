@@ -1,3 +1,4 @@
+import { bridgeSessionToken } from './session-token';
 import { useEditor } from '../state/editor';
 import { StorageError } from '../model/validation';
 import { localBridgeUrl } from './access';
@@ -171,10 +172,10 @@ export class Bridge {
   }
   private async connect(generation: number) {
     if (generation !== this.generation) return;
-    const token = sessionStorage.getItem('vn-token');
     let url: URL;
     try {
       url = localBridgeUrl(useEditor.getState().bridgeUrl);
+      const token = bridgeSessionToken().read(url.href);
       if (token) url.searchParams.set('token', token);
     } catch {
       useEditor.setState({ bridgeStatus: 'error' });

@@ -21,7 +21,8 @@ class Fixture:
     def status(self):
         running = self.process is not None and self.process.returncode is None
         return {'running': running, 'pid': self.process.pid if running else None,
-                'bridge': 'http://127.0.0.1:47417', 'allowedOrigin': ORIGIN}
+                'bridge': 'http://127.0.0.1:47417', 'compatibility': 'http://127.0.0.1:4317',
+                'allowedOrigin': ORIGIN}
 
     async def command(self, action):
         async with self.lock:
@@ -30,7 +31,7 @@ class Fixture:
                 environment['VISUAL_NERVE_BRIDGE_TOKEN'] = TOKEN
                 with open('/tmp/visual-nerve-mcp-bridge.log', 'ab', buffering=0) as log:
                     self.process = await asyncio.create_subprocess_exec(
-                        '/bridge/visual-nerve', '--bridge', '--addr', '127.0.0.1:47417',
+                        '/bridge/visual-nerve', '--bridge',
                         '--static', '/public', '--allowed-origin', ORIGIN,
                         stdin=asyncio.subprocess.DEVNULL, stdout=log, stderr=log, env=environment)
                 PID_PATH.write_text(str(self.process.pid))
@@ -86,11 +87,11 @@ async def pipe(reader, writer):
         writer.write_eof()
 
 
-async def forward(reader, writer):
+async def forward(reader, writer, port):
     upstream = None
     tasks = []
     try:
-        upstream_reader, upstream = await asyncio.open_connection('127.0.0.1', 47417)
+        upstream_reader, upstream = await asyncio.open_connection('127.0.0.1', port)
         tasks = [asyncio.create_task(pipe(reader, upstream)),
                  asyncio.create_task(pipe(upstream_reader, writer))]
         await asyncio.gather(*tasks)
@@ -119,10 +120,13 @@ async def main():
     os.chmod(CONTROL_PATH, 0o600)
     # Only Docker's explicit host-loopback publication exposes this test relay.
     # The unchanged product bridge still binds and authenticates on loopback.
-    relay = await asyncio.start_server(forward, '0.0.0.0', 47418)
+    relay = await asyncio.start_server(
+        lambda reader, writer: forward(reader, writer, 47417), '0.0.0.0', 47418)
+    compatibility = await asyncio.start_server(
+        lambda reader, writer: forward(reader, writer, 4317), '0.0.0.0', 4318)
     print(json.dumps({'fixture': 'ready', **fixture.status()}), flush=True)
     try:
-        async with control, relay:
+        async with control, relay, compatibility:
             await stopped.wait()
     finally:
         await fixture.stop()

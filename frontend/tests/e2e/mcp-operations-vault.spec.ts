@@ -22,15 +22,22 @@ test('encrypted browser operations preserve saved work and revoke receipts at th
       page.getByRole('button', { name: 'Local only: storage and privacy', exact: true }).click();
     await settings();
     await page.getByText('Local connection details', { exact: true }).click();
-    await page
-      .getByLabel('Local bridge address', { exact: true })
-      .fill('wss://127.0.0.1:4329/bridge');
+    const address = page.getByLabel('Local bridge address', { exact: true });
+    const targetAddress = 'wss://127.0.0.1:4329/bridge';
+    const changedAddress = (await address.inputValue()) !== targetAddress;
+    const access = page.getByLabel('MCP access', { exact: true });
+    const previousAccess = await access.inputValue();
+    await address.fill(targetAddress);
     await page.getByRole('button', { name: 'Save connection', exact: true }).click();
     await expect(
-      page.getByText('Local connection updated. The token lasts for this browser session.', {
-        exact: true,
-      }),
+      page.getByText(
+        changedAddress
+          ? 'Connection saved with MCP Off. Check the bridge token if required, choose Read only or Read + write, and copy the updated MCP instructions.'
+          : 'Local connection updated. The token lasts for this browser session.',
+        { exact: true },
+      ),
     ).toBeVisible();
+    await expect(access).toHaveValue(changedAddress ? 'off' : previousAccess);
     await page.getByLabel('MCP access', { exact: true }).selectOption('write');
     await expect
       .poll(async () => (await (await api.get('/api/v1/health')).json()).connected)

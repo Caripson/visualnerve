@@ -1,9 +1,11 @@
+import { bridgeSessionToken } from '../integration/session-token';
 import { localizedFeedback } from './localized-feedback';
 import { useI18n } from '../i18n';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useEditor } from '../state/editor';
 import { workspace } from '../storage/workspace';
 import type { McpAccess } from '../integration/access';
+import { McpPortUpgrade } from './McpPortUpgrade';
 import { McpConnectionInfo } from './McpConnectionInfo';
 import { McpBridgeDiagnostics } from './McpBridgeDiagnostics';
 
@@ -13,8 +15,30 @@ export function McpSettings() {
   const state = useEditor((state) => state.bridgeStatus);
   const endpoint = useEditor((state) => state.bridgeUrl);
   const [address, setAddress] = useState(endpoint);
-  const [token, setToken] = useState(sessionStorage.getItem('vn-token') ?? '');
+  const [token, setToken] = useState(() => bridgeSessionToken().read(endpoint));
   const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    setAddress(endpoint);
+    setToken(bridgeSessionToken().read(endpoint));
+  }, [endpoint]);
+  const upgrade = async (target: string) => {
+    setBusy(true);
+    setMessage('');
+    try {
+      await workspace.setPreference('bridge-url', target);
+      if (useEditor.getState().bridgeUrl !== target)
+        throw new Error('The connection change was superseded. Review the current address.');
+      bridgeSessionToken().clear();
+      setToken('');
+      setAddress(target);
+      setMessage(t('integration.upgrade.saved'));
+    } catch (error) {
+      setMessage((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <section aria-label={t('integration.settings.region')}>
       <div className="property-section">{t('integration.settings.title')}</div>
@@ -24,7 +48,9 @@ export function McpSettings() {
         <select
           aria-label={t('integration.settings.accessAccessible')}
           value={access}
+          disabled={busy}
           onChange={(event) => {
+            setMessage('');
             void workspace
               .setPreference('mcp-access', event.target.value as McpAccess)
               .catch((error) => setMessage(error.message));
@@ -50,6 +76,7 @@ export function McpSettings() {
       <p className="muted">{t('integration.settings.keepOpen')}</p>
       {state === 'connected' && <McpBridgeDiagnostics />}
       <McpConnectionInfo endpoint={endpoint} />
+      <McpPortUpgrade endpoint={endpoint} busy={busy} onUpgrade={upgrade} />
       {state === 'error' && <p className="muted">{t('integration.settings.bridgeUnavailable')}</p>}
       <details className="storage-details">
         <summary>{t('integration.settings.localDetails')}</summary>
@@ -59,7 +86,10 @@ export function McpSettings() {
           <input
             aria-label={t('integration.settings.bridgeAddress')}
             value={address}
-            onChange={(event) => setAddress(event.target.value)}
+            onChange={(event) => {
+              setAddress(event.target.value);
+              setToken('');
+            }}
           />
         </label>
         <label className="field">
@@ -74,15 +104,24 @@ export function McpSettings() {
           />
         </label>
         <button
+          disabled={busy}
           onClick={async () => {
+            setBusy(true);
             try {
               await workspace.setPreference('bridge-url', address);
-              sessionStorage.setItem('vn-token', token);
+              bridgeSessionToken().save(address, token);
+              setToken(token);
               const { bridge } = await import('../integration/bridge');
               bridge.reconnect();
-              setMessage('Local connection updated. The token lasts for this browser session.');
+              setMessage(
+                address !== endpoint
+                  ? t('integration.upgrade.saved')
+                  : t('integration.settings.connectionSaved'),
+              );
             } catch (error) {
               setMessage((error as Error).message);
+            } finally {
+              setBusy(false);
             }
           }}
         >

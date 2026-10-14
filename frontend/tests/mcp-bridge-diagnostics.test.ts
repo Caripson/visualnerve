@@ -66,7 +66,7 @@ it('warns when a pre-IBM 0.8.2 bridge advertises the other current capabilities'
   expect(diagnostic.snapshot()).toEqual({ state: 'update-required', version: '0.8.2' });
   diagnostic.receive({
     type: 'bridge-info',
-    version: '0.11.0',
+    version: '0.11.1',
     tools: ['visual_nerve_request', 'visual_nerve_api_docs'],
     capabilities: [
       ...capabilities,
@@ -75,7 +75,7 @@ it('warns when a pre-IBM 0.8.2 bridge advertises the other current capabilities'
       'infrastructure-resources-v1',
     ],
   });
-  expect(diagnostic.snapshot()).toEqual({ state: 'current', version: '0.11.0' });
+  expect(diagnostic.snapshot()).toEqual({ state: 'current', version: '0.11.1' });
   diagnostic.disconnect();
 });
 it('cancels stale detection when the connection ends', () => {

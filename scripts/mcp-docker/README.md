@@ -1,10 +1,10 @@
 # Linux MCP client and Chrome acceptance journey
 
-This optional local test exercises a real Linux bridge and independent JSON-RPC client inside Docker against the built application in a fresh host Chrome profile. It uses synthetic diagrams and a disposable encrypted workspace. It never opens an existing browser profile or mounts the repository into a running container.
+This optional test exercises a real Linux bridge and independent JSON-RPC client inside Docker against the application in a fresh host Chrome profile. The default target is a local isolated app with a disposable encrypted workspace; an explicit mode verifies the actually served staging app. Both modes use synthetic diagrams. Neither opens an existing browser profile nor mounts the repository into a running container.
 
 ## Run
 
-Prerequisites: Docker, Google Chrome, the repository's Node dependencies, Python 3 and OpenSSL on the host, and a current `./build.sh` output. Ports 47417 and 4342 must be free. The script fails rather than stopping another listener.
+Prerequisites: Docker, Google Chrome, the repository's Node dependencies, Python 3 and OpenSSL on the host, and a current `./build.sh` output. Ports 4317, 47417 and 4342 must be free. The script fails rather than stopping another listener.
 
 From the repository root:
 
@@ -21,11 +21,12 @@ The image build receives an explicit source allowlist, generates matching OpenAP
 
 1. A missing bridge returns a transport failure to the Linux client.
 2. Chrome creates and unlocks an encrypted workspace through the real UI, accepts local storage, and copies the actual Settings instructions.
-3. The native bridge starts on its loopback address with an exact allowed browser origin and a disposable integration token.
+3. The native bridge starts with its default loopback listener and optional legacy alias, an exact allowed browser origin and a disposable integration token. Both ports must expose the same native handler.
 4. Host and Linux client validate health. MCP initializes, discovers both tools, reads the guide and endpoint schema, and checks the native stdio adapter.
-5. Read-only and write grants take effect without reload. MCP creates connected nodes; Chrome shows them. A UI rename is read back through MCP.
-6. Identical operation-ID retry creates one document; stale versions return 409. Wrong origin/token, read-only writes, Off, locked workspace and disconnected browser are rejected.
-7. Restarting the owned bridge reconnects without page reload. Human lock/unlock requires a fresh grant. Reload preserves encrypted data and the selected bridge port.
+5. The browser saves the older 4317 address through Settings. The new default client uses 47417. Read-only and write grants take effect without reload across both aliases. MCP creates connected nodes; Chrome shows them. A UI rename is read back through MCP.
+6. Identical operation-ID retry across both ports creates one document; stale versions return 409. Wrong origin/token, read-only writes, Off, locked workspace and disconnected browser are rejected.
+7. Choosing **Use port 47417** in Settings resets access to Off and clears the session token. A fresh token and grant reconnect without reload.
+8. Restarting the owned bridge reconnects without page reload. Human lock/unlock requires a fresh grant on the isolated encrypted surface. Reload preserves data and the selected bridge port.
 
 Logs, result metadata and explicit screenshots are written beneath `tmp/verification/docker-mcp/`. Only post-onboarding screenshots are intentional artifacts; traces are disabled so recovery-key screens are not recorded. The token and password in this fixture are public test values and must never be used for a real workspace.
 
@@ -36,23 +37,55 @@ Host Chrome: https://mcp-docker.test:4342/ (synthetic HTTPS app origin)
      │ production-style CSP + actual browser WebSocket
      ▼
 Host 127.0.0.1:47417 → Docker test relay:47418
+Host 127.0.0.1:4317  → Docker test relay:4318
                            │ TCP forwarding only
                            ▼
-                    Linux 127.0.0.1:47417
-                    Visual Nerve Go bridge
+                    Linux 127.0.0.1:47417 + 127.0.0.1:4317
+                    One Visual Nerve Go bridge handler
                            ▲
                            │ HTTP MCP / native stdio adapter
                     Independent Linux client
 ```
 
-Docker's normal port publishing cannot reach a process bound only to container loopback. A test-only TCP relay connects that published port to the unchanged product bridge. The host publication is explicitly loopback-only; the relay runs on a separate Docker bridge network and forwards no other destination. Origin and token validation remain in the real bridge. This relay is not a supported deployment architecture and is not installed with Visual Nerve.
+Docker's normal port publishing cannot reach a process bound only to container loopback. A test-only TCP relay connects that published port to the unchanged product bridge. Both host publications are explicitly loopback-only; the relay runs on a separate Docker bridge network and forwards no other destination. Origin and token validation remain in the real bridge. This relay is not a supported deployment architecture and is not installed with Visual Nerve.
 
 The app's response-header policy and HTML policy are generated by the normal isolated-app builder. The fixture resolves one synthetic hostname locally and accepts its disposable self-signed certificate. It does not disable browser web security or replace the application WebSocket, storage, permissions, command dispatcher or MCP implementation.
 
 A passing run demonstrates the tested Linux client/bridge ↔ host Chrome chain. It does **not** establish Windows↔WSL forwarding, real certificate trust, every Chrome local-network permission policy, or behavior specific to Codex, Cursor, Gemini or Claude. Those client/OS combinations still need their own smoke test. The runner does not deploy anything or modify CloudFront.
 
-## Recorded verification
+## Verify the actual hosted staging build
+
+After a reviewed build has been deployed to staging, the same Linux client and bridge can exercise the real staged application through host Chrome:
+
+```sh
+VN_MCP_TEST_APP_URL=https://visualnerve.caripson.com/app/ \
+VN_MCP_TEST_EXPECTED_ENTRY_SHA256='REPLACE_WITH_64_CHARACTER_SHA256' \
+VN_MCP_TEST_EXPECTED_REVISION='REPLACE_WITH_40_CHARACTER_COMMIT_SHA' \
+./scripts/mcp-docker/run.sh
+```
+
+Replace the placeholders with the reviewed CI artifact's `editor/app.js` SHA256 and the deployment workflow's full commit SHA. The harness requires and verifies the entry hash **before creating any local workspace**. The revision is recorded as caller-supplied workflow evidence; it is not represented as a commit identifier advertised by the page. A different served entry fails the run.
+
+Hosted mode uses exactly `https://visualnerve.caripson.com/app/`, with normal DNS and TLS verification. It starts no local app server and adds no certificate or hostname overrides. The native bridge uses `--allowed-origin https://visualnerve.caripson.com`, without the path. Production and other URLs are rejected. Ports 4317 and 47417 must be free; port 4342 is unused. OpenSSL and a local site build are unnecessary in this mode; Python 3 is still used to assemble the Docker image build context. The native Linux bridge image still needs to match the reviewed source.
+
+The staging `/app/` surface currently uses the legacy local-storage consent flow; it does not have the production isolated app's mandatory vault gate. The test detects the actually served surface. It exercises its real consent, read/write grants, explicit Off choice, persistence and disconnect behavior without injecting a vault or changing application configuration. Lock/unlock is verified when the actual page requires a vault, including the local isolated mode. Results record `storageSurface` and `lockVerification` to prevent claiming a staging encryption test that was not performed.
+
+Chrome's local-network permission is granted only to the exact staging origin in the fresh test context. This permits exercising the real browser-to-loopback connection, but does not verify how every Chrome version presents its native permission prompt. Header and HTML CSP values are recorded as served; no policy is weakened. Screenshots, sanitized diagnostic counts, entry hash and results go to `tmp/verification/docker-mcp-staging/`. A result is also saved on test failure, and the fresh browser context and owned Docker resources are closed.
+
+Run the target configuration tests separately:
+
+```sh
+node --test scripts/mcp-docker/config.test.mjs
+```
+
+## Initial fixture verification
 
 On 2026-10-14, the complete journey passed with Chrome 155.0.8059.40 on macOS 13.7, Docker Engine 24.0.6 (Linux amd64), Go 1.26.5 and bridge 0.11.0, using the working-tree fixes based on `d6c20bc`. The final run took 37.7 seconds (41.8 seconds including the runner). Both HTTP MCP and native stdio initialization passed. The generated CSP remained active, and no browser page errors or CSP connection violations were recorded. The owned container and network were removed afterward.
 
 Related regression verification passed 17 browser cases and 136 focused unit/integration tests; TypeScript, the production build, Go race tests and `go vet` also passed. This records local verification of the changed source, not a production deployment or a successful Windows/WSL test.
+
+## Port-upgrade verification
+
+The expanded local journey passed on 2026-10-14 with bridge 0.11.1 and Chrome 155.0.8059.40. It took 39.2 seconds (43.2 seconds including the runner) and passed all nine recorded checks, including HTTP and native stdio read/write with the browser on the legacy alias, operation recovery across aliases, explicit UI upgrade, vault lock and reload. No browser page errors or CSP connection violations were recorded. The fresh browser context and owned Docker resources were closed.
+
+An occupied-port check also passed: a temporary listener on 4317 remained available, while the runner failed to publish that port and removed only its own failed container and network. Four target-configuration tests, TypeScript and the production build passed. This verifies the isolated local fixture; an actual hosted staging run must be recorded separately after its reviewed build is deployed.

@@ -1417,6 +1417,14 @@ const catalog = {
   'integration.instructions.selectedForCopy':
     'Instruktioner markerade. Kopiera dem med tangentbordet eller enhetens kopieringsmeny.',
   'integration.instructions.title': 'Instruktioner för din MCP-klient',
+  'integration.upgrade.title': 'Uppgradera en äldre MCP-anslutning',
+  'integration.upgrade.explanation':
+    'Den här anslutningen använder port 4317. Nya bryggor använder 47417 och kan även ta emot äldre anslutningar på 4317 om porten är ledig. Ett uttryckligt --addr startar bara den valda adressen.',
+  'integration.upgrade.consent':
+    'Byt bara när bryggan körs på 47417. Bytet stänger av MCP och rensar sessionens token. Ange sedan rätt token om det behövs, ge åtkomst igen och kopiera de uppdaterade instruktionerna till MCP-klienten.',
+  'integration.upgrade.action': 'Använd port 47417',
+  'integration.upgrade.saved':
+    'Anslutningen har sparats med MCP avstängt. Kontrollera bryggans token vid behov, välj Läsbehörighet eller Läs och skriv och kopiera de uppdaterade MCP-instruktionerna.',
   'integration.settings.accessAccessible': 'MCP-åtkomst',
   'integration.settings.accessLabel': 'Åtkomst',
   'integration.settings.authorizedSharing':

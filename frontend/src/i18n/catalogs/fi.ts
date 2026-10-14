@@ -1414,6 +1414,14 @@ const catalog = {
   'integration.instructions.selectedForCopy':
     'Ohjeet valittu. Kopioi ne näppäimistöllä tai laitteen kopiointivalikosta.',
   'integration.instructions.title': 'Ohjeet MCP-asiakkaallesi',
+  'integration.upgrade.title': 'Päivitä vanhempi MCP-yhteys',
+  'integration.upgrade.explanation':
+    'Tämä yhteys käyttää porttia 4317. Uudet sillat käyttävät porttia 47417 ja voivat hyväksyä myös vanhemmat yhteydet portissa 4317, jos se on vapaa. Erillinen --addr käynnistää vain valitun osoitteen.',
+  'integration.upgrade.consent':
+    'Vaihda vain, kun silta toimii portissa 47417. Vaihto poistaa MCP:n käytöstä ja tyhjentää istunnon tunnuksen. Anna sitten tarvittaessa oikea tunnus, myönnä käyttöoikeus uudelleen ja kopioi päivitetyt ohjeet MCP-asiakkaalle.',
+  'integration.upgrade.action': 'Käytä porttia 47417',
+  'integration.upgrade.saved':
+    'Yhteys tallennettu, MCP on pois käytöstä. Tarkista tarvittaessa sillan tunnus, valitse lukuoikeus tai luku- ja kirjoitusoikeus ja kopioi päivitetyt MCP-ohjeet.',
   'integration.settings.accessAccessible': 'MCP-pääsy',
   'integration.settings.accessLabel': 'Pääsy',
   'integration.settings.authorizedSharing':

@@ -6,14 +6,12 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
 	"visualnerve/internal/server"
 )
 
@@ -54,6 +52,12 @@ func main() {
 	cert := flag.String("tls-cert", os.Getenv("VISUAL_NERVE_TLS_CERT"), "optional trusted local TLS certificate")
 	key := flag.String("tls-key", os.Getenv("VISUAL_NERVE_TLS_KEY"), "optional local TLS private key")
 	flag.Parse()
+	explicitAddress := os.Getenv("VISUAL_NERVE_ADDR") != ""
+	flag.Visit(func(value *flag.Flag) {
+		if value.Name == "addr" {
+			explicitAddress = true
+		}
+	})
 	if *mcpStdio {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
@@ -81,29 +85,15 @@ func main() {
 		log.Fatal("local MCP integration must bind to 127.0.0.1, localhost or ::1")
 	}
 	handler := server.New(server.Config{StaticDir: *static, Token: token, Dev: *dev, AllowRemote: remote, Bridge: *bridge, AllowedOrigins: allowed})
-	// Response delivery must outlive bounded request-body reading and project analysis.
-	requestReadTimeout := 30 * time.Second
-	httpServer := &http.Server{Addr: *addr, Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: requestReadTimeout, WriteTimeout: requestReadTimeout + server.MaxCommandTimeout + 15*time.Second, IdleTimeout: 90 * time.Second}
+	listeners, err := bindHTTPListeners(planHTTPListeners(*bridge, *addr, explicitAddress), handler, *cert, *key, log.Printf)
+	if err != nil {
+		handler.Close()
+		log.Fatal(err)
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	go func() {
-		<-ctx.Done()
-		handler.Close()
-		shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = httpServer.Shutdown(shutdown)
-	}()
-	scheme := "http"
-	if *cert != "" {
-		scheme = "https"
-	}
-	log.Printf("Visual Nerve %s://%s · browser storage: IndexedDB · integration: %t", scheme, *addr, *bridge)
-	if *cert != "" {
-		err = httpServer.ListenAndServeTLS(*cert, *key)
-	} else {
-		err = httpServer.ListenAndServe()
-	}
-	if err != nil && err != http.ErrServerClosed {
-		log.Fatal(listenError(*addr, scheme, err))
+	log.Printf("Visual Nerve %s://%s · browser storage: IndexedDB · integration: %t", listeners.scheme, *addr, *bridge)
+	if err := listeners.serve(ctx); err != nil {
+		log.Fatal(err)
 	}
 }

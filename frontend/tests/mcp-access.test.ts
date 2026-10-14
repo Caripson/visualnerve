@@ -3,6 +3,7 @@ import {
   assertMcpAccess,
   defaultBridgeUrl,
   localBridgeUrl,
+  legacyBridgeUpgrade,
   mcpAccess,
   workspaceBridgeUrl,
 } from '../src/integration/access';
@@ -99,3 +100,18 @@ describe('local browser MCP capability', () => {
     expect(defaultBridgeUrl()).toBe('ws://127.0.0.1:47417/bridge');
   });
 });
+
+it.each([
+  ['ws://127.0.0.1:4317/bridge', 'ws://127.0.0.1:47417/bridge'],
+  ['wss://localhost:4317/bridge', 'wss://localhost:47417/bridge'],
+  ['wss://[::1]:4317/bridge', 'wss://[::1]:47417/bridge'],
+  ['ws://127.0.0.1:47417/bridge', undefined],
+  ['wss://localhost:9443/bridge', undefined],
+  ['ws://untrusted.example:4317/bridge', undefined],
+  ['ws://localhost:4317/bridge?token=secret', undefined],
+])(
+  'offers a port-only upgrade for %s without inventing a different host or TLS policy',
+  (address, expected) => {
+    expect(legacyBridgeUpgrade(address)).toBe(expected);
+  },
+);

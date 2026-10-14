@@ -23,7 +23,7 @@ func TestFlowchartMCPDiscoveryDocumentsNativeAppearance(t *testing.T) {
 	for _, capability := range bridgeCapabilities {
 		found = found || capability == "ibm-flowcharting-v1"
 	}
-	if !found || bridgeVersion != "0.11.0" {
+	if !found || bridgeVersion != "0.11.1" {
 		t.Fatal("catalog absent from transport software discovery")
 	}
 	result := resultMCP(t, callMCP(t, handler, "tools/call", json.RawMessage(`{"name":"visual_nerve_api_docs","arguments":{"document":"endpoint","path":"/flowchart/symbols","method":"GET"}}`)))

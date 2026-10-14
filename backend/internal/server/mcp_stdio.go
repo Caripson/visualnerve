@@ -177,7 +177,7 @@ func RunMCPStdio(parent context.Context, input io.Reader, output io.Writer, targ
 		}
 		response, err := client.Do(r)
 		if err != nil {
-			failure(request, "Local MCP request failed. Check that the shared bridge is running and its TLS certificate is trusted.")
+			failure(request, fmt.Sprintf("Local MCP request to %s failed. Check that the shared bridge is running and its TLS certificate is trusted. Set --mcp-url to the exact MCP server URL shown in browser Settings; an existing bridge may still use port 4317. No alternate port was contacted.", u.String()))
 			return
 		}
 		defer response.Body.Close()

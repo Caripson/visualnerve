@@ -1,3 +1,4 @@
+import { bridgeSessionToken } from '../integration/session-token';
 import { assertVoiceId, normalizeVoiceId, VOICE_SETTING } from '../presentation/speech/voices';
 import { VOICE_CHANGED } from '../presentation/speech/voice-events';
 import { workspaceStoreNames, type WorkspaceOperation, type WorkspaceStorage } from './contracts';
@@ -216,6 +217,8 @@ export class Workspace {
   private navigation = 0;
   private settingsRevision = 0;
   private preferenceWrites = 0;
+  private connectionWrites = 0;
+  private lastBridgeUrl?: string;
   private preferenceFailures = new Map<string, PreferenceFailure>();
   private accessCeiling?: McpAccess;
   private accessChoice = 0;
@@ -360,6 +363,7 @@ export class Workspace {
     this.navigation++;
     this.stopped = true;
     this.preferenceWrites = 0;
+    this.connectionWrites = 0;
     for (const controller of this.analysisCommands) controller.abort();
     this.analysisCommands.clear();
     this.cancelExternalSvgJobs();
@@ -640,6 +644,15 @@ export class Workspace {
       lifecycle !== this.lifecycle
     )
       return;
+    const bridgeUrl = workspaceBridgeUrl(
+      preferences.get('bridge-url'),
+      preferences.has('mcp-access'),
+    );
+    if (this.lastBridgeUrl !== undefined && this.lastBridgeUrl !== bridgeUrl) {
+      // A different tab can change the shared destination, but not this tab's grant/token.
+      this.revokeBridgeDestination();
+    }
+    this.lastBridgeUrl = bridgeUrl;
     const theme =
       preferences.get('storage-consent') === true
         ? appearancePreference(preferences.get('theme'))
@@ -656,7 +669,7 @@ export class Workspace {
         preferences.get('storage-consent') === true
           ? this.mcpGrant(preferences.get('mcp-access'))
           : 'off',
-      bridgeUrl: workspaceBridgeUrl(preferences.get('bridge-url'), preferences.has('mcp-access')),
+      bridgeUrl,
       workspaceId: String(preferences.get('workspace-id') ?? ''),
       privacyAcknowledged: preferences.get('storage-consent') === true,
       lastExport: String(preferences.get('last-export') ?? ''),
@@ -989,6 +1002,17 @@ export class Workspace {
         message: '',
       });
   }
+  private revokeBridgeDestination() {
+    this.accessChoice++;
+    this.accessCeiling = 'off';
+    this.cancelExternalSvgJobs();
+    if (this.repo === repository) {
+      bridge.beginAccessChoice();
+      bridge.disconnect();
+    }
+    bridgeSessionToken().clear();
+    useEditor.setState({ mcpAccess: 'off' });
+  }
   async setPreference(key: string, value: unknown) {
     if (key === 'bridge-url') localBridgeUrl(String(value));
     if (key === 'mcp-access' && !['off', 'read', 'write'].includes(String(value)))
@@ -996,19 +1020,29 @@ export class Workspace {
     if (key === IMPORT_LIMIT_SETTING) assertImportLimitMb(value);
     if (key === PROJECT_SOURCE_FILE_LIMIT_SETTING) assertProjectSourceFileLimit(value);
     if (key === VOICE_SETTING) assertVoiceId(value);
+    if (key === 'mcp-access' && value !== 'off' && this.connectionWrites)
+      throw new StorageError(
+        409,
+        'Wait for the connection address to finish saving before granting MCP access.',
+      );
     const lifecycle = this.lifecycle;
     this.settingsRevision++;
     this.preferenceWrites++;
     const retryingFailure = this.preferenceFailures.get(key);
     const previousBridgeUrl = useEditor.getState().bridgeUrl;
+    const changingConnection = key === 'bridge-url' && String(value) !== previousBridgeUrl;
+    const changingAccess = key === 'mcp-access' || changingConnection;
+    const accessValue = changingConnection ? 'off' : value;
+    if (changingConnection) this.connectionWrites++;
     let accessChoice: number | undefined;
+    let refreshConnectionAfterConflict = false;
     // Revocation closes the live grant before a persisted write can wait on IDB.
-    if (key === 'mcp-access') {
+    if (changingAccess) {
       accessChoice = ++this.accessChoice;
       this.cancelExternalSvgJobs();
       if (this.repo === repository) bridge.beginAccessChoice();
       const current = this.mcpGrant(useEditor.getState().mcpAccess);
-      const requested = this.mcpGrant(value);
+      const requested = this.mcpGrant(accessValue);
       this.accessCeiling =
         current === 'off' || requested === 'off'
           ? 'off'
@@ -1016,7 +1050,8 @@ export class Workspace {
             ? 'read'
             : 'write';
       useEditor.setState({ mcpAccess: this.accessCeiling });
-      if (value === 'off' && this.repo === repository) bridge.disconnect();
+      if (accessValue === 'off' && this.repo === repository) bridge.disconnect();
+      if (changingConnection) bridgeSessionToken().clear();
     }
     if (key === 'storage-consent' && value !== true) this.cancelExternalSvgJobs();
     try {
@@ -1025,36 +1060,47 @@ export class Workspace {
         const saved = await job.operation.storage.atomic('rw', ['settings'], async (scope) => {
           await this.requireStorageConsent(scope);
           await job.check();
-          if (key === 'mcp-access' && accessChoice !== this.accessChoice) return false;
+          if (changingAccess && accessChoice !== this.accessChoice) return false;
           if (key === 'mcp-access') {
             const address = await scope.settings.get('bridge-url');
+            const savedAccess = await scope.settings.get('mcp-access');
+            const reviewedAddress = workspaceBridgeUrl(address?.value, savedAccess !== undefined);
+            if (value !== 'off' && reviewedAddress !== previousBridgeUrl) {
+              this.revokeBridgeDestination();
+              refreshConnectionAfterConflict = true;
+              throw new StorageError(
+                409,
+                'The bridge address changed. Review the current connection in Settings before granting MCP access again.',
+              );
+            }
             if (address?.value == null) {
               // Pin the address with the first grant so reloads cannot reinterpret it.
-              connectionAddress = workspaceBridgeUrl(
-                undefined,
-                (await scope.settings.get('mcp-access')) !== undefined,
-              );
+              connectionAddress = workspaceBridgeUrl(undefined, savedAccess !== undefined);
               await scope.settings.put({ key: 'bridge-url', value: connectionAddress });
             }
           }
           if (key === 'theme') useEditor.setState({ theme: String(value) });
-          if (key === 'mcp-access') useEditor.setState({ mcpAccess: this.mcpGrant(value) });
-          if (key === 'bridge-url') useEditor.setState({ bridgeUrl: String(value) });
+          if (changingAccess) useEditor.setState({ mcpAccess: this.mcpGrant(accessValue) });
+          if (changingConnection) await scope.settings.put({ key: 'mcp-access', value: 'off' });
           await scope.settings.put({ key, value });
           return true;
         });
         await job.check();
         if (!saved) return;
-        if (key === 'mcp-access' && accessChoice === this.accessChoice) {
+        if (key === 'bridge-url' && (!changingConnection || accessChoice === this.accessChoice)) {
+          this.lastBridgeUrl = String(value);
+          useEditor.setState({ bridgeUrl: String(value) });
+        }
+        if (changingAccess && accessChoice === this.accessChoice) {
           // Only a successfully persisted explicit choice can lift a local restriction.
-          this.accessCeiling = mcpAccess(value);
+          this.accessCeiling = mcpAccess(accessValue);
           useEditor.setState({
             mcpAccess: this.accessCeiling,
             ...(connectionAddress && useEditor.getState().bridgeUrl === previousBridgeUrl
               ? { bridgeUrl: connectionAddress }
               : {}),
           });
-          if (value !== 'off' && this.repo === repository) bridge.authorizeContent();
+          if (accessValue !== 'off' && this.repo === repository) bridge.authorizeContent();
         }
         // The reminder disappears only after persistence, including immediate reloads.
         if (key === 'backup-nudge-dismissed')
@@ -1076,7 +1122,15 @@ export class Workspace {
         this.preferenceError(key, value, error);
       throw error;
     } finally {
-      if (lifecycle === this.lifecycle) this.preferenceWrites--;
+      if (lifecycle === this.lifecycle) {
+        this.preferenceWrites--;
+        if (changingConnection) this.connectionWrites--;
+        if (refreshConnectionAfterConflict) {
+          void this.refresh().catch((error) => {
+            if (lifecycle === this.lifecycle && !this.stopped) this.error(error);
+          });
+        }
+      }
     }
     // Do not delay access revocation on the graph queue it cancels.
     void this.refresh().catch((error) => {
@@ -1463,7 +1517,7 @@ export class Workspace {
       await job.check();
       this.versions.clear();
       if (navigation === this.navigation) useEditor.getState().setGraph(null);
-      sessionStorage.removeItem('vn-token');
+      bridgeSessionToken().clear();
       await this.refresh(job);
       if (graphs[0]) await this.openCaptured(job, graphs[0].diagram.id, navigation);
     });
@@ -1481,7 +1535,7 @@ export class Workspace {
       this.publishPreferenceError();
       if (navigation === this.navigation) useEditor.getState().setGraph(null);
       useEditor.setState({ status: 'saved', message: '' });
-      sessionStorage.removeItem('vn-token');
+      bridgeSessionToken().clear();
       await this.refresh(job);
     });
   }

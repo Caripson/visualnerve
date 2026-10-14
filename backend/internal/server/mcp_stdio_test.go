@@ -118,6 +118,30 @@ func TestMCPStdioURLIsRestrictedToExactLoopbackEndpoint(t *testing.T) {
 	}
 }
 
+func TestMCPStdioConnectionFailureIdentifiesConfiguredEndpointWithoutCredentials(t *testing.T) {
+	host := httptest.NewServer(http.NotFoundHandler())
+	target := host.URL + "/mcp"
+	host.Close()
+	const token = "private-stdio-error-test-token"
+	f := localStdio(t, target, token)
+	f.send(t, `{"jsonrpc":"2.0","id":"initialize","method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"stdio failure test","version":"1"}}}`)
+	response := f.receive(t)
+	failure, ok := response["error"].(map[string]any)
+	if !ok {
+		t.Fatal("unavailable configured endpoint must return a correlated MCP error")
+	}
+	message, _ := failure["message"].(string)
+	for _, expected := range []string{target, "--mcp-url", "browser Settings", "port 4317", "No alternate port was contacted"} {
+		if !strings.Contains(message, expected) {
+			t.Fatal("connection error lacks configured-endpoint recovery guidance", expected)
+		}
+	}
+	if strings.Contains(message, token) {
+		t.Fatal("connection failure exposed the integration token")
+	}
+	f.finish(t)
+}
+
 func TestMCPStdioUsesSharedHTTPDiscoveryAndNegotiatedHeaders(t *testing.T) {
 	handler, _ := bundledMCPServer(t)
 	var mu sync.Mutex

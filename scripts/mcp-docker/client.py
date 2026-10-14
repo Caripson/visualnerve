@@ -10,6 +10,7 @@ from urllib.request import ProxyHandler, Request, build_opener
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--health', action='store_true')
+parser.add_argument('--port', type=int, choices=[4317, 47417], default=47417)
 parser.add_argument('--path')
 parser.add_argument('--http-method', choices=['GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
 parser.add_argument('--origin')
@@ -46,7 +47,7 @@ if not args.no_token and parsed.path != '/api/v1/health':
     headers['Authorization'] = 'Bearer ' + token
 if args.origin:
     headers['Origin'] = args.origin
-request = Request('http://127.0.0.1:47417' + path,
+request = Request(f'http://127.0.0.1:{args.port}' + path,
                   data=json.dumps(payload).encode() if payload is not None else None,
                   headers=headers, method=method)
 

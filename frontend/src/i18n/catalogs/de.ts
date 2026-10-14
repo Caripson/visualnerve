@@ -1430,6 +1430,14 @@ const catalog = {
   'integration.instructions.selectedForCopy':
     'Anweisungen ausgewählt. Kopieren Sie sie mit der Tastatur oder über das Kopiermenü Ihres Geräts.',
   'integration.instructions.title': 'Anweisungen für Ihren MCP-Client',
+  'integration.upgrade.title': 'Eine ältere MCP-Verbindung aktualisieren',
+  'integration.upgrade.explanation':
+    'Diese Verbindung verwendet Port 4317. Neue Bridges verwenden 47417 und können ältere Verbindungen auf 4317 annehmen, wenn dieser Port frei ist. Ein explizites --addr startet nur die ausgewählte Adresse.',
+  'integration.upgrade.consent':
+    'Wechseln Sie nur, wenn Ihre Bridge auf 47417 läuft. Der Wechsel deaktiviert MCP und löscht das Sitzungstoken. Geben Sie bei Bedarf das richtige Token ein, erteilen Sie erneut Zugriff und kopieren Sie die aktualisierten Anweisungen in Ihren MCP-Client.',
+  'integration.upgrade.action': 'Port 47417 verwenden',
+  'integration.upgrade.saved':
+    'Verbindung mit deaktiviertem MCP gespeichert. Prüfen Sie bei Bedarf das Bridge-Token, wählen Sie Lesezugriff oder Lese- und Schreibzugriff und kopieren Sie die aktualisierten MCP-Anweisungen.',
   'integration.settings.accessAccessible': 'MCP-Zugriff',
   'integration.settings.accessLabel': 'Zugriff',
   'integration.settings.authorizedSharing':

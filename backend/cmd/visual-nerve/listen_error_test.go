@@ -19,6 +19,9 @@ func TestMCPBridgePortCLIProcess(t *testing.T) {
 	}
 	flag.CommandLine = flag.NewFlagSet("visual-nerve", flag.ExitOnError)
 	os.Args = []string{"visual-nerve", "--bridge", "--addr", os.Getenv("VISUAL_NERVE_TEST_ADDR")}
+	if os.Getenv("VISUAL_NERVE_TEST_ADDR_FROM_ENV") == "1" {
+		os.Args = []string{"visual-nerve", "--bridge"}
+	}
 	if os.Getenv("VISUAL_NERVE_TEST_SHOW_DEFAULTS") == "1" {
 		os.Args = []string{"visual-nerve", "--help"}
 	}
@@ -66,6 +69,13 @@ func TestMCPOccupiedPortFailsWithExplicitMatchingConfigurationAdvice(t *testing.
 }
 
 func TestMCPBridgeCustomAddrBindsOnlyTheExplicitPort(t *testing.T) {
+	for _, mode := range []string{"flag", "environment"} {
+		t.Run(mode, func(t *testing.T) { testExplicitBridgeAddress(t, mode) })
+	}
+}
+
+func testExplicitBridgeAddress(t *testing.T, mode string) {
+	t.Helper()
 	reserved, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -74,6 +84,9 @@ func TestMCPBridgeCustomAddrBindsOnlyTheExplicitPort(t *testing.T) {
 	_ = reserved.Close()
 	cmd := exec.Command(os.Args[0], "-test.run=^TestMCPBridgePortCLIProcess$")
 	cmd.Env = append(os.Environ(), "VISUAL_NERVE_TEST_PORT_PROCESS=1", "VISUAL_NERVE_TEST_ADDR="+addr, "VISUAL_NERVE_ALLOWED_ORIGINS=", "VISUAL_NERVE_TLS_CERT=", "VISUAL_NERVE_TLS_KEY=", "VISUAL_NERVE_BRIDGE_TOKEN=")
+	if mode == "environment" {
+		cmd.Env = append(cmd.Env, "VISUAL_NERVE_TEST_ADDR_FROM_ENV=1", "VISUAL_NERVE_ADDR="+addr)
+	}
 	var output, diagnostic bytes.Buffer
 	cmd.Stdout = &output
 	cmd.Stderr = &diagnostic
@@ -110,6 +123,9 @@ func TestMCPBridgeCustomAddrBindsOnlyTheExplicitPort(t *testing.T) {
 	_ = cmd.Wait()
 	if output.Len() != 0 {
 		t.Fatal("server diagnostics belong on stderr")
+	}
+	if strings.Contains(diagnostic.String(), "Legacy compatibility listener") {
+		t.Fatal("an explicit flag or environment address must not attempt a compatibility listener", diagnostic.String())
 	}
 }
 

@@ -73,3 +73,15 @@ export function defaultBridgeUrl() {
 export function workspaceBridgeUrl(address: unknown, hasSavedAccess: boolean) {
   return String(address ?? (hasSavedAccess ? bridgeDefault(4317) : defaultBridgeUrl()));
 }
+
+/** An explicit UI upgrade preserves the chosen loopback host and TLS scheme. */
+export function legacyBridgeUpgrade(address: string): string | undefined {
+  try {
+    const url = localBridgeUrl(address);
+    if (url.port !== '4317') return;
+    url.port = '47417';
+    return url.href;
+  } catch {
+    return;
+  }
+}

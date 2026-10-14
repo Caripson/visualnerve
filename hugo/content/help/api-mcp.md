@@ -93,9 +93,20 @@ Changing the local development listener also changes its browser origin. Existin
 
 ### Choose a dedicated local port
 
-New setups use **47417** by default. One listener serves MCP `/mcp`, the browser WebSocket `/bridge` and REST `/api/v1`; MCP does not need a vendor-specific second port. Existing connections using **4317** are retained. New defaults do not silently change saved client configuration or a running bridge.
+New setups use **47417**, Visual Nerve's product default. It is not an official MCP or RFC-assigned port. MCP `/mcp`, the browser WebSocket `/bridge` and REST `/api/v1` share each listener; different clients do not need separate ports. Existing saved connections using **4317** stay unchanged.
 
-Port **4317** is also the standard [OpenTelemetry gRPC port](https://opentelemetry.io/docs/specs/otlp/#otlpgrpc-default-port); 4318 is used by OpenTelemetry HTTP. Neither is a reserved Visual Nerve port. No port, including 47417, is guaranteed to be free. An occupied-port error stops startup instead of choosing a hidden fallback. Identify the other process before changing anything; stop it only if you know what it is and intend to stop it.
+Port **4317** is [registered for OpenTelemetry](https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml?search=4317) and is its [gRPC default](https://opentelemetry.io/docs/specs/otlp/#otlpgrpc-default-port); 4318 is used by OpenTelemetry HTTP. Neither is a reserved Visual Nerve port. No port, including 47417, is guaranteed to be free. Leave an unrelated telemetry service running.
+
+Bridge **0.11.1** introduces compatibility startup so an upgrade can retain a working legacy connection:
+
+| How you start the executable | Listeners |
+| --- | --- |
+| `--bridge`, with no `--addr` and no nonempty `VISUAL_NERVE_ADDR` | Primary `127.0.0.1:47417`, plus `127.0.0.1:4317` if available |
+| `--bridge --addr 127.0.0.1:47417` | Only the explicit 47417 listener |
+| `--bridge --addr 127.0.0.1:4317` | Only the explicit legacy listener |
+| `--bridge` with a nonempty `VISUAL_NERVE_ADDR` | Only the configured listener; an explicit `--addr` takes precedence |
+
+The optional legacy listener uses the same bridge state, access checks, browser connections and operation receipts as the primary listener. If 4317 is busy, the bridge warns and skips it; if the primary listener is busy, startup fails. Static-only mode does not add a compatibility listener. There is no automatic port search, client fallback or process termination. The explicit setup command above chooses only 47417.
 
 The isolated app permits only explicitly approved loopback WebSocket ports. This release prepares **47417** for new setups and retains **4317** for existing connections. Both the app package and its HTTP response policy must allow a port; changing Settings alone cannot override CSP. An older live release may still allow only 4317 until the coordinated manual app/policy deployment. Existing saved addresses are preserved; switch the listener, browser connection and client together only after that rollout.
 
@@ -106,6 +117,26 @@ For an approved port, use the same hostname, port and TLS choice in all three pl
 ```
 
 Other ports require a reviewed app-build and HTTP response-policy update before use. A wildcard or an unrestricted network bind is not needed.
+
+### Upgrade an existing 4317 connection
+
+Use bridge **0.11.1 or newer** for the compatibility behavior above, together with the updated browser app. Updating the website alone does not update the executable.
+
+A working legacy connection can remain on 4317. Start the updated bridge with an explicit `--addr 127.0.0.1:4317`, or use the default compatibility startup above when 4317 is available. Keep the saved browser and client URLs explicit. Updating the website does not replace, restart or reconfigure your local executable.
+
+To move to 47417 deliberately:
+
+1. Build/update the executable and start its 47417 listener. Check its JSON health from both the client environment and the browser host. Confirm the app's deployed policy allows the port.
+2. Open **Settings → MCP / API integration**. For a saved 4317 connection, select **Use port 47417**.
+3. The action turns MCP **Off**, clears the session's integration token and changes only the saved port. Your hostname and `ws`/`wss` choice remain the same. It does not grant access to a new listener automatically.
+4. Update the MCP client's HTTP URL or stdio `--mcp-url` to the exact URL now shown in Settings. Re-enter a required integration token through its protected local fields, then select **Read only** or **Read + write** again.
+5. Check **Connected**, initialize the client and rediscover its tools. If anything fails, inspect the actual listener and saved address; do not assume the application switched back.
+
+The hosted browser origin stays `https://app.visualnerve.com`, so your IndexedDB workspace is unchanged. You do not need to clear cache or export and reimport a backup for this port change. Moving a locally hosted editor to another origin remains a separate data-transfer decision.
+
+**If your bridge uses an integration token:** the 0.11.1 browser update binds that optional session token to the exact saved connection URL. Older tokens without an address binding are cleared, so enter the token once again and save the connection. It is never forwarded to a different hostname, port or TLS scheme. This does not change your workspace password, diagrams or cache.
+
+Manually editing the connection address also turns access Off and requires a fresh grant. If another tab changes the saved address while you are granting access, the grant is rejected: review the current address before enabling it again. This prevents a token or permission approved for one destination from silently being used for another.
 
 ### Verify the listener before connecting
 
@@ -149,7 +180,7 @@ If another service owns the port, leave it running unless you explicitly intend 
 
 If Codex runs in WSL and Chrome runs on Windows on the same test computer, check the WSL shell and Chrome separately; the machine being the same does not prove the listener is the same. Do not substitute the health result from a separate Mac.
 
-Windows can normally access a WSL-hosted service through localhost forwarding; the reverse direction depends on WSL networking mode. Mirrored networking supports Windows/WSL loopback access, while NAT has different behavior. Follow [Microsoft's WSL networking guidance](https://learn.microsoft.com/en-us/windows/wsl/networking) for your environment. Visual Nerve's integration deliberately remains loopback-only: do not bind it to `0.0.0.0`, substitute a LAN address or disable origin checks to make a mismatched setup appear to work.
+Windows Chrome can reach a WSL-hosted service through localhost forwarding when that environment supports and enables it. Verify it on the actual computer; forwarding is not guaranteed by Visual Nerve or by a successful request inside WSL. The reverse direction depends on WSL networking mode; mirrored networking and NAT differ. Follow [Microsoft's WSL networking guidance](https://learn.microsoft.com/en-us/windows/wsl/networking). Docker uses separate container networking and forwarding; a passing Docker/Chrome test does not prove Windows/WSL reachability. Visual Nerve's integration deliberately remains loopback-only: do not bind it to `0.0.0.0`, substitute a LAN address or disable origin checks to make a mismatched setup appear to work.
 
 A bridge on a remote Mac is not available through a Linux/WSL client's own loopback. Similarly, a phone's loopback is not its nearby laptop. The normal UI continues working without MCP; put the bridge and client in a compatible local environment before enabling the connection.
 
@@ -326,7 +357,7 @@ In Claude Desktop's local developer configuration, merge an entry like this into
   "mcpServers": {
     "visual-nerve": {
       "command": "/ABSOLUTE/PATH/visual-nerve",
-      "args": ["--mcp-stdio"]
+      "args": ["--mcp-stdio", "--mcp-url", "http://127.0.0.1:47417/mcp"]
     }
   }
 }
@@ -334,7 +365,7 @@ In Claude Desktop's local developer configuration, merge an entry like this into
 
 Replace the command with the absolute path to your newly built executable. The usual configuration locations are `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS and `%APPDATA%\Claude\claude_desktop_config.json` on Windows; use a binary for the OS running Desktop and escape Windows backslashes in JSON. Restart Desktop after updating the entry. [Official local MCP configuration guide](https://modelcontextprotocol.io/docs/develop/connect-local-servers), [Claude Desktop local setup](https://support.claude.com/en/articles/10949351-getting-started-with-local-mcp-servers-on-claude-desktop).
 
-The adapter defaults to `http://127.0.0.1:47417/mcp`. For another local port or trusted HTTPS, add `"--mcp-url"` and its exact URL as separate arguments. It accepts only loopback HTTP(S) URLs with an explicit port and `/mcp` path. TLS uses normal system trust; the adapter does not bypass certificate validation. If the bridge requires a token, supply its matching `VISUAL_NERVE_BRIDGE_TOKEN` through the adapter's protected local environment, not the URL or shared example. Closing Desktop ends its adapter, not the shared bridge. Frames are limited to 32 MiB, with eight active and eight pending requests. Saturation stops the adapter rather than buffering indefinitely. Interrupted mutations can have an unknown outcome and are not automatically retried; inspect saved state before repeating them. No vendor GUI compatibility test is claimed here.
+Replace the example's `--mcp-url` value with the exact MCP URL saved in Settings, including 4317 or trusted HTTPS if that is your existing connection. Omitting it uses the adapter's 47417 default; it does not inspect browser Settings or try a legacy port. The adapter accepts only loopback HTTP(S) URLs with an explicit port and `/mcp` path. TLS uses normal system trust; the adapter does not bypass certificate validation. If the bridge requires a token, supply its matching `VISUAL_NERVE_BRIDGE_TOKEN` through the adapter's protected local environment, not the URL or shared example. Closing Desktop ends its adapter, not the shared bridge. Frames are limited to 32 MiB, with eight active and eight pending requests. Saturation stops the adapter rather than buffering indefinitely. Interrupted mutations can have an unknown outcome and are not automatically retried; inspect saved state before repeating them. No vendor GUI compatibility test is claimed here.
 
 Claude Desktop's local setup is separate from its **remote custom connectors**. A remote connector connects from Anthropic's infrastructure even when configured through Desktop, so it cannot reach this loopback-only bridge. Do not substitute a remote connector for the local command above. [Claude's remote-connector network requirements](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
 

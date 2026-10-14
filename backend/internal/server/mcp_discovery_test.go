@@ -164,6 +164,14 @@ func TestMCPDocumentationResourcesMatchToolDocuments(t *testing.T) {
 	}
 }
 
+func TestMCPGuideExplainsCompatibilityListenerAndExplicitAddresses(t *testing.T) {
+	for _, phrase := range []string{"Bridge " + bridgeVersion + " defaults to 127.0.0.1:47417", "optional compatibility listener at 127.0.0.1:4317", "Both listeners share", "does not contact or stop", "explicit --addr or nonempty VISUAL_NERVE_ADDR disables", "--mcp-url", "does not scan ports or retry", "Before supplying credentials", "Updating the website does not replace a local bridge binary"} {
+		if !strings.Contains(mcpAPIGuide, phrase) {
+			t.Fatalf("guide must document listener upgrade behavior: %q", phrase)
+		}
+	}
+}
+
 func TestMCPCodeDiscoveryExplainsAutomaticAndExplicitDetailLevels(t *testing.T) {
 	for surface, text := range map[string]string{
 		"initialize": mcpInstructions,

@@ -2,7 +2,7 @@
 
 Install Go ≥1.26, Node ≥22.12, npm and Hugo ≥0.140. `./dev.sh` builds and starts the static server. `./dev.sh --watch` serves the editor through Vite at localhost:5173. Add `--bridge` to either command to enable optional integration; browser Settings must enable it too. Restart Go after backend changes.
 
-For a hosted workspace connection, `./scripts/build-bridge.sh` builds only the native Go bridge and matching API schema under `bin/bridge-docs/`. It needs Go 1.26+ and no frontend/Hugo toolchain; the complete editor workflow below still uses `./build.sh`. New connections use port 47417, while existing saved 4317 configurations remain explicit. [Connection and WSL diagnostics](hugo/content/help/api-mcp.md#verify-the-listener-before-connecting).
+For a hosted workspace connection, `./scripts/build-bridge.sh` builds only the native Go bridge and matching API schema under `bin/bridge-docs/`. It needs Go 1.26+ and no frontend/Hugo toolchain; the complete editor workflow below still uses `./build.sh`. New connections use Visual Nerve's product default port 47417, while saved 4317 addresses remain unchanged. This is not an official MCP port. [Connection and WSL diagnostics](hugo/content/help/api-mcp.md#verify-the-listener-before-connecting).
 
 ```sh
 ./scripts/test.sh
@@ -26,6 +26,12 @@ Persistence changes belong in `frontend/src/storage` and the vault codecs/sessio
 Add node kinds through the canonical type list and nodes/registry.tsx. Preserve separation of graph semantics, coordinates and rendering. Run `npm run format` for frontend files; format:check is included in the test script. Use gofmt for Go. build.sh regenerates OpenAPI and license notices, bundles React, builds Hugo and its offline shell, then compiles the static/bridge binary.
 
 Configuration: VISUAL_NERVE_ADDR, VISUAL_NERVE_STATIC_DIR and optional VISUAL_NERVE_BRIDGE_TOKEN. Runtime flags: --addr, --static, --dev and --bridge. The server has no database/data-directory configuration. Build artifacts, dependency directories, browser reports and local environment files are ignored by git.
+
+Address selection is deliberate: `--bridge` with neither an explicit `--addr` nor a nonempty `VISUAL_NERVE_ADDR` opens primary `127.0.0.1:47417` and attempts a compatibility listener at `127.0.0.1:4317`. Both share one handler, connected-workspace registry, grants and transient operation state. An unavailable legacy port is skipped with a warning; primary bind failure is fatal. Explicit flag/env addresses create only that listener, including an explicit 47417 choice. Static-only and `--mcp-stdio` modes do not start a legacy listener. The stdio adapter defaults to 47417 but should specify `--mcp-url` matching Settings; it never discovers or changes a destination automatically.
+
+The human **Use port 47417** action revokes the browser grant before changing its saved URL, clears the session token and leaves access Off for a fresh grant. It preserves hostname and WebSocket TLS scheme. Keep migration tests for saved legacy/default/explicit addresses, failed saves, encrypted reloads and concurrent settings writes. The server's optional compatibility listener is not a client fallback or a second storage backend.
+
+These compatibility and browser recovery behaviors are introduced in **0.11.1**. `BridgeSessionToken` binds the optional session credential to the exact URL using sessionStorage `vn-token-address`; it clears older unbound credentials and mismatched destinations rather than forwarding them. Users with a configured token re-enter it once, without clearing cache or diagrams. Manual address changes revoke access, and a positive grant checks the persisted address against the UI-reviewed address inside the settings transaction. Cross-tab address changes must reject stale grants. Neither the credential nor its binding belongs in backups.
 
 ## Origins and privacy tests
 

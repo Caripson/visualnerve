@@ -1,16 +1,17 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { McpSettings } from '../src/components/McpSettings';
 import { McpConnectionInfo } from '../src/components/McpConnectionInfo';
 import { useEditor } from '../src/state/editor';
 import { workspace } from '../src/storage/workspace';
+import { bridgeSessionToken } from '../src/integration/session-token';
 import { bridge } from '../src/integration/bridge';
 
 vi.mock('../src/storage/workspace', () => ({ workspace: { setPreference: vi.fn() } }));
 vi.mock('../src/integration/bridge', () => ({ bridge: { reconnect: vi.fn() } }));
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
   vi.stubGlobal('location', { origin: 'https://visualnerve.caripson.com' });
   sessionStorage.clear();
   useEditor.setState({
@@ -97,4 +98,65 @@ it('selects the full instructions when clipboard access is unavailable', async (
   await waitFor(() => expect(preview).toHaveFocus());
   expect(preview.selectionStart).toBe(0);
   expect(preview.selectionEnd).toBe(preview.value.length);
+});
+
+it('upgrades a legacy connection only after a click and clears the old session token', async () => {
+  bridgeSessionToken().save('wss://127.0.0.1:4317/bridge', 'OLD-TOKEN');
+  vi.mocked(workspace.setPreference).mockImplementation(async (key, value) => {
+    if (key === 'bridge-url') useEditor.setState({ bridgeUrl: String(value), mcpAccess: 'off' });
+  });
+  useEditor.setState({ mcpAccess: 'write', bridgeStatus: 'connected' });
+  render(<McpSettings />);
+  expect(workspace.setPreference).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Use port 47417' }));
+  await screen.findByText(/Connection saved with MCP Off/);
+  expect(workspace.setPreference).toHaveBeenCalledWith(
+    'bridge-url',
+    'wss://127.0.0.1:47417/bridge',
+  );
+  expect(sessionStorage.getItem('vn-token')).toBeNull();
+  expect(screen.getByLabelText('MCP access')).toHaveValue('off');
+  expect(screen.getByLabelText('MCP server URL')).toHaveValue('https://127.0.0.1:47417/mcp');
+  expect(screen.getByLabelText('Local bridge address')).toHaveValue('wss://127.0.0.1:47417/bridge');
+  expect(screen.getByLabelText('Integration token')).toHaveValue('');
+  expect(bridge.reconnect).not.toHaveBeenCalled();
+});
+
+it('does not carry the old token over a manually edited connection address', async () => {
+  bridgeSessionToken().save('wss://127.0.0.1:4317/bridge', 'OLD-TOKEN');
+  vi.mocked(workspace.setPreference).mockResolvedValue();
+  render(<McpSettings />);
+  fireEvent.change(screen.getByLabelText('Local bridge address'), {
+    target: { value: 'ws://localhost:47417/bridge' },
+  });
+  expect(screen.getByLabelText('Integration token')).toHaveValue('');
+  fireEvent.click(screen.getByRole('button', { name: 'Save connection' }));
+  await screen.findByText(/Connection saved with MCP Off/);
+  expect(sessionStorage.getItem('vn-token')).toBeNull();
+});
+
+it('refreshes the token field after a connection change from another tab or a retried save', async () => {
+  bridgeSessionToken().save('wss://127.0.0.1:4317/bridge', 'OLD-TOKEN');
+  render(<McpSettings />);
+  expect(screen.getByLabelText('Integration token')).toHaveValue('OLD-TOKEN');
+  sessionStorage.removeItem('vn-token');
+  await act(async () =>
+    useEditor.setState({ bridgeUrl: 'ws://127.0.0.1:47417/bridge', mcpAccess: 'off' }),
+  );
+  expect(screen.getByLabelText('Integration token')).toHaveValue('');
+  expect(screen.getByLabelText('Local bridge address')).toHaveValue('ws://127.0.0.1:47417/bridge');
+});
+
+it('saves and displays a newly entered token bound to a manually changed address', async () => {
+  vi.mocked(workspace.setPreference).mockImplementation(async (key, value) => {
+    if (key === 'bridge-url') useEditor.setState({ bridgeUrl: String(value), mcpAccess: 'off' });
+  });
+  render(<McpSettings />);
+  const address = 'ws://localhost:47417/bridge';
+  fireEvent.change(screen.getByLabelText('Local bridge address'), { target: { value: address } });
+  fireEvent.change(screen.getByLabelText('Integration token'), { target: { value: 'NEW-TOKEN' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save connection' }));
+  await screen.findByText(/Connection saved with MCP Off/);
+  expect(bridgeSessionToken().read(address)).toBe('NEW-TOKEN');
+  expect(screen.getByLabelText('Integration token')).toHaveValue('NEW-TOKEN');
 });

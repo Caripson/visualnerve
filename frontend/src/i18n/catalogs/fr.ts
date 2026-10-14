@@ -1434,6 +1434,14 @@ const catalog = {
   'integration.instructions.selectedForCopy':
     'Instructions sélectionnées. Copiez-les à l’aide du clavier ou du menu de copie de votre appareil.',
   'integration.instructions.title': 'Instructions pour votre client MCP',
+  'integration.upgrade.title': 'Mettre à jour une ancienne connexion MCP',
+  'integration.upgrade.explanation':
+    'Cette connexion utilise le port 4317. Les nouvelles passerelles utilisent 47417 et acceptent aussi les anciennes connexions sur 4317 si ce port est libre. Un --addr explicite démarre uniquement à l’adresse choisie.',
+  'integration.upgrade.consent':
+    'Changez uniquement si votre passerelle fonctionne sur 47417. Le changement désactive MCP et efface le jeton de session. Saisissez ensuite le bon jeton si nécessaire, autorisez de nouveau l’accès et copiez les instructions mises à jour dans votre client MCP.',
+  'integration.upgrade.action': 'Utiliser le port 47417',
+  'integration.upgrade.saved':
+    'Connexion enregistrée avec MCP désactivé. Vérifiez le jeton si nécessaire, choisissez la lecture seule ou la lecture et l’écriture, puis copiez les instructions MCP mises à jour.',
   'integration.settings.accessAccessible': 'Accès MCP',
   'integration.settings.accessLabel': 'Accès',
   'integration.settings.authorizedSharing':

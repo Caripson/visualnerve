@@ -121,7 +121,7 @@ func TestInfrastructureTemplateCreationUsesOnlyTheFourCanonicalShortcuts(t *test
 	if len(values) != 27 || input["allOf"] == nil {
 		t.Fatal("creation must retain the earlier 23 shortcuts and constrain infrastructure type/mode")
 	}
-	if document["info"].(object)["version"] != "0.11.0" {
+	if document["info"].(object)["version"] != "0.11.1" {
 		t.Fatal("new execution contract requires coordinated API version")
 	}
 }

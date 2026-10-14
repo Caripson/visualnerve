@@ -23,7 +23,7 @@ func notationVariant(t *testing.T, schema object, collection, symbol string) obj
 func TestNotationOpenAPIUsesCanonicalCatalogAndNativeOptionalFields(t *testing.T) {
 	doc := analyticsContract(t)
 	schemas := doc["components"].(object)["schemas"].(object)
-	if doc["info"].(object)["version"] != "0.11.0" || !strings.Contains(doc["info"].(object)["description"].(string), "standard-notations-v1") {
+	if doc["info"].(object)["version"] != "0.11.1" || !strings.Contains(doc["info"].(object)["description"].(string), "standard-notations-v1") {
 		t.Fatal("notation version/capability missing")
 	}
 	if len(schemas["NotationProfile"].(object)["oneOf"].([]any)) != len(model.NotationCollections) || len(schemas["NodeNotation"].(object)["oneOf"].([]any)) != len(model.StandardNotationCatalog.Symbols) || len(schemas["EdgeNotation"].(object)["oneOf"].([]any)) != len(model.StandardNotationCatalog.Connectors) {

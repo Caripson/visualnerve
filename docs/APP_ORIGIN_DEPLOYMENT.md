@@ -234,6 +234,13 @@ bridge settings remain unchanged. A scheme/host wildcard is not used as a workar
 
 The new default is **47417**. Existing saved or legacy integration settings using
 **4317** remain explicit; no workspace is deleted, unlocked or moved by this change.
+47417 is Visual Nerve's product default, not an official MCP port. Bridge **0.11.1**
+introduces compatibility startup: an executable started with `--bridge` and neither an explicit `--addr` nor a nonempty
+`VISUAL_NERVE_ADDR` opens primary `127.0.0.1:47417` and attempts an optional legacy
+`127.0.0.1:4317` listener using the same handler, grants and operation state. A busy
+legacy listener is skipped with a warning; a busy primary listener fails startup.
+Explicit flag/env addresses create only their selected listener. This does not
+add client autodiscovery, a fallback port or another storage backend.
 The hosted app's HTML CSP and CloudFront response-header CSP must both permit the
 chosen loopback WebSocket port. A local binary update or Settings edit cannot
 broaden a deployed policy.
@@ -267,6 +274,10 @@ Perform the following only during an authorized manual release:
 4. Let existing users keep 4317, or explicitly switch the local listener, browser
    WebSocket URL and client HTTP/stdio URL together. Restart/update the bridge
    executable separately; a website update does not update that local program.
+   The browser's **Use port 47417** action revokes access, clears its session token,
+   preserves hostname/TLS and leaves MCP Off. Re-enter any required token and grant
+   access again after verifying the listener. Pin stdio with the exact Settings
+   URL in `--mcp-url`; the adapter does not discover the browser's chosen port.
 
 The old port overlaps OpenTelemetry gRPC. A port conflict must be diagnosed by
 identifying its owner; do not stop unrelated telemetry services. If neither
