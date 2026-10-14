@@ -17,6 +17,60 @@ env:
   HUGO_VERSION: "0.148.2"
 
 jobs:
+  bridge-installation:
+    name: Fresh bridge installation and browser connection
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install packaging dependencies on the test host
+        working-directory: frontend
+        run: npm ci
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Install Hugo for the isolated test website
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="hugo_${HUGO_VERSION}_linux-amd64.tar.gz"
+          release="https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}"
+          cd "$RUNNER_TEMP"
+          curl --fail --silent --show-error --location "$release/$archive" --output "$archive"
+          curl --fail --silent --show-error --location "$release/hugo_${HUGO_VERSION}_checksums.txt" --output hugo-checksums.txt
+          grep " $archive$" hugo-checksums.txt | sha256sum --check --strict
+          mkdir -p "$RUNNER_TEMP/hugo-bin"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/hugo-bin" hugo
+          echo "$RUNNER_TEMP/hugo-bin" >> "$GITHUB_PATH"
+      - name: Build the isolated browser surface
+        run: ./build.sh
+      - name: Install the browser on the test host
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Install in clean Linux containers, then connect the browser
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="$(cd frontend && node --input-type=module -e 'import { chromium } from "@playwright/test"; console.log(chromium.executablePath())')"
+          ./scripts/bridge-installer-tests/browser.sh
+      - name: Preserve installation evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: bridge-installation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            tmp/verification/bridge-installer-linux/
+            tmp/verification/bridge-installer-chrome/
+          if-no-files-found: error
+          retention-days: 7
   verify:
     name: Test and build
     runs-on: ubuntu-24.04

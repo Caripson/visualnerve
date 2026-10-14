@@ -2,6 +2,8 @@
 
 Install Go ≥1.26, Node ≥22.12, npm and Hugo ≥0.140. `./dev.sh` builds and starts the static server. `./dev.sh --watch` serves the editor through Vite at localhost:5173. Add `--bridge` to either command to enable optional integration; browser Settings must enable it too. Restart Go after backend changes.
 
+The release build also packages a source installer for hosted-app users. It downloads its pinned Go toolchain itself and does not need the frontend toolchain or a git checkout. Developers can still build from source below. See [installer architecture and fresh-install verification](docs/BRIDGE_INSTALLER.md).
+
 For a hosted workspace connection, `./scripts/build-bridge.sh` builds only the native Go bridge and matching API schema under `bin/bridge-docs/`. It needs Go 1.26+ and no frontend/Hugo toolchain; the complete editor workflow below still uses `./build.sh`. New connections use Visual Nerve's product default port 47417, while saved 4317 addresses remain unchanged. This is not an official MCP port. [Connection and WSL diagnostics](hugo/content/help/api-mcp.md#verify-the-listener-before-connecting).
 
 ```sh

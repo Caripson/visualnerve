@@ -1,0 +1,170 @@
+#!/usr/bin/env bash
+# Visual Nerve bridge setup. Download and inspect this file before running it.
+# Only the native bridge is installed; browser data and access grants stay in the browser.
+set -euo pipefail
+umask 077
+VN_SOURCE_URL='__VN_SOURCE_URL__'
+VN_SOURCE_SHA256='__VN_SOURCE_SHA256__'
+VN_BRIDGE_VERSION='__VN_BRIDGE_VERSION__'
+VN_BUILD_REVISION='__VN_BUILD_REVISION__'
+VN_GO_VERSION='__VN_GO_VERSION__'
+VN_INSTALL_DIR="${HOME:?A home directory is required}/.local/share/visual-nerve/bridge"
+VN_SYSTEM_DEPS=0
+VN_ACTION=run
+VN_ARGUMENTS=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --install-dir)
+      [[ $# -ge 2 ]] || { echo '--install-dir requires a directory' >&2; exit 2; }
+      VN_INSTALL_DIR="$2"; shift 2 ;;
+    --install-system-deps) VN_SYSTEM_DEPS=1; shift ;;
+    --help|-h)
+      cat <<'HELP'
+Visual Nerve local bridge setup (Linux/WSL and macOS, x86_64/arm64)
+Usage: bash visual-nerve-bridge-setup.sh --origin https://app.visualnerve.com --addr 127.0.0.1:47417
+  --install-dir PATH       User-owned installation directory; no shell profile changes
+  --install-system-deps   Permit installing curl/CA certificates using the OS package manager
+  --install-only          Build without starting the bridge
+  --status                Check the managed bridge (does not download or install)
+  --stop                  Stop only this installer's verified managed bridge
+  --origin URL            Exact browser origin; defaults to https://app.visualnerve.com
+  --addr HOST:PORT        Explicit loopback listener; defaults to 127.0.0.1:47417
+Go is installed privately when needed. ZIP extraction does not require unzip.
+Passwords, recovery keys and browser access grants are never accepted here.
+HELP
+      exit 0 ;;
+    --status|--stop) VN_ACTION="${1#--}"; VN_ARGUMENTS+=("$1"); shift ;;
+    --install-only) VN_ARGUMENTS+=("$1"); shift ;;
+    --origin|--addr)
+      [[ $# -ge 2 ]] || { echo "$1 requires a value" >&2; exit 2; }
+      VN_ARGUMENTS+=("$1" "$2"); shift 2 ;;
+    *) echo "Unknown option: $1. Use --help." >&2; exit 2 ;;
+  esac
+done
+case "$VN_INSTALL_DIR" in /*) ;; *) echo '--install-dir must be absolute.' >&2; exit 2;; esac
+if [[ "$VN_INSTALL_DIR" == / || "$VN_INSTALL_DIR" == "$HOME" || -L "$VN_INSTALL_DIR" ]]; then
+  echo 'Choose a dedicated directory, not /, your home itself, or a symlink.' >&2; exit 2
+fi
+if [[ "$VN_ACTION" != run ]]; then
+  [[ -x "$VN_INSTALL_DIR/setup-helper" ]] || { echo 'No managed installation exists in this directory.' >&2; exit 1; }
+  VN_LOCK="$VN_INSTALL_DIR/.bootstrap-lock"
+  mkdir "$VN_LOCK" 2>/dev/null || { echo 'Another bridge setup/control operation is running.' >&2; exit 1; }
+  trap 'rmdir -- "$VN_LOCK"' EXIT
+  "$VN_INSTALL_DIR/setup-helper" --install-dir "$VN_INSTALL_DIR" ${VN_ARGUMENTS[@]+"${VN_ARGUMENTS[@]}"}
+  exit $?
+fi
+case "$(uname -s)" in Linux) VN_OS=linux;; Darwin) VN_OS=darwin;; *) echo 'Run this installer in Linux, WSL or macOS; native Windows shells are unsupported.' >&2; exit 2;; esac
+case "$(uname -m)" in x86_64|amd64) VN_ARCH=amd64;; aarch64|arm64) VN_ARCH=arm64;; *) echo 'Supported architectures are x86_64 and arm64.' >&2; exit 2;; esac
+mkdir -p "$VN_INSTALL_DIR"
+chmod 700 "$VN_INSTALL_DIR"
+VN_LOCK="$VN_INSTALL_DIR/.bootstrap-lock"
+if ! mkdir "$VN_LOCK" 2>/dev/null; then
+  echo "Another setup may be running. If it was interrupted, inspect and remove $VN_LOCK before retrying." >&2
+  exit 1
+fi
+VN_TEMP=''
+trap 'if [[ -n "$VN_TEMP" ]]; then rm -rf -- "$VN_TEMP"; fi; rmdir -- "$VN_LOCK"' EXIT
+VN_TEMP="$(mktemp -d "$VN_INSTALL_DIR/.setup-XXXXXXXX")"
+trap 'exit 130' INT
+trap 'exit 143' TERM
+vn_has_wget() {
+  command -v wget >/dev/null && wget --version 2>/dev/null | head -n 1 | grep -q "GNU Wget"
+}
+if ! command -v curl >/dev/null && ! vn_has_wget && ! command -v python3 >/dev/null; then
+  if [[ "$VN_SYSTEM_DEPS" != 1 ]]; then
+    echo 'No supported HTTPS downloader found. Install curl, GNU wget or Python 3, or rerun with --install-system-deps.' >&2; exit 1
+  fi
+  VN_PRIVILEGE=()
+  if [[ "$(id -u)" != 0 ]]; then
+    command -v sudo >/dev/null || { echo 'Installing curl needs an administrator. No system changes made.' >&2; exit 1; }
+    VN_PRIVILEGE=(sudo)
+  fi
+  echo 'Installing curl and CA certificates with the system package manager (may request administrator permission).'
+  if command -v apt-get >/dev/null; then
+    ${VN_PRIVILEGE[@]+"${VN_PRIVILEGE[@]}"} apt-get update
+    ${VN_PRIVILEGE[@]+"${VN_PRIVILEGE[@]}"} apt-get install -y --no-install-recommends curl ca-certificates
+  elif command -v dnf >/dev/null; then
+    ${VN_PRIVILEGE[@]+"${VN_PRIVILEGE[@]}"} dnf install -y curl ca-certificates
+  elif command -v apk >/dev/null; then
+    ${VN_PRIVILEGE[@]+"${VN_PRIVILEGE[@]}"} apk add --no-cache curl ca-certificates
+  elif command -v brew >/dev/null; then
+    brew install curl
+  else
+    echo 'No supported package manager found. Install curl and CA certificates, then retry.' >&2; exit 1
+  fi
+fi
+vn_download() {
+  if command -v curl >/dev/null; then
+    curl --disable --fail --show-error --location --proto '=https' --proto-redir '=https' --connect-timeout 20 --max-time 600 --retry 2 --output "$2" "$1"
+  elif vn_has_wget; then
+    wget --no-config --https-only --timeout=60 --tries=3 --output-document="$2" "$1"
+  else
+    python3 - "$1" "$2" <<'PY'
+import ssl, sys, urllib.request
+class HTTPSOnly(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, url):
+        if not url.startswith('https://'): raise ValueError('Non-HTTPS redirect refused')
+        return super().redirect_request(req, fp, code, msg, headers, url)
+opener = urllib.request.build_opener(HTTPSOnly(), urllib.request.HTTPSHandler(context=ssl.create_default_context()))
+with opener.open(sys.argv[1], timeout=60) as response, open(sys.argv[2], 'wb') as output:
+    total = 0
+    while True:
+        chunk = response.read(1024 * 1024)
+        if not chunk: break
+        total += len(chunk)
+        if total > 256 * 1024 * 1024: raise ValueError('Download exceeds limit')
+        output.write(chunk)
+PY
+  fi
+}
+vn_sha256() {
+  if command -v sha256sum >/dev/null; then sha256sum "$1" | cut -d ' ' -f 1
+  elif command -v shasum >/dev/null; then shasum -a 256 "$1" | cut -d ' ' -f 1
+  elif command -v openssl >/dev/null; then openssl dgst -sha256 "$1" | awk '{print $NF}'
+  elif command -v python3 >/dev/null; then python3 - "$1" <<'PY'
+import hashlib, sys
+digest = hashlib.sha256()
+with open(sys.argv[1], 'rb') as source:
+    for block in iter(lambda: source.read(1024 * 1024), b''): digest.update(block)
+print(digest.hexdigest())
+PY
+  else echo 'A SHA-256 verifier (sha256sum, shasum, OpenSSL or Python 3) is required.' >&2; return 1; fi
+}
+# Pin the private toolchain and checksums from https://go.dev/dl/?mode=json&include=all.
+# Existing Go installations and PATH/profile files are never replaced.
+case "$VN_OS-$VN_ARCH" in
+  linux-amd64) VN_GO_SHA=42d158b4d8f7b61ac0a830567c940a86098fb7aac52e467a5ebec03ef5cc2f8d;;
+  linux-arm64) VN_GO_SHA=4a97373d49fcacdcf3694fea368a500b00ee3e963974f3e7514132717632f052;;
+  darwin-amd64) VN_GO_SHA=00c29e3d4c8562f547410daa18d2959b641bd691ab00c4a525ea817a0253d4bd;;
+  darwin-arm64) VN_GO_SHA=f9bb7c0a02506c5d9bf0d1eb1f7ee6c7684f844ae49558308a0427b830e022cc;;
+esac
+[[ "$VN_GO_VERSION" == 1.26.9 ]] || { echo 'Toolchain manifest/checksum mismatch.' >&2; exit 1; }
+VN_GO="$VN_INSTALL_DIR/toolchains/go$VN_GO_VERSION/bin/go"
+if [[ ! -x "$VN_GO" ]]; then
+  echo "Downloading verified Go $VN_GO_VERSION for $VN_OS/$VN_ARCH into this installation only."
+  vn_download "https://go.dev/dl/go${VN_GO_VERSION}.${VN_OS}-${VN_ARCH}.tar.gz" "$VN_TEMP/go.tar.gz"
+  [[ "$(vn_sha256 "$VN_TEMP/go.tar.gz")" == "$VN_GO_SHA" ]] || { echo 'Go checksum mismatch. Nothing was executed.' >&2; exit 1; }
+  command -v tar >/dev/null || { echo 'Install tar, then retry. No bridge has been changed.' >&2; exit 1; }
+  tar -xzf "$VN_TEMP/go.tar.gz" -C "$VN_TEMP"
+  mkdir -p "$VN_INSTALL_DIR/toolchains"
+  # Another concurrent invocation may have finished the same verified download.
+  if [[ ! -d "$VN_INSTALL_DIR/toolchains/go$VN_GO_VERSION" ]]; then
+    mv "$VN_TEMP/go" "$VN_INSTALL_DIR/toolchains/go$VN_GO_VERSION"
+  fi
+fi
+echo "Using $(env GOENV=off GOWORK=off GOTOOLCHAIN=local GOROOT="$VN_INSTALL_DIR/toolchains/go$VN_GO_VERSION" "$VN_GO" version). Source package is pinned to $VN_SOURCE_SHA256."
+if command -v unzip >/dev/null; then
+  echo 'unzip is available; extraction still uses the path-checked Go ZIP reader.'
+else
+  echo 'unzip is absent; the verified Go ZIP reader handles extraction without installing extra packages.'
+fi
+cat > "$VN_TEMP/setup.go" <<'VN_HELPER_SOURCE'
+__VN_HELPER_GO_SOURCE__
+VN_HELPER_SOURCE
+mkdir -p "$VN_INSTALL_DIR/build-cache"
+env GOENV=off GOWORK=off GO111MODULE=off GOTOOLCHAIN=local GOFLAGS= GOEXPERIMENT= GOCACHEPROG= GOOS="$VN_OS" GOARCH="$VN_ARCH" GOROOT="$VN_INSTALL_DIR/toolchains/go$VN_GO_VERSION" GOPATH="$VN_INSTALL_DIR/go-cache" CGO_ENABLED=0 GOCACHE="$VN_INSTALL_DIR/build-cache" "$VN_GO" build -trimpath -o "$VN_TEMP/setup-helper" "$VN_TEMP/setup.go"
+"$VN_TEMP/setup-helper" --install-dir "$VN_INSTALL_DIR" --go "$VN_GO" --source-url "$VN_SOURCE_URL" --source-sha256 "$VN_SOURCE_SHA256" --version "$VN_BRIDGE_VERSION" --revision "$VN_BUILD_REVISION" ${VN_ARGUMENTS[@]+"${VN_ARGUMENTS[@]}"}
+# Keep the exact verified helper for offline status/stop operations.
+cp "$VN_TEMP/setup-helper" "$VN_INSTALL_DIR/.setup-helper-next"
+chmod 700 "$VN_INSTALL_DIR/.setup-helper-next"
+mv -f "$VN_INSTALL_DIR/.setup-helper-next" "$VN_INSTALL_DIR/setup-helper"

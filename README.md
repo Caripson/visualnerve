@@ -74,7 +74,9 @@ For a static build:
 
 ## Connect REST or MCP
 
-To connect the hosted app, you only need **Go 1.26+** and a confirmed source checkout on the computer that will run the bridge. Build the native executable and its matching API contract without building the website:
+For a new hosted connection, copy the short instructions in **Settings → MCP / API integration**. They point to the setup script published with that app release. Download and inspect the script before running it; it installs a private, checksum-pinned Go toolchain, verifies the matching source ZIP, builds the native bridge and API contract, and starts the selected loopback listener. Go, git, Node and unzip do not need to be preinstalled. An HTTPS downloader and trusted CA certificates are required; system prerequisite installation is an explicit choice. See [setup, upgrades and safe removal](docs/BRIDGE_INSTALLER.md). Copying the prompt itself neither runs a script nor grants workspace access.
+
+For a manual source build, use **Go 1.26+** and a confirmed checkout:
 
 ```sh
 ./scripts/build-bridge.sh

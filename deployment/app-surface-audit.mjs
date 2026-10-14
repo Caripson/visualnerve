@@ -3,6 +3,10 @@ import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { SITE_ICON_FILES, validateSiteIcons } from "../scripts/site-icons.mjs";
 import {
+  auditBridgeDownloads,
+  bridgeDownloadPath,
+} from "../scripts/bridge-downloads.mjs";
+import {
   appContentSecurityPolicy,
   appSurfaceOptions,
   appResponseHeaders,
@@ -50,6 +54,7 @@ const generatedFiles = [
   ...policyNames.map((name) => `${name}/index.html`),
 ];
 export const copiedAsset = (path) =>
+  bridgeDownloadPath(path) ||
   SITE_ICON_FILES.includes(path) ||
   [
     "appearance.js",
@@ -90,6 +95,7 @@ export function auditAppSurface(
   if (lstatSync(directory).isSymbolicLink())
     throw new Error("The app output must not be a symlink.");
   const files = filesIn(directory);
+  auditBridgeDownloads(directory);
   const previousIcons =
     allowPreviousIconInventory &&
     SITE_ICON_FILES.every((path) => !files.includes(path));

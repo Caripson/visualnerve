@@ -186,9 +186,10 @@ export async function buildAppSurface(
       throw new Error(
         "An importable service-worker generator is required before preparing the app surface.",
       );
-    const assets = filesIn(output).map(
-      (path) => `/${path.replace(/index\.html$/, "")}`,
-    );
+    // Installer/source downloads are explicit setup actions, not offline app assets.
+    const assets = filesIn(output)
+      .filter((path) => !path.startsWith("downloads/"))
+      .map((path) => `/${path.replace(/index\.html$/, "")}`);
     await buildServiceWorker(output, { surface: "app", assets });
     const files = auditAppSurface(output);
     if (existsSync(destination)) rmSync(destination, { recursive: true });

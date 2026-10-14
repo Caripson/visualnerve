@@ -10,28 +10,23 @@ it.each([
   expect(mcpServerUrl(bridge)).toBe(server);
 });
 
-it('keeps the explicit staging/development domain in website/docs/origin roles and exposes 3D via MCP discovery', () => {
+it('keeps staging roles exact and discovers features through the MCP guide instead of copying a feature catalog', () => {
   const note = mcpSetupNote('https://visualnerve.caripson.com', 'wss://localhost:9443/bridge');
   expect(note).toContain('Browser workspace: https://visualnerve.caripson.com/app/');
   expect(note).toContain('Keep this workspace open');
   expect(note).toContain('API reference: https://visualnerve.caripson.com/api/docs/');
   expect(note).toContain('MCP server on this computer: https://localhost:9443/mcp');
   expect(note).toContain('--allowed-origin https://visualnerve.caripson.com');
-  expect(note).toContain('visual_nerve_api_docs');
-  expect(note).toContain('POST /spatial-diagrams');
-  expect(note).toContain('readable 2D layout');
-  expect(note).toContain('visualCapacity');
-  expect(note).toContain('Counter 1/2/3');
-  expect(note).toContain('not separate persistent process nodes');
-  expect(note).toContain('Bridge health on this computer: https://localhost:9443/api/v1/health');
-  expect(note).toContain('tools/list');
-  expect(note).toContain('operations-v1');
+  expect(note).toContain('First call visual_nerve_api_docs with {"document":"guide"}');
   expect(note).toContain('"document":"endpoint"');
+  expect(note).toContain('document:"openapi"');
+  expect(note).toContain('Discover features there');
+  expect(note).toContain('POST /spatial-diagrams');
   expect(note).toContain('type:"process-simulator"');
-  expect(note).toContain('stable externalId');
-  expect(note).toContain('Use PATCH for individual ID-based');
+  expect(note).toContain('paths omit /api/v1');
   expect(note).toContain('OPERATION_OUTCOME_UNKNOWN');
-  expect(note).toContain('same operationId');
+  expect(note).toContain('never blindly retry with a new ID');
+  expect(note).not.toContain('Counter 1/2/3');
 });
 
 it.each([
@@ -46,7 +41,7 @@ it.each([
   expect(note).not.toContain('visualnerve.com/app/');
 });
 
-it('uses the root of a separately reviewed encrypted preview surface without inventing an /app alias', () => {
+it('uses the root of an encrypted preview surface without inventing an /app alias', () => {
   const note = mcpSetupNote(
     'https://app-preview.visualnerve.example',
     'ws://127.0.0.1:4317/bridge',
@@ -54,6 +49,9 @@ it('uses the root of a separately reviewed encrypted preview surface without inv
   );
   expect(note).toContain('Browser workspace: https://app-preview.visualnerve.example/\n');
   expect(note).toContain('--allowed-origin https://app-preview.visualnerve.example\n');
+  expect(note).toContain(
+    'https://app-preview.visualnerve.example/downloads/visual-nerve-bridge-setup.sh',
+  );
 });
 
 it.each([
@@ -79,52 +77,75 @@ it('normalizes a workspace URL to its website origin without changing MCP author
 });
 
 it.each([47417, 4317])(
-  'keeps the selected port %i and gives a safe bridge bootstrap before workspace commands',
+  'preserves selected port %i through hosted bootstrap and credential-free discovery',
   (port) => {
     const note = mcpSetupNote('https://app.visualnerve.com', `ws://127.0.0.1:${port}/bridge`);
     expect(note).toContain(
       `Bridge health on this computer: http://127.0.0.1:${port}/api/v1/health`,
     );
     expect(note).toContain(`MCP server on this computer: http://127.0.0.1:${port}/mcp`);
-    for (const required of [
-      'HTTP 200',
-      'application/json',
+    expect(note).toContain(
+      'Download https://app.visualnerve.com/downloads/visual-nerve-bridge-setup.sh',
+    );
+    expect(note).toContain('ensure curl, wget or Python is available');
+    expect(note).toContain('Inspect the script, then run:');
+    expect(note).toContain(
+      `bash ./visual-nerve-bridge-setup.sh --origin 'https://app.visualnerve.com' --addr '127.0.0.1:${port}'`,
+    );
+    expect(note).toContain('--status, --stop and --install-dir');
+    expect(note).toContain('--install-system-deps only for missing prerequisites');
+    for (const phrase of [
+      'HTTP 200 application/json',
       'status:"ok"',
       'storage:"indexeddb"',
       'bridge:true',
-      'version string',
-      'tools including visual_nerve_request and visual_nerve_api_docs',
+      'without credentials',
+      'HTTP/0.9',
+      'unidentified listener',
+      'operations-v1/endpoint-docs-v1',
+      'tools/list',
+      'visual_nerve_api_docs',
+      'visual_nerve_request',
+      'Windows, WSL',
+      'both reach the same bridge',
+      'Settings cannot bypass CSP',
+      'Human unlock',
+      'fresh Read only or Read + write grant',
     ])
-      expect(note).toContain(required);
-    expect(note).toContain('Do not retry with --http0.9');
-    expect(note).toContain('kill an unrelated process');
-    expect(note).toContain('Do not guess an absolute binary/repository path');
-    expect(note).toContain('continue authorized local diagnosis and setup');
-    expect(note).toContain('Do not end by merely asking the user to start');
-    expect(note).toContain('report that specific missing prerequisite');
-    expect(note).toContain('do not replace their port with a new default');
-    expect(note).toContain('scripts/build-bridge.sh');
-    expect(note).toContain('bin/bridge-docs/openapi.yaml');
-    expect(note).toContain('--static ./bin/bridge-docs --bridge');
-    expect(note).toContain('actual');
-    expect(note).toContain('WSL, Windows, containers and a remote Mac');
-    expect(note).toContain('both the client environment and the browser host');
-    expect(note).toContain('Settings cannot bypass CSP');
-    expect(note).toContain('Existing saved addresses, including 4317');
-    expect(note.indexOf('Require HTTP 200')).toBeLessThan(
-      note.indexOf('Use visual_nerve_request for diagram commands'),
+      expect(note).toContain(phrase);
+    expect(note).not.toContain('scripts/build-bridge.sh');
+    expect(note).not.toContain('/bin/visual-nerve');
+    expect(note.indexOf('Check health without credentials')).toBeLessThan(
+      note.indexOf('After valid health, initialize MCP'),
     );
+    expect(note.trim().split(/\s+/).length).toBeLessThanOrEqual(350);
   },
 );
 
-it('explains the versioned compatibility listener without redirecting an explicit connection', () => {
-  const note = mcpSetupNote('https://app.visualnerve.com', 'ws://127.0.0.1:4317/bridge');
-  expect(note).toContain('bridge 0.11.1 or newer');
-  expect(note).toContain('without --addr or VISUAL_NERVE_ADDR');
-  expect(note).toContain('same browser, permissions and operation receipts');
-  expect(note).toContain('Explicit --addr or VISUAL_NERVE_ADDR starts only that address');
-  expect(note).toContain('pass an explicit --mcp-url matching Settings');
-  expect(note).toContain('fresh human grant');
-  expect(note).toContain('not a protocol-assigned MCP port');
-  expect(note).toContain('MCP server on this computer: http://127.0.0.1:4317/mcp');
+it.each(['wss://127.0.0.1:4317/bridge', 'wss://localhost:9443/bridge'])(
+  'does not downgrade a trusted TLS connection %s to the HTTP-only installer',
+  (address) => {
+    const note = mcpSetupNote('https://app.visualnerve.com', address);
+    expect(note).toContain(`Preserve ${mcpServerUrl(address)}`);
+    expect(note).toContain(
+      'initial installer starts HTTP only and cannot configure this connection',
+    );
+    expect(note).toContain('Never downgrade HTTPS or change Settings automatically');
+    expect(note).toContain('https://app.visualnerve.com/help/api-mcp/');
+    expect(note).not.toContain('bash ./visual-nerve-bridge-setup.sh');
+    expect(note).not.toContain('http://127.0.0.1:47417');
+    expect(note.trim().split(/\s+/).length).toBeLessThanOrEqual(350);
+  },
+);
+
+it('downloads over HTTPS for local development while preserving the actual allowed origin and IPv6 host', () => {
+  const note = mcpSetupNote('http://localhost:5173', 'ws://[::1]:47417/bridge');
+  expect(note).toContain('https://www.visualnerve.com/downloads/visual-nerve-bridge-setup.sh');
+  expect(note).toContain("--origin 'http://localhost:5173' --addr '[::1]:47417'");
+  expect(note).toContain('--allowed-origin http://localhost:5173\n');
+});
+
+it('quotes an unusual preview hostname as one shell argument', () => {
+  const note = mcpSetupNote("https://preview'example.test", 'ws://localhost:4317/bridge');
+  expect(note).toContain("--origin 'https://preview'\\''example.test' --addr 'localhost:4317'");
 });

@@ -112,10 +112,10 @@ describe('hierarchical simulation API and canonical persistence', () => {
     expect(bridgeResponseStatus('/diagrams/id/simulation/processes', 'POST')).toBe(201);
     expect(bridgeResponseStatus('/diagrams/id/simulation/processes/id', 'PATCH')).toBe(200);
     const note = mcpSetupNote('https://visualnerve.caripson.com', 'ws://127.0.0.1:4317/bridge');
-    expect(note).toContain('nodes[].processId');
-    expect(note).toContain('/diagrams/{id}/simulation/hierarchy');
-    expect(note).toContain('/diagrams/{id}/simulation/runs/{runId}/processes/{processId}');
-    expect(note).toContain('idle/scaling/investment');
+    expect(note).toContain('First call visual_nerve_api_docs with {"document":"guide"}');
+    expect(note).toContain('"document":"endpoint"');
+    expect(note).toContain('Discover features there');
+    expect(note).toContain('type:"process-simulator"');
     assertMcpAccess('read', '/diagrams/id/simulation/hierarchy', 'GET');
     assertMcpAccess('read', '/diagrams/id/simulation/runs/run/processes/process', 'GET');
     expect(() => assertMcpAccess('read', '/diagrams/id/simulation/processes', 'POST')).toThrow(

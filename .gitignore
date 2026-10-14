@@ -24,3 +24,4 @@ hugo/static/site/vendor/
 .wrangler/
 collaboration-crypto/target/
 *.log
+__pycache__/

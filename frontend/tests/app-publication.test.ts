@@ -23,6 +23,7 @@ import { prepareExistingAppResources } from '../../deployment/app-existing-resou
 import { appResponseHeaders } from '../../deployment/app-policy.mjs';
 import { buildAppSurface } from '../../scripts/build-app-surface.mjs';
 import { SITE_ICON_FILES } from '../../scripts/site-icons.mjs';
+import { packageBridgeInstaller } from '../../scripts/package-bridge-installer.mjs';
 
 const temporary: string[] = [];
 afterEach(() =>
@@ -301,7 +302,7 @@ describe('isolated app read-only hosting release check', () => {
   });
 });
 
-async function shellFixture() {
+async function shellFixture(withBridgeDownloads = false) {
   const directory = realpathSync(mkdtempSync(join(tmpdir(), 'visualnerve-app-publication-')));
   temporary.push(directory);
   const alias = join(directory, 'checkout alias #%');
@@ -314,6 +315,7 @@ async function shellFixture() {
     'scripts/deploy-app.sh',
     'scripts/require-ci.mjs',
     'scripts/site-icons.mjs',
+    'scripts/bridge-downloads.mjs',
     'scripts/fingerprinted-assets.mjs',
     'deployment/verify-app-hosting.mjs',
     'deployment/app-surface-audit.mjs',
@@ -372,6 +374,14 @@ async function shellFixture() {
       `public/${name}/index.html`,
       shell(`<h1>${name}</h1><article class="product-article">Policy</article>`),
     );
+  const bridgeRelease = withBridgeDownloads
+    ? packageBridgeInstaller({
+        outputDirectory: join(alias, 'public'),
+        siteUrl: 'https://www.visualnerve.com/',
+        revision: sha,
+        sourceDirty: false,
+      })
+    : undefined;
   await buildAppSurface(join(alias, 'public'), join(alias, 'public-app'));
   const { input } = reviewed();
   for (const [name, value] of Object.entries(input))
@@ -417,10 +427,34 @@ async function shellFixture() {
       return [];
     }
   };
-  return { directory, alias, deploy, calls, put };
+  return { directory, alias, deploy, calls, put, bridgeRelease };
 }
 
 describe('manual app publication shell boundary', () => {
+  it('copies the audited installer to the app origin without offline caching and publishes its pinned ZIP first', async () => {
+    const { deploy, calls, alias, bridgeRelease } = await shellFixture(true);
+    const source = bridgeRelease!.source;
+    expect(readFileSync(join(alias, 'public-app/downloads', source.file))).toEqual(
+      readFileSync(join(alias, 'public/downloads', source.file)),
+    );
+    const worker = readFileSync(join(alias, 'public-app/sw.js'), 'utf8');
+    expect(worker).not.toContain('/downloads/');
+    const result = deploy();
+    expect(result.status, result.stderr).toBe(0);
+    const uploads = calls().filter((args) => args[0] === 's3' && args[1] === 'cp');
+    const archive = uploads.findIndex((args) => args[2].endsWith(source.file));
+    const installer = uploads.findIndex((args) => args[2].endsWith('visual-nerve-bridge-setup.sh'));
+    expect(archive).toBeGreaterThanOrEqual(0);
+    expect(archive).toBeLessThan(installer);
+    expect(uploads[archive]).toContain('public,max-age=31536000,immutable');
+    expect(uploads[archive]).toContain('application/zip');
+    expect(uploads[installer]).toContain('no-cache');
+    expect(uploads[installer]).toContain('text/plain; charset=utf-8');
+    expect(uploads[installer][3]).toBe(
+      's3://app.visualnerve.com/downloads/visual-nerve-bridge-setup.sh',
+    );
+    expect(uploads.find((args) => args.includes('editor/assets/*'))).toContain('downloads/*');
+  });
   it('reads and validates private hosting, rechecks gates, and dry-runs only app files with explicit notice MIME and ordered publication', async () => {
     const { deploy, calls, alias } = await shellFixture();
     const result = deploy({

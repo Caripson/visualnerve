@@ -52,10 +52,10 @@ Encryption protects saved records while locked. An authorized API/MCP request, d
 
 ## Understand the addresses
 
-| Address                                                       | Purpose                                                           |
-| ------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `https://app.visualnerve.com/`                                | Encrypted browser workspace where your diagrams and Settings live |
-| `https://app.visualnerve.com`                                 | Exact app origin allowed by your bridge; use it without a path    |
+| Address                                                        | Purpose                                                           |
+| -------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `https://app.visualnerve.com/`                                 | Encrypted browser workspace where your diagrams and Settings live |
+| `https://app.visualnerve.com`                                  | Exact app origin allowed by your bridge; use it without a path    |
 | `ws://127.0.0.1:47417/bridge` or trusted `wss://…/bridge`      | Browser-to-local-service WebSocket connection                     |
 | `http://127.0.0.1:47417/mcp` or matching `https://…/mcp`       | Local MCP server address for any compatible client                |
 | `http://127.0.0.1:47417/api/v1` or matching `https://…/api/v1` | Local REST API base                                               |
@@ -69,6 +69,35 @@ Settings displays the **Visual Nerve website**, API reference and local **MCP se
 ## Start the optional process
 
 The bridge is a separate native executable. Opening the website or copying a Settings prompt does not install it. Run it on the host where the intended browser and local client can both reach its loopback listener.
+
+### Recommended setup for a hosted workspace
+
+1. Open **Settings → MCP / API integration** and copy the connection instructions to your local agent, or follow them in a terminal. The instructions use this workspace’s exact origin and saved local address.
+2. If the bridge is missing, download the linked `visual-nerve-bridge-setup.sh` file and inspect it before running it. Do not pipe an unread download into a shell.
+3. Run the supplied command. Setup downloads a private Go toolchain, verifies its SHA-256 checksum and the release’s source ZIP, builds the native bridge and matching API schema, then starts it. No existing Go installation, git checkout, Node or unzip is needed. The first run needs internet and may take a few minutes.
+4. Check the reported health and MCP address. In this browser, unlock your workspace and choose **Read only** or **Read + write**. The installer cannot choose that grant for you.
+
+For the production app with its default connection, the command after download is:
+
+```sh
+bash ./visual-nerve-bridge-setup.sh \
+  --origin https://app.visualnerve.com --addr 127.0.0.1:47417
+```
+
+The script uses curl, wget or Python 3 to download over HTTPS. If none is available, first install a downloader with your operating system’s package manager, with administrator approval where required. If you already have the setup file, `--install-system-deps` explicitly permits installing missing curl/CA prerequisites with a supported package manager. It does not silently request system changes during ordinary setup. Network or certificate failures must be corrected; do not disable certificate verification.
+
+Setup stores its own files under `~/.local/share/visual-nerve/bridge` by default. It does not change shell profiles, install a login service or access browser documents. `--install-dir` selects another dedicated absolute directory. Keep using the same directory for setup, status and stop:
+
+```sh
+bash ./visual-nerve-bridge-setup.sh --status
+bash ./visual-nerve-bridge-setup.sh --stop
+```
+
+Rerunning setup reuses a healthy matching process. A changed release or configuration can restart only the process owned by that installation. A busy port belonging to anything else produces a diagnostic; setup does not kill that process or search for another port. Save the latest reviewed setup file when upgrading. Stopping the bridge disconnects tools; it does not delete diagrams. There is no automatic restart after a computer reboot: run setup again when needed.
+
+The initial installer starts HTTP on an explicit loopback address. If Settings already uses HTTPS/WSS, preserve that connection and follow the trusted-certificate instructions below; do not downgrade it. Native Windows shells are unsupported: use Linux/WSL or macOS. Windows Chrome reaching a WSL listener still depends on the machine’s networking configuration.
+
+### Build manually from a source checkout
 
 If you already have `visual-nerve` installed, locate that executable and check its identity/version through health after startup. Otherwise, locate a real Visual Nerve source checkout or clone the repository into a directory you choose. Do not assume a path such as `/home/<name>/visualnerve/bin/visual-nerve` exists.
 
@@ -99,12 +128,12 @@ Port **4317** is [registered for OpenTelemetry](https://www.iana.org/assignments
 
 Bridge **0.11.1** introduces compatibility startup so an upgrade can retain a working legacy connection:
 
-| How you start the executable | Listeners |
-| --- | --- |
-| `--bridge`, with no `--addr` and no nonempty `VISUAL_NERVE_ADDR` | Primary `127.0.0.1:47417`, plus `127.0.0.1:4317` if available |
-| `--bridge --addr 127.0.0.1:47417` | Only the explicit 47417 listener |
-| `--bridge --addr 127.0.0.1:4317` | Only the explicit legacy listener |
-| `--bridge` with a nonempty `VISUAL_NERVE_ADDR` | Only the configured listener; an explicit `--addr` takes precedence |
+| How you start the executable                                     | Listeners                                                           |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `--bridge`, with no `--addr` and no nonempty `VISUAL_NERVE_ADDR` | Primary `127.0.0.1:47417`, plus `127.0.0.1:4317` if available       |
+| `--bridge --addr 127.0.0.1:47417`                                | Only the explicit 47417 listener                                    |
+| `--bridge --addr 127.0.0.1:4317`                                 | Only the explicit legacy listener                                   |
+| `--bridge` with a nonempty `VISUAL_NERVE_ADDR`                   | Only the configured listener; an explicit `--addr` takes precedence |
 
 The optional legacy listener uses the same bridge state, access checks, browser connections and operation receipts as the primary listener. If 4317 is busy, the bridge warns and skips it; if the primary listener is busy, startup fails. Static-only mode does not add a compatibility listener. There is no automatic port search, client fallback or process termination. The explicit setup command above chooses only 47417.
 
@@ -166,10 +195,10 @@ An empty response, HTTP/0.9 error, connection reset, protobuf/binary payload or 
 
 Inspect the listening process on the actual client host, using the configured port. Examples for the new default:
 
-| Environment | Read-only inspection |
-| --- | --- |
-| Linux / WSL | `ss -ltnp '( sport = :47417 )'` |
-| macOS | `lsof -nP -iTCP:47417 -sTCP:LISTEN` |
+| Environment        | Read-only inspection                                  |
+| ------------------ | ----------------------------------------------------- |
+| Linux / WSL        | `ss -ltnp '( sport = :47417 )'`                       |
+| macOS              | `lsof -nP -iTCP:47417 -sTCP:LISTEN`                   |
 | Windows PowerShell | `Get-NetTCPConnection -LocalPort 47417 -State Listen` |
 
 If another service owns the port, leave it running unless you explicitly intend to stop it. If the executable is missing, build or install Visual Nerve on that host; a binary on another computer does not solve the missing local process. Once valid health works, continue with tool discovery below.
@@ -664,7 +693,11 @@ Bridge/browser **0.11.0** advertises `infrastructure-resources-v1`. Read `GET /s
 The [infrastructure guide](/help/infrastructure-capacity/) explains **API & Compute Capacity**, **Network & Multi-Site Capacity**, **Energy & Power Capacity** and **Datacenter Capacity**, including CPU/RAM leases, shared link serialization and actual energy delivery. Discover exact fields through **visual_nerve_api_docs** before requests:
 
 ```json
-{"document":"endpoint","path":"/diagrams/{diagramId}/simulation","method":"PUT"}
+{
+  "document": "endpoint",
+  "path": "/diagrams/{diagramId}/simulation",
+  "method": "PUT"
+}
 ```
 
 Use the same **visual_nerve_request** tool, pinned `workspaceId`, simulation model/entity CRUD, asynchronous runs and comparison routes. Direct `POST /diagrams` accepts `template:"api-compute-capacity"`, `"network-multi-site-capacity"`, `"energy-power-capacity"` or `"datacenter-capacity"`; these use `process-simulator` and reject `mode` or a different supplied type. `state/result.infrastructure` contains resource-keyed CPU, RAM, link and energy counters; individual resource GET keeps generic capacity/busy/queue/utilization/cost metrics. Versioned PATCH preserves omission, recursively merges objects, removes optional fields with `null` and replaces arrays. Complete/new values reject null; invalid assumptions reject atomically with structured 422 `SIMULATION_INFRASTRUCTURE_INVALID`.

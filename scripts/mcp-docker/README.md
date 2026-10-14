@@ -17,6 +17,13 @@ Use `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to select a specific Chrome executable
 
 The image build receives an explicit source allowlist, generates matching OpenAPI and compiles the native Linux Go bridge. It does not receive `.env`, credentials, Git history or user exports. Image pulls and Go dependency downloads need network access during build. Runtime uses a dedicated Docker bridge network, read-only filesystem, unprivileged user, dropped capabilities and a bounded temporary directory. This network permits host port publishing; it is not an outbound firewall. The runner removes its own container and network on exit. It retains the reusable test image.
 
+**Installation is outside this journey.** Its image already contains the compiled
+bridge before Chrome opens. A passing result verifies integration with an installed
+bridge; it does not prove that pasting Settings instructions into a clean machine
+installs missing prerequisites. The separate `scripts/bridge-installer-tests/`
+acceptance harness starts without the bridge, Go, curl or unzip and tests the hosted
+setup script. Keep these two claims distinct in release reports.
+
 ## What is exercised
 
 1. A missing bridge returns a transport failure to the Linux client.

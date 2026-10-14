@@ -19,6 +19,7 @@ node scripts/licenses.mjs "$VN_GO"
 node scripts/help-flowchart-symbols.mjs
 node scripts/site-icons.mjs --check hugo/static
 hugo --source hugo --destination "$VN_ROOT/public" --cleanDestinationDir --baseURL "${SITE_URL:-https://visualnerve.caripson.com/}"
+node scripts/package-bridge-installer.mjs "$VN_ROOT/public"
 node scripts/fingerprinted-assets.mjs "$VN_ROOT/public"
 if [[ "${HUGO_PARAMS_ENVIRONMENT:-}" == 'production' ]]; then
   node "$VN_ROOT/scripts/retire-public-workspace.mjs" "$VN_ROOT/public"

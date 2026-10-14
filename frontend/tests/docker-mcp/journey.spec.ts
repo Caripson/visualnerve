@@ -211,7 +211,8 @@ test('a Linux MCP client and real Chrome share one workspace across bridge upgra
       expect(copied).toBe(rendered);
       expect(copied).toContain(`--allowed-origin ${target.origin}`);
       expect(copied).toContain('http://127.0.0.1:47417/api/v1/health');
-      expect(copied).toContain('scripts/build-bridge.sh');
+      expect(copied).toContain('/downloads/visual-nerve-bridge-setup.sh');
+      expect(copied).toContain('bash ./visual-nerve-bridge-setup.sh');
       expect(copied).not.toContain(password);
       expect(copied).not.toContain(token);
       await writeFile(resolve(artifacts, 'copied-instructions.txt'), copied);

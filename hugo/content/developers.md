@@ -30,7 +30,9 @@ There are no password, recovery, unlock or timeout-policy write endpoints. Reser
 
 Authorized responses and ordinary diagram exports are readable content. `GET /workspace/export` returns a readable semantic workspace backup to the granted client; the UI's encrypted backup download is a different format and is restored through the browser. Existing downloaded encrypted copies keep their own password/recovery credentials after a live password change. Encryption does not constrain what a connected client does with received content. This architecture requires no mandatory backend or SSO and does not claim regulatory or security certification.
 
-From a confirmed source checkout, `./scripts/build-bridge.sh` needs Go 1.26+ and produces a native `bin/visual-nerve` executable plus its matching `bin/bridge-docs/openapi.yaml`. Node, npm and Hugo are only needed if you also build the website. Do not guess an installed executable path. The original project code uses [MPL-2.0 with separate third-party terms](/license/).
+For a new installation, use the connection instructions copied from Settings. They link to `/downloads/visual-nerve-bridge-setup.sh` on the current app/site surface. Download and inspect it before running its exact command. The installer verifies a pinned source ZIP and private Go toolchain, builds the native bridge and matching OpenAPI contract, then starts only its managed loopback service. It does not require a source checkout or unzip. An initial HTTPS downloader and internet are required. Human unlock and the browser's access grant remain separate. [Setup and lifecycle details](/help/api-mcp/#recommended-setup-for-a-hosted-workspace).
+
+For manual development from a confirmed source checkout, `./scripts/build-bridge.sh` needs Go 1.26+ and produces a native `bin/visual-nerve` executable plus its matching `bin/bridge-docs/openapi.yaml`. Node, npm and Hugo are only needed if you also build the website. Do not guess an installed executable path. The original project code uses [MPL-2.0 with separate third-party terms](/license/).
 
 ```sh
 ./scripts/build-bridge.sh

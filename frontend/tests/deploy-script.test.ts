@@ -37,6 +37,7 @@ function deployment() {
   for (const file of [
     'deploy-static.sh',
     'audit-static.mjs',
+    'bridge-downloads.mjs',
     'retire-public-workspace.mjs',
     'site-icons.mjs',
     'fingerprinted-assets.mjs',

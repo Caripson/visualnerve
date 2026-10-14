@@ -52,7 +52,7 @@ describe('static delivery and canonical storage origin', () => {
         new URL('../../scripts/audit-static.mjs', import.meta.url),
         join(scripts, 'audit-static.mjs'),
       );
-      for (const file of ['site-icons.mjs', 'fingerprinted-assets.mjs'])
+      for (const file of ['site-icons.mjs', 'fingerprinted-assets.mjs', 'bridge-downloads.mjs'])
         copyFileSync(new URL(`../../scripts/${file}`, import.meta.url), join(scripts, file));
       for (const path of [
         'index.html',

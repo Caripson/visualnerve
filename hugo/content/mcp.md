@@ -33,7 +33,11 @@ The bridge forwards commands to the browser. It has no independent workspace dat
 
 ## Start a bridge and grant access
 
-Open [the encrypted workspace](https://app.visualnerve.com/) and unlock it in your browser. On the computer that will run the bridge, locate a confirmed source checkout and install Go 1.26+. Build the bridge and matching API schema without the website toolchain:
+Open [the encrypted workspace](https://app.visualnerve.com/) and unlock it in your browser. Copy **Settings → MCP / API integration → Connection instructions** to your local client. The instructions identify the selected address and link to a small setup script. Download and inspect that script, then run the command from Settings. On a new Linux/WSL or macOS installation, it downloads a checksum-verified private Go toolchain and bridge source ZIP, builds the bridge with its matching API schema, and starts it. Existing Go, git, Node, npm, Hugo and unzip are not required.
+
+Setup needs an HTTPS downloader and internet for the initial build. If curl, wget and Python are all missing, the client must first install a downloader using the operating system's package manager and required administrator permission. The script never unlocks the browser or grants access. It leaves unrelated listeners running and reports port conflicts. [Installation, restart and troubleshooting](/help/api-mcp/#recommended-setup-for-a-hosted-workspace).
+
+Developers with a confirmed source checkout can instead build manually with Go 1.26+:
 
 ```sh
 ./scripts/build-bridge.sh

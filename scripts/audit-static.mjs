@@ -3,6 +3,10 @@ import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { SITE_ICON_FILES, validateSiteIcons } from "./site-icons.mjs";
 import { fingerprintSource } from "./fingerprinted-assets.mjs";
+import {
+  auditBridgeDownloads,
+  bridgeDownloadPath,
+} from "./bridge-downloads.mjs";
 const helpGuides = [
   "getting-started",
   "editing",
@@ -125,6 +129,7 @@ helpScreenshots.push(
 );
 function allowedStaticPath(path) {
   return (
+    bridgeDownloadPath(path) ||
     SITE_ICON_FILES.includes(path) ||
     [
       "index.html",
@@ -233,6 +238,7 @@ export function auditStatic(directory) {
     }
   }
   visit();
+  auditBridgeDownloads(directory);
   if (SITE_ICON_FILES.some((path) => files.includes(path)))
     validateSiteIcons(directory);
   for (const required of [
