@@ -22,7 +22,6 @@ import { validateStoryboard } from '../presentation/storyboard';
 import { validateOverviewConfig } from '../overview/types';
 import { validateBuildSpecification } from '../export/build-specification';
 import { validateSimulationGraph } from '../simulation/document';
-import { validateGameGraph } from '../roblox/document';
 import { getIbmSymbol } from '../flowchart/ibm-symbols';
 import { validateNodeBackgroundColor } from './node-appearance';
 import {
@@ -194,7 +193,6 @@ export function validateGraphFields(graph: Graph) {
     if (edge.notation !== undefined) validateEdgeNotation(edge.notation);
   }
   for (const owner of graph.owners) validateOwner(owner);
-  validateGameGraph(graph);
 }
 export function validateGraph(graph: Graph, trustedDataset?: CsvDataset | CsvDataset[]) {
   validateGraphFields(graph);

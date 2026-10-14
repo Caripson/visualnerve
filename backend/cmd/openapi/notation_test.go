@@ -61,7 +61,7 @@ func TestNotationOpenAPIUsesCanonicalCatalogAndNativeOptionalFields(t *testing.T
 		}
 	}
 	input := schemas["DiagramInput"].(object)["properties"].(object)
-	if !reflect.DeepEqual(input["template"].(object)["enum"], stringsToAny(supportedCreationTemplateKeys())) {
+	if !reflect.DeepEqual(input["template"].(object)["enum"], stringsToAny(append(append([]string{"time-series-analysis", "ibm-flowcharting"}, model.NotationTemplateKeys...), infrastructureTemplateKeys...))) {
 		t.Fatal("POST must list only implemented examples")
 	}
 	if !strings.Contains(input["template"].(object)["description"].(string), "notation profile must exactly match") {

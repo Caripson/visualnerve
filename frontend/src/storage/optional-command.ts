@@ -1,6 +1,4 @@
-type Kind = 'analysis' | 'diagram-file' | 'simulation' | 'understanding' | 'analytics' | 'roblox';
-
-export function loadOptionalCommand(kind: 'roblox'): Promise<typeof import('./roblox-commands')>;
+type Kind = 'analysis' | 'diagram-file' | 'simulation' | 'understanding' | 'analytics';
 
 export function loadOptionalCommand(
   kind: 'analytics',
@@ -20,8 +18,6 @@ export function loadOptionalCommand(
 ): Promise<typeof import('./understanding-commands')>;
 export function loadOptionalCommand(kind: Kind) {
   switch (kind) {
-    case 'roblox':
-      return import('./roblox-commands');
     case 'analytics':
       return import('./analytics-commands');
     case 'analysis':

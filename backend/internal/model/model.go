@@ -37,9 +37,6 @@ type Diagram struct {
 	// validation, encryption and calculations; the bridge stores no user data.
 	Analytics Meta             `json:"analytics,omitempty"`
 	Notation  *NotationProfile `json:"notation,omitempty"`
-	// Optional portable GameDefinition schema 1; strict AST validation and native
-	// compilation belong to the authoritative browser, never a bridge-side engine.
-	Game Meta `json:"game,omitempty"`
 }
 type Node struct {
 	Base

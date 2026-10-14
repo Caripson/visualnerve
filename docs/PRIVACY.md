@@ -147,7 +147,3 @@ Recognized names, text, links and graph provenance can remain in IndexedDB, JSON
 Named local versions and checkpoints retain removed objects and CSV source rows until those snapshots or their diagram/workspace are deleted. Full workspace backups include this history; removing a current source alone does not delete rows referenced by history. Scene definitions and reviewed app requirements are saved with the diagram. Playback selection, overview navigation and generated audio remain transient.
 
 Relationship questions inspect retained structural evidence without executing code/SQL or including raw CSV rows. An explicit CSV measure-evidence request through MCP can return original cells; app briefs exclude original rows. Exact question and app-brief previews permit Read only and do not save or send to an external service. Reviewed descriptions and requirements are included when you explicitly share the Lovable brief.
-
-## Roblox Game Builder
-
-World editing, declarative rule testing and place generation run locally. Generated game/source files are deliberate readable exports. Only an explicitly enabled local publisher plus both the UI confirmation and a separate local-terminal approval sends the reviewed native place to the fixed Roblox destination. The local bridge holds the restricted Open Cloud credential outside the browser model. Publication sends generated object names, rules and game content, not an entire Visual Nerve workspace. Browser preview is not a remote game server; it does not persist player progress or run while the app is closed.

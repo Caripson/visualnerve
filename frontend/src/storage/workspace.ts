@@ -3,7 +3,6 @@ import { VOICE_CHANGED } from '../presentation/speech/voice-events';
 import { workspaceStoreNames, type WorkspaceOperation, type WorkspaceStorage } from './contracts';
 import { useEditor } from '../state/editor';
 import { clearAnalyticsIfLoaded } from '../analytics/lifecycle';
-import { clearRobloxIfLoaded } from '../roblox/lifecycle';
 import { diffGraph } from '../state/history';
 import { ownersFor, type Graph } from '../model/types';
 import { graphDatasets } from '../data/model';
@@ -357,7 +356,6 @@ export class Workspace {
   }
   stop() {
     clearAnalyticsIfLoaded();
-    clearRobloxIfLoaded();
     this.lifecycle++;
     this.navigation++;
     this.stopped = true;
@@ -1334,7 +1332,7 @@ export class Workspace {
         '/diagram-files/preview',
       ].includes(endpoint) ||
         diagramFile ||
-        /^\/diagrams\/[^/]+\/(?:analytics|roblox)(?:\/|$)/.test(endpoint));
+        /^\/diagrams\/[^/]+\/analytics(?:\/|$)/.test(endpoint));
     const controller = analysis ? new AbortController() : undefined;
     if (controller) this.analysisCommands.add(controller);
     const unsubscribe = controller

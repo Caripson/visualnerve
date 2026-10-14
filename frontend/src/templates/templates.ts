@@ -12,13 +12,8 @@ import { createNotationGraph } from '../notation/templates';
 import { remapNotationGraph } from '../notation/remap';
 import { createIbmFlowchartGraph } from '../flowchart/template';
 import { remapGraphCollaboration } from '../collaboration/model/remap';
-import { remapGameGraph } from '../roblox/remap';
-import { createGameGraph } from '../roblox/document';
-import { createRobloxStarterGame } from '../roblox/starter';
 const files = import.meta.glob<Graph>('./*.json', { eager: true, import: 'default' });
 export function instantiate(key: string, name: string, source?: Graph): Graph {
-  if (key === 'roblox-game-builder' && !source)
-    return createGameGraph(name, { ...createRobloxStarterGame(), name });
   if (!source && key === 'datacenter-capacity') return new DatacenterCapacityExample().graph(name);
   if (!source) {
     const example = infrastructureExample(key);
@@ -69,7 +64,6 @@ export function instantiate(key: string, name: string, source?: Graph): Graph {
     graph.diagram.analytics = remapAnalytics(graph.diagram.analytics, ids);
   if (graph.diagram.collaboration)
     Object.assign(graph, remapGraphCollaboration(graph, { nodeIds: ids, edgeIds: ids }));
-  if (graph.diagram.game) Object.assign(graph, remapGameGraph(graph));
   if (graph.diagram.type === 'mindmap' && graph.nodes[0]) graph.nodes[0].title = name;
   if (graph.diagram.type === 'timeline') {
     const origin = Date.parse(graph.nodes[0].startDate!);

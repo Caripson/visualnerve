@@ -3,7 +3,6 @@ import { Bridge } from '../src/integration/bridge';
 import { useEditor } from '../src/state/editor';
 import { workspace } from '../src/storage/workspace';
 import { VaultStorageError } from '../src/security/vault-storage';
-import { bridgeDiagnostics } from '../src/integration/diagnostics';
 
 vi.mock('../src/storage/workspace', () => ({
   workspace: {
@@ -40,25 +39,6 @@ let origin: {
   check: ReturnType<typeof vi.fn<() => Promise<void>>>;
   dispose: ReturnType<typeof vi.fn<() => void>>;
 };
-function announceCurrent() {
-  bridgeDiagnostics.receive({
-    type: 'bridge-info',
-    version: '0.11.0',
-    tools: ['visual_nerve_request', 'visual_nerve_api_docs'],
-    capabilities: [
-      'operations-v1',
-      'endpoint-docs-v1',
-      'fork-join-v1',
-      'async-svg-export-v1',
-      'exchange-export-v1',
-      'analytics-v1',
-      'ibm-flowcharting-v1',
-      'standard-notations-v1',
-      'infrastructure-resources-v1',
-      'roblox-game-builder-v1',
-    ],
-  });
-}
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -599,85 +579,4 @@ it('does not interrupt lock cleanup when publishing the control hint fails', () 
   expect(() => bridge.restrictToControl()).not.toThrow();
   expect(sockets[0].close).toHaveBeenCalledOnce();
   expect(useEditor.getState().bridgeStatus).toBe('disabled');
-});
-
-it('keeps publication on a distinct correlated UI channel and never dispatches it as an MCP command', async () => {
-  useEditor.setState({ mcpAccess: 'write' });
-  sockets[0].open();
-  announceCurrent();
-  const session = bridge.captureRobloxPublisher();
-  const pending = session.request<{ configured: boolean }>('capabilities', {});
-  const frame = JSON.parse(sockets[0].send.mock.calls.at(-1)![0]);
-  expect(frame.type).toBe('roblox-publish');
-  expect(frame.action).toBe('capabilities');
-  expect(frame.browserInstanceId).toBeTruthy();
-  expect(frame.accessGrantId).toBeTruthy();
-  sockets[0].onmessage?.(
-    new MessageEvent('message', {
-      data: JSON.stringify({
-        type: 'roblox-publish-result',
-        requestId: frame.requestId,
-        status: 200,
-        body: { configured: false },
-      }),
-    }),
-  );
-  expect(await pending).toEqual({ configured: false });
-  expect(workspace.external).not.toHaveBeenCalled();
-});
-
-it('requires current capability discovery and an explicit write grant for publication', () => {
-  useEditor.setState({ mcpAccess: 'read' });
-  sockets[0].open();
-  announceCurrent();
-  expect(() => bridge.captureRobloxPublisher()).toThrow(/Read \+ write/);
-  useEditor.setState({ mcpAccess: 'write' });
-  sockets[1].open();
-  expect(() => bridge.captureRobloxPublisher()).toThrow(/Update the local bridge/);
-});
-
-it('revokes a publishing session on an ordinary socket loss without changing graph operation recovery identity', async () => {
-  useEditor.setState({ mcpAccess: 'write' });
-  sockets[0].open();
-  announceCurrent();
-  const hello = JSON.parse(sockets[0].send.mock.calls[0][0]);
-  expect(hello.mcpAccess).toBe('write');
-  const session = bridge.captureRobloxPublisher();
-  const pending = session.request('finalize', { nonce: 'bound-fixture' });
-  const rejected = expect(pending).rejects.toThrow(/unknown|revoked|version history/i);
-  sockets[0].readyState = 3;
-  sockets[0].onclose?.();
-  await rejected;
-  expect(session.signal.aborted).toBe(true);
-  await vi.advanceTimersByTimeAsync(3000);
-  sockets[1].open();
-  expect(JSON.parse(sockets[1].send.mock.calls[0][0]).accessGrantId).toBe(hello.accessGrantId);
-});
-
-it('does not retry an ambiguous publication and ignores late results after Off', async () => {
-  useEditor.setState({ mcpAccess: 'write' });
-  sockets[0].open();
-  announceCurrent();
-  const session = bridge.captureRobloxPublisher();
-  const pending = session.request('finalize', { nonce: 'one-use' });
-  const frame = JSON.parse(sockets[0].send.mock.calls.at(-1)![0]);
-  const rejected = expect(pending).rejects.toThrow(/unknown/i);
-  await vi.advanceTimersByTimeAsync(132000);
-  await rejected;
-  expect(
-    sockets[0].send.mock.calls.filter(([text]) => JSON.parse(text).action === 'finalize'),
-  ).toHaveLength(1);
-  useEditor.setState({ mcpAccess: 'off' });
-  expect(session.signal.aborted).toBe(true);
-  sockets[0].onmessage?.(
-    new MessageEvent('message', {
-      data: JSON.stringify({
-        type: 'roblox-publish-result',
-        requestId: frame.requestId,
-        status: 200,
-        body: { privateResult: 'do not release' },
-      }),
-    }),
-  );
-  expect(workspace.external).not.toHaveBeenCalled();
 });

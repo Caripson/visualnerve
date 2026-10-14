@@ -89,8 +89,8 @@ describe('public site discovery and private workspace indexing', () => {
       const sitemap = readFileSync(join(directory, 'sitemap.xml'), 'utf8');
       const locations = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
       expect(new Set(locations).size).toBe(locations.length);
-      expect(locations).toHaveLength(39);
-      expect(locations.filter((url) => /\/help\/.+\/$/.test(url))).toHaveLength(29);
+      expect(locations).toHaveLength(36);
+      expect(locations.filter((url) => /\/help\/.+\/$/.test(url))).toHaveLength(26);
       const titles = new Set<string>();
       const descriptions = new Set<string>();
       for (const url of locations) {

@@ -27,7 +27,7 @@ func TestFlowchartContractPreservesAppearanceAcrossCRUDAndDiscovery(t *testing.T
 		}
 	}
 	input := schemas["DiagramInput"].(object)["properties"].(object)
-	if !reflect.DeepEqual(input["template"].(object)["enum"], stringsToAny(supportedCreationTemplateKeys())) {
+	if !reflect.DeepEqual(input["template"].(object)["enum"], stringsToAny(append(append([]string{"time-series-analysis", "ibm-flowcharting"}, model.NotationTemplateKeys...), infrastructureTemplateKeys...))) {
 		t.Fatal("template must be discoverable while preserving analytics")
 	}
 	record := schemas["FlowchartSymbolRecord"].(object)

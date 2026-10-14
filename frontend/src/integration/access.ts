@@ -9,10 +9,6 @@ export function assertMcpAccess(access: McpAccess, path: string, method: string)
   const endpoint = new URL(path, 'http://browser.local').pathname.replace(/^\/api\/v1/, '');
   const reading =
     method === 'GET' ||
-    (method === 'POST' &&
-      /^\/diagrams\/[\da-f-]{36}\/roblox\/(validate|preview|builds)$/i.test(endpoint)) ||
-    (method === 'DELETE' &&
-      /^\/diagrams\/[\da-f-]{36}\/roblox\/builds\/[\da-f-]{36}$/i.test(endpoint)) ||
     (method === 'POST' && /^\/diagrams\/[\da-f-]{36}\/notation\/validate$/i.test(exactPath)) ||
     (method === 'POST' &&
       /^\/diagrams\/[\da-f-]{36}\/analytics\/(query|measure|indicator|waterfall|evaluate|validate|project|compare|export|import\/(preview|inspect)|jobs)$/i.test(

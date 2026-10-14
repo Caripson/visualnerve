@@ -53,7 +53,6 @@ export class BridgeDiagnostics {
         'ibm-flowcharting-v1',
         'standard-notations-v1',
         'infrastructure-resources-v1',
-        'roblox-game-builder-v1',
       ].every((capability) => capabilities.includes(capability));
     this.publish({ state: current ? 'current' : 'update-required', version });
     return true;

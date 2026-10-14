@@ -1,120 +1,5 @@
 # MCP processes, understanding and diagram presentations
 
-## Roblox Game Builder through MCP
-
-Start with `visual_nerve_api_docs` and `{"document":"guide"}`, then inspect the exact operation and transitive typed schemas:
-
-```json
-{
-  "document": "endpoint",
-  "path": "/diagrams/{diagramId}/roblox",
-  "method": "PUT"
-}
-```
-
-Use the existing `visual_nerve_request` tool with the intended `workspaceId` pinned on every private command. Command paths omit `/api/v1`:
-
-```json
-{
-  "workspaceId": "WORKSPACE_ID",
-  "path": "/roblox/capabilities",
-  "method": "GET"
-}
-```
-
-```json
-{
-  "workspaceId": "WORKSPACE_ID",
-  "path": "/diagrams",
-  "method": "POST",
-  "data": { "name": "Sky islands", "template": "roblox-game-builder" }
-}
-```
-
-Creation requires Read + write and returns Diagram. Read its actual UUID, then inspect the full game at `GET /diagrams/DIAGRAM_UUID/roblox` or use bounded reads. `GET /diagrams/DIAGRAM_UUID/roblox/configuration` permits Read only and returns `{diagramId,baseVersion,configuration:{schemaVersion:1,id,name,description,settings}}`, including every saved setting and no collections. Read collection pages through the same tool:
-
-```json
-{
-  "workspaceId": "WORKSPACE_ID",
-  "path": "/diagrams/DIAGRAM_UUID/roblox/entities?offset=0&limit=100",
-  "method": "GET"
-}
-```
-
-For a large saved draft, combine configuration with all pages of `entities`, `rules`, `variables`, `items`, `quests`, `timers`, `prefabs` and `instances` to reconstruct the game. Compare configuration's `baseVersion` with every page; discard the gathered data and restart if any differ. Full-model and ordinary responses remain limited to 512 KiB, and pages permit at most 200 items. Reduce page size if needed. A single entry above 512 KiB still returns 413 at `limit=1`; it cannot be split further. Native diagram JSON export remains the full exchange path; a successful build also exposes raw model data as chunked `game.json`. Reconstruction works even before a draft can build, such as when it has no enabled spawn.
-
-With Read + write, update the name, description or partial settings without resending collections:
-
-```json
-{
-  "workspaceId": "WORKSPACE_ID",
-  "path": "/diagrams/DIAGRAM_UUID/roblox/configuration",
-  "method": "PATCH",
-  "data": { "baseVersion": 4, "value": { "settings": { "gravity": 150 } } }
-}
-```
-
-Use the version just read. Omission preserves fields and settings merge; null, arrays, unknown fields and edits to `id` or `schemaVersion` reject. The complete resolved game validates atomically. Configuration PATCH returns `{diagramId,baseVersion,summary}` and supports [normal write recovery](#recover-a-write-without-creating-duplicates).
-
-Read the returned game-local entity ID and `baseVersion` before editing its world position. World coordinates are Roblox studs; this does not move its diagram card:
-
-```json
-{
-  "workspaceId": "WORKSPACE_ID",
-  "path": "/diagrams/DIAGRAM_UUID/roblox/entities/ENTITY_ID",
-  "method": "PATCH",
-  "data": {
-    "baseVersion": 4,
-    "value": { "transform": { "position": { "x": 12 } } }
-  }
-}
-```
-
-Omission preserves nested properties, optional-field null clears and arrays replace. The entire resolved game validates before an atomic save; stale versions or invalid references save nothing. PUT/POST/PATCH return compact `summary` counts and the new `baseVersion`; successful collection DELETE returns 204. Generic Diagram PATCH cannot write `game`.
-
-Read only permits pure current/draft validation and deterministic rule-input preview:
-
-```json
-{
-  "workspaceId": "WORKSPACE_ID",
-  "path": "/diagrams/DIAGRAM_UUID/roblox/validate",
-  "method": "POST",
-  "data": {}
-}
-```
-
-```json
-{
-  "workspaceId": "WORKSPACE_ID",
-  "path": "/diagrams/DIAGRAM_UUID/roblox/preview",
-  "method": "POST",
-  "data": {
-    "steps": [
-      { "kind": "join", "playerId": "Player1" },
-      { "kind": "touch", "playerId": "Player1", "entityId": "ENTITY_ID" }
-    ],
-    "history": true
-  }
-}
-```
-
-Use an actual entity ID from the model. Rules may produce timer/round events themselves. Traces permit at most 128 steps, 16 distinct players within configured `maxPlayers`, and one day of total advanced time. Preview is a rule test; Roblox Studio verifies physics and networked multiplayer.
-
-```json
-{
-  "workspaceId": "WORKSPACE_ID",
-  "path": "/diagrams/DIAGRAM_UUID/roblox/builds",
-  "method": "POST",
-  "data": { "baseVersion": 5 }
-}
-```
-
-Build start returns 202 with `jobId`, `state` and progress. Poll `.../builds/JOB_UUID`; on `state:"succeeded"` read `/result` and `/artifacts`. Download each `.../artifacts/ARTIFACT_NAME?offset=0&limit=65536` as base64 byte chunks, advancing `nextOffset` until null, decoding and concatenating bytes before UTF-8 decoding. Artifacts include the native `game.rbxlx`, server/client Luau, Studio sync plugin and editable `game.json`. Exact build DELETE cancels with Read only. These read-compute commands accept no recoverable write operation ID.
-
-Jobs use the original unlocked session/grant, not a refreshed grant. Lock, reload and access changes erase results. Limits are two active jobs, four retained/32 MiB, a 120-second deadline and 15-minute TTL; normal model/collection responses are bounded to 512 KiB, with pages up to 200 items. See [the full contract and Studio workflow](ROBLOX_GAME_BUILDER.md).
-
-There is **no REST/MCP publication-confirm endpoint**. An agent can prepare and inspect a local build; publication requires both the browser's separate native review under a current explicit Read + write grant and an independent fresh exact phrase in the local bridge's foreground terminal. A client that forges Origin/write hello fields cannot bypass the terminal step. No request body, WebSocket frame, MCP command or environment flag supplies terminal approval. Non-TTY/MCP-stdio publisher startup fails closed; Studio export remains available. Credentials stay in the local bridge process. Preparation, terminal approval and HTTP each have a 60-second budget; pre-dispatch cancellation sends no request. Unknown Open Cloud results require human Creator Dashboard version-history review and separate UI acknowledgment, with no automatic retry or exactly-once claim across restarts. The [publication protocol](ROBLOX_PUBLISH_PROTOCOL.md) states the local/same-origin trust limit and bounded upload rules.
-
 ## Infrastructure capacity through MCP
 
 Bridge/browser **0.11.0** advertises `infrastructure-resources-v1` using the existing tools and Process Simulator routes. Start with `visual_nerve_api_docs({document:"guide"})`, then request the complete model operation:
@@ -376,7 +261,7 @@ On the isolated encrypted app, the deployed Content Security Policy also restric
 
 ## Recover a write without creating duplicates
 
-Use a current bridge and refreshed app tab. Bridge version 0.11.0 reports `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1`, `collaboration-document-v1`, `analytics-v1`, `ibm-flowcharting-v1`, `standard-notations-v1`, `infrastructure-resources-v1` and `roblox-game-builder-v1` in health and its browser handshake, together with supported tool names. This reports software support; it does not reveal workspace data or grant access. Older browser tabs remain one-shot and cannot reserve or recover operation receipts.
+Use a current bridge and refreshed app tab. Bridge version 0.11.0 reports `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1`, `collaboration-document-v1`, `analytics-v1`, `ibm-flowcharting-v1`, `standard-notations-v1` and `infrastructure-resources-v1` in health and its browser handshake, together with supported tool names. This reports software support; it does not reveal workspace data or grant access. Older browser tabs remain one-shot and cannot reserve or recover operation receipts.
 
 Read bridge software health through direct HTTP `GET /api/v1/health` (`/health` relative to the REST base). MCP `visual_nerve_request` with `path:"/health"` instead reads the connected browser's semantic IndexedDB health, without bridge-only tool/capability fields. Their absence in that browser response is not evidence of an outdated bridge.
 

@@ -16,7 +16,6 @@ import { presentation } from '../presentation/service';
 import { speechService } from '../presentation/speech/service';
 import { disposeVideoExport } from '../presentation/video-service';
 import { clearAnalyticsIfLoaded } from '../analytics/lifecycle';
-import { clearRobloxIfLoaded } from '../roblox/lifecycle';
 import { BackupSecurityNotice } from './BackupSecurityNotice';
 import type { WorkspaceMigrationSummary } from '../storage/migration';
 import { VaultKeyRotation } from './VaultKeyRotation';
@@ -65,7 +64,6 @@ export function WorkspaceTransferBoundary({ children }: { children: ReactNode })
       disposeDataModelWorker();
       simulationService.dispose();
       clearAnalyticsIfLoaded();
-      clearRobloxIfLoaded();
       presentation.close();
       const stoppedVideo = disposeVideoExport();
       speechService.dispose();

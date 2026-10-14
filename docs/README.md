@@ -48,7 +48,3 @@ input limits, experimental settings and browser constraints.
 - [Time Series & Signal Analysis](TIME_SERIES_ANALYSIS.md) — semantic extension, engine, storage, permissions and bounds.
 - [Analytics methods](ANALYTICS_METHODS.md) — numerical definitions and causal validation.
 - [Analytics acceptance evidence](ANALYTICS_IMPLEMENTATION.md) — tests, benchmark and delivery scope.
-
-- [Roblox Game Builder](ROBLOX_GAME_BUILDER.md) — typed world/rules, compiler, preview and integration boundaries.
-- [Roblox publication protocol](ROBLOX_PUBLISH_PROTOCOL.md) — local broker, fixed targets, grants, one-use receipts and unknown outcomes.
-- [Roblox implementation and acceptance plan](ROBLOX_GAME_BUILDER_PLAN.md) — scoped workflow and tracked verification.

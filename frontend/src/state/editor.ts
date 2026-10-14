@@ -9,7 +9,6 @@ import { reanalyzeDataModelAsync } from '../data/modelClient';
 import { prunePresentation } from '../presentation/definition';
 import { pruneStoryboard } from '../presentation/storyboard';
 import { reconcileSimulationGraph } from '../simulation/document';
-import { reconcileGameGraph } from '../roblox/document';
 import { addConnectedNode, type ConnectedNodeType } from '../nodes/connected-node';
 import { create } from 'zustand';
 import { GroupMembership } from './group-membership';
@@ -205,7 +204,7 @@ export const useEditor = create<Editor>((set, get) => ({
     let reconciled: Graph;
     try {
       collaborationPermissions.assertWrite(s.graph.diagram.id, s.graph, changed);
-      reconciled = reconcileGameGraph(s.graph, reconcileSimulationGraph(s.graph, changed));
+      reconciled = reconcileSimulationGraph(s.graph, changed);
       if (
         reconciled.diagram.notation ||
         reconciled.nodes.some((node) => node.notation) ||

@@ -100,14 +100,6 @@ Organize larger models into main processes and nested subprocesses. Open a conge
 
 [Explore Process Simulator](/process-simulator/)
 
-## Build a game you can actually play
-
-**Roblox Game Builder** turns an editable game plan into a native Roblox Studio place. Start with an adventure or an empty world, place objects in studs, and connect structured When → If → Then rules. Add separate player quests and inventory, shared variables, timers, rounds, and reusable prefabs whose copies can have different rewards, colors, or damage.
-
-The world preview shows object placement. The browser's rule test lets you try logic with separate pretend players. Download the generated world and scripts, test physics and multiplayer in Roblox Studio, and publish a reviewed version to your test game. A Studio importer previews updates to the builder's generated objects before you apply them. Progress lasts for the current server session.
-
-[Open the starting template](https://app.visualnerve.com/?demo=roblox-game-builder) · [Build your first game](/help/roblox-first-game/) · [Create a multiplayer adventure](/help/roblox-advanced-game/)
-
 ## Keep and share the right kind of copy
 
 PNG, PDF and SVG share the 2D visual view. SVG preserves vector text and geometry for scaling or editing in another application. Markdown shares a semantic outline. Native JSON preserves a diagram, and a complete workspace backup includes the wider local data needed for recovery.

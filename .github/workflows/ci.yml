@@ -53,23 +53,6 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
-      - name: Install pinned Roblox Luau verification tools
-        shell: bash
-        run: |
-          set -euo pipefail
-          luau_dir="$RUNNER_TEMP/visualnerve-luau-0.742"
-          mkdir -p "$luau_dir"
-          curl --fail --silent --show-error --location --max-time 60 \
-            https://github.com/luau-lang/luau/releases/download/0.742/luau-ubuntu.zip \
-            --output "$luau_dir/luau-ubuntu.zip"
-          echo "152058b98c60ff1f5b5ec9bca0b8eb37793cae161dd3a05608cc3d8738ba1a4d  $luau_dir/luau-ubuntu.zip" | sha256sum --check --strict
-          unzip -q "$luau_dir/luau-ubuntu.zip" -d "$luau_dir"
-          chmod +x "$luau_dir/luau" "$luau_dir/luau-compile"
-          echo "ROBLOX_LUAU_CLI=$luau_dir/luau" >> "$GITHUB_ENV"
-          echo "ROBLOX_LUAU_COMPILE=$luau_dir/luau-compile" >> "$GITHUB_ENV"
-      - name: Verify generated Roblox grammar and authoritative rules
-        working-directory: frontend
-        run: npm run verify:roblox-luau
       - name: Install browser test dependencies
         working-directory: frontend
         run: npx playwright install --with-deps chromium

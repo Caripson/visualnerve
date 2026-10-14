@@ -52,9 +52,3 @@ Stateful classes own storage, session, simulation, narration and export lifecycl
 ## Analytics verification
 
 The analytics numerical engine is DOM-free and shared by workers/UI/API. Focused fixtures live in `frontend/tests/analytics-*.test.ts`; responsive/parity workflows live in `frontend/tests/e2e/analytics*.spec.ts`. Use synthetic isolated data, regenerate OpenAPI from Go source, and review actual screenshots before publishing. See [acceptance ledger](docs/ANALYTICS_IMPLEMENTATION.md). Production deployment is manual.
-
-## Roblox generation checks
-
-Run focused `roblox-*` Vitest suites for model/compiler/rule-preview, projection/remapping/encrypted persistence, API commands and worker revocation. The `verify:roblox-luau` npm script uses pinned Luau CLI tools to compile generated server/client/plugin source and execute independent runtime fixtures. Set `ROBLOX_LUAU_COMPILE` and `ROBLOX_LUAU_CLI` to the local tools; CI installs only checksum-pinned developer binaries. Roblox engine stubs support grammar/game-rule/importer checks, not physics or Studio certification. Real Studio two-player playtests and publication to an explicitly approved test place remain separate acceptance evidence.
-
-Use isolated browser workspaces for `roblox-builder.spec.ts` and `homepage-roblox.spec.ts`. `VN_CAPTURE_ROBLOX=1` captures synthetic Light/Dark help assets; inspect each before promotion. Never include account keys, private game content or real user browser profiles in test artifacts. No test should publish to Roblox or trigger a Visual Nerve production deployment automatically.

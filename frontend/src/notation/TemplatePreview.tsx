@@ -21,7 +21,6 @@ export const templateCollections = [
   ['bpmn', 'BPMN'],
   ['simulation', 'Process Simulator'],
   ['analytics', 'Time Series & Signal Analysis'],
-  ['roblox', 'Roblox Game Builder'],
 ] as const;
 export type TemplateCollectionFilter = (typeof templateCollections)[number][0];
 const structuralUml = new Set([
@@ -42,7 +41,6 @@ export const templateGroups = [
   { id: 'bpmn', label: 'BPMN · Business processes and participants' },
   { id: 'simulation', label: 'Process Simulator' },
   { id: 'analytics', label: 'Time Series & Signal Analysis' },
-  { id: 'roblox', label: 'Roblox Game Builder' },
 ] as const;
 export function notationTemplate(key: string) {
   return notationTemplates.find((template) => template.key === key);
@@ -54,7 +52,6 @@ export function templateGroup(key: string) {
   if (notation?.collection.startsWith('dfd')) return 'dfd';
   if (notation) return notation.collection;
   if (key === 'time-series-analysis') return 'analytics';
-  if (key === 'roblox-game-builder') return 'roblox';
   if (
     key.includes('simulator') ||
     [

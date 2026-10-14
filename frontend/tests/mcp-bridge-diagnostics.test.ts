@@ -38,7 +38,6 @@ it('checks actual advertised tools and capabilities rather than trusting a versi
       'ibm-flowcharting-v1',
       'standard-notations-v1',
       'infrastructure-resources-v1',
-      'roblox-game-builder-v1',
     ],
   });
   expect(diagnostic.snapshot()).toEqual({ state: 'current', version: '0.6.0' });
@@ -74,7 +73,6 @@ it('warns when a pre-IBM 0.8.2 bridge advertises the other current capabilities'
       'ibm-flowcharting-v1',
       'standard-notations-v1',
       'infrastructure-resources-v1',
-      'roblox-game-builder-v1',
     ],
   });
   expect(diagnostic.snapshot()).toEqual({ state: 'current', version: '0.11.0' });

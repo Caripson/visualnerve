@@ -9,7 +9,6 @@ import type { BuildSpecificationDraft } from '../export/build-specification-draf
 import type { SimulationModel } from '../simulation/types';
 import type { CollaborationDocument } from '../collaboration/model/types';
 import type { AnalyticsExtension } from '../analytics/types';
-import type { GameDefinition } from '../roblox/types';
 import type { IBMSymbolId } from '../flowchart/ibm-symbols';
 import type { NodeNotation, EdgeNotation, NotationProfile } from '../notation/types';
 export type { DrawingLayer, DrawingStroke } from '../drawing/types';
@@ -66,8 +65,6 @@ export interface Diagram extends Base {
   collaboration?: CollaborationDocument;
   /** Versioned time-series semantics and results, encrypted with this document. */
   analytics?: AnalyticsExtension;
-  /** Canonical Roblox game semantics; world transforms are distinct from graph positions. */
-  game?: GameDefinition;
   /** Versioned default collection; individual objects may use another notation. */
   notation?: NotationProfile;
   settings: {

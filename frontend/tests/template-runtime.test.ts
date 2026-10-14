@@ -3,8 +3,6 @@ import { createTemplateDiagram } from '../src/templates/create';
 import { workspaceStorage } from '../src/storage/runtime';
 import { workspace } from '../src/storage/workspace';
 import { blankGraph, newNode } from '../src/model/types';
-import { createGameGraph } from '../src/roblox/document';
-import { createRobloxStarterGame } from '../src/roblox/starter';
 
 const storage = vi.hoisted(() => {
   const templates = { get: vi.fn() };
@@ -70,28 +68,6 @@ describe('template creation through the selected workspace backend', () => {
       storage.operation,
     );
   });
-
-  it.each([true, false])(
-    'uses the new game name only for a cached builtin Roblox template (builtin=%s)',
-    async (builtin) => {
-      const graph = createGameGraph('Stored starter', createRobloxStarterGame());
-      const original = structuredClone(graph);
-      vi.mocked(workspaceStorage.templates.get).mockResolvedValue({
-        id: 'roblox-game-builder',
-        name: 'Roblox Game Builder',
-        builtin,
-        graph,
-      });
-      await createTemplateDiagram('roblox-game-builder', '  Sky islands  ');
-      const created = vi.mocked(workspace.create).mock.calls[0][0];
-      expect(created.diagram.name).toBe('Sky islands');
-      expect(created.diagram.game!.name).toBe(
-        builtin ? 'Sky islands' : original.diagram.game!.name,
-      );
-      expect(created.diagram.game!.id).not.toBe(original.diagram.game!.id);
-      expect(graph).toEqual(original);
-    },
-  );
 
   it('fails closed when the private backend cannot be read rather than opening a legacy template', async () => {
     vi.mocked(workspaceStorage.templates.get).mockRejectedValue(new Error('Workspace is locked.'));

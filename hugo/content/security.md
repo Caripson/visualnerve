@@ -94,8 +94,6 @@ Build with Lovable shows the exact prompt before an explicit handoff. Its typed 
 
 Fixed voice assets can download from an external model host after explicit audio, preload, preview or audio-video actions. The requests contain no narration text. Synthesis runs locally, but the model host receives ordinary download request metadata.
 
-Roblox game generation runs locally and produces readable source and place files. Optional direct publishing uses a restricted key held by the local bridge, a fixed Roblox destination, reviewed file fingerprint, explicit browser confirmation and an independent fresh approval in the bridge's foreground terminal. MCP cannot supply that terminal approval. Upload replaces the target place version; it does not include work added only in Studio or make the experience public. Check Creator Dashboard before retrying an unknown result. [Publishing boundary and instructions](/help/roblox-game-builder/#optional-direct-upload).
-
 Optional marketing analytics is separately opt-in and excluded from the workspace, Help and API reference. It measures public page visits, not diagram activity. [Data-flow details](/privacy/).
 
 ## Plan for deletion and recovery

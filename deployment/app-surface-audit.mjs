@@ -38,9 +38,6 @@ const guideNames = [
   "uml",
   "bpmn",
   "infrastructure-capacity",
-  "roblox-game-builder",
-  "roblox-first-game",
-  "roblox-advanced-game",
 ];
 export const policyNames = ["privacy", "security", "license"];
 const generatedFiles = [

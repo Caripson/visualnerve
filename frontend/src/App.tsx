@@ -1,7 +1,6 @@
 import { useI18n } from './i18n';
 import { PresentationFeature } from './presentation/PresentationFeature';
 import { SimulationFeature } from './simulation/SimulationFeature';
-import { RobloxFeature } from './roblox/RobloxFeature';
 import { AnalyticsFeature } from './analytics/AnalyticsFeature';
 import { AnalyticsToolbar } from './analytics/AnalyticsToolbar';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -764,7 +763,6 @@ export function App() {
                 <AnalyticsFeature />
               ) : (
                 <>
-                  <RobloxFeature />
                   <SimulationFeature />
                   <Canvas />
                 </>

@@ -1,6 +1,6 @@
 # Help architecture and maintenance
 
-The public Help is a local, static Hugo documentation section at `/help/`. It has 29 task-oriented guides, real application screenshots, topic navigation, per-guide contents, adjacent-guide links and full-text search. It shares `/appearance.js` and the workspace palette. Search and reading require no bridge, backend, workspace consent or diagram access.
+The public Help is a local, static Hugo documentation section at `/help/`. It has 26 task-oriented guides, real application screenshots, topic navigation, per-guide contents, adjacent-guide links and full-text search. It shares `/appearance.js` and the workspace palette. Search and reading require no bridge, backend, workspace consent or diagram access.
 
 ## Coverage
 
@@ -31,14 +31,11 @@ The public Help is a local, static Hugo documentation section at `/help/`. It ha
 | dfd                     | Yourdon–DeMarco and Gane–Sarson dialects, processes/entities/stores, named data flow and manual decomposition consistency                                                                                      |
 | uml                     | All fourteen families, specialist examples, compartments, ports, interactions, timing and endpoint semantics                                                                                                   |
 | bpmn                    | Process/collaboration/conversation/choreography views, activities/events/gateways, participant structures and valid relationship boundaries                                                                    |
-| roblox-game-builder     | World objects and placement, structured rules, player/shared progress, parameterized prefabs, logic testing, native Studio export and reviewed updates |
-| roblox-first-game       | A first editable adventure, reward changes, independent player tests, checkpoints and a real Studio place |
-| roblox-advanced-game    | Quests, shared power, nested conditions, parameterized rewards/traps, timed rounds and a creative multiplayer workflow |
 | troubleshooting         | Recovery procedures, missing work, import/save/view/voice/video/simulation/integration/mobile issues                                                                                                           |
 
 ## Add or update a guide
 
-1. Edit `hugo/content/help/<slug>.md`. Keep unique weights 1–29, a descriptive title and a one-sentence summary. Use source-verified UI labels and distinguish desktop/mobile routes.
+1. Edit `hugo/content/help/<slug>.md`. Keep unique weights 1–26, a descriptive title and a one-sentence summary. Use source-verified UI labels and distinguish desktop/mobile routes.
 2. Explain purpose, action steps, expected results, examples, common problems, limits and related guides. Do not claim execution/compiler analysis/cloud synchronization where the tool supplies only structure or local state.
 3. Capture actual current UI using synthetic data. Use descriptive alt text and a caption matching what is visible. Screenshots are clickable, lazy-loaded and capped at natural dimensions.
 4. Keep cross-page hashes valid. `/help/` retains all previous guide anchors for incoming API/Privacy/bookmark links.
@@ -52,7 +49,7 @@ Search results sit immediately below the field on desktop and mobile. Typing col
 
 The symbol-use reference embeds small inline SVGs from trusted Hugo data, with `currentColor` outlines that follow Help's saved/system appearance. `scripts/help-flowchart-symbols.mjs` generates `hugo/data/flowchart_symbols.json` from the same TypeScript catalog and recommended proportions as the editor. The normal build runs this before Hugo; run `node scripts/help-flowchart-symbols.mjs --check` to detect drift. `flowchart-help.test.ts` checks all 43 labels, categories, paths, details and proportions plus reference coverage. No application module is loaded by the guide. Its inline vectors are cached with the guide HTML.
 
-Build first. Capture tests use isolated browser storage, synthetic diagrams/profiles and local fixture servers, never a user's browser profile, content or integration token. They do not send a Lovable prompt or download voice assets. The complete inventory has **85 Help light/dark pairs (170 WebPs)**, plus **eight website device pairs** and one social preview. Counts below are unique contributions after duplicate captures; diagnostic PNGs require explicit promotion before publication.
+Build first. Capture tests use isolated browser storage, synthetic diagrams/profiles and local fixture servers, never a user's browser profile, content or integration token. They do not send a Lovable prompt or download voice assets. The complete inventory has **80 Help light/dark pairs (160 WebPs)**, plus **eight website device pairs** and one social preview. Counts below are unique contributions after duplicate captures; diagnostic PNGs require explicit promotion before publication.
 
 ```sh
 ./build.sh
@@ -74,7 +71,6 @@ Run the required families from `frontend`:
 | Presentation voice   | `VN_CAPTURE_VOICE_HELP=1 npm run test:e2e -- voice-help-screenshots.spec.ts`                                         |                 1 | Help WebPs                                                                                  |
 | IBM workflow         | `VN_CAPTURE_IBM=1 npm run test:e2e -- ibm-flowcharting.spec.ts --grep 'readable IBM workflow'`                       |                 2 | Help WebPs                                                                                  |
 | Notation collections | `VN_CAPTURE_NOTATION=1 npm run test:e2e -- notation-collections.spec.ts`                                             |                 4 | HIPO, Gane–Sarson DFD, UML class and BPMN process Help WebPs; the hub reuses the class view |
-| Roblox game builder  | `VN_CAPTURE_ROBLOX=1 npm run test:e2e -- roblox-builder.spec.ts`                                                     |                 5 | Actual world, rules, prefab parameters, Studio build review, and phone UI Help WebPs |
 | Parallel execution   | `VN_CAPTURE_PARALLEL=1 npm run test:e2e -- simulation-parallel.spec.ts`                                              |                 2 | PNGs in `docs/acceptance`; promote below                                                    |
 | Editable export      | `VISUAL_NERVE_CAPTURE_EXCHANGE=1 npm run test:e2e -- exchange-export.spec.ts --grep 'capture editable export UI'`    |                 2 | PNGs in `docs/acceptance`; promote below                                                    |
 | App update           | `npm run test:e2e -- app-updates.spec.ts --grep 'real update notice and controls fit'`                               |                 2 | PNGs in Playwright test output; preserve/promote below                                      |

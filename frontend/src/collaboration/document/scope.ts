@@ -1,4 +1,3 @@
-import { RobloxError } from '../../roblox/errors';
 import type { Graph } from '../../model/types';
 import { StorageError } from '../../model/errors';
 import type { SimulationModel } from '../../simulation/types';
@@ -304,12 +303,6 @@ export function assertCollaborationFieldScope(
 
 /** The CRDT contains this projection only, never the local workspace/setting tables. */
 export function sharedGraph(graph: Graph, scope: CollaborationShareScope): SharedGraph {
-  if (graph.diagram.game)
-    throw new RobloxError(
-      422,
-      'Live rooms do not yet support Roblox game blueprints. Use a deliberate native JSON export or encrypted backup to share the complete game.',
-      'COLLABORATION_GAME_UNSUPPORTED',
-    );
   if (graph.simulation?.infrastructure)
     throw new StorageError(
       422,

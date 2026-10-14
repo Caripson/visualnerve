@@ -135,7 +135,7 @@ The app, the local bridge executable and your MCP client are three separate prog
 
 Before giving an agent workspace commands:
 
-1. Inspect the local `GET /api/v1/health` address shown in the copied instructions. The current bridge reports version **0.11.0**, both MCP tool names, and the capabilities `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1`, `collaboration-document-v1`, `analytics-v1`, `ibm-flowcharting-v1`, `standard-notations-v1`, `infrastructure-resources-v1` and `roblox-game-builder-v1`. Health contains public transport metadata; it does not read diagrams or unlock the workspace.
+1. Inspect the local `GET /api/v1/health` address shown in the copied instructions. The current bridge reports version **0.11.0**, both MCP tool names, and the capabilities `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1`, `collaboration-document-v1`, `analytics-v1`, `ibm-flowcharting-v1`, `standard-notations-v1` and `infrastructure-resources-v1`. Health contains public transport metadata; it does not read diagrams or unlock the workspace.
 2. Reconnect or initialize the MCP client, then inspect its discovered tools. It should show both **visual_nerve_request** and **visual_nerve_api_docs**. A client can retain an old tool list until you reconnect it.
 3. Ask the agent to read the compact guide before making commands. For a particular endpoint, it can request a smaller contract containing that operation and every referenced schema:
 
@@ -316,80 +316,6 @@ Calling without arguments also returns the compact guide. The same documents are
 Documentation discovery does not require a connected browser or content grant. Workspace commands do. The [interactive API reference](/api/docs/) is a public read-only reference when hosted on the website; its local version can use **Try it out** against the local origin. [Download OpenAPI](/openapi.yaml) for the bundled contract.
 
 After updating the local executable, restart it and reconnect the MCP client to refresh discovered tools. Updating public app files is separate from updating this local process.
-
-## Edit and build a Roblox game plan
-
-Bridge/browser **0.11.0** advertises `roblox-game-builder-v1`. The [Game Builder guide](/help/roblox-game-builder/) explains the world editor, rule test, Studio files and optional publication. API/MCP uses the same saved `diagram.game`, strict validator and compiler as those controls; no separate game database or executable-script field exists. World positions are Roblox studs, while diagram-card positions only arrange the plan. Live collaboration currently rejects game documents.
-
-Start with **visual_nerve_api_docs** and `{"document":"guide"}`, then inspect the exact operation and its typed schemas:
-
-```json
-{
-  "document": "endpoint",
-  "path": "/diagrams/{diagramId}/roblox",
-  "method": "PUT"
-}
-```
-
-Use **visual_nerve_request** with the intended `workspaceId` on every private command. Tool paths omit `/api/v1`:
-
-```json
-{
-  "workspaceId": "WORKSPACE_ID",
-  "path": "/roblox/capabilities",
-  "method": "GET"
-}
-```
-
-With **Read + write**, create the ordinary flowchart template:
-
-```json
-{
-  "workspaceId": "WORKSPACE_ID",
-  "path": "/diagrams",
-  "method": "POST",
-  "data": { "name": "Island adventure", "template": "roblox-game-builder" }
-}
-```
-
-Read the returned diagram ID, then `GET /diagrams/DIAGRAM_UUID/roblox` for its current `baseVersion` and game. Full-game and ordinary responses remain limited to 512 KiB. For bounded inspection, `GET /diagrams/DIAGRAM_UUID/roblox/configuration` permits Read only and returns `{diagramId,baseVersion,configuration:{schemaVersion:1,id,name,description,settings}}` with all saved settings and no collections. Read `GET /diagrams/DIAGRAM_UUID/roblox/entities?offset=0&limit=100` and the same routes for rules, variables, items, quests, timers, prefabs and instances. Pages contain at most 200 items and remain bounded to 512 KiB.
-
-To reconstruct a large saved game, combine configuration with every page of all eight collections. Compare `baseVersion` from configuration and every page; discard the gathered data and restart if any differ. Reduce page size if a response exceeds 512 KiB. If one prefab or other entry alone exceeds that limit, the API still returns 413 at `limit=1`; reducing page size cannot split it. Use native Visual Nerve diagram JSON export for full exchange. A successful build also provides the raw game model as chunked `game.json`. This also works for unfinished drafts that cannot build, including drafts without an enabled spawn.
-
-With **Read + write**, `PATCH /diagrams/DIAGRAM_UUID/roblox/configuration` accepts `{baseVersion,value:{name?,description?,settings?}}`; for example, `{"baseVersion":4,"value":{"settings":{"gravity":150}}}` using the version just read. Omitted fields stay unchanged and partial settings merge. Null, arrays, unknown fields and edits to `id` or `schemaVersion` reject. The complete resolved game validates before an atomic save, which returns `{diagramId,baseVersion,summary}` with counts and the new version.
-
-Use an actual game-local entity ID and the latest returned version when editing:
-
-```json
-{
-  "workspaceId": "WORKSPACE_ID",
-  "path": "/diagrams/DIAGRAM_UUID/roblox/entities/ENTITY_ID",
-  "method": "PATCH",
-  "data": {
-    "baseVersion": 4,
-    "value": { "transform": { "position": { "x": 12 } } }
-  }
-}
-```
-
-Here `4` is illustrative: use it only if your latest read returned that version. Collection PATCH preserves omitted partial fields, nested objects merge, optional-field `null` clears, and arrays replace. Complete/new records reject null and unsupported fields. The entire resolved game validates before an atomic save; stale versions or broken references save nothing. Saved mutations return compact counts and the new `baseVersion`; collection DELETE requires `{baseVersion}` and returns 204. Generic Diagram PATCH cannot write `game`.
-
-**Read only** permits these exact unsaved commands through the same tool:
-
-| Method and path                               | Request data                                                                | Result                                                                                 |
-| --------------------------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `POST /diagrams/DIAGRAM_UUID/roblox/validate` | `{}`                                                                        | Current playable-game diagnostics, without saving                                      |
-| `POST /diagrams/DIAGRAM_UUID/roblox/validate` | `{ "game": DRAFT_JSON }`                                                    | Draft diagnostics; invalid draft JSON, including null, returns `valid:false`           |
-| `POST /diagrams/DIAGRAM_UUID/roblox/preview`  | `{ "steps": [{ "kind": "join", "playerId": "Player1" }], "history": true }` | Deterministic rule-test snapshots, without Roblox physics or multiplayer certification |
-| `POST /diagrams/DIAGRAM_UUID/roblox/builds`   | `{ "baseVersion": CURRENT_VERSION }`                                        | 202 with a transient `jobId`, state and progress for the captured saved game           |
-
-Preview accepts at most 128 steps, 16 distinct players within the game's `maxPlayers`, and one day of advanced time. Supported inputs are join, leave, respawn, touch, interact and advance; touch/interact need an actual expanded entity ID. Its worker has a 30-second deadline and 8 MiB internal result limit; REST/MCP still limits the final response to 512 KiB, so omit history or shorten a large trace.
-
-Poll `GET .../roblox/builds/JOB_UUID`. When `state` is `succeeded`, read `/result` for the compact manifest and `/artifacts` for names, SHA-256 digests and byte sizes. Download `.../artifacts/game.rbxlx?offset=0&limit=65536`, advancing the returned `nextOffset` until null. Responses contain `encoding:"base64"`: decode and concatenate the bytes before UTF-8 decoding. Do not log private generated files. Exact `DELETE .../roblox/builds/JOB_UUID` with `{}` or no body cancels/discards a job and returns its cancelled status.
-
-Builds permit two active jobs and four retained results within 32 MiB, with a 120-second worker deadline and 15-minute retention from creation. The original unlocked session and grant remain authoritative; lock, reload or access revocation erase jobs and results. Validation, preview, build start and build cancellation allocate no recoverable write-operation receipt. Saved model, configuration and collection edits use the [normal uncertain-write recovery](#recover-an-uncertain-write-without-creating-it-twice).
-
-There is **no REST/MCP publication-confirm endpoint**. An agent can prepare and inspect files. Optional upload requires the user's separate browser review under an explicit current **Read + write** grant, followed by a fresh exact approval phrase in the local bridge's independent foreground terminal. Forging Origin/grant fields or holding an MCP token cannot supply terminal approval; no request or environment auto-approval exists. Non-TTY and MCP-stdio publisher startup fails closed, while Studio export remains available. The key stays in the bridge process. Preparation, terminal approval and HTTP each have a 60-second budget; cancellation before dispatch sends no request. An unknown upload outcome requires human Creator Dashboard version-history review and separate acknowledgment before another attempt, with no automatic retry or exactly-once guarantee across restarts. [Review the Studio and upload steps](/help/roblox-game-builder/#build).
 
 ## Export a vector diagram through MCP
 
@@ -666,11 +592,7 @@ Bridge/browser **0.11.0** advertises `infrastructure-resources-v1`. Read `GET /s
 The [infrastructure guide](/help/infrastructure-capacity/) explains **API & Compute Capacity**, **Network & Multi-Site Capacity**, **Energy & Power Capacity** and **Datacenter Capacity**, including CPU/RAM leases, shared link serialization and actual energy delivery. Discover exact fields through **visual_nerve_api_docs** before requests:
 
 ```json
-{
-  "document": "endpoint",
-  "path": "/diagrams/{diagramId}/simulation",
-  "method": "PUT"
-}
+{"document":"endpoint","path":"/diagrams/{diagramId}/simulation","method":"PUT"}
 ```
 
 Use the same **visual_nerve_request** tool, pinned `workspaceId`, simulation model/entity CRUD, asynchronous runs and comparison routes. Direct `POST /diagrams` accepts `template:"api-compute-capacity"`, `"network-multi-site-capacity"`, `"energy-power-capacity"` or `"datacenter-capacity"`; these use `process-simulator` and reject `mode` or a different supplied type. `state/result.infrastructure` contains resource-keyed CPU, RAM, link and energy counters; individual resource GET keeps generic capacity/busy/queue/utilization/cost metrics. Versioned PATCH preserves omission, recursively merges objects, removes optional fields with `null` and replaces arrays. Complete/new values reject null; invalid assumptions reject atomically with structured 422 `SIMULATION_INFRASTRUCTURE_INVALID`.
