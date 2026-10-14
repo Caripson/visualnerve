@@ -142,7 +142,12 @@ test('a Linux MCP client and real Chrome share one workspace across bridge upgra
         ? 'caller-supplied reviewed workflow'
         : null;
       if (target.hosted) {
-        await context.grantPermissions(['local-network-access'], { origin: target.origin });
+        // Chromium's origin-specific grant shadows the initial wildcard grant.
+        // Include clipboard access so the real Settings copy action stays testable.
+        await context.grantPermissions(
+          ['clipboard-read', 'clipboard-write', 'local-network-access'],
+          { origin: target.origin },
+        );
         evidence.localNetworkPermission =
           'granted to the exact staging origin by the isolated test context';
       }
