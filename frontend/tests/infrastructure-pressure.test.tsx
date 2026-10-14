@@ -89,7 +89,9 @@ describe('observed bandwidth availability pressure', () => {
       });
       render(<InfrastructureMetricsPanel state={state} currency="SEK" />);
       expect(
-        screen.getByText('Constrained · 1 active transfers · no currently available bandwidth'),
+        screen
+          .getByText('Constrained · 1 active transfers · no currently available bandwidth')
+          .closest('.infrastructure-pressure'),
       ).toHaveAttribute('data-infrastructure-pressure', 'congested');
 
       const replay = new SimulationEngine(model);

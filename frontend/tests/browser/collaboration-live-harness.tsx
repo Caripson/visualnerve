@@ -78,6 +78,8 @@ physical.commit = async (...args: Parameters<VaultRecordStorage['commit']>) => {
 const view = () => controller.getSnapshot();
 const current = async () =>
   repository.getGraph(view().diagramId ?? useEditor.getState().graph!.diagram.id);
+let pauseNextApiRead = false;
+let resumeApiRead: (() => void) | undefined;
 const test = {
   snapshot: () => structuredClone(view()),
   graph: current,
@@ -88,6 +90,17 @@ const test = {
   },
   failNextAtomic: () => {
     failAtomicOnce = true;
+  },
+  pauseNextApiEditAfterRead: () => {
+    if (pauseNextApiRead || resumeApiRead) throw new Error('An API read is already paused');
+    pauseNextApiRead = true;
+  },
+  apiEditReadPaused: () => !!resumeApiRead,
+  resumeApiEditAfterRead: () => {
+    if (!resumeApiRead) throw new Error('No API read is paused');
+    const resume = resumeApiRead;
+    resumeApiRead = undefined;
+    resume();
   },
   privateState: async () => {
     const state = view().roomId && (await store.load(view().roomId!));
@@ -120,6 +133,12 @@ const test = {
       useEditor.getState().updateNode(node.id, { title });
       await workspace.settled();
       return current();
+    }
+    if (pauseNextApiRead) {
+      pauseNextApiRead = false;
+      await new Promise<void>((resolve) => {
+        resumeApiRead = resolve;
+      });
     }
     return workspace.execute(`/nodes/${node.id}`, 'PATCH', { version: node.version, title });
   },
@@ -204,10 +223,19 @@ const test = {
     await gateway.flush();
   },
   epoch: () => (controller as unknown as { room?: { epoch: number } }).room?.epoch,
-  disconnect: () => {
-    const room = (controller as unknown as { room?: { transport?: { disconnect(): void } } }).room;
+  disconnect: async () => {
+    const room = (
+      controller as unknown as {
+        room?: { transport?: { disconnect(): void; reader: Promise<void> } };
+      }
+    ).room;
     if (!room?.transport) throw new Error('Test transport not available');
     room.transport.disconnect();
+    // Closing the socket rejects future frames, but an already-started reader
+    // can still commit a valid projection. Finish it before the next test reads
+    // a version for an offline PATCH; a live stale PATCH must still return 409.
+    await room.transport.reader;
+    await workspace.settled();
   },
   dispose: async () => {
     controller.dispose();

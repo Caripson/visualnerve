@@ -373,6 +373,34 @@ try {
   checked.push(
     "Injected physical commit failure rolls back graph and encrypted outbox together; next MLS ratchet message still works",
   );
+  // Force a real read/write race instead of relying on browser timing: the API
+  // client reads its version, then a legitimate encrypted peer update commits.
+  // Closing the socket must not make that stale version valid or retry it.
+  await evaluate(guest, "pauseNextApiEditAfterRead");
+  const staleEdit = guest.evaluate(async () => {
+    try {
+      await window.collaborationLiveTest.edit("STALE-READ-MUST-NOT-COMMIT");
+      return null;
+    } catch (error) {
+      return { status: error.status };
+    }
+  });
+  await guest.waitForFunction(() =>
+    window.collaborationLiveTest.apiEditReadPaused(),
+  );
+  await evaluate(owner, "edit", "Owner update after stale read");
+  await waitTitle(guest, "Owner update after stale read");
+  await evaluate(guest, "disconnect");
+  await evaluate(guest, "resumeApiEditAfterRead");
+  assert.equal((await staleEdit)?.status, 409);
+  for (const page of [owner, guest])
+    assert.equal(
+      (await evaluate(page, "graph")).nodes[0].title,
+      "Owner update after stale read",
+    );
+  checked.push(
+    "A deterministic peer commit between API read and PATCH returns 409 even after disconnect; stale content is not written or retried",
+  );
   const epochBefore = await evaluate(guest, "epoch");
   await evaluate(guest, "disconnect");
   await evaluate(guest, "edit", "Encrypted offline edit");
@@ -383,7 +411,7 @@ try {
   );
   assert.equal(
     (await evaluate(owner, "graph")).nodes[0].title,
-    "Commit after rollback",
+    "Owner update after stale read",
   );
   await evaluate(guest, "reconnect");
   await waitStatus(guest, "live");
