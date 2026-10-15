@@ -1,12 +1,59 @@
 ---
 title: "Connect tools through API and MCP"
-summary: "Use the optional local bridge to inspect and control the same browser workspace through semantic commands."
+summary: "Connect your local AI tool step by step: copy the Settings instructions, install the bridge and approve access. Includes Windows/WSL troubleshooting."
 weight: 16
 ---
 
 You can use every normal Visual Nerve workflow through the UI without AI, MCP or a backend. The optional local bridge lets an external client read and edit the same workspace, create diagrams, analyze supplied input, control presentations and run simulations.
 
-The bridge forwards commands to your connected browser. It has no separate diagram database, cloud copy or simulation engine. Browser-owned IndexedDB and the shared validated model remain authoritative. MCP is a standard protocol: Codex, Claude Code, Cursor, Gemini CLI and other compatible local clients share the same tools, resources and permissions.
+## Quick start: connect your local AI tool
+
+You need three things running: **Visual Nerve in your browser**, **your local AI tool**, and **the Visual Nerve bridge**. The bridge is a small program called `visual-nerve` on your computer. It carries commands between the tool and the open workspace. The website cannot install or start this program by itself.
+
+The copied Settings instructions tell a local agent how to check, download, install and start the bridge. **Copying the text is not enough: paste it into an agent that can run terminal commands on your computer and let it complete the setup.** A normal cloud chat cannot reach your computer's local bridge.
+
+### First connection
+
+These steps use the English Settings labels. The installer supports **macOS and Linux, including WSL on Windows**. On Windows, run the installer and terminal-based agent in WSL, not PowerShell or Command Prompt. WSL and the local agent must already be available; the installer does not install them.
+
+1. **Open and unlock your workspace** at [app.visualnerve.com](https://app.visualnerve.com/). Keep this browser tab open. Enter your password only in Visual Nerve, never in the AI conversation.
+2. **Open Settings → MCP / API integration.** Keep access **Off** while the agent checks or installs the bridge. You can copy the instructions without granting access.
+3. **Expand Instructions for your MCP client → Copy MCP instructions.** The text includes the correct website, local address and installer command for this workspace. Keep those values rather than substituting an address from another computer or guide.
+4. **Paste the instructions into your local agent and ask it to complete setup.** For example, use Codex or another compatible terminal agent in your WSL terminal. It should check the listener first, inspect the downloaded installer, then run it if needed. First installation needs internet and may take a few minutes. You do not need to install Go, unzip, Node or clone the repository yourself. A missing downloader can require a separate package-manager installation with your approval.
+5. **Approve access in Settings.** After the agent confirms valid bridge health, choose **Read only** for inspection or **Read + write** for creating or changing diagrams. If Chrome asks for local-network access, allow it for Visual Nerve. Wait for **MCP connection: Connected**. The app retries while access is enabled; no page reload is needed. If you locked or reloaded during setup, unlock first. If connection still fails, use [the checks below](#if-it-does-not-connect).
+6. **Connect the client and verify access before editing.** If your client needs a server entry, use [its configuration instructions](#configure-your-mcp-client), then reconnect or restart the client as it requires. Starting the bridge does not register it in every client automatically. Ask the agent to discover both tools, read `visual_nerve_api_docs` with `{"document":"guide"}`, and list your diagrams through `visual_nerve_request` with `{"path":"/diagrams","method":"GET"}`. An empty list is valid for a new workspace. A successful read confirms content access; **Connected** alone only confirms the browser connection.
+
+You are ready when Settings says **Connected**, the client discovers **visual_nerve_api_docs** and **visual_nerve_request**, and the permitted diagram read succeeds. Keep the browser unlocked, the bridge running and the access grant enabled while working. The bridge uses the same browser-owned data and analysis engines as the UI; it has no separate diagram database.
+
+### Windows Chrome and an agent in WSL
+
+Open Visual Nerve in **Windows Chrome**, and paste the Settings instructions into the agent running in **your WSL terminal on that computer**. The agent installs and starts the Linux bridge inside WSL. Chrome must also be able to reach that listener.
+
+For a new setup, open [the default bridge health address](http://127.0.0.1:47417/api/v1/health) in a separate Chrome tab after installation. Ask the agent to check that same address from WSL. Both should return Visual Nerve JSON containing `"status":"ok"`, `"storage":"indexeddb"` and `"bridge":true`. For a saved custom or legacy connection, use the health address in your copied instructions instead. This check does not require your password or an integration token.
+
+If it works inside WSL but not in Chrome, the bridge is running, but Windows cannot yet reach it at that address. Check [the browser/WSL networking steps](#check-the-client-and-browser-host-separately). Installation does not configure Windows forwarding or firewall rules. A successful Docker test or a working bridge on another computer cannot prove this connection works on yours.
+
+### If it does not connect
+
+| What you see | What to do next |
+| --- | --- |
+| Connection refused at the copied health address | Ask the local agent to check the installation and start the bridge. If WSL can reach it but Chrome cannot, check Windows/WSL networking instead. |
+| HTTP/0.9, binary data or a different service at that address | Stop setup against that listener and identify it. It is not valid Visual Nerve health. Do not kill an unrelated process or bypass the error. |
+| Health works from the agent and browser, but Settings does not show Connected | Check the saved connection address, the bridge's exact allowed app origin and Chrome's local-network permission. [Connection diagnostics](#enable-the-browser-connection) also cover trusted TLS and optional tokens. |
+| Connected, but content access is denied or the workspace is locked | Unlock in the browser and choose a fresh Read only or Read + write grant. Retry the safe diagram read before any write. |
+| The client cannot find visual_nerve_api_docs | Check the bridge version, update the local installation if needed and reconnect the MCP client to refresh its tool list. |
+
+**Do not clear cache, delete browser data or export/reimport your diagrams to fix a bridge connection.** None of those actions installs or starts the bridge.
+
+### Next time, after a restart or an update
+
+- **After locking, closing or reloading the workspace:** open it, unlock and choose a fresh access grant. An unlock does not restore the previous grant.
+- **After restarting the computer:** the bridge does not start automatically. Paste the current Settings instructions into your local agent again. Setup reuses a healthy matching installation and starts it when needed; no repository checkout is required. If you chose a custom `--install-dir`, keep using that same directory; Settings does not know its location.
+- **After an app update:** your browser app may update, but your local bridge is a separate program. If Settings or the client reports an outdated bridge, use the current copied instructions and latest reviewed installer, then reconnect the client. Preserve any existing trusted TLS or protected token configuration using [the advanced instructions](#configure-your-mcp-client).
+
+If you prefer to set up the bridge yourself, follow [the terminal instructions](#recommended-setup-for-a-hosted-workspace). The remaining sections explain permissions, addresses, advanced setup and API behavior.
+
+MCP is a standard protocol: Codex, Claude Code, Cursor, Gemini CLI and other compatible local clients share the same tools, resources and permissions.
 
 ## Unlocking and tool access are separate permissions
 
@@ -46,7 +93,7 @@ An authorized tool with **Read + write** can explicitly lock the encrypted works
 
 `POST /api/v1/workspace/lock` accepts only an empty object or no arguments. It waits for pending saves, checks the current grant again, locks the shared vault session and returns safe security metadata. If saving fails, it does not silently discard edits. Calling it on an already-locked retained connection only reports that local locked status; it does not revoke again. A concurrent grant or saved-data change produces **409**, rather than locking from a stale authorization snapshot; the current session remains available. Inspect the saved state and grant before issuing a new request. Read-only access cannot lock an unlocked workspace. No tool can unlock it. If several tabs share a workspace, the local bridge prefers a content-enabled tab and never retries a dispatched write against another tab.
 
-**Session timer** is enabled by default. At startup or in **Settings → Workspace security**, you can turn it off to disable both inactivity and maximum-session expiration. Manual lock, closing/reloading the page and cross-tab revocation still end the unlocked session. Only the human UI can change this choice; there is no API/MCP policy endpoint. When the timer is on, Settings controls inactivity and maximum-session limits. Only human interaction with the app renews inactivity; API/MCP requests, particle animation and background jobs do not keep it unlocked. Locking cancels jobs and invalidates in-flight requests, including requests whose results arrive after a later unlock. Other tabs sharing the vault observe revocation; each tab must obtain its own human-unlocked session. Do not assume that a simulation or export continued after lock.
+**Automatic session lock** is enabled by default. At startup or in **Settings → Workspace security**, you can turn it off to disable both inactivity and maximum-session expiration. Manual lock, closing/reloading the page and cross-tab revocation still end the unlocked session. Only the human UI can change this choice; there is no API/MCP policy endpoint. When the timer is on, Settings controls inactivity and maximum-session limits. Only human interaction with the app renews inactivity; API/MCP requests, particle animation and background jobs do not keep it unlocked. Locking cancels jobs and invalidates in-flight requests, including requests whose results arrive after a later unlock. Other tabs sharing the vault observe revocation; each tab must obtain its own human-unlocked session. Do not assume that a simulation or export continued after lock.
 
 Encryption protects saved records while locked. An authorized API/MCP request, diagram export or AI handoff releases readable information intentionally. `GET /workspace/export` is a readable semantic backup for authorized tools; the browser's encrypted backup download and its reviewed restore flow are separate actions. Changing the live password does not update downloaded backup files: older copies retain their own password and recovery credentials. [Security and recovery boundaries](/security/).
 
@@ -68,16 +115,24 @@ Settings displays the **Visual Nerve website**, API reference and local **MCP se
 
 ## Start the optional process
 
-The bridge is a separate native executable. Opening the website or copying a Settings prompt does not install it. Run it on the host where the intended browser and local client can both reach its loopback listener.
+The bridge is a separate native executable. Opening the website or merely copying a Settings prompt does not install it; a local agent or you must run the setup. Run it on the host where the intended browser and local client can both reach its loopback listener.
 
 ### Recommended setup for a hosted workspace
 
-1. Open **Settings → MCP / API integration** and copy the connection instructions to your local agent, or follow them in a terminal. The instructions use this workspace’s exact origin and saved local address.
+1. Open **Settings → MCP / API integration → Instructions for your MCP client → Copy MCP instructions** and follow them in a terminal, or use the agent-assisted quick start above. The instructions use this workspace’s exact origin and saved local address.
 2. If the bridge is missing, download the linked `visual-nerve-bridge-setup.sh` file and inspect it before running it. Do not pipe an unread download into a shell.
 3. Run the supplied command. Setup downloads a private Go toolchain, verifies its SHA-256 checksum and the release’s source ZIP, builds the native bridge and matching API schema, then starts it. No existing Go installation, git checkout, Node or unzip is needed. The first run needs internet and may take a few minutes.
 4. Check the reported health and MCP address. In this browser, unlock your workspace and choose **Read only** or **Read + write**. The installer cannot choose that grant for you.
 
-For the production app with its default connection, the command after download is:
+For the production app with its default connection, [download the installer](https://app.visualnerve.com/downloads/visual-nerve-bridge-setup.sh) into your terminal's current directory. If curl is installed, this saves the file without running it:
+
+```sh
+curl --fail --location --show-error \
+  --output visual-nerve-bridge-setup.sh \
+  https://app.visualnerve.com/downloads/visual-nerve-bridge-setup.sh
+```
+
+After a successful download, inspect the saved file in a text editor. Then run:
 
 ```sh
 bash ./visual-nerve-bridge-setup.sh \
@@ -137,7 +192,7 @@ Bridge **0.11.1** introduces compatibility startup so an upgrade can retain a wo
 
 The optional legacy listener uses the same bridge state, access checks, browser connections and operation receipts as the primary listener. If 4317 is busy, the bridge warns and skips it; if the primary listener is busy, startup fails. Static-only mode does not add a compatibility listener. There is no automatic port search, client fallback or process termination. The explicit setup command above chooses only 47417.
 
-The isolated app permits only explicitly approved loopback WebSocket ports. This release prepares **47417** for new setups and retains **4317** for existing connections. Both the app package and its HTTP response policy must allow a port; changing Settings alone cannot override CSP. An older live release may still allow only 4317 until the coordinated manual app/policy deployment. Existing saved addresses are preserved; switch the listener, browser connection and client together only after that rollout.
+The current hosted app permits **47417** for new setups and retains **4317** for existing connections. Both the app package and its HTTP response policy must allow a port; changing Settings alone cannot override CSP. Update an older cached app before changing to 47417. Self-hosted installations need matching app and response-policy configuration. Existing saved addresses are preserved; switch the listener, browser connection and client together.
 
 For an approved port, use the same hostname, port and TLS choice in all three places: the bridge's `--addr`, the browser's saved `/bridge` WebSocket URL and the client's HTTP(S) `/mcp` URL. For stdio, `--mcp-url` selects that existing listener. For example, an existing 4317 setup uses:
 
@@ -182,7 +237,7 @@ A valid Visual Nerve bridge returns **HTTP 200**, **application/json** and field
   "status": "ok",
   "storage": "indexeddb",
   "bridge": true,
-  "version": "0.11.0",
+  "version": "0.11.1",
   "connected": 0,
   "tools": ["visual_nerve_request", "visual_nerve_api_docs"],
   "capabilities": ["operations-v1", "endpoint-docs-v1"]
@@ -217,9 +272,9 @@ A bridge on a remote Mac is not available through a Linux/WSL client's own loopb
 
 1. Keep the intended Visual Nerve workspace open and accept local storage.
 2. Open **Settings → MCP / API integration**. On mobile, start from **Diagram actions → Settings**.
-3. Select **Read only** for inspection, or **Read + write** for editing and run/playback controls.
-4. Check **MCP connection: Connected**.
-5. If needed, expand **Local connection details**, enter the local WebSocket address and optional token, then choose **Save connection**.
+3. If needed, expand **Local connection details**, enter the local WebSocket address and optional token, then choose **Save connection**. Changing the address turns access Off, so save it before granting access.
+4. Select **Read only** for inspection, or **Read + write** for editing and run/playback controls.
+5. With the bridge running, check **MCP connection: Connected**.
 6. Use the displayed **MCP server URL** in your chosen client. Expand **Instructions for your MCP client** and choose **Copy MCP instructions** for a setup note describing the same API and tools for any compatible agent.
 
 Access is **Off** by default. Read only permits GET inspection and supported exact unsaved previews, exports and comparisons. It does not grant general permission to POST or edit. Read + write additionally permits mutations, saving models and controlling simulations/presentations. Turning access Off closes the browser connection.
@@ -236,7 +291,7 @@ The app, the local bridge executable and your MCP client are three separate prog
 
 Before giving an agent workspace commands:
 
-1. Verify the local `GET /api/v1/health` address shown in the copied instructions returns the Visual Nerve JSON described above. The current bridge reports version **0.11.0**, both MCP tool names, and the capabilities `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1`, `collaboration-document-v1`, `analytics-v1`, `ibm-flowcharting-v1`, `standard-notations-v1` and `infrastructure-resources-v1`. Health contains public transport metadata; it does not read diagrams or unlock the workspace.
+1. Verify the local `GET /api/v1/health` address shown in the copied instructions returns the Visual Nerve JSON described above. Bridge **0.11.1** reports both MCP tool names and the capabilities `operations-v1`, `endpoint-docs-v1`, `fork-join-v1`, `async-svg-export-v1`, `exchange-export-v1`, `collaboration-v1`, `collaboration-document-v1`, `analytics-v1`, `ibm-flowcharting-v1`, `standard-notations-v1` and `infrastructure-resources-v1`. Health contains public transport metadata; it does not read diagrams or unlock the workspace.
 2. Reconnect or initialize the MCP client, then inspect its discovered tools. It should show both **visual_nerve_request** and **visual_nerve_api_docs**. A client can retain an old tool list until you reconnect it.
 3. Ask the agent to read the compact guide before making commands. For a particular endpoint, it can request a smaller contract containing that operation and every referenced schema:
 
@@ -253,7 +308,7 @@ Before giving an agent workspace commands:
 
 Use the exact OpenAPI template path, including `{nodeId}` rather than an individual node's UUID. The guide, endpoint contract and full OpenAPI work without a connected browser.
 
-If these tools or capabilities are missing, stop the old bridge, replace or rebuild the executable from the current repository using its [build instructions](https://github.com/Caripson/visualnerve#run-locally), then restart it with your existing port, allowed origin and protected token settings. Reconnect the MCP client and refresh its tool discovery. Re-enable browser access if its grant has ended. **Connected** only confirms the browser transport; it does not prove that the client has current tools. Settings now shows an update reminder when the bridge cannot advertise the current capabilities. The reminder does not prevent normal UI editing.
+If these tools or capabilities are missing, update an installer-managed HTTP bridge using [the latest reviewed installer](#recommended-setup-for-a-hosted-workspace). For a manually managed bridge, use [the bridge-only source build](#build-manually-from-a-source-checkout), stop only your identified old bridge and restart it with your existing port, exact allowed origin and any protected token or TLS settings. The installer does not replace an unrelated or unmanaged listener. Reconnect the MCP client and refresh its tool discovery. Re-enable browser access if its grant has ended. **Connected** only confirms the browser transport; it does not prove that the client has current tools. Settings shows an update reminder when the bridge cannot advertise the current capabilities. The reminder does not prevent normal UI editing.
 
 Older browser tabs and older bridge binaries can still perform one-shot commands, but do not provide the current retry protection. Refresh the app when saved work permits, update the bridge and rediscover the tools before using operation IDs.
 

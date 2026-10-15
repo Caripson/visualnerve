@@ -130,7 +130,7 @@ Case memory can be explicitly released after a stage outside fork/join regions, 
 
 ## API and MCP use the same assumptions
 
-Use bridge/browser **0.10.0** with `infrastructure-resources-v1`, then read `GET /simulation/capabilities`. Legacy models remain version 1. Infrastructure models require `schemaVersion:2` and `infrastructure:{schemaVersion:1}` together so older clients reject unsupported execution.
+Use the updated browser app and a bridge advertising `infrastructure-resources-v1` (included in **0.11.1**), then read `GET /simulation/capabilities`. Legacy models remain version 1. Infrastructure models require `schemaVersion:2` and `infrastructure:{schemaVersion:1}` together so older clients reject unsupported execution.
 
 Use the existing simulation model/entity CRUD, asynchronous run, state/result and comparison routes. Read only permits inspection and comparison; changing a model or starting a run requires Read + write. Versioned PATCH preserves omitted fields, recursively merges objects, removes optional fields with `null` and replaces arrays. Complete/new models reject null and invalid assumptions atomically.
 

@@ -8,7 +8,10 @@ production workflows; creating a build does not make it available on production.
 
 ## User workflow
 
-Copy **Settings → MCP / API integration → Connection instructions**. First check
+Follow the [user quick start](https://www.visualnerve.com/help/api-mcp/#quick-start-connect-your-local-ai-tool)
+for the browser, local-agent and Windows/WSL steps. Copy
+**Settings → MCP / API integration → Instructions for your MCP client → Copy MCP instructions**
+and paste it into a local agent with terminal access, or follow it yourself. First check
 the intended listener. If no compatible Visual Nerve service is running, download
 the linked setup file using curl, wget or Python 3, inspect it, and run its exact
 command. Do not pipe an unread network response into a shell. The normal

@@ -314,6 +314,10 @@ MCP is optional and **Off** by default. In **MCP / API integration**, choose:
 
 The page shows the website, API documentation and **MCP server URL** separately. **Instructions for your MCP client** gives a copyable setup note without the integration token or diagram records.
 
+For your first connection, keep access **Off**, choose **Copy MCP instructions** and paste the text into a local agent that can run terminal commands on your computer. The instructions guide it through downloading, inspecting, installing and starting the small local bridge program. Copying alone or turning access on does not install it. Go and unzip do not need to be installed beforehand. On Windows, run the installer and terminal-based agent in WSL; Windows Chrome must be able to reach that WSL listener. Follow [the step-by-step quick start](/help/api-mcp/#quick-start-connect-your-local-ai-tool).
+
+After the agent confirms valid bridge health, choose Read only or Read + write. Wait for **MCP connection: Connected**, then let the agent verify a permitted read before editing. The app retries without a page reload while access is enabled. After a computer restart, start the bridge again; after a workspace unlock, choose a fresh access grant. **Do not clear browser data to reconnect.**
+
 Expand **Local connection details** only when configuring the bridge address or optional session token, then choose **Save connection**. The browser's WebSocket URL uses `/bridge`; a client such as Codex uses the local HTTP(S) `/mcp` address. The public website address identifies the app origin, not the process running on your computer.
 
 Turning access Off closes the browser connection. The browser must remain open for commands, including headless simulations. This grant lets your chosen tool read content and optionally edit it; the tool handles received content under its own settings. See [API and MCP setup](/help/api-mcp/).

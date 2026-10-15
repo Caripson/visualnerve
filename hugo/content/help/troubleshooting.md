@@ -90,8 +90,11 @@ Live capacity cards are a 2D visualization of one logical node's units, not inde
 | 403 | Consent/access does not permit the command, or a write needs Read + write |
 | 409 | A version changed, a result is not ready or execution conflicts; read the message, refetch or wait as appropriate |
 | 422 | Read the structured validation error and correct the supplied values/references |
+| 423 WORKSPACE_LOCKED | Unlock in the browser, choose a fresh Read only or Read + write grant in Settings, then retry a safe read |
 | Request reached the wrong workspace | Use the workspace identifier in Storage details and the request's workspace target |
 | Updated features are absent from tool discovery | Restart the updated bridge binary and reconnect the MCP client |
+
+For first-time setup, copy **Settings → MCP / API integration → Instructions for your MCP client → Copy MCP instructions** into your local terminal agent. It can download, inspect, install and start the bridge. Follow [the quick start and Windows/WSL checks](/help/api-mcp/#quick-start-connect-your-local-ai-tool). Do not clear browser data to reconnect.
 
 The website address is not the local MCP server address. JavaScript opens a connection to an already running process; it does not install or start that process. [Complete API/MCP setup](/help/api-mcp/).
 
