@@ -6,7 +6,7 @@ async function saved(page: Page) {
   await expect(page.getByRole('status').filter({ hasText: /^Saved$/ })).toBeVisible();
 }
 async function deselect(page: Page) {
-  await page.locator('.react-flow__pane').click({ position: { x: 20, y: 35 } });
+  await page.locator('.react-flow__pane').click({ position: { x: 40, y: 42 } });
 }
 
 test('mind maps have colored balanced branches, direct topic editing and distinct diagram rendering', async ({

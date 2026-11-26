@@ -78,7 +78,7 @@ async function selectNode(page: Page, title: string) {
 }
 
 async function editView(page: Page) {
-  await page.locator('.react-flow__pane').click({ position: { x: 18, y: 40 } });
+  await page.locator('.react-flow__pane').click({ position: { x: 40, y: 42 } });
   await page.getByRole('button', { name: 'Change grouping and measures' }).click();
   return page.getByRole('dialog', { name: 'Explore CSV data' });
 }

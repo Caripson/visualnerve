@@ -81,6 +81,23 @@ describe('explicit canvas fit around floating tools', () => {
     const fitted = getViewportForBounds(bounds, canvas.width, canvas.height, 0.05, 2, padding);
     expect(fitted.y + bounds.y * fitted.zoom).toBeGreaterThanOrEqual(35);
     expect(fitted.x + bounds.x * fitted.zoom).toBeGreaterThanOrEqual(35);
+
+    const selection = document.createElement('div');
+    selection.className = 'react-flow__panel selection-panel top';
+    host.append(selection);
+    const bar = new DOMRect(365, canvas.top + 43, 380, 44);
+    vi.spyOn(selection, 'getBoundingClientRect').mockReturnValue(bar);
+    const withSelection = canvasFitPadding(0.05, host);
+    expect(withSelection).toEqual({ top: '95px', right: 0.05, bottom: '73px', left: '36px' });
+    const visible = getViewportForBounds(
+      bounds,
+      canvas.width,
+      canvas.height,
+      0.05,
+      2,
+      withSelection,
+    );
+    expect(canvas.top + visible.y + bounds.y * visible.zoom).toBeGreaterThan(bar.bottom);
   });
 
   it('uses the live fitView with the same zoom cap and requested animation for ordinary objects', async () => {

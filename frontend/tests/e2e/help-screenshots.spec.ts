@@ -155,7 +155,7 @@ test('capture workspace, navigation, spatial view and walkthrough', async ({ pag
   await expect(page.getByTestId('overview-group')).toHaveCount(2);
   await screenshot(page, 'overview');
   await overview.getByRole('button', { name: 'Details', exact: true }).click();
-  await page.locator('.react-flow__pane').click({ position: { x: 10, y: 20 } });
+  await page.locator('.react-flow__pane').click({ position: { x: 40, y: 42 } });
   await overview.locator('summary').click();
   await page.getByRole('button', { name: 'Understand', exact: true }).click();
   await page.getByRole('button', { name: 'Version history', exact: true }).click();

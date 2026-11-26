@@ -48,7 +48,7 @@ test('Nordic Product Launch: editor, reload, external API, four exports and loss
   await page.getByLabel('Node title').fill('Idea');
   // Keep the root and build the specified process through real editor actions.
   await page.keyboard.press('Escape');
-  await page.locator('.react-flow__pane').click({ position: { x: 20, y: 30 } });
+  await page.locator('.react-flow__pane').click({ position: { x: 40, y: 42 } });
   await saved(page);
   graph = await getGraph();
   for (const node of graph.nodes.filter((n) => n.id !== root.id)) {
@@ -67,7 +67,7 @@ test('Nordic Product Launch: editor, reload, external API, four exports and loss
     await page
       .getByLabel('Node y', { exact: true })
       .fill(String(100 + (titles.indexOf(title) % 2) * 170));
-    await page.locator('.react-flow__pane').click({ position: { x: 20, y: 30 } });
+    await page.locator('.react-flow__pane').click({ position: { x: 40, y: 42 } });
   }
   await saved(page);
   graph = await getGraph();

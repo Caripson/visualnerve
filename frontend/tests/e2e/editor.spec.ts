@@ -10,7 +10,7 @@ async function open(page: Page, name: string) {
   await saved(page);
 }
 async function deselect(page: Page) {
-  await page.locator('.react-flow__pane').click({ position: { x: 18, y: 40 } });
+  await page.locator('.react-flow__pane').click({ position: { x: 40, y: 42 } });
 }
 
 test('undoing a middle mindmap branch deletion preserves order and colors through redo and reload', async ({

@@ -377,7 +377,7 @@ test('capacity cards preserve native style, show real occupied work, share one q
   const extra = page.locator(`[data-node-id="simulation-capacity:${work.id}:2"]`);
   await extra.locator('.node-title').click();
   await expect(page.getByLabel('Node title', { exact: true })).toHaveValue(work.name);
-  await page.locator('.react-flow__pane').click({ position: { x: 12, y: 20 } });
+  await page.locator('.react-flow__pane').click({ position: { x: 40, y: 42 } });
   await expect(page.getByLabel('Node title', { exact: true })).toHaveCount(0);
   await extra.locator('..').focus();
   await page.keyboard.press('Enter');

@@ -76,7 +76,7 @@ async function frame(page: Page, graph: Graph, pool: string) {
   expect(selected).toBeDefined();
   const node = page.locator(`.canvas-shell [data-node-id="${selected!.id}"]`);
   await expect(node).toBeInViewport();
-  await page.locator('.react-flow__pane').click({ position: { x: 30, y: 20 } });
+  await page.locator('.react-flow__pane').click({ position: { x: 40, y: 42 } });
   await page.mouse.move(50, 20);
   await expect(page.locator('.context-toolbar')).toBeHidden();
   await expect(page.locator('.node-quick-add-anchor:visible')).toHaveCount(0);

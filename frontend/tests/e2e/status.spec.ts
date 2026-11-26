@@ -319,7 +319,7 @@ for (const type of ['flowchart', 'mindmap'] as const) {
     }
 
     // Completion remains indicated when the regular title/detail view becomes an overview.
-    await page.locator('.react-flow__pane').click({ position: { x: 20, y: 35 } });
+    await page.locator('.react-flow__pane').click({ position: { x: 40, y: 42 } });
     for (let step = 0; step < 12; step++) {
       const zoom = await page
         .locator('.canvas-shell .react-flow__viewport')

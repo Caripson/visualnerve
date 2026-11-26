@@ -15,6 +15,9 @@ export function canvasFitPadding(
   const leftRuler = host
     .querySelector('.canvas-ruler[data-axis="vertical"]')
     ?.getBoundingClientRect();
+  const selection = topRuler?.height
+    ? host.querySelector('.selection-panel.top')?.getBoundingClientRect()
+    : undefined;
   const bottom =
     panel &&
     panel.width > 0 &&
@@ -25,7 +28,12 @@ export function canvasFitPadding(
     panel.right > canvas.left
       ? canvas.bottom - panel.top + 8
       : 0;
-  const top = topRuler?.height ? topRuler.height + 8 : 0;
+  const top = Math.max(
+    topRuler?.height ? topRuler.height + 8 : 0,
+    selection?.height && selection.top >= canvas.top && selection.bottom < canvas.bottom
+      ? selection.bottom - canvas.top + 8
+      : 0,
+  );
   const left = leftRuler?.width ? leftRuler.width + 8 : 0;
   // XYFlow interprets numbers as ratios; explicit pixels retain their size
   // regardless of canvas size. Keep a ratio where it already leaves enough space.
