@@ -211,8 +211,8 @@ test('group containment moves as a unit, resizes, ungroups and supports connecti
   await page.keyboard.press('Control+Shift+g');
   await saved(page);
   expect((await (await request.get(`/api/v1/diagrams/${d.id}`)).json()).nodes).toHaveLength(2);
-  const source = await one.locator('.react-flow__handle-right').boundingBox(),
-    target = await two.locator('.react-flow__handle-left').boundingBox();
+  const source = await one.locator('.react-flow__handle-right.source').boundingBox(),
+    target = await two.locator('.react-flow__handle-left.target').boundingBox();
   await page.mouse.move(source!.x + 3, source!.y + 3);
   await page.mouse.down();
   await page.mouse.move(target!.x + 3, target!.y + 3, { steps: 12 });
@@ -313,7 +313,7 @@ test('box selection copies internal relationships and edges reconnect with histo
   await expect(page.getByLabel('Connection target')).toHaveValue(graph.nodes[1].id);
   const anchor = (await edge.locator('.react-flow__edgeupdater-target').boundingBox())!;
   const target = (await page
-    .locator(`[data-node-id="${graph.nodes[2].id}"] .react-flow__handle-left`)
+    .locator(`[data-node-id="${graph.nodes[2].id}"] .react-flow__handle-left.target`)
     .boundingBox())!;
   await page.mouse.move(anchor.x + anchor.width / 2, anchor.y + anchor.height / 2);
   await page.mouse.down();

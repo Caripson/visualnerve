@@ -429,8 +429,12 @@ test('drawing covers the graph, follows zoom and pan, and survives history, stor
   expect(imported.nodes.map((node) => node.id)).not.toEqual(original.nodes.map((node) => node.id));
 
   // After leaving the pen tool, a real handle drag must create a normal relationship.
-  const source = page.locator(`[data-node-id="${imported.nodes[0].id}"] .react-flow__handle-right`);
-  const target = page.locator(`[data-node-id="${imported.nodes[2].id}"] .react-flow__handle-left`);
+  const source = page.locator(
+    `[data-node-id="${imported.nodes[0].id}"] .react-flow__handle-right.source`,
+  );
+  const target = page.locator(
+    `[data-node-id="${imported.nodes[2].id}"] .react-flow__handle-left.target`,
+  );
   const a = (await source.boundingBox())!,
     b = (await target.boundingBox())!;
   await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
