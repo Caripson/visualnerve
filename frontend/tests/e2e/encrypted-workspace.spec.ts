@@ -481,6 +481,14 @@ test('offline encrypted reload and cache clearing preserve private records and u
 }) => {
   await setup(page);
   await create(page, 'Offline encrypted work canary');
+  // Persist the canvas viewport before reopening so the comparison only spans cache clearing.
+  const diagramRevision = async () => {
+    const records = JSON.parse((await raw(page)).text) as { store: string; revision: number }[];
+    return records.find((record) => record.store === 'diagrams')?.revision ?? 0;
+  };
+  const initialRevision = await diagramRevision();
+  await page.getByRole('button', { name: 'Zoom In', exact: true }).click();
+  await expect.poll(diagramRevision).toBeGreaterThan(initialRevision);
   await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
   await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
   await expect
