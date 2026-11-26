@@ -9,7 +9,7 @@
   font-size: 12px;
 }
 .canvas-shell:has(.selection-tools) .react-flow__panel.overview-panel {
-  top: calc(var(--selection-toolbar-height, 44px) + 12px);
+  top: calc(var(--canvas-ruler-size, 0px) + var(--selection-toolbar-height, 44px) + 12px);
 }
 .overview-controls > summary {
   display: flex;
@@ -147,7 +147,7 @@
 }
 @media (max-width: 900px), (max-width: 1100px) and (max-height: 500px) {
   .canvas-shell:has(.selection-tools) .react-flow__panel.overview-panel {
-    top: 0;
+    top: var(--canvas-ruler-size, 0px);
   }
   .overview-controls {
     min-width: 0;

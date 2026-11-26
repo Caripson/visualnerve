@@ -945,7 +945,7 @@ export function Canvas() {
     <div
       ref={canvasShell}
       className={`canvas-shell ${graph.diagram.type === 'mindmap' ? 'mindmap-canvas' : ''} ${showProcessNavigation ? 'simulation-process-canvas' : ''} ${showRulers ? 'canvas-ruled' : ''}`}
-      style={{ ['--canvas-ruler-size' as string]: `${canvasRulerSize}px` }}
+      style={showRulers ? { ['--canvas-ruler-size' as string]: `${canvasRulerSize}px` } : undefined}
       data-testid="canvas"
       data-canvas-editing-shortcuts={rulersAvailable ? 'true' : undefined}
       onPointerDownCapture={(event) => {
