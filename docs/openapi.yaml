@@ -1427,11 +1427,27 @@
               "buildSpecification": {
                 "$ref": "#/components/schemas/BuildSpecificationDraft"
               },
+              "canvasGuides": {
+                "description": "Saved 2D editor alignment guides with unique IDs. Use an empty array to clear them.",
+                "items": {
+                  "$ref": "#/components/schemas/CanvasGuide"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
               "overview": {
                 "$ref": "#/components/schemas/OverviewConfig"
               },
               "presentation": {
                 "$ref": "#/components/schemas/PresentationDefinition"
+              },
+              "rulerOrigin": {
+                "$ref": "#/components/schemas/RulerOrigin"
+              },
+              "showRulers": {
+                "default": true,
+                "description": "Show the rulers and guides on an editable 2D canvas.",
+                "type": "boolean"
               },
               "spatialView": {
                 "$ref": "#/components/schemas/SpatialView"
@@ -7389,6 +7405,32 @@
         },
         "type": "object"
       },
+      "CanvasGuide": {
+        "properties": {
+          "axis": {
+            "enum": [
+              "horizontal",
+              "vertical"
+            ],
+            "type": "string"
+          },
+          "id": {
+            "description": "Guide UUID, unique within the diagram.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "position": {
+            "description": "Finite diagram Y for a horizontal guide or diagram X for a vertical guide.",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "axis",
+          "position"
+        ],
+        "type": "object"
+      },
       "CodeAnalysis": {
         "additionalProperties": false,
         "properties": {
@@ -9893,11 +9935,27 @@
               "buildSpecification": {
                 "$ref": "#/components/schemas/BuildSpecificationDraft"
               },
+              "canvasGuides": {
+                "description": "Saved 2D editor alignment guides with unique IDs. Use an empty array to clear them.",
+                "items": {
+                  "$ref": "#/components/schemas/CanvasGuide"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
               "overview": {
                 "$ref": "#/components/schemas/OverviewConfig"
               },
               "presentation": {
                 "$ref": "#/components/schemas/PresentationDefinition"
+              },
+              "rulerOrigin": {
+                "$ref": "#/components/schemas/RulerOrigin"
+              },
+              "showRulers": {
+                "default": true,
+                "description": "Show the rulers and guides on an editable 2D canvas.",
+                "type": "boolean"
               },
               "spatialView": {
                 "$ref": "#/components/schemas/SpatialView"
@@ -10635,11 +10693,27 @@
               "buildSpecification": {
                 "$ref": "#/components/schemas/BuildSpecificationDraft"
               },
+              "canvasGuides": {
+                "description": "Saved 2D editor alignment guides with unique IDs. Use an empty array to clear them.",
+                "items": {
+                  "$ref": "#/components/schemas/CanvasGuide"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
               "overview": {
                 "$ref": "#/components/schemas/OverviewConfig"
               },
               "presentation": {
                 "$ref": "#/components/schemas/PresentationDefinition"
+              },
+              "rulerOrigin": {
+                "$ref": "#/components/schemas/RulerOrigin"
+              },
+              "showRulers": {
+                "default": true,
+                "description": "Show the rulers and guides on an editable 2D canvas.",
+                "type": "boolean"
               },
               "spatialView": {
                 "$ref": "#/components/schemas/SpatialView"
@@ -10745,11 +10819,27 @@
               "buildSpecification": {
                 "$ref": "#/components/schemas/BuildSpecificationDraft"
               },
+              "canvasGuides": {
+                "description": "Saved 2D editor alignment guides with unique IDs. Use an empty array to clear them.",
+                "items": {
+                  "$ref": "#/components/schemas/CanvasGuide"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
               "overview": {
                 "$ref": "#/components/schemas/OverviewConfig"
               },
               "presentation": {
                 "$ref": "#/components/schemas/PresentationDefinition"
+              },
+              "rulerOrigin": {
+                "$ref": "#/components/schemas/RulerOrigin"
+              },
+              "showRulers": {
+                "default": true,
+                "description": "Show the rulers and guides on an editable 2D canvas.",
+                "type": "boolean"
               },
               "spatialView": {
                 "$ref": "#/components/schemas/SpatialView"
@@ -27130,6 +27220,26 @@
         ],
         "type": "object"
       },
+      "RulerOrigin": {
+        "default": {
+          "x": 0,
+          "y": 0
+        },
+        "description": "Diagram coordinates used as X and Y zero on the rulers. Defaults to (0, 0). Guides use absolute diagram coordinates.",
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ],
+        "type": "object"
+      },
       "SearchResult": {
         "properties": {
           "diagramId": {
@@ -39487,6 +39597,7 @@
         "summary": "Get complete canonical graph"
       },
       "patch": {
+        "description": "Update a diagram at its current version with Read + write access. A supplied settings object replaces the stored settings. Read the current graph and include the other existing keys when changing canvasGuides, showRulers or rulerOrigin.",
         "operationId": "patch_diagrams_diagramId",
         "parameters": [
           {

@@ -777,6 +777,14 @@ const catalog = {
   'editor.canvas.relationshipPath': 'Chemin de relations',
   'editor.canvas.resetExploration': "Réinitialiser l'exploration",
   'editor.canvas.returnTo2d': 'Revenir à la 2D',
+  'editor.canvas.ruler.guideHint': 'Faites glisser vers le canevas pour ajouter un repère.',
+  'editor.canvas.ruler.horizontal': 'Règle horizontale',
+  'editor.canvas.ruler.horizontalGuide': 'Repère horizontal à la position {position}',
+  'editor.canvas.ruler.origin': 'Origine des règles',
+  'editor.canvas.ruler.originHint':
+    'Faites glisser pour déplacer l’origine des règles. Double-cliquez pour la réinitialiser.',
+  'editor.canvas.ruler.vertical': 'Règle verticale',
+  'editor.canvas.ruler.verticalGuide': 'Repère vertical à la position {position}',
   'editor.canvas.startWithACentralIdeaThenBranchOut':
     'Commencez par une idée centrale, puis développez ses branches.',
   'editor.canvas.tools.canvas': 'Canevas',
@@ -784,6 +792,7 @@ const catalog = {
   'editor.canvas.tools.centerSelection': 'Centrer la sélection',
   'editor.canvas.tools.drawOnDiagram': 'Dessiner sur le diagramme',
   'editor.canvas.tools.grid': 'Grille',
+  'editor.canvas.tools.rulers': 'Règles et repères',
   'editor.canvas.tools.snapToGrid': 'Aligner sur la grille',
   'editor.canvas.tools.toggleGrid': 'Afficher/masquer la grille',
   'editor.canvas.tools.toggleMinimap': 'Afficher/masquer la mini-carte',

@@ -44,6 +44,8 @@ import {
 import { canUseFlowchartSymbols } from '../flowchart/availability';
 import { NodeBackgroundField } from './NodeBackgroundField';
 export interface PropertiesProps {
+  backgroundFocusNodeId?: string;
+  onBackgroundFocused?: () => void;
   editCsv?: (datasetId?: string) => void;
   focusCsv?: (path: CsvPathEntry[], datasetId?: string) => void;
   pageCsv?: (direction: 'next' | 'previous', datasetId?: string) => void;
@@ -67,6 +69,8 @@ function PropertyPanel({
   editCsv,
   focusCsv,
   pageCsv,
+  backgroundFocusNodeId,
+  onBackgroundFocused,
   onOpenAnalysis,
 }: PropertiesProps & { onOpenAnalysis: () => void }) {
   const { t, plural } = useI18n();
@@ -196,7 +200,11 @@ function PropertyPanel({
           {(canUseFlowchartSymbols(graph.diagram) || !!node.notation) && (
             <LazyNotationNodeProperties node={node} graph={graph} update={update} />
           )}
-          <NodeBackgroundField node={node} update={update} />
+          <NodeBackgroundField
+            node={node}
+            update={update}
+            onFocusRequested={backgroundFocusNodeId === node.id ? onBackgroundFocused : undefined}
+          />
           <div className="property-section">{t('editor.properties.responsibility')}</div>
           <Field title={t('editor.properties.owner')}>
             <select

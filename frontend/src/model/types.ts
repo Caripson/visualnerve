@@ -11,6 +11,7 @@ import type { CollaborationDocument } from '../collaboration/model/types';
 import type { AnalyticsExtension } from '../analytics/types';
 import type { IBMSymbolId } from '../flowchart/ibm-symbols';
 import type { NodeNotation, EdgeNotation, NotationProfile } from '../notation/types';
+import type { CanvasGuide, RulerOrigin } from './canvas-guides';
 export type { DrawingLayer, DrawingStroke } from '../drawing/types';
 
 export const diagramTypes = [
@@ -71,6 +72,9 @@ export interface Diagram extends Base {
     viewport?: { x: number; y: number; zoom: number };
     grid?: boolean;
     snap?: boolean;
+    showRulers?: boolean;
+    canvasGuides?: CanvasGuide[];
+    rulerOrigin?: RulerOrigin;
     timelineScale?: TimelineScale;
     csvAnalysis?: CsvAnalysis;
     csvSourceAnalyses?: Record<string, CsvAnalysis>;

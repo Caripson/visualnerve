@@ -12,8 +12,10 @@
 .react-flow__panel.drawing-panel {
   z-index: 61;
   max-width: calc(100% - 24px);
+  pointer-events: none;
 }
 .drawing-tools {
+  pointer-events: auto;
   display: flex;
   flex-wrap: wrap;
   align-items: center;

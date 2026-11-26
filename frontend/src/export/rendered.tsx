@@ -72,6 +72,7 @@ const filter = (node: HTMLElement) =>
   !node.classList?.contains('react-flow__panel') &&
   !node.classList?.contains('react-flow__resize-control') &&
   !node.classList?.contains('topic-branch-controls') &&
+  !node.classList?.contains('canvas-ruler-layer') &&
   !node.classList?.contains('drawing-surface') &&
   !node.classList?.contains('drawing-draft');
 function canvasColor(graph: Graph) {

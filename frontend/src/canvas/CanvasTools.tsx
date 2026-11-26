@@ -1,5 +1,5 @@
 import { useI18n } from '../i18n';
-import { Crosshair, Grid3X3, Magnet, Map, Pencil, Settings2 } from 'lucide-react';
+import { Crosshair, Grid3X3, Magnet, Map, Pencil, Ruler, Settings2 } from 'lucide-react';
 import { useReactFlow } from '@xyflow/react';
 import type { Graph } from '../model/types';
 import { useEditor } from '../state/editor';
@@ -15,12 +15,16 @@ export function CanvasTools({
   minimap,
   setMinimap,
   toggle,
+  rulersAvailable,
+  toggleRulers,
 }: {
   graph: Graph;
   overview: boolean;
   minimap: boolean;
   setMinimap: (value: boolean) => void;
   toggle: (key: 'grid' | 'snap') => void;
+  rulersAvailable: boolean;
+  toggleRulers: () => void;
 }) {
   const { t } = useI18n();
   const compact = useCompactLayout();
@@ -49,6 +53,19 @@ export function CanvasTools({
         <Magnet size={16} />
         {compact && <span>{t('editor.canvas.tools.snapToGrid')}</span>}
       </button>
+      {rulersAvailable && (
+        <button
+          className={graph.diagram.settings.showRulers !== false ? 'active' : ''}
+          title={t('editor.canvas.tools.rulers')}
+          aria-label={t('editor.canvas.tools.rulers')}
+          aria-keyshortcuts="Control+R Meta+R"
+          aria-pressed={graph.diagram.settings.showRulers !== false}
+          onClick={toggleRulers}
+        >
+          <Ruler size={16} />
+          {compact && <span>{t('editor.canvas.tools.rulers')}</span>}
+        </button>
+      )}
       {!compact && (
         <button
           className={minimap ? 'active' : ''}
@@ -80,8 +97,9 @@ export function CanvasTools({
     <div className="canvas-toggles">
       <button
         className={drawingTool !== 'none' ? 'active' : ''}
-        title={t('editor.canvas.tools.drawOnDiagram')}
+        title={`${t('editor.canvas.tools.drawOnDiagram')} (B)`}
         aria-label={t('editor.canvas.tools.drawOnDiagram')}
+        aria-keyshortcuts="B"
         aria-pressed={drawingTool !== 'none'}
         disabled={overview}
         onClick={() => {

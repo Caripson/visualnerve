@@ -102,6 +102,7 @@ func main() {
 	addFlowchartSchemas(schemas)
 	addNotationSchemas(schemas)
 	addNodeAppearanceSchemas(schemas)
+	addCanvasRulerSchemas(schemas)
 	schemas["ImportLimitSettingInput"] = importLimitSettingSchema()
 	schemas["ProjectFileLimitSettingInput"] = projectFileLimitSettingSchema()
 	schemas["ProjectFileLimitSettingValue"] = projectFileLimitValueSchema()
@@ -116,7 +117,19 @@ func main() {
 			p["collaboration"] = ref("CollaborationDocument")
 			p["analytics"] = ref("AnalyticsExtension")
 			p["metadata"].(object)["properties"] = object{"codeAnalysis": ref("CodeAnalysis")}
-			p["settings"].(object)["properties"] = object{"spatialView": ref("SpatialView"), "presentation": ref("PresentationDefinition"), "storyboard": ref("StoryboardDefinition"), "overview": ref("OverviewConfig"), "buildSpecification": ref("BuildSpecificationDraft")}
+			p["settings"].(object)["properties"] = object{
+				"spatialView":        ref("SpatialView"),
+				"presentation":       ref("PresentationDefinition"),
+				"storyboard":         ref("StoryboardDefinition"),
+				"overview":           ref("OverviewConfig"),
+				"buildSpecification": ref("BuildSpecificationDraft"),
+				"canvasGuides": object{
+					"type": "array", "items": ref("CanvasGuide"), "maxItems": 200,
+					"description": "Saved 2D editor alignment guides with unique IDs. Use an empty array to clear them.",
+				},
+				"showRulers":  object{"type": "boolean", "default": true, "description": "Show the rulers and guides on an editable 2D canvas."},
+				"rulerOrigin": ref("RulerOrigin"),
+			}
 			p["type"].(object)["enum"] = model.DiagramTypes
 			s["required"] = []string{"name", "type"}
 		}
@@ -323,6 +336,7 @@ func main() {
 	add("PUT", "/settings/project-source-file-limit", "Set this browser's ZIP source-file limit from 500 to 10000; write access required", "ProjectFileLimitSettingInput", "", "200")
 	add("GET", "/diagrams/{diagramId}", "Get complete canonical graph", "", "Graph", "200")
 	add("PATCH", "/diagrams/{diagramId}", "Update diagram using its version", "DiagramPatch", "Diagram", "200")
+	paths["/diagrams/{diagramId}"].(object)["patch"].(object)["description"] = "Update a diagram at its current version with Read + write access. A supplied settings object replaces the stored settings. Read the current graph and include the other existing keys when changing canvasGuides, showRulers or rulerOrigin."
 	add("DELETE", "/diagrams/{diagramId}", "Delete diagram and graph; retain owners", "", "", "204")
 	add("PUT", "/diagrams/{diagramId}/graph", "Replace graph transactionally at baseVersion", "Replacement", "Graph", "200")
 	add("POST", "/diagrams/{diagramId}/bulk", "Populate or upsert nodes, edges and owners atomically", "Bulk", "Graph", "200")

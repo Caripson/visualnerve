@@ -23,6 +23,16 @@ The minimap is pannable and zoomable. Grid and magnet controls toggle canvas dot
 
 On a touch screen, two fingers navigate the 2D view even when they start over an object or its scrollable details. The gesture zooms around the space between your fingers and does not move the object. Lift both fingers before dragging an object or scrolling its details with one finger again.
 
+### Use rulers and guides
+
+Editable 2D diagrams show rulers fixed along the top and left of the canvas by default. Their measurements follow the diagram as you pan and zoom.
+
+Drag from the top ruler to place a horizontal guide, or from the left ruler to place a vertical guide. Focus either ruler and press **Enter** to place a guide halfway across the view. Drag an existing guide or use the arrow keys while it has focus to move it. Drag it back to its ruler, or focus it and press **Delete** or **Backspace**, to remove it.
+
+Drag the top-left corner to set the rulers’ X and Y zero at a point on the canvas. Guides use diagram coordinates independently of that zero. Double-click the corner or focus it and press **Enter** to reset the origin.
+
+Use **Rulers and guides** in the canvas tools or press **Ctrl+R** or **Cmd+R** with the 2D canvas active. The diagram saves guide positions and the origin for future editing. Visual exports omit rulers and guides.
+
 ## Create and describe an object
 
 To continue from an existing object, select it and choose **Add next** beside the card. Pick **Process**, **Decision**, **End** or **Note**. The new object is positioned nearby and connected automatically; Undo removes the object and its connection together. Timeline diagrams offer **Timeline item**. Mind maps keep their dedicated **Add subtopic** action.
@@ -163,6 +173,10 @@ These shortcuts apply when the canvas is active. Focus in a text field, dialog, 
 | Nudge selected objects | Arrow keys, 10 px; Shift+Arrow, 50 px |
 | Pan | Space+drag |
 | Mind map child / sibling | Tab / Enter |
+| Pen / eraser / select and move in 2D | B / E / V |
+| Edit a selected object's title or add and name a note when no object is selected | T |
+| Focus the background color control for one selected object | G |
+| Show or hide rulers and guides in 2D | Ctrl/Cmd+R |
 | Rename selected object | F2; double-click or double-tap its title in 2D, or its face in 3D |
 | Rename diagram with no selected object | F2, or click the document title |
 | Leave drawing / cancel a gesture | Escape |

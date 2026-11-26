@@ -770,6 +770,14 @@ const catalog = {
   'editor.canvas.relationshipPath': 'Relasjonssti',
   'editor.canvas.resetExploration': 'Nullstill utforsking',
   'editor.canvas.returnTo2d': 'Tilbake til 2D',
+  'editor.canvas.ruler.guideHint': 'Dra ut på lerretet for å legge til en hjelpelinje.',
+  'editor.canvas.ruler.horizontal': 'Vannrett linjal',
+  'editor.canvas.ruler.horizontalGuide': 'Vannrett hjelpelinje ved {position}',
+  'editor.canvas.ruler.origin': 'Linjalens nullpunkt',
+  'editor.canvas.ruler.originHint':
+    'Dra for å flytte linjalens nullpunkt. Dobbeltklikk for å tilbakestille det.',
+  'editor.canvas.ruler.vertical': 'Loddrett linjal',
+  'editor.canvas.ruler.verticalGuide': 'Loddrett hjelpelinje ved {position}',
   'editor.canvas.startWithACentralIdeaThenBranchOut':
     'Start med en sentral idé, og lag deretter grener.',
   'editor.canvas.tools.canvas': 'Lerret',
@@ -777,6 +785,7 @@ const catalog = {
   'editor.canvas.tools.centerSelection': 'Sentrer utvalget',
   'editor.canvas.tools.drawOnDiagram': 'Tegn på diagrammet',
   'editor.canvas.tools.grid': 'Rutenett',
+  'editor.canvas.tools.rulers': 'Linjaler og hjelpelinjer',
   'editor.canvas.tools.snapToGrid': 'Fest til rutenett',
   'editor.canvas.tools.toggleGrid': 'Slå rutenett av/på',
   'editor.canvas.tools.toggleMinimap': 'Slå minikart av/på',

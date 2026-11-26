@@ -776,6 +776,14 @@ const catalog = {
   'editor.canvas.relationshipPath': 'Beziehungspfad',
   'editor.canvas.resetExploration': 'Untersuchung zurücksetzen',
   'editor.canvas.returnTo2d': 'Zurück zu 2D',
+  'editor.canvas.ruler.guideHint': 'Auf die Zeichenfläche ziehen, um eine Hilfslinie hinzuzufügen.',
+  'editor.canvas.ruler.horizontal': 'Horizontales Lineal',
+  'editor.canvas.ruler.horizontalGuide': 'Horizontale Hilfslinie bei {position}',
+  'editor.canvas.ruler.origin': 'Nullpunkt der Lineale',
+  'editor.canvas.ruler.originHint':
+    'Zum Verschieben des Nullpunkts ziehen. Zum Zurücksetzen doppelklicken.',
+  'editor.canvas.ruler.vertical': 'Vertikales Lineal',
+  'editor.canvas.ruler.verticalGuide': 'Vertikale Hilfslinie bei {position}',
   'editor.canvas.startWithACentralIdeaThenBranchOut':
     'Beginnen Sie mit einer zentralen Idee und verzweigen Sie sie.',
   'editor.canvas.tools.canvas': 'Zeichenfläche',
@@ -783,6 +791,7 @@ const catalog = {
   'editor.canvas.tools.centerSelection': 'Auswahl zentrieren',
   'editor.canvas.tools.drawOnDiagram': 'Auf dem Diagramm zeichnen',
   'editor.canvas.tools.grid': 'Raster',
+  'editor.canvas.tools.rulers': 'Lineale und Hilfslinien',
   'editor.canvas.tools.snapToGrid': 'Am Raster ausrichten',
   'editor.canvas.tools.toggleGrid': 'Raster ein-/ausblenden',
   'editor.canvas.tools.toggleMinimap': 'Minikarte ein-/ausblenden',

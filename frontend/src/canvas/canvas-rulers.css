@@ -1,0 +1,185 @@
+.canvas-ruler-layer {
+  --guide-color: light-dark(#00859d, #61cee5);
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  user-select: none;
+}
+.canvas-ruler-layer button {
+  position: absolute;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  pointer-events: auto;
+  touch-action: none;
+}
+.canvas-ruler-layer .canvas-ruler,
+.canvas-ruler-layer .canvas-ruler-corner {
+  z-index: 1;
+  overflow: hidden;
+  background: var(--surface-alt);
+  color: var(--muted);
+  box-shadow: inset -1px -1px var(--border);
+}
+.canvas-ruler-layer .canvas-ruler[data-axis='horizontal'] {
+  inset: 0 0 auto;
+  height: var(--canvas-ruler-size);
+  cursor: ns-resize;
+}
+.canvas-ruler-layer .canvas-ruler[data-axis='vertical'] {
+  inset: 0 auto 0 0;
+  width: var(--canvas-ruler-size);
+  cursor: ew-resize;
+}
+.canvas-ruler-layer .canvas-ruler-corner {
+  inset: 0 auto auto 0;
+  z-index: 2;
+  width: var(--canvas-ruler-size);
+  height: var(--canvas-ruler-size);
+  cursor: move;
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1;
+}
+.canvas-ruler-layer .canvas-ruler-corner:hover {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+.canvas-ruler-layer .canvas-ruler:focus-visible,
+.canvas-ruler-layer .canvas-ruler-corner:focus-visible {
+  outline-offset: -3px;
+}
+.canvas-ruler-marks,
+.canvas-ruler-tick,
+.canvas-ruler-tick > span {
+  position: absolute;
+  pointer-events: none;
+}
+.canvas-ruler-marks {
+  inset: 0;
+}
+.canvas-ruler-tick {
+  background: color-mix(in srgb, currentColor 46%, transparent);
+  font-size: 10px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.canvas-ruler-tick.major {
+  background: currentColor;
+}
+.canvas-ruler[data-axis='horizontal'] .canvas-ruler-tick {
+  bottom: 1px;
+  width: 1px;
+  height: 4px;
+}
+.canvas-ruler[data-axis='horizontal'] .canvas-ruler-tick.major {
+  height: 8px;
+}
+.canvas-ruler[data-axis='horizontal'] .canvas-ruler-tick > span {
+  bottom: 10px;
+  left: 3px;
+}
+.canvas-ruler[data-axis='vertical'] .canvas-ruler-tick {
+  right: 1px;
+  width: 4px;
+  height: 1px;
+}
+.canvas-ruler[data-axis='vertical'] .canvas-ruler-tick.major {
+  width: 8px;
+}
+.canvas-ruler[data-axis='vertical'] .canvas-ruler-tick > span {
+  top: 3px;
+  right: 10px;
+  writing-mode: vertical-lr;
+}
+.canvas-guide-area {
+  position: absolute;
+  inset: var(--canvas-ruler-size) 0 0 var(--canvas-ruler-size);
+  overflow: hidden;
+}
+.canvas-ruler-layer .canvas-guide {
+  background: transparent;
+}
+.canvas-ruler-layer .canvas-guide:disabled {
+  pointer-events: none;
+  opacity: 1;
+}
+.canvas-guide::before,
+.canvas-guide-preview {
+  position: absolute;
+  background: var(--guide-color);
+  pointer-events: none;
+}
+.canvas-guide::before {
+  content: '';
+  opacity: 0.72;
+}
+.canvas-guide[data-axis='horizontal'] {
+  left: 0;
+  width: 100%;
+  height: 9px;
+  transform: translateY(-50%);
+  cursor: ns-resize;
+}
+.canvas-guide[data-axis='horizontal']::before {
+  inset: 4px 0;
+}
+.canvas-guide[data-axis='vertical'] {
+  top: 0;
+  height: 100%;
+  width: 9px;
+  transform: translateX(-50%);
+  cursor: ew-resize;
+}
+.canvas-guide[data-axis='vertical']::before {
+  inset: 0 4px;
+}
+@media (pointer: coarse) {
+  .canvas-guide[data-axis='horizontal'] {
+    height: 17px;
+  }
+  .canvas-guide[data-axis='horizontal']::before {
+    inset: 8px 0;
+  }
+  .canvas-guide[data-axis='vertical'] {
+    width: 17px;
+  }
+  .canvas-guide[data-axis='vertical']::before {
+    inset: 0 8px;
+  }
+}
+.canvas-guide:hover::before,
+.canvas-guide:focus-visible::before {
+  opacity: 1;
+}
+.canvas-guide:focus-visible {
+  outline: 1px dashed var(--guide-color);
+  outline-offset: -1px;
+}
+.canvas-guide.is-dragged {
+  opacity: 0;
+}
+.canvas-guide-preview[data-axis='horizontal'] {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+.canvas-guide-preview[data-axis='vertical'] {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+.canvas-ruled .timeline-ruler {
+  top: var(--canvas-ruler-size);
+  clip-path: inset(0 0 0 var(--canvas-ruler-size));
+}
+.canvas-ruled .react-flow__panel.left {
+  left: var(--canvas-ruler-size);
+}
+.canvas-ruled .react-flow__panel.top {
+  top: var(--canvas-ruler-size);
+}

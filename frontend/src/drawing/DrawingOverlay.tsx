@@ -227,7 +227,8 @@ export function DrawingOverlay() {
           >
             <button
               aria-label={t('editor.drawing.pen')}
-              title={t('editor.drawing.pen')}
+              title={`${t('editor.drawing.pen')} (B)`}
+              aria-keyshortcuts="B"
               aria-pressed={tool === 'pen'}
               className={tool === 'pen' ? 'active' : ''}
               onClick={() => useEditor.getState().setDrawingTool('pen')}
@@ -236,7 +237,8 @@ export function DrawingOverlay() {
             </button>
             <button
               aria-label={t('editor.drawing.eraser')}
-              title={t('editor.drawing.eraseWholeStrokes')}
+              title={`${t('editor.drawing.eraseWholeStrokes')} (E)`}
+              aria-keyshortcuts="E"
               aria-pressed={tool === 'eraser'}
               className={tool === 'eraser' ? 'active' : ''}
               onClick={() => useEditor.getState().setDrawingTool('eraser')}
@@ -287,7 +289,8 @@ export function DrawingOverlay() {
             </button>
             <button
               aria-label={t('editor.drawing.doneDrawing')}
-              title={t('editor.drawing.doneDrawingEscape')}
+              title={`${t('editor.drawing.doneDrawingEscape')} · V`}
+              aria-keyshortcuts="Escape V"
               onClick={() => useEditor.getState().setDrawingTool('none')}
             >
               <X size={17} />

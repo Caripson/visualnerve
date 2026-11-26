@@ -131,6 +131,10 @@ Creation returns Diagram; read its graph to obtain actual UUIDs and versions. `t
 
 The catalog ID is an appearance; keep the appropriate existing `nodeType`, for example `process`. Omission in partial updates preserves it. `flowchartSymbol:null` clears it on PATCH or existing external-ID bulk upserts. Complete/new records reject null, empty and unknown values with atomic 422. Exports, imports, backups and saved history preserve the optional field. IBM Parallel Mode does not configure Process Simulator fork/join execution.
 
+## Canvas rulers and guides
+
+Read the current `diagram.version` and `diagram.settings` from `GET /diagrams/{diagramId}`. Use versioned `PATCH /diagrams/{diagramId}` with Read + write access to save the complete settings object, carrying forward keys you want to retain. `canvasGuides` supports up to 200 guides with a unique UUID `id`, an `axis` of `horizontal` or `vertical`, and a finite numeric `position` in diagram coordinates. `showRulers` defaults to true and `rulerOrigin` defaults to `{"x":0,"y":0}`. Discover the schemas in the GET and PATCH endpoint documents.
+
 ## Node background colors
 
 All ordinary and IBM nodes accept optional `backgroundColor`, exactly six-digit `#RRGGBB` with either letter case. It sets the fill separately from the existing `color` accent, title, icon metadata and `nodeType`. Omission keeps theme fill. Read the current version, then update with Read + write:

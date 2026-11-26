@@ -230,6 +230,14 @@ Native graph reads and writes carry manually chosen 2D connection points in `edg
 
 Creates return 201 and an entity (import returns Graph). Bulk/replacement return 200 and Graph. Deletes normally return 204; SVG job cancellation returns 200 with its cancelled status. Errors retain `{ "error": "message" }` and may add structured `code`/`issues`: 400 malformed JSON, 401 token missing/wrong, 403 origin/host rejected, storage not accepted or read-only mutation denied, 404 missing entity, 423 locked workspace, 409 stale version or duplicate identity, 413 local history capacity/quota, 422 validation, 428 missing update version, 503 no connected browser and 504 browser timeout. No partially committed graph remains after validation fails. Requests are limited to 32 MiB. All integration requests with a configured VISUAL_NERVE_BRIDGE_TOKEN need `Authorization: Bearer TOKEN`.
 
+## Canvas rulers and guides
+
+`GET /diagrams/{id}` returns the saved ruler and guide values in `diagram.settings` when present. A diagram can store up to 200 `canvasGuides` records with a unique UUID `id`, an `axis` of `horizontal` or `vertical`, and a finite numeric `position`. Horizontal guides store diagram Y and vertical guides store diagram X. Optional `rulerOrigin` stores the ruler zero as finite diagram X and Y coordinates, defaulting to `{"x":0,"y":0}`. Optional `showRulers` defaults to `true`.
+
+To edit these values, send `PATCH /diagrams/{id}` with Read + write access, the current diagram `version` and `settings`. The supplied `settings` object replaces the previous one. Start with the object from GET, keep its other settings, and replace the ruler and guide values you intend to change. Supply `canvasGuides: []` to clear all guides and `rulerOrigin: {"x":0,"y":0}` to reset the zero.
+
+Native JSON and workspace backups preserve these diagram settings. Rulers and guides are editing aids local to the workspace in live collaboration. Visual exports omit them.
+
 ## Node background colors
 
 All ordinary and IBM nodes accept optional `backgroundColor`, an exact six-digit hex string such as `"#aB12Ef"`. Letter case is preserved. This fill is independent of the existing `color` accent, title, icon metadata, `nodeType` and `flowchartSymbol`; omitting it uses the current theme fill.

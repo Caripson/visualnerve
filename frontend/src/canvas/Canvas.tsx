@@ -33,6 +33,7 @@ import {
 } from '@xyflow/react';
 import { Maximize } from 'lucide-react';
 import { CanvasTools } from './CanvasTools';
+import { CanvasRulers, canvasRulerSize } from './CanvasRulers';
 import { COMPACT_LAYOUT_QUERY } from '../hooks/useCompactLayout';
 import { useEditor } from '../state/editor';
 import { descendantIds, type Graph, type GraphNode } from '../model/types';
@@ -114,6 +115,19 @@ const pendingExploration = {
   outsideViewIds: [],
   outsideViewEdgeIds: [],
 };
+
+function toggleRulers() {
+  useEditor.getState().command('Toggle rulers', (graph) => ({
+    ...graph,
+    diagram: {
+      ...graph.diagram,
+      settings: {
+        ...graph.diagram.settings,
+        showRulers: graph.diagram.settings.showRulers === false,
+      },
+    },
+  }));
+}
 
 export function Canvas() {
   const { t, plural } = useI18n();
@@ -391,6 +405,13 @@ export function Canvas() {
     [renderGraph, baseProjected, preview, zoomLevel],
   );
   const projected = overview ?? baseProjected;
+  const rulersAvailable =
+    !spatial &&
+    !overview?.active &&
+    !processProjection?.active &&
+    !presentationOpen &&
+    !exploration;
+  const showRulers = rulersAvailable && graph?.diagram.settings.showRulers !== false;
   const particleVisibility = useMemo(
     () => ({
       nodeIds: new Set(projected.nodes.filter((node) => !node.hidden).map((node) => node.id)),
@@ -760,15 +781,24 @@ export function Canvas() {
   }, []);
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
       if (
-        (e.target as HTMLElement)?.closest(
+        target?.closest(
           'input,textarea,select,[contenteditable="true"],[role="dialog"],[data-node-scroll]',
         )
       )
         return;
       const s = useEditor.getState();
       if (!s.graph || getSpatialView(s.graph).mode === '3d') return;
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'r') {
+        if (!rulersAvailable || document.querySelector('[role="dialog"][aria-modal="true"]'))
+          return;
+        e.preventDefault();
+        if (!e.repeat) toggleRulers();
+        return;
+      }
       if (s.drawingTool !== 'none') return;
+      if (e.key.startsWith('Arrow') && target?.closest('.canvas-guide')) return;
       if (e.key.startsWith('Arrow') || e.key.toLowerCase() === 'f') interruptPresentation.current();
       if (e.key.startsWith('Arrow') && s.selectedNodes.length && !e.ctrlKey && !e.metaKey) {
         if (overview?.active) return;
@@ -813,6 +843,7 @@ export function Canvas() {
     overview?.active,
     processProjection?.active,
     fitProcessNodes,
+    rulersAvailable,
     touch,
     renderGraph?.nodes,
   ]);
@@ -913,8 +944,10 @@ export function Canvas() {
   return (
     <div
       ref={canvasShell}
-      className={`canvas-shell ${graph.diagram.type === 'mindmap' ? 'mindmap-canvas' : ''} ${showProcessNavigation ? 'simulation-process-canvas' : ''}`}
+      className={`canvas-shell ${graph.diagram.type === 'mindmap' ? 'mindmap-canvas' : ''} ${showProcessNavigation ? 'simulation-process-canvas' : ''} ${showRulers ? 'canvas-ruled' : ''}`}
+      style={{ ['--canvas-ruler-size' as string]: `${canvasRulerSize}px` }}
       data-testid="canvas"
+      data-canvas-editing-shortcuts={rulersAvailable ? 'true' : undefined}
       onPointerDownCapture={(event) => {
         interruptPresentation.current();
         if (isCanvasNavigationGesture(event.target)) focusNavigation.cancel();
@@ -1158,8 +1191,17 @@ export function Canvas() {
             minimap={minimap}
             setMinimap={setMinimap}
             toggle={toggle}
+            rulersAvailable={rulersAvailable}
+            toggleRulers={toggleRulers}
           />
         </Panel>
+        {showRulers && (
+          <CanvasRulers
+            key={graph.diagram.id}
+            diagram={graph.diagram}
+            drawing={drawingTool !== 'none'}
+          />
+        )}
       </ReactFlow>
       {graph.diagram.type === 'timeline' && !overview?.active && <TimelineRuler graph={graph} />}
       {graph.nodes.length === 0 &&

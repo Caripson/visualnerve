@@ -36,6 +36,8 @@ import {
 } from './data/model';
 import { getExploration } from './analysis/types';
 import { getSpatialView } from './spatial/types';
+import { collaborationPermissions } from './collaboration/access';
+import { getDrawingLayer } from './drawing/types';
 import { reanalyzeDataModelAsync } from './data/modelClient';
 import { UnderstandingDialogs } from './components/UnderstandingDialogs';
 import { useCompactLayout } from './hooks/useCompactLayout';
@@ -163,6 +165,8 @@ export function App() {
   const [codeFiles, setCodeFiles] = useState<File[]>();
   const [diagramFile, setDiagramFile] = useState<File>();
   const [sourceFiles, setSourceFiles] = useState<File[]>();
+  const [backgroundFocusNodeId, setBackgroundFocusNodeId] = useState<string>();
+  const finishBackgroundFocus = useCallback(() => setBackgroundFocusNodeId(undefined), []);
   const pendingSourceFiles = useRef<File[]>([]);
   const [csvDraft, setCsvDraft] = useState<{
     dataset: CsvDataset;
@@ -561,8 +565,9 @@ export function App() {
     const listener = (e: KeyboardEvent) => {
       const modifier = e.ctrlKey || e.metaKey;
       const key = e.key.toLowerCase();
-      const editing = (e.target as HTMLElement)?.closest(
-        'input,textarea,select,[contenteditable="true"],[data-node-scroll]',
+      const target = e.target instanceof Element ? e.target : null;
+      const editing = target?.closest(
+        'input,textarea,select,[contenteditable]:not([contenteditable="false"]),[data-node-scroll]',
       );
       if (
         dialog ||
@@ -585,6 +590,53 @@ export function App() {
       }
       if (editing) return;
       const s = useEditor.getState();
+      const canvasShortcut =
+        !modifier &&
+        !e.altKey &&
+        !e.shiftKey &&
+        !e.repeat &&
+        !e.isComposing &&
+        !e.defaultPrevented &&
+        ['b', 'e', 'g', 't', 'v'].includes(key) &&
+        !target?.closest('.canvas-ruler-layer') &&
+        (target?.closest('[data-canvas-editing-shortcuts="true"]') ||
+          (target === document.body &&
+            document.querySelector('[data-canvas-editing-shortcuts="true"]')));
+      if (canvasShortcut && s.graph) {
+        if (key === 'v') {
+          e.preventDefault();
+          s.setDrawingTool('none');
+          return;
+        }
+        try {
+          collaborationPermissions.assertWrite(s.graph.diagram.id);
+        } catch {
+          return;
+        }
+        if (key === 'b' || key === 'e') {
+          e.preventDefault();
+          if (getDrawingLayer(s.graph.diagram.settings.drawing)?.visible === false)
+            s.toggleDrawingVisibility();
+          s.select([]);
+          useEditor.setState({ mobilePanel: null });
+          s.setDrawingTool(key === 'b' ? 'pen' : 'eraser');
+        } else if (key === 't' && s.selectedNodes.length <= 1) {
+          e.preventDefault();
+          s.setDrawingTool('none');
+          const id =
+            s.selectedNodes[0] ??
+            s.addNode({
+              nodeType: 'note',
+              title: t('editor.nodes.typeLabel.note'),
+            });
+          if (id) s.beginEditing(id);
+        } else if (key === 'g' && s.selectedNodes.length === 1) {
+          e.preventDefault();
+          setBackgroundFocusNodeId(s.selectedNodes[0]);
+          if (compact) useEditor.setState({ mobilePanel: 'details' });
+        }
+        return;
+      }
       if (modifier && key === 'z') {
         e.preventDefault();
         e.shiftKey ? s.redo() : s.undo();
@@ -638,6 +690,7 @@ export function App() {
         e.preventDefault();
         e.shiftKey ? s.ungroup() : s.group();
       } else if (key === 'delete' || key === 'backspace') {
+        if (target?.closest('.canvas-guide')) return;
         e.preventDefault();
         s.remove(e.shiftKey);
       } else if (key === 'f2' && s.graph && s.selectedNodes.length === 1) {
@@ -646,7 +699,7 @@ export function App() {
       } else if (
         s.graph?.diagram.type === 'mindmap' &&
         s.selectedNodes.length &&
-        !(e.target as HTMLElement)?.closest('button,a,summary') &&
+        !target?.closest('button,a,summary') &&
         (key === 'tab' || key === 'enter')
       ) {
         e.preventDefault();
@@ -658,7 +711,7 @@ export function App() {
     };
     window.addEventListener('keydown', listener, true);
     return () => window.removeEventListener('keydown', listener, true);
-  }, [dialog, backup, csvDraft, importing, open, withAppOperation]);
+  }, [dialog, backup, csvDraft, importing, open, withAppOperation, compact, t]);
   if (!acknowledged)
     return (
       <div className="application storage-gate">
@@ -880,6 +933,8 @@ export function App() {
           </button>
           <Properties
             active={!compact || mobilePanel === 'details'}
+            backgroundFocusNodeId={backgroundFocusNodeId}
+            onBackgroundFocused={finishBackgroundFocus}
             editCsv={(datasetId) => {
               const dataset =
                 graph &&

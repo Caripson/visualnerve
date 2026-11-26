@@ -23,6 +23,7 @@ import { validateOverviewConfig } from '../overview/types';
 import { validateBuildSpecification } from '../export/build-specification';
 import { validateSimulationGraph } from '../simulation/document';
 import { getIbmSymbol } from '../flowchart/ibm-symbols';
+import { canvasGuideLimit, isCanvasGuide, isRulerOrigin } from './canvas-guides';
 import { validateNodeBackgroundColor } from './node-appearance';
 import {
   validateNodeNotation,
@@ -143,6 +144,18 @@ export function validateGraphFields(graph: Graph) {
   validateFields(graph.diagram, 'Diagram', ['description', 'folder'], true);
   requireValue(typeof graph.diagram.favorite === 'boolean', 'Invalid diagram favorite flag.');
   requireValue(object(graph.diagram.settings), 'Invalid diagram settings.');
+  const { canvasGuides, rulerOrigin, showRulers } = graph.diagram.settings;
+  if (canvasGuides !== undefined)
+    requireValue(
+      Array.isArray(canvasGuides) &&
+        canvasGuides.length <= canvasGuideLimit &&
+        canvasGuides.every(isCanvasGuide) &&
+        new Set(canvasGuides.map((guide) => guide.id)).size === canvasGuides.length,
+      'Invalid canvas guides.',
+    );
+  if (rulerOrigin !== undefined) requireValue(isRulerOrigin(rulerOrigin), 'Invalid ruler origin.');
+  if (showRulers !== undefined)
+    requireValue(typeof showRulers === 'boolean', 'Invalid ruler visibility.');
   if (graph.diagram.collaboration !== undefined) validateCollaboration(graph.diagram.collaboration);
   if (graph.diagram.analytics !== undefined) validateAnalytics(graph.diagram.analytics);
   if (graph.diagram.notation !== undefined) validateNotationProfile(graph.diagram.notation);

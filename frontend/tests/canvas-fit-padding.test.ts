@@ -65,6 +65,24 @@ describe('explicit canvas fit around floating tools', () => {
     expect(canvasFitPadding(0.25, host)).toBe(0.25);
   });
 
+  it('fits the diagram inside the visible rulers and floating tools', () => {
+    const { host, canvas } = surface();
+    const top = document.createElement('button');
+    const left = document.createElement('button');
+    top.className = left.className = 'canvas-ruler';
+    top.dataset.axis = 'horizontal';
+    left.dataset.axis = 'vertical';
+    host.append(top, left);
+    vi.spyOn(top, 'getBoundingClientRect').mockReturnValue(new DOMRect(235, 426, 764, 28));
+    vi.spyOn(left, 'getBoundingClientRect').mockReturnValue(new DOMRect(235, 426, 28, 444));
+    const padding = canvasFitPadding(0.05, host);
+    expect(padding).toEqual({ top: '36px', right: 0.05, bottom: '73px', left: '36px' });
+    const bounds = { x: -40, y: -50, width: 920, height: 834 };
+    const fitted = getViewportForBounds(bounds, canvas.width, canvas.height, 0.05, 2, padding);
+    expect(fitted.y + bounds.y * fitted.zoom).toBeGreaterThanOrEqual(35);
+    expect(fitted.x + bounds.x * fitted.zoom).toBeGreaterThanOrEqual(35);
+  });
+
   it('uses the live fitView with the same zoom cap and requested animation for ordinary objects', async () => {
     const { host } = surface();
     const { flow, instance } = flowFixture({ x: 40, y: -50, width: 920, height: 834 });

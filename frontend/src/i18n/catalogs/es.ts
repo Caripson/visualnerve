@@ -772,6 +772,14 @@ const catalog = {
   'editor.canvas.relationshipPath': 'Ruta de relaciones',
   'editor.canvas.resetExploration': 'Restablecer exploración',
   'editor.canvas.returnTo2d': 'Volver a 2D',
+  'editor.canvas.ruler.guideHint': 'Arrastra al lienzo para añadir una guía.',
+  'editor.canvas.ruler.horizontal': 'Regla horizontal',
+  'editor.canvas.ruler.horizontalGuide': 'Guía horizontal en {position}',
+  'editor.canvas.ruler.origin': 'Origen de las reglas',
+  'editor.canvas.ruler.originHint':
+    'Arrastra para mover el origen de las reglas. Haz doble clic para restablecerlo.',
+  'editor.canvas.ruler.vertical': 'Regla vertical',
+  'editor.canvas.ruler.verticalGuide': 'Guía vertical en {position}',
   'editor.canvas.startWithACentralIdeaThenBranchOut':
     'Empieza con una idea central y luego crea ramas.',
   'editor.canvas.tools.canvas': 'Lienzo',
@@ -779,6 +787,7 @@ const catalog = {
   'editor.canvas.tools.centerSelection': 'Centrar selección',
   'editor.canvas.tools.drawOnDiagram': 'Dibujar en el diagrama',
   'editor.canvas.tools.grid': 'Cuadrícula',
+  'editor.canvas.tools.rulers': 'Reglas y guías',
   'editor.canvas.tools.snapToGrid': 'Ajustar a la cuadrícula',
   'editor.canvas.tools.toggleGrid': 'Mostrar/ocultar cuadrícula',
   'editor.canvas.tools.toggleMinimap': 'Mostrar/ocultar minimapa',

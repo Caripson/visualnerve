@@ -765,6 +765,14 @@ const catalog = {
   'editor.canvas.relationshipPath': 'Suhdepolku',
   'editor.canvas.resetExploration': 'Nollaa tutkiminen',
   'editor.canvas.returnTo2d': 'Palaa 2D-näkymään',
+  'editor.canvas.ruler.guideHint': 'Lisää apuviiva vetämällä piirtoalueelle.',
+  'editor.canvas.ruler.horizontal': 'Vaakaviivain',
+  'editor.canvas.ruler.horizontalGuide': 'Vaakasuuntainen apuviiva kohdassa {position}',
+  'editor.canvas.ruler.origin': 'Viivaimen nollapiste',
+  'editor.canvas.ruler.originHint':
+    'Siirrä viivaimen nollapistettä vetämällä. Palauta nollapiste kaksoisnapsauttamalla.',
+  'editor.canvas.ruler.vertical': 'Pystyviivain',
+  'editor.canvas.ruler.verticalGuide': 'Pystysuuntainen apuviiva kohdassa {position}',
   'editor.canvas.startWithACentralIdeaThenBranchOut':
     'Aloita keskeisestä ideasta ja laajenna siitä haaroihin.',
   'editor.canvas.tools.canvas': 'Piirtoalue',
@@ -772,6 +780,7 @@ const catalog = {
   'editor.canvas.tools.centerSelection': 'Keskitä valitut',
   'editor.canvas.tools.drawOnDiagram': 'Piirrä kaavioon',
   'editor.canvas.tools.grid': 'Ruudukko',
+  'editor.canvas.tools.rulers': 'Viivaimet ja apuviivat',
   'editor.canvas.tools.snapToGrid': 'Kohdista ruudukkoon',
   'editor.canvas.tools.toggleGrid': 'Näytä/piilota ruudukko',
   'editor.canvas.tools.toggleMinimap': 'Näytä/piilota pienoiskartta',

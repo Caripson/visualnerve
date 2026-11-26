@@ -19,6 +19,8 @@ Optional `node.backgroundColor` is an exact six-digit hex fill (`#RRGGBB`, eithe
 
 Icons use metadata.visualNerve.icon and preserve other custom keys. Diagram settings hold viewport, viewportDevice, grid, snap, timeline scale and entityOrder. Device-specific initial framing keeps phone maps readable. Entity order preserves branch and exchange order across indexed retrieval.
 
+Optional `diagram.settings.canvasGuides` holds up to 200 `{id, axis, position}` records. IDs are unique UUIDs within the diagram. A `horizontal` guide stores a finite Y coordinate and a `vertical` guide stores a finite X coordinate. Optional `rulerOrigin: {x,y}` sets the rulers' zero in diagram coordinates, with both coordinates defaulting to zero. The optional boolean `showRulers` defaults to true. These settings travel with native JSON and workspace backups. Each workspace retains its own editing aids during live collaboration. Visual exports omit rulers and guides.
+
 ## Typed notation fields
 
 `frontend/src/notation/types.ts` defines the authoritative notation discriminants and bounds. Collection IDs are `hipo`, `dfd-yourdon`, `dfd-gane-sarson`, `uml` and `bpmn`; symbols and connectors use stable IDs within their collection.

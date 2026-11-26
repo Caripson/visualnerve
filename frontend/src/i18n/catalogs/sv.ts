@@ -766,6 +766,14 @@ const catalog = {
   'editor.canvas.relationshipPath': 'Relationsväg',
   'editor.canvas.resetExploration': 'Återställ utforskning',
   'editor.canvas.returnTo2d': 'Tillbaka till 2D',
+  'editor.canvas.ruler.guideHint': 'Dra ut på ritytan för att lägga till en stödlinje.',
+  'editor.canvas.ruler.horizontal': 'Vågrät linjal',
+  'editor.canvas.ruler.horizontalGuide': 'Vågrät stödlinje vid {position}',
+  'editor.canvas.ruler.origin': 'Linjalens nollpunkt',
+  'editor.canvas.ruler.originHint':
+    'Dra för att flytta linjalens nollpunkt. Dubbelklicka för att återställa den.',
+  'editor.canvas.ruler.vertical': 'Lodrät linjal',
+  'editor.canvas.ruler.verticalGuide': 'Lodrät stödlinje vid {position}',
   'editor.canvas.startWithACentralIdeaThenBranchOut':
     'Börja med en central idé och skapa sedan grenar.',
   'editor.canvas.tools.canvas': 'Rityta',
@@ -773,6 +781,7 @@ const catalog = {
   'editor.canvas.tools.centerSelection': 'Centrera markering',
   'editor.canvas.tools.drawOnDiagram': 'Rita på diagrammet',
   'editor.canvas.tools.grid': 'Rutnät',
+  'editor.canvas.tools.rulers': 'Linjaler och stödlinjer',
   'editor.canvas.tools.snapToGrid': 'Fäst mot rutnät',
   'editor.canvas.tools.toggleGrid': 'Visa/dölj rutnät',
   'editor.canvas.tools.toggleMinimap': 'Visa/dölj minikarta',

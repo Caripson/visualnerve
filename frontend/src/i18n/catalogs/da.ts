@@ -766,6 +766,14 @@ const catalog = {
   'editor.canvas.relationshipPath': 'Relationssti',
   'editor.canvas.resetExploration': 'Nulstil udforskning',
   'editor.canvas.returnTo2d': 'Tilbage til 2D',
+  'editor.canvas.ruler.guideHint': 'Træk ud på lærredet for at tilføje en hjælpelinje.',
+  'editor.canvas.ruler.horizontal': 'Vandret lineal',
+  'editor.canvas.ruler.horizontalGuide': 'Vandret hjælpelinje ved {position}',
+  'editor.canvas.ruler.origin': 'Linealens nulpunkt',
+  'editor.canvas.ruler.originHint':
+    'Træk for at flytte linealens nulpunkt. Dobbeltklik for at nulstille det.',
+  'editor.canvas.ruler.vertical': 'Lodret lineal',
+  'editor.canvas.ruler.verticalGuide': 'Lodret hjælpelinje ved {position}',
   'editor.canvas.startWithACentralIdeaThenBranchOut':
     'Start med en central idé, og forgren den derefter.',
   'editor.canvas.tools.canvas': 'Lærred',
@@ -773,6 +781,7 @@ const catalog = {
   'editor.canvas.tools.centerSelection': 'Centrér markering',
   'editor.canvas.tools.drawOnDiagram': 'Tegn på diagram',
   'editor.canvas.tools.grid': 'Gitter',
+  'editor.canvas.tools.rulers': 'Linealer og hjælpelinjer',
   'editor.canvas.tools.snapToGrid': 'Fastgør til gitter',
   'editor.canvas.tools.toggleGrid': 'Slå gitter til/fra',
   'editor.canvas.tools.toggleMinimap': 'Slå minikort til/fra',
