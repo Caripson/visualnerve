@@ -3,6 +3,8 @@ import { type ReactNode } from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ExportDialog } from '../src/components/Dialogs';
+import { DataPrivacy } from '../src/components/DataPrivacySettings';
+import * as backupDownload from '../src/storage/backup';
 import { Workspace } from '../src/storage/workspace';
 import { Repository } from '../src/storage/repository';
 import { EncryptedWorkspaceDatabase } from '../src/storage/encrypted-database';
@@ -16,6 +18,8 @@ import { assertExportActive, checkExportActive, waitForExport } from '../src/exp
 
 const fixture = vi.hoisted(() => ({
   workspace: undefined as unknown as Workspace,
+  backupSession: undefined as VaultSession | undefined,
+  backupCrypto: undefined as VaultCrypto | undefined,
   download: vi.fn(),
   setViewport: vi.fn(),
   toSvg: vi.fn(),
@@ -30,6 +34,18 @@ vi.mock('../src/storage/workspace', async (original) => {
     ...actual,
     get workspace() {
       return fixture.workspace;
+    },
+  };
+});
+vi.mock('../src/storage/runtime', async (original) => {
+  const actual = await original<typeof import('../src/storage/runtime')>();
+  return {
+    ...actual,
+    get vaultSession() {
+      return fixture.backupSession;
+    },
+    get vaultCrypto() {
+      return fixture.backupCrypto;
     },
   };
 });
@@ -149,6 +165,8 @@ beforeEach(async () => {
 });
 afterEach(async () => {
   cleanup();
+  fixture.backupSession = undefined;
+  fixture.backupCrypto = undefined;
   fixture.workspace.stop();
   useEditor.getState().setGraph(null);
   vi.restoreAllMocks();
@@ -166,6 +184,137 @@ afterEach(async () => {
   else Reflect.deleteProperty(document, 'fonts');
 });
 afterAll(() => cipher.destroyKeys(created.keys));
+
+describe('workspace backup cancellation', () => {
+  beforeEach(() => {
+    fixture.backupSession = session;
+    fixture.backupCrypto = cipher;
+  });
+
+  const openBackup = () => {
+    const close = vi.fn(() => mounted.unmount());
+    const mounted = render(<ExportDialog close={close} />);
+    fireEvent.change(screen.getByLabelText('Export target'), { target: { value: 'workspace' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Export all data' }));
+    return { close, mounted };
+  };
+
+  it.each(['Cancel', 'Escape', 'Close dialog', 'unmount'])(
+    'drops a pending backup after %s',
+    async (dismissal) => {
+      const waiting = gate<void>();
+      const actualBackup = fixture.workspace.backup.bind(fixture.workspace);
+      const read = vi
+        .spyOn(fixture.workspace, 'backup')
+        .mockImplementationOnce(async (operation) => {
+          const backup = await actualBackup(operation);
+          await waiting.promise;
+          return backup;
+        });
+      const exportBackup = vi.spyOn(backupDownload, 'exportAllData');
+      const { close, mounted } = openBackup();
+      await waitFor(() => expect(read).toHaveBeenCalledOnce());
+      const result = expect(exportBackup.mock.results[0].value).rejects.toThrow();
+      if (dismissal === 'Escape') fireEvent.keyDown(window, { key: dismissal });
+      else if (dismissal === 'unmount') mounted.unmount();
+      else fireEvent.click(screen.getByRole('button', { name: dismissal }));
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(session.getSnapshot().status).toBe('unlocked');
+      await act(async () => {
+        waiting.resolve();
+        await result;
+      });
+      noDownload();
+      expect(await db.settings.get('last-export')).toBeUndefined();
+      expect(close).toHaveBeenCalledTimes(dismissal === 'unmount' ? 0 : 1);
+    },
+  );
+
+  it('drops a Settings backup that finishes encryption after dismissal', async () => {
+    const waiting = gate<void>();
+    const encrypt = cipher.encryptBackup.bind(cipher);
+    const encryptBackup = vi
+      .spyOn(cipher, 'encryptBackup')
+      .mockImplementationOnce(async (...args) => {
+        const encrypted = await encrypt(...args);
+        await waiting.promise;
+        return encrypted;
+      });
+    const exportBackup = vi.spyOn(backupDownload, 'exportAllData');
+    const mounted = render(<DataPrivacy restore={() => {}} deleted={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Export all data' }));
+    await waitFor(() => expect(encryptBackup).toHaveBeenCalledOnce());
+    const result = expect(exportBackup.mock.results[0].value).rejects.toThrow();
+    mounted.unmount();
+    await act(async () => {
+      waiting.resolve();
+      await result;
+    });
+    noDownload();
+    expect(await db.settings.get('last-export')).toBeUndefined();
+  });
+
+  it('downloads and records a completed backup', async () => {
+    const { close } = openBackup();
+    await waitFor(() => expect(close).toHaveBeenCalledOnce());
+    expect(fixture.download).toHaveBeenCalledOnce();
+    const [filename, content] = fixture.download.mock.calls[0];
+    expect(filename).toMatch(/^visual-nerve-backup-\d{4}-\d{2}-\d{2}\.json$/);
+    expect(JSON.parse(content).format).toBe('visualnerve-backup');
+    expect((await db.settings.get('last-export'))?.value).toEqual(expect.any(String));
+  });
+
+  it('does not close another dialog when the download marker finishes after dismissal', async () => {
+    const waiting = gate<void>();
+    const setPreference = fixture.workspace.setPreference.bind(fixture.workspace);
+    const persist = vi
+      .spyOn(fixture.workspace, 'setPreference')
+      .mockImplementationOnce(async (...args) => {
+        await waiting.promise;
+        return setPreference(...args);
+      });
+    const exportBackup = vi.spyOn(backupDownload, 'exportAllData');
+    const { close } = openBackup();
+    await waitFor(() => expect(persist).toHaveBeenCalledOnce());
+    expect(fixture.download).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    render(<ExportDialog close={close} />);
+    await act(async () => {
+      waiting.resolve();
+      await exportBackup.mock.results[0].value;
+    });
+    expect((await db.settings.get('last-export'))?.value).toEqual(expect.any(String));
+    expect(screen.getByRole('dialog', { name: 'Export diagram' })).toBeVisible();
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it('cannot record a completed download using a later vault unlock', async () => {
+    const waiting = gate<void>();
+    const setPreference = fixture.workspace.setPreference.bind(fixture.workspace);
+    const persist = vi
+      .spyOn(fixture.workspace, 'setPreference')
+      .mockImplementationOnce(async (...args) => {
+        await waiting.promise;
+        return setPreference(...args);
+      });
+    const exportBackup = vi.spyOn(backupDownload, 'exportAllData');
+    const { close, mounted } = openBackup();
+    await waitFor(() => expect(persist).toHaveBeenCalledOnce());
+    expect(fixture.download).toHaveBeenCalledOnce();
+    const result = expect(exportBackup.mock.results[0].value).rejects.toMatchObject({
+      status: 423,
+    });
+    mounted.unmount();
+    await reunlock();
+    await act(async () => {
+      waiting.resolve();
+      await result;
+    });
+    expect(fixture.download).toHaveBeenCalledOnce();
+    expect(await db.settings.get('last-export')).toBeUndefined();
+    expect(close).not.toHaveBeenCalled();
+  });
+});
 
 describe('readable diagram downloads are bound to the original vault session', () => {
   it.each(['viewport', 'fonts'])(

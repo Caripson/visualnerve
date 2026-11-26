@@ -443,6 +443,88 @@ func TestOperationFingerprintAndRetentionLimitsAreBounded(t *testing.T) {
 	handler.mu.Unlock()
 }
 
+func TestSynchronousAnalyticsAndSimulationReadClassification(t *testing.T) {
+	diagram := "/diagrams/" + operationWorkspace
+	for _, path := range []string{
+		"analytics/compare", "analytics/evaluate", "analytics/export", "analytics/export?limit=20",
+		"analytics/import/inspect", "analytics/import/preview", "analytics/indicator", "analytics/measure",
+		"analytics/project", "analytics/query", "analytics/query?offset=2&limit=5", "analytics/validate",
+		"analytics/waterfall", "simulation/compare",
+	} {
+		if !pureReadCommand(diagram+"/"+path, http.MethodPost) {
+			t.Errorf("documented synchronous read uses an operation receipt: %s", path)
+		}
+	}
+	for _, command := range []struct{ method, path string }{
+		{http.MethodPost, diagram + "/analytics/import/commit"},
+		{http.MethodPost, diagram + "/analytics/jobs"},
+		{http.MethodDelete, diagram + "/analytics/jobs/" + operationWorkspace},
+		{http.MethodPost, diagram + "/analytics/jobs/" + operationWorkspace + "/archive"},
+		{http.MethodPost, diagram + "/analytics/query/extra"},
+		{http.MethodPost, diagram + "/analytics/measures"},
+		{http.MethodPatch, diagram + "/analytics/measure"},
+		{http.MethodPost, diagram + "/simulation/runs"},
+		{http.MethodPost, diagram + "/simulation/compare/extra"},
+		{http.MethodPost, "/diagrams/not-a-uuid/analytics/query"},
+		{http.MethodPost, "/exports/svg"},
+	} {
+		if pureReadCommand(command.path, command.method) {
+			t.Errorf("unexpected receipt exemption: %s %s", command.method, command.path)
+		}
+	}
+}
+
+func TestSynchronousReadCommandsBypassFullWriteReceiptPool(t *testing.T) {
+	handler := New(Config{Bridge: true})
+	host := httptest.NewServer(handler)
+	defer host.Close()
+	defer handler.Close()
+	conn := operationBrowserConnection(t, host, operationBrowser, operationGrant)
+
+	selected := &peer{workspace: operationWorkspace, instanceID: operationBrowser, grantID: operationGrant}
+	handler.mu.Lock()
+	for range maxBridgeOperations {
+		if _, failure := handler.newOperationLocked(selected); failure != nil {
+			handler.mu.Unlock()
+			t.Fatal(failure)
+		}
+	}
+	handler.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	write, err := handler.forwardOperation(ctx, operationWorkspace, "/diagrams", http.MethodPost, json.RawMessage(`{"name":"New"}`), "")
+	if err != nil || write.Status != http.StatusTooManyRequests || operationErrorCode(t, write) != "OPERATION_LIMIT" {
+		t.Fatalf("expected a full write receipt pool, got %+v, %v", write, err)
+	}
+
+	for _, test := range []struct{ suffix, data string }{
+		{"/analytics/query?offset=0&limit=10", `{"seriesId":"daily"}`},
+		{"/simulation/compare", `{"runIds":["baseline","scenario"]}`},
+	} {
+		path := "/diagrams/" + operationWorkspace + test.suffix
+		result := startOperationForward(handler, ctx, path, http.MethodPost, test.data, "")
+		command := readOperationCommand(t, conn)
+		respondOperation(t, conn, command, http.StatusOK, json.RawMessage(`{"result":"read"}`))
+		if command.Path != path || command.Method != http.MethodPost || string(command.Data) != test.data {
+			t.Fatalf("browser received a different read command: %+v", command)
+		}
+		if command.OperationID != "" || command.OperationAction != "" || command.OperationNew {
+			t.Fatalf("read was assigned an operation receipt: %+v", command)
+		}
+		forwarded := <-result
+		if forwarded.err != nil || forwarded.reply.Status != http.StatusOK || forwarded.reply.OperationID != "" || string(forwarded.reply.Body) != `{"result":"read"}` {
+			t.Fatalf("read was changed or blocked by the write receipt pool: %+v", forwarded)
+		}
+	}
+	handler.mu.Lock()
+	retained := len(handler.operations)
+	handler.mu.Unlock()
+	if retained != maxBridgeOperations {
+		t.Fatalf("reads changed the retained write receipt count: got %d, want %d", retained, maxBridgeOperations)
+	}
+}
+
 func TestMCPWriteOperationIdentityIsNotTheJSONRPCRequestID(t *testing.T) {
 	handler := New(Config{Bridge: true})
 	host := httptest.NewServer(handler)

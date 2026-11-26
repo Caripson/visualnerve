@@ -1,6 +1,6 @@
 import { localizedFeedback } from './localized-feedback';
 import { useI18n } from '../i18n';
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Download, Upload, Eraser } from 'lucide-react';
 import { useEditor } from '../state/editor';
 import { workspace } from '../storage/workspace';
@@ -42,6 +42,7 @@ export function DataPrivacy({
   const [busy, setBusy] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   const backupRead = useRef(0);
+  const backupExport = useRef<AbortController | undefined>(undefined);
   const transferRead = useRef(false);
   const transfer = useWorkspaceTransfer();
   const [encryptedTransfer, setEncryptedTransfer] = useState(false);
@@ -49,6 +50,7 @@ export function DataPrivacy({
   const permission = useEditor((state) => state.mcpAccess);
   const workspaceId = useEditor((state) => state.workspaceId);
   const lastExport = useEditor((state) => state.lastExport);
+  useLayoutEffect(() => () => backupExport.current?.abort(), []);
   useEffect(() => {
     let active = true;
     void navigator.storage
@@ -68,15 +70,15 @@ export function DataPrivacy({
       backupRead.current++;
     };
   }, []);
-  const run = async (action: () => Promise<void>) => {
+  const run = async (action: () => Promise<void>, signal?: AbortSignal) => {
     setBusy(true);
     setMessage('');
     try {
       await action();
     } catch (error) {
-      setMessage((error as Error).message);
+      if (!signal?.aborted) setMessage((error as Error).message);
     } finally {
-      setBusy(false);
+      if (!signal?.aborted) setBusy(false);
     }
   };
   return (
@@ -108,13 +110,19 @@ export function DataPrivacy({
         <button
           disabled={busy}
           onClick={() => {
+            if (backupExport.current) return;
+            const controller = new AbortController();
+            backupExport.current = controller;
             void run(async () => {
-              await exportAllData();
-              setMessage(
-                isEncryptedWorkspaceSurface()
-                  ? 'Encrypted backup downloaded. Use the password or recovery key from this export to restore it.'
-                  : 'Backup downloaded. Use Restore backup to import it.',
-              );
+              await exportAllData(controller.signal);
+              if (!controller.signal.aborted)
+                setMessage(
+                  isEncryptedWorkspaceSurface()
+                    ? 'Encrypted backup downloaded. Use the password or recovery key from this export to restore it.'
+                    : 'Backup downloaded. Use Restore backup to import it.',
+                );
+            }, controller.signal).finally(() => {
+              backupExport.current = undefined;
             });
           }}
         >

@@ -1293,9 +1293,13 @@ kbd {
   background: #8ba69b;
   opacity: 0.65;
 }
-.react-flow__handle-top,
-.react-flow__handle-bottom {
+.react-flow__handle-top:not(.card-port.connectable),
+.react-flow__handle-bottom:not(.card-port.connectable) {
   opacity: 0;
+}
+.react-flow__handle.card-port-target {
+  background: transparent;
+  border-color: transparent;
 }
 .vn-node:hover .react-flow__handle,
 .is-selected .react-flow__handle {

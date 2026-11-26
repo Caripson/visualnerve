@@ -572,10 +572,11 @@ export class VaultCrypto {
       bytes.fill(0);
     }
   }
-  private backupCryptography(keys: VaultKeys) {
+  private backupCryptography(keys: VaultKeys, signal?: AbortSignal) {
     return {
       randomId: () => this.randomId(),
       check: () => {
+        signal?.throwIfAborted();
         this.material(keys);
       },
       hash: async (bytes: Uint8Array) => {
@@ -604,11 +605,16 @@ export class VaultCrypto {
     input: unknown,
     keys: VaultKeys,
     bytes: Uint8Array,
-    options: { chunkSize?: number } = {},
+    options: { chunkSize?: number; signal?: AbortSignal } = {},
   ): Promise<EncryptedVaultBackup> {
     const header = parseVaultHeader(input);
     await this.verifyHeader(header, keys);
-    return encryptBackupContainer(this.backupCryptography(keys), header, bytes, options);
+    return encryptBackupContainer(
+      this.backupCryptography(keys, options.signal),
+      header,
+      bytes,
+      options,
+    );
   }
   async decryptBackup(keys: VaultKeys, input: unknown): Promise<Uint8Array<ArrayBuffer>> {
     const backup = parseEncryptedVaultBackup(input);

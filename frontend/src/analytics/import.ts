@@ -25,6 +25,9 @@ import {
   strictKeys,
 } from './validation';
 import { zonedTimestamp, checkAnalysis, lexical } from './series';
+
+const maxImportIssues = 10_000;
+
 interface ImportTable {
   columns: string[];
   rows: Record<string, string | number | null>[];
@@ -602,6 +605,7 @@ export function previewImport(
   const seriesById = new Map(series.map((item) => [item.id, item]));
   const issues: AnalysisIssue[] = [],
     keys = new Map<string, number>();
+  const rejectInvalidRows = mapping.invalidRows === 'reject';
   let skippedRows = 0;
   for (let rowIndex = 0; rowIndex < table.rows.length; rowIndex++) {
     if (rowIndex % 256 === 0) {
@@ -703,7 +707,7 @@ export function previewImport(
             Math.abs(value - exposureRate) >
             1e-10 * Math.max(1, Math.abs(value), Math.abs(exposureRate))
           ) {
-            if (issues.length < 10000)
+            if (issues.length < maxImportIssues)
               issues.push({
                 code: 'INVALID_RATE_DENOMINATOR',
                 message: `Reported rate ${value} differs from numerator/denominator ${exposureRate}. The reported value is preserved; explicit same-period segment pooling uses the exact exposures. Confirm that both describe the same risk population.`,
@@ -746,7 +750,7 @@ export function previewImport(
             dataset.observations[index] = o;
             continue;
           }
-          if (issues.length < 10000)
+          if (issues.length < maxImportIssues)
             issues.push({
               code: 'AMBIGUOUS_INPUT',
               message: 'Duplicate observation retained by your explicit keep policy.',
@@ -765,12 +769,14 @@ export function previewImport(
       }
     } catch (error) {
       if (error instanceof AnalyticsError && error.code === 'IMPORT_LIMIT') throw error;
-      const e =
-        error instanceof AnalyticsError
-          ? error
-          : new AnalyticsError('INVALID_ANALYTICS', 'Invalid row.');
-      if (issues.length < 10000)
-        issues.push({
+      const reportFull = issues.length >= maxImportIssues;
+      // Keep the first rejection visible even if warnings have filled the report.
+      if (!reportFull || (rejectInvalidRows && skippedRows === 0)) {
+        const e =
+          error instanceof AnalyticsError
+            ? error
+            : new AnalyticsError('INVALID_ANALYTICS', 'Invalid row.');
+        const issue: AnalysisIssue = {
           code: e.code,
           message: e.message,
           row: rowIndex + 2,
@@ -780,17 +786,22 @@ export function previewImport(
               ? (mapping.numeratorColumn ?? currentColumn)
               : currentColumn,
           ...(e.path ? { path: e.path } : {}),
-          severity: mapping.invalidRows === 'skip' ? 'warning' : 'error',
-        });
+          severity: rejectInvalidRows ? 'error' : 'warning',
+        };
+        if (reportFull) {
+          issues.pop();
+          issues.unshift(issue);
+        } else issues.push(issue);
+      }
       skippedRows++;
-      if (mapping.invalidRows === 'reject')
+      if (rejectInvalidRows)
         dataset.observations = dataset.observations.filter((o) => o.sourceRow !== rowIndex + 2);
     }
   }
   dataset.observations.sort(
     (a, b) => lexical(a.time, b.time) || lexical(a.seriesId, b.seriesId) || lexical(a.id, b.id),
   );
-  const valid = !issues.some((i) => i.severity === 'error');
+  const valid = !rejectInvalidRows || skippedRows === 0;
   if (valid) {
     const model = { ...blankAnalytics(), datasets: [dataset], series };
     validateAnalytics(model);

@@ -2,10 +2,16 @@ import { workspace } from './workspace';
 import { download } from '../export/semantic';
 import { vaultCrypto, vaultSession } from './runtime';
 import { logicalJsonChunks, logicalJsonLimits } from '../security/vault-logical-json';
-export async function exportAllData() {
+export async function exportAllData(cancellation?: AbortSignal) {
+  cancellation?.throwIfAborted();
   const operation = await workspace.repo.db.captureOperation();
   try {
-    const backup = await workspace.backup();
+    const signal = cancellation
+      ? AbortSignal.any([operation.signal, cancellation])
+      : operation.signal;
+    signal.throwIfAborted();
+    const backup = await workspace.backup(operation);
+    signal.throwIfAborted();
     let output: unknown = backup;
     if (vaultSession && vaultCrypto) {
       const session = vaultSession,
@@ -25,10 +31,10 @@ export async function exportAllData() {
       }
       let capability: Awaited<ReturnType<typeof session.captureOperation>> | undefined;
       try {
-        capability = await session.captureOperation(operation.signal);
+        capability = await session.captureOperation(signal);
         output = await capability.run(async ({ keys, lease }) => {
           const { header } = await session.storage.check(lease);
-          return cipher.encryptBackup(header, keys, bytes);
+          return cipher.encryptBackup(header, keys, bytes, { signal });
         });
       } finally {
         bytes.fill(0);
@@ -36,10 +42,10 @@ export async function exportAllData() {
       }
     }
     await operation.check();
+    signal.throwIfAborted();
     const date = backup.exportedAt!.slice(0, 10);
     download(`visual-nerve-backup-${date}.json`, JSON.stringify(output));
-    await operation.check();
-    await workspace.setPreference('last-export', backup.exportedAt);
+    await workspace.setPreference('last-export', backup.exportedAt, operation);
   } finally {
     operation.dispose();
   }

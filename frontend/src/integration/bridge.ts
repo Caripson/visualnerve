@@ -27,6 +27,7 @@ interface Command {
 }
 export function bridgeResponseStatus(path: string, method: string): number {
   const endpoint = path.replace(/^\/api\/v1/, '');
+  if (method === 'POST' && endpoint === '/workspace/import') return 200;
   if (/^\/diagrams\/[^/]+\/analytics\/jobs\/[^/]+$/.test(endpoint) && method === 'DELETE')
     return 200;
   if (

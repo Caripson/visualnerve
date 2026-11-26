@@ -8,6 +8,8 @@ import { SimulationClient } from './client';
 import { SimulationRunStore, simulationRetentionLimits } from './run-store';
 import { assertSimulationModel, resolveScenario } from './schema';
 import { compareSimulationResults } from './engine';
+import { canHaveWorker, ownRun, runOwners, type RunOwnership } from './run-ownership';
+import type { SimulationRunRecord } from './storage';
 import type { RunOptions, SimulationModel, SimulationResult, SimulationState } from './types';
 import type { ExecutionOptions, SimulationSpeed, WorkerUpdate } from './protocol';
 
@@ -44,10 +46,22 @@ interface LiveRun {
   writes: Promise<unknown>;
   operation: WorkspaceOperation;
   release?: () => void;
+  ownership?: RunOwnership;
+  ownershipUpdate?: Promise<void>;
   replayReject?: (error: Error) => void;
   unsavedArchive?: { run: SimulationRunInfo; state?: SimulationState };
 }
 export const simulationRuntimeLimits = { cachedRuns: 60, activeRuns: 4 };
+
+function archivedRun(run: SimulationRunRecord): SimulationRunRecord {
+  if (!canHaveWorker(run.status)) return run;
+  return {
+    ...run,
+    status: 'stopped',
+    error:
+      'Execution ended when this browser was closed. Start a new run or replay the saved model.',
+  };
+}
 
 class SimulationCurrencyError extends StorageError {
   readonly code = 'SIMULATION_CURRENCY_MISMATCH';
@@ -146,8 +160,7 @@ export class SimulationService {
   }
   async selectRun(id: string) {
     const run = await this.get(id);
-    const live = this.runs.get(id);
-    if (!live) throw new StorageError(409, 'Simulation service was closed.');
+    const live = this.requireLocalRun(id);
     await live.operation.check();
     if (this.runs.get(id) !== live) throw new StorageError(409, 'Simulation service was closed.');
     this.activeRuns.set(run.diagramId, id);
@@ -201,6 +214,7 @@ export class SimulationService {
             if (unavailable || (live.origin === 'api' && !write)) {
               live.client?.dispose();
               live.client = undefined;
+              live.ownership?.release();
               if (['completed', 'stopped', 'failed'].includes(live.view.run.status)) continue;
               const error = 'Simulation stopped because access or local storage consent changed.';
               live.view = {
@@ -244,6 +258,7 @@ export class SimulationService {
   ) {
     live.client?.dispose();
     live.client = undefined;
+    live.ownership?.release();
     this.cancelReplay(live, error);
     live.release?.();
     live.release = undefined;
@@ -271,6 +286,15 @@ export class SimulationService {
     } finally {
       operation.dispose();
     }
+  }
+  private requireLocalRun(id: string) {
+    const live = this.runs.get(id);
+    if (!live)
+      throw new StorageError(
+        409,
+        'Open the tab that started this run to inspect or control the live simulation.',
+      );
+    return live;
   }
   private async guard(
     live: LiveRun,
@@ -319,6 +343,7 @@ export class SimulationService {
     const releaseWorker = this.reserveWorker();
     const generation = this.generation;
     let operation: WorkspaceOperation | undefined;
+    let ownership: RunOwnership | undefined;
     let retained = false;
     try {
       operation = await this.db.captureOperation();
@@ -358,6 +383,10 @@ export class SimulationService {
         createdAt: timestamp,
         updatedAt: timestamp,
       };
+      ownership = await ownRun(run.id, run.status === 'paused');
+      await operation.check();
+      if (generation !== this.generation)
+        throw new StorageError(409, 'Simulation service was closed.');
       await operation.storage.atomic(
         'rw',
         ['settings', 'diagrams', 'simulationRuns', 'simulationCheckpoints'],
@@ -380,6 +409,7 @@ export class SimulationService {
         origin: input.origin ?? 'ui',
         writes: Promise.resolve(),
         operation,
+        ownership,
       };
       this.runs.set(run.id, live);
       retained = true;
@@ -399,13 +429,17 @@ export class SimulationService {
       this.emit();
       return structuredClone(run);
     } finally {
-      if (!retained) operation?.dispose();
+      if (!retained) {
+        ownership?.release();
+        operation?.dispose();
+      }
       releaseWorker();
     }
   }
   private update(id: string, update: WorkerUpdate) {
     const live = this.runs.get(id);
     if (!live || live.operation.signal.aborted) return;
+    const previousStatus = live.view.run.status;
     const run = { ...live.view.run, updatedAt: new Date().toISOString() };
     if (update.kind === 'error') {
       run.status = 'failed';
@@ -439,11 +473,16 @@ export class SimulationService {
           };
         })
         .finally(() => {
+          live.ownership?.release();
           if (this.runs.get(id) !== live) return;
           this.prune(id);
           this.emit();
         });
-    } else this.emit();
+    } else {
+      if (run.status !== previousStatus)
+        live.ownershipUpdate = live.ownership?.setPaused(run.status === 'paused').catch(() => {});
+      this.emit();
+    }
   }
   private async archiveLive(
     id: string,
@@ -506,8 +545,27 @@ export class SimulationService {
           .filter((live) => live.view.run.diagramId === diagramId && !live.client)
           .map((live) => live.writes),
       );
-      const persisted = await new SimulationRunStore(operation.storage).list(diagramId);
-      const all = new Map(persisted.map((run) => [run.id, run]));
+      const store = new SimulationRunStore(operation.storage);
+      const persisted = await store.list(diagramId);
+      const candidates = persisted.filter(
+        (run) => canHaveWorker(run.status) && !this.runs.has(run.id),
+      );
+      const owners = candidates.length ? await runOwners() : undefined;
+      const released = new Set(
+        owners ? candidates.filter((run) => !owners.has(run.id)).map((run) => run.id) : [],
+      );
+      // A worker can save its terminal result between the first read and the ownership query.
+      const latest = released.size
+        ? new Map((await store.list(diagramId)).map((run) => [run.id, run]))
+        : undefined;
+      const all = new Map<string, SimulationRunRecord>();
+      for (const run of persisted) {
+        const status = owners?.get(run.id);
+        if (released.has(run.id)) {
+          const saved = latest!.get(run.id);
+          if (saved) all.set(run.id, archivedRun(saved));
+        } else all.set(run.id, canHaveWorker(run.status) && status ? { ...run, status } : run);
+      }
       for (const live of this.runs.values())
         if (live.view.run.diagramId === diagramId) all.set(live.view.run.id, live.view.run);
       return [...all.values()]
@@ -545,18 +603,23 @@ export class SimulationService {
     const operation = await this.db.captureOperation();
     let retained = false;
     try {
-      const stored = await new SimulationRunStore(operation.storage).get(id);
+      const store = new SimulationRunStore(operation.storage);
+      let stored = await store.get(id);
+      if (canHaveWorker(stored.status) && !this.runs.has(id)) {
+        const owners = await runOwners();
+        const status = owners?.get(id);
+        if (status) stored = { ...stored, status };
+        else if (owners) stored = archivedRun(await store.get(id));
+      }
       await operation.check();
       if (generation !== this.generation)
         throw new StorageError(409, 'Simulation service was closed.');
       // Simultaneous archive reads converge on the same LiveRun/worker owner.
       if (this.runs.has(id)) return this.get(id);
       const run = stored as SimulationRunInfo;
-      if (['running', 'paused', 'ready'].includes(run.status)) {
-        run.status = 'stopped';
-        run.error =
-          'Execution ended when this browser was closed. Start a new run or replay the saved model.';
-      }
+      // A foreign or unverified worker remains inspectable by fresh reads. Do not cache
+      // its status as a local run, since its owner can pause, complete or close at any time.
+      if (canHaveWorker(run.status)) return structuredClone(run);
       const entry: LiveRun = {
         view: { run, state: run.result },
         origin: 'ui',
@@ -579,6 +642,7 @@ export class SimulationService {
       if (run.error?.startsWith('Result could not be saved:'))
         throw new StorageError(500, run.error);
       const state = this.runs.get(id)?.view.state ?? run.result;
+      if (!state && !this.runs.has(id)) this.requireLocalRun(id);
       if (!state) throw new StorageError(409, 'Simulation is initializing; retry this read.');
       return structuredClone(state);
     });
@@ -615,7 +679,7 @@ export class SimulationService {
     } = {},
   ) {
     const run = await this.get(id);
-    const live = this.runs.get(id)!;
+    const live = this.requireLocalRun(id);
     await this.guard(live, options.origin ?? live.origin, options.beforeWrite);
     if (action === 'reset') {
       if (live.client) await this.control(id, 'stop', options);
@@ -662,6 +726,7 @@ export class SimulationService {
       });
       live.client!.send({ kind: action });
     });
+    await live.ownershipUpdate;
     await live.operation.check();
     return acknowledged;
   }
@@ -673,7 +738,7 @@ export class SimulationService {
     if (![1, 10, 100, 'max'].includes(speed))
       throw new StorageError(422, 'Simulation speed must be 1, 10, 100 or max.');
     const run = await this.get(id);
-    const live = this.runs.get(id)!;
+    const live = this.requireLocalRun(id);
     await this.guard(live, live.origin, beforeWrite);
     live.client?.send({ kind: 'speed', speed });
     live.view = { ...live.view, run: { ...run, options: { ...run.options, speed } } };
@@ -698,7 +763,7 @@ export class SimulationService {
       const run = await this.get(id);
       if (timeSeconds > (run.result?.timeSeconds ?? run.options.durationSeconds))
         throw new StorageError(422, 'Replay time must be inside the run duration.');
-      const live = this.runs.get(id)!;
+      const live = this.requireLocalRun(id);
       if (live.client && run.status === 'running')
         throw new StorageError(409, 'Pause the run before replaying.');
       const origin = options.origin ?? live.origin;

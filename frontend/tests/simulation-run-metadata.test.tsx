@@ -22,6 +22,18 @@ class MetadataWorker {
   postMessage(command: WorkerCommand) {
     if (command.kind === 'start')
       this.engine = new SimulationEngine(command.model, command.options);
+    if (command.kind === 'pause' || command.kind === 'resume')
+      queueMicrotask(() =>
+        this.onmessage?.({
+          data: {
+            kind: 'state',
+            state: {
+              ...this.engine!.state(),
+              status: command.kind === 'pause' ? 'paused' : 'running',
+            },
+          },
+        } as MessageEvent<WorkerUpdate>),
+      );
   }
   finish() {
     this.engine!.advance(this.engine!.options.durationSeconds);
@@ -38,10 +50,31 @@ class MetadataWorker {
   }
 }
 
+class RunTestLocks {
+  private held = new Set<string>();
+  async request<T>(name: string, options: LockOptions, callback: (lock: object | null) => T) {
+    if (!options.ifAvailable) throw new Error('Expected a nonblocking lock.');
+    if (this.held.has(name)) return callback(null);
+    this.held.add(name);
+    try {
+      await Promise.resolve();
+      return await callback({ name });
+    } finally {
+      this.held.delete(name);
+    }
+  }
+  async query() {
+    return { held: [...this.held].map((name) => ({ name })) };
+  }
+}
+
 let db: WorkspaceDatabase, service: SimulationService, model: SimulationModel, diagramId: string;
+let locks: RunTestLocks;
 beforeEach(async () => {
   MetadataWorker.instances = [];
   vi.stubGlobal('Worker', MetadataWorker);
+  locks = new RunTestLocks();
+  vi.stubGlobal('navigator', { locks });
   db = new WorkspaceDatabase(`simulation-metadata-${crypto.randomUUID()}`);
   await db.open();
   await db.settings.bulkPut([
@@ -85,6 +118,70 @@ const perform = async (action: (job: SimulationUIAction) => Promise<unknown>) =>
 };
 
 describe('captured simulation run labels and economics', () => {
+  it.each(['running', 'paused'] as const)(
+    'reports an interrupted %s run as stopped in the first list after reopening',
+    async (status) => {
+      const run = await service.start(diagramId, model, { startPaused: status === 'paused' });
+      expect(await service.list(diagramId)).toMatchObject([{ id: run.id, status }]);
+      service.dispose();
+      service = new SimulationService(db);
+
+      const [listed] = await service.list(diagramId);
+      expect(listed).toMatchObject({
+        id: run.id,
+        status: 'stopped',
+        error: expect.stringContaining('Execution ended when this browser was closed.'),
+      });
+      expect(service.view(run.id)).toBeUndefined();
+      expect(await service.get(run.id)).toMatchObject({
+        status: listed.status,
+        error: listed.error,
+      });
+      expect(await db.simulationRuns.get(run.id)).toMatchObject({ status });
+    },
+  );
+
+  it('observes another tab’s worker without caching or taking it over', async () => {
+    const run = await service.start(diagramId, model);
+    const reader = new SimulationService(db);
+    try {
+      expect(await reader.list(diagramId)).toMatchObject([{ id: run.id, status: 'running' }]);
+      expect(await reader.get(run.id)).toMatchObject({ status: 'running' });
+      expect(reader.view(run.id)).toBeUndefined();
+      await expect(reader.control(run.id, 'reset')).rejects.toMatchObject({ status: 409 });
+      expect(MetadataWorker.instances).toHaveLength(1);
+      await service.control(run.id, 'pause');
+      expect(await reader.list(diagramId)).toMatchObject([{ status: 'paused' }]);
+      expect(await reader.get(run.id)).toMatchObject({ status: 'paused' });
+      await service.control(run.id, 'resume');
+      expect(await reader.get(run.id)).toMatchObject({ status: 'running' });
+
+      const query = locks.query.bind(locks);
+      vi.spyOn(locks, 'query').mockImplementationOnce(async () => {
+        MetadataWorker.instances[0].finish();
+        await service.result(run.id);
+        return query();
+      });
+      expect(await reader.list(diagramId)).toMatchObject([{ status: 'completed' }]);
+      expect(await reader.get(run.id)).toMatchObject({ status: 'completed' });
+    } finally {
+      reader.dispose();
+    }
+  });
+
+  it('preserves an unverifiable saved status when Web Locks are unavailable', async () => {
+    vi.stubGlobal('navigator', {});
+    const run = await service.start(diagramId, model, { startPaused: true });
+    const reader = new SimulationService(db);
+    try {
+      expect(await reader.list(diagramId)).toMatchObject([{ id: run.id, status: 'paused' }]);
+      expect(await reader.get(run.id)).toMatchObject({ status: 'paused' });
+      expect(reader.view(run.id)).toBeUndefined();
+    } finally {
+      reader.dispose();
+    }
+  });
+
   it.each(['live', 'reopened'] as const)(
     'keeps %s run metadata and compact labels after the current scenario/currency change',
     async (source) => {
@@ -98,6 +195,7 @@ describe('captured simulation run labels and economics', () => {
       const runs = await service.list(diagramId);
       expect(runs[0]).toMatchObject({
         id: run.id,
+        status: 'completed',
         scenarioName: 'Original scenario',
         currency: 'SEK',
         metrics: { realizedRevenue: 100 },

@@ -19,6 +19,7 @@ import { ibmSavedHandle } from '../flowchart/ibm-ports';
 import { getIbmSymbol } from '../flowchart/ibm-symbols';
 import { notationSourceIsGateway } from '../notation/edge-geometry';
 import { notationPortHandle } from '../notation/ports';
+import { cardPortId, cardPortSide, type CardSide, type PortRole } from './card-ports';
 export type NodeData = {
   node: GraphNode;
   owners: Owner[];
@@ -34,6 +35,33 @@ export interface RenderCache {
   nodes: Map<string, CanvasNode>;
   edges: Map<string, { source: GraphEdge; view: Edge; presentation?: string }>;
 }
+
+function hasManualCardPorts(edge: GraphEdge): boolean {
+  return (
+    edge.edgeType !== 'hierarchy' &&
+    !edge.notation &&
+    !!(cardPortSide(edge.metadata.sourceHandle) || cardPortSide(edge.metadata.targetHandle))
+  );
+}
+
+function projectedCardPort(
+  node: GraphNode | undefined,
+  role: PortRole,
+  saved: unknown,
+  topicSide: CardSide | undefined,
+): string | undefined {
+  const automatic = topicSide && cardPortId(topicSide, role, true);
+  if (!node || node.notation) return automatic;
+  const side = cardPortSide(saved);
+  if (getIbmSymbol(node.flowchartSymbol)) {
+    // IBM cards expose the original directional ports plus lateral topic aliases.
+    const alias = topicSide && (side === 'left' || side === 'right');
+    return ibmSavedHandle(node, role, saved) ?? (alias ? cardPortId(side, role, true) : automatic);
+  }
+  // React Flow's loose mode can return either role of an overlapping topic port.
+  return side ? cardPortId(side, role, !!topicSide) : automatic;
+}
+
 export function projectedBounds(nodes: CanvasNode[]) {
   const byId = new Map(nodes.map((node) => [node.id, node]));
   const positions = new Map<string, XYPosition>();
@@ -262,10 +290,11 @@ export function projectGraph(
         : edge.metadata.csvModelVisible !== false),
   );
   const represented = new Set(
-    visibleEdges.flatMap((e) => [
-      `${e.sourceNodeId}:${e.targetNodeId}`,
-      `${e.targetNodeId}:${e.sourceNodeId}`,
-    ]),
+    visibleEdges.flatMap((e) =>
+      hasManualCardPorts(e)
+        ? []
+        : [`${e.sourceNodeId}:${e.targetNodeId}`, `${e.targetNodeId}:${e.sourceNodeId}`],
+    ),
   );
   const derived: GraphEdge[] = mindmap
     ? visibleNodes.flatMap((n) => {
@@ -304,7 +333,11 @@ export function projectGraph(
       (e.edgeType !== 'hierarchy' || e.direction !== 'none') &&
       ((source && !!getCsvNode(source)) || (target && !!getCsvNode(target)));
     const branch =
-      mindmap && !csvRelation && source?.nodeType !== 'group' && target?.nodeType !== 'group'
+      mindmap &&
+      !csvRelation &&
+      !hasManualCardPorts(e) &&
+      source?.nodeType !== 'group' &&
+      target?.nodeType !== 'group'
         ? target?.parentId === source?.id
           ? target
           : source?.parentId === target?.id
@@ -326,18 +359,20 @@ export function projectGraph(
         : undefined;
     const sourceHandle = processPath
       ? String(e.metadata.simulationProcessSourceHandle)
-      : mindmap && source?.nodeType !== 'group'
-        ? `source-${right ? 'right' : 'left'}`
-        : !mindmap
-          ? ibmSavedHandle(source, 'source', e.metadata.sourceHandle)
-          : undefined;
+      : projectedCardPort(
+          source,
+          'source',
+          branch ? undefined : e.metadata.sourceHandle,
+          mindmap && source?.nodeType !== 'group' ? (right ? 'right' : 'left') : undefined,
+        );
     const targetHandle = processPath
       ? String(e.metadata.simulationProcessTargetHandle)
-      : mindmap && target?.nodeType !== 'group'
-        ? `target-${right ? 'left' : 'right'}`
-        : !mindmap
-          ? ibmSavedHandle(target, 'target', e.metadata.targetHandle)
-          : undefined;
+      : projectedCardPort(
+          target,
+          'target',
+          branch ? undefined : e.metadata.targetHandle,
+          mindmap && target?.nodeType !== 'group' ? (right ? 'left' : 'right') : undefined,
+        );
     const sourceIsGateway = notationSourceIsGateway(source?.notation);
     const presentation = `${sourceIsGateway}:${mindmap}:${!!branch}:${color}:${strokeWidth}:${sourceHandle}:${targetHandle}`;
     const cached = renderCache?.edges.get(e.id);

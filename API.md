@@ -72,6 +72,8 @@ Bridge version 0.11.0 advertises `operations-v1`, `endpoint-docs-v1`, `fork-join
 
 `OPERATION_OUTCOME_UNKNOWN` means a dispatched write may still commit; it does not mean that the model change failed. Do not repeat that write under a new ID. Recovery is bound to the original workspace, origin, browser instance and access grant; a different tab or fresh grant cannot take over. A bridge restart returns 409 `OPERATION_OUTCOME_UNKNOWN`; receipt expiry returns 410 `OPERATION_EXPIRED`. When recovery is unavailable, read and reconcile the saved model before issuing new work. `resultAvailable:false` reports a lost/evicted result without pretending that the write never ran.
 
+Synchronous analytics reads and simulation comparisons use the read transport even when the method is POST. They return no operation ID and remain available when write receipts reach their retention limit. Analytics job creation, cancellation and archival continue to use operation receipts.
+
 A malformed browser acknowledgment can return 502 `OPERATION_OUTCOME_UNKNOWN` with the same recovery rules. Receipt state `failed` means the browser command returned an error; it does not prove rollback of every multi-phase runtime side effect. This is at-most-once command execution within retained browser/grant scope, not exactly-once transactions across page or bridge lifetimes.
 
 Browser receipts are transient RAM, retained for up to 15 minutes with 256 entries and an 8 MiB result budget; large results may be unavailable even when terminal status is known. The bridge retains only routing/fingerprint metadata in RAM, bounded to 15 minutes and 1,024 entries. It does not retain command/result bodies or persist receipts to disk. Browser reload, workspace lock, grant revocation or receipt expiry removes recovery information. Integration traffic never unlocks the vault or renews its session timer.
@@ -188,6 +190,8 @@ Graph replacement, native JSON export/import, templates, backups, copy/paste and
 
 ## CRUD and graph operations
 
+Native graph reads and writes carry manually chosen 2D connection points in `edge.metadata.sourceHandle` and `edge.metadata.targetHandle`. Preserve these keys when editing other edge fields. The editor and SVG exports use recognized handles for the endpoint's card type. [Canonical edge fields](DATA_MODEL.md)
+
 | Method               | Route                               | Behavior                                                                                          |
 | -------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------- |
 | GET                  | /health                             | Static server, indexeddb storage, bridge enabled/connected and version                            |
@@ -218,7 +222,7 @@ Graph replacement, native JSON export/import, templates, backups, copy/paste and
 | POST                 | /export                             | Complete JSON, semantic Markdown or native vector SVG                                             |
 | GET                  | /search?q=...                       | Global results with diagramId and optional nodeId                                                 |
 | GET                  | /workspace/export                   | Complete IndexedDB workspace snapshot                                                             |
-| POST                 | /workspace/import                   | Restore all workspace tables in one transaction                                                   |
+| POST                 | /workspace/import                   | Restore all workspace tables in one transaction and return 200 with the restored graphs          |
 | GET                  | /settings/import-file-limit-mb      | Read the effective local import limit; missing/invalid stored values return 50; read-only allowed |
 | PUT                  | /settings/import-file-limit-mb      | Save this browser’s import limit as an integer from 50 to 1024 MiB; write access required         |
 | GET                  | /settings/project-source-file-limit | Read the effective ZIP source-file limit, default 500; read-only allowed                          |

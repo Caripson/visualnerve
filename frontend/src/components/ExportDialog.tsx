@@ -3,7 +3,7 @@ import { canonicalSVGSelection } from '../export/selection';
 import { exchangeGraphSnapshot } from '../export/exchange-scene';
 import { presentationMessage } from '../presentation/display-messages';
 import { useI18n } from '../i18n';
-import { useEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { Download } from 'lucide-react';
 import { Modal } from './Modal';
 import { Field } from './Field';
@@ -29,7 +29,7 @@ export function ExportDialog({ close }: { close: () => void }) {
   const analytics = useEditor((state) => !!state.graph?.diagram.analytics);
   const mounted = useRef(true);
   const exporting = useRef<AbortController | undefined>(undefined);
-  useEffect(() => {
+  useLayoutEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
@@ -57,6 +57,21 @@ export function ExportDialog({ close }: { close: () => void }) {
   const [busy, setBusy] = useState(false);
   const [svgProgress, setSvgProgress] = useState<number | undefined>(undefined);
   const [error, setError] = useState('');
+  const beginExport = () => {
+    if (exporting.current) return;
+    const controller = new AbortController();
+    exporting.current = controller;
+    setBusy(true);
+    setSvgProgress(undefined);
+    setError('');
+    return controller;
+  };
+  const isCurrentExport = (controller: AbortController) =>
+    mounted.current && exporting.current === controller && !controller.signal.aborted;
+  const finishExport = (controller: AbortController) => {
+    if (exporting.current === controller) exporting.current = undefined;
+    if (mounted.current) setBusy(false);
+  };
   const editable = format === 'drawio';
   const set = (patch: Partial<RenderOptions>) => setOptions((v) => ({ ...v, ...patch }));
   const targetField = (
@@ -64,6 +79,7 @@ export function ExportDialog({ close }: { close: () => void }) {
       <select
         aria-label={t('dialogs.exportTarget')}
         value={target}
+        disabled={busy}
         onChange={(event) => setTarget(event.target.value)}
       >
         <option value="diagram">{t('dialogs.exportDiagram')}</option>
@@ -73,25 +89,27 @@ export function ExportDialog({ close }: { close: () => void }) {
   );
   if (target === 'workspace')
     return (
-      <Modal title={t('dialogs.exportAllBackupLabel')} close={close}>
+      <Modal title={t('dialogs.exportAllBackupLabel')} close={cancel}>
         {targetField}
         <p>{t('dialogs.exportPortableBackupHint')}</p>
         <StorageNotice />
         <BackupSecurityNotice encrypted={isEncryptedWorkspaceSurface()} />
         {error && <p className="form-error">{presentationMessage(error, t)}</p>}
         <div className="modal-actions">
-          <button onClick={close}>{t('dialogs.cancel')}</button>
+          <button onClick={cancel}>{t('dialogs.cancel')}</button>
           <button
             className="primary"
             disabled={busy}
             onClick={async () => {
-              setBusy(true);
+              const controller = beginExport();
+              if (!controller) return;
               try {
-                await exportAllData();
-                close();
+                await exportAllData(controller.signal);
+                if (isCurrentExport(controller)) close();
               } catch (error) {
-                setError((error as Error).message);
-                setBusy(false);
+                if (isCurrentExport(controller)) setError((error as Error).message);
+              } finally {
+                finishExport(controller);
               }
             }}
           >
@@ -253,17 +271,13 @@ export function ExportDialog({ close }: { close: () => void }) {
           className="primary"
           disabled={busy}
           onClick={async () => {
-            if (exporting.current) return;
-            const controller = new AbortController();
-            exporting.current = controller;
+            const controller = beginExport();
+            if (!controller) return;
             let operation: WorkspaceOperation | undefined;
             let guard: ExportGuard | undefined;
             // Capture before settled/import/render awaits; a later unlock must not
             // authorize this original dialog or change which graph it exports.
             const captured = workspace.repo.db.captureOperation();
-            setBusy(true);
-            setSvgProgress(undefined);
-            setError('');
             try {
               useEditor.getState().finishEditing();
               flushSpatialCamera();
@@ -285,11 +299,7 @@ export function ExportDialog({ close }: { close: () => void }) {
                 signal: AbortSignal.any([operation.signal, controller.signal]),
                 check: () => operation!.check(),
                 assertCurrent: () => {
-                  if (
-                    !mounted.current ||
-                    exporting.current !== controller ||
-                    controller.signal.aborted
-                  )
+                  if (!isCurrentExport(controller))
                     throw new DOMException('Diagram export cancelled.', 'AbortError');
                 },
               };
@@ -336,8 +346,7 @@ export function ExportDialog({ close }: { close: () => void }) {
             } finally {
               // A synchronous snapshot error may occur before capture resolves.
               (operation ?? (await captured.catch(() => undefined)))?.dispose();
-              if (exporting.current === controller) exporting.current = undefined;
-              if (mounted.current) setBusy(false);
+              finishExport(controller);
             }
           }}
         >

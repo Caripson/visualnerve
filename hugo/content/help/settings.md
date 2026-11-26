@@ -161,6 +161,8 @@ A reminder appears after ten local diagrams when a complete export has not been 
 3. Save the dated `visual-nerve-backup-YYYY-MM-DD.json` file somewhere you control. It is encrypted on the isolated app address. Backups from older or local plaintext workspaces remain readable unless explicitly protected.
 4. Keep a separate protected recovery copy, then verify that you can read the backup before depending on it.
 
+Closing Export or Settings before the download starts cancels the pending backup.
+
 An encrypted backup needs the password or recovery key valid **when that file was exported**. Save the correct credential in a protected location; the backup is not useful for recovery if both credentials are lost. The export completes locally and does not upload the file.
 
 The backup includes all projects, objects, connections, owners, custom templates, portable preferences, CSV sources and analysis settings. Named local history and applicable simulator models and retained run/replay archives are included.

@@ -89,11 +89,11 @@ For your own annotation, enter an object such as `{"risk":"high","ticket":"OPS-1
 ## Connect two objects
 
 1. Select the objects and use **Connect nodes**. With exactly two selected objects, Properties also offers **Connect selected nodes**.
-2. Alternatively drag a connection handle from one card to another.
+2. Alternatively drag a connection point from one card to another. Ordinary 2D cards and manual links between mind-map topics support all four sides. Select a topic to reveal its connection points. Mind-map hierarchy branches continue to follow the side of the tree.
 3. Select the line. Enter its **Label**, for example “depends on”, “Yes” or “sends invoice to”.
 4. Set **Relationship**, **Direction** and **Style**. Direction can be forward, backward, both or none; style can be solid, dashed or dotted.
 5. Add a **Description** if the line needs explanation.
-6. If the endpoints are wrong, change **Source** or **Target** in connection properties, or reconnect an endpoint on the canvas.
+6. If the endpoints are wrong, change **Source** or **Target** in connection properties, or drag an endpoint on the canvas to a new connection point. A connection created or moved this way keeps its chosen attachment points after reopening and in SVG exports.
 
 Direction and label carry meaning independently. A two-way relationship can be useful for collaboration; a SQL foreign-key arrow describes a reference; a simulator particle route describes a path work can actually take. Label those differences so readers do not mistake every arrow for execution order.
 

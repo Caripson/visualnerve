@@ -21,7 +21,28 @@ var bridgeCapabilities = []string{"operations-v1", "endpoint-docs-v1", "fork-joi
 var bridgeToolNames = []string{"visual_nerve_request", "visual_nerve_api_docs"}
 
 func pureReadCommand(path, method string) bool {
-	return method == "GET" || notationReadCommand(path, method)
+	if method == "GET" || notationReadCommand(path, method) {
+		return true
+	}
+	if method != "POST" {
+		return false
+	}
+	diagramPath, diagram := strings.CutPrefix(path, "/diagrams/")
+	id, action, hasAction := strings.Cut(diagramPath, "/")
+	if !diagram || !hasAction || !validAuthorityID(id) {
+		return false
+	}
+	// Only synchronous reads bypass receipts. Starting, canceling or archiving
+	// an analytics job still uses the existing operation protocol.
+	switch action {
+	case "analytics/compare", "analytics/evaluate", "analytics/import/inspect", "analytics/import/preview",
+		"analytics/indicator", "analytics/measure", "analytics/project", "analytics/validate", "analytics/waterfall",
+		"simulation/compare":
+		return true
+	}
+	// Query and export also support paging parameters, checked by the browser.
+	action, _, _ = strings.Cut(action, "?")
+	return action == "analytics/query" || action == "analytics/export"
 }
 
 // The bridge retains only opaque routing/correlation metadata. Request and result
@@ -172,8 +193,9 @@ func (s *Server) newOperationLocked(selected *peer) (*bridgeOperation, *reply) {
 
 func (s *Server) prepareOperationLocked(workspace, path, method string, data json.RawMessage, id string) (*bridgeOperation, string, *reply) {
 	s.pruneOperationsLocked(time.Now())
+	reading := pureReadCommand(path, method)
 	action := "execute"
-	if pureReadCommand(path, method) {
+	if reading {
 		action = ""
 	}
 	if path == "/operations" {
@@ -190,7 +212,7 @@ func (s *Server) prepareOperationLocked(workspace, path, method string, data jso
 		}
 		id = strings.TrimPrefix(path, "/operations/")
 		action = "status"
-	} else if pureReadCommand(path, method) && id != "" {
+	} else if reading && id != "" {
 		failure := operationFailure(422, "INVALID_OPERATION_READ", id, "Operation IDs belong to writes; use GET /operations/{operationId} to inspect one.")
 		return nil, "", &failure
 	}

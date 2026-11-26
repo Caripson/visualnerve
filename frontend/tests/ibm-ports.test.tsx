@@ -83,7 +83,7 @@ it('refreshes same-sized handles when the glyph changes and when clearing restor
   unmount();
   expect(refresh).toHaveBeenCalledWith('node');
 });
-it('restores the template bottom/top routes and ignores invalid, wrong-role and ordinary-node metadata', () => {
+it('restores template bottom/top routes with ordinary and IBM cards and rejects invalid IBM ports', () => {
   const graph = createIbmFlowchartGraph('IBM route sides'),
     document = graph.nodes.find((node) => node.title === 'Print batch report')!,
     terminal = graph.nodes.find((node) => node.title === 'Batch complete')!,
@@ -105,7 +105,7 @@ it('restores the template bottom/top routes and ignores invalid, wrong-role and 
   graph.nodes = graph.nodes.map((node) =>
     node.id === document.id ? { ...node, flowchartSymbol: undefined } : node,
   );
-  expect(project().sourceHandle).toBeUndefined();
+  expect(project().sourceHandle).toBe('out-bottom');
   expect(project().targetHandle).toBe('in-top');
   route.metadata = { sourceHandle: 'out-bottom', targetHandle: 'out-bottom' };
   expect(project().targetHandle).toBeUndefined();
@@ -116,7 +116,7 @@ it('restores the template bottom/top routes and ignores invalid, wrong-role and 
   expect(project().sourceHandle).toBeUndefined();
   graph.diagram.type = 'mindmap';
   expect(project().sourceHandle).toMatch(/^source-/);
-  expect(project().targetHandle).toMatch(/^target-/);
+  expect(project().targetHandle).toBe('in-top');
   expect(projectGraph(graph, []).nodes.find((node) => node.id === document.id)?.type).toBe(
     document.nodeType,
   );

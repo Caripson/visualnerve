@@ -2,9 +2,7 @@ import { nodeKindLabel } from '../ui/editor-labels';
 import { useI18n } from '../i18n';
 import { memo, useCallback } from 'react';
 import {
-  Handle,
   NodeResizer,
-  Position,
   useStore,
   type NodeProps,
   type NodeTypes,
@@ -56,6 +54,7 @@ import { nodeBackgroundColor, nodeBackgroundStyle } from './appearance';
 import './node-appearance.css';
 import { IbmNodePorts } from '../flowchart/IbmNodePorts';
 import { LazyNotationNode } from '../notation/LazyNode';
+import { CardPorts } from '../canvas/CardPorts';
 
 export const nodeRegistry: Record<NodeKind, { label: string; icon: LucideIcon; shape: string }> = {
   generic: { label: 'Generic', icon: Box, shape: 'box' },
@@ -245,37 +244,7 @@ function renderer(kind: NodeKind) {
             mindmap={!!data.mindmap}
           />
         ) : (
-          <>
-            <Handle type="target" position={Position.Left} id="in" isConnectable={!readonly} />
-            <Handle type="source" position={Position.Right} id="out" isConnectable={!readonly} />
-            {node.metadata.simulationLayoutProjected === true && (
-              <>
-                <Handle
-                  type="target"
-                  position={Position.Bottom}
-                  id="in-bottom"
-                  isConnectable={false}
-                />
-                <Handle type="source" position={Position.Top} id="out-top" isConnectable={false} />
-              </>
-            )}
-            {!overview && (
-              <>
-                <Handle
-                  type="target"
-                  position={Position.Top}
-                  id="in-top"
-                  isConnectable={!readonly}
-                />
-                <Handle
-                  type="source"
-                  position={Position.Bottom}
-                  id="out-bottom"
-                  isConnectable={!readonly}
-                />
-              </>
-            )}
-          </>
+          <CardPorts connectable={!readonly && !exporting} />
         )}
         {ibm ? <div className="ibm-node-content">{content}</div> : content}
       </div>

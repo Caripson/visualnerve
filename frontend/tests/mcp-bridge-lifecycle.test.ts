@@ -136,6 +136,45 @@ it('reuses an operation after an ordinary socket reconnect without performing th
   });
 });
 
+const importedGraph = { diagram: { id: 'imported' }, nodes: [], edges: [] };
+
+it.each([
+  { path: '/workspace/import', status: 200, body: [importedGraph] },
+  { path: '/import', status: 201, body: importedGraph },
+])('acknowledges a successful $path with status $status', async ({ path, status, body }) => {
+  useEditor.setState({ mcpAccess: 'write' });
+  sockets[0].open();
+  const hello = JSON.parse(sockets[0].send.mock.calls[0][0]);
+  vi.mocked(workspace.external).mockResolvedValueOnce(body);
+  sockets[0].onmessage?.(
+    new MessageEvent('message', {
+      data: JSON.stringify({
+        ...hello,
+        id: 'import',
+        path,
+        method: 'POST',
+        data: {},
+        operationId: 'vnop1.bridge.import',
+        operationAction: 'execute',
+        operationNew: true,
+      }),
+    }),
+  );
+  await vi.waitFor(() =>
+    expect(JSON.parse(sockets[0].send.mock.calls.at(-1)![0])).toEqual({
+      id: 'import',
+      status,
+      body,
+    }),
+  );
+  expect(workspace.external).toHaveBeenCalledExactlyOnceWith(
+    path,
+    'POST',
+    {},
+    expect.objectContaining({ signal: origin.signal }),
+  );
+});
+
 it('never revives a retained write result for an old grant after Off then Write', async () => {
   useEditor.setState({ mcpAccess: 'write' });
   sockets[0].open();

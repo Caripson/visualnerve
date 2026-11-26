@@ -108,6 +108,31 @@ describe('local analytics import AT02–AT05 and AT30', () => {
     expect(observations[0]).toEqual(observations[1]);
     expect(observations[1]).toEqual(observations[2]);
   });
+  it('rejects invalid rows after the validation report fills with warnings', () => {
+    const source: ImportSource = {
+      kind: 'csv',
+      name: 'duplicates.csv',
+      text: 'Date,Value\n' + '2024-01-01,100\n'.repeat(10001) + 'invalid,120\n',
+    };
+    const reject = preview(source, { ...mapping, duplicatePolicy: 'keep' });
+    expect(reject).toMatchObject({ valid: false, skippedRows: 1 });
+    expect(reject.issues).toHaveLength(10000);
+    expect(reject.issues[0]).toMatchObject({ severity: 'error', row: 10003, column: 'Date' });
+    expect(() =>
+      executeAnalysis({
+        kind: 'commit-import',
+        model: blankAnalytics(),
+        preview: reject,
+        mode: 'create',
+      }),
+    ).toThrow('Correct the import report before committing observations.');
+
+    const skip = preview(source, { ...mapping, duplicatePolicy: 'keep', invalidRows: 'skip' });
+    expect(skip).toMatchObject({ valid: true, skippedRows: 1 });
+    expect(skip.issues).toHaveLength(10000);
+    expect(skip.issues.every((issue) => issue.severity === 'warning')).toBe(true);
+    expect(skip.dataset.observations).toHaveLength(10001);
+  });
   it('explicit comma-decimal, percent and ratio conventions stay distinct', () => {
     const unit = { kind: 'ratio' as const, label: 'churn' };
     expect(parseImportNumber('2,4', ',', 'percent', unit)).toBe(0.024);

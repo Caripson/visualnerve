@@ -397,7 +397,7 @@ This exercise tests the assumptions you entered; it does not require AI or the l
 
 Models, scenarios and bounded run archives stay in local IndexedDB. Native JSON, history/duplication and complete backup preserve their supported simulator content. Runtime card projections remain temporary. Keep a backup before changing browser or device.
 
-MAX/headless can run without a selected diagram or animation. **The connected browser must remain open** for local storage and worker execution. Closing it ends execution; reopening preserves saved models/results, and captured runs support deterministic replay.
+MAX/headless can run without a selected diagram or animation. **Keep the tab that started the run open** for local storage and worker execution. In browsers with Web Locks, another workspace tab can show its current status. Use the tab that started the run for live inspection and controls. Closing that tab ends execution. Saved models and results remain available, and captured runs support deterministic replay.
 
 The optional [API/MCP integration](/help/api-mcp/) uses the same model and engine for assumptions, scenarios, runs, controls, replay, metrics, queues, events and comparison. Start with `visual_nerve_api_docs` and `GET /simulation/capabilities`. Inspection/comparison permit read-only access; changes and external execution/replay require write access. Revoking the grant stops externally initiated execution without rewriting saved results.
 

@@ -1,13 +1,6 @@
 import { useI18n } from '../i18n';
-import { Fragment, memo, useCallback, useEffect, useRef, type CSSProperties } from 'react';
-import {
-  Handle,
-  NodeResizer,
-  Position,
-  useStore,
-  type NodeProps,
-  type ResizeParams,
-} from '@xyflow/react';
+import { memo, useCallback, useEffect, useRef, type CSSProperties } from 'react';
+import { NodeResizer, useStore, type NodeProps, type ResizeParams } from '@xyflow/react';
 import { Lightbulb, Minus, Plus } from 'lucide-react';
 import type { CanvasNode } from '../canvas/projection';
 import { useEditor } from '../state/editor';
@@ -16,9 +9,10 @@ import { topicInk } from '../ui/colors';
 import { MetricSummary } from '../components/MetricSummary';
 import { NodeStatus } from '../ui/NodeStatus';
 import { nodeBackgroundColor, nodeBackgroundStyle } from '../nodes/appearance';
+import { CardPorts } from '../canvas/CardPorts';
 import '../nodes/node-appearance.css';
 
-export const MindmapNode = memo(({ id, data, selected }: NodeProps<CanvasNode>) => {
+export const MindmapNode = memo(({ id, data, selected, isConnectable }: NodeProps<CanvasNode>) => {
   const { t, plural } = useI18n();
   const { node, mindmap: topic, exporting, owners } = data;
   const resize = useCallback(
@@ -90,20 +84,7 @@ export const MindmapNode = memo(({ id, data, selected }: NodeProps<CanvasNode>) 
       {selected && !exporting && (
         <NodeResizer nodeId={id} minWidth={100} minHeight={40} color={color} onResizeEnd={resize} />
       )}
-      {(['left', 'right'] as const).map((side) => (
-        <Fragment key={side}>
-          <Handle
-            type="target"
-            position={side === 'left' ? Position.Left : Position.Right}
-            id={`target-${side}`}
-          />
-          <Handle
-            type="source"
-            position={side === 'left' ? Position.Left : Position.Right}
-            id={`source-${side}`}
-          />
-        </Fragment>
-      ))}
+      <CardPorts topic connectable={isConnectable && !exporting} />
       {root && !overview && (
         <AreaIcon
           metadata={node.metadata}

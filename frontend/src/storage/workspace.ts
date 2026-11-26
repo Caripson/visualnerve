@@ -1013,7 +1013,7 @@ export class Workspace {
     bridgeSessionToken().clear();
     useEditor.setState({ mcpAccess: 'off' });
   }
-  async setPreference(key: string, value: unknown) {
+  async setPreference(key: string, value: unknown, originatingOperation?: WorkspaceOperation) {
     if (key === 'bridge-url') localBridgeUrl(String(value));
     if (key === 'mcp-access' && !['off', 'read', 'write'].includes(String(value)))
       throw new StorageError(422, 'Invalid MCP access level.');
@@ -1055,7 +1055,7 @@ export class Workspace {
     }
     if (key === 'storage-consent' && value !== true) this.cancelExternalSvgJobs();
     try {
-      await this.withOperation(async (job) => {
+      const persist = async (job: WorkspaceJob) => {
         let connectionAddress: string | undefined;
         const saved = await job.operation.storage.atomic('rw', ['settings'], async (scope) => {
           await this.requireStorageConsent(scope);
@@ -1112,7 +1112,8 @@ export class Workspace {
         if (key === 'theme') this.syncAppearance(appearancePreference(value));
         if (key === VOICE_SETTING) this.publishVoiceSelection(value, true);
         this.acknowledgePreference(key, retryingFailure);
-      });
+      };
+      await this.withOperation(persist, undefined, originatingOperation);
     } catch (error) {
       if (
         lifecycle === this.lifecycle &&
@@ -1461,15 +1462,19 @@ export class Workspace {
       if (controller) this.analysisCommands.delete(controller);
     }
   }
-  async backup() {
-    return this.withOperation(async (job) => {
-      await this.requireStorageConsent(job.operation.storage);
-      await job.check();
-      useEditor.getState().finishEditing();
-      flushSpatialCamera();
-      await this.settled();
-      return job.operation.storage.backup();
-    });
+  async backup(originatingOperation?: WorkspaceOperation) {
+    return this.withOperation(
+      async (job) => {
+        await this.requireStorageConsent(job.operation.storage);
+        await job.check();
+        useEditor.getState().finishEditing();
+        flushSpatialCamera();
+        await this.settled();
+        return job.operation.storage.backup();
+      },
+      undefined,
+      originatingOperation,
+    );
   }
   /** Called after key revocation; wait for cancelled jobs before allowing another unlock. */
   async clearUnlockedState() {

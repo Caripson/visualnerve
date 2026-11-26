@@ -293,6 +293,8 @@ An invalid browser acknowledgment can also produce 502 `OPERATION_OUTCOME_UNKNOW
 
 Receipts stay in browser RAM for up to 15 minutes, bounded to 256 entries and 8 MiB of readable results. The bridge retains only opaque routing/fingerprint metadata in RAM, bounded to 15 minutes and 1,024 entries. Neither receipt store is persisted. Reload, lock and grant revocation remove recovery data; integration traffic does not unlock or renew the session. See [the API contract](../API.md#recover-writes-after-a-timeout).
 
+Synchronous analytics reads and simulation comparisons return without an operation ID, including when write receipts reach their retention limit. Analytics job creation, cancellation and archival still use receipts. A workspace backup merge via `POST /workspace/import` returns `structuredContent.status` 200 with the restored graphs. A single diagram import via `POST /import` returns status 201 with the imported graph.
+
 ## Exact Read only POST routes
 
 Read only is an explicit route allowlist, not general permission for POST:
@@ -569,7 +571,7 @@ Signal-job archival uses the same history policy as UI detection: deduplicate id
 
 An external client can repeat parameter trials entirely programmatically, but must retain each configuration/result identity and report the number of trials. Historical validation respects chronological train/validation/holdout cutoffs. Without a defined outcome/horizon/matching policy, there is no predictive precision/recall. Data lacking historic publication versions is retrospective. Scenarios never overwrite observed data, and an anomaly, correlation or scenario spread must not be described as a forecast, cause or confidence interval.
 
-Existing `operationId` receipts and version checks apply. After a 504/unknown outcome, inspect the same operation and saved configuration before retrying the identical command; never invent a new ID on the assumption the write rolled back. Semantic failures include `INSUFFICIENT_DATA`, `INVALID_OHLC`, `INCOMPATIBLE_UNITS`, `INVALID_RATE_DENOMINATOR` and `STALE_ANALYSIS_RESULT`, with row/column issues where relevant. Browser lock/revocation and unavailable-browser errors retain their existing 423/403/503 boundaries. Readable MCP responses can leave the browser through the chosen AI client; review that client's policy before granting access to private business data.
+Analytics mutations retain `operationId` receipts and version checks. If a mutation times out with an unknown outcome, inspect the same operation and saved configuration before retrying the identical command. Semantic failures include `INSUFFICIENT_DATA`, `INVALID_OHLC`, `INCOMPATIBLE_UNITS`, `INVALID_RATE_DENOMINATOR` and `STALE_ANALYSIS_RESULT`, with row/column issues where relevant. Browser lock/revocation and unavailable-browser errors retain their existing 423/403/503 boundaries. Readable MCP responses can leave the browser through the chosen AI client; review that client's policy before granting access to private business data.
 
 See [complete API table](../API.md#time-series--signal-analysis), [user guide](https://www.visualnerve.com/help/time-series-analysis/), [methods](ANALYTICS_METHODS.md) and [implementation specification](ANALYTICS_IMPLEMENTATION.md).
 
