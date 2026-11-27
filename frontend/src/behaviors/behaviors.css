@@ -1,0 +1,119 @@
+.behavior-library,
+.behavior-source-form,
+.behavior-bindings,
+.behavior-binding {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.behavior-library-header,
+.behavior-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.behavior-library-header {
+  justify-content: space-between;
+}
+
+.behavior-library button,
+.behavior-bindings button {
+  width: auto;
+}
+
+.behavior-definition,
+.behavior-binding {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.behavior-library .behavior-definition p {
+  margin: 3px 0;
+}
+
+.behavior-drag-handle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: grab;
+  touch-action: pan-y;
+}
+
+.behavior-drag-handle:active {
+  cursor: grabbing;
+}
+
+.behavior-definition strong,
+.behavior-binding strong {
+  overflow-wrap: anywhere;
+}
+
+.behavior-source-form label,
+.behavior-field {
+  display: grid;
+  gap: 3px;
+  font-size: 12px;
+}
+
+.behavior-source-form :is(input, textarea),
+.behavior-field :is(input, select) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+.behavior-source-form textarea,
+.behavior-source-form pre {
+  font-size: 12px;
+  font-family: ui-monospace, monospace;
+}
+
+.behavior-source-form textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.behavior-source-form pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.behavior-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.behavior-checkbox input[type='checkbox'] {
+  width: auto;
+}
+
+.behavior-library .behavior-diagnostic,
+.behavior-bindings .behavior-diagnostic {
+  color: var(--danger, var(--text));
+  font-size: 12px;
+  margin: 0;
+}
+
+.behavior-trace {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.behavior-trace ol {
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+
+.behavior-trace li + li {
+  margin-top: 6px;
+}
+
+.toolbar-menu-panel:has(.behavior-library[data-dragging]) {
+  opacity: 0.2;
+  pointer-events: none;
+}

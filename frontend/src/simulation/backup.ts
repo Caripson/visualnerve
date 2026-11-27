@@ -7,6 +7,7 @@ import { historyJsonBytes } from '../history/codec';
 import { remapSimulationModel } from './copy';
 import { validateSimulationModel, resolveScenario } from './schema';
 import { simulationModelHash } from './engine';
+import { remapSimulationBehaviors, SimulationBehaviors } from './behaviors';
 import type { SimulationResult, SimulationState } from './types';
 import {
   assertArchivedResult,
@@ -90,6 +91,16 @@ function remapState<T extends SimulationState>(
       ...(event.joinNodeId ? { joinNodeId: nodeId(event.joinNodeId) } : {}),
       ...(event.branchEdgeId ? { branchEdgeId: edgeId(event.branchEdgeId) } : {}),
     })),
+    ...(state.behaviorTrace
+      ? {
+          behaviorTrace: state.behaviorTrace.map((event) => ({
+            ...event,
+            nodeId: nodeId(event.nodeId),
+            ...(event.sourceNodeId ? { sourceNodeId: nodeId(event.sourceNodeId) } : {}),
+            ...(event.targetNodeId ? { targetNodeId: nodeId(event.targetNodeId) } : {}),
+          })),
+        }
+      : {}),
     ...(state.parallel
       ? {
           parallel: {
@@ -145,6 +156,11 @@ export function prepareSimulationBackup(backup: WorkspaceBackup, graphs: Graph[]
     )
       throw new StorageError(422, 'Invalid archived simulation options.');
     historyJsonBytes(run, 48 * 1024 * 1024);
+    if (run.options.behaviors !== undefined)
+      new SimulationBehaviors(
+        run.options.behaviors,
+        resolveScenario(run.model, scenarioId, demandMultiplier),
+      );
     if (run.result) {
       assertArchivedResult(run.result);
       assertArchivedInfrastructureModel(
@@ -234,6 +250,9 @@ async function importSimulationRunsScoped(
     for (const edge of run.model.edges)
       if (!identity.edges.has(edge.id)) identity.edges.set(edge.id, crypto.randomUUID());
     const model = remapSimulationModel(run.model, identity.nodes, identity.edges);
+    const behaviors = run.options.behaviors
+      ? remapSimulationBehaviors(run.options.behaviors, identity.nodes)
+      : undefined;
     const id = crypto.randomUUID();
     runIds.set(run.id, id);
     let result: SimulationResult | undefined;
@@ -242,7 +261,10 @@ async function importSimulationRunsScoped(
       result = {
         ...remapState(run.result, identity.nodes, identity.edges),
         runId: id,
-        modelHash: simulationModelHash(resolveScenario(model, scenarioId, demandMultiplier)),
+        modelHash: simulationModelHash(
+          resolveScenario(model, scenarioId, demandMultiplier),
+          behaviors,
+        ),
         finalCapacities: Object.fromEntries(
           Object.entries(run.result.finalCapacities).map(([key, capacity]) => [
             identity.nodes.get(key) ?? key,
@@ -265,7 +287,7 @@ async function importSimulationRunsScoped(
       id,
       diagramId: mapping.importedGraph.diagram.id,
       model,
-      options: { ...run.options, runId: id },
+      options: { ...run.options, runId: id, ...(behaviors ? { behaviors } : {}) },
       ...(result ? { result } : {}),
     });
   }

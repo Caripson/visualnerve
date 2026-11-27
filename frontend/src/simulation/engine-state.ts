@@ -47,6 +47,7 @@ export interface Meter {
 }
 export interface WorkState extends Meter {
   node: Extract<SimulationNode, { type: 'work' }>;
+  reserveOpened?: true;
   queueIds: Map<number, number>;
   pending: Set<number>;
   heap: EventQueue;

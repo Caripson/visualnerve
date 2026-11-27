@@ -6,6 +6,7 @@ import { remapPresentation } from '../presentation/definition';
 import { getStoryboard, setStoryboard } from '../presentation/storyboard';
 import { remapBuildSpecification } from '../export/build-specification';
 import { remapSimulationModel } from '../simulation/copy';
+import { remapBehaviorLibrary } from '../behaviors/document';
 import { remapGraphCollaboration } from '../collaboration/model/remap';
 import { remapNotationGraph } from '../notation/remap';
 import { StorageError, validateGraph } from '../model/validation';
@@ -454,6 +455,7 @@ async function importHistoryBackupData(
         const edgeMap = new Map([...edges].map(([id, value]) => [id, value!]));
         const datasetMap = new Map([...sourceIds].map(([id, value]) => [id, value!]));
         graph = remapPresentation(graph, nodeMap);
+        graph = remapBehaviorLibrary(graph, nodeMap);
         if (original.diagram.settings.storyboard)
           graph = setStoryboard(graph, {
             ...getStoryboard(original),

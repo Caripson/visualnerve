@@ -4,6 +4,8 @@ import { useCompactLayout } from '../hooks/useCompactLayout';
 import { useEditor } from '../state/editor';
 import { workspace } from '../storage/workspace';
 import { getSpatialView } from '../spatial/types';
+import { behaviorsEnabled } from '../behaviors/feature';
+import { captureSimulationBehaviors } from './behaviors';
 import { setSimulationModel } from './document';
 import { simulationService } from './service';
 import { useSimulationCanvasLifecycle } from './useSimulationCanvasLifecycle';
@@ -186,10 +188,13 @@ export function SimulationFeature() {
       }
       await workspace.settled();
       await job.check();
+      const saved = useEditor.getState().graph!;
+      const behaviors = behaviorsEnabled ? captureSimulationBehaviors(saved) : undefined;
       if (
         canResume &&
         view &&
-        JSON.stringify(useEditor.getState().graph?.simulation) === JSON.stringify(view.run.model)
+        JSON.stringify(saved.simulation) === JSON.stringify(view.run.model) &&
+        JSON.stringify(behaviors) === JSON.stringify(view.run.options.behaviors)
       ) {
         await simulationService.control(view.run.id, 'resume', { beforeWrite: job.check });
         return;
@@ -198,7 +203,6 @@ export function SimulationFeature() {
         await simulationService.control(view.run.id, 'stop', { beforeWrite: job.check });
         await job.check();
       }
-      const saved = useEditor.getState().graph!;
       await simulationService.start(saved.diagram.id, saved.simulation!, {
         durationSeconds: duration,
         seed,
@@ -208,6 +212,7 @@ export function SimulationFeature() {
         animated: speed !== 'max',
         origin: 'ui',
         beforeWrite: job.check,
+        ...(behaviors ? { behaviors } : {}),
       });
     });
   const createScenario = () => {

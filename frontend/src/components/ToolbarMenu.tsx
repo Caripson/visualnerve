@@ -10,12 +10,14 @@ export function ToolbarMenu({
   children,
   className = '',
   text = true,
+  closeOnAction = true,
 }: {
   label: string;
   icon: ReactNode;
   children: ReactNode;
   className?: string;
   text?: boolean;
+  closeOnAction?: boolean;
 }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
@@ -110,7 +112,8 @@ export function ToolbarMenu({
               maxHeight: position.maxHeight || undefined,
             }}
             onClick={(event) => {
-              if ((event.target as HTMLElement).closest('button:not(:disabled)')) close();
+              if (closeOnAction && (event.target as HTMLElement).closest('button:not(:disabled)'))
+                close();
             }}
           >
             {children}

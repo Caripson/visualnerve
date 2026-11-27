@@ -69,6 +69,7 @@ import { remapBuildSpecification } from '../export/build-specification';
 import { remapOverview } from '../overview/copy';
 import { importHistoryBackup } from '../history/backup';
 import { remapSimulationModel } from '../simulation/copy';
+import { remapBehaviorLibrary } from '../behaviors/document';
 import { reconcileSimulationGraph } from '../simulation/document';
 import { SimulationRunStore } from '../simulation/run-store';
 import { importSimulationRuns } from '../simulation/backup';
@@ -624,6 +625,7 @@ export class Repository {
         Object.assign(graph, remapNotationGraph(graph, nodeIds));
         Object.assign(graph, remapAnalysisReferences(graph, nodeIds));
         Object.assign(graph, remapPresentation(graph, nodeIds));
+        Object.assign(graph, remapBehaviorLibrary(graph, nodeIds));
         Object.assign(graph, remapStoryboard(graph, nodeIds, edgeIds));
         Object.assign(graph, remapBuildSpecification(graph, nodeIds, edgeIds, sourceIds));
         Object.assign(graph, remapOverview(graph, source, nodeIds));

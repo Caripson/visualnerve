@@ -1,6 +1,7 @@
 import { StorageError } from '../model/errors';
 import { historyJsonBytes } from '../history/codec';
 import type { SimulationModel, SimulationResult, SimulationState } from './types';
+import { simulationBehaviorTraceLimit } from './behaviors';
 
 type RecordValue = Record<string, unknown>;
 const object = (value: unknown): value is RecordValue =>
@@ -396,6 +397,31 @@ export function assertArchivedState(value: unknown): asserts value is Simulation
     ])
       requireValue(event[key] === undefined || finite(event[key]));
   });
+  if (state.behaviorTrace !== undefined) {
+    requireValue(
+      Array.isArray(state.behaviorTrace) &&
+        state.behaviorTrace.length <= simulationBehaviorTraceLimit,
+    );
+    list(state.behaviorTrace, (event) => {
+      fields(event, ['sequence', 'eventSequence', 'timeSeconds', 'phase']);
+      requireValue(
+        text(event.nodeId) &&
+          ['queueChanged', 'message', 'send', 'reserve', 'error'].includes(String(event.kind)),
+      );
+      for (const key of [
+        'definitionId',
+        'bindingId',
+        'sourceNodeId',
+        'targetNodeId',
+        'resourceId',
+        'message',
+        'decision',
+      ])
+        requireValue(event[key] === undefined || text(event[key]));
+      for (const key of ['line', 'column', 'previousLength', 'length', 'messageId', 'particleId'])
+        requireValue(event[key] === undefined || finite(event[key]));
+    });
+  }
   list(state.bottlenecks, (bottleneck) => {
     requireValue(
       bottleneck.methodology === undefined ||

@@ -563,3 +563,14 @@
     grid-column: auto;
   }
 }
+.simulation-behavior-trace {
+  margin-block: 0.5rem;
+}
+.simulation-behavior-trace ol {
+  max-height: 15rem;
+  overflow-y: auto;
+}
+.simulation-behavior-trace pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

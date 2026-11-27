@@ -9,7 +9,7 @@ import {
 } from '../ui/editor-labels';
 import { useI18n } from '../i18n';
 import { PresentationNumberField } from '../presentation/NumberField';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowRight, Layers, Link, Plus, Trash2, ChevronRight, Star } from 'lucide-react';
 import { useEditor } from '../state/editor';
 import {
@@ -43,6 +43,17 @@ import {
 } from '../notation/LazyControls';
 import { canUseFlowchartSymbols } from '../flowchart/availability';
 import { NodeBackgroundField } from './NodeBackgroundField';
+import { behaviorsEnabled } from '../behaviors/feature';
+import { getSpatialView } from '../spatial/types';
+
+const LazyBehaviorBindings = behaviorsEnabled
+  ? lazy(() =>
+      import('../behaviors/BehaviorBindings').then((module) => ({
+        default: module.BehaviorBindings,
+      })),
+    )
+  : null;
+
 export interface PropertiesProps {
   backgroundFocusNodeId?: string;
   onBackgroundFocused?: () => void;
@@ -205,6 +216,11 @@ function PropertyPanel({
             update={update}
             onFocusRequested={backgroundFocusNodeId === node.id ? onBackgroundFocused : undefined}
           />
+          {LazyBehaviorBindings && getSpatialView(graph).mode === '2d' && (
+            <Suspense fallback={null}>
+              <LazyBehaviorBindings key={node.id} nodeId={node.id} />
+            </Suspense>
+          )}
           <div className="property-section">{t('editor.properties.responsibility')}</div>
           <Field title={t('editor.properties.owner')}>
             <select

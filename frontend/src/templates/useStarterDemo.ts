@@ -1,6 +1,28 @@
 import { useEffect, useRef } from 'react';
 import { useEditor } from '../state/editor';
 import { createTemplateDiagram } from './create';
+import { behaviorsEnabled } from '../behaviors/feature';
+import type { BehaviorDemo } from '../behaviors/demo';
+import { workspace } from '../storage/workspace';
+import { workspaceStorage } from '../storage/runtime';
+
+const behaviorExamples: ReadonlySet<string> = new Set<BehaviorDemo>([
+  'behaviors-editor',
+  'behaviors-cashier',
+  'behaviors-cashier-busy',
+  'behaviors-cashier-off',
+]);
+
+async function createBehaviorExample(demo: BehaviorDemo) {
+  const operation = await workspaceStorage.captureOperation();
+  try {
+    const { createBehaviorDemo } = await import('../behaviors/demo');
+    await operation.check();
+    await workspace.create(createBehaviorDemo(demo), operation);
+  } finally {
+    operation.dispose();
+  }
+}
 
 const starterExamples: Record<string, { template: string; name: string }> = {
   kiosk: { template: 'process-simulator', name: 'Kiosk package pickup' },
@@ -24,9 +46,14 @@ export function useStarterDemo(ready: boolean, acknowledged: boolean) {
     if (!ready || !acknowledged || started.current) return;
     const demo = new URL(location.href).searchParams.get('demo');
     const example = demo && Object.hasOwn(starterExamples, demo) ? starterExamples[demo] : null;
-    if (!example) return;
+    const behaviorExample =
+      behaviorsEnabled && demo && behaviorExamples.has(demo) ? (demo as BehaviorDemo) : null;
+    const create = behaviorExample
+      ? () => createBehaviorExample(behaviorExample)
+      : example && (() => createTemplateDiagram(example.template, example.name));
+    if (!create) return;
     started.current = true;
-    void createTemplateDiagram(example.template, example.name)
+    void create()
       .then(() => {
         const url = new URL(location.href);
         if (url.searchParams.get('demo') === demo) url.searchParams.delete('demo');

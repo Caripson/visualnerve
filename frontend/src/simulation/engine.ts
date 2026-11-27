@@ -41,6 +41,11 @@ import { Distribution } from './statistics';
 import { BoundedRing } from './ring';
 import { StorageError } from '../model/errors';
 import { InfrastructureRuntime, infrastructureResourceIds } from './infrastructure/runtime';
+import {
+  SimulationBehaviors,
+  simulationBehaviorPhase,
+  type QueuedSimulationBehavior,
+} from './behaviors';
 const ms = (s: number) => Math.round(s * 1000),
   sec = (t: number) => t / 1000;
 export const simulationExecutionLimits = { activeParticles: 200000, semanticEvents: 50000000 };
@@ -73,8 +78,8 @@ function canonical(value: unknown): string {
       .join(',')}}`;
   return JSON.stringify(value) ?? 'null';
 }
-export function simulationModelHash(model: SimulationModel) {
-  return hashString(canonical(model)).toString(16);
+export function simulationModelHash(model: SimulationModel, behaviors?: RunOptions['behaviors']) {
+  return hashString(canonical(behaviors ? { model, behaviors } : model)).toString(16);
 }
 /** The sole business engine. Scheduling/UI determine advancement targets, never outcomes. */
 export class SimulationEngine {
@@ -85,6 +90,7 @@ export class SimulationEngine {
     RunOptions;
   private readonly processes: ProcessMetricsAccumulator;
   private readonly parallel: ParallelExecution;
+  private readonly behaviors?: SimulationBehaviors;
   private clock = 0;
   private accountedClock = 0;
   private processedEvents = 0;
@@ -108,6 +114,7 @@ export class SimulationEngine {
   private eventSequence = 0;
   private particleSequence = 0;
   private scheduledSources = 0;
+  private scheduledBehaviors = 0;
   private active = new Map<number, Particle>();
   private retained: BoundedRing<ParticleSnapshot>;
   private events: BoundedRing<SimulationEvent>;
@@ -171,7 +178,10 @@ export class SimulationEngine {
         model.scenarios.find((s) => s.id === options.scenarioId)?.demandMultiplier ??
         1,
       untilComplete: options.untilComplete ?? false,
+      ...(options.behaviors ? { behaviors: structuredClone(options.behaviors) } : {}),
     };
+    if (this.options.behaviors)
+      this.behaviors = new SimulationBehaviors(this.options.behaviors, this.model);
     if (
       !Number.isFinite(this.options.durationSeconds) ||
       this.options.durationSeconds <= 0 ||
@@ -200,7 +210,7 @@ export class SimulationEngine {
           ),
         );
       }
-    this.hash = simulationModelHash(this.model);
+    this.hash = simulationModelHash(this.model, this.options.behaviors);
     this.runId = options.runId ?? `simulation-${this.hash}-${this.options.seed}`;
     for (const t of this.model.particleTypes)
       this.types.set(t.id, {
@@ -530,6 +540,26 @@ export class SimulationEngine {
       this.dispatchScheduled = true;
       this.schedule('dispatch', '', this.clock, 4);
     }
+  }
+  private scheduleBehavior(behavior: QueuedSimulationBehavior) {
+    this.scheduledBehaviors++;
+    this.queue.push({
+      kind: 'behavior',
+      id: behavior.nodeId,
+      at: this.clock,
+      phase: simulationBehaviorPhase,
+      sequence: ++this.sequence,
+      behavior,
+    });
+  }
+  private queueChanged(w: WorkState, previous: number) {
+    const nodeId = w.node.id;
+    if (this.behaviors?.listensToQueue(nodeId))
+      this.scheduleBehavior({
+        nodeId,
+        event: { kind: 'queueChanged', nodeId, previous, current: w.queue },
+        depth: 0,
+      });
   }
   private source(event: EngineEvent) {
     const node = this.nodes.get(event.id);
@@ -1006,8 +1036,8 @@ export class SimulationEngine {
       return { ...r, units: r.units * multiplier };
     });
   }
-  private canStart(w: WorkState, p: Particle) {
-    if (!w.scheduled || w.busy >= w.capacity) return false;
+  private canStart(w: WorkState, p: Particle, capacity = w.capacity) {
+    if (!w.scheduled || w.busy >= capacity) return false;
     if (
       this.infrastructure &&
       !this.infrastructure.canAcquire(this.infrastructureWork(w), p.rootParticleId ?? p.id, p.id)
@@ -1084,6 +1114,7 @@ export class SimulationEngine {
           particleTypeId: p.typeId,
           nodeId: w.node.id,
         });
+        this.queueChanged(w, w.queue - 1);
         const patience = this.types.get(p.typeId)!.type.patienceSeconds;
         if (patience !== undefined)
           this.schedule('abandon', w.node.id, this.clock + ms(patience) + 1, 3, p.id, p.entered);
@@ -1109,8 +1140,10 @@ export class SimulationEngine {
     this.wait.add(wait);
     this.types.get(p.typeId)!.wait.add(wait);
     p.queueEnteredAtSeconds = undefined;
-    if (queued)
+    if (queued) {
       this.emit('QUEUE_LEFT', { particleId: p.id, particleTypeId: p.typeId, nodeId: w.node.id });
+      this.queueChanged(w, w.queue + 1);
+    }
     for (const id of infrastructureResourceIds(w.node.work)) {
       this.resourceQueue(id);
       this.resources.get(id)!.wait.add(wait);
@@ -1573,8 +1606,9 @@ export class SimulationEngine {
     id: string,
     resource: boolean,
     value: number,
+    redispatch = true,
   ) {
-    const rule = this.scalingRule(s, resource)!;
+    const rule = this.scalingRule(s, resource);
     this.touch(s);
     const previous = s.capacity,
       rate = this.rate(s);
@@ -1585,8 +1619,8 @@ export class SimulationEngine {
     const delta = this.rate(s) - rate;
     if (resource) this.resourceRate += delta;
     else this.workRate += delta;
-    if (value > previous) {
-      const cost = (rule.scaleUpCost ?? 0) * (value - previous);
+    const cost = value > previous ? (rule?.scaleUpCost ?? 0) * (value - previous) : 0;
+    if (cost) {
       s.scaleCost += cost;
       this.totals.scaling += cost;
     }
@@ -1594,12 +1628,42 @@ export class SimulationEngine {
       [resource ? 'resourceId' : 'nodeId']: id,
       capacity: value,
       previousCapacity: previous,
-      amount: value > previous ? (rule.scaleUpCost ?? 0) * (value - previous) : 0,
+      amount: cost,
     });
     this.captureCash();
-    if (resource) for (const node of (s as ResourceState).waiters) this.mark(node);
-    else this.mark(id);
+    if (redispatch) {
+      if (resource) for (const node of (s as ResourceState).waiters) this.mark(node);
+      else this.mark(id);
+    }
     this.checkScale(s, id, resource);
+  }
+  private openReserveSlot(nodeId: string, resourceId: string) {
+    const work = this.work.get(nodeId);
+    if (!work) return { decision: 'not-a-work-node' };
+    if (work.reserveOpened) return { decision: 'already-open' };
+    const resource = this.resources.get(resourceId);
+    const requirements = this.requirements(work);
+    if (
+      !resource ||
+      work.node.work.scaling ||
+      work.node.work.infrastructure ||
+      resource.resource.infrastructure ||
+      requirements.length !== 1 ||
+      requirements[0].resourceId !== resourceId ||
+      requirements[0].units !== 1
+    )
+      return { decision: 'unsupported-staffing-configuration' };
+    if (!work.scheduled || !resource.scheduled) return { decision: 'schedule-closed' };
+    const particle = this.head(work);
+    if (!particle || particle.pendingAdmission) return { decision: 'queue-empty' };
+    const capacity = work.capacity + 1;
+    if (!Number.isSafeInteger(capacity)) return { decision: 'capacity-limit' };
+    if (!this.canStart(work, particle, capacity)) return { decision: 'staff-busy' };
+    // No event runs between the ordinary resource preflight and allocation.
+    work.reserveOpened = true;
+    this.changeCapacity(work, nodeId, false, capacity, false);
+    this.start(work, particle);
+    return { decision: 'opened-and-allocated', particleId: particle.id };
   }
   private handle(event: EngineEvent) {
     const p = event.particle === undefined ? undefined : this.active.get(event.particle);
@@ -1628,6 +1692,15 @@ export class SimulationEngine {
     } else if (event.kind === 'budget' && event.token === this.budgetToken) {
       this.status = 'failed';
       this.message = 'Maximum simulation budget reached.';
+    } else if (event.kind === 'behavior' && event.behavior) {
+      this.scheduledBehaviors--;
+      this.behaviors?.execute(
+        event.behavior,
+        sec(this.clock),
+        event.sequence,
+        (behavior) => this.scheduleBehavior(behavior),
+        (nodeId, resourceId) => this.openReserveSlot(nodeId, resourceId),
+      );
     } else if (event.kind === 'source') this.source(event);
     else if (event.kind === 'arrival' && p) this.enter(p, event.id);
     else if (event.kind === 'finish' && p && p.status === 'processing')
@@ -1781,7 +1854,8 @@ export class SimulationEngine {
         this.options.untilComplete &&
         !exactTime &&
         this.active.size === 0 &&
-        this.scheduledSources === 0
+        this.scheduledSources === 0 &&
+        this.scheduledBehaviors === 0
       ) {
         this.complete();
         return true;
@@ -1792,7 +1866,8 @@ export class SimulationEngine {
       this.options.untilComplete &&
       !exactTime &&
       this.active.size === 0 &&
-      this.scheduledSources === 0
+      this.scheduledSources === 0 &&
+      this.scheduledBehaviors === 0
     ) {
       this.complete();
       return true;
@@ -1811,7 +1886,7 @@ export class SimulationEngine {
     this.moveTime(Math.max(this.clock, target), false);
     if (
       this.options.untilComplete
-        ? this.active.size === 0 && this.scheduledSources === 0
+        ? this.active.size === 0 && this.scheduledSources === 0 && this.scheduledBehaviors === 0
         : target >= duration
     )
       this.complete();
@@ -1965,6 +2040,7 @@ export class SimulationEngine {
     });
     if (infrastructure) state.infrastructure = infrastructure;
     if (this.failureCode) state.failureCode = this.failureCode;
+    if (this.behaviors) state.behaviorTrace = this.behaviors.trace();
     return state;
   }
   result(): SimulationResult {

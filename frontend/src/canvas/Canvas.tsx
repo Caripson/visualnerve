@@ -11,6 +11,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type DragEvent,
 } from 'react';
 import {
   applyNodeChanges,
@@ -36,6 +37,17 @@ import { CanvasTools } from './CanvasTools';
 import { CanvasRulers, canvasRulerSize } from './CanvasRulers';
 import { COMPACT_LAYOUT_QUERY } from '../hooks/useCompactLayout';
 import { useEditor } from '../state/editor';
+import { behaviorsEnabled } from '../behaviors/feature';
+import { getBehaviorLibrary } from '../behaviors/document';
+import {
+  attachBehavior,
+  behaviorDragType,
+  behaviorEditAllowed,
+  canAttachBehavior,
+  getActiveBehaviorDrag,
+  readBehaviorDrag,
+  type BehaviorDrag,
+} from '../behaviors/interaction';
 import { descendantIds, type Graph, type GraphNode } from '../model/types';
 import { dayMS, timelineGeometry, type Geometry } from '../layouts/layout';
 import {
@@ -941,6 +953,25 @@ export function Canvas() {
       },
     }));
   const showProcessNavigation = !presentationOpen && !!graph.simulation?.processes?.length;
+  const behaviorDropNode = (event: DragEvent<HTMLDivElement>, drag?: BehaviorDrag) => {
+    if (
+      !drag ||
+      drag.diagramId !== graph.diagram.id ||
+      overview?.active ||
+      presentationOpen ||
+      exploration ||
+      drawingTool !== 'none' ||
+      !behaviorEditAllowed(graph.diagram.id) ||
+      !(event.target instanceof Element)
+    )
+      return;
+    const nodeId = event.target.closest<HTMLElement>('.react-flow__node')?.dataset.id;
+    if (!nodeId || projectedIds.has(nodeId)) return;
+    const definition = getBehaviorLibrary(graph).definitions.find(
+      (item) => item.id === drag.definitionId,
+    );
+    if (definition && canAttachBehavior(graph, nodeId, definition)) return nodeId;
+  };
   return (
     <div
       ref={canvasShell}
@@ -948,6 +979,31 @@ export function Canvas() {
       style={showRulers ? { ['--canvas-ruler-size' as string]: `${canvasRulerSize}px` } : undefined}
       data-testid="canvas"
       data-canvas-editing-shortcuts={rulersAvailable ? 'true' : undefined}
+      onDragOver={
+        behaviorsEnabled
+          ? (event) => {
+              if (
+                !event.dataTransfer.types.includes(behaviorDragType) ||
+                !behaviorDropNode(event, getActiveBehaviorDrag())
+              )
+                return;
+              event.preventDefault();
+              event.dataTransfer.dropEffect = 'copy';
+            }
+          : undefined
+      }
+      onDrop={
+        behaviorsEnabled
+          ? (event) => {
+              if (!event.dataTransfer.types.includes(behaviorDragType)) return;
+              event.preventDefault();
+              event.stopPropagation();
+              const drag = readBehaviorDrag(event.dataTransfer);
+              const nodeId = behaviorDropNode(event, drag);
+              if (nodeId && drag) attachBehavior(drag.diagramId, nodeId, drag.definitionId);
+            }
+          : undefined
+      }
       onPointerDownCapture={(event) => {
         interruptPresentation.current();
         if (isCanvasNavigationGesture(event.target)) focusNavigation.cancel();

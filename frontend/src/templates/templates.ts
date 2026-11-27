@@ -4,6 +4,7 @@ import { blankAnalytics } from '../analytics/validation';
 import { remapAnalytics } from '../analytics/remap';
 import { createSimulationGraph } from '../simulation/document';
 import { remapSimulationModel } from '../simulation/copy';
+import { remapBehaviorLibrary } from '../behaviors/document';
 import { createEmptySimulationModel } from '../simulation/starter';
 import { DeliveryNetworkExample } from '../simulation/delivery-example';
 import { infrastructureExample } from '../simulation/infrastructure/examples';
@@ -59,6 +60,7 @@ export function instantiate(key: string, name: string, source?: Graph): Graph {
     targetNodeId: ids.get(e.targetNodeId)!,
   }));
   Object.assign(graph, remapNotationGraph(graph, ids));
+  Object.assign(graph, remapBehaviorLibrary(graph, ids));
   if (graph.simulation) graph.simulation = remapSimulationModel(graph.simulation, ids, ids);
   if (graph.diagram.analytics)
     graph.diagram.analytics = remapAnalytics(graph.diagram.analytics, ids);

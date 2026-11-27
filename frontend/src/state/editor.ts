@@ -8,6 +8,9 @@ import { collaborationPermissions } from '../collaboration/access';
 import { reanalyzeDataModelAsync } from '../data/modelClient';
 import { prunePresentation } from '../presentation/definition';
 import { pruneStoryboard } from '../presentation/storyboard';
+import { pruneBehaviorBindings } from '../behaviors/document';
+import { evaluateConnectionBehaviors, type BehaviorTraceEntry } from '../behaviors/editor';
+import { behaviorsEnabled } from '../behaviors/feature';
 import { reconcileSimulationGraph } from '../simulation/document';
 import { addConnectedNode, type ConnectedNodeType } from '../nodes/connected-node';
 import { create } from 'zustand';
@@ -69,6 +72,7 @@ interface Editor {
   status: SaveStatus;
   message: string;
   commandError: string;
+  behaviorTrace: BehaviorTraceEntry[];
   preferenceError: { key: string; message: string } | null;
   theme: string;
   importFileLimitMb: number;
@@ -149,6 +153,7 @@ export const useEditor = create<Editor>((set, get) => ({
   status: 'saved',
   message: '',
   commandError: '',
+  behaviorTrace: [],
   preferenceError: null,
   theme: 'system',
   importFileLimitMb: 50,
@@ -196,6 +201,7 @@ export const useEditor = create<Editor>((set, get) => ({
           : false,
       drawingTool: 'none',
       commandError: '',
+      behaviorTrace: [],
     }),
   command: (label, change, coalesce = false) => {
     const s = get();
@@ -219,7 +225,9 @@ export const useEditor = create<Editor>((set, get) => ({
       });
       return;
     }
-    const next = pruneStoryboard(prunePresentation(syncSpatialPositions(s.graph, reconciled)));
+    const next = pruneBehaviorBindings(
+      pruneStoryboard(prunePresentation(syncSpatialPositions(s.graph, reconciled))),
+    );
     const changedFilters =
       s.graph.diagram.settings.analysisFilters !== next.diagram.settings.analysisFilters;
     const before = changedFilters
@@ -551,23 +559,29 @@ export const useEditor = create<Editor>((set, get) => ({
       },
       true,
     ),
-  connect: (source, target, sourceHandle, targetHandle) =>
-    get().command('Connect nodes', (g) => ({
-      ...g,
-      edges: [
-        ...g.edges,
-        newEdge(
-          g.diagram.id,
-          source,
-          target,
-          notationConnectionPorts(
-            { ...defaultNotationConnection(g, source, target), metadata: {} },
-            sourceHandle,
-            targetHandle,
-          ),
+  connect: (source, target, sourceHandle, targetHandle) => {
+    const previous = get().graph;
+    let trace: BehaviorTraceEntry[] = [];
+    get().command('Connect nodes', (graph) => {
+      const edge = newEdge(
+        graph.diagram.id,
+        source,
+        target,
+        notationConnectionPorts(
+          { ...defaultNotationConnection(graph, source, target), metadata: {} },
+          sourceHandle,
+          targetHandle,
         ),
-      ],
-    })),
+      );
+      const next = { ...graph, edges: [...graph.edges, edge] };
+      if (!behaviorsEnabled || collaborationPermissions.role(graph.diagram.id)) return next;
+      const result = evaluateConnectionBehaviors(graph, edge);
+      trace = result.trace;
+      return { ...next, nodes: result.nodes };
+    });
+    if (trace.length && get().graph !== previous)
+      set({ behaviorTrace: [...get().behaviorTrace, ...trace].slice(-50) });
+  },
   remove: (branch = false) => {
     const s = get();
     if (!s.graph) return;

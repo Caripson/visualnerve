@@ -7,6 +7,8 @@ import { simulationService } from './service';
 import { simulationTime } from './SimulationControls';
 import type { SimulationUIAction } from './ui-action';
 import { InfrastructureComparisonPanel } from './infrastructure/InfrastructureComparisonPanel';
+import { behaviorsEnabled } from '../behaviors/feature';
+import { BehaviorRunTrace } from './BehaviorRunTrace';
 
 type SavedRuns = Awaited<ReturnType<typeof simulationService.list>>;
 export function SimulationResults({
@@ -97,6 +99,7 @@ export function SimulationResults({
           {t('simulator.results.compareSelectedRuns')}
         </button>
       </div>
+      {behaviorsEnabled && view?.run.options.behaviors && <BehaviorRunTrace view={view} />}
       {!compact && (
         <div className="simulation-table-scroll">
           <table>

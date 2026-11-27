@@ -12,6 +12,7 @@ import type { AnalyticsExtension } from '../analytics/types';
 import type { IBMSymbolId } from '../flowchart/ibm-symbols';
 import type { NodeNotation, EdgeNotation, NotationProfile } from '../notation/types';
 import type { CanvasGuide, RulerOrigin } from './canvas-guides';
+import type { BehaviorLibrary } from '../behaviors/document';
 export type { DrawingLayer, DrawingStroke } from '../drawing/types';
 
 export const diagramTypes = [
@@ -88,6 +89,7 @@ export interface Diagram extends Base {
     storyboard?: StoryboardDefinition;
     overview?: OverviewConfig;
     buildSpecification?: BuildSpecificationDraft;
+    behaviors?: BehaviorLibrary;
     [key: string]: unknown;
   };
 }
@@ -194,6 +196,9 @@ export function newNode(diagramId: string, partial: Partial<GraphNode> = {}): Gr
     metadata: {},
     ...partial,
   };
+}
+export function isValidNodeTitle(title: unknown): title is string {
+  return typeof title === 'string' && title.length <= 1000 && title.trim().length > 0;
 }
 export function newEdge(
   diagramId: string,

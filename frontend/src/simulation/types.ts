@@ -228,6 +228,38 @@ export interface RunOptions {
   demandMultiplier?: number;
   untilComplete?: boolean;
   runId?: string;
+  /** Captured inputs for the opt-in, browser-only Behavior preview. */
+  behaviors?: SimulationBehaviorSnapshot;
+}
+export interface SimulationBehaviorSnapshot {
+  definitions: { id: string; name: string; version: 1; source: string }[];
+  bindings: {
+    id: string;
+    definitionId: string;
+    nodeId: string;
+    parameters: Record<string, string | number | boolean>;
+  }[];
+}
+export interface SimulationBehaviorTrace {
+  sequence: number;
+  eventSequence: number;
+  timeSeconds: number;
+  phase: number;
+  nodeId: string;
+  kind: 'queueChanged' | 'message' | 'send' | 'reserve' | 'error';
+  bindingId?: string;
+  definitionId?: string;
+  line?: number;
+  column?: number;
+  previousLength?: number;
+  length?: number;
+  messageId?: number;
+  message?: string;
+  targetNodeId?: string;
+  sourceNodeId?: string;
+  resourceId?: string;
+  particleId?: number;
+  decision?: string;
 }
 export interface DistributionMetrics {
   count: number;
@@ -508,6 +540,7 @@ export interface SimulationState {
   processes?: Record<string, ProcessMetrics>;
   /** Additive schemaVersion 1 state; absent in runs made before parallel execution. */
   parallel?: ParallelState;
+  behaviorTrace?: SimulationBehaviorTrace[];
   particles: ParticleSnapshot[];
   events: SimulationEvent[];
   bottlenecks: Bottleneck[];

@@ -110,7 +110,9 @@ jobs:
       - name: Install browser test dependencies
         working-directory: frontend
         run: npx playwright install --with-deps chromium
-      - name: Test and build production application
+      - name: Test and build the staging-enabled application
+        env:
+          VITE_VISUAL_NERVE_BEHAVIORS_PREVIEW: '1'
         run: ./scripts/test.sh --e2e
       - name: Preserve browser test failure diagnostics
         if: ${{ failure() && !cancelled() }}

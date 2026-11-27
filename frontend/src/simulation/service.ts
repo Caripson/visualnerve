@@ -4,10 +4,12 @@ import { workspaceStorage } from '../storage/runtime';
 import type { WorkspaceStorage, WorkspaceOperation } from '../storage/contracts';
 import { StorageError } from '../model/validation';
 import { AppUpdateBlockedError } from '../updates/errors';
+import { behaviorsEnabled } from '../behaviors/feature';
 import { SimulationClient } from './client';
 import { SimulationRunStore, simulationRetentionLimits } from './run-store';
 import { assertSimulationModel, resolveScenario } from './schema';
 import { compareSimulationResults } from './engine';
+import { SimulationBehaviors } from './behaviors';
 import { canHaveWorker, ownRun, runOwners, type RunOwnership } from './run-ownership';
 import type { SimulationRunRecord } from './storage';
 import type { RunOptions, SimulationModel, SimulationResult, SimulationState } from './types';
@@ -331,10 +333,17 @@ export class SimulationService {
     originating?: WorkspaceOperation,
   ): Promise<SimulationRunInfo> {
     assertSimulationModel(model);
-    assertSimulationModel({
+    const resolved = {
       ...resolveScenario(model, input.scenarioId, input.demandMultiplier),
       scenarios: [],
-    });
+    };
+    assertSimulationModel(resolved);
+    const behaviors = input.behaviors ? structuredClone(input.behaviors) : undefined;
+    if (behaviors) {
+      if (!behaviorsEnabled || input.origin === 'api')
+        throw new StorageError(409, 'Enable the local Behavior preview to run this simulation.');
+      new SimulationBehaviors(behaviors, resolved);
+    }
     if (input.speed !== undefined && ![1, 10, 100, 'max'].includes(input.speed))
       throw new StorageError(422, 'Simulation speed must be 1, 10, 100 or max.');
     for (const key of ['animated', 'startPaused', 'untilComplete'] as const)
@@ -352,9 +361,10 @@ export class SimulationService {
         throw new StorageError(403, 'Accept local browser storage before running a simulation.');
       if (!(await operation.storage.diagrams.get(diagramId)))
         throw new StorageError(404, 'Diagram not found.');
-      const { origin: _origin, beforeWrite: _beforeWrite, ...executionInput } = input;
+      const { origin: _origin, beforeWrite: _beforeWrite, behaviors: _, ...executionInput } = input;
       const options: ExecutionOptions = {
         ...executionInput,
+        ...(behaviors ? { behaviors } : {}),
         durationSeconds: input.durationSeconds ?? model.defaults.durationSeconds,
         seed: input.seed ?? model.defaults.seed,
         speed: input.animated === false ? 'max' : (input.speed ?? 1),
@@ -767,6 +777,8 @@ export class SimulationService {
       if (live.client && run.status === 'running')
         throw new StorageError(409, 'Pause the run before replaying.');
       const origin = options.origin ?? live.origin;
+      if (run.options.behaviors && (!behaviorsEnabled || origin === 'api'))
+        throw new StorageError(409, 'Enable the local Behavior preview to replay this simulation.');
       await this.guard(live, origin, options.beforeWrite);
       if (this.runs.get(id) !== live)
         throw new StorageError(409, 'Replay run was unloaded before execution could start.');

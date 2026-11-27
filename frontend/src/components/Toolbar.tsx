@@ -2,7 +2,7 @@ import { nodeKindLabel, statusLabel } from '../ui/editor-labels';
 import { timelineScaleKeys } from './ui-labels';
 import { useI18n } from '../i18n';
 import { presentation } from '../presentation/service';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useReactFlow, useStoreApi } from '@xyflow/react';
 import {
   Users,
@@ -49,6 +49,16 @@ import { CompactToolbar } from './mobile/CompactToolbar';
 import { LazyIbmSymbolPalette } from '../flowchart/LazyControls';
 import { LazyNotationPalette } from '../notation/LazyControls';
 import { canUseFlowchartSymbols } from '../flowchart/availability';
+import { behaviorsEnabled } from '../behaviors/feature';
+
+const LazyBehaviorLibrary = behaviorsEnabled
+  ? lazy(() =>
+      import('../behaviors/BehaviorLibrary').then((module) => ({
+        default: module.BehaviorLibrary,
+      })),
+    )
+  : null;
+
 export function Toolbar({
   open,
   showFilters,
@@ -170,12 +180,21 @@ export function Toolbar({
       .getState()
       .addNode({ ...node, ...size, x: point.x - size.width / 2, y: point.y - size.height / 2 });
   };
-  const symbolTools = canUseFlowchartSymbols(graph.diagram) ? (
+  const symbolTools = (
     <>
-      <LazyIbmSymbolPalette compact add={addSymbol} />
-      <LazyNotationPalette compact add={addSymbol} graph={graph} />
+      {canUseFlowchartSymbols(graph.diagram) && (
+        <>
+          <LazyIbmSymbolPalette compact add={addSymbol} />
+          <LazyNotationPalette compact add={addSymbol} graph={graph} />
+        </>
+      )}
+      {LazyBehaviorLibrary && !spatial && (
+        <Suspense fallback={null}>
+          <LazyBehaviorLibrary key={graph.diagram.id} />
+        </Suspense>
+      )}
     </>
-  ) : undefined;
+  );
   if (compact)
     return (
       <CompactToolbar

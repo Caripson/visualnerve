@@ -378,8 +378,8 @@ export async function simulationCommand(
   return method === 'DELETE' ? undefined : saved;
 }
 async function ownedRun(service: SimulationRuntime, diagramId: string, id: string) {
-  const run = (await service.get(id)) as { diagramId?: string } | null;
-  if (!run || run.diagramId !== diagramId)
+  const run = (await service.get(id)) as { diagramId?: string; options?: RunOptions } | null;
+  if (!run || run.diagramId !== diagramId || run.options?.behaviors)
     throw new SimulationCommandError(
       404,
       'Simulation run not found in this document.',
@@ -407,7 +407,10 @@ async function runCommand(
 ) {
   if (parts.length === 4) {
     query(url, []);
-    if (method === 'GET') return service.list(graph.diagram.id);
+    if (method === 'GET') {
+      const runs = await service.list(graph.diagram.id);
+      return Array.isArray(runs) ? runs.filter((run) => !run.options?.behaviors) : runs;
+    }
     if (method !== 'POST')
       throw new SimulationCommandError(405, 'Use GET or POST for simulation runs.');
     const options = startOptions(payload);

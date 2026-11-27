@@ -1,3 +1,5 @@
+import type { QueuedSimulationBehavior } from './behaviors';
+
 export interface EngineEvent {
   at: number;
   phase: number;
@@ -7,6 +9,7 @@ export interface EngineEvent {
   particle?: number;
   token?: number;
   value?: number;
+  behavior?: QueuedSimulationBehavior;
 }
 const before = (a: EngineEvent, b: EngineEvent) =>
   a.at < b.at ||

@@ -1,4 +1,4 @@
-import { diagramTypes, nodeKinds, type Graph, type Owner } from './types';
+import { diagramTypes, isValidNodeTitle, nodeKinds, type Graph, type Owner } from './types';
 import type { CsvDataset } from '../data/types';
 import {
   analysisForDataset,
@@ -21,6 +21,7 @@ import { validatePresentation } from '../presentation/types';
 import { validateStoryboard } from '../presentation/storyboard';
 import { validateOverviewConfig } from '../overview/types';
 import { validateBuildSpecification } from '../export/build-specification';
+import { validateBehaviorLibrary } from '../behaviors/document';
 import { validateSimulationGraph } from '../simulation/document';
 import { getIbmSymbol } from '../flowchart/ibm-symbols';
 import { canvasGuideLimit, isCanvasGuide, isRulerOrigin } from './canvas-guides';
@@ -247,6 +248,8 @@ export function validateGraph(graph: Graph, trustedDataset?: CsvDataset | CsvDat
     validateOverviewConfig(graph.diagram.settings.overview);
   if (graph.diagram.settings.buildSpecification !== undefined)
     validateBuildSpecification(graph.diagram.settings.buildSpecification);
+  if (graph.diagram.settings.behaviors !== undefined)
+    validateBehaviorLibrary(graph.diagram.settings.behaviors);
   const trusted = new Set(
     Array.isArray(trustedDataset) ? trustedDataset : trustedDataset ? [trustedDataset] : [],
   );
@@ -299,7 +302,7 @@ export function validateGraph(graph: Graph, trustedDataset?: CsvDataset | CsvDat
       'Node must belong to its diagram and have a UUID.',
     );
     requireValue(
-      typeof node.title === 'string' && node.title.trim() && node.title.length <= 1000,
+      isValidNodeTitle(node.title),
       'Node title is required and limited to 1000 characters.',
     );
     requireValue(nodeKinds.includes(node.nodeType), 'Unsupported node type.');
