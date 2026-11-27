@@ -72,9 +72,14 @@ export class SvgExportCommands {
     if (collection !== 'svg' || extra) throw new StorageError(404, 'Unknown SVG export endpoint.');
     if (!jobId && method === 'POST' && !url.search) {
       const input = object(data);
+      const transparentBackground = input.transparentBackground;
+      if (transparentBackground !== undefined && typeof transparentBackground !== 'boolean')
+        throw new StorageError(422, 'SVG transparentBackground must be a boolean.');
       if (
         Reflect.ownKeys(input).some(
-          (key) => typeof key !== 'string' || !['diagramId', 'scope', 'nodeIds'].includes(key),
+          (key) =>
+            typeof key !== 'string' ||
+            !['diagramId', 'scope', 'nodeIds', 'transparentBackground'].includes(key),
         ) ||
         typeof input.diagramId !== 'string' ||
         !idPattern.test(input.diagramId) ||
@@ -101,6 +106,7 @@ export class SvgExportCommands {
           {
             scope: input.scope as 'complete' | 'viewport' | 'selected' | undefined,
             nodeIds: input.nodeIds as string[] | undefined,
+            transparentBackground,
           },
           authority,
         );

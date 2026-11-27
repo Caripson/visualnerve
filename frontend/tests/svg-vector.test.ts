@@ -67,6 +67,17 @@ function parse(xml: string) {
   return new DOMParser().parseFromString(xml, 'image/svg+xml');
 }
 describe('native vector SVG serializer', () => {
+  it.each(['#fafaf7', '#171c19'])(
+    'removes only the document-level %s background when requested',
+    (background) => {
+      const flow = scene();
+      const opaque = vectorSVG(flow, 400, 200, background, {});
+      const canvas = `<rect width="400" height="200" fill="${background}"/>`;
+      expect(opaque).toContain(canvas);
+      expect(vectorSVG(flow, 400, 200, background, {}, false)).toBe(opaque);
+      expect(vectorSVG(flow, 400, 200, background, {}, true)).toBe(opaque.replace(canvas, ''));
+    },
+  );
   it('retains paths, editable wrapped text, icons, arrow markers, status and ink with escaped metadata', () => {
     const xml = vectorSVG(scene(), 400, 200, '#ffffff', {
       format: 'visual-nerve-svg',

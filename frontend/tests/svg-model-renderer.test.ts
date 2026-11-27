@@ -55,6 +55,28 @@ function fixture(): SvgWorkerRequest {
 }
 const parse = (svg: string) => new DOMParser().parseFromString(svg, 'image/svg+xml');
 describe('background native SVG model renderer', () => {
+  it.each(['complete', 'viewport', 'selected'] as const)(
+    'removes only the canvas background in %s exports',
+    (scope) => {
+      const input = fixture();
+      const node = input.graph.nodes[0];
+      node.backgroundColor = '#4b62a7';
+      input.options = { scope, ...(scope === 'selected' ? { nodeIds: [node.id] } : {}) };
+      const render = () => new SvgModelRenderer(measure).render(input, formatter).svg;
+      for (const background of ['#fafaf7', '#171c19']) {
+        input.theme.background = background;
+        delete input.options.transparentBackground;
+        const opaque = render();
+        const canvas = `<rect width="100%" height="100%" fill="${background}"/>`;
+        expect(opaque).toContain(canvas);
+        expect(opaque).toContain('fill="#4b62a7"');
+        input.options.transparentBackground = false;
+        expect(render()).toBe(opaque);
+        input.options.transparentBackground = true;
+        expect(render()).toBe(opaque.replace(canvas, ''));
+      }
+    },
+  );
   it.each([
     ['#E4EEE9', '#171c19', '#e1e7e1'],
     ['#172d55', '#fafaf7', '#1f2d28'],
@@ -474,6 +496,7 @@ describe('background native SVG model renderer', () => {
   });
   it('renders pen strokes as native paths and dots, including a drawing-only document', () => {
     const input = fixture();
+    input.options.transparentBackground = true;
     input.graph.nodes = [];
     input.graph.edges = [];
     input.graph.diagram.settings.drawing = {
@@ -494,10 +517,15 @@ describe('background native SVG model renderer', () => {
       ],
     };
     const doc = parse(new SvgModelRenderer(measure).render(input, formatter).svg);
+    expect(
+      Array.from(doc.documentElement.children).some(({ localName }) => localName === 'rect'),
+    ).toBe(false);
     expect(doc.querySelector('circle[data-drawing-stroke-id="dot"]')).not.toBeNull();
     expect(doc.querySelector('path[data-drawing-stroke-id="stroke"]')?.getAttribute('d')).toContain(
       'Q',
     );
+    input.graph.diagram.settings.drawing.visible = false;
+    expect(() => new SvgModelRenderer(measure).render(input, formatter)).toThrow('draw a stroke');
   });
   it('preserves visible pen annotations for selected scope while cropping to selected node bounds', () => {
     const input = fixture();

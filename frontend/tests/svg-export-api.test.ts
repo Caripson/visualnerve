@@ -10,6 +10,7 @@ import { bridgeResponseStatus, bridgeErrorStatus } from '../src/integration/brid
 import { SvgExportError } from '../src/export/svg-job-types';
 import type {
   SvgJobStatus,
+  SvgJobOptions,
   SvgWorkerRequest,
   SvgWorkerResponse,
 } from '../src/export/svg-job-types';
@@ -77,13 +78,13 @@ afterEach(async () => {
   vi.unstubAllGlobals();
   await db.delete();
 });
-async function start() {
+async function start(options: SvgJobOptions = {}) {
   const post = await repo.db.captureOperation();
   try {
     return await workspace.external<SvgJobStatus>(
       '/api/v1/exports/svg',
       'POST',
-      { diagramId },
+      { diagramId, ...options },
       post,
     );
   } finally {
@@ -139,6 +140,16 @@ it('retains the originating lease after POST ends and streams exact Unicode-safe
     { status: 404, code: 'SVG_JOB_NOT_FOUND' },
   );
 });
+it('passes the transparent background option through the read-only job route to the SVG worker', async () => {
+  const job = await start({ scope: 'viewport', transparentBackground: true });
+  await vi.waitFor(() =>
+    expect(WorkerBoundary.instances[0]?.request?.options).toMatchObject({
+      scope: 'viewport',
+      transparentBackground: true,
+    }),
+  );
+  await complete(job);
+});
 it.each(['read', 'off'] as const)(
   'invalidates retained plaintext on explicit %s grant choice, even after access is restored',
   async (choice) => {
@@ -183,6 +194,8 @@ it('validates structured input and result chunk boundaries and never exposes a p
     { diagramId, unsafe: true },
     { diagramId, scope: 'other' },
     { diagramId, nodeIds: [42] },
+    { diagramId, transparentBackground: 1 },
+    { diagramId, transparentBackground: null },
     { diagramId: 'not-an-id' },
     null,
   ])

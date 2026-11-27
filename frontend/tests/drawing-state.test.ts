@@ -88,17 +88,17 @@ describe('drawing model and editor commands', () => {
     const editor = useEditor.getState();
     editor.setGraph(blankGraph('First'));
     expect(useEditor.getState()).toMatchObject({
-      drawingTool: 'none',
-      drawingColor: '#e85d3f',
+      canvasTool: 'none',
+      toolColor: '#e85d3f',
       drawingWidth: 3,
     });
-    editor.setDrawingTool('pen');
-    editor.setDrawingTool('eraser');
-    expect(useEditor.getState().drawingTool).toBe('eraser');
+    editor.setCanvasTool('pen');
+    editor.setCanvasTool('eraser');
+    expect(useEditor.getState().canvasTool).toBe('eraser');
     expect(useEditor.getState().history).toHaveLength(0);
     expect(useEditor.getState().graph!.diagram.settings.drawing).toBeUndefined();
     editor.setGraph(blankGraph('Second'));
-    expect(useEditor.getState().drawingTool).toBe('none');
+    expect(useEditor.getState().canvasTool).toBe('none');
     expect(useEditor.getState().graph!.diagram.settings.drawing).toBeUndefined();
   });
 

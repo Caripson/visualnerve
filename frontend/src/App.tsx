@@ -14,7 +14,7 @@ import { Toolbar, FilterBar } from './components/Toolbar';
 import { PropertiesFeature as Properties } from './components/PropertiesFeature';
 import { Canvas } from './canvas/Canvas';
 import { LocalBadge, PrivacyIntro, RestoreBackup } from './components/DataPrivacy';
-import { useEditor } from './state/editor';
+import { useEditor, type CanvasTool } from './state/editor';
 import { workspace } from './storage/workspace';
 import { type WorkspaceBackup } from './storage/database';
 import type { WorkspaceOperation } from './storage/contracts';
@@ -37,7 +37,6 @@ import {
 import { getExploration } from './analysis/types';
 import { getSpatialView } from './spatial/types';
 import { collaborationPermissions } from './collaboration/access';
-import { getDrawingLayer } from './drawing/types';
 import { reanalyzeDataModelAsync } from './data/modelClient';
 import { UnderstandingDialogs } from './components/UnderstandingDialogs';
 import { useCompactLayout } from './hooks/useCompactLayout';
@@ -45,6 +44,13 @@ import { MobileWorkspacePanel } from './components/mobile/MobileWorkspacePanel';
 import { applyAppearance } from './ui/appearance';
 import { useStarterDemo } from './templates/useStarterDemo';
 import './components/mobile/mobile-workspace.css';
+const canvasToolShortcuts: Partial<Record<string, CanvasTool>> = {
+  b: 'pen',
+  e: 'eraser',
+  g: 'fill',
+  v: 'none',
+};
+
 const NewDiagram = lazy(() =>
   import('./components/Dialogs').then((module) => ({ default: module.NewDiagram })),
 );
@@ -165,8 +171,6 @@ export function App() {
   const [codeFiles, setCodeFiles] = useState<File[]>();
   const [diagramFile, setDiagramFile] = useState<File>();
   const [sourceFiles, setSourceFiles] = useState<File[]>();
-  const [backgroundFocusNodeId, setBackgroundFocusNodeId] = useState<string>();
-  const finishBackgroundFocus = useCallback(() => setBackgroundFocusNodeId(undefined), []);
   const pendingSourceFiles = useRef<File[]>([]);
   const [csvDraft, setCsvDraft] = useState<{
     dataset: CsvDataset;
@@ -588,8 +592,13 @@ export function App() {
         open('new');
         return;
       }
-      if (editing) return;
       const s = useEditor.getState();
+      if (key === 'escape' && s.canvasTool === 'fill') {
+        e.preventDefault();
+        s.setCanvasTool('none');
+        return;
+      }
+      const tool = canvasToolShortcuts[key];
       const canvasShortcut =
         !modifier &&
         !e.altKey &&
@@ -597,15 +606,17 @@ export function App() {
         !e.repeat &&
         !e.isComposing &&
         !e.defaultPrevented &&
-        ['b', 'e', 'g', 't', 'v'].includes(key) &&
+        (tool !== undefined || key === 't') &&
         !target?.closest('.canvas-ruler-layer') &&
         (target?.closest('[data-canvas-editing-shortcuts="true"]') ||
           (target === document.body &&
             document.querySelector('[data-canvas-editing-shortcuts="true"]')));
+      if (editing && !(canvasShortcut && tool && target?.classList.contains('canvas-fill-color')))
+        return;
       if (canvasShortcut && s.graph) {
-        if (key === 'v') {
+        if (tool === 'none') {
           e.preventDefault();
-          s.setDrawingTool('none');
+          s.setCanvasTool('none');
           return;
         }
         try {
@@ -613,16 +624,12 @@ export function App() {
         } catch {
           return;
         }
-        if (key === 'b' || key === 'e') {
+        if (tool) {
           e.preventDefault();
-          if (getDrawingLayer(s.graph.diagram.settings.drawing)?.visible === false)
-            s.toggleDrawingVisibility();
-          s.select([]);
-          useEditor.setState({ mobilePanel: null });
-          s.setDrawingTool(key === 'b' ? 'pen' : 'eraser');
+          s.setCanvasTool(tool);
         } else if (key === 't' && s.selectedNodes.length <= 1) {
           e.preventDefault();
-          s.setDrawingTool('none');
+          s.setCanvasTool('none');
           const id =
             s.selectedNodes[0] ??
             s.addNode({
@@ -630,10 +637,6 @@ export function App() {
               title: t('editor.nodes.typeLabel.note'),
             });
           if (id) s.beginEditing(id);
-        } else if (key === 'g' && s.selectedNodes.length === 1) {
-          e.preventDefault();
-          setBackgroundFocusNodeId(s.selectedNodes[0]);
-          if (compact) useEditor.setState({ mobilePanel: 'details' });
         }
         return;
       }
@@ -711,7 +714,7 @@ export function App() {
     };
     window.addEventListener('keydown', listener, true);
     return () => window.removeEventListener('keydown', listener, true);
-  }, [dialog, backup, csvDraft, importing, open, withAppOperation, compact, t]);
+  }, [dialog, backup, csvDraft, importing, open, withAppOperation, t]);
   if (!acknowledged)
     return (
       <div className="application storage-gate">
@@ -933,8 +936,6 @@ export function App() {
           </button>
           <Properties
             active={!compact || mobilePanel === 'details'}
-            backgroundFocusNodeId={backgroundFocusNodeId}
-            onBackgroundFocused={finishBackgroundFocus}
             editCsv={(datasetId) => {
               const dataset =
                 graph &&

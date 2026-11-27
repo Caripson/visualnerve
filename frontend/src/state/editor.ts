@@ -48,7 +48,8 @@ import {
 } from '../model/types';
 
 export type SaveStatus = 'saved' | 'saving' | 'error' | 'conflict';
-export type DrawingTool = 'none' | 'pen' | 'eraser';
+export type DrawingTool = 'pen' | 'eraser';
+export type CanvasTool = 'none' | DrawingTool | 'fill';
 
 function suppressCsvParentConnections(nodes: GraphNode[], ids: Set<string>): GraphNode[] {
   return nodes.map((node) => {
@@ -96,8 +97,8 @@ interface Editor {
   mobilePanel: 'projects' | 'details' | null;
   simulationPanelCollapsed: boolean;
   clipboard: Clip | null;
-  drawingTool: DrawingTool;
-  drawingColor: string;
+  canvasTool: CanvasTool;
+  toolColor: string;
   drawingWidth: number;
   setGraph(g: Graph | null): void;
   command(label: string, change: (graph: Graph) => Graph, coalesce?: boolean): void;
@@ -122,7 +123,7 @@ interface Editor {
   paste(clip?: Clip): void;
   group(): void;
   ungroup(): void;
-  setDrawingTool(tool: DrawingTool): void;
+  setCanvasTool(tool: CanvasTool): void;
   addDrawingStroke(stroke: DrawingStroke): void;
   eraseDrawingStrokes(ids: string[]): void;
   toggleDrawingVisibility(): void;
@@ -177,8 +178,8 @@ export const useEditor = create<Editor>((set, get) => ({
   mobilePanel: null,
   simulationPanelCollapsed: false,
   clipboard: null,
-  drawingTool: 'none',
-  drawingColor: '#e85d3f',
+  canvasTool: 'none',
+  toolColor: '#e85d3f',
   drawingWidth: 3,
   setGraph: (graph) =>
     set({
@@ -199,7 +200,7 @@ export const useEditor = create<Editor>((set, get) => ({
         !!graph && graph.diagram.id === get().graph?.diagram.id
           ? get().simulationPanelCollapsed
           : false,
-      drawingTool: 'none',
+      canvasTool: 'none',
       commandError: '',
       behaviorTrace: [],
     }),
@@ -322,9 +323,20 @@ export const useEditor = create<Editor>((set, get) => ({
       viewportRequest: current.viewportRequest + 1,
     });
   },
-  setDrawingTool: (tool) => {
-    if (tool !== 'none') get().finishEditing();
-    set({ drawingTool: tool });
+  setCanvasTool: (tool) => {
+    if (tool === 'none') {
+      set({ canvasTool: tool });
+      return;
+    }
+    const state = get();
+    const graph = state.graph;
+    if (!graph) return;
+    if (tool === 'fill' && collaborationPermissions.role(graph.diagram.id) === 'viewer') return;
+    state.finishEditing();
+    if (tool !== 'fill' && getDrawingLayer(graph.diagram.settings.drawing)?.visible === false)
+      state.toggleDrawingVisibility();
+    state.select([]);
+    set({ canvasTool: tool, mobilePanel: null });
   },
   addDrawingStroke: (stroke) => {
     const state = get();

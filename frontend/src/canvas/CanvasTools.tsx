@@ -1,9 +1,18 @@
 import { useI18n } from '../i18n';
-import { Crosshair, Grid3X3, Magnet, Map, Pencil, Ruler, Settings2 } from 'lucide-react';
+import {
+  Crosshair,
+  Grid3X3,
+  Magnet,
+  Map,
+  PaintBucket,
+  Pencil,
+  Ruler,
+  Settings2,
+} from 'lucide-react';
 import { useReactFlow } from '@xyflow/react';
 import type { Graph } from '../model/types';
 import { useEditor } from '../state/editor';
-import { getDrawingLayer } from '../drawing/types';
+import { collaborationPermissions } from '../collaboration/access';
 import { ToolbarMenu } from '../components/ToolbarMenu';
 import { useCompactLayout } from '../hooks/useCompactLayout';
 import './canvas-tools.css';
@@ -15,7 +24,7 @@ export function CanvasTools({
   minimap,
   setMinimap,
   toggle,
-  rulersAvailable,
+  editingToolsAvailable,
   toggleRulers,
 }: {
   graph: Graph;
@@ -23,14 +32,17 @@ export function CanvasTools({
   minimap: boolean;
   setMinimap: (value: boolean) => void;
   toggle: (key: 'grid' | 'snap') => void;
-  rulersAvailable: boolean;
+  editingToolsAvailable: boolean;
   toggleRulers: () => void;
 }) {
   const { t } = useI18n();
   const compact = useCompactLayout();
-  const drawingTool = useEditor((state) => state.drawingTool);
+  const canvasTool = useEditor((state) => state.canvasTool);
+  const toolColor = useEditor((state) => state.toolColor);
   const selectedNodes = useEditor((state) => state.selectedNodes);
   const flow = useReactFlow();
+  const drawing = canvasTool === 'pen' || canvasTool === 'eraser';
+  const filling = editingToolsAvailable && canvasTool === 'fill';
   const tools = (
     <>
       <button
@@ -53,7 +65,7 @@ export function CanvasTools({
         <Magnet size={16} />
         {compact && <span>{t('editor.canvas.tools.snapToGrid')}</span>}
       </button>
-      {rulersAvailable && (
+      {editingToolsAvailable && (
         <button
           className={graph.diagram.settings.showRulers !== false ? 'active' : ''}
           title={t('editor.canvas.tools.rulers')}
@@ -64,6 +76,20 @@ export function CanvasTools({
         >
           <Ruler size={16} />
           {compact && <span>{t('editor.canvas.tools.rulers')}</span>}
+        </button>
+      )}
+      {editingToolsAvailable && (
+        <button
+          className={filling ? 'active' : ''}
+          title={`${t('editor.canvas.tools.fillNodes')} (G)`}
+          aria-label={t('editor.canvas.tools.fillNodes')}
+          aria-keyshortcuts="G"
+          aria-pressed={filling}
+          disabled={collaborationPermissions.role(graph.diagram.id) === 'viewer'}
+          onClick={() => useEditor.getState().setCanvasTool(filling ? 'none' : 'fill')}
+        >
+          <PaintBucket size={16} />
+          {compact && <span>{t('editor.canvas.tools.fillNodes')}</span>}
         </button>
       )}
       {!compact && (
@@ -96,23 +122,13 @@ export function CanvasTools({
   return (
     <div className="canvas-toggles">
       <button
-        className={drawingTool !== 'none' ? 'active' : ''}
+        className={drawing ? 'active' : ''}
         title={`${t('editor.canvas.tools.drawOnDiagram')} (B)`}
         aria-label={t('editor.canvas.tools.drawOnDiagram')}
         aria-keyshortcuts="B"
-        aria-pressed={drawingTool !== 'none'}
+        aria-pressed={drawing}
         disabled={overview}
-        onClick={() => {
-          const state = useEditor.getState();
-          if (state.drawingTool !== 'none') state.setDrawingTool('none');
-          else {
-            if (getDrawingLayer(state.graph?.diagram.settings.drawing)?.visible === false)
-              state.toggleDrawingVisibility();
-            state.select([]);
-            useEditor.setState({ mobilePanel: null });
-            state.setDrawingTool('pen');
-          }
-        }}
+        onClick={() => useEditor.getState().setCanvasTool(drawing ? 'none' : 'pen')}
       >
         <Pencil size={16} />
       </button>
@@ -127,6 +143,16 @@ export function CanvasTools({
         </ToolbarMenu>
       ) : (
         tools
+      )}
+      {filling && (
+        <input
+          type="color"
+          className="canvas-fill-color"
+          aria-label={t('editor.canvas.tools.fillColor')}
+          title={t('editor.canvas.tools.fillColor')}
+          value={toolColor}
+          onChange={(event) => useEditor.setState({ toolColor: event.target.value })}
+        />
       )}
     </div>
   );

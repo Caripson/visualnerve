@@ -56,8 +56,9 @@ Downloaded documents are readable even when your workspace is encrypted. Review 
 1. Open Export and keep **Export → Export diagram**.
 2. Choose **Format**.
 3. For PNG/PDF/SVG, choose **Area**. PNG/PDF also offer **Resolution**.
-4. For PDF, choose paper, orientation and whether to tile across multiple pages.
-5. Choose **Export** and save the downloaded file.
+4. For SVG or PNG, enable **Transparent background** to remove the canvas background while keeping node fills.
+5. For PDF, choose paper, orientation and whether to tile across multiple pages.
+6. Choose **Export** and save the downloaded file.
 
 ![Export dialog with format, area, resolution and PDF page options.](/help/images/export.webp "Use JSON for an editable copy; use PNG or PDF for a rendered view.")
 

@@ -117,6 +117,7 @@ export function vectorSVG(
   height: number,
   background: string,
   metadata: Record<string, unknown>,
+  transparentBackground?: boolean,
 ) {
   if (![width, height].every((value) => Number.isFinite(value) && value > 0 && value <= 16777216))
     throw new Error('SVG dimensions exceed browser layout limits. Export a smaller selection.');
@@ -146,7 +147,9 @@ export function vectorSVG(
   });
   const description = create('metadata');
   description.textContent = JSON.stringify(metadata);
-  root.append(description, create('rect', { width, height, fill: svgColor(background) }));
+  root.append(description);
+  if (!transparentBackground)
+    root.append(create('rect', { width, height, fill: svgColor(background) }));
   const defs = create('defs');
   root.append(defs);
   let clipIndex = 0;

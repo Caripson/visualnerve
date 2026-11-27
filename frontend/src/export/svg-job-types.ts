@@ -22,6 +22,7 @@ export const svgJobLimits = {
 export interface SvgJobOptions {
   scope?: 'complete' | 'viewport' | 'selected';
   nodeIds?: string[];
+  transparentBackground?: boolean;
 }
 export interface SvgJobStatus {
   jobId: string;

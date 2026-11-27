@@ -59,6 +59,8 @@ Double-click an object's title, double-tap it on a touch screen, or select one o
 
 Select an object and choose **Node background color** in Properties to fill its card or symbol. **Color** controls its accent and outline independently. Choose **Use theme background** to return the fill to the current light or dark appearance. The saved background follows the same object between 2D and 3D and is retained in native JSON and backups.
 
+On the editable 2D canvas, press **G** to activate **Fill nodes**. The pointer becomes a paint bucket. Choose a **Fill color** in the tool picker, then click each card you want to fill. Press **V** or **Escape** to return to selection.
+
 ### Use the selection's quick actions
 
 The floating selection toolbar offers **Edit**, **Status**, **Done / Reopen**, color/icon choices, Duplicate and Delete. With multiple objects selected, status, color and icon choices apply to the whole selection. Mixed statuses are shown explicitly until you choose a shared value. **Done** marks the selected objects complete; **Reopen** changes an all-Done selection to In progress. These operations are undoable. The mind map's **Delete branch** removes the topic and descendants together.
@@ -141,7 +143,7 @@ Click the document title to rename it. With no selected object, F2 also opens ti
 
 ## Draw over the diagram
 
-1. Select the pencil in the bottom canvas controls.
+1. Select the pencil in the bottom canvas controls or press **B**. The pointer becomes a pen.
 2. Choose a pen color and thickness, then draw using a mouse, finger or pen.
 3. Use **Eraser** to remove a whole stroke. **Clear drawing** removes the layer's strokes; Undo can restore the change.
 4. Choose **Done drawing** or press Escape to return to editing objects and connections.
@@ -175,11 +177,11 @@ These shortcuts apply when the canvas is active. Focus in a text field, dialog, 
 | Mind map child / sibling | Tab / Enter |
 | Pen / eraser / select and move in 2D | B / E / V |
 | Edit a selected object's title or add and name a note when no object is selected | T |
-| Focus the background color control for one selected object | G |
+| Fill nodes in 2D | G |
 | Show or hide rulers and guides in 2D | Ctrl/Cmd+R |
 | Rename selected object | F2; double-click or double-tap its title in 2D, or its face in 3D |
 | Rename diagram with no selected object | F2, or click the document title |
-| Leave drawing / cancel a gesture | Escape |
+| Leave drawing or fill mode / cancel a gesture | Escape |
 
 ## When something looks wrong
 

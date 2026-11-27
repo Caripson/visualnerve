@@ -27,14 +27,29 @@ describe('read-only SVG export command', () => {
     expect(await exportCommand(source, { diagramId: source.diagram.id, format: 'svg' })).toContain(
       '<svg',
     );
-    expect(render).toHaveBeenLastCalledWith(source, 'complete', []);
+    expect(render).toHaveBeenLastCalledWith(
+      source,
+      'complete',
+      [],
+      undefined,
+      undefined,
+      undefined,
+    );
     await exportCommand(source, {
       diagramId: source.diagram.id,
       format: 'svg',
       scope: 'selected',
       nodeIds: [source.nodes[0].id],
+      transparentBackground: true,
     });
-    expect(render).toHaveBeenLastCalledWith(source, 'selected', [source.nodes[0].id]);
+    expect(render).toHaveBeenLastCalledWith(
+      source,
+      'selected',
+      [source.nodes[0].id],
+      undefined,
+      undefined,
+      true,
+    );
     expect(source).toEqual(before);
   });
   it('returns explicit asynchronous guidance before rendering a large synchronous export', async () => {
@@ -55,6 +70,9 @@ describe('read-only SVG export command', () => {
     { format: 'svg', scope: 'selected', nodeIds: ['unknown'] },
     { format: 'svg', nodeIds: [] },
     { format: 'json', scope: 'complete' },
+    { format: 'markdown', transparentBackground: true },
+    { format: 'svg', transparentBackground: 'true' },
+    { format: 'svg', transparentBackground: null },
     { format: 'svg', script: true },
   ])('rejects unsupported options without invoking the renderer: %j', async (input) => {
     await expect(exportCommand(graph(), input)).rejects.toMatchObject({ status: 422 });

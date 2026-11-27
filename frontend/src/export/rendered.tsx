@@ -35,6 +35,7 @@ export interface RenderOptions {
   page: 'a4' | 'a3';
   orientation: 'landscape' | 'portrait';
   tiled: boolean;
+  transparentBackground?: boolean;
 }
 function Ready({
   done,
@@ -82,11 +83,22 @@ function canvasColor(graph: Graph) {
 }
 async function capturePNG(
   element: HTMLElement,
-  options: Parameters<typeof toSvg>[1] & { pixelRatio: number; backgroundColor: string },
+  options: Parameters<typeof toSvg>[1] & { pixelRatio: number },
   guard?: ExportGuard,
 ) {
   assertExportActive(guard);
-  const svg = await waitForExport(toSvg(element, options), guard);
+  const transparent = options.backgroundColor === undefined;
+  const svg = await waitForExport(
+    toSvg(element, {
+      ...options,
+      // Override the cloned React Flow background, including the mind map surface.
+      backgroundColor: options.backgroundColor ?? 'transparent',
+      filter: transparent
+        ? (node) => filter(node) && !node.classList?.contains('react-flow__background')
+        : filter,
+    }),
+    guard,
+  );
   assertExportActive(guard);
   // html-to-image resolves its SVG image on load without waiting for native
   // decoding. A complex foreignObject can then paint an entirely blank canvas.
@@ -209,6 +221,7 @@ export async function graphPNG(
 ): Promise<string> {
   assertExportActive(guard);
   const spatial = getSpatialView(graph).mode === '3d';
+  const transparent = options.transparentBackground === true;
   if (options.scope === 'viewport' && !spatial) {
     const flow = document.querySelector<HTMLElement>('.canvas-shell .react-flow');
     if (!flow) throw new Error('Open a diagram first.');
@@ -216,8 +229,7 @@ export async function graphPNG(
       flow,
       {
         pixelRatio: options.multiplier,
-        backgroundColor: canvasColor(graph),
-        filter,
+        backgroundColor: transparent ? undefined : canvasColor(graph),
       },
       guard,
     );
@@ -233,8 +245,7 @@ export async function graphPNG(
           width,
           height,
           pixelRatio: options.multiplier,
-          backgroundColor,
-          filter,
+          backgroundColor: transparent ? undefined : backgroundColor,
         },
         guard,
       ),
@@ -376,7 +387,12 @@ export async function exportRendered(
   selection: string[],
   guard?: ExportGuard,
 ) {
-  const png = await graphPNG(graph, options, selection, guard);
+  const png = await graphPNG(
+    graph,
+    format === 'pdf' ? { ...options, transparentBackground: false } : options,
+    selection,
+    guard,
+  );
   assertExportActive(guard);
   const filename = safeName(graph.diagram.name);
   if (format === 'png') {

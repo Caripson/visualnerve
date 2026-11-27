@@ -53,6 +53,7 @@ export function ExportDialog({ close }: { close: () => void }) {
     page: 'a4',
     orientation: 'landscape',
     tiled: false,
+    transparentBackground: false,
   });
   const [busy, setBusy] = useState(false);
   const [svgProgress, setSvgProgress] = useState<number | undefined>(undefined);
@@ -188,6 +189,17 @@ export function ExportDialog({ close }: { close: () => void }) {
             </Field>
           )}
         </>
+      )}
+      {(format === 'svg' || format === 'png') && (
+        <label className="check-field">
+          <input
+            type="checkbox"
+            checked={options.transparentBackground === true}
+            disabled={busy}
+            onChange={(event) => set({ transparentBackground: event.target.checked })}
+          />
+          {t('dialogs.exportTransparentBackground')}
+        </label>
       )}
       {format === 'pdf' && (
         <>
@@ -330,9 +342,16 @@ export function ExportDialog({ close }: { close: () => void }) {
               } else if (format === 'svg') {
                 const { exportSVG } = await waitForExport(import('../export/svg'), guard);
                 assertExportActive(guard);
-                await exportSVG(g, options.scope, selection, guard, (status) => {
-                  if (mounted.current && !guard!.signal.aborted) setSvgProgress(status.progress);
-                });
+                await exportSVG(
+                  g,
+                  options.scope,
+                  selection,
+                  guard,
+                  (status) => {
+                    if (mounted.current && !guard!.signal.aborted) setSvgProgress(status.progress);
+                  },
+                  options.transparentBackground,
+                );
               } else {
                 const { exportRendered } = await waitForExport(import('../export/rendered'), guard);
                 assertExportActive(guard);

@@ -157,7 +157,7 @@ export function Canvas() {
     },
     () => false,
   );
-  const drawingTool = useEditor((s) => s.drawingTool);
+  const canvasTool = useEditor((s) => s.canvasTool);
   const filters = useEditor((s) => s.filters);
   const explorationResult = useEditor((s) => s.explorationResult);
   const explorationBusy = useEditor((s) => s.explorationBusy);
@@ -417,13 +417,22 @@ export function Canvas() {
     [renderGraph, baseProjected, preview, zoomLevel],
   );
   const projected = overview ?? baseProjected;
-  const rulersAvailable =
+  const editingToolsAvailable =
     !spatial &&
     !overview?.active &&
     !processProjection?.active &&
     !presentationOpen &&
     !exploration;
-  const showRulers = rulersAvailable && graph?.diagram.settings.showRulers !== false;
+  const showRulers = editingToolsAvailable && graph?.diagram.settings.showRulers !== false;
+  const filling = editingToolsAvailable && canvasTool === 'fill';
+  const fillPress = useRef<{ pointerId: number; nodeId: string; x: number; y: number } | null>(
+    null,
+  );
+  useEffect(() => {
+    fillPress.current = null;
+    if (!editingToolsAvailable && useEditor.getState().canvasTool === 'fill')
+      useEditor.getState().setCanvasTool('none');
+  }, [editingToolsAvailable, filling]);
   const particleVisibility = useMemo(
     () => ({
       nodeIds: new Set(projected.nodes.filter((node) => !node.hidden).map((node) => node.id)),
@@ -458,6 +467,11 @@ export function Canvas() {
   );
   const [nodes, setNodes] = useState<CanvasNode[]>(projected.nodes);
   const [edges, setEdges] = useState<Edge[]>(projected.edges);
+  const renderedEdges = useMemo(
+    () =>
+      filling ? edges.map((edge) => ({ ...edge, selectable: false, reconnectable: false })) : edges,
+    [edges, filling],
+  );
   useEffect(() => setNodes(projected.nodes), [projected.nodes]);
   useEffect(() => setEdges(projected.edges), [projected.edges]);
   const diagramId = graph?.diagram.id;
@@ -803,13 +817,13 @@ export function Canvas() {
       const s = useEditor.getState();
       if (!s.graph || getSpatialView(s.graph).mode === '3d') return;
       if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'r') {
-        if (!rulersAvailable || document.querySelector('[role="dialog"][aria-modal="true"]'))
+        if (!editingToolsAvailable || document.querySelector('[role="dialog"][aria-modal="true"]'))
           return;
         e.preventDefault();
         if (!e.repeat) toggleRulers();
         return;
       }
-      if (s.drawingTool !== 'none') return;
+      if (s.canvasTool !== 'none') return;
       if (e.key.startsWith('Arrow') && target?.closest('.canvas-guide')) return;
       if (e.key.startsWith('Arrow') || e.key.toLowerCase() === 'f') interruptPresentation.current();
       if (e.key.startsWith('Arrow') && s.selectedNodes.length && !e.ctrlKey && !e.metaKey) {
@@ -855,7 +869,7 @@ export function Canvas() {
     overview?.active,
     processProjection?.active,
     fitProcessNodes,
-    rulersAvailable,
+    editingToolsAvailable,
     touch,
     renderGraph?.nodes,
   ]);
@@ -960,7 +974,7 @@ export function Canvas() {
       overview?.active ||
       presentationOpen ||
       exploration ||
-      drawingTool !== 'none' ||
+      canvasTool !== 'none' ||
       !behaviorEditAllowed(graph.diagram.id) ||
       !(event.target instanceof Element)
     )
@@ -972,13 +986,22 @@ export function Canvas() {
     );
     if (definition && canAttachBehavior(graph, nodeId, definition)) return nodeId;
   };
+  const fillNode = (id?: string) => {
+    if (!id || readonlyNodes.current.has(id)) return;
+    const state = useEditor.getState();
+    if (state.canvasTool !== 'fill' || state.graph?.diagram.id !== graph.diagram.id) return;
+    const node = state.graph.nodes.find((candidate) => candidate.id === id);
+    if (node && node.backgroundColor !== state.toolColor)
+      state.updateNode(id, { backgroundColor: state.toolColor });
+  };
   return (
     <div
       ref={canvasShell}
       className={`canvas-shell ${graph.diagram.type === 'mindmap' ? 'mindmap-canvas' : ''} ${showProcessNavigation ? 'simulation-process-canvas' : ''} ${showRulers ? 'canvas-ruled' : ''}`}
       style={showRulers ? { ['--canvas-ruler-size' as string]: `${canvasRulerSize}px` } : undefined}
       data-testid="canvas"
-      data-canvas-editing-shortcuts={rulersAvailable ? 'true' : undefined}
+      data-canvas-editing-shortcuts={editingToolsAvailable ? 'true' : undefined}
+      tabIndex={filling ? -1 : undefined}
       onDragOver={
         behaviorsEnabled
           ? (event) => {
@@ -1007,6 +1030,43 @@ export function Canvas() {
       onPointerDownCapture={(event) => {
         interruptPresentation.current();
         if (isCanvasNavigationGesture(event.target)) focusNavigation.cancel();
+        if (!filling || !event.isPrimary || event.button !== 0) return;
+        fillPress.current = null;
+        const node =
+          event.target instanceof Element
+            ? event.target.closest<HTMLElement>('.react-flow__node')
+            : null;
+        if (!node?.dataset.id) return;
+        fillPress.current = {
+          nodeId: node.dataset.id,
+          pointerId: event.pointerId,
+          x: event.clientX,
+          y: event.clientY,
+        };
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+      onPointerMoveCapture={(event) => {
+        const press = fillPress.current;
+        if (
+          press?.pointerId === event.pointerId &&
+          Math.hypot(event.clientX - press.x, event.clientY - press.y) > 4
+        )
+          fillPress.current = null;
+      }}
+      onPointerCancelCapture={(event) => {
+        if (fillPress.current?.pointerId === event.pointerId) fillPress.current = null;
+      }}
+      onClickCapture={(event) => {
+        if (!filling || event.button !== 0 || !(event.target instanceof Element)) return;
+        const node = event.target.closest<HTMLElement>('.react-flow__node');
+        if (!node) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.currentTarget.focus({ preventScroll: true });
+        const press = fillPress.current;
+        fillPress.current = null;
+        if (event.detail === 0 || press?.nodeId === node.dataset.id) fillNode(node.dataset.id);
       }}
       onTouchStartCapture={(event) => {
         if (isCanvasNavigationGesture(event.target)) focusNavigation.cancel();
@@ -1022,6 +1082,14 @@ export function Canvas() {
           target.closest('input,textarea,select,button,[contenteditable="true"],[data-node-scroll]')
         )
           return;
+        if (filling) {
+          const node = target.closest<HTMLElement>('.react-flow__node');
+          if (!node) return;
+          event.preventDefault();
+          event.stopPropagation();
+          if (!event.repeat) fillNode(node.dataset.id);
+          return;
+        }
         const card = target
           .closest('.react-flow__node')
           ?.querySelector<HTMLElement>('[data-simulation-projected="true"]');
@@ -1047,9 +1115,10 @@ export function Canvas() {
       )}
       <ReactFlow<CanvasNode>
         ariaLabelConfig={ariaLabels}
+        className={filling ? 'canvas-fill-active' : undefined}
         style={showProcessNavigation ? { flex: 1, minHeight: 0, height: 'auto' } : undefined}
         nodes={nodes}
-        edges={edges}
+        edges={renderedEdges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         connectionMode={
@@ -1066,6 +1135,7 @@ export function Canvas() {
             useEditor.getState().select([logicalNodeId(node.data.node)]);
         }}
         onNodeDoubleClick={(event, node) => {
+          if (filling) return;
           const processId = getSimulationProcessId(node.data.node);
           if (processId) openSimulationProcess(graph.diagram.id, processId);
           else if (!isReadonlyNodeTitle(node.data.node)) {
@@ -1115,7 +1185,10 @@ export function Canvas() {
           persistViewport(viewport);
         }}
         deleteKeyCode={null}
-        selectionOnDrag={!touch}
+        nodesDraggable={!filling}
+        nodesConnectable={!filling}
+        elementsSelectable={!filling}
+        selectionOnDrag={!touch && !filling}
         selectionMode={SelectionMode.Partial}
         panOnDrag={touch ? true : [1, 2]}
         panActivationKeyCode="Space"
@@ -1126,8 +1199,10 @@ export function Canvas() {
         maxZoom={canvasZoomRange.max}
         onlyRenderVisibleElements
         nodesFocusable
-        edgesFocusable
-        zoomOnDoubleClick={graph.diagram.type !== 'mindmap' && !processProjection?.active}
+        edgesFocusable={!filling}
+        zoomOnDoubleClick={
+          !filling && graph.diagram.type !== 'mindmap' && !processProjection?.active
+        }
       >
         {!overview?.active && (
           <ParticleOverlay renderGraph={renderGraph ?? undefined} visibility={particleVisibility} />
@@ -1247,7 +1322,7 @@ export function Canvas() {
             minimap={minimap}
             setMinimap={setMinimap}
             toggle={toggle}
-            rulersAvailable={rulersAvailable}
+            editingToolsAvailable={editingToolsAvailable}
             toggleRulers={toggleRulers}
           />
         </Panel>
@@ -1255,13 +1330,13 @@ export function Canvas() {
           <CanvasRulers
             key={graph.diagram.id}
             diagram={graph.diagram}
-            drawing={drawingTool !== 'none'}
+            drawing={canvasTool !== 'none'}
           />
         )}
       </ReactFlow>
       {graph.diagram.type === 'timeline' && !overview?.active && <TimelineRuler graph={graph} />}
       {graph.nodes.length === 0 &&
-        drawingTool === 'none' &&
+        canvasTool === 'none' &&
         !getDrawingLayer(graph.diagram.settings.drawing)?.strokes.length && (
           <div className="canvas-empty">
             {graph.simulation ? (

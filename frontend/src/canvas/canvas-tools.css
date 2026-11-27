@@ -1,3 +1,9 @@
+.canvas-toggles .canvas-fill-color {
+  width: 34px;
+  height: 32px;
+  padding: 3px;
+  cursor: pointer;
+}
 @media (max-width: 900px), (max-width: 1100px) and (max-height: 500px) {
   .react-flow__panel.canvas-tools-panel {
     left: auto !important;
@@ -12,6 +18,10 @@
     padding: 4px;
     border-radius: 14px;
     box-shadow: 0 3px 18px #10231c12;
+  }
+  .canvas-toggles .canvas-fill-color {
+    width: 44px;
+    height: 44px;
   }
   .canvas-toggles > button,
   .canvas-toggles .toolbar-menu > button {

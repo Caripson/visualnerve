@@ -480,7 +480,7 @@ describe('browser-owned spatial MCP capability', () => {
     const workspace = await controller();
     await workspace.create(blankGraph('Drawing during MCP mode change'));
     await workspace.setPreference('mcp-access', 'write');
-    useEditor.getState().setDrawingTool('pen');
+    useEditor.getState().setCanvasTool('pen');
     useEditor.getState().addDrawingStroke({
       id: crypto.randomUUID(),
       color: '#e85d3f',
@@ -498,7 +498,7 @@ describe('browser-owned spatial MCP capability', () => {
       graph: current,
       baseVersion: current.diagram.version,
     });
-    expect(useEditor.getState().drawingTool).toBe('none');
+    expect(useEditor.getState().canvasTool).toBe('none');
     expect(getSpatialView(useEditor.getState().graph!).mode).toBe('3d');
     expect(useEditor.getState().graph!.diagram.settings.drawing).toEqual(drawing);
     expect((await repo.getGraph(current.diagram.id)).diagram.settings.drawing).toEqual(drawing);

@@ -475,7 +475,7 @@ After updating the local executable, restart it and reconnect the MCP client to 
 
 ## Export a vector diagram through MCP
 
-For a small diagram, the existing export endpoint with `format: "svg"` returns a string. For large diagrams, use [background SVG export](#background-svg-export) to start a job, poll progress and retrieve bounded result chunks:
+For a small diagram, the existing export endpoint with `format: "svg"` returns a string. For large diagrams, use [background SVG export](#background-svg-export) to start a job, poll progress and retrieve bounded result chunks. Either SVG route accepts `transparentBackground: true` to omit the canvas background and retain node fills. Omission or `false` uses an opaque background.
 
 ```json
 {
@@ -904,7 +904,7 @@ The existing `POST /export` JSON/Markdown behavior is unchanged. Source graphs w
 
 Use editable exports when you want to continue working on the drawing in another editor. They preserve basic shapes, text, colors, groups and attached connectors using the saved 2D layout, including when the app is showing 3D. They do not transfer raw datasets, original source files, live capacity copies or complete simulation execution and scenarios. Keep native JSON or an encrypted workspace backup for a faithful model transfer.
 
-Editable Draw.io drawings use a **light drawing surface**, regardless of app Appearance. Ordinary nodes default to white fills; an explicit `backgroundColor` is preserved with readable text contrast, alongside saved node, connection and mind-map color accents. IBM glyphs use the ordinary semantic node type's shape and report `IBM_SYMBOL_GEOMETRY_SIMPLIFIED`. Native JSON preserves exact glyph IDs and styling, and workspace backups also retain portable appearance settings. This needs no extra API argument; SVG keeps its existing appearance behavior.
+Editable Draw.io drawings use a **light drawing surface**, regardless of app Appearance. Ordinary nodes default to white fills; an explicit `backgroundColor` is preserved with readable text contrast, alongside saved node, connection and mind-map color accents. IBM glyphs use the ordinary semantic node type's shape and report `IBM_SYMBOL_GEOMETRY_SIMPLIFIED`. Native JSON preserves exact glyph IDs and styling, and workspace backups also retain portable appearance settings.
 
 1. Read `GET /exports/capabilities` first. Its existing SVG fields remain unchanged; `diagrams` describes the drawio format, scopes, validation metadata and separate limits. Bridge 0.11.0 advertises `exchange-export-v1`.
 2. Start an export with the existing **visual_nerve_request** tool:

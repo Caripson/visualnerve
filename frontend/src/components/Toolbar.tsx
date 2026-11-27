@@ -92,7 +92,7 @@ export function Toolbar({
     window.dispatchEvent(new Event('visualnerve:spatial-camera-flush'));
     const state = useEditor.getState();
     state.finishEditing();
-    state.setDrawingTool('none');
+    state.setCanvasTool('none');
     state.command(`${mode.toUpperCase()} view`, (current) => setSpatialView(current, { mode }));
   };
   const newSpatialExample = async () => {

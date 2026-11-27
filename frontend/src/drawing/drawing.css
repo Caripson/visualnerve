@@ -4,10 +4,19 @@
   z-index: 4;
   touch-action: none;
   user-select: none;
-  cursor: crosshair;
+  cursor:
+    url('./pen-cursor.svg') 4 24,
+    crosshair;
 }
 .drawing-eraser {
   cursor: cell;
+}
+.react-flow.canvas-fill-active .react-flow__pane,
+.react-flow.canvas-fill-active .react-flow__node,
+.react-flow.canvas-fill-active .react-flow__node * {
+  cursor:
+    url('./paint-bucket-cursor.svg') 23 23,
+    crosshair;
 }
 .react-flow__panel.drawing-panel {
   z-index: 61;

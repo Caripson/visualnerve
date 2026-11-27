@@ -400,6 +400,8 @@ Send to `POST /diagrams/DIAGRAM_UUID/bulk`. `parentExternalId` resolves a node h
 
 `POST /export` accepts `{ "diagramId": "UUID", "format": "json" | "markdown" | "svg" }` with Read only access. JSON returns the canonical exchange document. Markdown and SVG return a JSON string; save SVG text as an `.svg` file with MIME `image/svg+xml`. SVG adds optional `scope: "complete" | "viewport" | "selected"` (default `complete`). Selected scope requires `nodeIds` with 1–20,000 unique existing node UUIDs; other scopes reject `nodeIds`, and area options are rejected for JSON/Markdown. Unknown formats/options return 422. Rendering never opens or changes the diagram.
 
+For `format: "svg"`, set `transparentBackground: true` to omit the canvas background and retain node fills and the chosen export area. Omission or `false` uses the opaque canvas background. The option requires a boolean and returns 422 for JSON or Markdown.
+
 SVG uses the canonical 2D layout, including native vector text, shapes, icons, connections, arrow markers and visible pen strokes, even when the UI is in 3D. Viewport uses saved 2D pan/zoom and the current browser canvas size, or fits the diagram when no usable saved viewport exists. It crops the full projected scene without reducing node/text budgets; off-screen content can remain readable in XML. Selected scope reduces the scene to the selected nodes and their internal connections. Fonts are referenced by name rather than embedded; shadows and CSS decoration may be simplified. The XML contains no images, `foreignObject`, scripts or active external links. PNG/PDF render locally in the editor with React Flow, html-to-image and jsPDF and remain UI downloads.
 
 Small synchronous SVG exports retain limits of 100,000 rendered elements, 250,000 source text characters and 16 MiB XML. Larger scenes use the asynchronous worker contract described under [Background SVG export](#background-svg-export), supporting up to 20,000 nodes, 100,000 connections, 5,000,000 source characters and 64 MiB XML. Both paths limit dimensions to 16,777,216 pixels and reject exceeded limits explicitly. Clipped text can remain readable in XML, so review the source before sharing. Illegal XML controls and unpaired surrogates are replaced with U+FFFD.
@@ -553,13 +555,13 @@ Route metrics retain exact connection-ID labels up to 2,000 characters. Longer h
 
 ## Background SVG export
 
-Prefer the asynchronous export for large diagrams. All operations below are available with **Read only** access and do not change the model:
+Prefer the asynchronous export for large diagrams. It accepts the same optional `transparentBackground` boolean. All operations below are available with **Read only** access and do not change the model:
 
 ```json
 {
   "path": "/exports/svg",
   "method": "POST",
-  "data": { "diagramId": "YOUR_DIAGRAM_UUID", "scope": "complete" }
+  "data": { "diagramId": "YOUR_DIAGRAM_UUID", "scope": "complete", "transparentBackground": true }
 }
 ```
 

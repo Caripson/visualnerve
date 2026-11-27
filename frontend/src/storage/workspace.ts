@@ -1300,7 +1300,7 @@ export class Workspace {
       window.dispatchEvent(new Event('visualnerve:spatial-camera-flush'));
       const state = useEditor.getState();
       state.finishEditing();
-      state.setDrawingTool('none');
+      state.setCanvasTool('none');
       await this.settled();
       // A camera/title commit can yield; honor grants revoked while it was being saved.
       const latest = await operation.storage.settings.get('mcp-access');

@@ -145,14 +145,14 @@ it('switches views after saving inline editing and stopping the pen, preserving 
   useEditor.setState({
     editingNode: graph.nodes[0].id,
     editingTitle: 'Reviewed release plan',
-    drawingTool: 'pen',
+    canvasTool: 'pen',
   });
   render(<Toolbar open={vi.fn()} showFilters={false} toggleFilters={vi.fn()} />);
   expect(screen.getByRole('button', { name: '2D view' })).toHaveAttribute('aria-pressed', 'true');
   fireEvent.click(screen.getByRole('button', { name: '3D view' }));
   let state = useEditor.getState();
   expect(state.editingNode).toBeNull();
-  expect(state.drawingTool).toBe('none');
+  expect(state.canvasTool).toBe('none');
   expect(state.graph!.nodes).toEqual(
     graph.nodes.map((node, index) =>
       index === 0 ? { ...node, title: 'Reviewed release plan' } : node,

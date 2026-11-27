@@ -14,6 +14,7 @@ export async function graphSVG(
   selection: string[] = [],
   guard?: ExportGuard,
   onProgress?: (status: SvgJobStatus) => void,
+  transparentBackground?: boolean,
 ) {
   assertExportActive(guard);
   if (shouldUseBackgroundSVG(graph)) {
@@ -30,6 +31,7 @@ export async function graphSVG(
       graph,
       {
         scope,
+        transparentBackground,
         ...(scope === 'selected' ? { nodeIds: canonicalSVGSelection(graph, selection) } : {}),
       },
       authority,
@@ -47,13 +49,20 @@ export async function graphSVG(
     scope,
     selection,
     (flow, width, height, background) =>
-      vectorSVG(flow, width, height, background, {
-        format: 'visual-nerve-svg',
-        formatVersion: 1,
-        diagramId: graph.diagram.id,
-        scope,
-        view: '2d',
-      }),
+      vectorSVG(
+        flow,
+        width,
+        height,
+        background,
+        {
+          format: 'visual-nerve-svg',
+          formatVersion: 1,
+          diagramId: graph.diagram.id,
+          scope,
+          view: '2d',
+        },
+        transparentBackground,
+      ),
     undefined,
     guard,
   );
@@ -64,8 +73,9 @@ export async function exportSVG(
   selection: string[],
   guard?: ExportGuard,
   onProgress?: (status: SvgJobStatus) => void,
+  transparentBackground?: boolean,
 ) {
-  const svg = await graphSVG(graph, scope, selection, guard, onProgress);
+  const svg = await graphSVG(graph, scope, selection, guard, onProgress, transparentBackground);
   await checkExportActive(guard);
   assertExportActive(guard);
   download(`${safeName(graph.diagram.name)}.svg`, svg, 'image/svg+xml');

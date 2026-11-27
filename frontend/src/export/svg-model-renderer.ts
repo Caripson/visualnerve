@@ -151,8 +151,11 @@ export class SvgModelRenderer {
         ? saved
         : getViewportForBounds(scene.bounds, width, height, 0.01, 1, 0.2)
       : { x: 40 - scene.bounds.x, y: 40 - scene.bounds.y, zoom: 1 };
+    const background = options.transparentBackground
+      ? ''
+      : `<rect width="100%" height="100%" fill="${xml(svgPaint(theme.background, '#fafaf7'))}"/>`;
     this.writer.add(
-      `<svg xmlns="http://www.w3.org/2000/svg" ${attrs({ width, height, viewBox: `0 0 ${width} ${height}`, role: 'img', 'aria-label': graph.diagram.name })}><title>${xml(graph.diagram.name)}</title><metadata>${xml(JSON.stringify({ format: 'visual-nerve-svg', formatVersion: 1, diagramId: graph.diagram.id, scope: options.scope ?? 'complete', view: '2d', renderer: 'model-vector-v1', nodeCount: cards.length, edgeCount: scene.edges.length }))}</metadata><rect width="100%" height="100%" fill="${xml(svgPaint(theme.background, '#fafaf7'))}"/><defs><marker id="vn-svg-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke"/></marker></defs><g transform="translate(${transform.x} ${transform.y}) scale(${transform.zoom})">`,
+      `<svg xmlns="http://www.w3.org/2000/svg" ${attrs({ width, height, viewBox: `0 0 ${width} ${height}`, role: 'img', 'aria-label': graph.diagram.name })}><title>${xml(graph.diagram.name)}</title><metadata>${xml(JSON.stringify({ format: 'visual-nerve-svg', formatVersion: 1, diagramId: graph.diagram.id, scope: options.scope ?? 'complete', view: '2d', renderer: 'model-vector-v1', nodeCount: cards.length, edgeCount: scene.edges.length }))}</metadata>${background}<defs><marker id="vn-svg-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke"/></marker></defs><g transform="translate(${transform.x} ${transform.y}) scale(${transform.zoom})">`,
     );
     progress({
       type: 'progress',

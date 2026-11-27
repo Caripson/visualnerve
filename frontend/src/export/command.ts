@@ -15,11 +15,18 @@ export async function exportCommand(
     throw new StorageError(422, 'Choose json, markdown or svg for diagram export.');
   if (data.format !== 'svg') {
     if (Object.keys(data).some((key) => !['diagramId', 'format'].includes(key)))
-      throw new StorageError(422, 'Export area options are available only for SVG.');
+      throw new StorageError(422, 'Export options are available only for SVG.');
     return data.format === 'markdown' ? markdown(graph) : graph;
   }
-  if (Object.keys(data).some((key) => !['diagramId', 'format', 'scope', 'nodeIds'].includes(key)))
+  if (
+    Object.keys(data).some(
+      (key) => !['diagramId', 'format', 'scope', 'nodeIds', 'transparentBackground'].includes(key),
+    )
+  )
     throw new StorageError(422, 'Unsupported SVG export option.');
+  const transparentBackground = data.transparentBackground;
+  if (transparentBackground !== undefined && typeof transparentBackground !== 'boolean')
+    throw new StorageError(422, 'SVG transparentBackground must be a boolean.');
   const scope = data.scope === undefined ? 'complete' : data.scope;
   if (scope !== 'complete' && scope !== 'viewport' && scope !== 'selected')
     throw new StorageError(422, 'SVG scope must be complete, viewport or selected.');
@@ -44,9 +51,14 @@ export async function exportCommand(
     );
   const { graphSVG } = await waitForExport(import('./svg'), guard);
   await checkExportActive(guard);
-  const svg = await (guard
-    ? graphSVG(graph, scope, (data.nodeIds ?? []) as string[], guard)
-    : graphSVG(graph, scope, (data.nodeIds ?? []) as string[]));
+  const svg = await graphSVG(
+    graph,
+    scope,
+    (data.nodeIds ?? []) as string[],
+    guard,
+    undefined,
+    transparentBackground,
+  );
   if (new TextEncoder().encode(svg).byteLength > 16 * 1024 * 1024)
     throw new SvgExportError(
       'SVG_BACKGROUND_REQUIRED',

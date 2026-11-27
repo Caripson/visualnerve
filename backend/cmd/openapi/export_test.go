@@ -17,6 +17,15 @@ func TestSVGExportHasStrictReadOnlyAreaContract(t *testing.T) {
 			t.Fatal("export options must be strict")
 		}
 	}
+	if variants[0].(object)["properties"].(object)["transparentBackground"] != nil {
+		t.Fatal("JSON and Markdown must reject the SVG transparency option")
+	}
+	for _, value := range variants[1:] {
+		transparency := value.(object)["properties"].(object)["transparentBackground"].(object)
+		if transparency["type"] != "boolean" || transparency["default"] != false || transparency["nullable"] == true {
+			t.Fatal("SVG transparency must be a non-null boolean with an opaque default")
+		}
+	}
 	selected := variants[2].(object)
 	if !reflect.DeepEqual(selected["required"], []string{"diagramId", "format", "scope", "nodeIds"}) {
 		t.Fatal("selected SVG requires explicit IDs")

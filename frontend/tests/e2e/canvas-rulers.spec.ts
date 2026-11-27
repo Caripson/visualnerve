@@ -1,3 +1,4 @@
+import type { Locator } from '@playwright/test';
 import { expect, test, type Page } from './fixtures';
 import type { Graph } from '../../src/model/types';
 
@@ -8,6 +9,14 @@ async function drag(page: Page, from: Point, to: Point, button: 'left' | 'middle
   await page.mouse.down({ button });
   await page.mouse.move(to.x, to.y, { steps: 8 });
   await page.mouse.up({ button });
+}
+
+function cursorAtCenter(target: Locator) {
+  return target.evaluate((element) => {
+    const { x, y, width, height } = element.getBoundingClientRect();
+    const hit = document.elementFromPoint(x + width / 2, y + height / 2);
+    return hit && element.contains(hit) ? getComputedStyle(hit).cursor : '';
+  });
 }
 
 test('2D rulers create, move, hide and remove saved diagram guides', async ({ page, request }) => {
@@ -151,7 +160,7 @@ test('2D rulers create, move, hide and remove saved diagram guides', async ({ pa
   await expect.poll(async () => (await readSettings()).canvasGuides).toEqual([]);
 });
 
-test('canvas editing shortcuts work while text fields keep ordinary typing', async ({
+test('canvas editing shortcuts fill and draw while text fields keep ordinary typing', async ({
   page,
   request,
 }) => {
@@ -176,9 +185,9 @@ test('canvas editing shortcuts work while text fields keep ordinary typing', asy
   const node = canvas.locator(`[data-node-id="${id}"]`);
   const editing = canvas.getByRole('textbox', { name: 'Node title', exact: true });
   const drawing = canvas.getByTestId('drawing-surface');
-  await node.click();
-  await page.keyboard.press('g');
-  await expect(page.getByLabel('Node background color', { exact: true })).toBeFocused();
+  const fill = canvas.getByRole('button', { name: 'Fill nodes', exact: true });
+  const readGraph = async (): Promise<Graph> =>
+    (await request.get(`/api/v1/diagrams/${diagram.id}`)).json();
 
   await node.click();
   await page.keyboard.press('t');
@@ -188,6 +197,7 @@ test('canvas editing shortcuts work while text fields keep ordinary typing', asy
   await editing.pressSequentially('begtv');
   await expect(editing).toHaveValue('begtv');
   await expect(drawing).toBeHidden();
+  await expect(fill).toHaveAttribute('aria-pressed', 'false');
   await editing.press('Enter');
   await expect(node).toContainText('begtv');
 
@@ -200,22 +210,59 @@ test('canvas editing shortcuts work while text fields keep ordinary typing', asy
   await editing.fill('Keyboard note');
   await editing.press('Enter');
   await expect
-    .poll(async () => {
-      const result = await request.get(`/api/v1/diagrams/${diagram.id}`);
-      const graph = (await result.json()) as Graph;
-      return graph.nodes.map(({ title, nodeType }) => ({ title, nodeType }));
-    })
+    .poll(async () => (await readGraph()).nodes.map(({ title, nodeType }) => ({ title, nodeType })))
     .toEqual([
       { title: 'begtv', nodeType: 'generic' },
       { title: 'Keyboard note', nodeType: 'note' },
     ]);
 
+  await page.getByRole('button', { name: 'Fit diagram', exact: true }).click();
+  await page.mouse.click(blank.x, blank.y);
+  await expect(canvas.locator('.react-flow__node.selected')).toHaveCount(0);
+  await page.keyboard.press('g');
+  await expect(fill).toHaveAttribute('aria-pressed', 'true');
+  await expect(canvas.locator('.react-flow.canvas-fill-active')).toBeVisible();
+  const fillColor = canvas.getByLabel('Fill color', { exact: true });
+  const backgroundColor = '#4b62a7';
+  await expect(fillColor).toHaveAttribute('type', 'color');
+  await fillColor.fill(backgroundColor);
+  await expect(node).not.toHaveAttribute('data-node-background');
+
+  const cursorURL = /^url\("([^"]+)"\)/;
+  const cursorFallback = /,\s*crosshair$/;
+  await node.hover();
+  const fillCursor = await cursorAtCenter(node);
+  expect(fillCursor).toMatch(cursorURL);
+  expect(fillCursor).toMatch(cursorFallback);
+  const card = (await node.boundingBox())!;
+  await drag(
+    page,
+    { x: card.x + card.width * 0.35, y: card.y + card.height * 0.5 },
+    { x: card.x + card.width * 0.65, y: card.y + card.height * 0.5 },
+  );
+  await expect(node).not.toHaveAttribute('data-node-background');
+  await node.click();
+  await expect(node).toHaveAttribute('data-node-background', backgroundColor);
+  await expect
+    .poll(async () => (await readGraph()).nodes.find((item) => item.id === id)?.backgroundColor)
+    .toBe(backgroundColor);
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(node).not.toHaveAttribute('data-node-background');
+  await page.keyboard.press('ControlOrMeta+Shift+z');
+  await expect(node).toHaveAttribute('data-node-background', backgroundColor);
+
   await page.mouse.click(blank.x, blank.y);
   await page.keyboard.press('b');
+  await expect(fill).toHaveAttribute('aria-pressed', 'false');
   await expect(canvas.getByRole('button', { name: 'Pen', exact: true })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
+  await drawing.hover();
+  const penCursor = await cursorAtCenter(drawing);
+  expect(penCursor).toMatch(cursorURL);
+  expect(penCursor).toMatch(cursorFallback);
+  expect(penCursor.match(cursorURL)?.[1]).not.toBe(fillCursor.match(cursorURL)?.[1]);
   await page.keyboard.press('e');
   await expect(canvas.getByRole('button', { name: 'Eraser', exact: true })).toHaveAttribute(
     'aria-pressed',
@@ -226,4 +273,16 @@ test('canvas editing shortcuts work while text fields keep ordinary typing', asy
   await expect(
     canvas.getByRole('button', { name: 'Draw on diagram', exact: true }),
   ).toHaveAttribute('aria-pressed', 'false');
+
+  await page.keyboard.press('g');
+  await expect(fill).toHaveAttribute('aria-pressed', 'true');
+  await fillColor.focus();
+  await page.keyboard.press('v');
+  await expect(fill).toHaveAttribute('aria-pressed', 'false');
+  await page.keyboard.press('g');
+  await expect(fill).toHaveAttribute('aria-pressed', 'true');
+  await page.keyboard.press('Escape');
+  await expect(fill).toHaveAttribute('aria-pressed', 'false');
+  await page.reload();
+  await expect(node).toHaveAttribute('data-node-background', backgroundColor);
 });

@@ -26,6 +26,12 @@ func TestSVGJobSchemasDescribeStrictSelectionsAndBoundedBrowserResults(t *testin
 	if whole["properties"].(object)["nodeIds"] != nil {
 		t.Fatal("nodeIds, including [], must be rejected outside selected scope")
 	}
+	for _, variant := range []object{whole, selected} {
+		transparency := variant["properties"].(object)["transparentBackground"].(object)
+		if transparency["type"] != "boolean" || transparency["default"] != false || transparency["nullable"] == true {
+			t.Fatal("SVG transparency must be a non-null boolean with an opaque default")
+		}
+	}
 	ids := selected["properties"].(object)["nodeIds"].(object)
 	if ids["minItems"] != 1 || ids["maxItems"] != 20000 || ids["uniqueItems"] != true || ids["items"].(object)["format"] != "uuid" {
 		t.Fatal("selected IDs must be bounded, nonempty, unique canonical references", ids)

@@ -22,8 +22,8 @@ type Gesture = {
 export function DrawingOverlay() {
   const { t } = useI18n();
   const graph = useEditor((state) => state.graph);
-  const tool = useEditor((state) => state.drawingTool);
-  const color = useEditor((state) => state.drawingColor);
+  const tool = useEditor((state) => state.canvasTool);
+  const color = useEditor((state) => state.toolColor);
   const width = useEditor((state) => state.drawingWidth);
   const layer = useMemo(
     () => getDrawingLayer(graph?.diagram.settings.drawing),
@@ -35,7 +35,7 @@ export function DrawingOverlay() {
   const gesture = useRef<Gesture | null>(null);
   const frame = useRef<number | null>(null);
   const surface = useRef<HTMLDivElement>(null);
-  const active = tool !== 'none';
+  const active = tool === 'pen' || tool === 'eraser';
   const shown = layer?.visible !== false;
   const strokes = useMemo(() => {
     if (!shown || !layer) return [];
@@ -68,7 +68,7 @@ export function DrawingOverlay() {
     const escape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       discard();
-      useEditor.getState().setDrawingTool('none');
+      useEditor.getState().setCanvasTool('none');
     };
     window.addEventListener('keydown', escape);
     return () => window.removeEventListener('keydown', escape);
@@ -231,7 +231,7 @@ export function DrawingOverlay() {
               aria-keyshortcuts="B"
               aria-pressed={tool === 'pen'}
               className={tool === 'pen' ? 'active' : ''}
-              onClick={() => useEditor.getState().setDrawingTool('pen')}
+              onClick={() => useEditor.getState().setCanvasTool('pen')}
             >
               <Pencil size={17} />
             </button>
@@ -241,7 +241,7 @@ export function DrawingOverlay() {
               aria-keyshortcuts="E"
               aria-pressed={tool === 'eraser'}
               className={tool === 'eraser' ? 'active' : ''}
-              onClick={() => useEditor.getState().setDrawingTool('eraser')}
+              onClick={() => useEditor.getState().setCanvasTool('eraser')}
             >
               <Eraser size={17} />
             </button>
@@ -250,7 +250,7 @@ export function DrawingOverlay() {
               aria-label={t('editor.drawing.drawingColor')}
               title={t('editor.drawing.drawingColor')}
               value={color}
-              onChange={(event) => useEditor.setState({ drawingColor: event.target.value })}
+              onChange={(event) => useEditor.setState({ toolColor: event.target.value })}
             />
             <select
               aria-label={t('editor.drawing.drawingWidth')}
@@ -271,7 +271,7 @@ export function DrawingOverlay() {
               onClick={() => {
                 discard();
                 useEditor.getState().toggleDrawingVisibility();
-                useEditor.getState().setDrawingTool('none');
+                useEditor.getState().setCanvasTool('none');
               }}
             >
               {shown ? <Eye size={17} /> : <EyeOff size={17} />}
@@ -291,7 +291,7 @@ export function DrawingOverlay() {
               aria-label={t('editor.drawing.doneDrawing')}
               title={`${t('editor.drawing.doneDrawingEscape')} · V`}
               aria-keyshortcuts="Escape V"
-              onClick={() => useEditor.getState().setDrawingTool('none')}
+              onClick={() => useEditor.getState().setCanvasTool('none')}
             >
               <X size={17} />
             </button>
