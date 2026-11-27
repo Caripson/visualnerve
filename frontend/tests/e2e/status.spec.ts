@@ -370,25 +370,27 @@ test.describe('phone statuses', () => {
     await clickable(draw);
     await clickable(fit);
     await fit.tap();
-    const canvas = (await page.locator('.canvas-shell').boundingBox())!;
+    const pinch = await page.locator('.canvas-shell').evaluate((canvas) => {
+      const bounds = canvas.getBoundingClientRect();
+      const x = bounds.left + bounds.width / 2;
+      // Fixed ruler and overview controls can cover the upper rows on small screens.
+      for (const fraction of [0.2, 0.25, 0.3, 0.4, 0.65]) {
+        const y = bounds.top + bounds.height * fraction;
+        const unobstructed = [-91, -84, -77, -70, 0, 70, 77, 84, 91].every((offset) => {
+          const target = document.elementFromPoint(x + offset, y);
+          return (
+            target?.classList.contains('react-flow__pane') &&
+            !target.closest('.react-flow__node,.nopan,.react-flow__panel,.context-toolbar')
+          );
+        });
+        if (unobstructed) return { x, y };
+      }
+      return null;
+    });
+    if (!pinch) throw new Error('No clear canvas row for the empty-pane pinch gesture.');
     const zoomBefore = await page
       .locator('.canvas-shell .react-flow__viewport')
       .evaluate((element) => new DOMMatrixReadOnly(getComputedStyle(element).transform).a);
-    const pinch = { x: canvas.x + canvas.width / 2, y: canvas.y + canvas.height * 0.2 };
-    for (const offset of [-91, -70, 0, 70, 91]) {
-      expect(
-        await page.evaluate(
-          ({ x, y }) => {
-            const top = document.elementFromPoint(x, y);
-            return (
-              !!top?.classList.contains('react-flow__pane') &&
-              !top.closest('.react-flow__node,.nopan,.react-flow__panel,.context-toolbar')
-            );
-          },
-          { x: pinch.x + offset, y: pinch.y },
-        ),
-      ).toBe(true);
-    }
     const touch = await page.context().newCDPSession(page);
     await touch.send('Input.dispatchTouchEvent', {
       type: 'touchStart',

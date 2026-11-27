@@ -1,5 +1,5 @@
 import { useReactFlow, useStore, useViewport } from '@xyflow/react';
-import { useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import { Fragment, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { useI18n } from '../i18n';
 import {
   canvasGuideLimit,
@@ -247,22 +247,22 @@ export function CanvasRulers({ diagram, drawing }: { diagram: Diagram; drawing: 
           viewport.zoom,
         );
         return (
-          <button
-            key={axis}
-            type="button"
-            className="canvas-ruler"
-            data-axis={axis}
-            aria-label={t(
-              horizontal ? 'editor.canvas.ruler.horizontal' : 'editor.canvas.ruler.vertical',
-            )}
-            aria-disabled={guides.length >= canvasGuideLimit}
-            title={t('editor.canvas.ruler.guideHint')}
-            onPointerDown={(event) => start(event, axis)}
-            onClick={(event) => {
-              if (event.detail === 0) addCentered(axis);
-            }}
-          >
-            <span className="canvas-ruler-marks" aria-hidden="true">
+          <Fragment key={axis}>
+            <button
+              type="button"
+              className="canvas-ruler"
+              data-axis={axis}
+              aria-label={t(
+                horizontal ? 'editor.canvas.ruler.horizontal' : 'editor.canvas.ruler.vertical',
+              )}
+              aria-disabled={guides.length >= canvasGuideLimit}
+              title={t('editor.canvas.ruler.guideHint')}
+              onPointerDown={(event) => start(event, axis)}
+              onClick={(event) => {
+                if (event.detail === 0) addCentered(axis);
+              }}
+            />
+            <span className="canvas-ruler-marks" data-axis={axis} aria-hidden="true">
               {marks.map(({ at, value }, index) => (
                 <span
                   key={index}
@@ -273,7 +273,7 @@ export function CanvasRulers({ diagram, drawing }: { diagram: Diagram; drawing: 
                 </span>
               ))}
             </span>
-          </button>
+          </Fragment>
         );
       })}
       <div className="canvas-guide-area">

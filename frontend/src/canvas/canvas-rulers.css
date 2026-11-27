@@ -24,14 +24,20 @@
   color: var(--muted);
   box-shadow: inset -1px -1px var(--border);
 }
-.canvas-ruler-layer .canvas-ruler[data-axis='horizontal'] {
+.canvas-ruler-layer .canvas-ruler[data-axis='horizontal'],
+.canvas-ruler-marks[data-axis='horizontal'] {
   inset: 0 0 auto;
   height: var(--canvas-ruler-size);
+}
+.canvas-ruler-layer .canvas-ruler[data-axis='horizontal'] {
   cursor: ns-resize;
 }
-.canvas-ruler-layer .canvas-ruler[data-axis='vertical'] {
+.canvas-ruler-layer .canvas-ruler[data-axis='vertical'],
+.canvas-ruler-marks[data-axis='vertical'] {
   inset: 0 auto 0 0;
   width: var(--canvas-ruler-size);
+}
+.canvas-ruler-layer .canvas-ruler[data-axis='vertical'] {
   cursor: ew-resize;
 }
 .canvas-ruler-layer .canvas-ruler-corner {
@@ -59,7 +65,9 @@
   pointer-events: none;
 }
 .canvas-ruler-marks {
-  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  color: var(--muted);
 }
 .canvas-ruler-tick {
   background: color-mix(in srgb, currentColor 46%, transparent);
@@ -71,27 +79,27 @@
 .canvas-ruler-tick.major {
   background: currentColor;
 }
-.canvas-ruler[data-axis='horizontal'] .canvas-ruler-tick {
+.canvas-ruler-marks[data-axis='horizontal'] .canvas-ruler-tick {
   bottom: 1px;
   width: 1px;
   height: 4px;
 }
-.canvas-ruler[data-axis='horizontal'] .canvas-ruler-tick.major {
+.canvas-ruler-marks[data-axis='horizontal'] .canvas-ruler-tick.major {
   height: 8px;
 }
-.canvas-ruler[data-axis='horizontal'] .canvas-ruler-tick > span {
+.canvas-ruler-marks[data-axis='horizontal'] .canvas-ruler-tick > span {
   bottom: 10px;
   left: 3px;
 }
-.canvas-ruler[data-axis='vertical'] .canvas-ruler-tick {
+.canvas-ruler-marks[data-axis='vertical'] .canvas-ruler-tick {
   right: 1px;
   width: 4px;
   height: 1px;
 }
-.canvas-ruler[data-axis='vertical'] .canvas-ruler-tick.major {
+.canvas-ruler-marks[data-axis='vertical'] .canvas-ruler-tick.major {
   width: 8px;
 }
-.canvas-ruler[data-axis='vertical'] .canvas-ruler-tick > span {
+.canvas-ruler-marks[data-axis='vertical'] .canvas-ruler-tick > span {
   top: 3px;
   right: 10px;
   writing-mode: vertical-lr;

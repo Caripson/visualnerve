@@ -83,23 +83,46 @@ async function readableCanvas(page: Page) {
   if (zoom >= 0.25) return;
   // A full landscape overview deliberately hides details below 0.2 zoom.
   // Use the same two-finger gesture as a user to inspect the actual cards.
-  const canvas = (await page.locator('.react-flow').boundingBox())!;
-  const center = { x: canvas.x + canvas.width / 2, y: canvas.y + 12 };
+  const initialSpread = 24;
+  const center = await page.locator('.react-flow__renderer').evaluate((surface, spread) => {
+    const canvas = surface.getBoundingClientRect();
+    const ruler = surface
+      .closest('.react-flow')
+      ?.querySelector('.canvas-ruler[data-axis="horizontal"]')
+      ?.getBoundingClientRect();
+    const x = canvas.x + canvas.width / 2;
+    const top = Math.max(canvas.top, ruler?.bottom ?? canvas.top);
+    for (let y = top + 12; y < canvas.bottom - 12; y += 12) {
+      if (
+        [x - spread, x + spread].every((pointerX) => {
+          const hit = document.elementFromPoint(pointerX, y);
+          return hit?.classList.contains('react-flow__pane') && surface.contains(hit);
+        })
+      )
+        return { x, y };
+    }
+    return null;
+  }, initialSpread);
+  expect(
+    center,
+    'Both fingers must start on the diagram pane, clear of rulers and tools',
+  ).not.toBeNull();
+  const { x, y } = center!;
   const session = await page.context().newCDPSession(page);
   try {
     await session.send('Input.dispatchTouchEvent', {
       type: 'touchStart',
       touchPoints: [
-        { id: 0, x: center.x - 24, y: center.y },
-        { id: 1, x: center.x + 24, y: center.y },
+        { id: 0, x: x - initialSpread, y },
+        { id: 1, x: x + initialSpread, y },
       ],
     });
     for (const spread of [36, 48, 60, 72, 84, 96]) {
       await session.send('Input.dispatchTouchEvent', {
         type: 'touchMove',
         touchPoints: [
-          { id: 0, x: center.x - spread, y: center.y },
-          { id: 1, x: center.x + spread, y: center.y },
+          { id: 0, x: x - spread, y },
+          { id: 1, x: x + spread, y },
         ],
       });
     }

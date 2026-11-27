@@ -174,7 +174,9 @@ for (const width of [390, 1440])
         true,
       );
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-      // Inline editing may focus/pan the selected object; refit before sampling the next theme.
+      // Inline editing leaves Add next visible. Clear the selection and refit before sampling
+      // contour pixels so the neighboring symbol's controls cannot cover those points.
+      await page.locator('.react-flow__pane').click({ position: { x: 40, y: 42 } });
       await page.getByRole('button', { name: 'Fit diagram', exact: true }).click();
       for (const node of graph.nodes) {
         const values = await appearance(page, node.id);
