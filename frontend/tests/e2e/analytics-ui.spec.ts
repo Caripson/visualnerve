@@ -632,20 +632,20 @@ test('reviewed analysis-to-process mapping uses local semantic selectors and lea
   page,
   request,
 }) => {
-  await page.getByRole('button', { name: /^New diagram/ }).click();
-  const dialog = page.getByRole('dialog', { name: 'New diagram', exact: true });
-  await dialog.getByRole('button', { name: /Kiosk \+ package pickup/ }).click();
-  await dialog.getByLabel('New diagram name').fill('Process target for analysis');
-  await dialog.getByRole('button', { name: 'Create diagram', exact: true }).click();
-  await expect(dialog).toBeHidden();
-  const original = await savedGraph(request, 'Process target for analysis');
   await createAnalysis(page, 'Reviewed cross-document source');
+  const targetName = 'Process target for analysis';
+  // Seed the link target without opening its canvas and scheduling a viewport save.
+  const target = await request.post('/api/v1/diagrams', {
+    data: { name: targetName, type: 'process-simulator' },
+  });
+  expect(target.status(), await target.text()).toBe(201);
+  const original = await savedGraph(request, targetName);
   await page.getByRole('tab', { name: /6 · Simulate/ }).click();
   await page.getByLabel('Scenario name', { exact: true }).fill('Linked growth assumptions');
   await page.getByText('Link to a Process Simulator scenario', { exact: true }).click();
   await page
     .getByLabel('Linked process diagram', { exact: true })
-    .selectOption({ label: 'Process target for analysis' });
+    .selectOption({ label: targetName });
   const source = page.getByLabel('Process link source series', { exact: true });
   await source.selectOption(
     (await source
@@ -670,9 +670,7 @@ test('reviewed analysis-to-process mapping uses local semantic selectors and lea
       (item) => item.name === 'Linked growth assumptions',
     )?.processLink,
   ).toMatchObject({ diagramId: original.diagram.id, parameter: 'source.maxCount', reviewed: true });
-  const untouched = await savedGraph(request, 'Process target for analysis');
-  expect(untouched.diagram.version).toBe(original.diagram.version);
-  expect(untouched.simulation).toEqual(original.simulation);
+  expect(await savedGraph(request, targetName)).toEqual(original);
 });
 
 test('API edits refresh clean forms and cannot overwrite preserved dirty UI assumptions', async ({
