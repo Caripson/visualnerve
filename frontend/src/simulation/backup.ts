@@ -3,11 +3,12 @@ import { StorageError } from '../model/errors';
 import type { WorkspaceDatabase, WorkspaceBackup } from '../storage/database';
 import { asWorkspaceStorage } from '../storage/adapter';
 import type { WorkspaceStorage } from '../storage/contracts';
+import { backupGraphIdentity, type BackupGraphMapping } from '../storage/backup-identity';
 import { historyJsonBytes } from '../history/codec';
 import { remapSimulationModel } from './copy';
 import { validateSimulationModel, resolveScenario } from './schema';
 import { simulationModelHash } from './engine';
-import { remapSimulationBehaviors, SimulationBehaviors } from './behaviors';
+import { remapSimulationBehaviors, validateArchivedSimulationBehaviors } from './behaviors';
 import type { SimulationResult, SimulationState } from './types';
 import {
   assertArchivedResult,
@@ -15,10 +16,7 @@ import {
   assertArchivedInfrastructureModel,
 } from './archive-validation';
 
-export interface SimulationImportMapping {
-  sourceGraph: Graph;
-  importedGraph: Graph;
-}
+export type SimulationImportMapping = BackupGraphMapping;
 const object = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
 function remapState<T extends SimulationState>(
@@ -157,7 +155,7 @@ export function prepareSimulationBackup(backup: WorkspaceBackup, graphs: Graph[]
       throw new StorageError(422, 'Invalid archived simulation options.');
     historyJsonBytes(run, 48 * 1024 * 1024);
     if (run.options.behaviors !== undefined)
-      new SimulationBehaviors(
+      validateArchivedSimulationBehaviors(
         run.options.behaviors,
         resolveScenario(run.model, scenarioId, demandMultiplier),
       );
@@ -222,22 +220,12 @@ async function importSimulationRunsScoped(
   );
   const byDiagram = new Map(mappings.map((mapping) => [mapping.sourceGraph.diagram.id, mapping]));
   const runIds = new Map<string, string>();
-  const identities = new Map<string, { nodes: Map<string, string>; edges: Map<string, string> }>();
-  for (const mapping of mappings)
-    identities.set(mapping.sourceGraph.diagram.id, {
-      nodes: new Map(
-        mapping.sourceGraph.nodes.map((node, index) => [
-          node.id,
-          mapping.importedGraph.nodes[index].id,
-        ]),
-      ),
-      edges: new Map(
-        mapping.sourceGraph.edges.map((edge, index) => [
-          edge.id,
-          mapping.importedGraph.edges[index].id,
-        ]),
-      ),
-    });
+  const identities = new Map(
+    mappings.map((mapping) => [
+      mapping.sourceGraph.diagram.id,
+      mapping.identity ?? backupGraphIdentity(mapping.sourceGraph, mapping.importedGraph),
+    ]),
+  );
   for (const run of runs) {
     const mapping = byDiagram.get(run.diagramId)!;
     const scenarioId =

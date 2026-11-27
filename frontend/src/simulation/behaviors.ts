@@ -1,6 +1,6 @@
 import {
   behaviorHandlerLocation,
-  compileBehavior,
+  compilePreviewBehavior,
   createBehaviorBudget,
   runBehavior,
   validateBehaviorBindings,
@@ -10,7 +10,9 @@ import {
 } from '../behaviors/language';
 import {
   behaviorDocumentLimits,
+  behaviorReferenceParameters,
   getBehaviorLibrary,
+  remapBehaviorParameters,
   validateBehaviorLibrary,
 } from '../behaviors/document';
 import { StorageError } from '../model/errors';
@@ -47,9 +49,16 @@ function invalid(definition: Definition, error: { line: number; column: number; 
 }
 
 function compile(definition: Definition) {
-  const compiled = compileBehavior(definition.source);
+  const compiled = compilePreviewBehavior(definition.source, definition.version);
   if (!compiled.ok) throw invalid(definition, compiled.error);
   return compiled.program;
+}
+
+/** Newer archived sources remain available for inspection by older builds. */
+function compileArchived(definition: Definition) {
+  const compiled = compilePreviewBehavior(definition.source, definition.version);
+  if (compiled.ok) return compiled.program;
+  if (compiled.error.code !== 'version') throw invalid(definition, compiled.error);
 }
 
 /** Freeze active simulation definitions only, in the document's binding order. */
@@ -83,23 +92,74 @@ export function remapSimulationBehaviors(
   snapshot: SimulationBehaviorSnapshot,
   nodeIds: ReadonlyMap<string, string>,
 ): SimulationBehaviorSnapshot {
-  const nodeParameters = new Map(
+  const references = new Map(
     snapshot.definitions.map((definition) => [
       definition.id,
-      compile(definition).parameters.filter(({ type }) => type === 'node'),
+      behaviorReferenceParameters(definition),
     ]),
   );
   return {
     ...snapshot,
-    bindings: snapshot.bindings.map((binding) => {
-      const parameters = { ...binding.parameters };
-      for (const { name, defaultValue } of nodeParameters.get(binding.definitionId) ?? []) {
-        const original = parameters[name] ?? defaultValue;
-        if (typeof original === 'string') parameters[name] = nodeIds.get(original) ?? original;
-      }
-      return { ...binding, nodeId: nodeIds.get(binding.nodeId) ?? binding.nodeId, parameters };
-    }),
+    bindings: snapshot.bindings.map((binding) => ({
+      ...binding,
+      nodeId: nodeIds.get(binding.nodeId) ?? binding.nodeId,
+      parameters: remapBehaviorParameters(
+        binding.parameters,
+        references.get(binding.definitionId) ?? [],
+        nodeIds,
+      ),
+    })),
   };
+}
+
+function prepareSimulationBehaviors(
+  input: unknown,
+  model: SimulationModel,
+  archive = false,
+): ActiveBehavior[] {
+  const snapshot = input as SimulationBehaviorSnapshot | undefined;
+  if (
+    !snapshot ||
+    !Array.isArray(snapshot.bindings) ||
+    snapshot.bindings.length > behaviorDocumentLimits.bindings ||
+    !Array.isArray(snapshot.definitions) ||
+    snapshot.definitions.length > behaviorDocumentLimits.definitions
+  )
+    throw new StorageError(422, 'Invalid captured simulation Behaviors.');
+  validateBehaviorLibrary({
+    definitions: snapshot.definitions,
+    bindings: snapshot.bindings.map((binding) => ({ ...binding, enabled: true })),
+  });
+  const programs = new Map(
+    snapshot.definitions.map((definition) => [
+      definition.id,
+      { definition, program: archive ? compileArchived(definition) : compile(definition) },
+    ]),
+  );
+  const workNodes = new Set(model.nodes.filter(({ type }) => type === 'work').map(({ id }) => id));
+  const resources = new Set(model.resources.map(({ id }) => id));
+  const prepared: ActiveBehavior[] = [];
+  for (const binding of snapshot.bindings) {
+    const { definition, program } = programs.get(binding.definitionId)!;
+    if (!program) continue;
+    if (!workNodes.has(binding.nodeId) || !program.contexts.includes('simulation'))
+      throw invalid(definition, {
+        line: 1,
+        column: 1,
+        message: 'Simulation Behaviors must be attached to a Work node.',
+      });
+    const parameters = validateBehaviorBindings(program, binding.parameters, {
+      nodeExists: (id) => workNodes.has(id),
+      resourceExists: (id) => resources.has(id),
+    });
+    if (!parameters.ok) throw invalid(definition, parameters.error);
+    prepared.push({ binding, program, parameters: parameters.bindings });
+  }
+  return prepared;
+}
+
+export function validateArchivedSimulationBehaviors(input: unknown, model: SimulationModel) {
+  prepareSimulationBehaviors(input, model, true);
 }
 
 /** The simulator owns ordering and actions. The shared language only proposes them. */
@@ -112,43 +172,8 @@ export class SimulationBehaviors {
   private messageId = 0;
 
   constructor(input: unknown, model: SimulationModel) {
-    const snapshot = input as SimulationBehaviorSnapshot | undefined;
-    if (
-      !snapshot ||
-      !Array.isArray(snapshot.bindings) ||
-      snapshot.bindings.length > behaviorDocumentLimits.bindings ||
-      !Array.isArray(snapshot.definitions) ||
-      snapshot.definitions.length > behaviorDocumentLimits.definitions
-    )
-      throw new StorageError(422, 'Invalid captured simulation Behaviors.');
-    validateBehaviorLibrary({
-      definitions: snapshot.definitions,
-      bindings: snapshot.bindings.map((binding) => ({ ...binding, enabled: true })),
-    });
-    const programs = new Map(
-      snapshot.definitions.map((definition) => [
-        definition.id,
-        { definition, program: compile(definition) },
-      ]),
-    );
-    const workNodes = new Set(
-      model.nodes.filter(({ type }) => type === 'work').map(({ id }) => id),
-    );
-    const resources = new Set(model.resources.map(({ id }) => id));
-    for (const binding of snapshot.bindings) {
-      const { definition, program } = programs.get(binding.definitionId)!;
-      if (!workNodes.has(binding.nodeId) || !program.contexts.includes('simulation'))
-        throw invalid(definition, {
-          line: 1,
-          column: 1,
-          message: 'Simulation Behaviors must be attached to a Work node.',
-        });
-      const parameters = validateBehaviorBindings(program, binding.parameters, {
-        nodeExists: (id) => workNodes.has(id),
-        resourceExists: (id) => resources.has(id),
-      });
-      if (!parameters.ok) throw invalid(definition, parameters.error);
-      const prepared = { binding, program, parameters: parameters.bindings };
+    for (const prepared of prepareSimulationBehaviors(input, model)) {
+      const { binding, program } = prepared;
       const active = this.active.get(binding.nodeId);
       if (active) active.push(prepared);
       else this.active.set(binding.nodeId, [prepared]);

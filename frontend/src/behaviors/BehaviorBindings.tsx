@@ -11,7 +11,7 @@ import {
   type BehaviorBinding,
   type BehaviorDefinition,
 } from './document';
-import { compileBehavior, type BehaviorProgram } from './language';
+import { compilePreviewBehavior, type BehaviorProgram } from './language';
 import {
   attachBehavior,
   behaviorEditAllowed,
@@ -88,7 +88,10 @@ function BehaviorBindingFields({
   definition: BehaviorDefinition;
 }) {
   const diagnosticId = useId();
-  const compiled = useMemo(() => compileBehavior(definition.source), [definition.source]);
+  const compiled = useMemo(
+    () => compilePreviewBehavior(definition.source, definition.version),
+    [definition.source, definition.version],
+  );
   const validation = validateBehaviorConfiguration(graph, definition, binding.parameters);
   const compatible = isBehaviorCompatible(graph, binding.nodeId, definition);
   const setParameter = (name: string, value: string | number | boolean | undefined) => {

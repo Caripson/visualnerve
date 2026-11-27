@@ -8,7 +8,7 @@ import { collaborationPermissions } from '../collaboration/access';
 import { reanalyzeDataModelAsync } from '../data/modelClient';
 import { prunePresentation } from '../presentation/definition';
 import { pruneStoryboard } from '../presentation/storyboard';
-import { pruneBehaviorBindings } from '../behaviors/document';
+import { pruneBehaviorBindings, setBehaviorLibrary } from '../behaviors/document';
 import { evaluateConnectionBehaviors, type BehaviorTraceEntry } from '../behaviors/editor';
 import { behaviorsEnabled } from '../behaviors/feature';
 import { reconcileSimulationGraph } from '../simulation/document';
@@ -228,6 +228,7 @@ export const useEditor = create<Editor>((set, get) => ({
     }
     const next = pruneBehaviorBindings(
       pruneStoryboard(prunePresentation(syncSpatialPositions(s.graph, reconciled))),
+      s.graph,
     );
     const changedFilters =
       s.graph.diagram.settings.analysisFilters !== next.diagram.settings.analysisFilters;
@@ -736,7 +737,7 @@ export const useEditor = create<Editor>((set, get) => ({
       return;
     }
     s.command('Paste nodes', (g) => ({
-      ...g,
+      ...(p.behaviors ? setBehaviorLibrary(g, p.behaviors) : g),
       nodes: [...g.nodes, ...p.nodes],
       edges: [...g.edges, ...p.edges],
       ...(p.simulation ? { simulation: p.simulation } : {}),

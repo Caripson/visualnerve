@@ -14,6 +14,7 @@ import type { Graph } from '../model/types';
 import type { WorkspaceDatabase } from '../storage/database';
 import { asWorkspaceStorage } from '../storage/adapter';
 import type { WorkspaceStorage } from '../storage/contracts';
+import { backupGraphIdentity, type BackupGraphMapping } from '../storage/backup-identity';
 import { historyStoreNames } from './store';
 import { historyDigest, historyJsonBytes, historyGraph, historyStorageFailure } from './codec';
 import { historyLimits, type HistoryBackup, type HistoryRows, type HistorySource } from './types';
@@ -61,10 +62,7 @@ async function exportHistoryBackupScoped(
   );
   return { version: 1, snapshots, contents, sources, rows };
 }
-export interface HistoryImportMapping {
-  sourceGraph: Graph;
-  importedGraph: Graph;
-}
+export type HistoryImportMapping = BackupGraphMapping;
 const uuid = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 const bad = () => {
   throw new StorageError(422, 'Invalid workspace history content or references.');
@@ -350,18 +348,8 @@ async function importHistoryBackupData(
         413,
         'Imported history exceeds the diagram snapshot limit. Nothing was restored.',
       );
-    const nodes = new Map(
-      mapping.sourceGraph.nodes.map((node, index) => [
-        node.id,
-        mapping.importedGraph.nodes[index]?.id,
-      ]),
-    );
-    const edges = new Map(
-      mapping.sourceGraph.edges.map((edge, index) => [
-        edge.id,
-        mapping.importedGraph.edges[index]?.id,
-      ]),
-    );
+    const { nodes, edges } =
+      mapping.identity ?? backupGraphIdentity(mapping.sourceGraph, mapping.importedGraph);
     const sourceIds = new Map(
       graphDatasets(mapping.sourceGraph).map((source, index) => [
         source.id,
@@ -446,16 +434,11 @@ async function importHistoryBackupData(
           graph,
           new Map([...sourceIds].map(([id, value]) => [id, value!])),
         );
-        graph = remapAnalysisReferences(
-          graph,
-          new Map([...nodes].map(([id, value]) => [id, value!])),
-        );
-        const nodeMap = new Map([...nodes].map(([id, value]) => [id, value!]));
-        graph = remapNotationGraph(graph, nodeMap);
-        const edgeMap = new Map([...edges].map(([id, value]) => [id, value!]));
+        graph = remapAnalysisReferences(graph, nodes);
+        graph = remapNotationGraph(graph, nodes);
         const datasetMap = new Map([...sourceIds].map(([id, value]) => [id, value!]));
-        graph = remapPresentation(graph, nodeMap);
-        graph = remapBehaviorLibrary(graph, nodeMap);
+        graph = remapPresentation(graph, nodes);
+        graph = remapBehaviorLibrary(graph, nodes);
         if (original.diagram.settings.storyboard)
           graph = setStoryboard(graph, {
             ...getStoryboard(original),
@@ -466,11 +449,11 @@ async function importHistoryBackupData(
               edgeIds: scene.edgeIds.map((id) => identity(edges, id)),
             })),
           });
-        graph = remapBuildSpecification(graph, nodeMap, edgeMap, datasetMap);
+        graph = remapBuildSpecification(graph, nodes, edges, datasetMap);
         if (graph.diagram.collaboration)
-          graph = remapGraphCollaboration(graph, { nodeIds: nodeMap, edgeIds: edgeMap });
+          graph = remapGraphCollaboration(graph, { nodeIds: nodes, edgeIds: edges });
         if (graph.simulation)
-          graph.simulation = remapSimulationModel(graph.simulation, nodeMap, edgeMap);
+          graph.simulation = remapSimulationModel(graph.simulation, nodes, edges);
         graph.edges = graph.edges.map((edge) => {
           const relationship = edge.metadata.csvSourceRelationship as
             | { relationshipId?: string }

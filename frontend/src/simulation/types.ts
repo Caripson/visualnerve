@@ -1,4 +1,5 @@
 /** Public simulation values use seconds, one document currency and semantic IDs. */
+import type { BehaviorBinding, BehaviorDefinition } from '../behaviors/document';
 import type {
   InfrastructureProfile,
   InfrastructureResource,
@@ -232,13 +233,8 @@ export interface RunOptions {
   behaviors?: SimulationBehaviorSnapshot;
 }
 export interface SimulationBehaviorSnapshot {
-  definitions: { id: string; name: string; version: 1; source: string }[];
-  bindings: {
-    id: string;
-    definitionId: string;
-    nodeId: string;
-    parameters: Record<string, string | number | boolean>;
-  }[];
+  definitions: Pick<BehaviorDefinition, 'id' | 'name' | 'version' | 'source'>[];
+  bindings: Pick<BehaviorBinding, 'id' | 'definitionId' | 'nodeId' | 'parameters'>[];
 }
 export interface SimulationBehaviorTrace {
   sequence: number;

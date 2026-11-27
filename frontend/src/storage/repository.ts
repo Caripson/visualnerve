@@ -68,8 +68,9 @@ import { remapStoryboard, pruneStoryboard } from '../presentation/storyboard';
 import { remapBuildSpecification } from '../export/build-specification';
 import { remapOverview } from '../overview/copy';
 import { importHistoryBackup } from '../history/backup';
+import { backupGraphIdentity, type BackupGraphMapping } from './backup-identity';
 import { remapSimulationModel } from '../simulation/copy';
-import { remapBehaviorLibrary } from '../behaviors/document';
+import { pruneBehaviorBindings, remapBehaviorLibrary } from '../behaviors/document';
 import { reconcileSimulationGraph } from '../simulation/document';
 import { SimulationRunStore } from '../simulation/run-store';
 import { importSimulationRuns } from '../simulation/backup';
@@ -405,6 +406,7 @@ export class Repository {
         else if (expectedVersion !== undefined && expectedVersion !== 0)
           throw new StorageError(409, 'This project was deleted by another tab.');
         input = reconcileSimulationGraph(old, input);
+        if (old) input = pruneBehaviorBindings(input, old);
         // Apply API/graph-replacement 2D moves in the same transaction as their 3D placement.
         // Editor commands that already updated both positions are unchanged by this helper.
         if (old && !canonicalPositions) input = syncSpatialPositions(old, input);
@@ -741,7 +743,7 @@ export class Repository {
       }
       await scope.owners.bulkPut(owners);
       const graphs: Graph[] = [];
-      const historyMappings: { sourceGraph: Graph; importedGraph: Graph }[] = [];
+      const archiveMappings: BackupGraphMapping[] = [];
       for (const diagram of backup.diagrams) {
         const sources = datasets.filter((dataset) => dataset.diagramId === diagram.id);
         const sourceOrder = new Map(
@@ -788,10 +790,14 @@ export class Repository {
         };
         const importedGraph = await scoped.importGraph(sourceGraph);
         graphs.push(importedGraph);
-        historyMappings.push({ sourceGraph, importedGraph });
+        archiveMappings.push({
+          sourceGraph,
+          importedGraph,
+          identity: backupGraphIdentity(sourceGraph, importedGraph),
+        });
       }
-      await importHistoryBackup(scope, backup.history, datasets, historyMappings, ownerIds);
-      await importSimulationRuns(scope, backup, historyMappings);
+      await importHistoryBackup(scope, backup.history, datasets, archiveMappings, ownerIds);
+      await importSimulationRuns(scope, backup, archiveMappings);
       for (const template of backup.templates) {
         if (typeof template.id !== 'string' || !template.id || typeof template.name !== 'string')
           throw new StorageError(422, 'Invalid template.');

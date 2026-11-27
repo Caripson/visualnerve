@@ -10,7 +10,7 @@ import {
   saveBehaviorDefinition,
   type BehaviorDefinition,
 } from './document';
-import { compileBehavior } from './language';
+import { BEHAVIOR_PREVIEW_VERSION, compilePreviewBehavior } from './language';
 import { BehaviorDiagnosticMessage } from './BehaviorDiagnosticMessage';
 import {
   attachBehavior,
@@ -52,7 +52,7 @@ export function BehaviorLibrary() {
                 setEditing({
                   id: crypto.randomUUID(),
                   name: '',
-                  version: 1,
+                  version: BEHAVIOR_PREVIEW_VERSION,
                   source: '',
                   draftSource: starterSource,
                 })
@@ -127,13 +127,19 @@ function BehaviorDefinitionRow({
   edit: () => void;
   onDragging: (dragging: boolean) => void;
 }) {
-  const compiled = useMemo(() => compileBehavior(definition.source), [definition.source]);
+  const compiled = useMemo(
+    () => compilePreviewBehavior(definition.source, definition.version),
+    [definition.source, definition.version],
+  );
   const active = compiled.ok;
+  const unsupported = !compiled.ok && compiled.error.code === 'version';
   const context = active
     ? compiled.program.contexts
         .map((item) => (item === 'editor' ? 'Editing · Cards' : 'Simulation · Work nodes'))
         .join(' / ')
-    : 'Draft only';
+    : unsupported
+      ? 'Unsupported language version'
+      : 'Draft only';
   return (
     <article className="behavior-definition" aria-label={definition.name}>
       <div
@@ -160,6 +166,7 @@ function BehaviorDefinitionRow({
         {context}
         {active && (definition.draftSource === undefined ? ' · Active' : ' · Active, draft saved')}
       </p>
+      {unsupported && <BehaviorDiagnosticMessage diagnostic={compiled.error} />}
       <div className="behavior-actions">
         <button type="button" aria-label={`Edit ${definition.name}`} onClick={edit}>
           Edit
@@ -196,7 +203,10 @@ function BehaviorSourceEditor({
   const source = definition.draftSource ?? definition.source;
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [error, setError] = useState('');
-  const compiled = useMemo(() => compileBehavior(source), [source]);
+  const compiled = useMemo(
+    () => compilePreviewBehavior(source, definition.version),
+    [source, definition.version],
+  );
   const diagnostic = compiled.ok ? undefined : compiled.error;
   const existing = getBehaviorLibrary(graph).definitions.find((item) => item.id === definition.id);
   const relatedBindings = getBehaviorLibrary(graph).bindings.filter(
@@ -206,7 +216,7 @@ function BehaviorSourceEditor({
     if (!name.trim() || (activate && !compiled.ok)) return;
     const next: BehaviorDefinition = {
       id: definition.id,
-      version: 1,
+      version: definition.version,
       name: name.trim(),
       source: activate ? source : (existing?.source ?? ''),
       ...(activate ? {} : { draftSource: source }),
@@ -221,6 +231,7 @@ function BehaviorSourceEditor({
       current && getBehaviorLibrary(current).definitions.find((item) => item.id === next.id);
     if (
       saved?.name === next.name &&
+      saved?.version === next.version &&
       saved?.source === next.source &&
       saved?.draftSource === next.draftSource
     )
@@ -264,7 +275,7 @@ function BehaviorSourceEditor({
       </div>
       {existing?.source && (
         <details>
-          <summary>Active source</summary>
+          <summary>{diagnostic?.code === 'version' ? 'Saved source' : 'Active source'}</summary>
           <pre>{existing.source}</pre>
         </details>
       )}

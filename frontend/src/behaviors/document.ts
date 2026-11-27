@@ -1,11 +1,16 @@
 import type { Graph } from '../model/types';
 import { StorageError } from '../model/errors';
-import { compileBehavior, validateBehaviorBindings } from './language';
+import {
+  compileBehavior,
+  compilePreviewBehavior,
+  validateBehaviorBindings,
+  type BehaviorParameter,
+} from './language';
 
 export interface BehaviorDefinition {
   id: string;
   name: string;
-  version: 1;
+  version: number;
   source: string;
   draftSource?: string;
 }
@@ -54,7 +59,9 @@ function isDefinition(value: unknown): value is BehaviorDefinition {
     typeof value.name === 'string' &&
     value.name.trim().length > 0 &&
     value.name.length <= behaviorDocumentLimits.name &&
-    value.version === 1 &&
+    typeof value.version === 'number' &&
+    Number.isSafeInteger(value.version) &&
+    value.version > 0 &&
     sourceText(value.source) &&
     (value.draftSource === undefined || sourceText(value.draftSource))
   );
@@ -126,7 +133,7 @@ export function isBehaviorCompatible(
   definition: BehaviorDefinition,
 ): boolean {
   if (!graph.nodes.some((node) => node.id === nodeId)) return false;
-  const compiled = compileBehavior(definition.source);
+  const compiled = compilePreviewBehavior(definition.source, definition.version);
   if (!compiled.ok) return false;
   return graph.simulation && compiled.program.contexts.includes('simulation')
     ? graph.simulation.nodes.some((node) => node.id === nodeId && node.type === 'work')
@@ -138,7 +145,7 @@ export function validateBehaviorConfiguration(
   definition: BehaviorDefinition,
   parameters: BehaviorParameters,
 ) {
-  const compiled = compileBehavior(definition.source);
+  const compiled = compilePreviewBehavior(definition.source, definition.version);
   if (!compiled.ok) return compiled;
   return validateBehaviorBindings(compiled.program, parameters, {
     nodeExists: (id) =>
@@ -154,7 +161,12 @@ export function saveBehaviorDefinition(graph: Graph, definition: BehaviorDefinit
   const library = getBehaviorLibrary(graph);
   const existing = library.definitions.find((item) => item.id === definition.id);
   const next = { ...definition, name: definition.name.trim() };
-  if (!isDefinition(next) || (next.source && !compileBehavior(next.source).ok)) return graph;
+  if (!isDefinition(next) || (existing && existing.version !== next.version)) return graph;
+  if (next.source) {
+    const compiled = compilePreviewBehavior(next.source, next.version);
+    if (!compiled.ok && (compiled.error.code !== 'version' || next.source !== existing?.source))
+      return graph;
+  }
   if (!existing && library.definitions.length >= behaviorDocumentLimits.definitions) return graph;
   return setBehaviorLibrary(graph, {
     ...library,
@@ -218,35 +230,70 @@ export function removeBehaviorBinding(graph: Graph, id: string): Graph {
   });
 }
 
-export function pruneBehaviorBindings(graph: Graph): Graph {
+export function pruneBehaviorBindings(graph: Graph, previous: Graph): Graph {
   const library = graph.diagram.settings.behaviors;
-  if (!library?.bindings.length) return graph;
+  if (!isLibrary(library) || !library.bindings.length) return graph;
   const nodeIds = new Set(graph.nodes.map(({ id }) => id));
-  const bindings = library.bindings.filter((binding) => nodeIds.has(binding.nodeId));
+  const removed = new Set(previous.nodes.filter(({ id }) => !nodeIds.has(id)).map(({ id }) => id));
+  const bindings = library.bindings.filter((binding) => !removed.has(binding.nodeId));
   return bindings.length === library.bindings.length
     ? graph
     : setBehaviorLibrary(graph, { ...library, bindings });
 }
 
-export function remapBehaviorLibrary(graph: Graph, nodeIds: ReadonlyMap<string, string>): Graph {
+type BehaviorReferenceParameter = BehaviorParameter & { type: 'node' | 'resource' };
+
+/** Reading a known language version for transfer never activates it in the editor or simulator. */
+export function behaviorReferenceParameters(
+  definition: Pick<BehaviorDefinition, 'source' | 'version'>,
+): readonly BehaviorReferenceParameter[] {
+  const compiled = compileBehavior(definition.source, definition.version);
+  return compiled.ok
+    ? compiled.program.parameters.filter(
+        (parameter): parameter is BehaviorReferenceParameter =>
+          parameter.type === 'node' || parameter.type === 'resource',
+      )
+    : [];
+}
+
+export function remapBehaviorParameters(
+  parameters: BehaviorParameters,
+  references: readonly BehaviorReferenceParameter[],
+  nodeIds: ReadonlyMap<string, string>,
+  resourceIds?: ReadonlyMap<string, string>,
+): BehaviorParameters {
+  const values = { ...parameters };
+  for (const { name, type } of references) {
+    const original = values[name];
+    const replacements = type === 'node' ? nodeIds : resourceIds;
+    const replacement = typeof original === 'string' ? replacements?.get(original) : undefined;
+    if (replacement !== undefined) values[name] = replacement;
+  }
+  return values;
+}
+
+export function remapBehaviorLibrary(
+  graph: Graph,
+  nodeIds: ReadonlyMap<string, string>,
+  resourceIds?: ReadonlyMap<string, string>,
+): Graph {
   const library = graph.diagram.settings.behaviors;
   if (!library?.bindings.length) return graph;
-  const nodeParameters = new Map(
-    library.definitions.map(({ id, source }) => {
-      const compiled = compileBehavior(source);
-      const names = compiled.ok
-        ? compiled.program.parameters.filter(({ type }) => type === 'node').map(({ name }) => name)
-        : [];
-      return [id, names];
-    }),
+  const references = new Map(
+    library.definitions.map((definition) => [
+      definition.id,
+      behaviorReferenceParameters(definition),
+    ]),
   );
-  const bindings = library.bindings.map((binding) => {
-    const parameters = { ...binding.parameters };
-    for (const name of nodeParameters.get(binding.definitionId) ?? []) {
-      const original = parameters[name];
-      if (typeof original === 'string') parameters[name] = nodeIds.get(original) ?? original;
-    }
-    return { ...binding, nodeId: nodeIds.get(binding.nodeId) ?? binding.nodeId, parameters };
-  });
+  const bindings = library.bindings.map((binding) => ({
+    ...binding,
+    nodeId: nodeIds.get(binding.nodeId) ?? binding.nodeId,
+    parameters: remapBehaviorParameters(
+      binding.parameters,
+      references.get(binding.definitionId) ?? [],
+      nodeIds,
+      resourceIds,
+    ),
+  }));
   return setBehaviorLibrary(graph, { ...library, bindings });
 }

@@ -17,6 +17,7 @@ export interface SimulationClipboard {
 export function copySimulationSelection(
   graph: Graph,
   ids: Set<string>,
+  behaviorResourceIds: ReadonlySet<string> = new Set(),
 ): SimulationClipboard | undefined {
   if (!graph.simulation) return;
   const nodes = graph.simulation.nodes.filter((node) => ids.has(node.id));
@@ -26,6 +27,7 @@ export function copySimulationSelection(
     (edge) => ids.has(edge.sourceNodeId) && ids.has(edge.targetNodeId),
   );
   const resources = simulationResourceReferences(nodes, edges);
+  for (const id of behaviorResourceIds) resources.add(id);
   return {
     diagramId: graph.diagram.id,
     model: {
@@ -53,6 +55,15 @@ export function pasteSimulationSelection(
   nodeIds: ReadonlyMap<string, string>,
   edgeIds: ReadonlyMap<string, string>,
 ): SimulationModel | undefined {
+  return pasteSimulationSelectionWithResources(clip, target, nodeIds, edgeIds)?.model;
+}
+
+export function pasteSimulationSelectionWithResources(
+  clip: SimulationClipboard,
+  target: Graph,
+  nodeIds: ReadonlyMap<string, string>,
+  edgeIds: ReadonlyMap<string, string>,
+): { model: SimulationModel; resourceIds: ReadonlyMap<string, string> } | undefined {
   if (!target.simulation) return;
   if (target.simulation.currency !== clip.model.currency)
     throw new StorageError(422, 'Copy simulation objects into a document with the same currency.');
@@ -154,7 +165,7 @@ export function pasteSimulationSelection(
       };
     return node;
   });
-  return {
+  const model: SimulationModel = {
     ...target.simulation,
     ...(clip.model.infrastructure
       ? {
@@ -229,4 +240,5 @@ export function pasteSimulationSelection(
         })),
     ],
   };
+  return { model, resourceIds };
 }

@@ -1,6 +1,6 @@
 import { isValidNodeTitle, type Graph, type GraphEdge } from '../model/types';
 import { getBehaviorLibrary } from './document';
-import { compileBehavior, runBehavior, type BehaviorAction } from './language';
+import { compilePreviewBehavior, runBehavior, type BehaviorAction } from './language';
 
 export interface BehaviorTraceEntry {
   definitionName: string;
@@ -60,7 +60,7 @@ export function evaluateConnectionBehaviors(graph: Graph, edge: GraphEdge) {
       targetNodeId: target.id,
       previousName: target.title,
     };
-    const compiled = compileBehavior(definition.source);
+    const compiled = compilePreviewBehavior(definition.source, definition.version);
     if (compiled.ok && !compiled.program.contexts.includes('editor')) continue;
     const result = compiled.ok
       ? runBehavior(compiled.program, binding.parameters, event, {

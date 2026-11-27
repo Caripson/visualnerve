@@ -5,10 +5,12 @@ import {
   getBehaviorLibrary,
   isBehaviorCompatible,
   saveBehaviorDefinition,
+  setBehaviorLibrary,
   updateBehaviorBinding,
   type BehaviorDefinition,
 } from '../src/behaviors/document';
 import { validateGraph } from '../src/model/validation';
+import { captureSimulationBehaviors } from '../src/simulation/behaviors';
 import { useEditor } from '../src/state/editor';
 import { WorkspaceDatabase } from '../src/storage/database';
 import { Repository } from '../src/storage/repository';
@@ -166,6 +168,41 @@ describe('Behavior connection command', () => {
       expect(threshold.nodeId).not.toBe(getBehaviorLibrary(demo).bindings[0].nodeId);
       expect(threshold.parameters.receiver).toBe(threshold.nodeId);
       expect(reserve.parameters.staffing).toBe('staff');
+    } finally {
+      await db.delete();
+    }
+  });
+
+  it('removes bindings for a deleted simulator node through the graph API and retains unrelated imported data', async () => {
+    const db = new WorkspaceDatabase(`behavior-${crypto.randomUUID()}`);
+    try {
+      await db.initialize();
+      const repository = new Repository(db);
+      const demo = createBehaviorDemo('behaviors-cashier');
+      const library = getBehaviorLibrary(demo);
+      const workId = library.bindings[0].nodeId;
+      const importedOrphan = {
+        ...library.bindings[0],
+        id: crypto.randomUUID(),
+        nodeId: crypto.randomUUID(),
+        enabled: false,
+      };
+      const stored = await repository.importGraph(
+        setBehaviorLibrary(demo, {
+          ...library,
+          bindings: [...library.bindings, importedOrphan],
+        }),
+      );
+
+      await repository.request(`/api/v1/nodes/${workId}`, 'DELETE');
+
+      const after = await repository.getGraph(stored.diagram.id);
+      expect(after.nodes.some(({ id }) => id === workId)).toBe(false);
+      expect(getBehaviorLibrary(after)).toEqual({
+        definitions: library.definitions,
+        bindings: [importedOrphan],
+      });
+      expect(captureSimulationBehaviors(after)).toBeUndefined();
     } finally {
       await db.delete();
     }

@@ -2,6 +2,7 @@ import { blankGraph, newNode } from '../model/types';
 import { createSimulationGraph } from '../simulation/document';
 import { createBasicModel } from '../simulation/examples';
 import { setBehaviorLibrary, type BehaviorDefinition } from './document';
+import { BEHAVIOR_PREVIEW_VERSION } from './language';
 
 export type BehaviorDemo =
   | 'behaviors-editor'
@@ -10,7 +11,7 @@ export type BehaviorDemo =
   | 'behaviors-cashier-off';
 
 function definition(name: string, source: string): BehaviorDefinition {
-  return { id: crypto.randomUUID(), name, version: 1, source };
+  return { id: crypto.randomUUID(), name, version: BEHAVIOR_PREVIEW_VERSION, source };
 }
 
 export function createBehaviorDemo(demo: BehaviorDemo) {
